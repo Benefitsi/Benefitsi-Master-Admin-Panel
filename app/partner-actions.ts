@@ -4,6 +4,23 @@ import { randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { requireAdmin } from "@/lib/admin"
+import {
+  DEFAULT_AUDIENCE,
+  DEFAULT_DEAL_DROP_PRIORITY,
+  DEFAULT_DEAL_DROP_WEEKDAYS,
+  DEFAULT_REWARD_TRACK_TARGET,
+  DEFAULT_SELECTION_EXPIRES_MINUTES,
+  DEFAULT_TIMEZONE,
+  MAX_STAMP_CARD_STAMPS,
+  activationRequiredForCategory,
+  isAudience,
+  isDealType,
+  isDiscountType,
+  isMilestoneAudience,
+  isPartnerStaffRole,
+  isRewardType,
+  normalizeBenefitCategory,
+} from "@/lib/reward-config"
 
 export type PartnerActionState = {
   message: string
@@ -29,20 +46,119 @@ type ParsedDeal = {
   partner_id: string
   type: string
   discount_type: string
-  discount_value: number | null
   premium_only: boolean
+  benefit_category: string
+  audience: string
+  activation_required: boolean
   active: boolean
-  happy_hour_start: string
-  happy_hour_end: string
-  trigger_value: number | null
-  expiry_days: number | null
-  twoforone_usage_limit: number | null
-  twoforone_trial_limit: number | null
-  reward_item: string
+  discount_value: number | null
+  reward_item: string | null
   benefit_count: number | null
   estimated_savings: number | null
+  customer_description: string | null
+  staff_instructions: string | null
+  terms: string | null
+  trigger_value: number | null
+  expiry_days: number | null
+  happy_hour_start: string | null
+  happy_hour_end: string | null
+  starts_at: string | null
+  ends_at: string | null
+  valid_from: string | null
+  valid_until: string | null
+  valid_weekdays: number[]
+  max_redemptions_global: number | null
+  max_redemptions_per_user: number | null
+  cooldown_hours: number | null
+  stock_total: number | null
+  stock_remaining: number | null
+  selection_expires_minutes: number
+  priority: number | null
+  min_spend: number | null
+  max_discount_amount: number | null
+  allow_free_trial: boolean
+  reward_track_target: string
+  timezone: string
+  weekdays: string[]
+  reserve_on_selection: boolean
+  metadata: unknown
   created_at?: string
   updated_at?: string
+}
+
+type ParsedMilestone = {
+  partner_id: string
+  required_stamps: number | null
+  reward_type: string
+  reward_item: string | null
+  discount_type: string
+  discount_value: number | null
+  estimated_savings: number | null
+  title: string | null
+  customer_description: string | null
+  staff_instructions: string | null
+  terms: string | null
+  audience: string
+  active: boolean
+  reward_track_target: string
+  created_at?: string
+  updated_at?: string
+}
+
+type ParsedPartnerStaff = {
+  partner_id: string
+  user_id: string
+  role: string
+  active: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+type ParsedOpeningHour = {
+  partner_id: string
+  weekday: number | null
+  opens_at: string | null
+  closes_at: string | null
+  label: string | null
+  is_closed: boolean
+  sort_order: number | null
+}
+
+type ParsedMenu = {
+  partner_id: string
+  name: string
+  description: string | null
+  status: string
+}
+
+type ParsedMenuCategory = {
+  menu_id: string
+  name: string
+  slug: string
+  sort_order: number | null
+}
+
+type ParsedMenuItem = {
+  menu_id: string
+  category_id: string | null
+  name: string
+  description: string | null
+  price: number | null
+  currency: string
+  image_url: string | null
+  tags: string[]
+  allergens: string[]
+  is_popular: boolean
+  is_stamp_eligible: boolean
+  sort_order: number | null
+}
+
+type ParsedInitialMenuCategory = ParsedMenuCategory & {
+  draft_id: string
+}
+
+type ParsedInitialMenuItem = ParsedMenuItem & {
+  image_file: File | null
 }
 
 const MAX_COVERS = 5
@@ -56,6 +172,7 @@ const ALLOWED_PARTNER_MEDIA_TYPES = new Set([
 const PARTNER_MEDIA_BUCKET =
   process.env.SUPABASE_PARTNER_MEDIA_BUCKET ?? "partner-assets"
 const UPLOAD_PLACEHOLDER_PATH = "/upload-image.jpg"
+const openingWeekdays = [1, 2, 3, 4, 5, 6, 7] as const
 
 export async function savePartner(
   _prevState: PartnerActionState,
@@ -122,12 +239,45 @@ export async function savePartner(
     }
 
     if (!isUpdate) {
-      const initialDeals = parseInitialDeals(formData, partnerId)
-      const duplicateDealType = findDuplicateDealType(initialDeals)
+      const openingHours = parseWeeklyOpeningHourRows(formData, partnerId)
+      const openingHoursError = invalidWeeklyOpeningHourRow(openingHours)
 
-      if (duplicateDealType) {
+      if (openingHoursError) {
         warnings.push(
-          `Partner was created, but initial deals were skipped because "${duplicateDealType}" was added twice.`,
+          `Partner was created, but operating hours were skipped: ${weekdayName(openingHoursError.weekday)} needs opening and closing times, or mark it closed.`,
+        )
+      } else {
+        const hoursResult = await supabase
+          .from("partner_opening_hours")
+          .insert(openingHours)
+
+        if (hoursResult.error) {
+          warnings.push(
+            `Partner was created, but operating hours could not be added: ${hoursResult.error.message}`,
+          )
+        }
+      }
+
+      if (checkboxValue(formData, "initial_menu_enabled")) {
+        const initialMenuWarning = await createInitialMenu(
+          supabase,
+          formData,
+          partnerId,
+        )
+
+        if (initialMenuWarning) {
+          warnings.push(`Partner was created, but ${initialMenuWarning}`)
+        }
+      }
+
+      const initialDeals = parseInitialDeals(formData, partnerId)
+      const initialDealError = initialDeals
+        .map(validateDealPayload)
+        .find(Boolean)
+
+      if (initialDealError) {
+        warnings.push(
+          `Partner was created, but initial deals were skipped: ${initialDealError}`,
         )
       } else if (initialDeals.length > 0) {
         const dealResult = await supabase.from("deals").insert(initialDeals)
@@ -197,25 +347,22 @@ export async function saveDeal(
   const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
   const now = new Date().toISOString()
-  const payload = parseDealPayload(formData, "", stringValue(formData, "partner_id"))
+  let payload: ParsedDeal
 
-  if (!payload.partner_id) {
-    return { ok: false, message: "A deal must be attached to a partner." }
+  try {
+    payload = parseDealPayload(formData, "", stringValue(formData, "partner_id"))
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error ? error.message : "Unable to parse deal form.",
+    }
   }
 
-  if (!payload.type) {
-    return { ok: false, message: "Deal type is required." }
-  }
+  const validationMessage = validateDealPayload(payload)
 
-  const duplicateMessage = await validateUniqueDealType(
-    supabase,
-    payload.partner_id,
-    payload.type,
-    id,
-  )
-
-  if (duplicateMessage) {
-    return { ok: false, message: duplicateMessage }
+  if (validationMessage) {
+    return { ok: false, message: validationMessage }
   }
 
   const mutationPayload = {
@@ -237,6 +384,495 @@ export async function saveDeal(
     ok: true,
     message: id ? "Deal updated." : "Deal added.",
   }
+}
+
+export async function saveRewardMilestone(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+  const now = new Date().toISOString()
+  const payload = parseMilestonePayload(formData)
+  const validationMessage = validateMilestonePayload(payload)
+
+  if (validationMessage) {
+    return { ok: false, message: validationMessage }
+  }
+
+  const mutationPayload = {
+    ...payload,
+    updated_at: now,
+    ...(id ? {} : { created_at: now }),
+  }
+  const result = id
+    ? await supabase
+        .from("partner_reward_milestones")
+        .update(mutationPayload)
+        .eq("id", id)
+    : await supabase.from("partner_reward_milestones").insert(mutationPayload)
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  revalidatePath("/")
+
+  return {
+    ok: true,
+    message: id ? "Milestone updated." : "Milestone added.",
+  }
+}
+
+export async function deleteRewardMilestone(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+
+  if (!id) {
+    return { ok: false, message: "Milestone id is required." }
+  }
+
+  const result = await supabase
+    .from("partner_reward_milestones")
+    .delete()
+    .eq("id", id)
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  revalidatePath("/")
+
+  return { ok: true, message: "Milestone removed." }
+}
+
+export async function savePartnerStaff(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+  const now = new Date().toISOString()
+  const payload = parsePartnerStaffPayload(formData)
+  const validationMessage = validatePartnerStaffPayload(payload)
+
+  if (validationMessage) {
+    return { ok: false, message: validationMessage }
+  }
+
+  const mutationPayload = {
+    ...payload,
+    updated_at: now,
+    ...(id ? {} : { created_at: now }),
+  }
+  const result = id
+    ? await supabase.from("partner_staff").update(mutationPayload).eq("id", id)
+    : await supabase.from("partner_staff").insert(mutationPayload)
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  revalidatePath("/")
+
+  return {
+    ok: true,
+    message: id ? "Staff access updated." : "Staff access added.",
+  }
+}
+
+export async function deletePartnerStaff(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+
+  if (!id) {
+    return { ok: false, message: "Staff access id is required." }
+  }
+
+  const result = await supabase.from("partner_staff").delete().eq("id", id)
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  revalidatePath("/")
+
+  return { ok: true, message: "Staff access removed." }
+}
+
+export async function saveOpeningHour(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+  const payload = parseOpeningHourPayload(formData)
+  const validationMessage = validateOpeningHourPayload(payload)
+
+  if (validationMessage) {
+    return { ok: false, message: validationMessage }
+  }
+
+  const result = id
+    ? await supabase.from("partner_opening_hours").update(payload).eq("id", id)
+    : await supabase.from("partner_opening_hours").insert(payload)
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  revalidatePath("/")
+
+  return {
+    ok: true,
+    message: id ? "Opening hours updated." : "Opening hours added.",
+  }
+}
+
+export async function deleteOpeningHour(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+
+  if (!id) {
+    return { ok: false, message: "Opening hour id is required." }
+  }
+
+  const result = await supabase.from("partner_opening_hours").delete().eq("id", id)
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  revalidatePath("/")
+
+  return { ok: true, message: "Opening hours removed." }
+}
+
+export async function saveWeeklyOpeningHours(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const partnerId = stringValue(formData, "partner_id")
+
+  if (!partnerId) {
+    return { ok: false, message: "Opening hours must be attached to a partner." }
+  }
+
+  const rows = parseWeeklyOpeningHourRows(formData, partnerId)
+  const invalidRow = invalidWeeklyOpeningHourRow(rows)
+
+  if (invalidRow) {
+    return {
+      ok: false,
+      message: `${weekdayName(invalidRow.weekday)} needs opening and closing times, or mark it closed.`,
+    }
+  }
+
+  const deleteResult = await supabase
+    .from("partner_opening_hours")
+    .delete()
+    .eq("partner_id", partnerId)
+
+  if (deleteResult.error) {
+    return { ok: false, message: deleteResult.error.message }
+  }
+
+  const insertResult = await supabase.from("partner_opening_hours").insert(rows)
+
+  if (insertResult.error) {
+    return { ok: false, message: insertResult.error.message }
+  }
+
+  revalidatePath("/")
+
+  return { ok: true, message: "Weekly operating hours saved." }
+}
+
+export async function saveMenu(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+  const now = new Date().toISOString()
+  const payload = parseMenuPayload(formData)
+  const validationMessage = validateMenuPayload(payload)
+
+  if (validationMessage) {
+    return { ok: false, message: validationMessage }
+  }
+
+  const mutationPayload = {
+    ...payload,
+    updated_at: now,
+    ...(id ? {} : { created_at: now }),
+  }
+  const result = id
+    ? await supabase.from("menus").update(mutationPayload).eq("id", id)
+    : await supabase.from("menus").insert(mutationPayload)
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  revalidatePath("/")
+
+  return { ok: true, message: id ? "Menu updated." : "Menu added." }
+}
+
+export async function approveMenu(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+
+  if (!id) {
+    return { ok: false, message: "Menu id is required." }
+  }
+
+  const result = await supabase
+    .from("menus")
+    .update({ status: "published", updated_at: new Date().toISOString() })
+    .eq("id", id)
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  revalidatePath("/")
+
+  return { ok: true, message: "Menu approved and published." }
+}
+
+export async function deleteMenu(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+
+  if (!id) {
+    return { ok: false, message: "Menu id is required." }
+  }
+
+  const itemsResult = await supabase.from("menu_items").delete().eq("menu_id", id)
+
+  if (itemsResult.error) {
+    return { ok: false, message: itemsResult.error.message }
+  }
+
+  const categoriesResult = await supabase
+    .from("menu_categories")
+    .delete()
+    .eq("menu_id", id)
+
+  if (categoriesResult.error) {
+    return { ok: false, message: categoriesResult.error.message }
+  }
+
+  const menuResult = await supabase.from("menus").delete().eq("id", id)
+
+  if (menuResult.error) {
+    return { ok: false, message: menuResult.error.message }
+  }
+
+  revalidatePath("/")
+
+  return { ok: true, message: "Menu removed." }
+}
+
+export async function saveMenuCategory(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+  const payload = parseMenuCategoryPayload(formData)
+  const validationMessage = validateMenuCategoryPayload(payload)
+
+  if (validationMessage) {
+    return { ok: false, message: validationMessage }
+  }
+
+  const result = id
+    ? await supabase.from("menu_categories").update(payload).eq("id", id)
+    : await supabase.from("menu_categories").insert(payload)
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  revalidatePath("/")
+
+  return {
+    ok: true,
+    message: id ? "Menu category updated." : "Menu category added.",
+  }
+}
+
+export async function deleteMenuCategory(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+
+  if (!id) {
+    return { ok: false, message: "Menu category id is required." }
+  }
+
+  const itemsResult = await supabase
+    .from("menu_items")
+    .update({ category_id: null })
+    .eq("category_id", id)
+
+  if (itemsResult.error) {
+    return { ok: false, message: itemsResult.error.message }
+  }
+
+  const categoryResult = await supabase
+    .from("menu_categories")
+    .delete()
+    .eq("id", id)
+
+  if (categoryResult.error) {
+    return { ok: false, message: categoryResult.error.message }
+  }
+
+  revalidatePath("/")
+
+  return { ok: true, message: "Menu category removed." }
+}
+
+export async function saveMenuItem(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+  const now = new Date().toISOString()
+  const imageFile = fileValue(formData, "image_file")
+  const existingImageUrl = stringValue(formData, "existing_image_url")
+  const removeImage = checkboxValue(formData, "remove_image")
+  const uploadedPaths: UploadedStoragePath[] = []
+  const oldImageUrlsToCleanup: string[] = []
+  let imageUrl = removeImage ? null : existingImageUrl || null
+
+  if (imageFile) {
+    const mediaError = validateMediaFile(imageFile)
+    const menuId = stringValue(formData, "menu_id")
+
+    if (mediaError) {
+      return { ok: false, message: mediaError }
+    }
+
+    if (!menuId) {
+      return { ok: false, message: "A menu item must be attached to a menu." }
+    }
+
+    try {
+      const uploaded = await uploadPartnerFile(
+        supabase,
+        imageFile,
+        `menu-items/${menuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
+      )
+
+      imageUrl = uploaded.url
+      uploadedPaths.push(uploaded)
+
+      if (existingImageUrl) {
+        oldImageUrlsToCleanup.push(existingImageUrl)
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to upload the menu item image.",
+      }
+    }
+  } else if (removeImage && existingImageUrl) {
+    oldImageUrlsToCleanup.push(existingImageUrl)
+  }
+
+  const payload = parseMenuItemPayload(formData, imageUrl)
+  const validationMessage = validateMenuItemPayload(payload)
+
+  if (validationMessage) {
+    await cleanupUploadedFiles(supabase, uploadedPaths)
+    return { ok: false, message: validationMessage }
+  }
+
+  const mutationPayload = {
+    ...payload,
+    updated_at: now,
+    ...(id ? {} : { created_at: now }),
+  }
+  const result = id
+    ? await supabase.from("menu_items").update(mutationPayload).eq("id", id)
+    : await supabase.from("menu_items").insert(mutationPayload)
+
+  if (result.error) {
+    await cleanupUploadedFiles(supabase, uploadedPaths)
+    return { ok: false, message: result.error.message }
+  }
+
+  await cleanupPublicMediaUrls(supabase, oldImageUrlsToCleanup)
+
+  revalidatePath("/")
+
+  return { ok: true, message: id ? "Menu item updated." : "Menu item added." }
+}
+
+export async function deleteMenuItem(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+
+  if (!id) {
+    return { ok: false, message: "Menu item id is required." }
+  }
+
+  const existingResult = await supabase
+    .from("menu_items")
+    .select("image_url")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (existingResult.error) {
+    return { ok: false, message: existingResult.error.message }
+  }
+
+  const result = await supabase.from("menu_items").delete().eq("id", id)
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  const imageUrl =
+    typeof existingResult.data?.image_url === "string"
+      ? existingResult.data.image_url
+      : ""
+
+  await cleanupPublicMediaUrls(supabase, imageUrl ? [imageUrl] : [])
+
+  revalidatePath("/")
+
+  return { ok: true, message: "Menu item removed." }
 }
 
 export async function deleteDeal(
@@ -274,9 +910,6 @@ function validatePartnerForm(
     ["address", "Address is required."],
     ["coordinates", "Coordinates are required."],
     ["description", "Description is required."],
-    ["stamp_target", "Stamp target is required."],
-    ["reward_text_primary", "Stamp reward 1 is required."],
-    ["reward_text_secondary", "Stamp reward 2 is required."],
   ]
 
   for (const [key, message] of requiredFields) {
@@ -293,8 +926,30 @@ function validatePartnerForm(
     return "Coordinates must use the format latitude, longitude."
   }
 
-  if (integerValue(formData, "stamp_target") === null) {
-    return "Stamp target must be a number."
+  if (hasWeeklyOpeningHourFields(formData)) {
+    const invalidRow = invalidWeeklyOpeningHourRow(
+      parseWeeklyOpeningHourRows(formData, "validation"),
+    )
+
+    if (invalidRow) {
+      return `${weekdayName(invalidRow.weekday)} needs opening and closing times, or mark it closed.`
+    }
+  }
+
+  if (checkboxValue(formData, "initial_menu_enabled")) {
+    const menuValidation = validateMenuPayload(
+      parseMenuPayload(formData, "validation", "initial_menu_"),
+    )
+
+    if (menuValidation) {
+      return menuValidation
+    }
+
+    const menuStructureValidation = validateInitialMenuStructure(formData)
+
+    if (menuStructureValidation) {
+      return menuStructureValidation
+    }
   }
 
   if (
@@ -311,6 +966,65 @@ function validatePartnerForm(
   }
 
   return null
+}
+
+function validateInitialMenuStructure(formData: FormData) {
+  const categoryIds = new Set<string>()
+  const categories = parseInitialMenuCategoryPayloads(formData, "validation")
+
+  for (const category of categories) {
+    const validationMessage = validateMenuCategoryPayload(category)
+
+    if (validationMessage) {
+      return validationMessage
+    }
+
+    categoryIds.add(category.draft_id)
+  }
+
+  const categoryIdsByDraft = new Map(
+    Array.from(categoryIds).map((id) => [id, id] as const),
+  )
+  const items = parseInitialMenuItemPayloads(
+    formData,
+    "validation",
+    categoryIdsByDraft,
+    new Map(),
+  )
+
+  for (let index = 0; index < items.length; index += 1) {
+    const categoryDraftId = nullableStringValue(
+      formData,
+      `initial_menu_item_${index}_category_draft_id`,
+    )
+
+    if (categoryDraftId && !categoryIds.has(categoryDraftId)) {
+      return "Choose a valid category for starter menu items."
+    }
+
+    const validationMessage = validateMenuItemPayload(items[index])
+
+    if (validationMessage) {
+      return validationMessage
+    }
+  }
+
+  const mediaError = validateInitialMenuItemImages(formData)
+
+  if (mediaError) {
+    return mediaError
+  }
+
+  return null
+}
+
+function hasWeeklyOpeningHourFields(formData: FormData) {
+  return openingWeekdays.some(
+    (weekday) =>
+      formData.has(`opens_at_${weekday}`) ||
+      formData.has(`closes_at_${weekday}`) ||
+      formData.has(`is_closed_${weekday}`),
+  )
 }
 
 function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
@@ -337,11 +1051,7 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     type: stringValue(formData, "type"),
     status: active ? "active" : "inactive",
     is_featured: checkboxValue(formData, "is_featured"),
-    is_restaurant: checkboxValue(formData, "is_restaurant"),
     loves: isUpdate ? integerValue(formData, "existing_loves") ?? 0 : 0,
-    stamp_target: integerValue(formData, "stamp_target"),
-    reward_text_primary: stringValue(formData, "reward_text_primary"),
-    reward_text_secondary: stringValue(formData, "reward_text_secondary"),
     pin: isUpdate && existingPin ? existingPin : randomFourDigitPin(),
     address: stringValue(formData, "address"),
     phone: stringValue(formData, "phone"),
@@ -442,6 +1152,46 @@ async function uploadPartnerFile(
   }
 }
 
+async function uploadInitialMenuItemImages(
+  supabase: SupabaseClient,
+  formData: FormData,
+  menuId: string,
+) {
+  const count = integerValue(formData, "initial_menu_item_count") ?? 0
+  const uploadedPaths: UploadedStoragePath[] = []
+  const imageUrlsByIndex = new Map<number, string>()
+
+  try {
+    for (let index = 0; index < count; index += 1) {
+      const file = fileValue(formData, `initial_menu_item_${index}_image_file`)
+
+      if (!file) {
+        continue
+      }
+
+      const mediaError = validateMediaFile(file)
+
+      if (mediaError) {
+        throw new Error(mediaError)
+      }
+
+      const uploaded = await uploadPartnerFile(
+        supabase,
+        file,
+        `menu-items/${menuId}/${Date.now()}-${index}-${safeFileName(file.name)}`,
+      )
+
+      imageUrlsByIndex.set(index, uploaded.url)
+      uploadedPaths.push(uploaded)
+    }
+  } catch (error) {
+    await cleanupUploadedFiles(supabase, uploadedPaths)
+    throw error
+  }
+
+  return { imageUrlsByIndex, uploadedPaths }
+}
+
 async function cleanupUploadedFiles(
   supabase: SupabaseClient,
   uploadedPaths: UploadedStoragePath[],
@@ -531,6 +1281,131 @@ async function markOwnerAsPartner(supabase: SupabaseClient, ownerId: string) {
   return `Owner was selected, but could not be marked as partner: ${byUid.error.message}`
 }
 
+async function createInitialMenu(
+  supabase: SupabaseClient,
+  formData: FormData,
+  partnerId: string,
+) {
+  const now = new Date().toISOString()
+  const menuPayload = parseMenuPayload(formData, partnerId, "initial_menu_")
+  const menuValidation = validateMenuPayload(menuPayload)
+
+  if (menuValidation) {
+    return `the starter menu was skipped: ${menuValidation}`
+  }
+
+  const menuResult = await supabase
+    .from("menus")
+    .insert({
+      ...menuPayload,
+      created_at: now,
+      updated_at: now,
+    })
+    .select("id")
+    .single()
+
+  if (menuResult.error) {
+    return `the starter menu could not be added: ${menuResult.error.message}`
+  }
+
+  const menuId = menuResult.data?.id
+
+  if (!menuId) {
+    return "the starter menu could not be added: no menu id was returned."
+  }
+
+  const categoryIdsByDraft = new Map<string, string>()
+  const categories = parseInitialMenuCategoryPayloads(formData, menuId)
+
+  for (const category of categories) {
+    const categoryValidation = validateMenuCategoryPayload(category)
+
+    if (categoryValidation) {
+      return `starter menu categories were skipped: ${categoryValidation}`
+    }
+
+    const categoryResult = await supabase
+      .from("menu_categories")
+      .insert({
+        menu_id: category.menu_id,
+        name: category.name,
+        slug: category.slug,
+        sort_order: category.sort_order,
+      })
+      .select("id")
+      .single()
+
+    if (categoryResult.error) {
+      return `starter menu categories could not be added: ${categoryResult.error.message}`
+    }
+
+    if (categoryResult.data?.id) {
+      categoryIdsByDraft.set(category.draft_id, categoryResult.data.id)
+    }
+  }
+
+  const dryRunItems = parseInitialMenuItemPayloads(
+    formData,
+    menuId,
+    categoryIdsByDraft,
+    new Map(),
+  )
+  const itemValidation = dryRunItems.map(validateMenuItemPayload).find(Boolean)
+
+  if (itemValidation) {
+    return `starter menu items were skipped: ${itemValidation}`
+  }
+
+  let imageUploads: Awaited<ReturnType<typeof uploadInitialMenuItemImages>>
+
+  try {
+    imageUploads = await uploadInitialMenuItemImages(
+      supabase,
+      formData,
+      menuId,
+    )
+  } catch (error) {
+    return `starter menu item images could not be uploaded: ${
+      error instanceof Error ? error.message : "Unknown upload error."
+    }`
+  }
+
+  const items = parseInitialMenuItemPayloads(
+    formData,
+    menuId,
+    categoryIdsByDraft,
+    imageUploads.imageUrlsByIndex,
+  )
+
+  if (items.length > 0) {
+    const itemResult = await supabase.from("menu_items").insert(
+      items.map((item) => ({
+        menu_id: item.menu_id,
+        category_id: item.category_id,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        currency: item.currency,
+        image_url: item.image_url,
+        tags: item.tags,
+        allergens: item.allergens,
+        is_popular: item.is_popular,
+        is_stamp_eligible: item.is_stamp_eligible,
+        sort_order: item.sort_order,
+        created_at: now,
+        updated_at: now,
+      })),
+    )
+
+    if (itemResult.error) {
+      await cleanupUploadedFiles(supabase, imageUploads.uploadedPaths)
+      return `starter menu items could not be added: ${itemResult.error.message}`
+    }
+  }
+
+  return null
+}
+
 function parseInitialDeals(formData: FormData, partnerId: string): ParsedDeal[] {
   const count = integerValue(formData, "initial_deal_count") ?? 0
   const deals: ParsedDeal[] = []
@@ -559,76 +1434,580 @@ function parseDealPayload(
   prefix = "",
   partnerId = stringValue(formData, `${prefix}partner_id`),
 ): ParsedDeal {
+  const type = stringValue(formData, `${prefix}type`)
+  const isLimitedDrop = type === "limited_drop"
+  const rawDiscountType = stringValue(formData, `${prefix}discount_type`)
+  const discountType = normalizeDealDiscountType(type, rawDiscountType)
+  const benefitCategory = normalizeBenefitCategory(
+    type,
+    discountType,
+    stringValue(formData, `${prefix}benefit_category`),
+  )
+  const benefitCount = integerValue(formData, `${prefix}benefit_count`)
+  const audience =
+    normalizeChoice(stringValue(formData, `${prefix}audience`), isAudience) ??
+    DEFAULT_AUDIENCE
+  const stockTotal = integerValue(formData, `${prefix}stock_total`)
+  const stockRemaining =
+    isLimitedDrop &&
+    stockTotal !== null &&
+    !stringValue(formData, `${prefix}stock_remaining`)
+      ? stockTotal
+      : integerValue(formData, `${prefix}stock_remaining`)
+  const startsAt = nullableStringValue(formData, `${prefix}starts_at`)
+  const endsAt = nullableStringValue(formData, `${prefix}ends_at`)
+  const validWeekdays = integerListValue(formData, `${prefix}valid_weekdays`)
+  const hasWeekdaySelector = formData.has(`${prefix}valid_weekdays_present`)
+  const allowFreeTrial =
+    isLimitedDrop &&
+    discountType === "twoforone" &&
+    checkboxValue(formData, `${prefix}allow_free_trial`)
+
   return {
     partner_id: partnerId,
-    type: stringValue(formData, `${prefix}type`),
-    discount_type: stringValue(formData, `${prefix}discount_type`),
-    discount_value: integerValue(formData, `${prefix}discount_value`),
-    premium_only: checkboxValue(formData, `${prefix}premium_only`),
+    type,
+    discount_type: discountType,
+    premium_only: audience === "premium",
+    benefit_category: isLimitedDrop ? "direct_selectable" : benefitCategory,
+    audience,
+    activation_required: isLimitedDrop
+      ? true
+      : activationRequiredForCategory(benefitCategory),
     active: checkboxValue(formData, `${prefix}active`),
-    happy_hour_start: stringValue(formData, `${prefix}happy_hour_start`),
-    happy_hour_end: stringValue(formData, `${prefix}happy_hour_end`),
-    trigger_value: integerValue(formData, `${prefix}trigger_value`),
-    expiry_days: integerValue(formData, `${prefix}expiry_days`),
-    twoforone_usage_limit: integerValue(
-      formData,
-      `${prefix}twoforone_usage_limit`,
-    ),
-    twoforone_trial_limit: integerValue(
-      formData,
-      `${prefix}twoforone_trial_limit`,
-    ),
-    reward_item: stringValue(formData, `${prefix}reward_item`),
-    benefit_count: integerValue(formData, `${prefix}benefit_count`),
+    discount_value: numberValue(formData, `${prefix}discount_value`),
+    reward_item: nullableStringValue(formData, `${prefix}reward_item`),
+    benefit_count:
+      !isLimitedDrop && discountType === "bonus_stamp" && benefitCount === null
+        ? 1
+        : isLimitedDrop
+          ? null
+          : benefitCount,
     estimated_savings: numberValue(formData, `${prefix}estimated_savings`),
+    customer_description: nullableStringValue(
+      formData,
+      `${prefix}customer_description`,
+    ),
+    staff_instructions: nullableStringValue(
+      formData,
+      `${prefix}staff_instructions`,
+    ),
+    terms: nullableStringValue(formData, `${prefix}terms`),
+    trigger_value: isLimitedDrop
+      ? null
+      : integerValue(formData, `${prefix}trigger_value`),
+    expiry_days: integerValue(formData, `${prefix}expiry_days`),
+    happy_hour_start: isLimitedDrop
+      ? null
+      : nullableStringValue(formData, `${prefix}happy_hour_start`),
+    happy_hour_end: isLimitedDrop
+      ? null
+      : nullableStringValue(formData, `${prefix}happy_hour_end`),
+    starts_at: startsAt,
+    ends_at: endsAt,
+    valid_from: nullableStringValue(formData, `${prefix}valid_from`),
+    valid_until: nullableStringValue(formData, `${prefix}valid_until`),
+    valid_weekdays:
+      isLimitedDrop
+        ? validWeekdays.length
+          ? validWeekdays
+          : hasWeekdaySelector
+            ? []
+            : [...DEFAULT_DEAL_DROP_WEEKDAYS]
+        : validWeekdays,
+    max_redemptions_global: integerValue(
+      formData,
+      `${prefix}max_redemptions_global`,
+    ),
+    max_redemptions_per_user: integerValue(
+      formData,
+      `${prefix}max_redemptions_per_user`,
+    ),
+    cooldown_hours: integerValue(formData, `${prefix}cooldown_hours`),
+    stock_total: stockTotal,
+    stock_remaining: stockRemaining,
+    selection_expires_minutes:
+      integerValue(formData, `${prefix}selection_expires_minutes`) ??
+      DEFAULT_SELECTION_EXPIRES_MINUTES,
+    priority:
+      integerValue(formData, `${prefix}priority`) ??
+      (isLimitedDrop ? DEFAULT_DEAL_DROP_PRIORITY : null),
+    min_spend: numberValue(formData, `${prefix}min_spend`),
+    max_discount_amount: numberValue(formData, `${prefix}max_discount_amount`),
+    allow_free_trial: allowFreeTrial,
+    reward_track_target:
+      stringValue(formData, `${prefix}reward_track_target`) ||
+      DEFAULT_REWARD_TRACK_TARGET,
+    timezone:
+      stringValue(formData, `${prefix}timezone`) || DEFAULT_TIMEZONE,
+    weekdays: listValue(formData, `${prefix}weekdays`),
+    // TODO: Backend selection handling must expire reserved stock holds.
+    reserve_on_selection: checkboxValue(
+      formData,
+      `${prefix}reserve_on_selection`,
+    ),
+    metadata: jsonValue(formData, `${prefix}metadata`),
   }
 }
 
-async function validateUniqueDealType(
-  supabase: SupabaseClient,
-  partnerId: string,
-  type: string,
-  currentDealId: string,
-) {
-  let query = supabase
-    .from("deals")
-    .select("id")
-    .eq("partner_id", partnerId)
-    .eq("type", type)
-    .limit(1)
+function normalizeDealDiscountType(type: string, discountType: string) {
+  if (type === "limited_drop") {
+    if (!discountType) {
+      return "item"
+    }
 
-  if (currentDealId) {
-    query = query.neq("id", currentDealId)
+    return discountType === "2for1" ? "twoforone" : discountType
   }
 
-  const result = await query
+  return discountType || "none"
+}
 
-  if (result.error) {
-    return result.error.message
+function validateDealPayload(payload: ParsedDeal) {
+  if (!payload.partner_id) {
+    return "A deal must be attached to a partner."
   }
 
-  if ((result.data ?? []).length > 0) {
-    return "This partner already has a deal with that type."
+  if (!isDealType(payload.type)) {
+    return "Deal type is required."
+  }
+
+  if (!isDiscountType(payload.discount_type)) {
+    return "Discount type is required."
+  }
+
+  if (!isAudience(payload.audience)) {
+    return "Audience is required."
+  }
+
+  if (payload.type === "limited_drop") {
+    const allowedDropDiscountTypes = [
+      "item",
+      "fixed",
+      "percent",
+      "twoforone",
+    ]
+
+    if (payload.benefit_category !== "direct_selectable") {
+      return "Deal Drop benefit category must be direct selectable."
+    }
+
+    if (!payload.activation_required) {
+      return "Deal Drops must require activation."
+    }
+
+    if (!allowedDropDiscountTypes.includes(payload.discount_type)) {
+      return "Deal Drops must use item, fixed, percent, or 2-for-1 discounts."
+    }
+
+    if (payload.valid_weekdays.length === 0) {
+      return "Choose at least one valid weekday for the Deal Drop."
+    }
+
+    if (
+      payload.valid_weekdays.some((weekday) => weekday < 1 || weekday > 7)
+    ) {
+      return "Deal Drop weekdays must be between Monday and Sunday."
+    }
+  }
+
+  if (
+    payload.activation_required !==
+    activationRequiredForCategory(payload.benefit_category)
+  ) {
+    return "Activation must match the benefit category."
+  }
+
+  if (
+    payload.discount_type === "bonus_stamp" &&
+    (!payload.benefit_count || payload.benefit_count < 1)
+  ) {
+    return "Bonus stamp deals require a benefit count."
+  }
+
+  if (payload.discount_type === "item" && !payload.reward_item) {
+    return "Item rewards require a reward item."
+  }
+
+  if (
+    (payload.discount_type === "fixed" ||
+      payload.discount_type === "percent") &&
+    (payload.discount_value === null || payload.discount_value <= 0)
+  ) {
+    return "Fixed and percent discounts require a discount value greater than 0."
+  }
+
+  if (
+    payload.discount_type === "percent" &&
+    payload.discount_value !== null &&
+    payload.discount_value > 100
+  ) {
+    return "Percent discounts cannot exceed 100."
+  }
+
+  if (
+    payload.type === "happy_hour" &&
+    (!payload.happy_hour_start || !payload.happy_hour_end)
+  ) {
+    return "Happy hour deals require start and end times."
+  }
+
+  if (payload.type === "streak" && payload.trigger_value === null) {
+    return "Streak deals require a trigger value."
+  }
+
+  if (payload.selection_expires_minutes < 1) {
+    return "Selection expiry must be at least 1 minute."
+  }
+
+  if (
+    payload.starts_at &&
+    payload.ends_at &&
+    compareDateTimeInput(payload.starts_at, payload.ends_at) >= 0
+  ) {
+    return "Deal Drop start date/time must be before the end date/time."
+  }
+
+  if (payload.stock_total !== null && payload.stock_total < 0) {
+    return "Stock total cannot be negative."
+  }
+
+  if (payload.stock_remaining !== null && payload.stock_remaining < 0) {
+    return "Stock remaining cannot be negative."
+  }
+
+  if (
+    payload.stock_total !== null &&
+    payload.stock_remaining !== null &&
+    payload.stock_remaining > payload.stock_total
+  ) {
+    return "Stock remaining cannot be higher than stock total."
+  }
+
+  if (
+    payload.max_redemptions_global !== null &&
+    payload.max_redemptions_global < 0
+  ) {
+    return "Max redemptions globally cannot be negative."
+  }
+
+  if (
+    payload.max_redemptions_per_user !== null &&
+    payload.max_redemptions_per_user < 0
+  ) {
+    return "Max redemptions per user cannot be negative."
+  }
+
+  if (payload.cooldown_hours !== null && payload.cooldown_hours < 0) {
+    return "Cooldown hours cannot be negative."
   }
 
   return null
 }
 
-function findDuplicateDealType(deals: ParsedDeal[]) {
-  const seen = new Set<string>()
+function parseMilestonePayload(formData: FormData): ParsedMilestone {
+  const rewardType = stringValue(formData, "reward_type")
 
-  for (const deal of deals) {
-    const normalized = deal.type.trim().toLowerCase()
+  return {
+    partner_id: stringValue(formData, "partner_id"),
+    required_stamps: integerValue(formData, "required_stamps"),
+    reward_type: rewardType,
+    reward_item: nullableStringValue(formData, "reward_item"),
+    discount_type: stringValue(formData, "discount_type") || rewardType,
+    discount_value: numberValue(formData, "discount_value"),
+    estimated_savings: numberValue(formData, "estimated_savings"),
+    title: nullableStringValue(formData, "title"),
+    customer_description: nullableStringValue(
+      formData,
+      "customer_description",
+    ),
+    staff_instructions: nullableStringValue(formData, "staff_instructions"),
+    terms: nullableStringValue(formData, "terms"),
+    audience:
+      normalizeChoice(
+        stringValue(formData, "audience"),
+        isMilestoneAudience,
+      ) ?? DEFAULT_AUDIENCE,
+    active: checkboxValue(formData, "active"),
+    reward_track_target:
+      stringValue(formData, "reward_track_target") ||
+      DEFAULT_REWARD_TRACK_TARGET,
+  }
+}
 
-    if (!normalized) {
-      continue
+function validateMilestonePayload(payload: ParsedMilestone) {
+  if (!payload.partner_id) {
+    return "A milestone must be attached to a partner."
+  }
+
+  if (!payload.required_stamps || payload.required_stamps < 1) {
+    return "Required stamps must be at least 1."
+  }
+
+  if (!isRewardType(payload.reward_type)) {
+    return "Milestone reward type is required."
+  }
+
+  if (!isMilestoneAudience(payload.audience)) {
+    return "Milestone audience is required."
+  }
+
+  if (payload.reward_type === "item" && !payload.reward_item) {
+    return "Item milestones require a reward item."
+  }
+
+  if (
+    (payload.reward_type === "fixed" || payload.reward_type === "percent") &&
+    payload.discount_value === null
+  ) {
+    return "Fixed and percent milestones require a discount value."
+  }
+
+  if (payload.required_stamps > MAX_STAMP_CARD_STAMPS) {
+    return `Required stamps must be ${MAX_STAMP_CARD_STAMPS} or lower.`
+  }
+
+  return null
+}
+
+function parsePartnerStaffPayload(formData: FormData): ParsedPartnerStaff {
+  return {
+    partner_id: stringValue(formData, "partner_id"),
+    user_id: stringValue(formData, "user_id"),
+    role: stringValue(formData, "role") || "scanner",
+    active: checkboxValue(formData, "active"),
+  }
+}
+
+function validatePartnerStaffPayload(payload: ParsedPartnerStaff) {
+  if (!payload.partner_id) {
+    return "Staff access must be attached to a partner."
+  }
+
+  if (!payload.user_id) {
+    return "Choose a staff user."
+  }
+
+  if (!isPartnerStaffRole(payload.role)) {
+    return "Choose a valid staff role."
+  }
+
+  return null
+}
+
+function parseOpeningHourPayload(formData: FormData): ParsedOpeningHour {
+  const weekday = integerValue(formData, "weekday")
+  const isClosed = checkboxValue(formData, "is_closed")
+
+  return {
+    partner_id: stringValue(formData, "partner_id"),
+    weekday,
+    opens_at: isClosed ? null : nullableStringValue(formData, "opens_at"),
+    closes_at: isClosed ? null : nullableStringValue(formData, "closes_at"),
+    label: nullableStringValue(formData, "label"),
+    is_closed: isClosed,
+    sort_order: integerValue(formData, "sort_order") ?? weekday,
+  }
+}
+
+function validateOpeningHourPayload(payload: ParsedOpeningHour) {
+  if (!payload.partner_id) {
+    return "Opening hours must be attached to a partner."
+  }
+
+  if (
+    payload.weekday === null ||
+    payload.weekday < 0 ||
+    payload.weekday > 7
+  ) {
+    return "Choose a valid weekday."
+  }
+
+  if (!payload.is_closed && (!payload.opens_at || !payload.closes_at)) {
+    return "Open days require opening and closing times."
+  }
+
+  return null
+}
+
+function parseWeeklyOpeningHourRows(
+  formData: FormData,
+  partnerId: string,
+): ParsedOpeningHour[] {
+  return openingWeekdays.map((weekday) => {
+    const isClosed = checkboxValue(formData, `is_closed_${weekday}`)
+
+    return {
+      partner_id: partnerId,
+      weekday,
+      opens_at: isClosed
+        ? null
+        : nullableStringValue(formData, `opens_at_${weekday}`),
+      closes_at: isClosed
+        ? null
+        : nullableStringValue(formData, `closes_at_${weekday}`),
+      label: nullableStringValue(formData, `label_${weekday}`),
+      is_closed: isClosed,
+      sort_order: weekday,
     }
+  })
+}
 
-    if (seen.has(normalized)) {
-      return deal.type
-    }
+function invalidWeeklyOpeningHourRow(rows: ParsedOpeningHour[]) {
+  return rows.find(
+    (row) => !row.is_closed && (!row.opens_at || !row.closes_at),
+  )
+}
 
-    seen.add(normalized)
+function parseInitialMenuCategoryPayloads(
+  formData: FormData,
+  menuId: string,
+): ParsedInitialMenuCategory[] {
+  const count = integerValue(formData, "initial_menu_category_count") ?? 0
+  const categories: ParsedInitialMenuCategory[] = []
+
+  for (let index = 0; index < count; index += 1) {
+    const prefix = `initial_menu_category_${index}_`
+    const name = stringValue(formData, `${prefix}name`)
+
+    categories.push({
+      draft_id: stringValue(formData, `${prefix}draft_id`) || String(index),
+      menu_id: menuId,
+      name,
+      slug: stringValue(formData, `${prefix}slug`) || slugify(name),
+      sort_order: integerValue(formData, `${prefix}sort_order`) ?? index,
+    })
+  }
+
+  return categories
+}
+
+function parseInitialMenuItemPayloads(
+  formData: FormData,
+  menuId: string,
+  categoryIdsByDraft: Map<string, string>,
+  imageUrlsByIndex: Map<number, string>,
+): ParsedInitialMenuItem[] {
+  const count = integerValue(formData, "initial_menu_item_count") ?? 0
+  const items: ParsedInitialMenuItem[] = []
+
+  for (let index = 0; index < count; index += 1) {
+    const prefix = `initial_menu_item_${index}_`
+    const categoryDraftId = nullableStringValue(
+      formData,
+      `${prefix}category_draft_id`,
+    )
+
+    items.push({
+      menu_id: menuId,
+      category_id: categoryDraftId
+        ? categoryIdsByDraft.get(categoryDraftId) ?? null
+        : null,
+      name: stringValue(formData, `${prefix}name`),
+      description: nullableStringValue(formData, `${prefix}description`),
+      price: numberValue(formData, `${prefix}price`),
+      currency: stringValue(formData, `${prefix}currency`) || "EUR",
+      image_url: imageUrlsByIndex.get(index) ?? null,
+      tags: listValue(formData, `${prefix}tags`),
+      allergens: listValue(formData, `${prefix}allergens`),
+      is_popular: checkboxValue(formData, `${prefix}is_popular`),
+      is_stamp_eligible: checkboxValue(
+        formData,
+        `${prefix}is_stamp_eligible`,
+      ),
+      sort_order: integerValue(formData, `${prefix}sort_order`) ?? index,
+      image_file: fileValue(formData, `${prefix}image_file`),
+    })
+  }
+
+  return items
+}
+
+function parseMenuPayload(
+  formData: FormData,
+  partnerId = stringValue(formData, "partner_id"),
+  prefix = "",
+): ParsedMenu {
+  return {
+    partner_id: partnerId,
+    name: stringValue(formData, `${prefix}name`) || "Speisekarte",
+    description: nullableStringValue(formData, `${prefix}description`),
+    status: stringValue(formData, `${prefix}status`) || "draft",
+  }
+}
+
+function validateMenuPayload(payload: ParsedMenu) {
+  if (!payload.partner_id) {
+    return "A menu must be attached to a partner."
+  }
+
+  if (!payload.name) {
+    return "Menu name is required."
+  }
+
+  if (!["draft", "review", "published", "archived"].includes(payload.status)) {
+    return "Choose a valid menu status."
+  }
+
+  return null
+}
+
+function parseMenuCategoryPayload(formData: FormData): ParsedMenuCategory {
+  const name = stringValue(formData, "name")
+
+  return {
+    menu_id: stringValue(formData, "menu_id"),
+    name,
+    slug: stringValue(formData, "slug") || slugify(name),
+    sort_order: integerValue(formData, "sort_order") ?? 0,
+  }
+}
+
+function validateMenuCategoryPayload(payload: ParsedMenuCategory) {
+  if (!payload.menu_id) {
+    return "A menu category must be attached to a menu."
+  }
+
+  if (!payload.name) {
+    return "Category name is required."
+  }
+
+  if (!payload.slug) {
+    return "Category slug is required."
+  }
+
+  return null
+}
+
+function parseMenuItemPayload(
+  formData: FormData,
+  imageUrl: string | null,
+): ParsedMenuItem {
+  return {
+    menu_id: stringValue(formData, "menu_id"),
+    category_id: nullableStringValue(formData, "category_id"),
+    name: stringValue(formData, "name"),
+    description: nullableStringValue(formData, "description"),
+    price: numberValue(formData, "price"),
+    currency: stringValue(formData, "currency") || "EUR",
+    image_url: imageUrl,
+    tags: listValue(formData, "tags"),
+    allergens: listValue(formData, "allergens"),
+    is_popular: checkboxValue(formData, "is_popular"),
+    is_stamp_eligible: checkboxValue(formData, "is_stamp_eligible"),
+    sort_order: integerValue(formData, "sort_order") ?? 0,
+  }
+}
+
+function validateMenuItemPayload(payload: ParsedMenuItem) {
+  if (!payload.menu_id) {
+    return "A menu item must be attached to a menu."
+  }
+
+  if (!payload.name) {
+    return "Menu item name is required."
+  }
+
+  if (payload.price !== null && payload.price < 0) {
+    return "Menu item price cannot be negative."
   }
 
   return null
@@ -683,6 +2062,12 @@ function stringValue(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : ""
 }
 
+function nullableStringValue(formData: FormData, key: string) {
+  const value = stringValue(formData, key)
+
+  return value || null
+}
+
 function integerValue(formData: FormData, key: string) {
   const value = stringValue(formData, key)
 
@@ -709,6 +2094,38 @@ function checkboxValue(formData: FormData, key: string) {
   return formData.get(key) === "on"
 }
 
+function jsonValue(formData: FormData, key: string) {
+  const value = stringValue(formData, key)
+
+  if (!value) {
+    return {}
+  }
+
+  try {
+    return JSON.parse(value) as unknown
+  } catch {
+    throw new Error("Metadata must be valid JSON.")
+  }
+}
+
+function normalizeChoice<T extends string>(
+  value: string,
+  predicate: (value: string) => value is T,
+) {
+  return predicate(value) ? value : null
+}
+
+function compareDateTimeInput(start: string, end: string) {
+  const startTime = new Date(start).getTime()
+  const endTime = new Date(end).getTime()
+
+  if (Number.isNaN(startTime) || Number.isNaN(endTime)) {
+    return -1
+  }
+
+  return startTime - endTime
+}
+
 function listValue(formData: FormData, key: string) {
   return formData
     .getAll(key)
@@ -718,11 +2135,37 @@ function listValue(formData: FormData, key: string) {
     .filter(Boolean)
 }
 
+function integerListValue(formData: FormData, key: string) {
+  return listValue(formData, key)
+    .map((item) => Number.parseInt(item, 10))
+    .filter((value) => Number.isInteger(value))
+}
+
 function stringListValue(formData: FormData, key: string) {
   return formData
     .getAll(key)
     .map((value) => (typeof value === "string" ? value.trim() : ""))
     .filter((value) => value && !isUploadPlaceholderUrl(value))
+}
+
+function validateInitialMenuItemImages(formData: FormData) {
+  const count = integerValue(formData, "initial_menu_item_count") ?? 0
+
+  for (let index = 0; index < count; index += 1) {
+    const file = fileValue(formData, `initial_menu_item_${index}_image_file`)
+
+    if (!file) {
+      continue
+    }
+
+    const mediaError = validateMediaFile(file)
+
+    if (mediaError) {
+      return mediaError
+    }
+  }
+
+  return null
 }
 
 function validatePartnerMediaFiles(mediaValues: PartnerMediaFormValues) {
@@ -733,15 +2176,25 @@ function validatePartnerMediaFiles(mediaValues: PartnerMediaFormValues) {
   ].filter((file): file is File => Boolean(file))
 
   for (const file of files) {
-    const contentType = partnerMediaContentType(file)
+    const mediaError = validateMediaFile(file)
 
-    if (!contentType || !ALLOWED_PARTNER_MEDIA_TYPES.has(contentType)) {
-      return `"${file.name}" must be a PNG, JPEG, WebP, or SVG image.`
+    if (mediaError) {
+      return mediaError
     }
+  }
 
-    if (file.size > MAX_PARTNER_MEDIA_BYTES) {
-      return `"${file.name}" must be 10 MB or smaller.`
-    }
+  return null
+}
+
+function validateMediaFile(file: File) {
+  const contentType = partnerMediaContentType(file)
+
+  if (!contentType || !ALLOWED_PARTNER_MEDIA_TYPES.has(contentType)) {
+    return `"${file.name}" must be a PNG, JPEG, WebP, or SVG image.`
+  }
+
+  if (file.size > MAX_PARTNER_MEDIA_BYTES) {
+    return `"${file.name}" must be 10 MB or smaller.`
   }
 
   return null
@@ -803,6 +2256,25 @@ function createShortName(name: string) {
 
 function randomFourDigitPin() {
   return Math.floor(1000 + Math.random() * 9000)
+}
+
+function weekdayName(weekday: number | null) {
+  if (weekday === null) {
+    return "That day"
+  }
+
+  return (
+    [
+      "",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+    ][weekday] ?? "That day"
+  )
 }
 
 function safeFileName(name: string) {
