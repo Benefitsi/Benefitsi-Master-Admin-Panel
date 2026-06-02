@@ -1,33 +1,32 @@
 export const dealTypeOptions = [
   { value: "two_for_one", label: "2-for-1" },
-  { value: "welcome", label: "Welcome" },
-  { value: "comeback", label: "Comeback" },
-  { value: "happy_hour", label: "Happy hour" },
-  { value: "permanent_discount", label: "Permanent discount" },
-  { value: "limited_drop", label: "Deal Drop" },
-  { value: "birthday", label: "Birthday" },
-  { value: "free_item", label: "Free item" },
-  { value: "discount", label: "Discount" },
-  { value: "bonus_stamp", label: "Bonus stamp" },
-  { value: "streak", label: "Streak" },
-  { value: "challenge", label: "Challenge" },
+  { value: "welcome", label: "Welcome reward" },
+  { value: "comeback", label: "Duration / Comeback bonus" },
+  { value: "happy_hour", label: "Happy Hour deal" },
+  { value: "permanent_discount", label: "Permanent fallback discount" },
+  { value: "limited_drop", label: "Limited Deal Drop" },
+  { value: "birthday", label: "Birthday reward" },
+  { value: "free_item", label: "Free item deal" },
+  { value: "discount", label: "Selectable discount" },
+  { value: "bonus_stamp", label: "Automatic bonus stamp" },
+  { value: "streak", label: "Streak reward" },
+  { value: "challenge", label: "Challenge reward" },
 ] as const
 
 export const discountTypeOptions = [
-  { value: "none", label: "None" },
-  { value: "fixed", label: "Fixed amount" },
-  { value: "percent", label: "Percent" },
-  { value: "item", label: "Item" },
+  { value: "none", label: "No direct reward" },
+  { value: "fixed", label: "Fixed EUR discount" },
+  { value: "percent", label: "Percentage discount" },
+  { value: "item", label: "Free item" },
   { value: "bonus_stamp", label: "Bonus stamp" },
-  { value: "twoforone", label: "2-for-1" },
   { value: "2for1", label: "2-for-1" },
 ] as const
 
 export const dealDropDiscountTypeOptions = [
   { value: "item", label: "Free item" },
-  { value: "fixed", label: "Fixed discount" },
-  { value: "percent", label: "Percent discount" },
-  { value: "twoforone", label: "2-for-1" },
+  { value: "fixed", label: "Fixed EUR discount" },
+  { value: "percent", label: "Percentage discount" },
+  { value: "2for1", label: "2-for-1" },
 ] as const
 
 export const benefitCategoryOptions = [
@@ -49,9 +48,9 @@ export const benefitCategoryOptions = [
 ] as const
 
 export const audienceOptions = [
-  { value: "free", label: "Free" },
-  { value: "premium", label: "Premium" },
-  { value: "both", label: "Free and premium" },
+  { value: "free", label: "Free users" },
+  { value: "premium", label: "Premium users" },
+  { value: "both", label: "Free + Premium" },
   { value: "free_trial_only", label: "Free trial only" },
 ] as const
 
@@ -63,7 +62,6 @@ export const rewardTypeOptions = [
   { value: "item", label: "Item" },
   { value: "fixed", label: "Fixed amount" },
   { value: "percent", label: "Percent" },
-  { value: "twoforone", label: "2-for-1" },
   { value: "2for1", label: "2-for-1" },
   { value: "bonus_stamp", label: "Bonus stamp" },
 ] as const
@@ -138,15 +136,12 @@ export function inferBenefitCategory(
     return "direct_selectable"
   }
 
-  if (type === "challenge") {
-    return "automatic_background"
-  }
-
   if (
     type === "welcome" ||
     type === "comeback" ||
     type === "birthday" ||
-    type === "streak"
+    type === "streak" ||
+    type === "challenge"
   ) {
     return discountType === "bonus_stamp"
       ? "automatic_background"

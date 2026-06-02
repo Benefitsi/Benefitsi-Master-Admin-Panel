@@ -25,6 +25,8 @@ import {
 export type PartnerActionState = {
   message: string
   ok: boolean
+  partnerId?: string
+  created?: boolean
 }
 
 type UploadedStoragePath = {
@@ -274,10 +276,16 @@ export async function savePartner(
       const initialDealError = initialDeals
         .map(validateDealPayload)
         .find(Boolean)
+      const initialDealPriorityError =
+        validateUniqueInitialAutomaticDealPriorities(initialDeals)
 
       if (initialDealError) {
         warnings.push(
-          `Partner was created, but initial deals were skipped: ${initialDealError}`,
+          `Partner was created, but deals were skipped: ${initialDealError}`,
+        )
+      } else if (initialDealPriorityError) {
+        warnings.push(
+          `Partner was created, but deals were skipped: ${initialDealPriorityError}`,
         )
       } else if (initialDeals.length > 0) {
         const dealResult = await supabase.from("deals").insert(initialDeals)
@@ -294,6 +302,8 @@ export async function savePartner(
 
     return {
       ok: true,
+      partnerId,
+      created: !isUpdate,
       message: [
         isUpdate ? "Partner updated." : "Partner created.",
         ...warnings,
@@ -363,6 +373,16 @@ export async function saveDeal(
 
   if (validationMessage) {
     return { ok: false, message: validationMessage }
+  }
+
+  const priorityMessage = await validateUniqueAutomaticDealPriority(
+    supabase,
+    payload,
+    id,
+  )
+
+  if (priorityMessage) {
+    return { ok: false, message: priorityMessage }
   }
 
   const mutationPayload = {
@@ -705,6 +725,16 @@ export async function saveMenuCategory(
     return { ok: false, message: validationMessage }
   }
 
+  const duplicatePositionMessage = await validateUniqueMenuCategoryPosition(
+    supabase,
+    payload,
+    id,
+  )
+
+  if (duplicatePositionMessage) {
+    return { ok: false, message: duplicatePositionMessage }
+  }
+
   const result = id
     ? await supabase.from("menu_categories").update(payload).eq("id", id)
     : await supabase.from("menu_categories").insert(payload)
@@ -813,6 +843,17 @@ export async function saveMenuItem(
   if (validationMessage) {
     await cleanupUploadedFiles(supabase, uploadedPaths)
     return { ok: false, message: validationMessage }
+  }
+
+  const duplicatePositionMessage = await validateUniqueMenuItemPosition(
+    supabase,
+    payload,
+    id,
+  )
+
+  if (duplicatePositionMessage) {
+    await cleanupUploadedFiles(supabase, uploadedPaths)
+    return { ok: false, message: duplicatePositionMessage }
   }
 
   const mutationPayload = {
@@ -971,6 +1012,14 @@ function validatePartnerForm(
 function validateInitialMenuStructure(formData: FormData) {
   const categoryIds = new Set<string>()
   const categories = parseInitialMenuCategoryPayloads(formData, "validation")
+  const duplicateCategoryPosition = findDuplicatePosition(
+    categories,
+    () => "menu",
+  )
+
+  if (duplicateCategoryPosition !== null) {
+    return "Menu category positions must be unique."
+  }
 
   for (const category of categories) {
     const validationMessage = validateMenuCategoryPayload(category)
@@ -991,6 +1040,14 @@ function validateInitialMenuStructure(formData: FormData) {
     categoryIdsByDraft,
     new Map(),
   )
+  const duplicateItemPosition = findDuplicatePosition(
+    items,
+    (item) => item.category_id ?? "uncategorized",
+  )
+
+  if (duplicateItemPosition !== null) {
+    return "Menu item positions must be unique within a category."
+  }
 
   for (let index = 0; index < items.length; index += 1) {
     const categoryDraftId = nullableStringValue(
@@ -1036,8 +1093,12 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     slugify(name) ||
     randomUUID()
   const subdomain = stringValue(formData, "existing_subdomain") || slug
-  const active = checkboxValue(formData, "active")
+  const active =
+    stringValue(formData, "save_intent") === "later"
+      ? false
+      : checkboxValue(formData, "active")
   const existingPin = integerValue(formData, "existing_pin")
+  const partnerType = normalizePartnerTypeValue(stringValue(formData, "type"))
 
   return {
     owner_id: stringValue(formData, "owner_id"),
@@ -1048,7 +1109,7 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     short_name: stringValue(formData, "short_name") || createShortName(name),
     description: stringValue(formData, "description"),
     category: listValue(formData, "category"),
-    type: stringValue(formData, "type"),
+    type: partnerType,
     status: active ? "active" : "inactive",
     is_featured: checkboxValue(formData, "is_featured"),
     loves: isUpdate ? integerValue(formData, "existing_loves") ?? 0 : 0,
@@ -1456,11 +1517,18 @@ function parseDealPayload(
       : integerValue(formData, `${prefix}stock_remaining`)
   const startsAt = nullableStringValue(formData, `${prefix}starts_at`)
   const endsAt = nullableStringValue(formData, `${prefix}ends_at`)
+  const usesDiscountValue =
+    discountType === "fixed" || discountType === "percent"
+  const usesRewardItem = discountType === "item"
+  const usesBenefitCount = discountType === "bonus_stamp"
+  const usesHappyHour = type === "happy_hour"
+  const usesTriggerValue =
+    type === "streak" || type === "comeback" || type === "challenge"
   const validWeekdays = integerListValue(formData, `${prefix}valid_weekdays`)
   const hasWeekdaySelector = formData.has(`${prefix}valid_weekdays_present`)
   const allowFreeTrial =
     isLimitedDrop &&
-    discountType === "twoforone" &&
+    discountType === "2for1" &&
     checkboxValue(formData, `${prefix}allow_free_trial`)
 
   return {
@@ -1474,12 +1542,16 @@ function parseDealPayload(
       ? true
       : activationRequiredForCategory(benefitCategory),
     active: checkboxValue(formData, `${prefix}active`),
-    discount_value: numberValue(formData, `${prefix}discount_value`),
-    reward_item: nullableStringValue(formData, `${prefix}reward_item`),
+    discount_value: usesDiscountValue
+      ? numberValue(formData, `${prefix}discount_value`)
+      : null,
+    reward_item: usesRewardItem
+      ? nullableStringValue(formData, `${prefix}reward_item`)
+      : null,
     benefit_count:
-      !isLimitedDrop && discountType === "bonus_stamp" && benefitCount === null
+      !isLimitedDrop && usesBenefitCount && benefitCount === null
         ? 1
-        : isLimitedDrop
+        : !usesBenefitCount
           ? null
           : benefitCount,
     estimated_savings: numberValue(formData, `${prefix}estimated_savings`),
@@ -1492,20 +1564,27 @@ function parseDealPayload(
       `${prefix}staff_instructions`,
     ),
     terms: nullableStringValue(formData, `${prefix}terms`),
-    trigger_value: isLimitedDrop
+    trigger_value: usesTriggerValue
+      ? integerValue(formData, `${prefix}trigger_value`)
+      : null,
+    expiry_days:
+      type === "streak" || type === "comeback"
+        ? integerValue(formData, `${prefix}expiry_days`)
+        : null,
+    happy_hour_start: usesHappyHour
+      ? nullableStringValue(formData, `${prefix}happy_hour_start`)
+      : null,
+    happy_hour_end: usesHappyHour
+      ? nullableStringValue(formData, `${prefix}happy_hour_end`)
+      : null,
+    starts_at: isLimitedDrop ? startsAt : null,
+    ends_at: isLimitedDrop ? endsAt : null,
+    valid_from: isLimitedDrop
       ? null
-      : integerValue(formData, `${prefix}trigger_value`),
-    expiry_days: integerValue(formData, `${prefix}expiry_days`),
-    happy_hour_start: isLimitedDrop
+      : nullableStringValue(formData, `${prefix}valid_from`),
+    valid_until: isLimitedDrop
       ? null
-      : nullableStringValue(formData, `${prefix}happy_hour_start`),
-    happy_hour_end: isLimitedDrop
-      ? null
-      : nullableStringValue(formData, `${prefix}happy_hour_end`),
-    starts_at: startsAt,
-    ends_at: endsAt,
-    valid_from: nullableStringValue(formData, `${prefix}valid_from`),
-    valid_until: nullableStringValue(formData, `${prefix}valid_until`),
+      : nullableStringValue(formData, `${prefix}valid_until`),
     valid_weekdays:
       isLimitedDrop
         ? validWeekdays.length
@@ -1523,8 +1602,8 @@ function parseDealPayload(
       `${prefix}max_redemptions_per_user`,
     ),
     cooldown_hours: integerValue(formData, `${prefix}cooldown_hours`),
-    stock_total: stockTotal,
-    stock_remaining: stockRemaining,
+    stock_total: isLimitedDrop ? stockTotal : null,
+    stock_remaining: isLimitedDrop ? stockRemaining : null,
     selection_expires_minutes:
       integerValue(formData, `${prefix}selection_expires_minutes`) ??
       DEFAULT_SELECTION_EXPIRES_MINUTES,
@@ -1541,10 +1620,9 @@ function parseDealPayload(
       stringValue(formData, `${prefix}timezone`) || DEFAULT_TIMEZONE,
     weekdays: listValue(formData, `${prefix}weekdays`),
     // TODO: Backend selection handling must expire reserved stock holds.
-    reserve_on_selection: checkboxValue(
-      formData,
-      `${prefix}reserve_on_selection`,
-    ),
+    reserve_on_selection:
+      isLimitedDrop &&
+      checkboxValue(formData, `${prefix}reserve_on_selection`),
     metadata: jsonValue(formData, `${prefix}metadata`),
   }
 }
@@ -1555,10 +1633,36 @@ function normalizeDealDiscountType(type: string, discountType: string) {
       return "item"
     }
 
-    return discountType === "2for1" ? "twoforone" : discountType
+    return discountType === "twoforone" ? "2for1" : discountType
   }
 
-  return discountType || "none"
+  if (type === "two_for_one") {
+    return "2for1"
+  }
+
+  if (type === "bonus_stamp") {
+    return "bonus_stamp"
+  }
+
+  if (type === "free_item") {
+    return "item"
+  }
+
+  if (type === "permanent_discount" || type === "discount") {
+    return discountType === "fixed" || discountType === "percent"
+      ? discountType
+      : "percent"
+  }
+
+  if (type === "happy_hour") {
+    return ["fixed", "percent", "item", "2for1"].includes(discountType)
+      ? discountType
+      : "percent"
+  }
+
+  return discountType === "twoforone"
+    ? "2for1"
+    : discountType || "bonus_stamp"
 }
 
 function validateDealPayload(payload: ParsedDeal) {
@@ -1583,7 +1687,7 @@ function validateDealPayload(payload: ParsedDeal) {
       "item",
       "fixed",
       "percent",
-      "twoforone",
+      "2for1",
     ]
 
     if (payload.benefit_category !== "direct_selectable") {
@@ -1606,6 +1710,66 @@ function validateDealPayload(payload: ParsedDeal) {
       payload.valid_weekdays.some((weekday) => weekday < 1 || weekday > 7)
     ) {
       return "Deal Drop weekdays must be between Monday and Sunday."
+    }
+  }
+
+  if (
+    payload.type === "two_for_one" &&
+    payload.discount_type !== "2for1"
+  ) {
+    return "2-for-1 deals must use the 2-for-1 reward type."
+  }
+
+  if (payload.type === "permanent_discount") {
+    if (payload.benefit_category !== "automatic_fallback") {
+      return "Permanent fallback discounts must apply only if no selected deal."
+    }
+
+    if (payload.activation_required) {
+      return "Permanent fallback discounts must not require activation."
+    }
+
+    if (
+      payload.discount_type !== "fixed" &&
+      payload.discount_type !== "percent"
+    ) {
+      return "Permanent fallback discounts must use fixed or percentage discounts."
+    }
+  }
+
+  if (payload.type === "discount") {
+    if (payload.benefit_category !== "direct_selectable") {
+      return "Selectable discounts must be selected before visit."
+    }
+
+    if (
+      payload.discount_type !== "fixed" &&
+      payload.discount_type !== "percent"
+    ) {
+      return "Selectable discounts must use fixed or percentage discounts."
+    }
+  }
+
+  if (
+    payload.type === "bonus_stamp" &&
+    (payload.discount_type !== "bonus_stamp" ||
+      payload.benefit_category !== "automatic_background" ||
+      payload.activation_required)
+  ) {
+    return "Automatic bonus stamp deals must use bonus stamp, apply automatically, and not require activation."
+  }
+
+  if (payload.type === "free_item" && payload.discount_type !== "item") {
+    return "Free item deals must use the free item reward type."
+  }
+
+  if (payload.type === "happy_hour") {
+    if (payload.benefit_category !== "direct_selectable") {
+      return "Happy Hour deals must be selected before visit."
+    }
+
+    if (payload.discount_type === "bonus_stamp") {
+      return "Happy Hour deals cannot use automatic bonus stamps."
     }
   }
 
@@ -1650,8 +1814,11 @@ function validateDealPayload(payload: ParsedDeal) {
     return "Happy hour deals require start and end times."
   }
 
-  if (payload.type === "streak" && payload.trigger_value === null) {
-    return "Streak deals require a trigger value."
+  if (
+    payload.type === "streak" &&
+    (!payload.trigger_value || payload.trigger_value <= 0)
+  ) {
+    return "Streak deals require a trigger value greater than 0."
   }
 
   if (payload.selection_expires_minutes < 1) {
@@ -1698,6 +1865,75 @@ function validateDealPayload(payload: ParsedDeal) {
 
   if (payload.cooldown_hours !== null && payload.cooldown_hours < 0) {
     return "Cooldown hours cannot be negative."
+  }
+
+  return null
+}
+
+const automaticBenefitCategories = [
+  "automatic_background",
+  "automatic_fallback",
+] as const
+
+function isAutomaticBenefitCategory(category: string) {
+  return automaticBenefitCategories.includes(
+    category as (typeof automaticBenefitCategories)[number],
+  )
+}
+
+function validateUniqueInitialAutomaticDealPriorities(deals: ParsedDeal[]) {
+  const usedPriorities = new Set<number>()
+
+  for (const deal of deals) {
+    if (
+      !isAutomaticBenefitCategory(deal.benefit_category) ||
+      deal.priority === null
+    ) {
+      continue
+    }
+
+    if (usedPriorities.has(deal.priority)) {
+      return `Automatic deals cannot share priority ${deal.priority}.`
+    }
+
+    usedPriorities.add(deal.priority)
+  }
+
+  return null
+}
+
+async function validateUniqueAutomaticDealPriority(
+  supabase: SupabaseClient,
+  payload: ParsedDeal,
+  id?: string,
+) {
+  if (
+    !isAutomaticBenefitCategory(payload.benefit_category) ||
+    payload.priority === null
+  ) {
+    return null
+  }
+
+  let query = supabase
+    .from("deals")
+    .select("id")
+    .eq("partner_id", payload.partner_id)
+    .eq("priority", payload.priority)
+    .in("benefit_category", [...automaticBenefitCategories])
+    .limit(1)
+
+  if (id) {
+    query = query.neq("id", id)
+  }
+
+  const result = await query
+
+  if (result.error) {
+    return result.error.message
+  }
+
+  if (result.data?.length) {
+    return `Another automatic deal already uses priority ${payload.priority}.`
   }
 
   return null
@@ -2013,6 +2249,95 @@ function validateMenuItemPayload(payload: ParsedMenuItem) {
   return null
 }
 
+async function validateUniqueMenuCategoryPosition(
+  supabase: SupabaseClient,
+  payload: ParsedMenuCategory,
+  id: string,
+) {
+  if (payload.sort_order === null) {
+    return null
+  }
+
+  let query = supabase
+    .from("menu_categories")
+    .select("id")
+    .eq("menu_id", payload.menu_id)
+    .eq("sort_order", payload.sort_order)
+    .limit(1)
+
+  if (id) {
+    query = query.neq("id", id)
+  }
+
+  const result = await query
+
+  if (result.error) {
+    return result.error.message
+  }
+
+  return result.data?.length
+    ? "Another menu category already uses that position."
+    : null
+}
+
+async function validateUniqueMenuItemPosition(
+  supabase: SupabaseClient,
+  payload: ParsedMenuItem,
+  id: string,
+) {
+  if (payload.sort_order === null) {
+    return null
+  }
+
+  let query = supabase
+    .from("menu_items")
+    .select("id")
+    .eq("menu_id", payload.menu_id)
+    .eq("sort_order", payload.sort_order)
+    .limit(1)
+
+  query = payload.category_id
+    ? query.eq("category_id", payload.category_id)
+    : query.is("category_id", null)
+
+  if (id) {
+    query = query.neq("id", id)
+  }
+
+  const result = await query
+
+  if (result.error) {
+    return result.error.message
+  }
+
+  return result.data?.length
+    ? "Another menu item already uses that position in this category."
+    : null
+}
+
+function findDuplicatePosition<T extends { sort_order: number | null }>(
+  rows: T[],
+  scopeForRow: (row: T) => string,
+) {
+  const usedPositions = new Set<string>()
+
+  for (const row of rows) {
+    if (row.sort_order === null) {
+      continue
+    }
+
+    const key = `${scopeForRow(row)}:${row.sort_order}`
+
+    if (usedPositions.has(key)) {
+      return row.sort_order
+    }
+
+    usedPositions.add(key)
+  }
+
+  return null
+}
+
 function collectPartnerMedia(formData: FormData): PartnerMediaFormValues {
   return {
     logoFile: fileValue(formData, "logo_file"),
@@ -2246,6 +2571,14 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80)
+}
+
+function normalizePartnerTypeValue(value: string) {
+  const normalized = value.trim().toLowerCase()
+
+  return normalized === "restaurant" || normalized === "restuarant"
+    ? "Food & Drink"
+    : value
 }
 
 function createShortName(name: string) {

@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react"
 import { useFormStatus } from "react-dom"
+import { useRouter } from "next/navigation"
 import type {
   City,
   Deal,
@@ -73,7 +74,6 @@ const initialState: PartnerActionState = {
 }
 
 const partnerTypeOptions = [
-  { value: "restaurant", label: "Restaurant" },
   { value: "Food & Drink", label: "Food & Drink" },
   { value: "Services", label: "Services" },
   { value: "Wellness", label: "Wellness" },
@@ -114,6 +114,7 @@ const uploadPlaceholderSrc = "/upload-image.jpg"
 const maxCoverPhotos = 5
 const stampProgressDisplayLimit = 20
 const redemptionHistoryDisplayLimit = 20
+const comebackCandidateDisplayLimit = 20
 
 const openingWeekdayOptions = [
   { value: "1", label: "Monday" },
@@ -185,13 +186,14 @@ type InitialDealDraft = {
 type InitialMenuCategoryDraft = {
   id: string
   name: string
+  sortOrder: string
 }
 
 type InitialMenuItemDraft = {
   id: string
   categoryDraftId: string
   isPopular: boolean
-  isStampEligible: boolean
+  sortOrder: string
 }
 
 type PendingMenuReview = {
@@ -341,7 +343,7 @@ export function PartnerWorkspace({
           {mode === "create" ? (
             <EditorShell
               title="Add partner"
-              description="Create the partner profile, assign its owner, upload media, and add any starter deals in one save."
+              description="Create the partner profile, assign its owner, upload media, and add any deals in one save."
             >
               <PartnerForm cities={cities} owners={owners} mode="create" />
             </EditorShell>
@@ -518,6 +520,7 @@ function PartnerDetail({
       <MenuPanel partner={partner} />
       <StampProgressPanel progress={partner.stamp_progress} />
       <RedemptionHistoryPanel partner={partner} visits={partner.visits} />
+      <ComebackDealsPanel visits={partner.visits} />
       <FraudAuditPanel
         defaultPartnerId={partner.id ?? ""}
         events={auditEvents}
@@ -576,6 +579,7 @@ function PartnerForm({
   mode: "create" | "edit"
 }) {
   const [state, formAction] = useActionState(savePartner, initialState)
+  const router = useRouter()
   const [initialDeals, setInitialDeals] = useState<InitialDealDraft[]>([])
   const [initialMenuEnabled, setInitialMenuEnabled] = useState(false)
   const [initialMenuCategories, setInitialMenuCategories] = useState<
@@ -587,6 +591,8 @@ function PartnerForm({
   const [confirmingSave, setConfirmingSave] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const confirmedSubmitRef = useRef(false)
+  const pendingSubmitterRef = useRef<HTMLButtonElement | null>(null)
+  const partnerTypeDefault = normalizePartnerTypeValue(partner?.type)
   const cityOptions = withCurrentOption(
     cities.map((city) => ({
       value: city.id,
@@ -606,18 +612,29 @@ function PartnerForm({
   )
   const coordinateDefaultValue = formatPartnerCoordinates(partner)
 
+  useEffect(() => {
+    if (state.ok) {
+      router.refresh()
+    }
+  }, [router, state.ok])
+
   return (
     <form
       ref={formRef}
       action={formAction}
       className="space-y-7"
       onSubmit={(event) => {
+        const submitter = (event.nativeEvent as SubmitEvent).submitter
+        pendingSubmitterRef.current =
+          submitter instanceof HTMLButtonElement ? submitter : null
+
         if (mode !== "edit") {
           return
         }
 
         if (confirmedSubmitRef.current) {
           confirmedSubmitRef.current = false
+          pendingSubmitterRef.current = null
           return
         }
 
@@ -643,16 +660,11 @@ function PartnerForm({
             defaultValue={partner?.name}
             required
           />
-          <TextField
-            label="Short name"
-            name="short_name"
-            defaultValue={partner?.short_name}
-          />
           <SelectField
             label="Partner type"
             name="type"
-            defaultValue={partner?.type ?? "restaurant"}
-            options={withCurrentOption(partnerTypeOptions, partner?.type)}
+            defaultValue={partnerTypeDefault}
+            options={withCurrentOption(partnerTypeOptions, partnerTypeDefault)}
             required
           />
           <SelectField
@@ -802,19 +814,39 @@ function PartnerForm({
                   {
                     id: crypto.randomUUID(),
                     name: "",
+                    sortOrder: String(
+                      nextAvailablePosition(
+                        initialMenuCategories.map(
+                          (category) => category.sortOrder,
+                        ),
+                      ),
+                    ),
                   },
                 ])
               }
               onAddItem={() =>
-                setInitialMenuItems((current) => [
-                  ...current,
-                  {
-                    id: crypto.randomUUID(),
-                    categoryDraftId: initialMenuCategories[0]?.id ?? "",
-                    isPopular: false,
-                    isStampEligible: true,
-                  },
-                ])
+                setInitialMenuItems((current) => {
+                  const categoryDraftId = initialMenuCategories[0]?.id ?? ""
+
+                  return [
+                    ...current,
+                    {
+                      id: crypto.randomUUID(),
+                      categoryDraftId,
+                      isPopular: false,
+                      sortOrder: String(
+                        nextAvailablePosition(
+                          current
+                            .filter(
+                              (item) =>
+                                item.categoryDraftId === categoryDraftId,
+                            )
+                            .map((item) => item.sortOrder),
+                        ),
+                      ),
+                    },
+                  ]
+                })
               }
               onRemoveCategory={(id) => {
                 setInitialMenuCategories((current) =>
@@ -851,7 +883,7 @@ function PartnerForm({
             />
           </FormSection>
 
-          <FormSection title="Initial Deals">
+          <FormSection title="Deals">
             <InitialDealsEditor
               deals={initialDeals}
               onAdd={() =>
@@ -874,10 +906,23 @@ function PartnerForm({
       ) : null}
 
       <ActionMessage state={state} />
-      <SubmitButton
-        label={mode === "create" ? "Add partner" : "Save partner"}
-        pendingLabel={mode === "create" ? "Adding partner..." : "Saving partner..."}
-      />
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <SubmitButton
+          label={mode === "create" ? "Add partner" : "Save partner"}
+          pendingLabel={
+            mode === "create" ? "Adding partner..." : "Saving partner..."
+          }
+          name="save_intent"
+          value="save"
+        />
+        <SubmitButton
+          label="Save for later"
+          pendingLabel="Saving for later..."
+          name="save_intent"
+          value="later"
+          tone="muted"
+        />
+      </div>
       <ConfirmDialog
         open={confirmingSave}
         title="Save partner changes?"
@@ -887,7 +932,7 @@ function PartnerForm({
         onConfirm={() => {
           confirmedSubmitRef.current = true
           setConfirmingSave(false)
-          formRef.current?.requestSubmit()
+          formRef.current?.requestSubmit(pendingSubmitterRef.current ?? undefined)
         }}
       />
     </form>
@@ -903,38 +948,109 @@ function InitialDealsEditor({
   onAdd: () => void
   onRemove: (id: string) => void
 }) {
+  const [expandedDealIds, setExpandedDealIds] = useState<string[]>([])
+  const knownDealIdsRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    syncExpandedDraftIds(
+      deals.map((deal) => deal.id),
+      knownDealIdsRef,
+      setExpandedDealIds,
+    )
+  }, [deals])
+
   return (
     <div className="space-y-4">
       <input type="hidden" name="initial_deal_count" value={deals.length} />
       {deals.length ? (
-        <div className="space-y-4">
-          {deals.map((deal, index) => (
-            <div
-              key={deal.id}
-              className="rounded-md border border-zinc-200 bg-zinc-50 p-4"
-            >
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h4 className="text-sm font-semibold text-zinc-800">
-                  Deal {index + 1}
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => onRemove(deal.id)}
-                  className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+        <div className="space-y-3">
+          {deals.map((deal, index) => {
+            const expanded = expandedDealIds.includes(deal.id)
+
+            return (
+              <div
+                key={deal.id}
+                className="rounded-md border border-zinc-200 bg-white p-4"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedDealIds((current) =>
+                        toggleDraftId(current, deal.id),
+                      )
+                    }
+                    className="min-w-0 text-left"
+                    aria-expanded={expanded}
+                  >
+                    <span className="block truncate text-sm font-semibold text-zinc-800">
+                      Deal {index + 1}
+                    </span>
+                    <span className="mt-1 block text-xs text-zinc-500">
+                      {expanded ? "Editing details" : "Collapsed"}
+                    </span>
+                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedDealIds((current) =>
+                          toggleDraftId(current, deal.id),
+                        )
+                      }
+                      className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
+                    >
+                      {expanded ? "Collapse" : "Expand"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRemove(deal.id)}
+                      className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+                <div
+                  className={
+                    expanded
+                      ? "mt-4 space-y-4 border-t border-zinc-200 pt-4"
+                      : "hidden"
+                  }
                 >
-                  Remove
-                </button>
+                  <DealFields
+                    prefix={`initial_deal_${index}_`}
+                    defaultActive={deal.active}
+                    useBrowserValidation={false}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedDealIds((current) =>
+                          current.filter((id) => id !== deal.id),
+                        )
+                      }
+                      className="h-9 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white transition hover:bg-teal-800"
+                    >
+                      Done
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onAdd}
+                      className="h-9 rounded-md border border-teal-700 bg-white px-3 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
+                    >
+                      Add another
+                    </button>
+                  </div>
+                </div>
               </div>
-              <DealFields
-                prefix={`initial_deal_${index}_`}
-                defaultActive={deal.active}
-              />
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
-          No starter deals staged.
+          No deals staged.
         </div>
       )}
       <button
@@ -942,7 +1058,7 @@ function InitialDealsEditor({
         onClick={onAdd}
         className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
       >
-        Add initial deal
+        Add deal
       </button>
     </div>
   )
@@ -974,10 +1090,42 @@ function InitialMenuEditor({
   ) => void
   onUpdateItem: (id: string, values: Partial<InitialMenuItemDraft>) => void
 }) {
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<string[]>([])
+  const [expandedItemIds, setExpandedItemIds] = useState<string[]>([])
+  const knownCategoryIdsRef = useRef<Set<string>>(new Set())
+  const knownItemIdsRef = useRef<Set<string>>(new Set())
   const categoryOptions = categories.map((category, index) => ({
     value: category.id,
     label: category.name || `Category ${index + 1}`,
   }))
+  const hasDuplicateCategoryPositions = hasDuplicatePositions(
+    categories.map((category) => ({
+      position: category.sortOrder,
+      scope: "menu",
+    })),
+  )
+  const hasDuplicateItemPositions = hasDuplicatePositions(
+    items.map((item) => ({
+      position: item.sortOrder,
+      scope: item.categoryDraftId || "uncategorized",
+    })),
+  )
+
+  useEffect(() => {
+    syncExpandedDraftIds(
+      categories.map((category) => category.id),
+      knownCategoryIdsRef,
+      setExpandedCategoryIds,
+    )
+  }, [categories])
+
+  useEffect(() => {
+    syncExpandedDraftIds(
+      items.map((item) => item.id),
+      knownItemIdsRef,
+      setExpandedItemIds,
+    )
+  }, [items])
 
   return (
     <div className="space-y-4">
@@ -1037,55 +1185,119 @@ function InitialMenuEditor({
                 Add category
               </button>
             </div>
+            {hasDuplicateCategoryPositions ? (
+              <WarningNote>
+                Category positions must be unique within this menu.
+              </WarningNote>
+            ) : null}
             {categories.length ? (
               <div className="space-y-3">
-                {categories.map((category, index) => (
-                  <div
-                    key={category.id}
-                    className="rounded-md border border-zinc-200 bg-white p-3"
-                  >
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <h5 className="text-sm font-semibold text-zinc-800">
-                        Category {index + 1}
-                      </h5>
-                      <button
-                        type="button"
-                        onClick={() => onRemoveCategory(category.id)}
-                        className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <input
-                      type="hidden"
-                      name={`initial_menu_category_${index}_draft_id`}
-                      value={category.id}
-                    />
-                    <FieldGrid>
-                      <TextField
-                        label="Name"
-                        name={`initial_menu_category_${index}_name`}
-                        defaultValue={category.name}
-                        onChange={(value) =>
-                          onUpdateCategory(category.id, { name: value })
+                {categories.map((category, index) => {
+                  const expanded = expandedCategoryIds.includes(category.id)
+
+                  return (
+                    <div
+                      key={category.id}
+                      className="rounded-md border border-zinc-200 bg-white p-3"
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedCategoryIds((current) =>
+                              toggleDraftId(current, category.id),
+                            )
+                          }
+                          className="min-w-0 text-left"
+                          aria-expanded={expanded}
+                        >
+                          <span className="block truncate text-sm font-semibold text-zinc-800">
+                            {category.name || `Category ${index + 1}`}
+                          </span>
+                          <span className="mt-1 block text-xs text-zinc-500">
+                            Position {category.sortOrder || "not set"}
+                          </span>
+                        </button>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedCategoryIds((current) =>
+                                toggleDraftId(current, category.id),
+                              )
+                            }
+                            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
+                          >
+                            {expanded ? "Collapse" : "Expand"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onRemoveCategory(category.id)}
+                            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                      <div
+                        className={
+                          expanded
+                            ? "mt-3 space-y-3 border-t border-zinc-200 pt-3"
+                            : "hidden"
                         }
-                        required
-                      />
-                      <TextField
-                        label="Slug"
-                        name={`initial_menu_category_${index}_slug`}
-                        hint="Leave blank to generate from the name."
-                      />
-                      <TextField
-                        label="Position in menu"
-                        name={`initial_menu_category_${index}_sort_order`}
-                        type="number"
-                        defaultValue={index}
-                        hint="Smaller numbers appear first."
-                      />
-                    </FieldGrid>
-                  </div>
-                ))}
+                      >
+                        <input
+                          type="hidden"
+                          name={`initial_menu_category_${index}_draft_id`}
+                          value={category.id}
+                        />
+                        <FieldGrid>
+                          <TextField
+                            label="Name"
+                            name={`initial_menu_category_${index}_name`}
+                            value={category.name}
+                            onChange={(value) =>
+                              onUpdateCategory(category.id, { name: value })
+                            }
+                          />
+                          <TextField
+                            label="Position in menu"
+                            name={`initial_menu_category_${index}_sort_order`}
+                            type="number"
+                            min={0}
+                            value={category.sortOrder}
+                            onChange={(value) =>
+                              onUpdateCategory(category.id, {
+                                sortOrder: value,
+                              })
+                            }
+                            hint="Smaller numbers appear first."
+                          />
+                        </FieldGrid>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedCategoryIds((current) =>
+                                current.filter((id) => id !== category.id),
+                              )
+                            }
+                            className="h-9 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white transition hover:bg-teal-800"
+                          >
+                            Done
+                          </button>
+                          <button
+                            type="button"
+                            onClick={onAddCategory}
+                            className="h-9 rounded-md border border-teal-700 bg-white px-3 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
+                          >
+                            Add another
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
               <EmptyState>No starter categories staged.</EmptyState>
@@ -1103,123 +1315,189 @@ function InitialMenuEditor({
                 Add item
               </button>
             </div>
+            {hasDuplicateItemPositions ? (
+              <WarningNote>
+                Item positions must be unique within each category.
+              </WarningNote>
+            ) : null}
             {items.length ? (
               <div className="space-y-3">
-                {items.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className="rounded-md border border-zinc-200 bg-white p-3"
-                  >
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <h5 className="text-sm font-semibold text-zinc-800">
-                        Item {index + 1}
-                      </h5>
-                      <button
-                        type="button"
-                        onClick={() => onRemoveItem(item.id)}
-                        className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <input
-                      type="hidden"
-                      name={`initial_menu_item_${index}_draft_id`}
-                      value={item.id}
-                    />
-                    <FieldGrid>
-                      <TextField
-                        label="Item name"
-                        name={`initial_menu_item_${index}_name`}
-                        required
-                      />
-                      <SelectField
-                        label="Category"
-                        name={`initial_menu_item_${index}_category_draft_id`}
-                        value={item.categoryDraftId}
-                        options={categoryOptions}
-                        onChange={(value) =>
-                          onUpdateItem(item.id, { categoryDraftId: value })
+                {items.map((item, index) => {
+                  const expanded = expandedItemIds.includes(item.id)
+                  const categoryLabel =
+                    labelForValue(categoryOptions, item.categoryDraftId) ||
+                    "No category"
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-md border border-zinc-200 bg-white p-3"
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedItemIds((current) =>
+                              toggleDraftId(current, item.id),
+                            )
+                          }
+                          className="min-w-0 text-left"
+                          aria-expanded={expanded}
+                        >
+                          <span className="block truncate text-sm font-semibold text-zinc-800">
+                            Item {index + 1}
+                          </span>
+                          <span className="mt-1 block text-xs text-zinc-500">
+                            {categoryLabel} - Position{" "}
+                            {item.sortOrder || "not set"}
+                          </span>
+                        </button>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedItemIds((current) =>
+                                toggleDraftId(current, item.id),
+                              )
+                            }
+                            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
+                          >
+                            {expanded ? "Collapse" : "Expand"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onRemoveItem(item.id)}
+                            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                      <div
+                        className={
+                          expanded
+                            ? "mt-3 space-y-4 border-t border-zinc-200 pt-3"
+                            : "hidden"
                         }
-                      />
-                      <TextField
-                        label="Price"
-                        name={`initial_menu_item_${index}_price`}
-                        type="number"
-                        step="0.01"
-                      />
-                      <TextField
-                        label="Currency"
-                        name={`initial_menu_item_${index}_currency`}
-                        defaultValue="EUR"
-                      />
-                      <TextField
-                        label="Position in category"
-                        name={`initial_menu_item_${index}_sort_order`}
-                        type="number"
-                        defaultValue={index}
-                        hint="Smaller numbers appear first."
-                      />
-                      <TextField
-                        label="Tags"
-                        name={`initial_menu_item_${index}_tags`}
-                        hint="Separate tags with commas."
-                      />
-                      <TextField
-                        label="Allergens"
-                        name={`initial_menu_item_${index}_allergens`}
-                        hint="Separate allergens with commas."
-                      />
-                    </FieldGrid>
-                    <div className="mt-4">
-                      <TextAreaField
-                        label="Description"
-                        name={`initial_menu_item_${index}_description`}
-                      />
-                    </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <label className="flex h-10 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700">
+                      >
                         <input
-                          type="checkbox"
-                          name={`initial_menu_item_${index}_is_popular`}
-                          defaultChecked={item.isPopular}
-                          onChange={(event) =>
-                            onUpdateItem(item.id, {
-                              isPopular: event.target.checked,
-                            })
-                          }
-                          className="size-4 rounded border-zinc-300 accent-teal-700"
+                          type="hidden"
+                          name={`initial_menu_item_${index}_draft_id`}
+                          value={item.id}
                         />
-                        Popular
-                      </label>
-                      <label className="flex h-10 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700">
-                        <input
-                          type="checkbox"
-                          name={`initial_menu_item_${index}_is_stamp_eligible`}
-                          defaultChecked={item.isStampEligible}
-                          onChange={(event) =>
-                            onUpdateItem(item.id, {
-                              isStampEligible: event.target.checked,
-                            })
-                          }
-                          className="size-4 rounded border-zinc-300 accent-teal-700"
+                        <FieldGrid>
+                          <TextField
+                            label="Item name"
+                            name={`initial_menu_item_${index}_name`}
+                          />
+                          <SelectField
+                            label="Category"
+                            name={`initial_menu_item_${index}_category_draft_id`}
+                            value={item.categoryDraftId}
+                            options={categoryOptions}
+                            onChange={(value) =>
+                              onUpdateItem(item.id, {
+                                categoryDraftId: value,
+                                sortOrder: String(
+                                  nextAvailablePosition(
+                                    items
+                                      .filter(
+                                        (candidate) =>
+                                          candidate.id !== item.id &&
+                                          candidate.categoryDraftId === value,
+                                      )
+                                      .map(
+                                        (candidate) => candidate.sortOrder,
+                                      ),
+                                  ),
+                                ),
+                              })
+                            }
+                          />
+                          <TextField
+                            label="Price"
+                            name={`initial_menu_item_${index}_price`}
+                            type="number"
+                            step="0.01"
+                          />
+                          <TextField
+                            label="Currency"
+                            name={`initial_menu_item_${index}_currency`}
+                            defaultValue="EUR"
+                          />
+                          <TextField
+                            label="Position in category"
+                            name={`initial_menu_item_${index}_sort_order`}
+                            type="number"
+                            min={0}
+                            value={item.sortOrder}
+                            onChange={(value) =>
+                              onUpdateItem(item.id, { sortOrder: value })
+                            }
+                            hint="Smaller numbers appear first."
+                          />
+                          <TextField
+                            label="Tags"
+                            name={`initial_menu_item_${index}_tags`}
+                            hint="Separate tags with commas."
+                          />
+                          <TextField
+                            label="Allergens"
+                            name={`initial_menu_item_${index}_allergens`}
+                            hint="Separate allergens with commas."
+                          />
+                        </FieldGrid>
+                        <TextAreaField
+                          label="Description"
+                          name={`initial_menu_item_${index}_description`}
                         />
-                        Stamp eligible
-                      </label>
+                        <label className="flex h-10 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700">
+                          <input
+                            type="checkbox"
+                            name={`initial_menu_item_${index}_is_popular`}
+                            checked={item.isPopular}
+                            onChange={(event) =>
+                              onUpdateItem(item.id, {
+                                isPopular: event.target.checked,
+                              })
+                            }
+                            className="size-4 rounded border-zinc-300 accent-teal-700"
+                          />
+                          Popular
+                        </label>
+                        <MediaUploadField
+                          key={`initial-menu-item-${item.id}`}
+                          label="Menu item picture"
+                          fileName={`initial_menu_item_${index}_image_file`}
+                          existingName={`initial_menu_item_${index}_existing_image_url`}
+                          removeName={`initial_menu_item_${index}_remove_image`}
+                          spec={partnerMediaSpecs.menuItem}
+                          compact
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedItemIds((current) =>
+                                current.filter((id) => id !== item.id),
+                              )
+                            }
+                            className="h-9 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white transition hover:bg-teal-800"
+                          >
+                            Done
+                          </button>
+                          <button
+                            type="button"
+                            onClick={onAddItem}
+                            className="h-9 rounded-md border border-teal-700 bg-white px-3 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
+                          >
+                            Add another
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="mt-4">
-                      <MediaUploadField
-                        key={`initial-menu-item-${item.id}`}
-                        label="Menu item picture"
-                        fileName={`initial_menu_item_${index}_image_file`}
-                        existingName={`initial_menu_item_${index}_existing_image_url`}
-                        removeName={`initial_menu_item_${index}_remove_image`}
-                        spec={partnerMediaSpecs.menuItem}
-                        compact
-                      />
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <EmptyState>No starter items staged.</EmptyState>
@@ -1287,26 +1565,51 @@ function DealsPanel({ partner }: { partner: PartnerWithDeals }) {
 
 function DealCard({ deal, partnerId }: { deal: Deal; partnerId: string }) {
   const [editing, setEditing] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const isLimitedDrop = deal.type === "limited_drop"
   const soldOut =
     isLimitedDrop &&
     isSoldOutDealDrop(deal.stock_total ?? null, deal.stock_remaining ?? null)
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+    <div className="rounded-md border border-zinc-200 bg-white p-4 shadow-sm shadow-zinc-950/[0.02]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="min-w-0 text-left"
+          aria-expanded={expanded}
+        >
           <h3 className="text-base font-semibold tracking-normal text-zinc-950">
-            {labelForValue(dealTypeOptions, deal.type) || "Untitled deal"}
+            {formatDealTitle(deal)}
           </h3>
           <p className="mt-1 text-sm text-zinc-600">
             {formatDealSummary(deal)}
           </p>
-        </div>
-        <div className="flex flex-wrap justify-end gap-2">
-          <StatusPill active={Boolean(deal.active)} />
-          <Badge>{labelForValue(benefitCategoryOptions, deal.benefit_category)}</Badge>
-          <Badge>{labelForValue(audienceOptions, deal.audience)}</Badge>
+        </button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:justify-end">
+          <div className="flex flex-wrap gap-2 lg:justify-end">
+            <StatusPill active={Boolean(deal.active)} />
+            <Badge>{labelForValue(benefitCategoryOptions, deal.benefit_category)}</Badge>
+            <Badge>{labelForValue(audienceOptions, deal.audience)}</Badge>
+          </div>
+          <div className="flex flex-wrap gap-2 lg:justify-end">
+            <button
+              type="button"
+              onClick={() => setExpanded((value) => !value)}
+              className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
+            >
+              {expanded ? "Collapse" : "Expand"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditing((value) => !value)}
+              className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
+            >
+              {editing ? "Close editor" : "Edit"}
+            </button>
+            {deal.id ? <DeleteDealForm dealId={deal.id} /> : null}
+          </div>
         </div>
       </div>
 
@@ -1318,64 +1621,55 @@ function DealCard({ deal, partnerId }: { deal: Deal; partnerId: string }) {
         </div>
       ) : null}
 
-      <div className="mt-4 grid gap-2 text-sm text-zinc-600 sm:grid-cols-2">
-        <Info
-          label="Activation"
-          value={deal.activation_required ? "Required" : "Not required"}
-        />
-        {!isLimitedDrop ? (
+      {expanded ? (
+        <div className="mt-4 grid gap-3 rounded-md border border-zinc-100 bg-zinc-50 p-3 text-sm text-zinc-600 sm:grid-cols-2">
           <Info
-            label="Happy hour"
-            value={formatTimeRange(deal.happy_hour_start, deal.happy_hour_end)}
+            label="Activation"
+            value={deal.activation_required ? "Required" : "Not required"}
           />
-        ) : null}
-        <Info label="Reward" value={deal.reward_item || "Not set"} />
-        {!isLimitedDrop ? (
-          <>
+          {!isLimitedDrop ? (
             <Info
-              label="Benefit count"
-              value={formatOptionalNumber(deal.benefit_count)}
+              label="Happy hour"
+              value={formatTimeRange(deal.happy_hour_start, deal.happy_hour_end)}
             />
-            <Info label="Trigger" value={formatOptionalNumber(deal.trigger_value)} />
-          </>
-        ) : null}
-        <Info
-          label="Selection expiry"
-          value={
-            deal.selection_expires_minutes
-              ? `${deal.selection_expires_minutes} minutes`
-              : "Not set"
-          }
-        />
-        {isLimitedDrop ? (
-          <>
-            <Info
-              label="Stock"
-              value={formatDealDropStockState(
-                deal.stock_total ?? null,
-                deal.stock_remaining ?? null,
-                soldOut,
-              )}
-            />
-            <Info label="Ends" value={formatDateTime(deal.ends_at)} />
-          </>
-        ) : null}
-        <Info
-          label="Estimated savings"
-          value={formatOptionalNumber(deal.estimated_savings)}
-        />
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setEditing((value) => !value)}
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
-        >
-          {editing ? "Close editor" : "Edit deal"}
-        </button>
-        {deal.id ? <DeleteDealForm dealId={deal.id} /> : null}
-      </div>
+          ) : null}
+          <Info label="Reward" value={deal.reward_item || "Not set"} />
+          {!isLimitedDrop ? (
+            <>
+              <Info
+                label="Benefit count"
+                value={formatOptionalNumber(deal.benefit_count)}
+              />
+              <Info label="Trigger" value={formatOptionalNumber(deal.trigger_value)} />
+            </>
+          ) : null}
+          <Info
+            label="Selection expiry"
+            value={
+              deal.selection_expires_minutes
+                ? `${deal.selection_expires_minutes} minutes`
+                : "Not set"
+            }
+          />
+          {isLimitedDrop ? (
+            <>
+              <Info
+                label="Stock"
+                value={formatDealDropStockState(
+                  deal.stock_total ?? null,
+                  deal.stock_remaining ?? null,
+                  soldOut,
+                )}
+              />
+              <Info label="Ends" value={formatDateTime(deal.ends_at)} />
+            </>
+          ) : null}
+          <Info
+            label="Estimated savings"
+            value={formatOptionalNumber(deal.estimated_savings)}
+          />
+        </div>
+      ) : null}
 
       {editing ? (
         <div className="mt-4 border-t border-zinc-200 pt-4">
@@ -1433,33 +1727,572 @@ function DealForm({
   )
 }
 
+type DealFormField =
+  | "discountValue"
+  | "rewardItem"
+  | "benefitCount"
+  | "estimatedSavings"
+  | "happyHour"
+  | "triggerValue"
+  | "expiryDays"
+  | "stock"
+  | "limitedWindow"
+  | "reserveOnSelection"
+
+type DealTypeExplanation = {
+  summary: string
+  recommended: string
+  required: string
+  example: string
+}
+
+type DealFormConfig = {
+  visibleFields: Set<DealFormField>
+  requiredFields: Set<DealFormField>
+  autoValues: {
+    benefitCategory: string
+    activationRequired: boolean
+  }
+  explanation: DealTypeExplanation
+  discountOptions: { value: string; label: string }[]
+  valueLabels: {
+    discountValueLabel: string
+    discountValuePlaceholder?: string
+    discountValuePrefix?: string
+    discountValueSuffix?: string
+    discountValueHint?: string
+  }
+}
+
+const dealFieldHelp = {
+  dealType:
+    "The business trigger or campaign type, such as Happy Hour, Welcome reward, or Streak reward.",
+  discountType:
+    "What the user receives: percentage discount, fixed EUR amount, free item, bonus stamp, or 2-for-1.",
+  benefitCategory:
+    "Controls how the benefit is applied: user-selected, automatic background, or fallback if no deal is selected.",
+  audience:
+    "Who can use this benefit: free users, premium users, both, or free trial only.",
+  activationRequired:
+    "Whether the user must select this deal before scanning. This is automatically set by benefit category.",
+  rewardItem:
+    "Name of the free item or reward staff should give, for example Free drink.",
+  benefitCount: "Number of bonus stamps to add. Used for bonus stamp rewards.",
+  estimatedSavings:
+    "Approximate money value used for user savings stats and post-scan animation.",
+  expiryDays: "How many days an earned reward remains valid.",
+  triggerValue:
+    "The condition threshold, such as streak days, comeback window, or challenge target.",
+  stockTotal: "Total available stock for a limited deal drop.",
+  stockRemaining: "How many redemptions are still available.",
+  reserveOnSelection:
+    "If enabled, stock is temporarily reserved when the user selects the deal.",
+  validWindow: "Date/time range when this deal can be used.",
+  happyHour: "Daily time window when the happy hour deal is available.",
+  cooldownHours:
+    "Minimum time before the same user can use this deal again.",
+  maxRedemptionsGlobal:
+    "Maximum total times this deal can be redeemed by all users.",
+  maxRedemptionsPerUser:
+    "Maximum times each user can redeem this deal.",
+  selectionExpiryMinutes:
+    "How long the selected deal remains valid before the QR scan.",
+  priority:
+    "Used when multiple automatic benefits are eligible. Higher priority wins first. Automatic deals must use unique priorities.",
+  minSpend: "Minimum order value required to use this deal.",
+  maxDiscountAmount: "Maximum discount cap for percentage discounts.",
+  rewardTrackTarget:
+    "Which reward track this applies to: base, premium, or all eligible.",
+  timezone: "Timezone used for time-based deals like Happy Hour.",
+  weekdays: "Days of week when this deal is available.",
+  staffInstructions:
+    "Shown to scanner/order staff so they know what to give or apply.",
+  customerDescription: "Shown to users in the app.",
+  terms: "Fine print or conditions for this deal.",
+} as const
+
+const dealExplanations: Record<string, DealTypeExplanation> = {
+  two_for_one: {
+    summary:
+      "A direct selectable deal where the user gets two items for the price of one. The user must select this before the QR scan. Only one direct deal can be used per visit.",
+    recommended:
+      "Reward type: 2-for-1. Benefit category: User selects before visit. Activation required: yes.",
+    required:
+      "Audience, customer description, staff instructions, estimated savings, and optional limits or expiry.",
+    example: "Buy one doner, get one doner free.",
+  },
+  welcome: {
+    summary:
+      "A reward for a user's first visit or first qualifying interaction with a partner. It can either be a selectable direct reward or an automatic bonus stamp.",
+    recommended:
+      "Bonus stamp rewards apply automatically. Item, discount, and 2-for-1 rewards are selected before visit.",
+    required: "Reward fields depend on the selected reward type.",
+    example: "First visit: free drink or First visit: +1 bonus stamp.",
+  },
+  comeback: {
+    summary:
+      "A reward for returning within a configured time window or after a defined duration. It can be automatic, such as +1 bonus stamp, or selectable, such as a free item.",
+    recommended:
+      "Use trigger value for the duration/window if needed, and expiry days if the reward expires.",
+    required: "Reward fields depend on the selected reward type.",
+    example: "Come back within 72 hours and get +1 bonus stamp.",
+  },
+  happy_hour: {
+    summary:
+      "A time-limited direct deal that is available only during a specific time window. The user selects it before the QR scan, and it is revalidated during redemption.",
+    recommended:
+      "Benefit category: User selects before visit. Activation required: yes.",
+    required: "Happy hour start, happy hour end, and reward or discount fields.",
+    example: "10% off between 15:00 and 18:00.",
+  },
+  permanent_discount: {
+    summary:
+      "An automatic fallback discount. It applies only if the user did not select another direct deal. It does not stack with selected direct deals.",
+    recommended:
+      "Benefit category: Applies only if no selected deal. Activation required: no.",
+    required: "Percentage or fixed discount amount.",
+    example:
+      "Premium users always get 5% off if they do not use another deal.",
+  },
+  limited_drop: {
+    summary:
+      "A limited-time or limited-stock direct deal. The user must select it before the QR scan. It can expire or sell out.",
+    recommended:
+      "Benefit category: User selects before visit. Activation required: yes.",
+    required: "Reward fields, optional stock total, stock remaining, valid window, and reserve stock setting.",
+    example: "Only 50 free drinks available today.",
+  },
+  birthday: {
+    summary:
+      "A birthday reward. It can be a selectable direct reward or an automatic bonus stamp.",
+    recommended:
+      "Bonus stamp rewards apply automatically. Item, discount, and 2-for-1 rewards are selected before visit.",
+    required: "Reward fields depend on the selected reward type.",
+    example: "Birthday week: free dessert.",
+  },
+  free_item: {
+    summary:
+      "A direct selectable deal where the user receives a specific free item. This requires the item name, not a discount value.",
+    recommended:
+      "Reward type: Free item. Benefit category: User selects before visit. Activation required: yes.",
+    required: "Free item name.",
+    example: "Free drink with your order.",
+  },
+  discount: {
+    summary:
+      "A normal discount deal that the user selects before visiting. This can be a percentage or fixed currency amount. It does not stack with other direct deals.",
+    recommended:
+      "Benefit category: User selects before visit. Activation required: yes.",
+    required: "Percentage or fixed discount amount.",
+    example: "10% off or EUR 5 off.",
+  },
+  bonus_stamp: {
+    summary:
+      "An automatic background reward that adds extra stamps during redemption if eligible. Users do not select this manually.",
+    recommended:
+      "Reward type: Bonus stamp. Benefit category: Applies automatically during scan. Activation required: no.",
+    required: "Number of bonus stamps.",
+    example: "+1 bonus stamp today.",
+  },
+  streak: {
+    summary:
+      "A reward based on the user's streak with a partner. The reward can be a bonus stamp, free item, fixed discount, percentage discount, or 2-for-1.",
+    recommended:
+      "Bonus stamp rewards apply automatically. Other rewards are selected before visit.",
+    required: "Trigger value and reward fields.",
+    example: "3-day streak: free drink or 5-day streak: +1 bonus stamp.",
+  },
+  challenge: {
+    summary:
+      "A reward connected to a challenge or goal. Depending on the reward effect, it can be automatic or selectable.",
+    recommended:
+      "Bonus stamp rewards apply automatically. Other rewards are selected before visit.",
+    required: "Reward fields, and trigger value when used for the challenge goal.",
+    example: "Complete 3 visits this week and get a free drink.",
+  },
+}
+
+const generalRewardOptions: { value: string; label: string }[] =
+  discountTypeOptions.filter(
+    (option) => option.value !== "none",
+  )
+const directRewardOptions: { value: string; label: string }[] =
+  discountTypeOptions.filter((option) =>
+    ["fixed", "percent", "item", "2for1"].includes(option.value),
+  )
+const discountOnlyOptions: { value: string; label: string }[] =
+  discountTypeOptions.filter((option) =>
+    ["fixed", "percent"].includes(option.value),
+  )
+
+function getDealFormConfig({
+  type,
+  discountType,
+  benefitCategory,
+}: {
+  type: string
+  discountType: string
+  benefitCategory: string
+}): DealFormConfig {
+  const normalizedDiscountType = normalizeDiscountTypeForUi(type, discountType)
+  const visibleFields = new Set<DealFormField>()
+  const requiredFields = new Set<DealFormField>()
+  let discountOptions = generalRewardOptions
+
+  switch (type) {
+    case "two_for_one":
+      discountOptions = discountTypeOptions.filter(
+        (option) => option.value === "2for1",
+      )
+      visibleFields.add("estimatedSavings")
+      break
+    case "permanent_discount":
+    case "discount":
+      discountOptions = discountOnlyOptions
+      break
+    case "bonus_stamp":
+      discountOptions = discountTypeOptions.filter(
+        (option) => option.value === "bonus_stamp",
+      )
+      break
+    case "free_item":
+      discountOptions = discountTypeOptions.filter(
+        (option) => option.value === "item",
+      )
+      break
+    case "happy_hour":
+      discountOptions = directRewardOptions
+      visibleFields.add("happyHour")
+      requiredFields.add("happyHour")
+      break
+    case "limited_drop":
+      discountOptions = [...dealDropDiscountTypeOptions]
+      visibleFields.add("stock")
+      visibleFields.add("limitedWindow")
+      visibleFields.add("reserveOnSelection")
+      break
+    case "streak":
+      visibleFields.add("triggerValue")
+      visibleFields.add("expiryDays")
+      requiredFields.add("triggerValue")
+      break
+    case "comeback":
+      visibleFields.add("triggerValue")
+      visibleFields.add("expiryDays")
+      break
+    case "challenge":
+      visibleFields.add("triggerValue")
+      break
+  }
+
+  if (normalizedDiscountType === "fixed" || normalizedDiscountType === "percent") {
+    visibleFields.add("discountValue")
+    visibleFields.add("estimatedSavings")
+    requiredFields.add("discountValue")
+  }
+
+  if (normalizedDiscountType === "item") {
+    visibleFields.add("rewardItem")
+    visibleFields.add("estimatedSavings")
+    requiredFields.add("rewardItem")
+  }
+
+  if (normalizedDiscountType === "bonus_stamp") {
+    visibleFields.add("benefitCount")
+    requiredFields.add("benefitCount")
+  }
+
+  if (normalizedDiscountType === "2for1") {
+    visibleFields.add("estimatedSavings")
+  }
+
+  const normalizedBenefitCategory = normalizeBenefitCategory(
+    type,
+    normalizedDiscountType,
+    benefitCategory,
+  )
+
+  return {
+    visibleFields,
+    requiredFields,
+    autoValues: {
+      benefitCategory: normalizedBenefitCategory,
+      activationRequired: activationRequiredForCategory(
+        normalizedBenefitCategory,
+      ),
+    },
+    explanation: dealExplanations[type] ?? dealExplanations.discount,
+    discountOptions,
+    valueLabels: discountValueLabels(normalizedDiscountType),
+  }
+}
+
+function discountValueLabels(discountType: string) {
+  if (discountType === "percent") {
+    return {
+      discountValueLabel: "Discount percentage",
+      discountValuePlaceholder: "10",
+      discountValueSuffix: "%",
+      discountValueHint: "Enter percentage off. Example: 10 = 10% off.",
+    }
+  }
+
+  if (discountType === "fixed") {
+    return {
+      discountValueLabel: "Discount amount",
+      discountValuePlaceholder: "5",
+      discountValuePrefix: "EUR",
+      discountValueHint: "Enter amount in EUR. Example: 5 = EUR 5 off.",
+    }
+  }
+
+  return {
+    discountValueLabel: "Discount value",
+    discountValueHint:
+      "Only used for percent or fixed discounts. Percent means %, fixed means EUR.",
+  }
+}
+
+function defaultDiscountTypeForDealType(type: string, currentDiscountType: string) {
+  const current = normalizeDiscountTypeForUi(type, currentDiscountType)
+
+  switch (type) {
+    case "two_for_one":
+      return "2for1"
+    case "bonus_stamp":
+      return "bonus_stamp"
+    case "free_item":
+      return "item"
+    case "permanent_discount":
+    case "discount":
+      return current === "fixed" || current === "percent" ? current : "percent"
+    case "happy_hour":
+      return ["fixed", "percent", "item", "2for1"].includes(current)
+        ? current
+        : "percent"
+    case "limited_drop":
+      return ["fixed", "percent", "item", "2for1"].includes(current)
+        ? current
+        : "item"
+    default:
+      return current && current !== "none" ? current : "bonus_stamp"
+  }
+}
+
+function normalizeDiscountTypeForUi(type: string, discountType?: string | null) {
+  const value = discountType || ""
+
+  if (type === "limited_drop") {
+    return normalizeDealDropDiscountType(type, value || "item")
+  }
+
+  return value === "twoforone" ? "2for1" : value
+}
+
+function DealExplanationBox({
+  explanation,
+}: {
+  explanation: DealTypeExplanation
+}) {
+  return (
+    <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-950">
+      <p>{explanation.summary}</p>
+      <div className="mt-2 grid gap-2 lg:grid-cols-3">
+        <Info label="Recommended" value={explanation.recommended} />
+        <Info label="Required" value={explanation.required} />
+        <Info label="Example" value={explanation.example} />
+      </div>
+    </div>
+  )
+}
+
+function DealSummaryBox({
+  summary,
+  warnings,
+}: {
+  summary: string
+  warnings: string[]
+}) {
+  return (
+    <div className="rounded-md border border-zinc-200 bg-white p-3 text-sm">
+      <p className="font-semibold text-zinc-900">Deal summary</p>
+      <p className="mt-1 leading-6 text-zinc-700">{summary}</p>
+      {warnings.length ? (
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-amber-900">
+          {warnings.map((warning) => (
+            <p key={warning}>{warning}</p>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function buildDealSummary({
+  type,
+  discountType,
+  benefitCategory,
+  discountValue,
+  rewardItem,
+  benefitCount,
+  happyHourStart,
+  happyHourEnd,
+  triggerValue,
+  stockRemaining,
+}: {
+  type: string
+  discountType: string
+  benefitCategory: string
+  discountValue: string
+  rewardItem: string
+  benefitCount: string
+  happyHourStart: string
+  happyHourEnd: string
+  triggerValue: string
+  stockRemaining: string
+}) {
+  const reward = formatDraftRewardSummary(
+    discountType,
+    parseOptionalNumberInput(discountValue),
+    rewardItem,
+    parseOptionalNumberInput(benefitCount),
+  )
+
+  if (type === "permanent_discount") {
+    return `Automatically applies ${reward} only if no direct deal is selected.`
+  }
+
+  if (discountType === "bonus_stamp" || type === "bonus_stamp") {
+    return `Automatically adds ${reward} during scan if eligible.`
+  }
+
+  if (type === "happy_hour") {
+    return `User selects this during Happy Hour from ${happyHourStart || "start time"} to ${happyHourEnd || "end time"}: ${reward}.`
+  }
+
+  if (type === "streak") {
+    return `Unlocked at ${triggerValue || "trigger"}-day streak: ${reward}.`
+  }
+
+  if (type === "limited_drop") {
+    return `Limited drop: ${reward}. Stock remaining: ${stockRemaining || "not set"}.`
+  }
+
+  if (benefitCategory === "automatic_fallback") {
+    return `Automatically applies ${reward} only if no direct deal is selected.`
+  }
+
+  if (benefitCategory === "automatic_background") {
+    return `Automatically applies ${reward} during scan if eligible.`
+  }
+
+  return `User selects this before visit: ${reward}. Does not stack with other direct deals.`
+}
+
+function buildDealValidationWarnings({
+  type,
+  discountType,
+  discountValue,
+  rewardItem,
+  benefitCount,
+  happyHourStart,
+  happyHourEnd,
+  triggerValue,
+}: {
+  type: string
+  discountType: string
+  discountValue: string
+  rewardItem: string
+  benefitCount: string
+  happyHourStart: string
+  happyHourEnd: string
+  triggerValue: string
+}) {
+  const warnings: string[] = []
+  const parsedDiscountValue = parseOptionalNumberInput(discountValue)
+  const parsedBenefitCount = parseOptionalNumberInput(benefitCount)
+  const parsedTriggerValue = parseOptionalNumberInput(triggerValue)
+
+  if (discountType === "percent" && !parsedDiscountValue) {
+    warnings.push("Missing discount percentage")
+  }
+
+  if (discountType === "fixed" && !parsedDiscountValue) {
+    warnings.push("Missing discount amount")
+  }
+
+  if (discountType === "item" && !rewardItem.trim()) {
+    warnings.push("Missing free item name")
+  }
+
+  if (discountType === "bonus_stamp" && !parsedBenefitCount) {
+    warnings.push("Bonus stamp count required")
+  }
+
+  if (type === "happy_hour" && (!happyHourStart || !happyHourEnd)) {
+    warnings.push("Missing happy hour time")
+  }
+
+  if (type === "streak" && !parsedTriggerValue) {
+    warnings.push("Trigger value required for streak")
+  }
+
+  return warnings
+}
+
+function formatDraftRewardSummary(
+  discountType: string,
+  discountValue: number | null,
+  rewardItem: string,
+  benefitCount: number | null,
+) {
+  if (discountType === "percent") {
+    return discountValue !== null ? `${discountValue}% off` : "percentage off"
+  }
+
+  if (discountType === "fixed") {
+    return discountValue !== null ? `EUR ${discountValue} off` : "fixed EUR off"
+  }
+
+  if (discountType === "item") {
+    return rewardItem.trim() || "Free item"
+  }
+
+  if (discountType === "bonus_stamp") {
+    const count = benefitCount ?? 1
+    return `+${count} bonus ${count === 1 ? "stamp" : "stamps"}`
+  }
+
+  if (discountType === "2for1") {
+    return "2-for-1"
+  }
+
+  return "No direct reward"
+}
+
 function DealFields({
   deal,
   prefix = "",
   defaultActive,
+  useBrowserValidation = true,
 }: {
   deal?: Deal
   prefix?: string
   defaultActive: boolean
+  useBrowserValidation?: boolean
 }) {
   const initialDealType = deal?.type ?? "discount"
   const initialDiscountType =
-    deal?.discount_type ??
-    (initialDealType === "limited_drop"
-      ? "item"
-      : initialDealType === "bonus_stamp"
-      ? "bonus_stamp"
-      : initialDealType === "two_for_one"
-        ? "2for1"
-        : "none")
+    normalizeDiscountTypeForUi(initialDealType, deal?.discount_type) ||
+    defaultDiscountTypeForDealType(initialDealType, "")
   const [selectedDealType, setSelectedDealType] = useState(initialDealType)
-  const [selectedDiscountType, setSelectedDiscountType] = useState(
-    normalizeDealDropDiscountType(initialDealType, initialDiscountType),
-  )
+  const [selectedDiscountType, setSelectedDiscountType] =
+    useState(initialDiscountType)
   const [selectedBenefitCategory, setSelectedBenefitCategory] = useState(
     deal?.benefit_category ??
       inferBenefitCategory(initialDealType, initialDiscountType),
   )
+  const [autoNote, setAutoNote] = useState("")
   const [dealDropStockTotal, setDealDropStockTotal] = useState(
     formatTextInputValue(deal?.stock_total),
   )
@@ -1482,11 +2315,29 @@ function DealFields({
   const [estimatedSavings, setEstimatedSavings] = useState(
     formatTextInputValue(deal?.estimated_savings),
   )
+  const [benefitCount, setBenefitCount] = useState(
+    formatTextInputValue(deal?.benefit_count ?? 1),
+  )
+  const [triggerValue, setTriggerValue] = useState(
+    formatTextInputValue(deal?.trigger_value),
+  )
+  const [happyHourStart, setHappyHourStart] = useState(
+    formatTextInputValue(deal?.happy_hour_start),
+  )
+  const [happyHourEnd, setHappyHourEnd] = useState(
+    formatTextInputValue(deal?.happy_hour_end),
+  )
   const [startsAt, setStartsAt] = useState(
     formatDateTimeInput(deal?.starts_at ?? deal?.valid_from),
   )
   const [endsAt, setEndsAt] = useState(
     formatDateTimeInput(deal?.ends_at ?? deal?.valid_until),
+  )
+  const [validFrom, setValidFrom] = useState(
+    formatDateTimeInput(deal?.valid_from),
+  )
+  const [validUntil, setValidUntil] = useState(
+    formatDateTimeInput(deal?.valid_until),
   )
   const [expiryDays, setExpiryDays] = useState(
     formatTextInputValue(deal?.expiry_days),
@@ -1494,270 +2345,356 @@ function DealFields({
   const [allowFreeTrial, setAllowFreeTrial] = useState(
     deal?.allow_free_trial ?? false,
   )
+  const config = getDealFormConfig({
+    type: selectedDealType,
+    discountType: selectedDiscountType,
+    benefitCategory: selectedBenefitCategory,
+  })
+  const benefitCategory = config.autoValues.benefitCategory
+  const activationRequired = config.autoValues.activationRequired
   const isLimitedDrop = selectedDealType === "limited_drop"
-  const benefitCategory = normalizeBenefitCategory(
-    selectedDealType,
-    selectedDiscountType,
-    selectedBenefitCategory,
-  )
-  const activationRequired = activationRequiredForCategory(benefitCategory)
-  const showsDiscountValue =
-    selectedDiscountType === "fixed" || selectedDiscountType === "percent"
-  const showsRewardItem = selectedDiscountType === "item"
-  const showsBenefitCount =
-    !isLimitedDrop && selectedDiscountType === "bonus_stamp"
   const showsAllowFreeTrial =
-    isLimitedDrop && selectedDiscountType === "twoforone"
-  const isHappyHour = selectedDealType === "happy_hour"
-  const isStreak = selectedDealType === "streak"
-  const discountOptions = isLimitedDrop
-    ? dealDropDiscountTypeOptions
-    : discountTypeOptions.filter((option) => option.value !== "twoforone")
+    isLimitedDrop && selectedDiscountType === "2for1"
   const dealDropSoldOut =
     isLimitedDrop &&
     isSoldOutDealDrop(
       parseOptionalNumberInput(dealDropStockTotal),
       parseOptionalNumberInput(dealDropStockRemaining),
     )
-  const benefitHint =
-    benefitCategoryOptions.find((option) => option.value === benefitCategory)
-      ?.hint ?? ""
+  const summary = buildDealSummary({
+    type: selectedDealType,
+    discountType: selectedDiscountType,
+    benefitCategory,
+    discountValue,
+    rewardItem,
+    benefitCount,
+    happyHourStart,
+    happyHourEnd,
+    triggerValue,
+    stockRemaining: dealDropStockRemaining,
+  })
+  const warnings = buildDealValidationWarnings({
+    type: selectedDealType,
+    discountType: selectedDiscountType,
+    discountValue,
+    rewardItem,
+    benefitCount,
+    happyHourStart,
+    happyHourEnd,
+    triggerValue,
+  })
+
+  const applyConfigSideEffects = (nextConfig: DealFormConfig) => {
+    if (!nextConfig.visibleFields.has("discountValue")) {
+      setDiscountValue("")
+    }
+
+    if (!nextConfig.visibleFields.has("rewardItem")) {
+      setRewardItem("")
+    }
+
+    if (!nextConfig.visibleFields.has("benefitCount")) {
+      setBenefitCount("")
+    } else if (!benefitCount) {
+      setBenefitCount("1")
+    }
+
+    if (!nextConfig.visibleFields.has("happyHour")) {
+      setHappyHourStart("")
+      setHappyHourEnd("")
+    }
+
+    if (!nextConfig.visibleFields.has("triggerValue")) {
+      setTriggerValue("")
+    }
+
+    if (!nextConfig.visibleFields.has("stock")) {
+      setDealDropStockTotal("")
+      setDealDropStockRemaining("")
+      setStockRemainingEdited(false)
+    }
+
+    if (!nextConfig.visibleFields.has("limitedWindow")) {
+      setStartsAt("")
+      setEndsAt("")
+    }
+
+    if (!nextConfig.visibleFields.has("expiryDays")) {
+      setExpiryDays("")
+    }
+  }
+
+  const handleDealTypeChange = (value: string) => {
+    const nextDiscountType = defaultDiscountTypeForDealType(
+      value,
+      selectedDiscountType,
+    )
+    const nextConfig = getDealFormConfig({
+      type: value,
+      discountType: nextDiscountType,
+      benefitCategory: selectedBenefitCategory,
+    })
+
+    setSelectedDealType(value)
+    setSelectedDiscountType(nextDiscountType)
+    setSelectedBenefitCategory(nextConfig.autoValues.benefitCategory)
+    applyConfigSideEffects(nextConfig)
+    setAutoNote("Adjusted automatically based on deal type.")
+  }
+
+  const handleDiscountTypeChange = (value: string) => {
+    const nextDiscountType = normalizeDiscountTypeForUi(
+      selectedDealType,
+      value,
+    )
+    const nextConfig = getDealFormConfig({
+      type: selectedDealType,
+      discountType: nextDiscountType,
+      benefitCategory: selectedBenefitCategory,
+    })
+
+    setSelectedDiscountType(nextDiscountType)
+    setSelectedBenefitCategory(nextConfig.autoValues.benefitCategory)
+    applyConfigSideEffects(nextConfig)
+    setAutoNote("Adjusted automatically based on reward type.")
+  }
 
   return (
     <div className="space-y-5">
-      <FormSection title="Deal Details">
-        {isLimitedDrop ? (
-          <InfoNote>
-            Deal Drops are limited-time or limited-stock offers. Users must
-            select them before scanning. They do not stack with other direct
-            deals.
-          </InfoNote>
-        ) : null}
-        {dealDropSoldOut ? (
-          <WarningNote>
-            This Deal Drop is sold out and users cannot redeem it.
-          </WarningNote>
-        ) : null}
+      <input
+        type="hidden"
+        name={`${prefix}metadata`}
+        value={formatMetadataInput(deal?.metadata)}
+      />
+      <FormSection title="Deal basics">
         <FieldGrid>
           <SelectField
             label="Deal type"
             name={`${prefix}type`}
             value={selectedDealType}
             options={withCurrentOption(dealTypeOptions, deal?.type)}
-            onChange={(value) => {
-              const nextDiscountType =
-                value === "limited_drop"
-                  ? normalizeDealDropDiscountType(value, selectedDiscountType)
-                  : selectedDiscountType === "twoforone"
-                    ? "2for1"
-                    : selectedDiscountType
-
-              setSelectedDealType(value)
-              setSelectedDiscountType(nextDiscountType)
-              if (value === "limited_drop") {
-                setSelectedBenefitCategory("direct_selectable")
-                return
-              }
-
-              setSelectedBenefitCategory(
-                inferBenefitCategory(value, nextDiscountType),
-              )
-            }}
-            required
+            onChange={handleDealTypeChange}
+            hint={dealFieldHelp.dealType}
+            required={useBrowserValidation}
           />
           <SelectField
-            label="Discount type"
+            label="Discount / reward type"
             name={`${prefix}discount_type`}
             value={selectedDiscountType}
             options={withCurrentOption(
-              discountOptions,
-              isLimitedDrop ? selectedDiscountType : deal?.discount_type,
+              config.discountOptions,
+              normalizeDiscountTypeForUi(selectedDealType, deal?.discount_type),
             )}
-            onChange={(value) => {
-              const nextValue = normalizeDealDropDiscountType(
-                selectedDealType,
-                value,
-              )
-
-              setSelectedDiscountType(nextValue)
-              setSelectedBenefitCategory(
-                selectedDealType === "limited_drop"
-                  ? "direct_selectable"
-                  : inferBenefitCategory(selectedDealType, nextValue),
-              )
-            }}
-            required
+            onChange={handleDiscountTypeChange}
+            hint={dealFieldHelp.discountType}
+            required={useBrowserValidation}
           />
-          {isLimitedDrop ? (
-            <>
-              <ReadOnlyField
-                label="Benefit category"
-                value="User selects before visit"
-                hint={benefitHint}
-              />
-              <input
-                type="hidden"
-                name={`${prefix}benefit_category`}
-                value="direct_selectable"
-              />
-            </>
-          ) : (
-            <SelectField
-              label="Benefit category"
-              name={`${prefix}benefit_category`}
-              value={benefitCategory}
-              options={withCurrentOption(
-                benefitCategoryOptions,
-                deal?.benefit_category,
-              )}
-              onChange={setSelectedBenefitCategory}
-              hint={benefitHint}
-              required
-            />
-          )}
           <SelectField
             label="Audience"
             name={`${prefix}audience`}
             value={selectedAudience}
             options={withCurrentOption(audienceOptions, deal?.audience)}
             onChange={setSelectedAudience}
+            hint={dealFieldHelp.audience}
             required
           />
-          {showsDiscountValue ? (
-            <TextField
-              label="Discount value"
-              name={`${prefix}discount_value`}
-              type="number"
-              step="any"
-              min={0.01}
-              max={selectedDiscountType === "percent" ? 100 : undefined}
-              value={discountValue}
-              onChange={setDiscountValue}
-              required
-            />
-          ) : null}
-          {showsRewardItem ? (
-            <TextField
-              label="Reward item"
-              name={`${prefix}reward_item`}
-              value={rewardItem}
-              onChange={setRewardItem}
-              required
-            />
-          ) : null}
-          {showsAllowFreeTrial ? (
-            <CheckboxField
-              label="Allow free user trial"
-              name={`${prefix}allow_free_trial`}
-              checked={allowFreeTrial}
-              onChange={setAllowFreeTrial}
-              hint="Free users can redeem this once using their global 2for1 trial."
-            />
-          ) : null}
-          {showsBenefitCount ? (
-            <TextField
-              label="Stamp reward count"
-              name={`${prefix}benefit_count`}
-              type="number"
-              defaultValue={deal?.benefit_count ?? 1}
-              required
-            />
-          ) : null}
-        </FieldGrid>
-        <div className="grid gap-3 sm:grid-cols-3">
           <CheckboxField
             label="Active"
             name={`${prefix}active`}
             defaultChecked={defaultActive}
           />
-          <CheckboxField
-            label="Reserve stock on selection"
-            name={`${prefix}reserve_on_selection`}
-            defaultChecked={deal?.reserve_on_selection ?? false}
-            hint="If enabled, stock is temporarily reserved immediately after a user selects the deal."
-          />
-          {!isLimitedDrop ? (
-            <ReadOnlyStatusField
-              label="Activation required"
-              value={activationRequired ? "Yes" : "No"}
-            />
-          ) : null}
-          <input
-            type="hidden"
-            name={`${prefix}activation_required`}
-            value={isLimitedDrop || activationRequired ? "true" : "false"}
-          />
-        </div>
-      </FormSection>
-
-      <FormSection title="Reward Copy">
-        <FieldGrid>
-          <TextAreaField
-            label="Customer description"
-            name={`${prefix}customer_description`}
-            value={customerDescription}
-            onChange={setCustomerDescription}
-          />
-          <TextAreaField
-            label="Staff instructions"
-            name={`${prefix}staff_instructions`}
-            defaultValue={deal?.staff_instructions}
-            hint="Scanner and order staff see this when deciding what to give."
-          />
-          <TextAreaField
-            label="Terms"
-            name={`${prefix}terms`}
-            defaultValue={deal?.terms}
-          />
         </FieldGrid>
       </FormSection>
 
-      {isHappyHour || isStreak || isLimitedDrop ? (
-        <FormSection title="Timing and Rules">
+      <FormSection title="How it works">
+        {autoNote ? <InfoNote>{autoNote}</InfoNote> : null}
+        {dealDropSoldOut ? (
+          <WarningNote>
+            This Deal Drop is sold out and users cannot redeem it.
+          </WarningNote>
+        ) : null}
+        <DealExplanationBox explanation={config.explanation} />
+        <FieldGrid>
+          <ReadOnlyField
+            label="Benefit category"
+            value={labelForValue(benefitCategoryOptions, benefitCategory)}
+            hint={dealFieldHelp.benefitCategory}
+          />
+          <ReadOnlyStatusField
+            label="Activation required"
+            value={activationRequired ? "Yes" : "No"}
+            hint={dealFieldHelp.activationRequired}
+          />
+          <input
+            type="hidden"
+            name={`${prefix}benefit_category`}
+            value={benefitCategory}
+          />
+          <input
+            type="hidden"
+            name={`${prefix}activation_required`}
+            value={activationRequired ? "true" : "false"}
+          />
+        </FieldGrid>
+        <DealSummaryBox summary={summary} warnings={warnings} />
+      </FormSection>
+
+      {config.visibleFields.has("discountValue") ||
+      config.visibleFields.has("rewardItem") ||
+      config.visibleFields.has("benefitCount") ||
+      config.visibleFields.has("estimatedSavings") ? (
+        <FormSection title="Reward details">
           <FieldGrid>
-            {isHappyHour ? (
+            {config.visibleFields.has("discountValue") ? (
+              <TextField
+                label={config.valueLabels.discountValueLabel}
+                name={`${prefix}discount_value`}
+                type="number"
+                step="any"
+                min={0.01}
+                max={selectedDiscountType === "percent" ? 100 : undefined}
+                placeholder={config.valueLabels.discountValuePlaceholder}
+                prefixText={config.valueLabels.discountValuePrefix}
+                suffixText={config.valueLabels.discountValueSuffix}
+                value={discountValue}
+                onChange={setDiscountValue}
+                hint={config.valueLabels.discountValueHint}
+                required={
+                  useBrowserValidation &&
+                  config.requiredFields.has("discountValue")
+                }
+              />
+            ) : null}
+            {config.visibleFields.has("rewardItem") ? (
+              <TextField
+                label="Free item name"
+                name={`${prefix}reward_item`}
+                placeholder="Free drink"
+                value={rewardItem}
+                onChange={setRewardItem}
+                hint={dealFieldHelp.rewardItem}
+                required={
+                  useBrowserValidation &&
+                  config.requiredFields.has("rewardItem")
+                }
+              />
+            ) : null}
+            {config.visibleFields.has("benefitCount") ? (
+              <TextField
+                label="Number of bonus stamps"
+                name={`${prefix}benefit_count`}
+                type="number"
+                min={1}
+                placeholder="1"
+                value={benefitCount}
+                onChange={setBenefitCount}
+                hint={dealFieldHelp.benefitCount}
+                required={
+                  useBrowserValidation &&
+                  config.requiredFields.has("benefitCount")
+                }
+              />
+            ) : null}
+            {config.visibleFields.has("estimatedSavings") ? (
+              <TextField
+                label="Estimated savings (EUR)"
+                name={`${prefix}estimated_savings`}
+                type="number"
+                step="any"
+                min={0}
+                value={estimatedSavings}
+                onChange={setEstimatedSavings}
+                hint={dealFieldHelp.estimatedSavings}
+              />
+            ) : null}
+          </FieldGrid>
+        </FormSection>
+      ) : null}
+
+      {config.visibleFields.has("happyHour") ||
+      config.visibleFields.has("triggerValue") ||
+      config.visibleFields.has("expiryDays") ||
+      config.visibleFields.has("stock") ||
+      config.visibleFields.has("limitedWindow") ||
+      config.visibleFields.has("reserveOnSelection") ? (
+        <FormSection title="Timing and limits">
+          <FieldGrid>
+            {config.visibleFields.has("happyHour") ? (
               <>
                 <TextField
                   label="Happy hour start"
                   name={`${prefix}happy_hour_start`}
                   type="time"
-                  defaultValue={deal?.happy_hour_start}
-                  required
+                  value={happyHourStart}
+                  onChange={setHappyHourStart}
+                  hint={dealFieldHelp.happyHour}
+                  required={
+                    useBrowserValidation &&
+                    config.requiredFields.has("happyHour")
+                  }
                 />
                 <TextField
                   label="Happy hour end"
                   name={`${prefix}happy_hour_end`}
                   type="time"
-                  defaultValue={deal?.happy_hour_end}
-                  required
+                  value={happyHourEnd}
+                  onChange={setHappyHourEnd}
+                  hint={dealFieldHelp.happyHour}
+                  required={
+                    useBrowserValidation &&
+                    config.requiredFields.has("happyHour")
+                  }
                 />
               </>
             ) : null}
-            {isStreak ? (
+            {config.visibleFields.has("triggerValue") ? (
               <TextField
                 label="Trigger value"
                 name={`${prefix}trigger_value`}
                 type="number"
-                defaultValue={deal?.trigger_value}
-                required
+                min={1}
+                value={triggerValue}
+                onChange={setTriggerValue}
+                hint={dealFieldHelp.triggerValue}
+                required={
+                  useBrowserValidation &&
+                  config.requiredFields.has("triggerValue")
+                }
               />
             ) : null}
-            {isLimitedDrop ? (
+            {config.visibleFields.has("expiryDays") ? (
+              <TextField
+                label="Expiry days"
+                name={`${prefix}expiry_days`}
+                type="number"
+                min={0}
+                value={expiryDays}
+                onChange={setExpiryDays}
+                hint={dealFieldHelp.expiryDays}
+              />
+            ) : null}
+            {config.visibleFields.has("limitedWindow") ? (
               <>
                 <TextField
-                  label="Start date/time"
+                  label="Valid from"
                   name={`${prefix}starts_at`}
                   type="datetime-local"
                   value={startsAt}
                   onChange={setStartsAt}
+                  hint={dealFieldHelp.validWindow}
                 />
                 <TextField
-                  label="End date/time"
+                  label="Valid until"
                   name={`${prefix}ends_at`}
                   type="datetime-local"
                   value={endsAt}
                   onChange={setEndsAt}
+                  hint={dealFieldHelp.validWindow}
                 />
+              </>
+            ) : null}
+            {config.visibleFields.has("stock") ? (
+              <>
                 <TextField
                   label="Stock total"
                   name={`${prefix}stock_total`}
@@ -1770,6 +2707,7 @@ function DealFields({
                       setDealDropStockRemaining(value)
                     }
                   }}
+                  hint={dealFieldHelp.stockTotal}
                 />
                 <TextField
                   label="Stock remaining"
@@ -1781,178 +2719,52 @@ function DealFields({
                     setStockRemainingEdited(true)
                     setDealDropStockRemaining(value)
                   }}
-                />
-                <TextField
-                  label="Max redemptions global"
-                  name={`${prefix}max_redemptions_global`}
-                  type="number"
-                  min={0}
-                  defaultValue={deal?.max_redemptions_global}
-                />
-                <TextField
-                  label="Max redemptions per user"
-                  name={`${prefix}max_redemptions_per_user`}
-                  type="number"
-                  min={0}
-                  defaultValue={deal?.max_redemptions_per_user}
-                />
-                <TextField
-                  label="Cooldown hours"
-                  name={`${prefix}cooldown_hours`}
-                  type="number"
-                  min={0}
-                  defaultValue={deal?.cooldown_hours}
-                />
-                <TextField
-                  label="Priority"
-                  name={`${prefix}priority`}
-                  type="number"
-                  defaultValue={deal?.priority ?? DEFAULT_DEAL_DROP_PRIORITY}
-                />
-                <TextField
-                  label="Estimated savings"
-                  name={`${prefix}estimated_savings`}
-                  type="number"
-                  step="any"
-                  min={0}
-                  value={estimatedSavings}
-                  onChange={setEstimatedSavings}
+                  hint={dealFieldHelp.stockRemaining}
                 />
               </>
+            ) : null}
+            {config.visibleFields.has("reserveOnSelection") ? (
+              <CheckboxField
+                label="Reserve stock on selection"
+                name={`${prefix}reserve_on_selection`}
+                defaultChecked={deal?.reserve_on_selection ?? false}
+                hint={dealFieldHelp.reserveOnSelection}
+              />
+            ) : null}
+            {showsAllowFreeTrial ? (
+              <CheckboxField
+                label="Allow free user trial"
+                name={`${prefix}allow_free_trial`}
+                checked={allowFreeTrial}
+                onChange={setAllowFreeTrial}
+                hint="Free users can redeem this once using their global 2-for-1 trial."
+              />
             ) : null}
           </FieldGrid>
         </FormSection>
       ) : null}
 
-      <FormSection title="Limits and Scheduling">
+      <FormSection title="Copy shown to users/staff">
         <FieldGrid>
-          {!isLimitedDrop ? (
-            <TextField
-              label="Estimated savings"
-              name={`${prefix}estimated_savings`}
-              type="number"
-              step="any"
-              min={0}
-              defaultValue={deal?.estimated_savings}
-            />
-          ) : null}
-          <TextField
-            label="Expiry days"
-            name={`${prefix}expiry_days`}
-            type="number"
-            min={0}
-            value={expiryDays}
-            onChange={setExpiryDays}
+          <TextAreaField
+            label="Customer description"
+            name={`${prefix}customer_description`}
+            value={customerDescription}
+            onChange={setCustomerDescription}
+            hint={dealFieldHelp.customerDescription}
           />
-          {!isLimitedDrop ? (
-            <>
-              <TextField
-                label="Valid from"
-                name={`${prefix}valid_from`}
-                type="datetime-local"
-                defaultValue={formatDateTimeInput(deal?.valid_from)}
-              />
-              <TextField
-                label="Valid until"
-                name={`${prefix}valid_until`}
-                type="datetime-local"
-                defaultValue={formatDateTimeInput(deal?.valid_until)}
-              />
-              <TextField
-                label="Max redemptions global"
-                name={`${prefix}max_redemptions_global`}
-                type="number"
-                min={0}
-                defaultValue={deal?.max_redemptions_global}
-              />
-              <TextField
-                label="Max redemptions per user"
-                name={`${prefix}max_redemptions_per_user`}
-                type="number"
-                min={0}
-                defaultValue={deal?.max_redemptions_per_user}
-              />
-              <TextField
-                label="Cooldown hours"
-                name={`${prefix}cooldown_hours`}
-                type="number"
-                min={0}
-                defaultValue={deal?.cooldown_hours}
-              />
-            </>
-          ) : null}
-          <TextField
-            label="Selection expiry minutes"
-            name={`${prefix}selection_expires_minutes`}
-            type="number"
-            min={1}
-            defaultValue={
-              deal?.selection_expires_minutes ??
-              DEFAULT_SELECTION_EXPIRES_MINUTES
-            }
+          <TextAreaField
+            label="Staff instructions"
+            name={`${prefix}staff_instructions`}
+            defaultValue={deal?.staff_instructions}
+            hint={dealFieldHelp.staffInstructions}
           />
-          {!isLimitedDrop ? (
-            <TextField
-              label="Priority"
-              name={`${prefix}priority`}
-              type="number"
-              defaultValue={deal?.priority}
-            />
-          ) : null}
-          <TextField
-            label="Minimum spend"
-            name={`${prefix}min_spend`}
-            type="number"
-            step="any"
-            min={0}
-            defaultValue={deal?.min_spend}
+          <TextAreaField
+            label="Terms"
+            name={`${prefix}terms`}
+            defaultValue={deal?.terms}
+            hint={dealFieldHelp.terms}
           />
-          <TextField
-            label="Max discount amount"
-            name={`${prefix}max_discount_amount`}
-            type="number"
-            step="any"
-            min={0}
-            defaultValue={deal?.max_discount_amount}
-          />
-          {isLimitedDrop ? (
-            <input
-              type="hidden"
-              name={`${prefix}reward_track_target`}
-              value={deal?.reward_track_target ?? DEFAULT_REWARD_TRACK_TARGET}
-            />
-          ) : (
-            <SelectField
-              label="Reward track target"
-              name={`${prefix}reward_track_target`}
-              defaultValue={
-                deal?.reward_track_target ?? DEFAULT_REWARD_TRACK_TARGET
-              }
-              options={withCurrentOption(
-                rewardTrackTargetOptions,
-                deal?.reward_track_target,
-              )}
-            />
-          )}
-          <TextField
-            label="Timezone"
-            name={`${prefix}timezone`}
-            defaultValue={deal?.timezone ?? DEFAULT_TIMEZONE}
-          />
-          {isLimitedDrop ? (
-            <WeekdayChipField
-              label="Valid weekdays"
-              name={`${prefix}valid_weekdays`}
-              defaultValues={deal?.valid_weekdays}
-            />
-          ) : (
-            <MultiSelectField
-              label="Weekdays"
-              name={`${prefix}weekdays`}
-              defaultValues={deal?.weekdays}
-              options={withCurrentOptions(weekdayOptions, deal?.weekdays)}
-            />
-          )}
         </FieldGrid>
       </FormSection>
 
@@ -1974,12 +2786,125 @@ function DealFields({
       ) : null}
 
       <AdvancedSettingsSection>
-        <JsonTextAreaField
-          label="Metadata JSON"
-          name={`${prefix}metadata`}
-          defaultValue={formatMetadataInput(deal?.metadata)}
-          placeholder='{"campaign":"summer"}'
-        />
+        <FieldGrid>
+          {!isLimitedDrop ? (
+            <>
+              <TextField
+                label="Valid from"
+                name={`${prefix}valid_from`}
+                type="datetime-local"
+                value={validFrom}
+                onChange={setValidFrom}
+                hint={dealFieldHelp.validWindow}
+              />
+              <TextField
+                label="Valid until"
+                name={`${prefix}valid_until`}
+                type="datetime-local"
+                value={validUntil}
+                onChange={setValidUntil}
+                hint={dealFieldHelp.validWindow}
+              />
+            </>
+          ) : null}
+          <TextField
+            label="Max redemptions global"
+            name={`${prefix}max_redemptions_global`}
+            type="number"
+            min={0}
+            defaultValue={deal?.max_redemptions_global}
+            hint={dealFieldHelp.maxRedemptionsGlobal}
+          />
+          <TextField
+            label="Max redemptions per user"
+            name={`${prefix}max_redemptions_per_user`}
+            type="number"
+            min={0}
+            defaultValue={deal?.max_redemptions_per_user}
+            hint={dealFieldHelp.maxRedemptionsPerUser}
+          />
+          <TextField
+            label="Cooldown hours"
+            name={`${prefix}cooldown_hours`}
+            type="number"
+            min={0}
+            defaultValue={deal?.cooldown_hours}
+            hint={dealFieldHelp.cooldownHours}
+          />
+          <TextField
+            label="Selection expiry minutes"
+            name={`${prefix}selection_expires_minutes`}
+            type="number"
+            min={1}
+            defaultValue={
+              deal?.selection_expires_minutes ??
+              DEFAULT_SELECTION_EXPIRES_MINUTES
+            }
+            hint={dealFieldHelp.selectionExpiryMinutes}
+          />
+          <TextField
+            label="Priority"
+            name={`${prefix}priority`}
+            type="number"
+            defaultValue={
+              deal?.priority ??
+              (isLimitedDrop ? DEFAULT_DEAL_DROP_PRIORITY : undefined)
+            }
+            hint={dealFieldHelp.priority}
+          />
+          <TextField
+            label="Minimum spend"
+            name={`${prefix}min_spend`}
+            type="number"
+            step="any"
+            min={0}
+            defaultValue={deal?.min_spend}
+            hint={dealFieldHelp.minSpend}
+          />
+          <TextField
+            label="Max discount amount"
+            name={`${prefix}max_discount_amount`}
+            type="number"
+            step="any"
+            min={0}
+            defaultValue={deal?.max_discount_amount}
+            hint={dealFieldHelp.maxDiscountAmount}
+          />
+          <SelectField
+            label="Reward track target"
+            name={`${prefix}reward_track_target`}
+            defaultValue={
+              deal?.reward_track_target ?? DEFAULT_REWARD_TRACK_TARGET
+            }
+            options={withCurrentOption(
+              rewardTrackTargetOptions,
+              deal?.reward_track_target,
+            )}
+            hint={dealFieldHelp.rewardTrackTarget}
+          />
+          <TextField
+            label="Timezone"
+            name={`${prefix}timezone`}
+            defaultValue={deal?.timezone ?? DEFAULT_TIMEZONE}
+            hint={dealFieldHelp.timezone}
+          />
+          {isLimitedDrop ? (
+            <WeekdayChipField
+              label="Valid weekdays"
+              name={`${prefix}valid_weekdays`}
+              defaultValues={deal?.valid_weekdays}
+              hint={dealFieldHelp.weekdays}
+            />
+          ) : (
+            <MultiSelectField
+              label="Weekdays"
+              name={`${prefix}weekdays`}
+              defaultValues={deal?.weekdays}
+              options={withCurrentOptions(weekdayOptions, deal?.weekdays)}
+              hint={dealFieldHelp.weekdays}
+            />
+          )}
+        </FieldGrid>
       </AdvancedSettingsSection>
     </div>
   )
@@ -2527,14 +3452,19 @@ function WeeklyHoursFields({
     Object.fromEntries(
       openingWeekdayOptions.map((day) => {
         const hour = hoursByWeekday.get(Number(day.value))
+        const isClosed = hour?.is_closed ?? false
 
         return [
           day.value,
           {
-            closesAt: formatTimeInput(hour?.closes_at) || "18:00",
-            isClosed: hour?.is_closed ?? false,
+            closesAt: isClosed
+              ? ""
+              : formatTimeInput(hour?.closes_at) || "18:00",
+            isClosed,
             label: hour?.label ?? "",
-            opensAt: formatTimeInput(hour?.opens_at) || "09:00",
+            opensAt: isClosed
+              ? ""
+              : formatTimeInput(hour?.opens_at) || "09:00",
           },
         ]
       }),
@@ -2616,11 +3546,15 @@ function WeeklyHoursFields({
                     type="checkbox"
                     name={`is_closed_${day.value}`}
                     checked={hour.isClosed}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const isClosed = event.target.checked
+
                       updateWeeklyHour(day.value, {
-                        isClosed: event.target.checked,
+                        closesAt: isClosed ? "" : hour.closesAt,
+                        isClosed,
+                        opensAt: isClosed ? "" : hour.opensAt,
                       })
-                    }
+                    }}
                     className="size-4 rounded border-zinc-300 accent-teal-700"
                   />
                   Closed
@@ -2629,21 +3563,23 @@ function WeeklyHoursFields({
                   aria-label={`${day.label} opening time`}
                   name={`opens_at_${day.value}`}
                   type="time"
-                  value={hour.opensAt}
+                  value={hour.isClosed ? "" : hour.opensAt}
+                  disabled={hour.isClosed}
                   onChange={(event) =>
                     updateWeeklyHour(day.value, { opensAt: event.target.value })
                   }
-                  className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                  className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                 />
                 <input
                   aria-label={`${day.label} closing time`}
                   name={`closes_at_${day.value}`}
                   type="time"
-                  value={hour.closesAt}
+                  value={hour.isClosed ? "" : hour.closesAt}
+                  disabled={hour.isClosed}
                   onChange={(event) =>
                     updateWeeklyHour(day.value, { closesAt: event.target.value })
                   }
-                  className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                  className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                 />
                 <input
                   aria-label={`${day.label} note`}
@@ -2715,6 +3651,14 @@ function MenuCard({
   const [editingMenu, setEditingMenu] = useState(false)
   const [showNewCategory, setShowNewCategory] = useState(menu.categories.length === 0)
   const [showNewItem, setShowNewItem] = useState(menu.items.length === 0)
+  const nextCategorySortOrder = nextAvailablePosition(
+    menu.categories.map((category) => category.sort_order),
+  )
+  const nextItemSortOrder = nextAvailablePosition(
+    menu.items
+      .filter((item) => !item.category_id)
+      .map((item) => item.sort_order),
+  )
   const categoryOptions = menu.categories.map((category) => ({
     value: category.id ?? "",
     label: category.name || category.id || "Unnamed category",
@@ -2777,7 +3721,11 @@ function MenuCard({
         </div>
         {showNewCategory && menu.id ? (
           <DealFormShell title="Add category">
-            <MenuCategoryForm menuId={menu.id} />
+            <MenuCategoryForm
+              defaultSortOrder={nextCategorySortOrder}
+              menuId={menu.id}
+              onSaved={() => setShowNewCategory(false)}
+            />
           </DealFormShell>
         ) : null}
         {menu.categories.length ? (
@@ -2810,7 +3758,9 @@ function MenuCard({
           <DealFormShell title="Add menu item">
             <MenuItemForm
               categoryOptions={categoryOptions}
+              defaultSortOrder={nextItemSortOrder}
               menuId={menu.id}
+              onSaved={() => setShowNewItem(false)}
             />
           </DealFormShell>
         ) : null}
@@ -3022,7 +3972,11 @@ function MenuCategoryCard({
       </div>
       {editing ? (
         <div className="mt-3 border-t border-zinc-200 pt-3">
-          <MenuCategoryForm category={category} menuId={menuId} />
+          <MenuCategoryForm
+            category={category}
+            menuId={menuId}
+            onSaved={() => setEditing(false)}
+          />
         </div>
       ) : null}
     </div>
@@ -3031,12 +3985,22 @@ function MenuCategoryCard({
 
 function MenuCategoryForm({
   category,
+  defaultSortOrder = 0,
   menuId,
+  onSaved,
 }: {
   category?: MenuCategory
+  defaultSortOrder?: number
   menuId: string
+  onSaved?: () => void
 }) {
   const [state, formAction] = useActionState(saveMenuCategory, initialState)
+
+  useEffect(() => {
+    if (state.ok) {
+      onSaved?.()
+    }
+  }, [onSaved, state.ok])
 
   return (
     <form action={formAction} className="space-y-4">
@@ -3050,17 +4014,12 @@ function MenuCategoryForm({
           required
         />
         <TextField
-          label="Slug"
-          name="slug"
-          defaultValue={category?.slug}
-          hint="Leave blank to generate from the name."
-        />
-        <TextField
           label="Position in menu"
           name="sort_order"
           type="number"
+          min={0}
           hint="Smaller numbers appear first."
-          defaultValue={category?.sort_order ?? 0}
+          defaultValue={category?.sort_order ?? defaultSortOrder}
         />
       </FieldGrid>
       <ActionMessage state={state} />
@@ -3133,7 +4092,6 @@ function MenuItemCard({
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {item.is_popular ? <Badge>Popular</Badge> : null}
-            {item.is_stamp_eligible ? <Badge>Stamp eligible</Badge> : null}
             {item.tags?.map((tag) => <Badge key={tag}>{tag}</Badge>)}
           </div>
         </div>
@@ -3154,6 +4112,7 @@ function MenuItemCard({
             categoryOptions={categoryOptions}
             item={item}
             menuId={menuId}
+            onSaved={() => setEditing(false)}
           />
         </div>
       ) : null}
@@ -3163,19 +4122,32 @@ function MenuItemCard({
 
 function MenuItemForm({
   categoryOptions,
+  defaultSortOrder = 0,
   item,
   menuId,
+  onSaved,
 }: {
   categoryOptions: { value: string; label: string }[]
+  defaultSortOrder?: number
   item?: MenuItem
   menuId: string
+  onSaved?: () => void
 }) {
   const [state, formAction] = useActionState(saveMenuItem, initialState)
+
+  useEffect(() => {
+    if (state.ok) {
+      onSaved?.()
+    }
+  }, [onSaved, state.ok])
 
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="id" value={item?.id ?? ""} />
       <input type="hidden" name="menu_id" value={menuId} />
+      {item?.is_stamp_eligible ? (
+        <input type="hidden" name="is_stamp_eligible" value="on" />
+      ) : null}
       <FieldGrid>
         <TextField
           label="Item name"
@@ -3205,8 +4177,9 @@ function MenuItemForm({
           label="Position in category"
           name="sort_order"
           type="number"
+          min={0}
           hint="Smaller numbers appear first."
-          defaultValue={item?.sort_order ?? 0}
+          defaultValue={item?.sort_order ?? defaultSortOrder}
         />
         <TextField
           label="Tags"
@@ -3231,11 +4204,6 @@ function MenuItemForm({
           label="Popular"
           name="is_popular"
           defaultChecked={item?.is_popular ?? false}
-        />
-        <CheckboxField
-          label="Stamp eligible"
-          name="is_stamp_eligible"
-          defaultChecked={item?.is_stamp_eligible ?? true}
         />
       </div>
       <MediaUploadField
@@ -3489,6 +4457,171 @@ function RedemptionHistoryPanel({
           </>
         ) : (
           <EmptyState>No redemption visits loaded for this partner.</EmptyState>
+        )}
+      </div>
+    </EditorShell>
+  )
+}
+
+function ComebackDealsPanel({ visits }: { visits: Visit[] }) {
+  const [minVisits, setMinVisits] = useState("2")
+  const [inactiveWeeks, setInactiveWeeks] = useState("4")
+  const [cadenceDays, setCadenceDays] = useState("10")
+  const [query, setQuery] = useState("")
+  const candidates = useMemo(() => buildComebackCandidates(visits), [visits])
+  const minVisitCount = Math.max(
+    1,
+    Math.floor(parseOptionalNumberInput(minVisits) ?? 2),
+  )
+  const inactiveThresholdDays = Math.max(
+    0,
+    (parseOptionalNumberInput(inactiveWeeks) ?? 4) * 7,
+  )
+  const cadenceThresholdDays = parseOptionalNumberInput(cadenceDays)
+  const filteredCandidates = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase()
+
+    return candidates.filter((candidate) => {
+      const matchesVisitCount = candidate.visitCount >= minVisitCount
+      const matchesInactiveWindow =
+        candidate.inactiveDays >= inactiveThresholdDays
+      const matchesCadence =
+        cadenceThresholdDays === null ||
+        (candidate.averageIntervalDays !== null &&
+          candidate.averageIntervalDays <= cadenceThresholdDays)
+      const matchesQuery =
+        !normalizedQuery ||
+        [candidate.userLabel, candidate.userId]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery)
+
+      return (
+        matchesVisitCount &&
+        matchesInactiveWindow &&
+        matchesCadence &&
+        matchesQuery
+      )
+    })
+  }, [
+    cadenceThresholdDays,
+    candidates,
+    inactiveThresholdDays,
+    minVisitCount,
+    query,
+  ])
+  const visibleCandidates = filteredCandidates.slice(
+    0,
+    comebackCandidateDisplayLimit,
+  )
+
+  return (
+    <EditorShell
+      title="Comeback deal candidates"
+      description="Find regular customers whose visit pattern has gone cold. These reactivation offers are separate from standard deals."
+    >
+      <div className="space-y-4">
+        <InfoNote>
+          Use this list to target a custom comeback deal for lost customers.
+          Notification and home-page delivery should use the app campaign
+          pipeline, not the standard deals list.
+        </InfoNote>
+        <FieldGrid>
+          <TextField
+            label="Minimum past visits"
+            name="comeback_min_visits"
+            type="number"
+            min={1}
+            value={minVisits}
+            onChange={setMinVisits}
+          />
+          <TextField
+            label="Inactive weeks"
+            name="comeback_inactive_weeks"
+            type="number"
+            min={0}
+            step="any"
+            value={inactiveWeeks}
+            onChange={setInactiveWeeks}
+          />
+          <TextField
+            label="Usual cadence max days"
+            name="comeback_cadence_days"
+            type="number"
+            min={1}
+            step="any"
+            value={cadenceDays}
+            onChange={setCadenceDays}
+            hint="Example: 10 catches customers who used to visit about weekly."
+          />
+          <TextField
+            label="Search user"
+            name="comeback_user_search"
+            type="search"
+            value={query}
+            onChange={setQuery}
+          />
+        </FieldGrid>
+
+        {filteredCandidates.length ? (
+          <div className="space-y-3">
+            <ResultLimitNote
+              itemLabel="comeback candidates"
+              totalCount={filteredCandidates.length}
+              visibleCount={visibleCandidates.length}
+            />
+            <div className="max-h-96 overflow-auto rounded-md border border-zinc-200 bg-white">
+              <table className="min-w-full text-left text-sm">
+                <thead className="sticky top-0 z-10 border-b border-zinc-200 bg-white text-xs uppercase tracking-[0.12em] text-zinc-500">
+                  <tr>
+                    <th className="py-2 pr-4 pl-3 font-semibold">User</th>
+                    <th className="py-2 pr-4 font-semibold">Visits</th>
+                    <th className="py-2 pr-4 font-semibold">Usual cadence</th>
+                    <th className="py-2 pr-4 font-semibold">Last visit</th>
+                    <th className="py-2 pr-3 font-semibold">Inactive</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {visibleCandidates.map((candidate) => (
+                    <tr key={candidate.userId}>
+                      <td className="py-3 pr-4 pl-3 text-zinc-700">
+                        <span className="block font-medium text-zinc-950">
+                          {candidate.userLabel}
+                        </span>
+                        <span className="block text-xs text-zinc-500">
+                          {shortId(candidate.userId)}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-4 text-zinc-700">
+                        {candidate.visitCount}
+                      </td>
+                      <td className="py-3 pr-4 text-zinc-700">
+                        {formatDays(candidate.averageIntervalDays)}
+                      </td>
+                      <td className="py-3 pr-4 text-zinc-700">
+                        {formatDateTime(candidate.lastVisit)}
+                      </td>
+                      <td className="py-3 pr-3 text-zinc-700">
+                        <span className="block font-medium text-amber-800">
+                          {formatDays(candidate.inactiveDays)}
+                        </span>
+                        <span className="block text-xs text-zinc-500">
+                          {formatComebackCandidateReason(
+                            candidate,
+                            inactiveThresholdDays,
+                          )}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <EmptyState>
+            No loaded customers match this comeback filter yet.
+          </EmptyState>
         )}
       </div>
     </EditorShell>
@@ -3811,8 +4944,10 @@ type TextFieldProps = {
   min?: string | number
   max?: string | number
   hint?: string
+  prefixText?: string
   required?: boolean
   placeholder?: string
+  suffixText?: string
   value?: string | number
   defaultValue?: string | number | null
   onChange?: (value: string) => void
@@ -3826,8 +4961,10 @@ function TextField({
   min,
   max,
   hint,
+  prefixText,
   required,
   placeholder,
+  suffixText,
   value,
   defaultValue,
   onChange,
@@ -3835,19 +4972,35 @@ function TextField({
   return (
     <label className="block space-y-2 text-sm">
       <FieldLabel label={label} required={required} />
-      <input
-        name={name}
-        type={type}
-        step={step}
-        min={min}
-        max={max}
-        required={required}
-        placeholder={placeholder}
-        value={value}
-        defaultValue={value === undefined ? defaultValue ?? "" : undefined}
-        onChange={(event) => onChange?.(event.target.value)}
-        className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-      />
+      <div
+        className={`flex h-10 w-full items-center rounded-md border border-zinc-300 bg-white text-sm text-zinc-950 transition focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100 ${
+          prefixText || suffixText ? "overflow-hidden" : ""
+        }`}
+      >
+        {prefixText ? (
+          <span className="flex h-full items-center border-r border-zinc-200 bg-zinc-50 px-3 text-zinc-500">
+            {prefixText}
+          </span>
+        ) : null}
+        <input
+          name={name}
+          type={type}
+          step={step}
+          min={min}
+          max={max}
+          required={required}
+          placeholder={placeholder}
+          value={value}
+          defaultValue={value === undefined ? defaultValue ?? "" : undefined}
+          onChange={(event) => onChange?.(event.target.value)}
+          className="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-sm text-zinc-950 outline-none"
+        />
+        {suffixText ? (
+          <span className="flex h-full items-center border-l border-zinc-200 bg-zinc-50 px-3 text-zinc-500">
+            {suffixText}
+          </span>
+        ) : null}
+      </div>
       {hint ? <span className="block text-xs text-zinc-500">{hint}</span> : null}
     </label>
   )
@@ -3903,26 +5056,76 @@ function MultiSelectField({
   options,
   defaultValues,
   required,
+  hint,
 }: {
   label: string
   name: string
   options: readonly { value: string; label: string }[]
   defaultValues?: string[] | null
   required?: boolean
+  hint?: string
 }) {
   const [selectedValues, setSelectedValues] = useState(defaultValues ?? [])
+  const [open, setOpen] = useState(false)
+  const detailsRef = useRef<HTMLDetailsElement>(null)
   const selectedLabels = selectedValues.length
     ? selectedValues.join(", ")
     : "Select..."
 
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (
+        detailsRef.current &&
+        !detailsRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false)
+      }
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsideClick)
+    document.addEventListener("keydown", closeOnEscape)
+
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick)
+      document.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [open])
+
   return (
     <div className="space-y-2 text-sm">
       <FieldLabel label={label} required={required} />
-      <details className="relative">
-        <summary className="flex min-h-10 cursor-pointer list-none items-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100">
+      <details
+        ref={detailsRef}
+        className="relative"
+        open={open}
+        onToggle={(event) => setOpen(event.currentTarget.open)}
+      >
+        <summary
+          className="flex min-h-10 cursor-pointer list-none items-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+          onClick={(event) => {
+            event.preventDefault()
+            setOpen((value) => !value)
+          }}
+        >
           <span className="line-clamp-2">{selectedLabels}</span>
         </summary>
-        <div className="absolute z-20 mt-2 grid max-h-72 w-full gap-1 overflow-y-auto rounded-md border border-zinc-200 bg-white p-2 shadow-lg">
+        <div
+          className="absolute z-20 mt-2 grid max-h-72 w-full gap-1 overflow-y-auto rounded-md border border-zinc-200 bg-white p-2 shadow-lg"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setOpen(false)
+            }
+          }}
+        >
           {options.map((option) => {
             const checked = selectedValues.includes(option.value)
 
@@ -3951,6 +5154,7 @@ function MultiSelectField({
           })}
         </div>
       </details>
+      {hint ? <span className="block text-xs text-zinc-500">{hint}</span> : null}
     </div>
   )
 }
@@ -3959,10 +5163,12 @@ function WeekdayChipField({
   label,
   name,
   defaultValues,
+  hint,
 }: {
   label: string
   name: string
   defaultValues?: Array<number | string> | null
+  hint?: string
 }) {
   const [selectedValues, setSelectedValues] = useState(() =>
     normalizeWeekdayNumbers(defaultValues),
@@ -4008,6 +5214,7 @@ function WeekdayChipField({
           )
         })}
       </div>
+      {hint ? <span className="block text-xs text-zinc-500">{hint}</span> : null}
     </fieldset>
   )
 }
@@ -4633,62 +5840,6 @@ function TextAreaField({
   )
 }
 
-function JsonTextAreaField({
-  label,
-  name,
-  defaultValue,
-  placeholder,
-}: {
-  label: string
-  name: string
-  defaultValue?: string | null
-  placeholder?: string
-}) {
-  const [error, setError] = useState(() =>
-    validateJsonInput(defaultValue ?? ""),
-  )
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    textareaRef.current?.setCustomValidity(error)
-  }, [error])
-
-  return (
-    <label className="block space-y-2 text-sm">
-      <FieldLabel label={label} />
-      <textarea
-        ref={textareaRef}
-        name={name}
-        rows={7}
-        spellCheck={false}
-        placeholder={placeholder}
-        defaultValue={defaultValue ?? ""}
-        onInvalid={(event) => {
-          const details = event.currentTarget.closest("details")
-
-          if (details) {
-            details.open = true
-          }
-        }}
-        onBlur={(event) => {
-          setError(validateJsonInput(event.target.value))
-        }}
-        onChange={(event) => {
-          setError(validateJsonInput(event.target.value))
-        }}
-        className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 font-mono text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-      />
-      {error ? (
-        <span className="block text-xs font-medium text-rose-700">{error}</span>
-      ) : (
-        <span className="block text-xs text-zinc-500">
-          Empty metadata saves as an empty JSON object.
-        </span>
-      )}
-    </label>
-  )
-}
-
 function FieldLabel({
   label,
   required,
@@ -4766,14 +5917,18 @@ function ActionMessage({ state }: { state: PartnerActionState }) {
 
 function SubmitButton({
   label,
+  name,
   pendingLabel,
   size = "default",
   tone = "default",
+  value,
 }: {
   label: string
+  name?: string
   pendingLabel: string
   size?: "default" | "compact" | "tiny"
-  tone?: "default" | "danger"
+  tone?: "default" | "danger" | "muted"
+  value?: string
 }) {
   const { pending } = useFormStatus()
   const sizeClasses =
@@ -4782,16 +5937,20 @@ function SubmitButton({
       : size === "compact"
         ? "h-9 px-3 text-sm"
         : "h-10 px-4 text-sm"
+  const toneClasses =
+    tone === "danger"
+      ? "bg-rose-700 text-white hover:bg-rose-800 disabled:bg-zinc-300"
+      : tone === "muted"
+        ? "border border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200 disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
+        : "bg-teal-700 text-white hover:bg-teal-800 disabled:bg-zinc-300"
 
   return (
     <button
       type="submit"
+      name={name}
       disabled={pending}
-      className={`${sizeClasses} rounded-md font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-zinc-300 ${
-        tone === "danger"
-          ? "bg-rose-700 hover:bg-rose-800"
-          : "bg-teal-700 hover:bg-teal-800"
-      }`}
+      value={value}
+      className={`${sizeClasses} rounded-md font-semibold transition disabled:cursor-not-allowed ${toneClasses}`}
     >
       {pending ? pendingLabel : label}
     </button>
@@ -5012,18 +6171,179 @@ function isCoordinateRecord(value: unknown): value is {
   return typeof value === "object" && value !== null
 }
 
-function formatDealSummary(deal: Deal) {
-  const parts = [labelForValue(discountTypeOptions, deal.discount_type)]
+type ComebackCandidate = {
+  userId: string
+  userLabel: string
+  visitCount: number
+  lastVisit: string
+  inactiveDays: number
+  averageIntervalDays: number | null
+}
 
-  if (deal.discount_type === "item" && deal.reward_item) {
-    parts.push(deal.reward_item)
-  } else if (deal.discount_type === "bonus_stamp") {
-    parts.push(`${deal.benefit_count ?? 1} stamp`)
-  } else if (deal.discount_value !== null && deal.discount_value !== undefined) {
-    parts.push(String(deal.discount_value))
+const millisecondsPerDay = 24 * 60 * 60 * 1000
+
+function formatDealTitle(deal: Deal) {
+  if (deal.type === "comeback") {
+    return formatDurationBonusDealName(deal)
   }
 
-  return parts.join(" ") || "No discount details set"
+  return labelForValue(dealTypeOptions, deal.type) || "Untitled deal"
+}
+
+function formatDurationBonusDealName(deal: Deal) {
+  const durationHours = getDurationBonusWindowHours(deal)
+
+  if (durationHours === null) {
+    return "Duration / Comeback bonus"
+  }
+
+  return `${formatBonusWindowDuration(durationHours)}-Bonus`
+}
+
+function getDurationBonusWindowHours(deal: Deal) {
+  if (
+    deal.selection_expires_minutes &&
+    deal.selection_expires_minutes !== DEFAULT_SELECTION_EXPIRES_MINUTES
+  ) {
+    return deal.selection_expires_minutes / 60
+  }
+
+  if (deal.expiry_days && deal.expiry_days > 0) {
+    return deal.expiry_days * 24
+  }
+
+  const validWindowHours = hoursBetweenDates(deal.valid_from, deal.valid_until)
+
+  if (validWindowHours !== null) {
+    return validWindowHours
+  }
+
+  const activeWindowHours = hoursBetweenDates(deal.starts_at, deal.ends_at)
+
+  if (activeWindowHours !== null) {
+    return activeWindowHours
+  }
+
+  if (deal.selection_expires_minutes && deal.selection_expires_minutes > 0) {
+    return deal.selection_expires_minutes / 60
+  }
+
+  return null
+}
+
+function hoursBetweenDates(start?: string | null, end?: string | null) {
+  if (!start || !end) {
+    return null
+  }
+
+  const startTime = new Date(start).getTime()
+  const endTime = new Date(end).getTime()
+
+  if (
+    Number.isNaN(startTime) ||
+    Number.isNaN(endTime) ||
+    endTime <= startTime
+  ) {
+    return null
+  }
+
+  return (endTime - startTime) / (60 * 60 * 1000)
+}
+
+function formatBonusWindowDuration(hours: number) {
+  const minutes = Math.max(1, Math.round(hours * 60))
+
+  if (minutes < 60) {
+    return `${minutes}m`
+  }
+
+  if (minutes % 60 === 0) {
+    return `${minutes / 60}h`
+  }
+
+  return `${Math.round((minutes / 60) * 10) / 10}h`
+}
+
+function buildComebackCandidates(visits: Visit[]): ComebackCandidate[] {
+  const visitsByUser = new Map<string, Visit[]>()
+
+  for (const visit of visits) {
+    if (!visit.user_id || !visit.visited_at) {
+      continue
+    }
+
+    visitsByUser.set(visit.user_id, [
+      ...(visitsByUser.get(visit.user_id) ?? []),
+      visit,
+    ])
+  }
+
+  const now = Date.now()
+  const candidates: ComebackCandidate[] = []
+
+  for (const [userId, userVisits] of visitsByUser) {
+    const datedVisits = userVisits
+      .map((visit) => ({
+        visit,
+        visitedAtTime: new Date(visit.visited_at ?? "").getTime(),
+      }))
+      .filter(({ visitedAtTime }) => !Number.isNaN(visitedAtTime))
+      .sort((first, second) => first.visitedAtTime - second.visitedAtTime)
+
+    if (!datedVisits.length) {
+      continue
+    }
+
+    const intervals = []
+
+    for (let index = 1; index < datedVisits.length; index += 1) {
+      intervals.push(
+        (datedVisits[index].visitedAtTime -
+          datedVisits[index - 1].visitedAtTime) /
+          millisecondsPerDay,
+      )
+    }
+
+    const lastVisit = datedVisits[datedVisits.length - 1]
+    const averageIntervalDays = intervals.length
+      ? intervals.reduce((total, interval) => total + interval, 0) /
+        intervals.length
+      : null
+
+    candidates.push({
+      userId,
+      userLabel:
+        lastVisit.visit.user_name ||
+        lastVisit.visit.user_email ||
+        shortId(userId),
+      visitCount: datedVisits.length,
+      lastVisit: lastVisit.visit.visited_at ?? "",
+      inactiveDays: Math.max(
+        0,
+        (now - lastVisit.visitedAtTime) / millisecondsPerDay,
+      ),
+      averageIntervalDays,
+    })
+  }
+
+  return candidates.sort((first, second) => {
+    const inactiveSort = second.inactiveDays - first.inactiveDays
+
+    if (inactiveSort !== 0) {
+      return inactiveSort
+    }
+
+    return second.visitCount - first.visitCount
+  })
+}
+
+function formatDealSummary(deal: Deal) {
+  return formatDraftRewardSummary(
+    deal.discount_type ?? "none",
+    deal.discount_value,
+    deal.reward_item ?? "",
+    deal.benefit_count,
+  )
 }
 
 function formatTimeRange(start?: string | null, end?: string | null) {
@@ -5054,6 +6374,34 @@ function formatPrice(value?: number | string | null, currency?: string | null) {
 
 function formatOptionalNumber(value?: number | null) {
   return value === null || value === undefined ? "Not set" : String(value)
+}
+
+function formatDays(value?: number | null) {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "Not set"
+  }
+
+  if (value < 1) {
+    return "<1 day"
+  }
+
+  const roundedValue =
+    value >= 10 ? Math.round(value) : Math.round(value * 10) / 10
+
+  return `${roundedValue} ${roundedValue === 1 ? "day" : "days"}`
+}
+
+function formatComebackCandidateReason(
+  candidate: ComebackCandidate,
+  inactiveThresholdDays: number,
+) {
+  const daysPastThreshold = candidate.inactiveDays - inactiveThresholdDays
+
+  if (daysPastThreshold <= 0) {
+    return "At comeback threshold"
+  }
+
+  return `${formatDays(daysPastThreshold)} past threshold`
 }
 
 function formatTextInputValue(value?: string | number | null) {
@@ -5121,19 +6469,6 @@ function weekdayNumberFromValue(value: number | string) {
   return namedWeekdays[normalized] ?? null
 }
 
-function validateJsonInput(value: string) {
-  if (!value.trim()) {
-    return ""
-  }
-
-  try {
-    JSON.parse(value)
-    return ""
-  } catch {
-    return "Metadata must be valid JSON."
-  }
-}
-
 function formatDealDropRewardTitle(
   discountType: string,
   discountValue: number | null,
@@ -5150,10 +6485,12 @@ function formatDealDropRewardTitle(
   }
 
   if (discountType === "fixed") {
-    return discountValue !== null ? `${discountValue} off` : "Fixed discount"
+    return discountValue !== null
+      ? `EUR ${discountValue} off`
+      : "Fixed discount"
   }
 
-  if (discountType === "twoforone" || discountType === "2for1") {
+  if (normalizeDiscountTypeForUi("limited_drop", discountType) === "2for1") {
     return "2-for-1"
   }
 
@@ -5261,7 +6598,100 @@ function normalizeDealDropDiscountType(dealType: string, discountType: string) {
     return "item"
   }
 
-  return discountType === "2for1" ? "twoforone" : discountType
+  return discountType === "twoforone" ? "2for1" : discountType
+}
+
+function normalizePartnerTypeValue(value?: string | null) {
+  const trimmed = value?.trim()
+
+  if (!trimmed) {
+    return "Food & Drink"
+  }
+
+  const normalized = trimmed.toLowerCase()
+
+  return normalized === "restaurant" || normalized === "restuarant"
+    ? "Food & Drink"
+    : trimmed
+}
+
+function syncExpandedDraftIds(
+  ids: string[],
+  knownIdsRef: { current: Set<string> },
+  setExpandedIds: (updater: (current: string[]) => string[]) => void,
+) {
+  setExpandedIds((current) => {
+    const validIds = new Set(ids)
+    const next = new Set(current.filter((id) => validIds.has(id)))
+
+    for (const id of ids) {
+      if (!knownIdsRef.current.has(id)) {
+        next.add(id)
+      }
+    }
+
+    knownIdsRef.current = validIds
+
+    return Array.from(next)
+  })
+}
+
+function toggleDraftId(current: string[], id: string) {
+  return current.includes(id)
+    ? current.filter((value) => value !== id)
+    : [...current, id]
+}
+
+function hasDuplicatePositions(
+  rows: Array<{ position: string | number | null | undefined; scope: string }>,
+) {
+  const usedPositions = new Set<string>()
+
+  for (const row of rows) {
+    const position = integerFromValue(row.position)
+
+    if (position === null) {
+      continue
+    }
+
+    const key = `${row.scope}:${position}`
+
+    if (usedPositions.has(key)) {
+      return true
+    }
+
+    usedPositions.add(key)
+  }
+
+  return false
+}
+
+function nextAvailablePosition(
+  values: Array<string | number | null | undefined>,
+) {
+  const usedPositions = new Set(
+    values
+      .map(integerFromValue)
+      .filter((value): value is number => value !== null && value >= 0),
+  )
+  let position = 0
+
+  while (usedPositions.has(position)) {
+    position += 1
+  }
+
+  return position
+}
+
+function integerFromValue(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") {
+    return null
+  }
+
+  const numericValue =
+    typeof value === "number" ? value : Number.parseInt(value, 10)
+
+  return Number.isInteger(numericValue) ? numericValue : null
 }
 
 function withCurrentOption(
@@ -5370,7 +6800,12 @@ function formatMetadataInput(value: unknown) {
   }
 
   if (typeof value === "string") {
-    return value
+    try {
+      JSON.parse(value)
+      return value
+    } catch {
+      return JSON.stringify(value)
+    }
   }
 
   try {
