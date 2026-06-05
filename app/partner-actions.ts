@@ -288,11 +288,11 @@ export async function savePartner(
           `Partner was created, but deals were skipped: ${initialDealPriorityError}`,
         )
       } else if (initialDeals.length > 0) {
-        const dealResult = await supabase.from("deals").insert(initialDeals)
+        const dealMessage = await insertDeals(supabase, initialDeals)
 
-        if (dealResult.error) {
+        if (dealMessage) {
           warnings.push(
-            `Partner was created, but deals could not be added: ${dealResult.error.message}`,
+            `Partner was created, but deals could not be added: ${dealMessage}`,
           )
         }
       }
@@ -390,12 +390,12 @@ export async function saveDeal(
     updated_at: now,
     ...(id ? {} : { created_at: now }),
   }
-  const result = id
-    ? await supabase.from("deals").update(mutationPayload).eq("id", id)
-    : await supabase.from("deals").insert(mutationPayload)
+  const mutationMessage = id
+    ? await updateDeal(supabase, id, mutationPayload)
+    : await insertDeals(supabase, [mutationPayload])
 
-  if (result.error) {
-    return { ok: false, message: result.error.message }
+  if (mutationMessage) {
+    return { ok: false, message: mutationMessage }
   }
 
   revalidatePath("/")
@@ -650,6 +650,70 @@ export async function saveMenu(
   return { ok: true, message: id ? "Menu updated." : "Menu added." }
 }
 
+export async function reorderMenuCategories(
+  menuId: string,
+  orderedIds: string[],
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const ids = uniqueOrderedIds(orderedIds)
+
+  if (!menuId) {
+    return { ok: false, message: "Menu id is required." }
+  }
+
+  if (!ids.length) {
+    return { ok: false, message: "Choose at least one category to reorder." }
+  }
+
+  const message = await updateSortOrderRows(
+    supabase,
+    "menu_categories",
+    "menu_id",
+    menuId,
+    ids,
+  )
+
+  if (message) {
+    return { ok: false, message }
+  }
+
+  revalidatePath("/")
+
+  return { ok: true, message: "Category order saved." }
+}
+
+export async function reorderMenuItems(
+  menuId: string,
+  orderedIds: string[],
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const ids = uniqueOrderedIds(orderedIds)
+
+  if (!menuId) {
+    return { ok: false, message: "Menu id is required." }
+  }
+
+  if (!ids.length) {
+    return { ok: false, message: "Choose at least one item to reorder." }
+  }
+
+  const message = await updateSortOrderRows(
+    supabase,
+    "menu_items",
+    "menu_id",
+    menuId,
+    ids,
+  )
+
+  if (message) {
+    return { ok: false, message }
+  }
+
+  revalidatePath("/")
+
+  return { ok: true, message: "Item order saved." }
+}
+
 export async function approveMenu(
   _prevState: PartnerActionState,
   formData: FormData,
@@ -725,14 +789,14 @@ export async function saveMenuCategory(
     return { ok: false, message: validationMessage }
   }
 
-  const duplicatePositionMessage = await validateUniqueMenuCategoryPosition(
+  const positionMessage = await resolveMenuCategoryPosition(
     supabase,
     payload,
     id,
   )
 
-  if (duplicatePositionMessage) {
-    return { ok: false, message: duplicatePositionMessage }
+  if (positionMessage) {
+    return { ok: false, message: positionMessage }
   }
 
   const result = id
@@ -845,15 +909,15 @@ export async function saveMenuItem(
     return { ok: false, message: validationMessage }
   }
 
-  const duplicatePositionMessage = await validateUniqueMenuItemPosition(
+  const positionMessage = await resolveMenuItemPosition(
     supabase,
     payload,
     id,
   )
 
-  if (duplicatePositionMessage) {
+  if (positionMessage) {
     await cleanupUploadedFiles(supabase, uploadedPaths)
-    return { ok: false, message: duplicatePositionMessage }
+    return { ok: false, message: positionMessage }
   }
 
   const mutationPayload = {
@@ -1012,14 +1076,6 @@ function validatePartnerForm(
 function validateInitialMenuStructure(formData: FormData) {
   const categoryIds = new Set<string>()
   const categories = parseInitialMenuCategoryPayloads(formData, "validation")
-  const duplicateCategoryPosition = findDuplicatePosition(
-    categories,
-    () => "menu",
-  )
-
-  if (duplicateCategoryPosition !== null) {
-    return "Menu category positions must be unique."
-  }
 
   for (const category of categories) {
     const validationMessage = validateMenuCategoryPayload(category)
@@ -1040,14 +1096,6 @@ function validateInitialMenuStructure(formData: FormData) {
     categoryIdsByDraft,
     new Map(),
   )
-  const duplicateItemPosition = findDuplicatePosition(
-    items,
-    (item) => item.category_id ?? "uncategorized",
-  )
-
-  if (duplicateItemPosition !== null) {
-    return "Menu item positions must be unique within a category."
-  }
 
   for (let index = 0; index < items.length; index += 1) {
     const categoryDraftId = nullableStringValue(
@@ -1098,6 +1146,10 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
       ? false
       : checkboxValue(formData, "active")
   const existingPin = integerValue(formData, "existing_pin")
+  const stampTarget =
+    positiveIntegerValue(formData, "stamp_target") ??
+    positiveIntegerValue(formData, "existing_stamp_target") ??
+    MAX_STAMP_CARD_STAMPS
   const partnerType = normalizePartnerTypeValue(stringValue(formData, "type"))
 
   return {
@@ -1112,6 +1164,7 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     type: partnerType,
     status: active ? "active" : "inactive",
     is_featured: checkboxValue(formData, "is_featured"),
+    stamp_target: stampTarget,
     loves: isUpdate ? integerValue(formData, "existing_loves") ?? 0 : 0,
     pin: isUpdate && existingPin ? existingPin : randomFourDigitPin(),
     address: stringValue(formData, "address"),
@@ -1490,6 +1543,75 @@ function parseInitialDeals(formData: FormData, partnerId: string): ParsedDeal[] 
   return deals
 }
 
+async function insertDeals(
+  supabase: SupabaseClient,
+  deals: Array<ParsedDeal & { created_at?: string; updated_at?: string }>,
+) {
+  return await mutateDealPayloadWithSchemaRetry(
+    deals.map((deal) => ({ ...deal })),
+    (payload) => supabase.from("deals").insert(payload),
+  )
+}
+
+async function updateDeal(
+  supabase: SupabaseClient,
+  id: string,
+  deal: ParsedDeal & { created_at?: string; updated_at?: string },
+) {
+  return await mutateDealPayloadWithSchemaRetry({ ...deal }, (payload) =>
+    supabase.from("deals").update(payload).eq("id", id),
+  )
+}
+
+async function mutateDealPayloadWithSchemaRetry<
+  TPayload extends Record<string, unknown> | Array<Record<string, unknown>>,
+>(
+  payload: TPayload,
+  mutate: (payload: TPayload) => PromiseLike<{ error: { message: string } | null }>,
+) {
+  const removedColumns = new Set<string>()
+
+  while (true) {
+    const result = await mutate(payload)
+
+    if (!result.error) {
+      return null
+    }
+
+    const missingColumn = missingSchemaCacheColumn(result.error.message)
+
+    if (!missingColumn || removedColumns.has(missingColumn)) {
+      return result.error.message
+    }
+
+    removeMutationColumn(payload, missingColumn)
+    removedColumns.add(missingColumn)
+  }
+}
+
+function missingSchemaCacheColumn(message: string) {
+  return (
+    message.match(/Could not find the '([^']+)' column/)?.[1] ??
+    message.match(/column "([^"]+)" of relation "[^"]+" does not exist/)?.[1] ??
+    null
+  )
+}
+
+function removeMutationColumn(
+  payload: Record<string, unknown> | Array<Record<string, unknown>>,
+  column: string,
+) {
+  if (Array.isArray(payload)) {
+    for (const row of payload) {
+      delete row[column]
+    }
+
+    return
+  }
+
+  delete payload[column]
+}
+
 function parseDealPayload(
   formData: FormData,
   prefix = "",
@@ -1499,6 +1621,7 @@ function parseDealPayload(
   const isLimitedDrop = type === "limited_drop"
   const rawDiscountType = stringValue(formData, `${prefix}discount_type`)
   const discountType = normalizeDealDiscountType(type, rawDiscountType)
+  const isWelcomeDeal = type === "welcome"
   const benefitCategory = normalizeBenefitCategory(
     type,
     discountType,
@@ -1524,6 +1647,19 @@ function parseDealPayload(
   const usesHappyHour = type === "happy_hour"
   const usesTriggerValue =
     type === "streak" || type === "comeback" || type === "challenge"
+  const discountValue = usesDiscountValue
+    ? numberValue(formData, `${prefix}discount_value`)
+    : null
+  const manualEstimatedSavings = numberValue(
+    formData,
+    `${prefix}estimated_savings`,
+  )
+  const estimatedSavings =
+    discountType === "fixed"
+      ? discountValue
+      : discountType === "percent"
+        ? null
+        : manualEstimatedSavings
   const validWeekdays = integerListValue(formData, `${prefix}valid_weekdays`)
   const hasWeekdaySelector = formData.has(`${prefix}valid_weekdays_present`)
   const allowFreeTrial =
@@ -1531,7 +1667,7 @@ function parseDealPayload(
     discountType === "2for1" &&
     checkboxValue(formData, `${prefix}allow_free_trial`)
 
-  return {
+  return withDefaultDealCopy({
     partner_id: partnerId,
     type,
     discount_type: discountType,
@@ -1542,9 +1678,7 @@ function parseDealPayload(
       ? true
       : activationRequiredForCategory(benefitCategory),
     active: checkboxValue(formData, `${prefix}active`),
-    discount_value: usesDiscountValue
-      ? numberValue(formData, `${prefix}discount_value`)
-      : null,
+    discount_value: discountValue,
     reward_item: usesRewardItem
       ? nullableStringValue(formData, `${prefix}reward_item`)
       : null,
@@ -1554,7 +1688,7 @@ function parseDealPayload(
         : !usesBenefitCount
           ? null
           : benefitCount,
-    estimated_savings: numberValue(formData, `${prefix}estimated_savings`),
+    estimated_savings: estimatedSavings,
     customer_description: nullableStringValue(
       formData,
       `${prefix}customer_description`,
@@ -1580,10 +1714,10 @@ function parseDealPayload(
     starts_at: isLimitedDrop ? startsAt : null,
     ends_at: isLimitedDrop ? endsAt : null,
     valid_from: isLimitedDrop
-      ? null
+      ? startsAt
       : nullableStringValue(formData, `${prefix}valid_from`),
     valid_until: isLimitedDrop
-      ? null
+      ? endsAt
       : nullableStringValue(formData, `${prefix}valid_until`),
     valid_weekdays:
       isLimitedDrop
@@ -1593,20 +1727,18 @@ function parseDealPayload(
             ? []
             : [...DEFAULT_DEAL_DROP_WEEKDAYS]
         : validWeekdays,
-    max_redemptions_global: integerValue(
-      formData,
-      `${prefix}max_redemptions_global`,
-    ),
-    max_redemptions_per_user: integerValue(
-      formData,
-      `${prefix}max_redemptions_per_user`,
-    ),
-    cooldown_hours: integerValue(formData, `${prefix}cooldown_hours`),
+    max_redemptions_global: isWelcomeDeal
+      ? null
+      : integerValue(formData, `${prefix}max_redemptions_global`),
+    max_redemptions_per_user: isWelcomeDeal
+      ? null
+      : integerValue(formData, `${prefix}max_redemptions_per_user`),
+    cooldown_hours: isWelcomeDeal
+      ? null
+      : integerValue(formData, `${prefix}cooldown_hours`),
     stock_total: isLimitedDrop ? stockTotal : null,
     stock_remaining: isLimitedDrop ? stockRemaining : null,
-    selection_expires_minutes:
-      integerValue(formData, `${prefix}selection_expires_minutes`) ??
-      DEFAULT_SELECTION_EXPIRES_MINUTES,
+    selection_expires_minutes: DEFAULT_SELECTION_EXPIRES_MINUTES,
     priority:
       integerValue(formData, `${prefix}priority`) ??
       (isLimitedDrop ? DEFAULT_DEAL_DROP_PRIORITY : null),
@@ -1624,7 +1756,7 @@ function parseDealPayload(
       isLimitedDrop &&
       checkboxValue(formData, `${prefix}reserve_on_selection`),
     metadata: jsonValue(formData, `${prefix}metadata`),
-  }
+  })
 }
 
 function normalizeDealDiscountType(type: string, discountType: string) {
@@ -1870,6 +2002,86 @@ function validateDealPayload(payload: ParsedDeal) {
   return null
 }
 
+function withDefaultDealCopy(payload: ParsedDeal): ParsedDeal {
+  const reward = describeDealReward(
+    payload.discount_type,
+    payload.discount_value,
+    payload.reward_item,
+    payload.benefit_count,
+  )
+  const dealType = humanizeIdentifier(payload.type || "deal")
+
+  return {
+    ...payload,
+    customer_description:
+      payload.customer_description ||
+      `Redeem this ${dealType} to receive ${reward}.`,
+    staff_instructions:
+      payload.staff_instructions ||
+      `Verify the app redemption screen, then apply ${reward}.`,
+    terms:
+      payload.terms ||
+      "Subject to availability. Cannot be combined with other offers unless stated.",
+  }
+}
+
+function withDefaultMilestoneCopy(payload: ParsedMilestone): ParsedMilestone {
+  const reward = describeDealReward(
+    payload.reward_type,
+    payload.discount_value,
+    payload.reward_item,
+    payload.reward_type === "bonus_stamp" ? payload.discount_value : null,
+  )
+
+  return {
+    ...payload,
+    customer_description:
+      payload.customer_description ||
+      `Reach ${payload.required_stamps ?? "the required"} stamps to receive ${reward}.`,
+    staff_instructions:
+      payload.staff_instructions ||
+      `Verify the milestone reward in the app, then apply ${reward}.`,
+    terms:
+      payload.terms ||
+      "Subject to availability. Cannot be combined with other offers unless stated.",
+  }
+}
+
+function describeDealReward(
+  discountType: string,
+  discountValue: number | null,
+  rewardItem: string | null,
+  benefitCount: number | null,
+) {
+  if (discountType === "percent") {
+    return discountValue !== null ? `${discountValue}% off` : "a percentage discount"
+  }
+
+  if (discountType === "fixed") {
+    return discountValue !== null ? `EUR ${discountValue} off` : "a fixed discount"
+  }
+
+  if (discountType === "item") {
+    return rewardItem || "a free item"
+  }
+
+  if (discountType === "bonus_stamp") {
+    const count = benefitCount ?? 1
+
+    return `+${count} bonus ${count === 1 ? "stamp" : "stamps"}`
+  }
+
+  if (discountType === "2for1") {
+    return "a 2-for-1 reward"
+  }
+
+  return "the configured reward"
+}
+
+function humanizeIdentifier(value: string) {
+  return value.replace(/_/g, " ")
+}
+
 const automaticBenefitCategories = [
   "automatic_background",
   "automatic_fallback",
@@ -1942,7 +2154,7 @@ async function validateUniqueAutomaticDealPriority(
 function parseMilestonePayload(formData: FormData): ParsedMilestone {
   const rewardType = stringValue(formData, "reward_type")
 
-  return {
+  return withDefaultMilestoneCopy({
     partner_id: stringValue(formData, "partner_id"),
     required_stamps: integerValue(formData, "required_stamps"),
     reward_type: rewardType,
@@ -1966,7 +2178,7 @@ function parseMilestonePayload(formData: FormData): ParsedMilestone {
     reward_track_target:
       stringValue(formData, "reward_track_target") ||
       DEFAULT_REWARD_TRACK_TARGET,
-  }
+  })
 }
 
 function validateMilestonePayload(payload: ParsedMilestone) {
@@ -2113,7 +2325,7 @@ function parseInitialMenuCategoryPayloads(
     })
   }
 
-  return categories
+  return normalizeSortOrdersByScope(categories, () => "menu")
 }
 
 function parseInitialMenuItemPayloads(
@@ -2154,7 +2366,10 @@ function parseInitialMenuItemPayloads(
     })
   }
 
-  return items
+  return normalizeSortOrdersByScope(
+    items,
+    (item) => item.category_id ?? "uncategorized",
+  )
 }
 
 function parseMenuPayload(
@@ -2249,7 +2464,7 @@ function validateMenuItemPayload(payload: ParsedMenuItem) {
   return null
 }
 
-async function validateUniqueMenuCategoryPosition(
+async function resolveMenuCategoryPosition(
   supabase: SupabaseClient,
   payload: ParsedMenuCategory,
   id: string,
@@ -2260,10 +2475,8 @@ async function validateUniqueMenuCategoryPosition(
 
   let query = supabase
     .from("menu_categories")
-    .select("id")
+    .select("id,sort_order")
     .eq("menu_id", payload.menu_id)
-    .eq("sort_order", payload.sort_order)
-    .limit(1)
 
   if (id) {
     query = query.neq("id", id)
@@ -2275,12 +2488,15 @@ async function validateUniqueMenuCategoryPosition(
     return result.error.message
   }
 
-  return result.data?.length
-    ? "Another menu category already uses that position."
-    : null
+  payload.sort_order = nextOpenSortOrder(
+    payload.sort_order,
+    result.data?.map((row) => row.sort_order) ?? [],
+  )
+
+  return null
 }
 
-async function validateUniqueMenuItemPosition(
+async function resolveMenuItemPosition(
   supabase: SupabaseClient,
   payload: ParsedMenuItem,
   id: string,
@@ -2291,10 +2507,8 @@ async function validateUniqueMenuItemPosition(
 
   let query = supabase
     .from("menu_items")
-    .select("id")
+    .select("id,sort_order")
     .eq("menu_id", payload.menu_id)
-    .eq("sort_order", payload.sort_order)
-    .limit(1)
 
   query = payload.category_id
     ? query.eq("category_id", payload.category_id)
@@ -2310,29 +2524,94 @@ async function validateUniqueMenuItemPosition(
     return result.error.message
   }
 
-  return result.data?.length
-    ? "Another menu item already uses that position in this category."
-    : null
+  payload.sort_order = nextOpenSortOrder(
+    payload.sort_order,
+    result.data?.map((row) => row.sort_order) ?? [],
+  )
+
+  return null
 }
 
-function findDuplicatePosition<T extends { sort_order: number | null }>(
+function normalizeSortOrdersByScope<T extends { sort_order: number | null }>(
   rows: T[],
   scopeForRow: (row: T) => string,
 ) {
-  const usedPositions = new Set<string>()
+  const usedByScope = new Map<string, Set<number>>()
 
-  for (const row of rows) {
-    if (row.sort_order === null) {
-      continue
+  return rows.map((row, index) => {
+    const scope = scopeForRow(row)
+    const used = usedByScope.get(scope) ?? new Set<number>()
+    const sortOrder = nextOpenSortOrder(row.sort_order ?? index, [
+      ...used,
+    ])
+
+    used.add(sortOrder)
+    usedByScope.set(scope, used)
+
+    return {
+      ...row,
+      sort_order: sortOrder,
     }
+  })
+}
 
-    const key = `${scopeForRow(row)}:${row.sort_order}`
+function nextOpenSortOrder(
+  requestedSortOrder: number | null,
+  usedSortOrders: Array<number | null>,
+) {
+  const used = new Set(
+    usedSortOrders.filter(
+      (sortOrder): sortOrder is number =>
+        sortOrder !== null && Number.isInteger(sortOrder),
+    ),
+  )
+  let sortOrder =
+    requestedSortOrder !== null && requestedSortOrder >= 0
+      ? requestedSortOrder
+      : 0
 
-    if (usedPositions.has(key)) {
-      return row.sort_order
+  while (used.has(sortOrder)) {
+    sortOrder += 1
+  }
+
+  return sortOrder
+}
+
+function uniqueOrderedIds(ids: string[]) {
+  return Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)))
+}
+
+async function updateSortOrderRows(
+  supabase: SupabaseClient,
+  table: "menu_categories" | "menu_items",
+  scopeColumn: "menu_id",
+  scopeId: string,
+  orderedIds: string[],
+) {
+  const temporaryBase = 1_000_000
+
+  for (let index = 0; index < orderedIds.length; index += 1) {
+    const temporaryResult = await supabase
+      .from(table)
+      .update({ sort_order: temporaryBase + index })
+      .eq("id", orderedIds[index])
+      .eq(scopeColumn, scopeId)
+
+    if (temporaryResult.error) {
+      return temporaryResult.error.message
     }
+  }
 
-    usedPositions.add(key)
+  for (let index = 0; index < orderedIds.length; index += 1) {
+    const result = await supabase
+      .from(table)
+      .update({ sort_order: index })
+      .eq("id", orderedIds[index])
+      .eq(scopeColumn, scopeId)
+
+    if (result.error) {
+      return result.error.message
+    }
   }
 
   return null
@@ -2402,6 +2681,12 @@ function integerValue(formData: FormData, key: string) {
 
   const number = Number.parseInt(value, 10)
   return Number.isFinite(number) ? number : null
+}
+
+function positiveIntegerValue(formData: FormData, key: string) {
+  const value = integerValue(formData, key)
+
+  return value !== null && value > 0 ? value : null
 }
 
 function numberValue(formData: FormData, key: string) {

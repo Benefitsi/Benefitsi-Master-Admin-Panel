@@ -22,6 +22,7 @@ export type Partner = {
   type: string | null
   status: string | null
   is_featured: boolean | null
+  stamp_target: number | null
   logo_url: string | null
   feature_card_url: string | null
   cover_urls: string[] | null
