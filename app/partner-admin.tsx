@@ -2823,14 +2823,10 @@ function DealTypeDescription({
         <div className="mt-2 space-y-2 border-l border-zinc-200 pl-3 leading-5">
           <p>Example: {explanation.example}</p>
           {explanation.important ? <p>{explanation.important}</p> : null}
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2">
             <DealExplanationList
               title="Setup"
               items={explanation.recommendedSetup}
-            />
-            <DealExplanationList
-              title="Relevant fields"
-              items={explanation.requiredFields}
             />
             <DealExplanationList title="Auto-set" items={explanation.autoSet} />
           </div>
