@@ -369,6 +369,20 @@ export async function saveDeal(
     }
   }
 
+  if (id) {
+    const preservationMessage = await preserveExistingDealCopy(
+      supabase,
+      id,
+      formData,
+      "",
+      payload,
+    )
+
+    if (preservationMessage) {
+      return { ok: false, message: preservationMessage }
+    }
+  }
+
   const validationMessage = validateDealPayload(payload)
 
   if (validationMessage) {
@@ -1667,7 +1681,7 @@ function parseDealPayload(
     discountType === "2for1" &&
     checkboxValue(formData, `${prefix}allow_free_trial`)
 
-  return withDefaultDealCopy({
+  const payload: ParsedDeal = {
     partner_id: partnerId,
     type,
     discount_type: discountType,
@@ -1756,7 +1770,132 @@ function parseDealPayload(
       isLimitedDrop &&
       checkboxValue(formData, `${prefix}reserve_on_selection`),
     metadata: jsonValue(formData, `${prefix}metadata`),
+  }
+
+  return preserveDealCopyFields(formData, prefix, payload, {
+    preserveRewardItem: usesRewardItem,
   })
+}
+
+function preserveDealCopyFields(
+  formData: FormData,
+  prefix: string,
+  payload: ParsedDeal,
+  {
+    preserveRewardItem,
+  }: {
+    preserveRewardItem: boolean
+  },
+): ParsedDeal {
+  return {
+    ...payload,
+    customer_description: savedDealCopyValue(
+      formData,
+      prefix,
+      "customer_description",
+      payload.customer_description,
+    ),
+    staff_instructions: savedDealCopyValue(
+      formData,
+      prefix,
+      "staff_instructions",
+      payload.staff_instructions,
+    ),
+    terms: savedDealCopyValue(formData, prefix, "terms", payload.terms),
+    reward_item: preserveRewardItem
+      ? savedDealCopyValue(formData, prefix, "reward_item", payload.reward_item)
+      : null,
+  }
+}
+
+function savedDealCopyValue(
+  formData: FormData,
+  prefix: string,
+  field: "customer_description" | "staff_instructions" | "terms" | "reward_item",
+  currentValue: string | null,
+) {
+  const dirtyKey = `${prefix}${field}_dirty`
+
+  if (!formData.has(dirtyKey) || stringValue(formData, dirtyKey) === "true") {
+    return currentValue
+  }
+
+  return nullableStringValue(formData, `${prefix}original_${field}`)
+}
+
+async function preserveExistingDealCopy(
+  supabase: SupabaseClient,
+  id: string,
+  formData: FormData,
+  prefix: string,
+  payload: ParsedDeal,
+) {
+  const result = await supabase
+    .from("deals")
+    .select("customer_description,staff_instructions,terms,reward_item")
+    .eq("id", id)
+    .single()
+
+  if (result.error) {
+    return result.error.message
+  }
+
+  const current = result.data as {
+    customer_description: string | null
+    staff_instructions: string | null
+    terms: string | null
+    reward_item: string | null
+  }
+
+  if (
+    !dealCopyFieldChanged(
+      formData,
+      prefix,
+      "customer_description",
+      current.customer_description,
+    )
+  ) {
+    payload.customer_description = current.customer_description
+  }
+
+  if (
+    !dealCopyFieldChanged(
+      formData,
+      prefix,
+      "staff_instructions",
+      current.staff_instructions,
+    )
+  ) {
+    payload.staff_instructions = current.staff_instructions
+  }
+
+  if (!dealCopyFieldChanged(formData, prefix, "terms", current.terms)) {
+    payload.terms = current.terms
+  }
+
+  if (
+    payload.discount_type === "item" &&
+    !dealCopyFieldChanged(formData, prefix, "reward_item", current.reward_item)
+  ) {
+    payload.reward_item = current.reward_item
+  }
+
+  return null
+}
+
+function dealCopyFieldChanged(
+  formData: FormData,
+  prefix: string,
+  field: "customer_description" | "staff_instructions" | "terms" | "reward_item",
+  existingValue: string | null,
+) {
+  const dirtyKey = `${prefix}${field}_dirty`
+
+  if (formData.has(dirtyKey) && stringValue(formData, dirtyKey) === "true") {
+    return true
+  }
+
+  return nullableStringValue(formData, `${prefix}${field}`) !== existingValue
 }
 
 function normalizeDealDiscountType(type: string, discountType: string) {
@@ -2002,29 +2141,6 @@ function validateDealPayload(payload: ParsedDeal) {
   return null
 }
 
-function withDefaultDealCopy(payload: ParsedDeal): ParsedDeal {
-  const reward = describeDealReward(
-    payload.discount_type,
-    payload.discount_value,
-    payload.reward_item,
-    payload.benefit_count,
-  )
-  const dealType = humanizeIdentifier(payload.type || "deal")
-
-  return {
-    ...payload,
-    customer_description:
-      payload.customer_description ||
-      `Redeem this ${dealType} to receive ${reward}.`,
-    staff_instructions:
-      payload.staff_instructions ||
-      `Verify the app redemption screen, then apply ${reward}.`,
-    terms:
-      payload.terms ||
-      "Subject to availability. Cannot be combined with other offers unless stated.",
-  }
-}
-
 function withDefaultMilestoneCopy(payload: ParsedMilestone): ParsedMilestone {
   const reward = describeDealReward(
     payload.reward_type,
@@ -2058,7 +2174,7 @@ function describeDealReward(
   }
 
   if (discountType === "fixed") {
-    return discountValue !== null ? `EUR ${discountValue} off` : "a fixed discount"
+    return discountValue !== null ? `€${discountValue} off` : "a fixed discount"
   }
 
   if (discountType === "item") {
@@ -2076,10 +2192,6 @@ function describeDealReward(
   }
 
   return "the configured reward"
-}
-
-function humanizeIdentifier(value: string) {
-  return value.replace(/_/g, " ")
 }
 
 const automaticBenefitCategories = [

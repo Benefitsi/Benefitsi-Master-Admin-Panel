@@ -189,7 +189,10 @@ type PartnerWorkspaceProps = {
 type InitialDealDraft = {
   id: string
   active: boolean
+  benefitCategory?: string
   dealType?: string
+  discountType?: string
+  rewardSummary?: string
   title: string
 }
 
@@ -1055,7 +1058,10 @@ function PartnerForm({
                   {
                     id,
                     active: true,
+                    benefitCategory: "direct_selectable",
                     dealType: "discount",
+                    discountType: "percent",
+                    rewardSummary: "percentage off",
                     title: defaultDealDraftTitle(),
                   },
                 ])
@@ -1161,30 +1167,27 @@ function InitialDealsEditor({
             return (
               <div
                 key={deal.id}
-                className="rounded-md border border-zinc-200 bg-white p-4"
+                className="rounded-md border border-zinc-200 bg-white p-3"
               >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 items-start gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedDealIds((current) =>
-                          toggleDraftId(current, deal.id),
-                        )
-                      }
-                      className="min-w-0 text-left"
-                      aria-expanded={expanded}
-                    >
-                      <span className="block truncate text-sm font-semibold text-zinc-800">
-                        {deal.title || defaultDealDraftTitle()}
-                      </span>
-                      <span className="mt-1 block text-xs text-zinc-500">
-                        {expanded ? "Editing details" : "Collapsed"}
-                      </span>
-                    </button>
-                    <DealHelpTooltip dealType={deal.dealType} />
-                  </div>
-                  <div className="flex flex-wrap gap-2">
+                <DealCardHeader
+                  active={deal.active}
+                  benefitCategory={
+                    deal.benefitCategory ??
+                    draftDealBenefitCategory(deal.dealType, deal.discountType)
+                  }
+                  dealType={deal.dealType || "discount"}
+                  expanded={expanded}
+                  onToggle={() =>
+                    setExpandedDealIds((current) =>
+                      toggleDraftId(current, deal.id),
+                    )
+                  }
+                  title={`Deal ${index + 1}`}
+                  rewardSummary={
+                    deal.rewardSummary || deal.title || "Reward not set"
+                  }
+                  actions={
+                    <>
                     <button
                       type="button"
                       onClick={() =>
@@ -1203,12 +1206,13 @@ function InitialDealsEditor({
                     >
                       Remove
                     </button>
-                  </div>
-                </div>
+                    </>
+                  }
+                />
                 <div
                   className={
                     expanded
-                      ? "mt-4 space-y-4 border-t border-zinc-200 pt-4"
+                      ? "mt-3 space-y-3 border-t border-zinc-200 pt-3"
                       : "hidden"
                   }
                 >
@@ -1217,6 +1221,12 @@ function InitialDealsEditor({
                     defaultActive={deal.active}
                     onDraftTypeChange={(dealType) =>
                       onUpdate(deal.id, { dealType })
+                    }
+                    onDraftActiveChange={(active) =>
+                      onUpdate(deal.id, { active })
+                    }
+                    onDraftMetaChange={(values) =>
+                      onUpdate(deal.id, values)
                     }
                     onDraftTitleChange={(title) =>
                       onUpdate(deal.id, { title })
@@ -1808,7 +1818,10 @@ function DealsPanel({ partner }: { partner: PartnerWithDeals }) {
       {
         id: crypto.randomUUID(),
         active: true,
+        benefitCategory: "direct_selectable",
         dealType: "discount",
+        discountType: "percent",
+        rewardSummary: "percentage off",
         title: defaultDealDraftTitle(),
       },
     ])
@@ -1840,13 +1853,14 @@ function DealsPanel({ partner }: { partner: PartnerWithDeals }) {
         ) : null}
         {hasDealRows ? (
           <div className="space-y-3">
-            {partner.deals.map((deal) => (
+            {partner.deals.map((deal, index) => (
               <DealCard
                 key={deal.id ?? `${deal.partner_id}-${deal.type}`}
                 autoExpanded={Boolean(
                   deal.id && autoExpandedDealIds.includes(deal.id),
                 )}
                 deal={deal}
+                index={index}
                 onAutoExpandedDismiss={() =>
                   setAutoExpandedDealIds((current) =>
                     current.filter((id) => id !== deal.id),
@@ -1855,10 +1869,11 @@ function DealsPanel({ partner }: { partner: PartnerWithDeals }) {
                 partnerId={partnerId}
               />
             ))}
-            {newDealDrafts.map((deal) => (
+            {newDealDrafts.map((deal, index) => (
               <NewDealCard
                 key={deal.id}
                 deal={deal}
+                index={partner.deals.length + index}
                 onAddAnother={addDealDraft}
                 onRemove={() =>
                   setNewDealDrafts((current) =>
@@ -1900,8 +1915,97 @@ function DealsPanel({ partner }: { partner: PartnerWithDeals }) {
   )
 }
 
+function DealCardHeader({
+  actions,
+  active,
+  benefitCategory,
+  dealType,
+  expanded,
+  onToggle,
+  rewardSummary,
+  title,
+}: {
+  actions: ReactNode
+  active: boolean
+  benefitCategory: string
+  dealType: string
+  expanded: boolean
+  onToggle: () => void
+  rewardSummary: string
+  title: string
+}) {
+  const typeLabel = labelForValue(dealTypeOptions, dealType) || "Deal"
+
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0 space-y-1.5">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="min-w-0 text-left"
+          aria-expanded={expanded}
+        >
+          <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+            {title}
+          </span>
+          <span className="mt-0.5 block truncate text-sm font-semibold text-zinc-900">
+            {typeLabel}
+          </span>
+          <span className="mt-0.5 block truncate text-xs text-zinc-500">
+            {rewardSummary}
+          </span>
+        </button>
+        <div className="flex flex-wrap gap-1.5">
+          <DealBadge>
+            {labelForValue(benefitCategoryOptions, benefitCategory) ||
+              "Benefit not set"}
+          </DealBadge>
+          <DealBadge tone={active ? "active" : "muted"}>
+            {active ? "Active" : "Inactive"}
+          </DealBadge>
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>
+    </div>
+  )
+}
+
+function DealBadge({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode
+  tone?: "neutral" | "active" | "muted"
+}) {
+  const toneClasses =
+    tone === "active"
+      ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+      : tone === "muted"
+        ? "border-zinc-200 bg-zinc-50 text-zinc-500"
+        : "border-zinc-200 bg-zinc-50 text-zinc-600"
+
+  return (
+    <span
+      className={`rounded border px-1.5 py-0.5 text-[11px] font-medium leading-4 ${toneClasses}`}
+    >
+      {children}
+    </span>
+  )
+}
+
+function draftDealBenefitCategory(
+  dealType?: string | null,
+  discountType?: string | null,
+) {
+  const type = dealType || "discount"
+  const rewardType = discountType || defaultDiscountTypeForDealType(type, "")
+
+  return inferBenefitCategory(type, rewardType)
+}
+
 function NewDealCard({
   deal,
+  index,
   onAddAnother,
   onRemove,
   onSaved,
@@ -1909,6 +2013,7 @@ function NewDealCard({
   partnerId,
 }: {
   deal: InitialDealDraft
+  index: number
   onAddAnother: () => void
   onRemove: () => void
   onSaved: () => void
@@ -1918,25 +2023,20 @@ function NewDealCard({
   const [expanded, setExpanded] = useState(true)
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-start gap-2">
-          <button
-            type="button"
-            onClick={() => setExpanded((value) => !value)}
-            className="min-w-0 text-left"
-            aria-expanded={expanded}
-          >
-            <span className="block truncate text-sm font-semibold text-zinc-800">
-              {deal.title || defaultDealDraftTitle()}
-            </span>
-            <span className="mt-1 block text-xs text-zinc-500">
-              {expanded ? "Editing details" : "Collapsed"}
-            </span>
-          </button>
-          <DealHelpTooltip dealType={deal.dealType} />
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <div className="rounded-md border border-zinc-200 bg-white p-3">
+      <DealCardHeader
+        active={deal.active}
+        benefitCategory={
+          deal.benefitCategory ??
+          draftDealBenefitCategory(deal.dealType, deal.discountType)
+        }
+        dealType={deal.dealType || "discount"}
+        expanded={expanded}
+        onToggle={() => setExpanded((value) => !value)}
+        title={`Deal ${index + 1}`}
+        rewardSummary={deal.rewardSummary || deal.title || "Reward not set"}
+        actions={
+          <>
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}
@@ -1951,12 +2051,13 @@ function NewDealCard({
           >
             Remove
           </button>
-        </div>
-      </div>
+          </>
+        }
+      />
       <div
         className={
           expanded
-            ? "mt-4 space-y-4 border-t border-zinc-200 pt-4"
+            ? "mt-3 space-y-3 border-t border-zinc-200 pt-3"
             : "hidden"
         }
       >
@@ -1975,6 +2076,8 @@ function NewDealCard({
             </button>
           }
           mode="create"
+          onDraftActiveChange={(active) => onUpdate({ active })}
+          onDraftMetaChange={onUpdate}
           onDraftTypeChange={(dealType) => onUpdate({ dealType })}
           onDraftTitleChange={(title) => onUpdate({ title })}
           onSaved={onSaved}
@@ -1988,11 +2091,13 @@ function NewDealCard({
 function DealCard({
   autoExpanded = false,
   deal,
+  index,
   onAutoExpandedDismiss,
   partnerId,
 }: {
   autoExpanded?: boolean
   deal: Deal
+  index: number
   onAutoExpandedDismiss?: () => void
   partnerId: string
 }) {
@@ -2014,25 +2119,26 @@ function DealCard({
   }
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-start gap-2">
-          <button
-            type="button"
-            onClick={toggleExpanded}
-            className="min-w-0 text-left"
-            aria-expanded={expanded}
-          >
-            <span className="block truncate text-sm font-semibold text-zinc-800">
-              {formatDealTitle(deal)}
-            </span>
-            <span className="mt-1 block text-xs text-zinc-500">
-              {expanded ? "Editing details" : "Collapsed"}
-            </span>
-          </button>
-          <DealHelpTooltip dealType={deal.type} />
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <div className="rounded-md border border-zinc-200 bg-white p-3">
+      <DealCardHeader
+        active={deal.active ?? false}
+        benefitCategory={
+          deal.benefit_category ??
+          inferBenefitCategory(
+            deal.type ?? "discount",
+            normalizeDiscountTypeForUi(
+              deal.type ?? "discount",
+              deal.discount_type,
+            ),
+          )
+        }
+        dealType={deal.type ?? "discount"}
+        expanded={expanded}
+        onToggle={toggleExpanded}
+        title={`Deal ${index + 1}`}
+        rewardSummary={formatDealRewardSummary(deal)}
+        actions={
+          <>
           <button
             type="button"
             onClick={toggleExpanded}
@@ -2049,8 +2155,9 @@ function DealCard({
               tone="outline"
             />
           ) : null}
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {soldOut ? (
         <div className="mt-4">
@@ -2061,7 +2168,7 @@ function DealCard({
       ) : null}
 
       {expanded ? (
-        <div className="mt-4 border-t border-zinc-200 pt-4">
+        <div className="mt-3 border-t border-zinc-200 pt-3">
           <DealForm deal={deal} partnerId={partnerId} mode="edit" />
         </div>
       ) : null}
@@ -2090,6 +2197,8 @@ function DealForm({
   deal,
   defaultActive,
   footerAction,
+  onDraftActiveChange,
+  onDraftMetaChange,
   onDraftTypeChange,
   onDraftTitleChange,
   onSaved,
@@ -2099,6 +2208,8 @@ function DealForm({
   deal?: Deal
   defaultActive?: boolean
   footerAction?: ReactNode
+  onDraftActiveChange?: (active: boolean) => void
+  onDraftMetaChange?: (values: Partial<InitialDealDraft>) => void
   onDraftTypeChange?: (dealType: string) => void
   onDraftTitleChange?: (title: string) => void
   onSaved?: () => void
@@ -2116,13 +2227,15 @@ function DealForm({
   }, [onSaved, router, state.ok])
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={formAction} className="space-y-4">
       <input type="hidden" name="id" value={deal?.id ?? ""} />
       <input type="hidden" name="partner_id" value={partnerId} />
 
       <DealFields
         deal={deal}
         defaultActive={defaultActive ?? deal?.active ?? true}
+        onDraftActiveChange={onDraftActiveChange}
+        onDraftMetaChange={onDraftMetaChange}
         onDraftTypeChange={onDraftTypeChange}
         onDraftTitleChange={onDraftTitleChange}
       />
@@ -2152,10 +2265,13 @@ type DealFormField =
   | "reserveOnSelection"
 
 type DealTypeExplanation = {
-  summary: string
-  recommended: string
-  required: string
+  description: string
+  shortDescription: string
+  recommendedSetup: string[]
+  requiredFields: string[]
   example: string
+  autoSet: string[]
+  important?: string
 }
 
 type DealFormConfig = {
@@ -2180,13 +2296,15 @@ const dealFieldHelp = {
   dealType:
     "The business trigger or campaign type, such as Happy Hour, Welcome reward, or Streak reward.",
   discountType:
-    "What the user receives: percentage discount, fixed EUR amount, free item, bonus stamp, or 2-for-1.",
+    "What the user receives: percentage discount, fixed € amount, free item, bonus stamp, or 2-for-1.",
   benefitCategory:
     "Controls how the benefit is applied: user-selected, automatic background, or fallback if no deal is selected.",
   audience:
     "Who can use this benefit: free users, premium users, both, or free trial only.",
   activationRequired:
     "Whether the user must select this deal before scanning. This is automatically set by benefit category.",
+  discountValue:
+    "Only used for percent or fixed discounts. Percent means %, fixed means EUR.",
   rewardItem:
     "Name of the free item or reward staff should give, for example Free drink.",
   benefitCount: "Number of bonus stamps to add. Used for bonus stamp rewards.",
@@ -2223,102 +2341,290 @@ const dealFieldHelp = {
 
 const dealExplanations: Record<string, DealTypeExplanation> = {
   two_for_one: {
-    summary:
+    shortDescription:
+      "User selects this before visiting to get two items for the price of one.",
+    description:
       "A direct selectable deal where the user gets two items for the price of one. The user must select this before the QR scan. Only one direct deal can be used per visit.",
-    recommended:
-      "Reward type: 2-for-1. Benefit category: User selects before visit. Activation required: yes.",
-    required:
-      "Audience, customer description, staff instructions, estimated savings, and optional limits or expiry.",
-    example: "Buy one doner, get one doner free.",
+    recommendedSetup: [
+      "Reward/effect type: 2-for-1",
+      "Benefit category: User selects before visit",
+      "Activation required: Yes",
+    ],
+    requiredFields: [
+      "Audience",
+      "Customer description",
+      "Staff instructions",
+      "Estimated savings",
+      "Optional expiry or limits",
+    ],
+    example: "Buy one döner, get one döner free.",
+    autoSet: [
+      "type = two_for_one",
+      "discount_type = 2for1",
+      "benefit_category = direct_selectable",
+      "activation_required = true",
+    ],
   },
   welcome: {
-    summary:
-      "A reward for a user's first visit or first qualifying interaction with a partner. It can either be a selectable direct reward or an automatic bonus stamp.",
-    recommended:
-      "Bonus stamp rewards apply automatically. Item, discount, and 2-for-1 rewards are selected before visit.",
-    required: "Reward fields depend on the selected reward type.",
+    shortDescription:
+      "First-visit reward. Can be selectable or automatic depending on reward type.",
+    description:
+      "A reward for a user’s first visit or first qualifying interaction with a partner. It can either be a selectable direct reward or an automatic bonus stamp.",
+    recommendedSetup: [
+      "If the reward is a bonus stamp: automatic background, no activation",
+      "If the reward is a free item, discount, or 2-for-1: user selects before visit",
+    ],
+    requiredFields: [
+      "Reward/effect type",
+      "Audience",
+      "Customer description",
+      "Staff instructions",
+      "Reward item, discount value, or bonus stamp count depending on reward type",
+    ],
     example: "First visit: free drink or First visit: +1 bonus stamp.",
+    autoSet: [
+      "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
+      "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
+    ],
   },
   comeback: {
-    summary:
+    shortDescription:
+      "Reward for returning within a configured time window or duration.",
+    description:
       "A reward for returning within a configured time window or after a defined duration. It can be automatic, such as +1 bonus stamp, or selectable, such as a free item.",
-    recommended:
-      "Use trigger value for the duration/window if needed, and expiry days if the reward expires.",
-    required: "Reward fields depend on the selected reward type.",
+    recommendedSetup: [
+      "If the reward is a bonus stamp: automatic background, no activation",
+      "If the reward is a free item, discount, or 2-for-1: user selects before visit",
+    ],
+    requiredFields: [
+      "Reward/effect type",
+      "Trigger value if used as the duration/window",
+      "Expiry days if the reward expires",
+      "Customer description",
+      "Staff instructions",
+    ],
     example: "Come back within 72 hours and get +1 bonus stamp.",
+    autoSet: [
+      "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
+      "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
+    ],
+    important: "Save backend type as comeback, not duration_bonus.",
   },
   happy_hour: {
-    summary:
+    shortDescription: "Available only during the configured time window.",
+    description:
       "A time-limited direct deal that is available only during a specific time window. The user selects it before the QR scan, and it is revalidated during redemption.",
-    recommended:
-      "Benefit category: User selects before visit. Activation required: yes.",
-    required: "Happy hour start, happy hour end, and reward or discount fields.",
+    recommendedSetup: [
+      "Benefit category: User selects before visit",
+      "Activation required: Yes",
+    ],
+    requiredFields: [
+      "Happy hour start",
+      "Happy hour end",
+      "Reward/effect type",
+      "Discount value or reward item depending on reward type",
+      "Customer description",
+      "Staff instructions",
+    ],
     example: "10% off between 15:00 and 18:00.",
+    autoSet: [
+      "type = happy_hour",
+      "benefit_category = direct_selectable",
+      "activation_required = true",
+    ],
   },
   permanent_discount: {
-    summary:
+    shortDescription:
+      "Applies automatically only when no direct deal is selected.",
+    description:
       "An automatic fallback discount. It applies only if the user did not select another direct deal. It does not stack with selected direct deals.",
-    recommended:
-      "Benefit category: Applies only if no selected deal. Activation required: no.",
-    required: "Percentage or fixed discount amount.",
+    recommendedSetup: [
+      "Reward/effect type: Percentage discount or Fixed € discount",
+      "Benefit category: Applies only if no selected deal",
+      "Activation required: No",
+    ],
+    requiredFields: [
+      "Discount value",
+      "Audience",
+      "Customer description",
+      "Staff instructions",
+      "Estimated savings",
+    ],
     example:
       "Premium users always get 5% off if they do not use another deal.",
+    autoSet: [
+      "type = permanent_discount",
+      "benefit_category = automatic_fallback",
+      "activation_required = false",
+    ],
+    important: "Display this as Permanent fallback discount, not just Permanent discount.",
   },
   limited_drop: {
-    summary:
+    shortDescription: "Limited by time or stock. User selects before visiting.",
+    description:
       "A limited-time or limited-stock direct deal. The user must select it before the QR scan. It can expire or sell out.",
-    recommended:
-      "Benefit category: User selects before visit. Activation required: yes.",
-    required: "Reward fields, optional stock total, stock remaining, valid window, and reserve stock setting.",
+    recommendedSetup: [
+      "Benefit category: User selects before visit",
+      "Activation required: Yes",
+    ],
+    requiredFields: [
+      "Reward/effect type",
+      "Stock total",
+      "Stock remaining",
+      "Valid from",
+      "Valid until",
+      "Customer description",
+      "Staff instructions",
+      "Estimated savings",
+    ],
     example: "Only 50 free drinks available today.",
+    autoSet: [
+      "type = limited_drop",
+      "benefit_category = direct_selectable",
+      "activation_required = true",
+    ],
   },
   birthday: {
-    summary:
+    shortDescription:
+      "Birthday reward. Can be selectable or automatic depending on reward type.",
+    description:
       "A birthday reward. It can be a selectable direct reward or an automatic bonus stamp.",
-    recommended:
-      "Bonus stamp rewards apply automatically. Item, discount, and 2-for-1 rewards are selected before visit.",
-    required: "Reward fields depend on the selected reward type.",
+    recommendedSetup: [
+      "If the reward is a bonus stamp: automatic background, no activation",
+      "If the reward is a free item, discount, or 2-for-1: user selects before visit",
+    ],
+    requiredFields: [
+      "Reward/effect type",
+      "Audience",
+      "Reward item, discount value, or bonus stamp count depending on reward type",
+      "Customer description",
+      "Staff instructions",
+    ],
     example: "Birthday week: free dessert.",
+    autoSet: [
+      "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
+      "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
+    ],
   },
   free_item: {
-    summary:
+    shortDescription:
+      "User selects this before visiting to receive a specific free item.",
+    description:
       "A direct selectable deal where the user receives a specific free item. This requires the item name, not a discount value.",
-    recommended:
-      "Reward type: Free item. Benefit category: User selects before visit. Activation required: yes.",
-    required: "Free item name.",
+    recommendedSetup: [
+      "Reward/effect type: Free item",
+      "Benefit category: User selects before visit",
+      "Activation required: Yes",
+    ],
+    requiredFields: [
+      "Free item name",
+      "Customer description",
+      "Staff instructions",
+      "Estimated savings",
+    ],
     example: "Free drink with your order.",
+    autoSet: [
+      "type = free_item",
+      "discount_type = item",
+      "benefit_category = direct_selectable",
+      "activation_required = true",
+    ],
+    important: "Hide discount value for this deal type. Require reward_item.",
   },
   discount: {
-    summary:
+    shortDescription:
+      "User selects this before visiting. Does not stack with other direct deals.",
+    description:
       "A normal discount deal that the user selects before visiting. This can be a percentage or fixed currency amount. It does not stack with other direct deals.",
-    recommended:
-      "Benefit category: User selects before visit. Activation required: yes.",
-    required: "Percentage or fixed discount amount.",
-    example: "10% off or EUR 5 off.",
+    recommendedSetup: [
+      "Reward/effect type: Percentage discount or Fixed € discount",
+      "Benefit category: User selects before visit",
+      "Activation required: Yes",
+    ],
+    requiredFields: [
+      "Discount value",
+      "Audience",
+      "Customer description",
+      "Staff instructions",
+      "Estimated savings",
+    ],
+    example: "10% off or €5 off.",
+    autoSet: [
+      "type = discount",
+      "benefit_category = direct_selectable",
+      "activation_required = true",
+    ],
+    important: "Display this as Selectable discount, not just Discount.",
   },
   bonus_stamp: {
-    summary:
+    shortDescription:
+      "Adds extra stamps automatically during scan if eligible.",
+    description:
       "An automatic background reward that adds extra stamps during redemption if eligible. Users do not select this manually.",
-    recommended:
-      "Reward type: Bonus stamp. Benefit category: Applies automatically during scan. Activation required: no.",
-    required: "Number of bonus stamps.",
+    recommendedSetup: [
+      "Reward/effect type: Bonus stamp",
+      "Benefit category: Applies automatically during scan",
+      "Activation required: No",
+    ],
+    requiredFields: [
+      "Number of bonus stamps",
+      "Audience",
+      "Customer description",
+      "Optional staff instructions",
+    ],
     example: "+1 bonus stamp today.",
+    autoSet: [
+      "type = bonus_stamp",
+      "discount_type = bonus_stamp",
+      "benefit_category = automatic_background",
+      "activation_required = false",
+    ],
+    important: "Hide discount value. Require benefit_count.",
   },
   streak: {
-    summary:
-      "A reward based on the user's streak with a partner. The reward can be a bonus stamp, free item, fixed discount, percentage discount, or 2-for-1.",
-    recommended:
-      "Bonus stamp rewards apply automatically. Other rewards are selected before visit.",
-    required: "Trigger value and reward fields.",
+    shortDescription: "Reward based on the user's streak with this partner.",
+    description:
+      "A reward based on the user’s streak with a partner. The reward can be a bonus stamp, free item, fixed discount, percentage discount, or 2-for-1.",
+    recommendedSetup: [
+      "Trigger value is required",
+      "Bonus stamp rewards apply automatically",
+      "Free item, discount, and 2-for-1 rewards are selected before visit",
+    ],
+    requiredFields: [
+      "Trigger value",
+      "Reward/effect type",
+      "Benefit count, reward item, or discount value depending on reward type",
+      "Expiry days if the earned reward expires",
+      "Customer description",
+      "Staff instructions",
+    ],
     example: "3-day streak: free drink or 5-day streak: +1 bonus stamp.",
+    autoSet: [
+      "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
+      "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
+    ],
   },
   challenge: {
-    summary:
+    shortDescription: "Reward connected to a challenge or goal.",
+    description:
       "A reward connected to a challenge or goal. Depending on the reward effect, it can be automatic or selectable.",
-    recommended:
-      "Bonus stamp rewards apply automatically. Other rewards are selected before visit.",
-    required: "Reward fields, and trigger value when used for the challenge goal.",
+    recommendedSetup: [
+      "Bonus stamp rewards apply automatically",
+      "Free item, discount, and 2-for-1 rewards are selected before visit",
+      "Trigger value can be used as the challenge target",
+    ],
+    requiredFields: [
+      "Reward/effect type",
+      "Trigger value if used as the challenge target",
+      "Benefit count, reward item, or discount value depending on reward type",
+      "Customer description",
+      "Staff instructions",
+    ],
     example: "Complete 3 visits this week and get a free drink.",
+    autoSet: [
+      "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
+      "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
+    ],
   },
 }
 
@@ -2442,7 +2748,7 @@ function discountValueLabels(discountType: string) {
       discountValueLabel: "Discount percentage",
       discountValuePlaceholder: "10",
       discountValueSuffix: "%",
-      discountValueHint: "Enter percentage off. Example: 10 = 10% off.",
+      discountValueHint: "Example: 10 = 10% off.",
     }
   }
 
@@ -2450,15 +2756,14 @@ function discountValueLabels(discountType: string) {
     return {
       discountValueLabel: "Discount amount",
       discountValuePlaceholder: "5",
-      discountValuePrefix: "EUR",
-      discountValueHint: "Enter amount in EUR. Example: 5 = EUR 5 off.",
+      discountValuePrefix: "€",
+      discountValueHint: "Example: 5 = €5 off.",
     }
   }
 
   return {
     discountValueLabel: "Discount value",
-    discountValueHint:
-      "Only used for percent or fixed discounts. Percent means %, fixed means EUR.",
+    discountValueHint: dealFieldHelp.discountValue,
   }
 }
 
@@ -2498,124 +2803,74 @@ function normalizeDiscountTypeForUi(type: string, discountType?: string | null) 
   return value === "twoforone" ? "2for1" : value
 }
 
-function DealHelpTooltip({ dealType }: { dealType?: string | null }) {
-  const type = dealType || "discount"
-  const explanation = dealTypeExplanation(type)
-  const typeLabel = labelForValue(dealTypeOptions, type) || "Deal"
-
-  return (
-    <span className="group relative inline-flex shrink-0">
-      <span
-        tabIndex={0}
-        role="button"
-        aria-label={`About ${typeLabel}`}
-        title={explanation.summary}
-        className="mt-0.5 grid size-5 place-items-center rounded-full border border-sky-200 bg-sky-50 text-xs font-bold leading-none text-sky-800 outline-none transition hover:border-sky-300 hover:bg-sky-100 focus-visible:ring-2 focus-visible:ring-sky-100"
-      >
-        ?
-      </span>
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute left-0 top-full z-30 mt-2 hidden w-80 max-w-[calc(100vw-3rem)] rounded-md border border-sky-200 bg-white p-3 text-left text-xs font-normal leading-5 text-zinc-700 shadow-lg group-focus-within:block group-hover:block"
-      >
-        <span className="block font-semibold text-zinc-950">{typeLabel}</span>
-        <span className="mt-1 block">{explanation.summary}</span>
-        <span className="mt-2 block text-zinc-500">
-          Example: {explanation.example}
-        </span>
-      </span>
-    </span>
-  )
-}
-
-function dealTypeExplanation(type?: string | null) {
-  return dealExplanations[type || "discount"] ?? dealExplanations.discount
-}
-
-function DealSummaryBox({
-  summary,
-  warnings,
+function DealTypeDescription({
+  explanation,
+  typeLabel,
 }: {
-  summary: string
-  warnings: string[]
+  explanation: DealTypeExplanation
+  typeLabel: string
 }) {
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-3 text-sm">
-      <p className="font-semibold text-zinc-900">Deal summary</p>
-      <p className="mt-1 leading-6 text-zinc-700">{summary}</p>
-      {warnings.length ? (
-        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-amber-900">
-          {warnings.map((warning) => (
-            <p key={warning}>{warning}</p>
-          ))}
+    <div className="space-y-1.5 text-xs">
+      <p className="leading-5 text-zinc-600">
+        <span className="font-semibold text-zinc-700">{typeLabel}:</span>{" "}
+        {explanation.description}
+      </p>
+      <details className="text-zinc-600">
+        <summary className="cursor-pointer list-none font-semibold text-teal-700 outline-none focus-visible:ring-2 focus-visible:ring-teal-100 [&::-webkit-details-marker]:hidden">
+          More setup details
+        </summary>
+        <div className="mt-2 space-y-2 border-l border-zinc-200 pl-3 leading-5">
+          <p>Example: {explanation.example}</p>
+          {explanation.important ? <p>{explanation.important}</p> : null}
+          <div className="grid gap-2 sm:grid-cols-3">
+            <DealExplanationList
+              title="Setup"
+              items={explanation.recommendedSetup}
+            />
+            <DealExplanationList
+              title="Relevant fields"
+              items={explanation.requiredFields}
+            />
+            <DealExplanationList title="Auto-set" items={explanation.autoSet} />
+          </div>
         </div>
-      ) : null}
+      </details>
     </div>
   )
 }
 
-function buildDealSummary({
-  type,
-  discountType,
-  benefitCategory,
-  discountValue,
-  rewardItem,
-  benefitCount,
-  happyHourStart,
-  happyHourEnd,
-  triggerValue,
-  stockRemaining,
+function DealExplanationList({
+  title,
+  items,
 }: {
-  type: string
-  discountType: string
-  benefitCategory: string
-  discountValue: string
-  rewardItem: string
-  benefitCount: string
-  happyHourStart: string
-  happyHourEnd: string
-  triggerValue: string
-  stockRemaining: string
+  title: string
+  items: string[]
 }) {
-  const reward = formatDraftRewardSummary(
-    discountType,
-    parseOptionalNumberInput(discountValue),
-    rewardItem,
-    parseOptionalNumberInput(benefitCount),
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+        {title}
+      </p>
+      <ul className="mt-1 space-y-1 text-xs leading-5 text-zinc-600">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
   )
-
-  if (type === "permanent_discount") {
-    return `Automatically applies ${reward} only if no direct deal is selected.`
-  }
-
-  if (discountType === "bonus_stamp" || type === "bonus_stamp") {
-    return `Automatically adds ${reward} during scan if eligible.`
-  }
-
-  if (type === "happy_hour") {
-    return `User selects this during Happy Hour from ${happyHourStart || "start time"} to ${happyHourEnd || "end time"}: ${reward}.`
-  }
-
-  if (type === "streak") {
-    return `Unlocked at ${triggerValue || "trigger"}-day streak: ${reward}.`
-  }
-
-  if (type === "limited_drop") {
-    return `Limited drop: ${reward}. Stock remaining: ${stockRemaining || "not set"}.`
-  }
-
-  if (benefitCategory === "automatic_fallback") {
-    return `Automatically applies ${reward} only if no direct deal is selected.`
-  }
-
-  if (benefitCategory === "automatic_background") {
-    return `Automatically applies ${reward} during scan if eligible.`
-  }
-
-  return `User selects this before visit: ${reward}. Does not stack with other direct deals.`
 }
 
-function buildDealValidationWarnings({
+type DealValidationMessages = {
+  benefitCount?: string
+  discountValue?: string
+  happyHourEnd?: string
+  happyHourStart?: string
+  rewardItem?: string
+  triggerValue?: string
+}
+
+function buildDealValidationMessages({
   type,
   discountType,
   discountValue,
@@ -2633,37 +2888,45 @@ function buildDealValidationWarnings({
   happyHourStart: string
   happyHourEnd: string
   triggerValue: string
-}) {
-  const warnings: string[] = []
+}): DealValidationMessages {
+  const messages: DealValidationMessages = {}
   const parsedDiscountValue = parseOptionalNumberInput(discountValue)
   const parsedBenefitCount = parseOptionalNumberInput(benefitCount)
   const parsedTriggerValue = parseOptionalNumberInput(triggerValue)
 
   if (discountType === "percent" && !parsedDiscountValue) {
-    warnings.push("Missing discount percentage")
+    messages.discountValue = "Enter a percentage between 1 and 100."
   }
 
   if (discountType === "fixed" && !parsedDiscountValue) {
-    warnings.push("Missing discount amount")
+    messages.discountValue = "Enter an amount greater than 0."
+  }
+
+  if (discountType === "percent" && parsedDiscountValue && parsedDiscountValue > 100) {
+    messages.discountValue = "Enter a percentage between 1 and 100."
   }
 
   if (discountType === "item" && !rewardItem.trim()) {
-    warnings.push("Missing free item name")
+    messages.rewardItem = "Enter the free item name."
   }
 
   if (discountType === "bonus_stamp" && !parsedBenefitCount) {
-    warnings.push("Bonus stamp count required")
+    messages.benefitCount = "Enter at least 1 bonus stamp."
   }
 
-  if (type === "happy_hour" && (!happyHourStart || !happyHourEnd)) {
-    warnings.push("Missing happy hour time")
+  if (type === "happy_hour" && !happyHourStart) {
+    messages.happyHourStart = "Enter a start time."
+  }
+
+  if (type === "happy_hour" && !happyHourEnd) {
+    messages.happyHourEnd = "Enter an end time."
   }
 
   if (type === "streak" && !parsedTriggerValue) {
-    warnings.push("Trigger value required for streak")
+    messages.triggerValue = "Enter a trigger value greater than 0."
   }
 
-  return warnings
+  return messages
 }
 
 function formatDraftRewardSummary(
@@ -2677,7 +2940,7 @@ function formatDraftRewardSummary(
   }
 
   if (discountType === "fixed") {
-    return discountValue !== null ? `EUR ${discountValue} off` : "fixed EUR off"
+    return discountValue !== null ? `€${discountValue} off` : "fixed € off"
   }
 
   if (discountType === "item") {
@@ -2736,6 +2999,8 @@ function DealFields({
   deal,
   prefix = "",
   defaultActive,
+  onDraftActiveChange,
+  onDraftMetaChange,
   onDraftTypeChange,
   onDraftTitleChange,
   useBrowserValidation = true,
@@ -2743,6 +3008,8 @@ function DealFields({
   deal?: Deal
   prefix?: string
   defaultActive: boolean
+  onDraftActiveChange?: (active: boolean) => void
+  onDraftMetaChange?: (values: Partial<InitialDealDraft>) => void
   onDraftTypeChange?: (dealType: string) => void
   onDraftTitleChange?: (title: string) => void
   useBrowserValidation?: boolean
@@ -2758,7 +3025,6 @@ function DealFields({
     deal?.benefit_category ??
       inferBenefitCategory(initialDealType, initialDiscountType),
   )
-  const [autoNote, setAutoNote] = useState("")
   const [dealDropStockTotal, setDealDropStockTotal] = useState(
     formatTextInputValue(deal?.stock_total),
   )
@@ -2771,13 +3037,23 @@ function DealFields({
   const [selectedAudience, setSelectedAudience] = useState(
     deal?.audience ?? DEFAULT_AUDIENCE,
   )
+  const [active, setActive] = useState(defaultActive)
   const [discountValue, setDiscountValue] = useState(
     formatTextInputValue(deal?.discount_value),
   )
   const [rewardItem, setRewardItem] = useState(deal?.reward_item ?? "")
+  const [rewardItemDirty, setRewardItemDirty] = useState(false)
   const [customerDescription, setCustomerDescription] = useState(
     deal?.customer_description ?? "",
   )
+  const [customerDescriptionDirty, setCustomerDescriptionDirty] =
+    useState(false)
+  const [staffInstructions, setStaffInstructions] = useState(
+    deal?.staff_instructions ?? "",
+  )
+  const [staffInstructionsDirty, setStaffInstructionsDirty] = useState(false)
+  const [terms, setTerms] = useState(deal?.terms ?? "")
+  const [termsDirty, setTermsDirty] = useState(false)
   const [estimatedSavings, setEstimatedSavings] = useState(
     formatTextInputValue(deal?.estimated_savings),
   )
@@ -2816,6 +3092,8 @@ function DealFields({
     discountType: selectedDiscountType,
     benefitCategory: selectedBenefitCategory,
   })
+  const selectedDealTypeLabel =
+    labelForValue(dealTypeOptions, selectedDealType) || "Deal"
   const benefitCategory = config.autoValues.benefitCategory
   const activationRequired = config.autoValues.activationRequired
   const isLimitedDrop = selectedDealType === "limited_drop"
@@ -2828,19 +3106,7 @@ function DealFields({
       parseOptionalNumberInput(dealDropStockTotal),
       parseOptionalNumberInput(dealDropStockRemaining),
     )
-  const summary = buildDealSummary({
-    type: selectedDealType,
-    discountType: selectedDiscountType,
-    benefitCategory,
-    discountValue,
-    rewardItem,
-    benefitCount,
-    happyHourStart,
-    happyHourEnd,
-    triggerValue,
-    stockRemaining: dealDropStockRemaining,
-  })
-  const warnings = buildDealValidationWarnings({
+  const validationMessages = buildDealValidationMessages({
     type: selectedDealType,
     discountType: selectedDiscountType,
     discountValue,
@@ -2850,12 +3116,20 @@ function DealFields({
     happyHourEnd,
     triggerValue,
   })
-  const requiredDealSectionsOpen = !deal
+  const hasRewardDetails =
+    config.visibleFields.has("discountValue") ||
+    config.visibleFields.has("rewardItem") ||
+    config.visibleFields.has("benefitCount") ||
+    config.visibleFields.has("estimatedSavings") ||
+    config.visibleFields.has("happyHour") ||
+    config.visibleFields.has("triggerValue") ||
+    config.visibleFields.has("expiryDays") ||
+    config.visibleFields.has("stock") ||
+    config.visibleFields.has("limitedWindow")
   const rewardDetailsRequired =
     config.requiredFields.has("discountValue") ||
     config.requiredFields.has("rewardItem") ||
-    config.requiredFields.has("benefitCount")
-  const timingRequired =
+    config.requiredFields.has("benefitCount") ||
     config.requiredFields.has("happyHour") ||
     config.requiredFields.has("triggerValue")
   const emitDraftTitle = ({
@@ -2871,6 +3145,14 @@ function DealFields({
     rewardItemText?: string
     benefitCountText?: string
   } = {}) => {
+    const nextRewardSummary = formatDraftRewardSummary(
+      discountType,
+      parseOptionalNumberInput(discountValueText),
+      rewardItemText,
+      parseOptionalNumberInput(benefitCountText),
+    )
+
+    onDraftMetaChange?.({ rewardSummary: nextRewardSummary })
     onDraftTitleChange?.(
       formatDealDisplayName({
         type,
@@ -2889,6 +3171,8 @@ function DealFields({
 
     if (!nextConfig.visibleFields.has("rewardItem")) {
       setRewardItem("")
+    } else if (!rewardItemDirty && !rewardItem && deal?.reward_item) {
+      setRewardItem(deal.reward_item)
     }
 
     if (!nextConfig.visibleFields.has("benefitCount")) {
@@ -2942,8 +3226,12 @@ function DealFields({
     setSelectedBenefitCategory(nextConfig.autoValues.benefitCategory)
     applyConfigSideEffects(nextConfig)
     onDraftTypeChange?.(value)
+    onDraftMetaChange?.({
+      benefitCategory: nextConfig.autoValues.benefitCategory,
+      dealType: value,
+      discountType: nextDiscountType,
+    })
     emitDraftTitle({ type: value, discountType: nextDiscountType })
-    setAutoNote("Adjusted automatically based on deal type.")
   }
 
   const handleDiscountTypeChange = (value: string) => {
@@ -2960,12 +3248,15 @@ function DealFields({
     setSelectedDiscountType(nextDiscountType)
     setSelectedBenefitCategory(nextConfig.autoValues.benefitCategory)
     applyConfigSideEffects(nextConfig)
+    onDraftMetaChange?.({
+      benefitCategory: nextConfig.autoValues.benefitCategory,
+      discountType: nextDiscountType,
+    })
     emitDraftTitle({ discountType: nextDiscountType })
-    setAutoNote("Adjusted automatically based on reward type.")
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <input
         type="hidden"
         name={`${prefix}metadata`}
@@ -2986,23 +3277,66 @@ function DealFields({
         name={`${prefix}priority`}
         value={deal?.priority ?? ""}
       />
+      {deal?.id ? (
+        <>
+          <input
+            type="hidden"
+            name={`${prefix}original_customer_description`}
+            value={deal.customer_description ?? ""}
+          />
+          <input
+            type="hidden"
+            name={`${prefix}original_staff_instructions`}
+            value={deal.staff_instructions ?? ""}
+          />
+          <input
+            type="hidden"
+            name={`${prefix}original_terms`}
+            value={deal.terms ?? ""}
+          />
+          <input
+            type="hidden"
+            name={`${prefix}original_reward_item`}
+            value={deal.reward_item ?? ""}
+          />
+          <input
+            type="hidden"
+            name={`${prefix}customer_description_dirty`}
+            value={customerDescriptionDirty ? "true" : "false"}
+          />
+          <input
+            type="hidden"
+            name={`${prefix}staff_instructions_dirty`}
+            value={staffInstructionsDirty ? "true" : "false"}
+          />
+          <input
+            type="hidden"
+            name={`${prefix}terms_dirty`}
+            value={termsDirty ? "true" : "false"}
+          />
+          <input
+            type="hidden"
+            name={`${prefix}reward_item_dirty`}
+            value={rewardItemDirty ? "true" : "false"}
+          />
+        </>
+      ) : null}
       <FormSection
-        title="Deal basics"
-        defaultOpen={requiredDealSectionsOpen}
-        required
+        title="Basics"
+        compact
+        required="subtle"
       >
-        <FieldGrid>
+        <FieldGrid compact>
           <SelectField
             label="Deal type"
             name={`${prefix}type`}
             value={selectedDealType}
             options={withCurrentOption(dealTypeOptions, deal?.type)}
             onChange={handleDealTypeChange}
-            hint={dealFieldHelp.dealType}
             required={useBrowserValidation}
           />
           <SelectField
-            label="Discount / reward type"
+            label="Reward/effect type"
             name={`${prefix}discount_type`}
             value={selectedDiscountType}
             options={withCurrentOption(
@@ -3010,7 +3344,6 @@ function DealFields({
               normalizeDiscountTypeForUi(selectedDealType, deal?.discount_type),
             )}
             onChange={handleDiscountTypeChange}
-            hint={dealFieldHelp.discountType}
             required={useBrowserValidation}
           />
           <SelectField
@@ -3019,59 +3352,46 @@ function DealFields({
             value={selectedAudience}
             options={withCurrentOption(audienceOptions, deal?.audience)}
             onChange={setSelectedAudience}
-            hint={dealFieldHelp.audience}
             required
           />
           <CheckboxField
             label="Active"
             name={`${prefix}active`}
-            defaultChecked={defaultActive}
+            checked={active}
+            onChange={(checked) => {
+              setActive(checked)
+              onDraftActiveChange?.(checked)
+            }}
           />
         </FieldGrid>
-      </FormSection>
-
-      <div className="space-y-4 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm">
-        {autoNote ? <InfoNote>{autoNote}</InfoNote> : null}
+        <DealTypeDescription
+          explanation={config.explanation}
+          typeLabel={selectedDealTypeLabel}
+        />
         {dealDropSoldOut ? (
           <WarningNote>
             This Deal Drop is sold out and users cannot redeem it.
           </WarningNote>
         ) : null}
-        <FieldGrid>
-          <ReadOnlyField
-            label="Benefit category"
-            value={labelForValue(benefitCategoryOptions, benefitCategory)}
-            hint={dealFieldHelp.benefitCategory}
-          />
-          <ReadOnlyStatusField
-            label="Activation required"
-            value={activationRequired ? "Yes" : "No"}
-            hint={dealFieldHelp.activationRequired}
-          />
-          <input
-            type="hidden"
-            name={`${prefix}benefit_category`}
-            value={benefitCategory}
-          />
-          <input
-            type="hidden"
-            name={`${prefix}activation_required`}
-            value={activationRequired ? "true" : "false"}
-          />
-        </FieldGrid>
-        <DealSummaryBox summary={summary} warnings={warnings} />
-      </div>
+        <input
+          type="hidden"
+          name={`${prefix}benefit_category`}
+          value={benefitCategory}
+        />
+        <input
+          type="hidden"
+          name={`${prefix}activation_required`}
+          value={activationRequired ? "true" : "false"}
+        />
+      </FormSection>
 
-      {config.visibleFields.has("discountValue") ||
-      config.visibleFields.has("rewardItem") ||
-      config.visibleFields.has("benefitCount") ||
-      config.visibleFields.has("estimatedSavings") ? (
+      {hasRewardDetails ? (
         <FormSection
           title="Reward details"
-          defaultOpen={requiredDealSectionsOpen && rewardDetailsRequired}
-          required={rewardDetailsRequired}
+          compact
+          required={rewardDetailsRequired ? "subtle" : undefined}
         >
-          <FieldGrid>
+          <FieldGrid compact>
             {config.visibleFields.has("discountValue") ? (
               <TextField
                 label={config.valueLabels.discountValueLabel}
@@ -3093,6 +3413,7 @@ function DealFields({
                   useBrowserValidation &&
                   config.requiredFields.has("discountValue")
                 }
+                warning={validationMessages.discountValue}
               />
             ) : null}
             {config.visibleFields.has("rewardItem") ? (
@@ -3102,14 +3423,16 @@ function DealFields({
                 placeholder="Free drink"
                 value={rewardItem}
                 onChange={(value) => {
+                  setRewardItemDirty(true)
                   setRewardItem(value)
                   emitDraftTitle({ rewardItemText: value })
                 }}
-                hint={dealFieldHelp.rewardItem}
+                hint="Example: Free drink."
                 required={
                   useBrowserValidation &&
                   config.requiredFields.has("rewardItem")
                 }
+                warning={validationMessages.rewardItem}
               />
             ) : null}
             {config.visibleFields.has("benefitCount") ? (
@@ -3124,41 +3447,26 @@ function DealFields({
                   setBenefitCount(value)
                   emitDraftTitle({ benefitCountText: value })
                 }}
-                hint={dealFieldHelp.benefitCount}
+                hint="Example: 1 adds one extra stamp."
                 required={
                   useBrowserValidation &&
                   config.requiredFields.has("benefitCount")
                 }
+                warning={validationMessages.benefitCount}
               />
             ) : null}
             {config.visibleFields.has("estimatedSavings") ? (
               <TextField
-                label="Estimated savings (EUR)"
+                label="Estimated savings (€)"
                 name={`${prefix}estimated_savings`}
                 type="number"
                 step="any"
                 min={0}
                 value={estimatedSavings}
                 onChange={setEstimatedSavings}
-                hint={dealFieldHelp.estimatedSavings}
+                hint="Used for savings stats and animations."
               />
             ) : null}
-          </FieldGrid>
-        </FormSection>
-      ) : null}
-
-      {config.visibleFields.has("happyHour") ||
-      config.visibleFields.has("triggerValue") ||
-      config.visibleFields.has("expiryDays") ||
-      config.visibleFields.has("stock") ||
-      config.visibleFields.has("limitedWindow") ||
-      config.visibleFields.has("reserveOnSelection") ? (
-        <FormSection
-          title="Timing and limits"
-          defaultOpen={requiredDealSectionsOpen && timingRequired}
-          required={timingRequired}
-        >
-          <FieldGrid>
             {config.visibleFields.has("happyHour") ? (
               <>
                 <TextField
@@ -3167,11 +3475,12 @@ function DealFields({
                   type="time"
                   value={happyHourStart}
                   onChange={setHappyHourStart}
-                  hint={dealFieldHelp.happyHour}
+                  hint="Daily start time."
                   required={
                     useBrowserValidation &&
                     config.requiredFields.has("happyHour")
                   }
+                  warning={validationMessages.happyHourStart}
                 />
                 <TextField
                   label="Happy hour end"
@@ -3179,11 +3488,12 @@ function DealFields({
                   type="time"
                   value={happyHourEnd}
                   onChange={setHappyHourEnd}
-                  hint={dealFieldHelp.happyHour}
+                  hint="Daily end time."
                   required={
                     useBrowserValidation &&
                     config.requiredFields.has("happyHour")
                   }
+                  warning={validationMessages.happyHourEnd}
                 />
               </>
             ) : null}
@@ -3195,11 +3505,12 @@ function DealFields({
                 min={1}
                 value={triggerValue}
                 onChange={setTriggerValue}
-                hint={dealFieldHelp.triggerValue}
+                hint="Example: 3 for a 3-day streak."
                 required={
                   useBrowserValidation &&
                   config.requiredFields.has("triggerValue")
                 }
+                warning={validationMessages.triggerValue}
               />
             ) : null}
             {config.visibleFields.has("expiryDays") ? (
@@ -3210,7 +3521,7 @@ function DealFields({
                 min={0}
                 value={expiryDays}
                 onChange={setExpiryDays}
-                hint={dealFieldHelp.expiryDays}
+                hint="Optional expiry after reward is earned."
               />
             ) : null}
             {config.visibleFields.has("limitedWindow") ? (
@@ -3247,7 +3558,7 @@ function DealFields({
                       setDealDropStockRemaining(value)
                     }
                   }}
-                  hint={dealFieldHelp.stockTotal}
+                  hint="Optional total stock."
                 />
                 <TextField
                   label="Stock remaining"
@@ -3259,17 +3570,9 @@ function DealFields({
                     setStockRemainingEdited(true)
                     setDealDropStockRemaining(value)
                   }}
-                  hint={dealFieldHelp.stockRemaining}
+                  hint="Remaining redemptions."
                 />
               </>
-            ) : null}
-            {config.visibleFields.has("reserveOnSelection") ? (
-              <CheckboxField
-                label="Reserve stock on selection"
-                name={`${prefix}reserve_on_selection`}
-                defaultChecked={deal?.reserve_on_selection ?? false}
-                hint={dealFieldHelp.reserveOnSelection}
-              />
             ) : null}
             {showsAllowFreeTrial ? (
               <CheckboxField
@@ -3284,30 +3587,40 @@ function DealFields({
         </FormSection>
       ) : null}
 
-      <FormSection title="Copy shown to users/staff" defaultOpen={false}>
-        <InfoNote>
-          If customer description, staff instructions, or terms are left blank,
-          a generic version will be entered automatically.
-        </InfoNote>
-        <FieldGrid>
+      <FormSection
+        title="Saved copy shown to users/staff"
+        compact
+      >
+        <p className="text-xs leading-5 text-zinc-500">
+          Only the fields in this section are saved as user and staff copy.
+        </p>
+        <FieldGrid compact>
           <TextAreaField
             label="Customer description"
             name={`${prefix}customer_description`}
             value={customerDescription}
-            onChange={setCustomerDescription}
-            hint={dealFieldHelp.customerDescription}
+            onChange={(value) => {
+              setCustomerDescriptionDirty(true)
+              setCustomerDescription(value)
+            }}
           />
           <TextAreaField
             label="Staff instructions"
             name={`${prefix}staff_instructions`}
-            defaultValue={deal?.staff_instructions}
-            hint={dealFieldHelp.staffInstructions}
+            value={staffInstructions}
+            onChange={(value) => {
+              setStaffInstructionsDirty(true)
+              setStaffInstructions(value)
+            }}
           />
           <TextAreaField
             label="Terms"
             name={`${prefix}terms`}
-            defaultValue={deal?.terms}
-            hint={dealFieldHelp.terms}
+            value={terms}
+            onChange={(value) => {
+              setTermsDirty(true)
+              setTerms(value)
+            }}
           />
         </FieldGrid>
       </FormSection>
@@ -3334,7 +3647,7 @@ function DealFields({
       ) : null}
 
       <AdvancedSettingsSection>
-        <FieldGrid>
+        <FieldGrid compact>
           {!isLimitedDrop ? (
             <>
               <TextField
@@ -3423,6 +3736,14 @@ function DealFields({
               hint={dealFieldHelp.weekdays}
             />
           )}
+          {config.visibleFields.has("reserveOnSelection") ? (
+            <CheckboxField
+              label="Reserve stock on selection"
+              name={`${prefix}reserve_on_selection`}
+              defaultChecked={deal?.reserve_on_selection ?? false}
+              hint={dealFieldHelp.reserveOnSelection}
+            />
+          ) : null}
         </FieldGrid>
       </AdvancedSettingsSection>
     </div>
@@ -3465,7 +3786,7 @@ function DealDropPreviewCard({
   const accessLabel = formatPreviewAccessLabel(audience, trialEligible)
 
   return (
-    <FormSection title="Live Preview" defaultOpen={false}>
+    <FormSection title="Live preview" defaultOpen={false} compact>
       <div className="max-w-md rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
         {soldOut ? (
           <div className="mb-3">
@@ -5684,12 +6005,14 @@ function DeletePartnerStaffForm({ staffId }: { staffId: string }) {
 function FormSection({
   title,
   children,
+  compact = false,
   defaultOpen = true,
   required,
   status,
 }: {
   title: string
   children: ReactNode
+  compact?: boolean
   defaultOpen?: boolean
   required?: boolean | "subtle"
   status?: SectionStatus
@@ -5703,12 +6026,14 @@ function FormSection({
 
   return (
     <details
-      className="rounded-md border border-zinc-200 bg-white p-3 text-sm"
+      className={`rounded-md border border-zinc-200 bg-white text-sm ${
+        compact ? "p-2.5" : "p-3"
+      }`}
       open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
-      <summary className="min-h-8 cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 outline-none transition hover:text-zinc-700 focus-visible:ring-2 focus-visible:ring-teal-100 [&::-webkit-details-marker]:hidden">
-        <span className="flex min-h-8 items-center gap-2">
+      <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 outline-none transition hover:text-zinc-700 focus-visible:ring-2 focus-visible:ring-teal-100 [&::-webkit-details-marker]:hidden">
+        <span className={`flex items-center gap-2 ${compact ? "min-h-7" : "min-h-8"}`}>
           <span>{title}</span>
           {sectionStatus ? <SectionStatusBadge status={sectionStatus} /> : null}
           <span className="ml-auto text-xs font-semibold normal-case tracking-normal text-zinc-500">
@@ -5716,7 +6041,11 @@ function FormSection({
           </span>
         </span>
       </summary>
-      <div className="mt-4 space-y-4 border-t border-zinc-100 pt-4">
+      <div
+        className={`border-t border-zinc-100 ${
+          compact ? "mt-3 space-y-3 pt-3" : "mt-4 space-y-4 pt-4"
+        }`}
+      >
         {children}
       </div>
     </details>
@@ -5753,9 +6082,19 @@ function SectionStatusBadge({ status }: { status: SectionStatus }) {
   )
 }
 
-function FieldGrid({ children }: { children: ReactNode }) {
+function FieldGrid({
+  children,
+  compact = false,
+}: {
+  children: ReactNode
+  compact?: boolean
+}) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+    <div
+      className={`grid md:grid-cols-2 2xl:grid-cols-3 ${
+        compact ? "gap-3" : "gap-4"
+      }`}
+    >
       {children}
     </div>
   )
@@ -5775,6 +6114,7 @@ type TextFieldProps = {
   suffixText?: string
   value?: string | number
   defaultValue?: string | number | null
+  warning?: string
   onChange?: (value: string) => void
 }
 
@@ -5792,6 +6132,7 @@ function TextField({
   suffixText,
   value,
   defaultValue,
+  warning,
   onChange,
 }: TextFieldProps) {
   return (
@@ -5827,6 +6168,11 @@ function TextField({
         ) : null}
       </div>
       {hint ? <span className="block text-xs text-zinc-500">{hint}</span> : null}
+      {warning ? (
+        <span className="block text-xs font-medium text-amber-700">
+          {warning}
+        </span>
+      ) : null}
     </label>
   )
 }
@@ -6046,7 +6392,7 @@ function WeekdayChipField({
 
 function AdvancedSettingsSection({ children }: { children: ReactNode }) {
   return (
-    <FormSection title="Advanced Settings" defaultOpen={false}>
+    <FormSection title="Advanced settings" defaultOpen={false} compact>
       <p className="text-sm leading-6 text-zinc-600">
         Optional advanced configuration for developers and experimental features.
       </p>
@@ -6689,28 +7035,6 @@ function ReadOnlyField({
   )
 }
 
-function ReadOnlyStatusField({
-  label,
-  value,
-  hint,
-}: {
-  label: string
-  value: string
-  hint?: string
-}) {
-  return (
-    <div className="flex min-h-10 items-start justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
-      <span>
-        <span className="block font-medium text-zinc-700">{label}</span>
-        {hint ? <span className="block text-xs text-zinc-500">{hint}</span> : null}
-      </span>
-      <span className="rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700">
-        {value}
-      </span>
-    </div>
-  )
-}
-
 function TextAreaField({
   label,
   name,
@@ -7094,95 +7418,13 @@ type ComebackCandidate = {
 
 const millisecondsPerDay = 24 * 60 * 60 * 1000
 
-function formatDealTitle(deal: Deal) {
-  const type = deal.type ?? ""
-  const typeLabel =
-    type === "comeback"
-      ? formatDurationBonusDealName(deal)
-      : labelForValue(dealTypeOptions, type) || "Untitled deal"
-
-  return formatDealDisplayName({
-    type,
-    typeLabel,
-    discountType: deal.discount_type ?? "none",
-    discountValue: deal.discount_value,
-    rewardItem: deal.reward_item ?? "",
-    benefitCount: deal.benefit_count,
-  })
-}
-
-function formatDurationBonusDealName(deal: Deal) {
-  const durationHours = getDurationBonusWindowHours(deal)
-
-  if (durationHours === null) {
-    return "Duration / Comeback bonus"
-  }
-
-  return `${formatBonusWindowDuration(durationHours)}-Bonus`
-}
-
-function getDurationBonusWindowHours(deal: Deal) {
-  if (
-    deal.selection_expires_minutes &&
-    deal.selection_expires_minutes !== DEFAULT_SELECTION_EXPIRES_MINUTES
-  ) {
-    return deal.selection_expires_minutes / 60
-  }
-
-  if (deal.expiry_days && deal.expiry_days > 0) {
-    return deal.expiry_days * 24
-  }
-
-  const validWindowHours = hoursBetweenDates(deal.valid_from, deal.valid_until)
-
-  if (validWindowHours !== null) {
-    return validWindowHours
-  }
-
-  const activeWindowHours = hoursBetweenDates(deal.starts_at, deal.ends_at)
-
-  if (activeWindowHours !== null) {
-    return activeWindowHours
-  }
-
-  if (deal.selection_expires_minutes && deal.selection_expires_minutes > 0) {
-    return deal.selection_expires_minutes / 60
-  }
-
-  return null
-}
-
-function hoursBetweenDates(start?: string | null, end?: string | null) {
-  if (!start || !end) {
-    return null
-  }
-
-  const startTime = new Date(start).getTime()
-  const endTime = new Date(end).getTime()
-
-  if (
-    Number.isNaN(startTime) ||
-    Number.isNaN(endTime) ||
-    endTime <= startTime
-  ) {
-    return null
-  }
-
-  return (endTime - startTime) / (60 * 60 * 1000)
-}
-
-function formatBonusWindowDuration(hours: number) {
-  const minutes = Math.max(1, Math.round(hours * 60))
-
-  if (minutes < 60) {
-    return `${minutes}m`
-  }
-
-  if (minutes % 60 === 0) {
-    return `${minutes / 60}h`
-  }
-
-  return `${Math.round((minutes / 60) * 10) / 10}h`
+function formatDealRewardSummary(deal: Deal) {
+  return formatDraftRewardSummary(
+    normalizeDiscountTypeForUi(deal.type ?? "discount", deal.discount_type),
+    deal.discount_value ?? null,
+    deal.reward_item ?? "",
+    deal.benefit_count ?? null,
+  )
 }
 
 function buildComebackCandidates(visits: Visit[]): ComebackCandidate[] {
@@ -7400,7 +7642,7 @@ function formatDealDropRewardTitle(
 
   if (discountType === "fixed") {
     return discountValue !== null
-      ? `EUR ${discountValue} off`
+      ? `€${discountValue} off`
       : "Fixed discount"
   }
 

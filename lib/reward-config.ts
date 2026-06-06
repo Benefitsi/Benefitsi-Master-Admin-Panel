@@ -15,7 +15,7 @@ export const dealTypeOptions = [
 
 export const discountTypeOptions = [
   { value: "none", label: "No direct reward" },
-  { value: "fixed", label: "Fixed EUR discount" },
+  { value: "fixed", label: "Fixed € discount" },
   { value: "percent", label: "Percentage discount" },
   { value: "item", label: "Free item" },
   { value: "bonus_stamp", label: "Bonus stamp" },
@@ -24,7 +24,7 @@ export const discountTypeOptions = [
 
 export const dealDropDiscountTypeOptions = [
   { value: "item", label: "Free item" },
-  { value: "fixed", label: "Fixed EUR discount" },
+  { value: "fixed", label: "Fixed € discount" },
   { value: "percent", label: "Percentage discount" },
   { value: "2for1", label: "2-for-1" },
 ] as const
