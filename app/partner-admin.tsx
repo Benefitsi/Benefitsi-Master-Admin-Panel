@@ -128,6 +128,31 @@ const openingWeekdayOptions = [
   { value: "7", label: "Sunday" },
 ] as const
 
+const DURATION_BONUS_DEAL = "duration_bonus"
+const COMEBACK_INACTIVE_DEAL = "comeback_inactive"
+const COMEBACK_INACTIVE_MODE = "comeback_inactive"
+
+const dealUiTypeOptions = dealTypeOptions.flatMap((option) =>
+  option.value === "comeback"
+    ? [
+        { value: DURATION_BONUS_DEAL, label: "Duration Bonus" },
+        { value: COMEBACK_INACTIVE_DEAL, label: "Comeback Deal" },
+      ]
+    : [option],
+)
+
+const durationUnitOptions = [
+  { value: "hours", label: "Hours" },
+  { value: "days", label: "Days" },
+  { value: "weeks", label: "Weeks" },
+] as const
+
+const inactivityUnitOptions = [
+  { value: "days", label: "Days" },
+  { value: "weeks", label: "Weeks" },
+  { value: "months", label: "Months" },
+] as const
+
 const menuStatusOptions = [
   { value: "draft", label: "Draft" },
   { value: "review", label: "Needs review" },
@@ -554,7 +579,6 @@ function PartnerDetail({
       <MenuPanel partner={partner} />
       <StampProgressPanel progress={partner.stamp_progress} />
       <RedemptionHistoryPanel partner={partner} visits={partner.visits} />
-      <ComebackDealsPanel visits={partner.visits} />
       <FraudAuditPanel
         defaultPartnerId={partner.id ?? ""}
         events={auditEvents}
@@ -1176,6 +1200,11 @@ function InitialDealsEditor({
                     draftDealBenefitCategory(deal.dealType, deal.discountType)
                   }
                   dealType={deal.dealType || "discount"}
+                  typeLabel={
+                    deal.dealType === "challenge" && deal.title
+                      ? deal.title
+                      : undefined
+                  }
                   expanded={expanded}
                   onToggle={() =>
                     setExpandedDealIds((current) =>
@@ -1867,6 +1896,7 @@ function DealsPanel({ partner }: { partner: PartnerWithDeals }) {
                   )
                 }
                 partnerId={partnerId}
+                visits={partner.visits}
               />
             ))}
             {newDealDrafts.map((deal, index) => (
@@ -1893,6 +1923,7 @@ function DealsPanel({ partner }: { partner: PartnerWithDeals }) {
                   )
                 }
                 partnerId={partnerId}
+                visits={partner.visits}
               />
             ))}
           </div>
@@ -1924,6 +1955,7 @@ function DealCardHeader({
   onToggle,
   rewardSummary,
   title,
+  typeLabel,
 }: {
   actions: ReactNode
   active: boolean
@@ -1933,8 +1965,10 @@ function DealCardHeader({
   onToggle: () => void
   rewardSummary: string
   title: string
+  typeLabel?: string
 }) {
-  const typeLabel = labelForValue(dealTypeOptions, dealType) || "Deal"
+  const displayTypeLabel =
+    typeLabel || labelForValue(dealUiTypeOptions, dealType) || "Deal"
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -1949,7 +1983,7 @@ function DealCardHeader({
             {title}
           </span>
           <span className="mt-0.5 block truncate text-sm font-semibold text-zinc-900">
-            {typeLabel}
+            {displayTypeLabel}
           </span>
           <span className="mt-0.5 block truncate text-xs text-zinc-500">
             {rewardSummary}
@@ -1997,7 +2031,7 @@ function draftDealBenefitCategory(
   dealType?: string | null,
   discountType?: string | null,
 ) {
-  const type = dealType || "discount"
+  const type = backendDealTypeForUi(dealType || "discount")
   const rewardType = discountType || defaultDiscountTypeForDealType(type, "")
 
   return inferBenefitCategory(type, rewardType)
@@ -2011,6 +2045,7 @@ function NewDealCard({
   onSaved,
   onUpdate,
   partnerId,
+  visits,
 }: {
   deal: InitialDealDraft
   index: number
@@ -2019,6 +2054,7 @@ function NewDealCard({
   onSaved: () => void
   onUpdate: (values: Partial<InitialDealDraft>) => void
   partnerId: string
+  visits: Visit[]
 }) {
   const [expanded, setExpanded] = useState(true)
 
@@ -2031,6 +2067,9 @@ function NewDealCard({
           draftDealBenefitCategory(deal.dealType, deal.discountType)
         }
         dealType={deal.dealType || "discount"}
+        typeLabel={
+          deal.dealType === "challenge" && deal.title ? deal.title : undefined
+        }
         expanded={expanded}
         onToggle={() => setExpanded((value) => !value)}
         title={`Deal ${index + 1}`}
@@ -2082,6 +2121,7 @@ function NewDealCard({
           onDraftTitleChange={(title) => onUpdate({ title })}
           onSaved={onSaved}
           partnerId={partnerId}
+          visits={visits}
         />
       </div>
     </div>
@@ -2094,12 +2134,14 @@ function DealCard({
   index,
   onAutoExpandedDismiss,
   partnerId,
+  visits,
 }: {
   autoExpanded?: boolean
   deal: Deal
   index: number
   onAutoExpandedDismiss?: () => void
   partnerId: string
+  visits: Visit[]
 }) {
   const [manuallyExpanded, setManuallyExpanded] = useState(false)
   const expanded = manuallyExpanded || autoExpanded
@@ -2132,7 +2174,8 @@ function DealCard({
             ),
           )
         }
-        dealType={deal.type ?? "discount"}
+        dealType={dealUiTypeForDeal(deal)}
+        typeLabel={dealCardTypeLabel(deal)}
         expanded={expanded}
         onToggle={toggleExpanded}
         title={`Deal ${index + 1}`}
@@ -2169,7 +2212,12 @@ function DealCard({
 
       {expanded ? (
         <div className="mt-3 border-t border-zinc-200 pt-3">
-          <DealForm deal={deal} partnerId={partnerId} mode="edit" />
+          <DealForm
+            deal={deal}
+            partnerId={partnerId}
+            mode="edit"
+            visits={visits}
+          />
         </div>
       ) : null}
     </div>
@@ -2204,6 +2252,7 @@ function DealForm({
   onSaved,
   partnerId,
   mode,
+  visits = [],
 }: {
   deal?: Deal
   defaultActive?: boolean
@@ -2215,6 +2264,7 @@ function DealForm({
   onSaved?: () => void
   partnerId: string
   mode: "create" | "edit"
+  visits?: Visit[]
 }) {
   const [state, formAction] = useActionState(saveDeal, initialState)
   const router = useRouter()
@@ -2238,6 +2288,7 @@ function DealForm({
         onDraftMetaChange={onDraftMetaChange}
         onDraftTypeChange={onDraftTypeChange}
         onDraftTitleChange={onDraftTitleChange}
+        visits={visits}
       />
 
       <ActionMessage state={state} />
@@ -2253,11 +2304,15 @@ function DealForm({
 }
 
 type DealFormField =
+  | "challengeName"
   | "discountValue"
   | "rewardItem"
   | "benefitCount"
   | "estimatedSavings"
   | "happyHour"
+  | "happyHourWeekdays"
+  | "durationConfig"
+  | "comebackCandidates"
   | "triggerValue"
   | "expiryDays"
   | "stock"
@@ -2312,13 +2367,21 @@ const dealFieldHelp = {
     "Approximate money value used for user savings stats and post-scan animation.",
   expiryDays: "How many days an earned reward remains valid.",
   triggerValue:
-    "The condition threshold, such as streak days, comeback window, or challenge target.",
+    "The condition threshold, such as streak days or challenge target.",
+  challengeName:
+    "Internal challenge name used to distinguish multiple challenge rewards.",
+  durationValue:
+    "Reward users who return within this configured duration.",
+  inactivityValue:
+    "Reward inactive users who have not returned for this configured time period.",
   stockTotal: "Total available stock for a limited deal drop.",
   stockRemaining: "How many redemptions are still available.",
   reserveOnSelection:
     "If enabled, stock is temporarily reserved when the user selects the deal.",
   validWindow: "Date/time range when this deal can be used.",
-  happyHour: "Daily time window when the happy hour deal is available.",
+  happyHour: "Daily time window when the Happy Hour deal is available.",
+  happyHourWeekdays:
+    "Choose the days when this Happy Hour is available. If no days are selected, this Happy Hour applies every day.",
   cooldownHours:
     "Minimum time before the same user can use this deal again.",
   maxRedemptionsGlobal:
@@ -2389,26 +2452,53 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   comeback: {
     shortDescription:
-      "Reward for returning within a configured time window or duration.",
+      "Reward for returning within a configured duration.",
     description:
-      "A reward for returning within a configured time window or after a defined duration. It can be automatic, such as +1 bonus stamp, or selectable, such as a free item.",
+      "Reward users who return within a configured duration. It can be automatic, such as +1 bonus stamp, or selectable, such as a free item.",
     recommendedSetup: [
       "If the reward is a bonus stamp: automatic background, no activation",
       "If the reward is a free item, discount, or 2-for-1: user selects before visit",
     ],
     requiredFields: [
       "Reward/effect type",
-      "Trigger value if used as the duration/window",
+      "Duration value and unit",
       "Expiry days if the reward expires",
       "Customer description",
       "Staff instructions",
     ],
     example: "Come back within 72 hours and get +1 bonus stamp.",
     autoSet: [
+      "metadata.bonus_mode = duration_bonus",
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
     ],
     important: "Save backend type as comeback, not duration_bonus.",
+  },
+  comeback_inactive: {
+    shortDescription:
+      "Reward inactive users who have not returned for a configured time period.",
+    description:
+      "Reward inactive users who have not returned for a configured time period. Useful for reactivation campaigns.",
+    recommendedSetup: [
+      "Configure inactivity and optional visit-count filters",
+      "Use the candidate preview to confirm matching users",
+      "Bonus stamp rewards apply automatically; item, discount, and 2-for-1 rewards are selectable",
+    ],
+    requiredFields: [
+      "Inactivity period value and unit",
+      "Reward/effect type",
+      "Candidate filters if needed",
+      "Customer description",
+      "Staff instructions",
+    ],
+    example: "Users inactive for 3 weeks get a free drink.",
+    autoSet: [
+      "type = comeback",
+      "metadata.bonus_mode = comeback_inactive",
+      "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
+      "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
+    ],
+    important: "Saved with backend type comeback and metadata.bonus_mode = comeback_inactive.",
   },
   happy_hour: {
     shortDescription: "Available only during the configured time window.",
@@ -2609,11 +2699,13 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
     description:
       "A reward connected to a challenge or goal. Depending on the reward effect, it can be automatic or selectable.",
     recommendedSetup: [
+      "Challenge name identifies this challenge internally",
       "Bonus stamp rewards apply automatically",
       "Free item, discount, and 2-for-1 rewards are selected before visit",
       "Trigger value can be used as the challenge target",
     ],
     requiredFields: [
+      "Challenge name",
       "Reward/effect type",
       "Trigger value if used as the challenge target",
       "Benefit count, reward item, or discount value depending on reward type",
@@ -2622,6 +2714,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
     ],
     example: "Complete 3 visits this week and get a free drink.",
     autoSet: [
+      "metadata.challenge_name stores the internal challenge name",
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
     ],
@@ -2650,7 +2743,11 @@ function getDealFormConfig({
   discountType: string
   benefitCategory: string
 }): DealFormConfig {
-  const normalizedDiscountType = normalizeDiscountTypeForUi(type, discountType)
+  const backendType = backendDealTypeForUi(type)
+  const normalizedDiscountType = normalizeDiscountTypeForUi(
+    backendType,
+    discountType,
+  )
   const visibleFields = new Set<DealFormField>()
   const requiredFields = new Set<DealFormField>()
   let discountOptions = generalRewardOptions
@@ -2679,6 +2776,7 @@ function getDealFormConfig({
     case "happy_hour":
       discountOptions = directRewardOptions
       visibleFields.add("happyHour")
+      visibleFields.add("happyHourWeekdays")
       requiredFields.add("happyHour")
       break
     case "limited_drop":
@@ -2692,12 +2790,22 @@ function getDealFormConfig({
       visibleFields.add("expiryDays")
       requiredFields.add("triggerValue")
       break
+    case DURATION_BONUS_DEAL:
     case "comeback":
-      visibleFields.add("triggerValue")
+      visibleFields.add("durationConfig")
       visibleFields.add("expiryDays")
+      requiredFields.add("durationConfig")
+      break
+    case COMEBACK_INACTIVE_DEAL:
+      visibleFields.add("comebackCandidates")
+      visibleFields.add("expiryDays")
+      requiredFields.add("comebackCandidates")
       break
     case "challenge":
+      visibleFields.add("challengeName")
       visibleFields.add("triggerValue")
+      requiredFields.add("challengeName")
+      requiredFields.add("triggerValue")
       break
   }
 
@@ -2722,7 +2830,7 @@ function getDealFormConfig({
   }
 
   const normalizedBenefitCategory = normalizeBenefitCategory(
-    type,
+    backendType,
     normalizedDiscountType,
     benefitCategory,
   )
@@ -2736,7 +2844,7 @@ function getDealFormConfig({
         normalizedBenefitCategory,
       ),
     },
-    explanation: dealExplanations[type] ?? dealExplanations.discount,
+    explanation: dealExplanations[type] ?? dealExplanations[backendType] ?? dealExplanations.discount,
     discountOptions,
     valueLabels: discountValueLabels(normalizedDiscountType),
   }
@@ -2768,9 +2876,10 @@ function discountValueLabels(discountType: string) {
 }
 
 function defaultDiscountTypeForDealType(type: string, currentDiscountType: string) {
-  const current = normalizeDiscountTypeForUi(type, currentDiscountType)
+  const backendType = backendDealTypeForUi(type)
+  const current = normalizeDiscountTypeForUi(backendType, currentDiscountType)
 
-  switch (type) {
+  switch (backendType) {
     case "two_for_one":
       return "2for1"
     case "bonus_stamp":
@@ -2794,10 +2903,11 @@ function defaultDiscountTypeForDealType(type: string, currentDiscountType: strin
 }
 
 function normalizeDiscountTypeForUi(type: string, discountType?: string | null) {
+  const backendType = backendDealTypeForUi(type)
   const value = discountType || ""
 
-  if (type === "limited_drop") {
-    return normalizeDealDropDiscountType(type, value || "item")
+  if (backendType === "limited_drop") {
+    return normalizeDealDropDiscountType(backendType, value || "item")
   }
 
   return value === "twoforone" ? "2for1" : value
@@ -2859,11 +2969,15 @@ function DealExplanationList({
 
 type DealValidationMessages = {
   benefitCount?: string
+  challengeName?: string
   discountValue?: string
+  durationValue?: string
   happyHourEnd?: string
   happyHourStart?: string
+  inactivityValue?: string
   rewardItem?: string
   triggerValue?: string
+  visitCountRange?: string
 }
 
 function buildDealValidationMessages({
@@ -2872,8 +2986,13 @@ function buildDealValidationMessages({
   discountValue,
   rewardItem,
   benefitCount,
+  challengeName,
+  durationValue,
   happyHourStart,
   happyHourEnd,
+  inactivityValue,
+  maxVisitCount,
+  minVisitCount,
   triggerValue,
 }: {
   type: string
@@ -2881,13 +3000,22 @@ function buildDealValidationMessages({
   discountValue: string
   rewardItem: string
   benefitCount: string
+  challengeName: string
+  durationValue: string
   happyHourStart: string
   happyHourEnd: string
+  inactivityValue: string
+  maxVisitCount: string
+  minVisitCount: string
   triggerValue: string
 }): DealValidationMessages {
   const messages: DealValidationMessages = {}
   const parsedDiscountValue = parseOptionalNumberInput(discountValue)
   const parsedBenefitCount = parseOptionalNumberInput(benefitCount)
+  const parsedDurationValue = parseOptionalNumberInput(durationValue)
+  const parsedInactivityValue = parseOptionalNumberInput(inactivityValue)
+  const parsedMinVisitCount = parseOptionalNumberInput(minVisitCount)
+  const parsedMaxVisitCount = parseOptionalNumberInput(maxVisitCount)
   const parsedTriggerValue = parseOptionalNumberInput(triggerValue)
 
   if (discountType === "percent" && !parsedDiscountValue) {
@@ -2918,8 +3046,34 @@ function buildDealValidationMessages({
     messages.happyHourEnd = "Enter an end time."
   }
 
-  if (type === "streak" && !parsedTriggerValue) {
+  if (
+    (type === "streak" || type === "challenge") &&
+    !parsedTriggerValue
+  ) {
     messages.triggerValue = "Enter a trigger value greater than 0."
+  }
+
+  if (type === "challenge" && !challengeName.trim()) {
+    messages.challengeName = "Enter a challenge name."
+  }
+
+  if (
+    (type === DURATION_BONUS_DEAL || type === "comeback") &&
+    !parsedDurationValue
+  ) {
+    messages.durationValue = "Enter a duration greater than 0."
+  }
+
+  if (type === COMEBACK_INACTIVE_DEAL && !parsedInactivityValue) {
+    messages.inactivityValue = "Enter an inactivity period greater than 0."
+  }
+
+  if (
+    parsedMinVisitCount !== null &&
+    parsedMaxVisitCount !== null &&
+    parsedMaxVisitCount < parsedMinVisitCount
+  ) {
+    messages.visitCountRange = "Maximum visits must be at least minimum visits."
   }
 
   return messages
@@ -2980,7 +3134,7 @@ function formatDealDisplayName({
   benefitCount: number | null
   typeLabel?: string
 }) {
-  const label = typeLabel || labelForValue(dealTypeOptions, type) || "Deal"
+  const label = typeLabel || labelForValue(dealUiTypeOptions, type) || "Deal"
   const reward = formatDraftRewardSummary(
     discountType,
     discountValue,
@@ -2999,6 +3153,7 @@ function DealFields({
   onDraftMetaChange,
   onDraftTypeChange,
   onDraftTitleChange,
+  visits = [],
   useBrowserValidation = true,
 }: {
   deal?: Deal
@@ -3008,18 +3163,21 @@ function DealFields({
   onDraftMetaChange?: (values: Partial<InitialDealDraft>) => void
   onDraftTypeChange?: (dealType: string) => void
   onDraftTitleChange?: (title: string) => void
+  visits?: Visit[]
   useBrowserValidation?: boolean
 }) {
-  const initialDealType = deal?.type ?? "discount"
+  const initialDealType = dealUiTypeForDeal(deal)
+  const initialBackendDealType = backendDealTypeForUi(initialDealType)
+  const dealMetadata = metadataObject(deal?.metadata)
   const initialDiscountType =
-    normalizeDiscountTypeForUi(initialDealType, deal?.discount_type) ||
-    defaultDiscountTypeForDealType(initialDealType, "")
+    normalizeDiscountTypeForUi(initialBackendDealType, deal?.discount_type) ||
+    defaultDiscountTypeForDealType(initialBackendDealType, "")
   const [selectedDealType, setSelectedDealType] = useState(initialDealType)
   const [selectedDiscountType, setSelectedDiscountType] =
     useState(initialDiscountType)
   const [selectedBenefitCategory, setSelectedBenefitCategory] = useState(
     deal?.benefit_category ??
-      inferBenefitCategory(initialDealType, initialDiscountType),
+      inferBenefitCategory(initialBackendDealType, initialDiscountType),
   )
   const [dealDropStockTotal, setDealDropStockTotal] = useState(
     formatTextInputValue(deal?.stock_total),
@@ -3056,6 +3214,35 @@ function DealFields({
   const [benefitCount, setBenefitCount] = useState(
     formatTextInputValue(deal?.benefit_count ?? 1),
   )
+  const [challengeName, setChallengeName] = useState(
+    metadataString(dealMetadata, "challenge_name"),
+  )
+  const [durationValue, setDurationValue] = useState(
+    formatTextInputValue(
+      metadataNumber(dealMetadata, "duration_value") ??
+        (initialDealType === DURATION_BONUS_DEAL ? deal?.trigger_value : null),
+    ),
+  )
+  const [durationUnit, setDurationUnit] = useState(
+    metadataString(dealMetadata, "duration_unit") || "hours",
+  )
+  const [inactivityValue, setInactivityValue] = useState(
+    formatTextInputValue(
+      metadataNumber(dealMetadata, "inactivity_value") ??
+        (initialDealType === COMEBACK_INACTIVE_DEAL
+          ? deal?.trigger_value
+          : null),
+    ),
+  )
+  const [inactivityUnit, setInactivityUnit] = useState(
+    metadataString(dealMetadata, "inactivity_unit") || "weeks",
+  )
+  const [minVisitCount, setMinVisitCount] = useState(
+    formatTextInputValue(metadataNumber(dealMetadata, "min_visit_count")),
+  )
+  const [maxVisitCount, setMaxVisitCount] = useState(
+    formatTextInputValue(metadataNumber(dealMetadata, "max_visit_count")),
+  )
   const [triggerValue, setTriggerValue] = useState(
     formatTextInputValue(deal?.trigger_value),
   )
@@ -3088,12 +3275,14 @@ function DealFields({
     discountType: selectedDiscountType,
     benefitCategory: selectedBenefitCategory,
   })
+  const selectedBackendDealType = backendDealTypeForUi(selectedDealType)
   const selectedDealTypeLabel =
-    labelForValue(dealTypeOptions, selectedDealType) || "Deal"
+    labelForValue(dealUiTypeOptions, selectedDealType) || "Deal"
   const benefitCategory = config.autoValues.benefitCategory
   const activationRequired = config.autoValues.activationRequired
-  const isLimitedDrop = selectedDealType === "limited_drop"
-  const isWelcomeDeal = selectedDealType === "welcome"
+  const isLimitedDrop = selectedBackendDealType === "limited_drop"
+  const isWelcomeDeal = selectedBackendDealType === "welcome"
+  const isHappyHour = selectedBackendDealType === "happy_hour"
   const showsAllowFreeTrial =
     isLimitedDrop && selectedDiscountType === "2for1"
   const dealDropSoldOut =
@@ -3108,25 +3297,35 @@ function DealFields({
     discountValue,
     rewardItem,
     benefitCount,
+    challengeName,
+    durationValue,
     happyHourStart,
     happyHourEnd,
+    inactivityValue,
+    maxVisitCount,
+    minVisitCount,
     triggerValue,
   })
   const hasRewardDetails =
+    config.visibleFields.has("challengeName") ||
     config.visibleFields.has("discountValue") ||
     config.visibleFields.has("rewardItem") ||
     config.visibleFields.has("benefitCount") ||
     config.visibleFields.has("estimatedSavings") ||
     config.visibleFields.has("happyHour") ||
+    config.visibleFields.has("happyHourWeekdays") ||
+    config.visibleFields.has("durationConfig") ||
     config.visibleFields.has("triggerValue") ||
     config.visibleFields.has("expiryDays") ||
     config.visibleFields.has("stock") ||
     config.visibleFields.has("limitedWindow")
   const rewardDetailsRequired =
+    config.requiredFields.has("challengeName") ||
     config.requiredFields.has("discountValue") ||
     config.requiredFields.has("rewardItem") ||
     config.requiredFields.has("benefitCount") ||
     config.requiredFields.has("happyHour") ||
+    config.requiredFields.has("durationConfig") ||
     config.requiredFields.has("triggerValue")
   const emitDraftTitle = ({
     type = selectedDealType,
@@ -3161,6 +3360,10 @@ function DealFields({
   }
 
   const applyConfigSideEffects = (nextConfig: DealFormConfig) => {
+    if (!nextConfig.visibleFields.has("challengeName")) {
+      setChallengeName("")
+    }
+
     if (!nextConfig.visibleFields.has("discountValue")) {
       setDiscountValue("")
     }
@@ -3184,6 +3387,18 @@ function DealFields({
     if (!nextConfig.visibleFields.has("happyHour")) {
       setHappyHourStart("")
       setHappyHourEnd("")
+    }
+
+    if (!nextConfig.visibleFields.has("durationConfig")) {
+      setDurationValue("")
+      setDurationUnit("hours")
+    }
+
+    if (!nextConfig.visibleFields.has("comebackCandidates")) {
+      setInactivityValue("")
+      setInactivityUnit("weeks")
+      setMinVisitCount("")
+      setMaxVisitCount("")
     }
 
     if (!nextConfig.visibleFields.has("triggerValue")) {
@@ -3260,6 +3475,11 @@ function DealFields({
       />
       <input
         type="hidden"
+        name={`${prefix}type`}
+        value={selectedBackendDealType}
+      />
+      <input
+        type="hidden"
         name={`${prefix}selection_expires_minutes`}
         value={DEFAULT_SELECTION_EXPIRES_MINUTES}
       />
@@ -3325,9 +3545,12 @@ function DealFields({
         <FieldGrid compact>
           <SelectField
             label="Deal type"
-            name={`${prefix}type`}
+            name={`${prefix}deal_concept`}
             value={selectedDealType}
-            options={withCurrentOption(dealTypeOptions, deal?.type)}
+            options={withCurrentOption(
+              dealUiTypeOptions,
+              deal ? dealUiTypeForDeal(deal) : selectedDealType,
+            )}
             onChange={handleDealTypeChange}
             required={useBrowserValidation}
           />
@@ -3337,7 +3560,10 @@ function DealFields({
             value={selectedDiscountType}
             options={withCurrentOption(
               config.discountOptions,
-              normalizeDiscountTypeForUi(selectedDealType, deal?.discount_type),
+              normalizeDiscountTypeForUi(
+                selectedBackendDealType,
+                deal?.discount_type,
+              ),
             )}
             onChange={handleDiscountTypeChange}
             required={useBrowserValidation}
@@ -3388,6 +3614,62 @@ function DealFields({
           required={rewardDetailsRequired ? "subtle" : undefined}
         >
           <FieldGrid compact>
+            {config.visibleFields.has("challengeName") ? (
+              <TextField
+                label="Challenge name"
+                name={`${prefix}challenge_name`}
+                placeholder="3 visits this week"
+                value={challengeName}
+                onChange={(value) => {
+                  setChallengeName(value)
+                  onDraftTitleChange?.(
+                    value.trim() ||
+                      formatDealDisplayName({
+                        type: selectedDealType,
+                        discountType: selectedDiscountType,
+                        discountValue: parseOptionalNumberInput(discountValue),
+                        rewardItem,
+                        benefitCount: parseOptionalNumberInput(benefitCount),
+                      }),
+                  )
+                }}
+                hint={dealFieldHelp.challengeName}
+                required={
+                  useBrowserValidation &&
+                  config.requiredFields.has("challengeName")
+                }
+                warning={validationMessages.challengeName}
+              />
+            ) : null}
+            {config.visibleFields.has("durationConfig") ? (
+              <>
+                <TextField
+                  label="Duration value"
+                  name={`${prefix}duration_value`}
+                  type="number"
+                  min={1}
+                  value={durationValue}
+                  onChange={setDurationValue}
+                  hint={dealFieldHelp.durationValue}
+                  required={
+                    useBrowserValidation &&
+                    config.requiredFields.has("durationConfig")
+                  }
+                  warning={validationMessages.durationValue}
+                />
+                <SelectField
+                  label="Duration unit"
+                  name={`${prefix}duration_unit`}
+                  value={durationUnit}
+                  options={durationUnitOptions}
+                  onChange={setDurationUnit}
+                  required={
+                    useBrowserValidation &&
+                    config.requiredFields.has("durationConfig")
+                  }
+                />
+              </>
+            ) : null}
             {config.visibleFields.has("discountValue") ? (
               <TextField
                 label={config.valueLabels.discountValueLabel}
@@ -3491,6 +3773,12 @@ function DealFields({
                   }
                   warning={validationMessages.happyHourEnd}
                 />
+                <WeekdayChipField
+                  label="Happy Hour weekdays"
+                  name={`${prefix}valid_weekdays`}
+                  defaultValues={deal?.valid_weekdays}
+                  hint={dealFieldHelp.happyHourWeekdays}
+                />
               </>
             ) : null}
             {config.visibleFields.has("triggerValue") ? (
@@ -3581,6 +3869,26 @@ function DealFields({
             ) : null}
           </FieldGrid>
         </FormSection>
+      ) : null}
+
+      {config.visibleFields.has("comebackCandidates") ? (
+        <ComebackCandidatesSection
+          prefix={prefix}
+          visits={visits}
+          inactivityValue={inactivityValue}
+          inactivityUnit={inactivityUnit}
+          minVisitCount={minVisitCount}
+          maxVisitCount={maxVisitCount}
+          onInactivityValueChange={setInactivityValue}
+          onInactivityUnitChange={setInactivityUnit}
+          onMinVisitCountChange={setMinVisitCount}
+          onMaxVisitCountChange={setMaxVisitCount}
+          required={
+            useBrowserValidation &&
+            config.requiredFields.has("comebackCandidates")
+          }
+          validationMessages={validationMessages}
+        />
       ) : null}
 
       <FormSection
@@ -3723,7 +4031,7 @@ function DealFields({
               defaultValues={deal?.valid_weekdays}
               hint={dealFieldHelp.weekdays}
             />
-          ) : (
+          ) : !isHappyHour ? (
             <MultiSelectField
               label="Weekdays"
               name={`${prefix}weekdays`}
@@ -3731,7 +4039,7 @@ function DealFields({
               options={withCurrentOptions(weekdayOptions, deal?.weekdays)}
               hint={dealFieldHelp.weekdays}
             />
-          )}
+          ) : null}
           {config.visibleFields.has("reserveOnSelection") ? (
             <CheckboxField
               label="Reserve stock on selection"
@@ -5516,51 +5824,72 @@ function RedemptionHistoryPanel({
   )
 }
 
-function ComebackDealsPanel({ visits }: { visits: Visit[] }) {
-  const [minVisits, setMinVisits] = useState("2")
-  const [inactiveWeeks, setInactiveWeeks] = useState("4")
-  const [cadenceDays, setCadenceDays] = useState("10")
+function ComebackCandidatesSection({
+  prefix,
+  visits,
+  inactivityValue,
+  inactivityUnit,
+  minVisitCount,
+  maxVisitCount,
+  onInactivityValueChange,
+  onInactivityUnitChange,
+  onMinVisitCountChange,
+  onMaxVisitCountChange,
+  required,
+  validationMessages,
+}: {
+  prefix: string
+  visits: Visit[]
+  inactivityValue: string
+  inactivityUnit: string
+  minVisitCount: string
+  maxVisitCount: string
+  onInactivityValueChange: (value: string) => void
+  onInactivityUnitChange: (value: string) => void
+  onMinVisitCountChange: (value: string) => void
+  onMaxVisitCountChange: (value: string) => void
+  required: boolean
+  validationMessages: DealValidationMessages
+}) {
   const [query, setQuery] = useState("")
   const candidates = useMemo(() => buildComebackCandidates(visits), [visits])
-  const minVisitCount = Math.max(
-    1,
-    Math.floor(parseOptionalNumberInput(minVisits) ?? 2),
+  const parsedMinVisitCount = parseOptionalNumberInput(minVisitCount)
+  const parsedMaxVisitCount = parseOptionalNumberInput(maxVisitCount)
+  const inactiveThresholdDays = periodToDays(
+    parseOptionalNumberInput(inactivityValue) ?? 0,
+    inactivityUnit,
   )
-  const inactiveThresholdDays = Math.max(
-    0,
-    (parseOptionalNumberInput(inactiveWeeks) ?? 4) * 7,
-  )
-  const cadenceThresholdDays = parseOptionalNumberInput(cadenceDays)
   const filteredCandidates = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
 
     return candidates.filter((candidate) => {
-      const matchesVisitCount = candidate.visitCount >= minVisitCount
+      const matchesMinVisitCount =
+        parsedMinVisitCount === null ||
+        candidate.visitCount >= Math.floor(parsedMinVisitCount)
+      const matchesMaxVisitCount =
+        parsedMaxVisitCount === null ||
+        candidate.visitCount <= Math.floor(parsedMaxVisitCount)
       const matchesInactiveWindow =
         candidate.inactiveDays >= inactiveThresholdDays
-      const matchesCadence =
-        cadenceThresholdDays === null ||
-        (candidate.averageIntervalDays !== null &&
-          candidate.averageIntervalDays <= cadenceThresholdDays)
       const matchesQuery =
         !normalizedQuery ||
-        [candidate.userLabel, candidate.userId]
+        [candidate.userLabel, candidate.userEmail, candidate.userId]
           .join(" ")
           .toLowerCase()
           .includes(normalizedQuery)
 
       return (
-        matchesVisitCount &&
+        matchesMinVisitCount &&
+        matchesMaxVisitCount &&
         matchesInactiveWindow &&
-        matchesCadence &&
         matchesQuery
       )
     })
   }, [
-    cadenceThresholdDays,
     candidates,
     inactiveThresholdDays,
-    minVisitCount,
+    parsedMaxVisitCount,
+    parsedMinVisitCount,
     query,
   ])
   const visibleCandidates = filteredCandidates.slice(
@@ -5569,49 +5898,57 @@ function ComebackDealsPanel({ visits }: { visits: Visit[] }) {
   )
 
   return (
-    <EditorShell
-      title="Comeback deal candidates"
-      description="Find regular customers whose visit pattern has gone cold. These reactivation offers are separate from standard deals."
-      collapsible
-      defaultOpen={false}
+    <FormSection
+      title="Comeback candidates"
+      compact
     >
       <div className="space-y-4">
-        <InfoNote>
-          Use this list to target a custom comeback deal for lost customers.
-          Notification and home-page delivery should use the app campaign
-          pipeline, not the standard deals list.
-        </InfoNote>
-        <FieldGrid>
+        <p className="text-xs leading-5 text-zinc-500">
+          Configure inactive-user filters and preview matching loaded users.
+          The saved deal stores the filter config, not explicit user IDs.
+        </p>
+        <FieldGrid compact>
           <TextField
-            label="Minimum past visits"
-            name="comeback_min_visits"
+            label="Inactive for at least"
+            name={`${prefix}inactivity_value`}
             type="number"
             min={1}
-            value={minVisits}
-            onChange={setMinVisits}
+            value={inactivityValue}
+            onChange={onInactivityValueChange}
+            hint={dealFieldHelp.inactivityValue}
+            required={required}
+            warning={validationMessages.inactivityValue}
+          />
+          <SelectField
+            label="Inactivity unit"
+            name={`${prefix}inactivity_unit`}
+            value={inactivityUnit}
+            options={inactivityUnitOptions}
+            onChange={onInactivityUnitChange}
+            required={required}
           />
           <TextField
-            label="Inactive weeks"
-            name="comeback_inactive_weeks"
+            label="Minimum visits"
+            name={`${prefix}min_visit_count`}
             type="number"
             min={0}
-            step="any"
-            value={inactiveWeeks}
-            onChange={setInactiveWeeks}
+            value={minVisitCount}
+            onChange={onMinVisitCountChange}
+            hint="Optional."
           />
           <TextField
-            label="Usual cadence max days"
-            name="comeback_cadence_days"
+            label="Maximum visits"
+            name={`${prefix}max_visit_count`}
             type="number"
-            min={1}
-            step="any"
-            value={cadenceDays}
-            onChange={setCadenceDays}
-            hint="Example: 10 catches customers who used to visit about weekly."
+            min={0}
+            value={maxVisitCount}
+            onChange={onMaxVisitCountChange}
+            hint="Optional."
+            warning={validationMessages.visitCountRange}
           />
           <TextField
             label="Search user"
-            name="comeback_user_search"
+            name={`${prefix}comeback_user_search`}
             type="search"
             value={query}
             onChange={setQuery}
@@ -5644,7 +5981,7 @@ function ComebackDealsPanel({ visits }: { visits: Visit[] }) {
                           {candidate.userLabel}
                         </span>
                         <span className="block text-xs text-zinc-500">
-                          {shortId(candidate.userId)}
+                          {candidate.userEmail || shortId(candidate.userId)}
                         </span>
                       </td>
                       <td className="py-3 pr-4 text-zinc-700">
@@ -5675,11 +6012,11 @@ function ComebackDealsPanel({ visits }: { visits: Visit[] }) {
           </div>
         ) : (
           <EmptyState>
-            No loaded customers match this comeback filter yet.
+            No matching users for the current filters.
           </EmptyState>
         )}
       </div>
-    </EditorShell>
+    </FormSection>
   )
 }
 
@@ -6347,6 +6684,23 @@ function WeekdayChipField({
         <FieldLabel label={label} />
       </legend>
       <input type="hidden" name={`${name}_present`} value="1" />
+      <div className="flex flex-wrap gap-1.5">
+        {[
+          { label: "All days", values: [1, 2, 3, 4, 5, 6, 7] },
+          { label: "Weekdays", values: [1, 2, 3, 4, 5] },
+          { label: "Weekend", values: [6, 7] },
+          { label: "Clear", values: [] },
+        ].map((action) => (
+          <button
+            key={action.label}
+            type="button"
+            onClick={() => setSelectedValues(action.values)}
+            className="h-7 rounded-md border border-zinc-300 bg-white px-2 text-xs font-semibold text-zinc-700 transition hover:border-teal-400 hover:bg-teal-50"
+          >
+            {action.label}
+          </button>
+        ))}
+      </div>
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-7 md:grid-cols-4 2xl:grid-cols-7">
         {dealDropWeekdayOptions.map((option) => {
           const checked = selectedValues.includes(option.value)
@@ -7406,6 +7760,7 @@ function isCoordinateRecord(value: unknown): value is {
 type ComebackCandidate = {
   userId: string
   userLabel: string
+  userEmail: string
   visitCount: number
   lastVisit: string
   inactiveDays: number
@@ -7414,13 +7769,116 @@ type ComebackCandidate = {
 
 const millisecondsPerDay = 24 * 60 * 60 * 1000
 
+function backendDealTypeForUi(type: string) {
+  return type === DURATION_BONUS_DEAL || type === COMEBACK_INACTIVE_DEAL
+    ? "comeback"
+    : type
+}
+
+function dealUiTypeForDeal(deal?: Pick<Deal, "type" | "metadata"> | null) {
+  const type = deal?.type || "discount"
+
+  if (type !== "comeback") {
+    return type
+  }
+
+  return metadataString(metadataObject(deal?.metadata), "bonus_mode") ===
+    COMEBACK_INACTIVE_MODE
+    ? COMEBACK_INACTIVE_DEAL
+    : DURATION_BONUS_DEAL
+}
+
+function dealCardTypeLabel(deal: Deal) {
+  if (deal.type === "challenge") {
+    const challengeName = metadataString(
+      metadataObject(deal.metadata),
+      "challenge_name",
+    )
+
+    if (challengeName) {
+      return challengeName
+    }
+  }
+
+  return labelForValue(dealUiTypeOptions, dealUiTypeForDeal(deal)) || "Deal"
+}
+
+function metadataObject(value: unknown): Record<string, unknown> {
+  if (!value) {
+    return {}
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed: unknown = JSON.parse(value)
+      return metadataObject(parsed)
+    } catch {
+      return {}
+    }
+  }
+
+  return typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {}
+}
+
+function metadataString(metadata: Record<string, unknown>, key: string) {
+  const value = metadata[key]
+
+  return typeof value === "string" ? value : ""
+}
+
+function metadataNumber(metadata: Record<string, unknown>, key: string) {
+  const value = metadata[key]
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const numericValue = Number(value)
+
+    return Number.isFinite(numericValue) ? numericValue : null
+  }
+
+  return null
+}
+
+function periodToDays(value: number, unit: string) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return 0
+  }
+
+  if (unit === "weeks") {
+    return value * 7
+  }
+
+  if (unit === "months") {
+    return value * 30
+  }
+
+  return value
+}
+
 function formatDealRewardSummary(deal: Deal) {
-  return formatDraftRewardSummary(
+  const reward = formatDraftRewardSummary(
     normalizeDiscountTypeForUi(deal.type ?? "discount", deal.discount_type),
     deal.discount_value ?? null,
     deal.reward_item ?? "",
     deal.benefit_count ?? null,
   )
+
+  if (deal.type === "happy_hour") {
+    const start = formatTimeInput(deal.happy_hour_start)
+    const end = formatTimeInput(deal.happy_hour_end)
+    const timeWindow = start && end ? `${start}-${end}` : "Time not set"
+
+    return `${reward} - ${timeWindow} - ${formatWeekdayNumberSummary(
+      deal.valid_weekdays,
+    )}`
+  }
+
+  return reward
 }
 
 function buildComebackCandidates(visits: Visit[]): ComebackCandidate[] {
@@ -7475,6 +7933,7 @@ function buildComebackCandidates(visits: Visit[]): ComebackCandidate[] {
         lastVisit.visit.user_name ||
         lastVisit.visit.user_email ||
         shortId(userId),
+      userEmail: lastVisit.visit.user_email ?? "",
       visitCount: datedVisits.length,
       lastVisit: lastVisit.visit.visited_at ?? "",
       inactiveDays: Math.max(
@@ -7587,6 +8046,28 @@ function normalizeWeekdayNumbers(values?: Array<number | string> | null) {
   ).sort((first, second) => first - second)
 
   return normalized.length ? normalized : [...DEFAULT_DEAL_DROP_WEEKDAYS]
+}
+
+function formatWeekdayNumberSummary(values?: Array<number | string> | null) {
+  const selected = normalizeWeekdayNumbers(values)
+
+  if (selected.length === 7) {
+    return "Every day"
+  }
+
+  if (selected.join(",") === "1,2,3,4,5") {
+    return "Mon-Fri"
+  }
+
+  if (selected.join(",") === "6,7") {
+    return "Sat-Sun"
+  }
+
+  const labelsByValue = new Map<number, string>(
+    dealDropWeekdayOptions.map((option) => [option.value, option.label]),
+  )
+
+  return selected.map((value) => labelsByValue.get(value) ?? value).join(", ")
 }
 
 function weekdayNumberFromValue(value: number | string) {

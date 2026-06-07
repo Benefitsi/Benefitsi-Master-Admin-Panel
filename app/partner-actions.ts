@@ -22,6 +22,11 @@ import {
   normalizeBenefitCategory,
 } from "@/lib/reward-config"
 
+const DURATION_BONUS_DEAL = "duration_bonus"
+const COMEBACK_INACTIVE_DEAL = "comeback_inactive"
+const DURATION_BONUS_MODE = "duration_bonus"
+const COMEBACK_INACTIVE_MODE = "comeback_inactive"
+
 export type PartnerActionState = {
   message: string
   ok: boolean
@@ -1631,8 +1636,15 @@ function parseDealPayload(
   prefix = "",
   partnerId = stringValue(formData, `${prefix}partner_id`),
 ): ParsedDeal {
-  const type = stringValue(formData, `${prefix}type`)
+  const submittedType = stringValue(formData, `${prefix}type`)
+  const dealConcept = normalizeDealConcept(
+    stringValue(formData, `${prefix}deal_concept`),
+    submittedType,
+  )
+  const type = backendDealTypeForDealConcept(dealConcept)
   const isLimitedDrop = type === "limited_drop"
+  const isDurationBonus = dealConcept === DURATION_BONUS_DEAL
+  const isComebackInactive = dealConcept === COMEBACK_INACTIVE_DEAL
   const rawDiscountType = stringValue(formData, `${prefix}discount_type`)
   const discountType = normalizeDealDiscountType(type, rawDiscountType)
   const isWelcomeDeal = type === "welcome"
@@ -1661,6 +1673,15 @@ function parseDealPayload(
   const usesHappyHour = type === "happy_hour"
   const usesTriggerValue =
     type === "streak" || type === "comeback" || type === "challenge"
+  const durationValue = integerValue(formData, `${prefix}duration_value`)
+  const inactivityValue = integerValue(formData, `${prefix}inactivity_value`)
+  const triggerValue = isDurationBonus
+    ? durationValue
+    : isComebackInactive
+      ? inactivityValue
+      : usesTriggerValue
+        ? integerValue(formData, `${prefix}trigger_value`)
+        : null
   const discountValue = usesDiscountValue
     ? numberValue(formData, `${prefix}discount_value`)
     : null
@@ -1680,6 +1701,14 @@ function parseDealPayload(
     isLimitedDrop &&
     discountType === "2for1" &&
     checkboxValue(formData, `${prefix}allow_free_trial`)
+  const baseMetadata = jsonValue(formData, `${prefix}metadata`)
+  const metadata = buildDealMetadata(
+    formData,
+    prefix,
+    type,
+    dealConcept,
+    baseMetadata,
+  )
 
   const payload: ParsedDeal = {
     partner_id: partnerId,
@@ -1712,9 +1741,7 @@ function parseDealPayload(
       `${prefix}staff_instructions`,
     ),
     terms: nullableStringValue(formData, `${prefix}terms`),
-    trigger_value: usesTriggerValue
-      ? integerValue(formData, `${prefix}trigger_value`)
-      : null,
+    trigger_value: triggerValue,
     expiry_days:
       type === "streak" || type === "comeback"
         ? integerValue(formData, `${prefix}expiry_days`)
@@ -1769,12 +1796,127 @@ function parseDealPayload(
     reserve_on_selection:
       isLimitedDrop &&
       checkboxValue(formData, `${prefix}reserve_on_selection`),
-    metadata: jsonValue(formData, `${prefix}metadata`),
+    metadata,
   }
 
   return preserveDealCopyFields(formData, prefix, payload, {
     preserveRewardItem: usesRewardItem,
   })
+}
+
+function normalizeDealConcept(value: string, submittedType: string) {
+  if (value === DURATION_BONUS_DEAL || value === COMEBACK_INACTIVE_DEAL) {
+    return value
+  }
+
+  if (submittedType === DURATION_BONUS_DEAL || submittedType === "comeback") {
+    return DURATION_BONUS_DEAL
+  }
+
+  if (submittedType === COMEBACK_INACTIVE_DEAL) {
+    return COMEBACK_INACTIVE_DEAL
+  }
+
+  return submittedType
+}
+
+function backendDealTypeForDealConcept(concept: string) {
+  return concept === DURATION_BONUS_DEAL || concept === COMEBACK_INACTIVE_DEAL
+    ? "comeback"
+    : concept
+}
+
+function buildDealMetadata(
+  formData: FormData,
+  prefix: string,
+  type: string,
+  dealConcept: string,
+  baseMetadata: unknown,
+) {
+  const metadata = metadataRecord(baseMetadata)
+
+  for (const key of [
+    "bonus_mode",
+    "duration_value",
+    "duration_unit",
+    "inactivity_value",
+    "inactivity_unit",
+    "min_visit_count",
+    "max_visit_count",
+    "candidate_filter",
+    "challenge_name",
+  ]) {
+    delete metadata[key]
+  }
+
+  // Admin separates Duration Bonus and Comeback Deal, while the backend
+  // currently stores both with type = comeback and distinguishes via metadata.
+  if (type === "comeback") {
+    if (dealConcept === COMEBACK_INACTIVE_DEAL) {
+      const inactivityValue = integerValue(formData, `${prefix}inactivity_value`)
+      const inactivityUnit = normalizedUnit(
+        stringValue(formData, `${prefix}inactivity_unit`),
+        ["days", "weeks", "months"],
+        "weeks",
+      )
+      const minVisitCount = integerValue(formData, `${prefix}min_visit_count`)
+      const maxVisitCount = integerValue(formData, `${prefix}max_visit_count`)
+      const candidateFilter: Record<string, number | string> = {
+        inactivity_value: inactivityValue ?? 0,
+        inactivity_unit: inactivityUnit,
+      }
+
+      metadata.bonus_mode = COMEBACK_INACTIVE_MODE
+      metadata.inactivity_value = inactivityValue
+      metadata.inactivity_unit = inactivityUnit
+
+      if (minVisitCount !== null) {
+        metadata.min_visit_count = minVisitCount
+        candidateFilter.min_visit_count = minVisitCount
+      }
+
+      if (maxVisitCount !== null) {
+        metadata.max_visit_count = maxVisitCount
+        candidateFilter.max_visit_count = maxVisitCount
+      }
+
+      metadata.candidate_filter = candidateFilter
+      return metadata
+    }
+
+    metadata.bonus_mode = DURATION_BONUS_MODE
+    metadata.duration_value = integerValue(formData, `${prefix}duration_value`)
+    metadata.duration_unit = normalizedUnit(
+      stringValue(formData, `${prefix}duration_unit`),
+      ["hours", "days", "weeks"],
+      "hours",
+    )
+    return metadata
+  }
+
+  if (type === "challenge") {
+    const challengeName = nullableStringValue(formData, `${prefix}challenge_name`)
+
+    if (challengeName) {
+      metadata.challenge_name = challengeName
+    }
+  }
+
+  return metadata
+}
+
+function metadataRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {}
+}
+
+function normalizedUnit(
+  value: string,
+  allowedValues: string[],
+  fallback: string,
+) {
+  return allowedValues.includes(value) ? value : fallback
 }
 
 function preserveDealCopyFields(
@@ -2042,6 +2184,12 @@ function validateDealPayload(payload: ParsedDeal) {
     if (payload.discount_type === "bonus_stamp") {
       return "Happy Hour deals cannot use automatic bonus stamps."
     }
+
+    if (
+      payload.valid_weekdays.some((weekday) => weekday < 1 || weekday > 7)
+    ) {
+      return "Happy Hour weekdays must be between Monday and Sunday."
+    }
   }
 
   if (
@@ -2090,6 +2238,75 @@ function validateDealPayload(payload: ParsedDeal) {
     (!payload.trigger_value || payload.trigger_value <= 0)
   ) {
     return "Streak deals require a trigger value greater than 0."
+  }
+
+  if (payload.type === "challenge") {
+    const metadata = metadataRecord(payload.metadata)
+    const challengeName = metadata.challenge_name
+
+    if (typeof challengeName !== "string" || !challengeName.trim()) {
+      return "Challenge rewards require a challenge name."
+    }
+
+    if (!payload.trigger_value || payload.trigger_value <= 0) {
+      return "Challenge rewards require a trigger value greater than 0."
+    }
+  }
+
+  if (payload.type === "comeback") {
+    const metadata = metadataRecord(payload.metadata)
+    const bonusMode = metadata.bonus_mode
+
+    if (bonusMode === COMEBACK_INACTIVE_MODE) {
+      const inactivityUnit = metadata.inactivity_unit
+      const minVisitCount =
+        typeof metadata.min_visit_count === "number"
+          ? metadata.min_visit_count
+          : null
+      const maxVisitCount =
+        typeof metadata.max_visit_count === "number"
+          ? metadata.max_visit_count
+          : null
+
+      if (!payload.trigger_value || payload.trigger_value <= 0) {
+        return "Comeback Deals require an inactivity period greater than 0."
+      }
+
+      if (
+        typeof inactivityUnit !== "string" ||
+        !["days", "weeks", "months"].includes(inactivityUnit)
+      ) {
+        return "Comeback Deals require days, weeks, or months as the inactivity unit."
+      }
+
+      if (
+        (minVisitCount !== null && minVisitCount < 0) ||
+        (maxVisitCount !== null && maxVisitCount < 0)
+      ) {
+        return "Comeback Deal visit filters cannot be negative."
+      }
+
+      if (
+        minVisitCount !== null &&
+        maxVisitCount !== null &&
+        maxVisitCount < minVisitCount
+      ) {
+        return "Maximum visits must be at least minimum visits."
+      }
+    } else {
+      const durationUnit = metadata.duration_unit
+
+      if (!payload.trigger_value || payload.trigger_value <= 0) {
+        return "Duration Bonus deals require a duration greater than 0."
+      }
+
+      if (
+        typeof durationUnit !== "string" ||
+        !["hours", "days", "weeks"].includes(durationUnit)
+      ) {
+        return "Duration Bonus deals require hours, days, or weeks as the duration unit."
+      }
+    }
   }
 
   if (payload.selection_expires_minutes < 1) {
