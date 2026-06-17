@@ -67,9 +67,7 @@ export const rewardTypeOptions = [
 ] as const
 
 export const partnerStaffRoleOptions = [
-  { value: "owner", label: "Owner" },
-  { value: "manager", label: "Manager" },
-  { value: "staff", label: "Staff" },
+  { value: "admin", label: "Admin" },
   { value: "scanner", label: "Scanner" },
 ] as const
 

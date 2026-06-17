@@ -4,6 +4,7 @@ import { getAdminSession } from "@/lib/admin"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { LoginForm } from "./login-form"
+import Image from "next/image"
 
 export const dynamic = "force-dynamic"
 
@@ -24,14 +25,14 @@ export default async function LoginPage() {
       <div className="grid min-h-screen lg:grid-cols-[1fr_460px]">
         <section className="hidden bg-zinc-950 p-10 text-white lg:flex lg:flex-col lg:justify-between">
           <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-md bg-teal-500 text-sm font-bold text-zinc-950">
-              B
+            <div className="grid size-10 place-items-center rounded-md bg-white text-sm font-bold text-zinc-950">
+              <Image src="/Benefitsi_Icon_FullColor_RGB_512.png" alt="Benefitsi Logo" width={35} height={35}/>
             </div>
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-200">
                 Benefitsi
               </p>
-              <p className="text-sm text-zinc-400">Admin operations</p>
+              <p className="text-sm text-zinc-400">Admin Panel</p>
             </div>
           </div>
 

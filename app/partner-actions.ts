@@ -2,8 +2,16 @@
 
 import { randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
+import sharp from "sharp"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { requireAdmin } from "@/lib/admin"
+import {
+  adminTextLimits,
+  MAX_PARTNER_SOCIALS,
+  isPartnerSocialPlatform,
+  partnerMediaSpecs,
+  type PartnerMediaSpec,
+} from "@/lib/partner-config"
 import {
   DEFAULT_AUDIENCE,
   DEFAULT_DEAL_DROP_PRIORITY,
@@ -42,9 +50,11 @@ type UploadedStoragePath = {
 type PartnerMediaFormValues = {
   logoFile: File | null
   featureFile: File | null
+  discoverFile: File | null
   coverFiles: File[]
   existingLogoUrl: string
   existingFeatureCardUrl: string
+  existingDiscoverCardUrl: string
   existingCoverUrls: string[]
   removedMediaUrls: string[]
 }
@@ -112,6 +122,13 @@ type ParsedMilestone = {
   updated_at?: string
 }
 
+type ParsedPartnerSocial = {
+  platform: string
+  handle: string
+  sort_order: number
+  url: string
+}
+
 type ParsedPartnerStaff = {
   partner_id: string
   user_id: string
@@ -129,6 +146,14 @@ type ParsedOpeningHour = {
   label: string | null
   is_closed: boolean
   sort_order: number | null
+}
+
+type ParsedPartnerHoliday = {
+  partner_id: string
+  holiday_date: string
+  label: string | null
+  created_at?: string
+  updated_at?: string
 }
 
 type ParsedMenu = {
@@ -213,6 +238,7 @@ export async function savePartner(
       ...basePayload,
       logo_url: media.logoUrl,
       feature_card_url: media.featureCardUrl,
+      discover_card_image_url: media.discoverCardUrl,
       cover_urls: media.coverUrls,
     }
 
@@ -228,6 +254,33 @@ export async function savePartner(
       return { ok: false, message: result.error.message }
     }
 
+    const partnerSocials = parsePartnerSocials(formData)
+    const partnerSocialValidation = validatePartnerSocials(partnerSocials)
+
+    if (partnerSocialValidation) {
+      if (!isUpdate) {
+        await rollbackCreatedPartner(supabase, partnerId)
+        await cleanupUploadedFiles(supabase, uploadedPaths)
+      }
+
+      return { ok: false, message: partnerSocialValidation }
+    }
+
+    const socialSyncMessage = await replacePartnerSocials(
+      supabase,
+      partnerId,
+      partnerSocials,
+    )
+
+    if (socialSyncMessage) {
+      if (!isUpdate) {
+        await rollbackCreatedPartner(supabase, partnerId)
+        await cleanupUploadedFiles(supabase, uploadedPaths)
+      }
+
+      return { ok: false, message: socialSyncMessage }
+    }
+
     await cleanupPublicMediaUrls(supabase, [
       ...mediaValues.removedMediaUrls,
       ...(mediaValues.logoFile && mediaValues.existingLogoUrl
@@ -235,6 +288,9 @@ export async function savePartner(
         : []),
       ...(mediaValues.featureFile && mediaValues.existingFeatureCardUrl
         ? [mediaValues.existingFeatureCardUrl]
+        : []),
+      ...(mediaValues.discoverFile && mediaValues.existingDiscoverCardUrl
+        ? [mediaValues.existingDiscoverCardUrl]
         : []),
     ])
 
@@ -246,6 +302,30 @@ export async function savePartner(
     }
 
     if (!isUpdate) {
+      const initialMilestones = parseInitialMilestones(formData, partnerId)
+      const initialMilestoneError = validateInitialMilestones(initialMilestones)
+
+      if (initialMilestoneError) {
+        await rollbackCreatedPartner(supabase, partnerId)
+        await cleanupUploadedFiles(supabase, uploadedPaths)
+        return { ok: false, message: initialMilestoneError }
+      }
+
+      const milestoneRows = initialMilestones.map((milestone) => ({
+        ...milestone,
+        created_at: basePayload.updated_at,
+        updated_at: basePayload.updated_at,
+      }))
+      const milestoneResult = await supabase
+        .from("partner_reward_milestones")
+        .insert(milestoneRows)
+
+      if (milestoneResult.error) {
+        await rollbackCreatedPartner(supabase, partnerId)
+        await cleanupUploadedFiles(supabase, uploadedPaths)
+        return { ok: false, message: milestoneResult.error.message }
+      }
+
       const openingHours = parseWeeklyOpeningHourRows(formData, partnerId)
       const openingHoursError = invalidWeeklyOpeningHourRow(openingHours)
 
@@ -265,7 +345,31 @@ export async function savePartner(
         }
       }
 
-      if (checkboxValue(formData, "initial_menu_enabled")) {
+      const holidays = parsePartnerHolidays(formData, partnerId)
+      const holidayError = validatePartnerHolidays(holidays)
+
+      if (holidayError) {
+        warnings.push(`Partner was created, but holiday closures were skipped: ${holidayError}`)
+      } else if (holidays.length > 0) {
+        const holidayResult = await supabase.from("partner_holidays").insert(
+          holidays.map((holiday) => ({
+            ...holiday,
+            created_at: basePayload.updated_at,
+            updated_at: basePayload.updated_at,
+          })),
+        )
+
+        if (holidayResult.error) {
+          warnings.push(
+            `Partner was created, but holiday closures could not be added: ${holidayResult.error.message}`,
+          )
+        }
+      }
+
+      if (
+        partnerTypeSupportsMenu(stringValue(formData, "type")) &&
+        checkboxValue(formData, "initial_menu_enabled")
+      ) {
         const initialMenuWarning = await createInitialMenu(
           supabase,
           formData,
@@ -609,12 +713,24 @@ export async function saveWeeklyOpeningHours(
 
   const rows = parseWeeklyOpeningHourRows(formData, partnerId)
   const invalidRow = invalidWeeklyOpeningHourRow(rows)
+  const holidays = parsePartnerHolidays(formData, partnerId)
+  const holidayValidation = validatePartnerHolidays(holidays)
 
   if (invalidRow) {
     return {
       ok: false,
       message: `${weekdayName(invalidRow.weekday)} needs opening and closing times, or mark it closed.`,
     }
+  }
+
+  const openingHourValidation = validateOpeningHourRows(rows)
+
+  if (openingHourValidation) {
+    return { ok: false, message: openingHourValidation }
+  }
+
+  if (holidayValidation) {
+    return { ok: false, message: holidayValidation }
   }
 
   const deleteResult = await supabase
@@ -632,9 +748,23 @@ export async function saveWeeklyOpeningHours(
     return { ok: false, message: insertResult.error.message }
   }
 
+  const holidayMessage = await replacePartnerHolidays(
+    supabase,
+    partnerId,
+    holidays,
+  )
+
+  if (holidayMessage) {
+    revalidatePath("/")
+    return {
+      ok: false,
+      message: `Weekly hours saved, but holiday closures could not be updated: ${holidayMessage}`,
+    }
+  }
+
   revalidatePath("/")
 
-  return { ok: true, message: "Weekly operating hours saved." }
+  return { ok: true, message: "Operating hours and holiday closures saved." }
 }
 
 export async function saveMenu(
@@ -898,6 +1028,7 @@ export async function saveMenuItem(
       const uploaded = await uploadPartnerFile(
         supabase,
         imageFile,
+        partnerMediaSpecs.menuItem,
         `menu-items/${menuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
       )
 
@@ -1025,6 +1156,7 @@ function validatePartnerForm(
   formData: FormData,
   mediaValues: PartnerMediaFormValues,
 ) {
+  const isCreate = !stringValue(formData, "id")
   const requiredFields = [
     ["name", "Partner name is required."],
     ["city_id", "Partner city is required."],
@@ -1050,17 +1182,71 @@ function validatePartnerForm(
     return "Coordinates must use the format latitude, longitude."
   }
 
-  if (hasWeeklyOpeningHourFields(formData)) {
-    const invalidRow = invalidWeeklyOpeningHourRow(
-      parseWeeklyOpeningHourRows(formData, "validation"),
+  const partnerTextValidation = validateTextLengthRules([
+    ["Partner name", stringValue(formData, "name"), adminTextLimits.shortText],
+    ["Email", stringValue(formData, "email"), adminTextLimits.email],
+    ["Phone", stringValue(formData, "phone"), adminTextLimits.phone],
+    ["Website", stringValue(formData, "website"), adminTextLimits.mediumText],
+    [
+      "Coordinates",
+      stringValue(formData, "coordinates"),
+      adminTextLimits.coordinates,
+    ],
+    ["Address", stringValue(formData, "address"), adminTextLimits.mediumText],
+    [
+      "Description",
+      stringValue(formData, "description"),
+      adminTextLimits.longText,
+    ],
+  ])
+
+  if (partnerTextValidation) {
+    return partnerTextValidation
+  }
+
+  const socialValidation = validatePartnerSocials(parsePartnerSocials(formData))
+
+  if (socialValidation) {
+    return socialValidation
+  }
+
+  if (isCreate) {
+    const initialMilestoneValidation = validateInitialMilestones(
+      parseInitialMilestones(formData, "validation"),
     )
+
+    if (initialMilestoneValidation) {
+      return initialMilestoneValidation
+    }
+  }
+
+  if (hasWeeklyOpeningHourFields(formData)) {
+    const openingHourRows = parseWeeklyOpeningHourRows(formData, "validation")
+    const invalidRow = invalidWeeklyOpeningHourRow(openingHourRows)
 
     if (invalidRow) {
       return `${weekdayName(invalidRow.weekday)} needs opening and closing times, or mark it closed.`
     }
+
+    const openingHourValidation = validateOpeningHourRows(openingHourRows)
+
+    if (openingHourValidation) {
+      return openingHourValidation
+    }
   }
 
-  if (checkboxValue(formData, "initial_menu_enabled")) {
+  const holidayValidation = validatePartnerHolidays(
+    parsePartnerHolidays(formData, "validation"),
+  )
+
+  if (holidayValidation) {
+    return holidayValidation
+  }
+
+  if (
+    partnerTypeSupportsMenu(stringValue(formData, "type")) &&
+    checkboxValue(formData, "initial_menu_enabled")
+  ) {
     const menuValidation = validateMenuPayload(
       parseMenuPayload(formData, "validation", "initial_menu_"),
     )
@@ -1206,12 +1392,14 @@ async function resolvePartnerMedia(
   const uploadedPaths: UploadedStoragePath[] = []
   let logoUrl = mediaValues.existingLogoUrl
   let featureCardUrl = mediaValues.existingFeatureCardUrl
+  let discoverCardUrl = mediaValues.existingDiscoverCardUrl
   const coverUrls = [...mediaValues.existingCoverUrls]
 
   if (mediaValues.logoFile) {
     const uploaded = await uploadPartnerFile(
       supabase,
       mediaValues.logoFile,
+      partnerMediaSpecs.logo,
       `${partnerId}/logo-${Date.now()}-${safeFileName(mediaValues.logoFile.name)}`,
     )
 
@@ -1225,6 +1413,7 @@ async function resolvePartnerMedia(
     const uploaded = await uploadPartnerFile(
       supabase,
       mediaValues.featureFile,
+      partnerMediaSpecs.feature,
       `${partnerId}/feature-${Date.now()}-${safeFileName(mediaValues.featureFile.name)}`,
     )
 
@@ -1234,10 +1423,25 @@ async function resolvePartnerMedia(
     featureCardUrl = ""
   }
 
+  if (mediaValues.discoverFile) {
+    const uploaded = await uploadPartnerFile(
+      supabase,
+      mediaValues.discoverFile,
+      partnerMediaSpecs.discover,
+      `${partnerId}/discover-${Date.now()}-${safeFileName(mediaValues.discoverFile.name)}`,
+    )
+
+    discoverCardUrl = uploaded.url
+    uploadedPaths.push(uploaded)
+  } else if (mediaValues.removedMediaUrls.includes(discoverCardUrl)) {
+    discoverCardUrl = ""
+  }
+
   for (const [index, coverFile] of mediaValues.coverFiles.entries()) {
     const uploaded = await uploadPartnerFile(
       supabase,
       coverFile,
+      partnerMediaSpecs.cover,
       `${partnerId}/covers/${slug}-${Date.now()}-${index}-${safeFileName(
         coverFile.name,
       )}`,
@@ -1250,6 +1454,7 @@ async function resolvePartnerMedia(
   return {
     logoUrl,
     featureCardUrl,
+    discoverCardUrl,
     coverUrls: coverUrls.slice(0, MAX_COVERS),
     uploadedPaths,
   }
@@ -1258,19 +1463,22 @@ async function resolvePartnerMedia(
 async function uploadPartnerFile(
   supabase: SupabaseClient,
   file: File,
+  spec: PartnerMediaSpec,
   path: string,
 ) {
+  const preparedFile = await preparePartnerUploadFile(file, spec)
   const { data, error } = await supabase.storage
     .from(PARTNER_MEDIA_BUCKET)
-    .upload(path, file, {
+    .upload(path, preparedFile, {
       cacheControl: "31536000",
-      contentType: partnerMediaContentType(file) ?? "application/octet-stream",
+      contentType:
+        partnerMediaContentType(preparedFile) ?? "application/octet-stream",
       upsert: false,
     })
 
   if (error) {
     throw new Error(
-      `Unable to upload "${file.name}" to Supabase Storage bucket "${PARTNER_MEDIA_BUCKET}": ${error.message}`,
+      `Unable to upload "${preparedFile.name}" to Supabase Storage bucket "${PARTNER_MEDIA_BUCKET}": ${error.message}`,
     )
   }
 
@@ -1282,6 +1490,48 @@ async function uploadPartnerFile(
     bucket: PARTNER_MEDIA_BUCKET,
     path: data.path,
     url: publicUrl,
+  }
+}
+
+async function preparePartnerUploadFile(
+  file: File,
+  spec: PartnerMediaSpec,
+) {
+  const contentType = partnerMediaContentType(file)
+
+  if (!contentType) {
+    throw new Error(`"${file.name}" must be a PNG, JPEG, WebP, or SVG image.`)
+  }
+
+  const input = Buffer.from(await file.arrayBuffer())
+  const outputFormat = contentType === "image/jpeg" ? "jpeg" : "png"
+  const outputExtension = outputFormat === "jpeg" ? "jpg" : "png"
+  const outputType = outputFormat === "jpeg" ? "image/jpeg" : "image/png"
+
+  try {
+    const resized = await sharp(input)
+      .rotate()
+      .resize(spec.width, spec.height, {
+        fit: "cover",
+        position: "center",
+      })
+      .toFormat(outputFormat, outputFormat === "jpeg" ? { quality: 92 } : {})
+      .toBuffer()
+
+    return new File(
+      [new Uint8Array(resized)],
+      replaceFileExtension(file.name, `${spec.width}x${spec.height}.${outputExtension}`),
+      {
+        type: outputType,
+        lastModified: Date.now(),
+      },
+    )
+  } catch (error) {
+    throw new Error(
+      error instanceof Error
+        ? `Unable to resize "${file.name}": ${error.message}`
+        : `Unable to resize "${file.name}".`,
+    )
   }
 }
 
@@ -1311,6 +1561,7 @@ async function uploadInitialMenuItemImages(
       const uploaded = await uploadPartnerFile(
         supabase,
         file,
+        partnerMediaSpecs.menuItem,
         `menu-items/${menuId}/${Date.now()}-${index}-${safeFileName(file.name)}`,
       )
 
@@ -2095,6 +2346,31 @@ function validateDealPayload(payload: ParsedDeal) {
     return "Audience is required."
   }
 
+  const challengeName = metadataRecord(payload.metadata).challenge_name
+  const textValidation = validateTextLengthRules([
+    ["Reward item", payload.reward_item, adminTextLimits.shortText],
+    [
+      "Customer description",
+      payload.customer_description,
+      adminTextLimits.longText,
+    ],
+    [
+      "Staff instructions",
+      payload.staff_instructions,
+      adminTextLimits.longText,
+    ],
+    ["Terms", payload.terms, adminTextLimits.longText],
+    [
+      "Challenge name",
+      typeof challengeName === "string" ? challengeName : null,
+      adminTextLimits.shortText,
+    ],
+  ])
+
+  if (textValidation) {
+    return textValidation
+  }
+
   if (payload.type === "limited_drop") {
     const allowedDropDiscountTypes = [
       "item",
@@ -2480,6 +2756,66 @@ async function validateUniqueAutomaticDealPriority(
   return null
 }
 
+function parseInitialMilestones(formData: FormData, partnerId: string) {
+  const count = integerValue(formData, "initial_milestone_count") ?? 0
+  const milestones: ParsedMilestone[] = []
+
+  for (let index = 0; index < count; index += 1) {
+    const prefix = `initial_milestone_${index}_`
+    const rewardType = stringValue(formData, `${prefix}reward_type`)
+
+    milestones.push(
+      withDefaultMilestoneCopy({
+        partner_id: partnerId,
+        required_stamps: integerValue(formData, `${prefix}required_stamps`),
+        reward_type: rewardType,
+        reward_item: nullableStringValue(formData, `${prefix}reward_item`),
+        discount_type: rewardType,
+        discount_value: numberValue(formData, `${prefix}discount_value`),
+        estimated_savings: numberValue(
+          formData,
+          `${prefix}estimated_savings`,
+        ),
+        title: nullableStringValue(formData, `${prefix}title`),
+        customer_description: nullableStringValue(
+          formData,
+          `${prefix}customer_description`,
+        ),
+        staff_instructions: nullableStringValue(
+          formData,
+          `${prefix}staff_instructions`,
+        ),
+        terms: nullableStringValue(formData, `${prefix}terms`),
+        audience:
+          normalizeChoice(
+            stringValue(formData, `${prefix}audience`),
+            isMilestoneAudience,
+          ) ?? DEFAULT_AUDIENCE,
+        active: checkboxValue(formData, `${prefix}active`),
+        reward_track_target: DEFAULT_REWARD_TRACK_TARGET,
+      }),
+    )
+  }
+
+  return milestones
+}
+
+function validateInitialMilestones(milestones: ParsedMilestone[]) {
+  if (milestones.length === 0) {
+    return "At least one stamp-card milestone is required before creating a partner."
+  }
+
+  for (let index = 0; index < milestones.length; index += 1) {
+    const validationMessage = validateMilestonePayload(milestones[index])
+
+    if (validationMessage) {
+      return `Milestone ${index + 1}: ${validationMessage}`
+    }
+  }
+
+  return null
+}
+
 function parseMilestonePayload(formData: FormData): ParsedMilestone {
   const rewardType = stringValue(formData, "reward_type")
 
@@ -2542,7 +2878,163 @@ function validateMilestonePayload(payload: ParsedMilestone) {
     return `Required stamps must be ${MAX_STAMP_CARD_STAMPS} or lower.`
   }
 
+  const textValidation = validateTextLengthRules([
+    ["Reward item", payload.reward_item, adminTextLimits.shortText],
+    ["Title", payload.title, adminTextLimits.shortText],
+    [
+      "Customer description",
+      payload.customer_description,
+      adminTextLimits.longText,
+    ],
+    [
+      "Staff instructions",
+      payload.staff_instructions,
+      adminTextLimits.longText,
+    ],
+    ["Terms", payload.terms, adminTextLimits.longText],
+  ])
+
+  if (textValidation) {
+    return textValidation
+  }
+
   return null
+}
+
+function parsePartnerSocials(formData: FormData): ParsedPartnerSocial[] {
+  const count = integerValue(formData, "social_count") ?? 0
+  const socials: ParsedPartnerSocial[] = []
+
+  for (let index = 0; index < count; index += 1) {
+    const platform = stringValue(formData, `social_${index}_platform`)
+    const handle = normalizePartnerSocialHandle(
+      stringValue(formData, `social_${index}_handle`),
+    )
+
+    if (!platform && !handle) {
+      continue
+    }
+
+    socials.push({
+      platform,
+      handle,
+      sort_order: socials.length,
+      url: platform && handle ? buildPartnerSocialUrl(platform, handle) : "",
+    })
+  }
+
+  return socials
+}
+
+function validatePartnerSocials(socials: ParsedPartnerSocial[]) {
+  if (socials.length > MAX_PARTNER_SOCIALS) {
+    return `Add up to ${MAX_PARTNER_SOCIALS} social media handles.`
+  }
+
+  const seenPlatforms = new Set<string>()
+
+  for (const social of socials) {
+    if (!isPartnerSocialPlatform(social.platform)) {
+      return "Choose a valid social media platform."
+    }
+
+    if (!social.handle) {
+      return "Enter a social media handle or remove the empty row."
+    }
+
+    const handleValidation = validateTextLength(
+      "Social media handle",
+      social.handle,
+      adminTextLimits.socialHandle,
+    )
+
+    if (handleValidation) {
+      return handleValidation
+    }
+
+    if (seenPlatforms.has(social.platform)) {
+      return "Use each social media platform only once per partner."
+    }
+
+    seenPlatforms.add(social.platform)
+  }
+
+  return null
+}
+
+async function replacePartnerSocials(
+  supabase: SupabaseClient,
+  partnerId: string,
+  socials: ParsedPartnerSocial[],
+) {
+  const deleteResult = await supabase
+    .from("partner_socials")
+    .delete()
+    .eq("partner_id", partnerId)
+
+  if (deleteResult.error) {
+    return deleteResult.error.message
+  }
+
+  if (!socials.length) {
+    return null
+  }
+
+  const insertResult = await supabase.from("partner_socials").insert(
+    socials.map((social) => ({
+      partner_id: partnerId,
+      platform: social.platform,
+      handle: social.handle,
+      sort_order: social.sort_order,
+      url: social.url,
+    })),
+  )
+
+  return insertResult.error?.message ?? null
+}
+
+async function replacePartnerHolidays(
+  supabase: SupabaseClient,
+  partnerId: string,
+  holidays: ParsedPartnerHoliday[],
+) {
+  const deleteResult = await supabase
+    .from("partner_holidays")
+    .delete()
+    .eq("partner_id", partnerId)
+
+  if (deleteResult.error) {
+    return deleteResult.error.message
+  }
+
+  if (!holidays.length) {
+    return null
+  }
+
+  const now = new Date().toISOString()
+  const insertResult = await supabase.from("partner_holidays").insert(
+    holidays.map((holiday) => ({
+      ...holiday,
+      created_at: now,
+      updated_at: now,
+    })),
+  )
+
+  return insertResult.error?.message ?? null
+}
+
+async function rollbackCreatedPartner(
+  supabase: SupabaseClient,
+  partnerId: string,
+) {
+  await supabase.from("partner_socials").delete().eq("partner_id", partnerId)
+  await supabase.from("partner_holidays").delete().eq("partner_id", partnerId)
+  await supabase
+    .from("partner_reward_milestones")
+    .delete()
+    .eq("partner_id", partnerId)
+  await supabase.from("partner_opening_hours").delete().eq("partner_id", partnerId)
+  await supabase.from("partners").delete().eq("id", partnerId)
 }
 
 function parsePartnerStaffPayload(formData: FormData): ParsedPartnerStaff {
@@ -2550,7 +3042,7 @@ function parsePartnerStaffPayload(formData: FormData): ParsedPartnerStaff {
     partner_id: stringValue(formData, "partner_id"),
     user_id: stringValue(formData, "user_id"),
     role: stringValue(formData, "role") || "scanner",
-    active: checkboxValue(formData, "active"),
+    active: true,
   }
 }
 
@@ -2602,6 +3094,16 @@ function validateOpeningHourPayload(payload: ParsedOpeningHour) {
     return "Open days require opening and closing times."
   }
 
+  const labelValidation = validateTextLength(
+    "Opening hour note",
+    payload.label,
+    adminTextLimits.label,
+  )
+
+  if (labelValidation) {
+    return labelValidation
+  }
+
   return null
 }
 
@@ -2632,6 +3134,76 @@ function invalidWeeklyOpeningHourRow(rows: ParsedOpeningHour[]) {
   return rows.find(
     (row) => !row.is_closed && (!row.opens_at || !row.closes_at),
   )
+}
+
+function validateOpeningHourRows(rows: ParsedOpeningHour[]) {
+  for (const row of rows) {
+    const labelValidation = validateTextLength(
+      `${weekdayName(row.weekday)} note`,
+      row.label,
+      adminTextLimits.label,
+    )
+
+    if (labelValidation) {
+      return labelValidation
+    }
+  }
+
+  return null
+}
+
+function parsePartnerHolidays(
+  formData: FormData,
+  partnerId: string,
+): ParsedPartnerHoliday[] {
+  const count = integerValue(formData, "holiday_count") ?? 0
+  const holidays: ParsedPartnerHoliday[] = []
+  const seenDates = new Set<string>()
+
+  for (let index = 0; index < count; index += 1) {
+    const holidayDate = normalizeHolidayDate(
+      stringValue(formData, `holiday_${index}_date`),
+    )
+
+    if (!holidayDate || seenDates.has(holidayDate)) {
+      continue
+    }
+
+    seenDates.add(holidayDate)
+    holidays.push({
+      partner_id: partnerId,
+      holiday_date: holidayDate,
+      label: nullableStringValue(formData, `holiday_${index}_label`),
+    })
+  }
+
+  return holidays.sort((first, second) =>
+    first.holiday_date.localeCompare(second.holiday_date),
+  )
+}
+
+function validatePartnerHolidays(holidays: ParsedPartnerHoliday[]) {
+  for (const holiday of holidays) {
+    if (!holiday.partner_id) {
+      return "Holiday closures must be attached to a partner."
+    }
+
+    if (!normalizeHolidayDate(holiday.holiday_date)) {
+      return "Choose a valid holiday date."
+    }
+
+    const labelValidation = validateTextLength(
+      "Holiday label",
+      holiday.label,
+      adminTextLimits.label,
+    )
+
+    if (labelValidation) {
+      return labelValidation
+    }
+  }
+
+  return null
 }
 
 function parseInitialMenuCategoryPayloads(
@@ -2727,6 +3299,15 @@ function validateMenuPayload(payload: ParsedMenu) {
     return "Choose a valid menu status."
   }
 
+  const textValidation = validateTextLengthRules([
+    ["Menu name", payload.name, adminTextLimits.shortText],
+    ["Menu description", payload.description, adminTextLimits.longText],
+  ])
+
+  if (textValidation) {
+    return textValidation
+  }
+
   return null
 }
 
@@ -2752,6 +3333,15 @@ function validateMenuCategoryPayload(payload: ParsedMenuCategory) {
 
   if (!payload.slug) {
     return "Category slug is required."
+  }
+
+  const textValidation = validateTextLengthRules([
+    ["Category name", payload.name, adminTextLimits.shortText],
+    ["Category slug", payload.slug, adminTextLimits.shortText],
+  ])
+
+  if (textValidation) {
+    return textValidation
   }
 
   return null
@@ -2788,6 +3378,31 @@ function validateMenuItemPayload(payload: ParsedMenuItem) {
 
   if (payload.price !== null && payload.price < 0) {
     return "Menu item price cannot be negative."
+  }
+
+  const textValidation = validateTextLengthRules([
+    ["Menu item name", payload.name, adminTextLimits.shortText],
+    ["Menu item description", payload.description, adminTextLimits.longText],
+    ["Currency", payload.currency, adminTextLimits.currency],
+  ])
+
+  if (textValidation) {
+    return textValidation
+  }
+
+  const tagValidation = validateListTextLengths("Tags", payload.tags)
+
+  if (tagValidation) {
+    return tagValidation
+  }
+
+  const allergenValidation = validateListTextLengths(
+    "Allergens",
+    payload.allergens,
+  )
+
+  if (allergenValidation) {
+    return allergenValidation
   }
 
   return null
@@ -2950,9 +3565,14 @@ function collectPartnerMedia(formData: FormData): PartnerMediaFormValues {
   return {
     logoFile: fileValue(formData, "logo_file"),
     featureFile: fileValue(formData, "feature_card_file"),
+    discoverFile: fileValue(formData, "discover_card_file"),
     coverFiles: fileValues(formData, "cover_files"),
     existingLogoUrl: stringValue(formData, "existing_logo_url"),
     existingFeatureCardUrl: stringValue(formData, "existing_feature_card_url"),
+    existingDiscoverCardUrl: stringValue(
+      formData,
+      "existing_discover_card_image_url",
+    ),
     existingCoverUrls: coverValues(formData),
     removedMediaUrls: stringListValue(formData, "removed_media_urls"),
   }
@@ -2987,6 +3607,126 @@ function isUploadPlaceholderUrl(value: string) {
   } catch {
     return value === UPLOAD_PLACEHOLDER_PATH || value === "upload-image.jpg"
   }
+}
+
+function normalizePartnerSocialHandle(value: string) {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return ""
+  }
+
+  try {
+    const parsed = new URL(trimmed)
+    const queryId = parsed.searchParams.get("id")
+
+    if (queryId) {
+      return sanitizePartnerSocialHandle(queryId)
+    }
+
+    const [firstSegment = ""] = parsed.pathname
+      .split("/")
+      .map((segment) => segment.trim())
+      .filter(Boolean)
+
+    return sanitizePartnerSocialHandle(firstSegment)
+  } catch {
+    return sanitizePartnerSocialHandle(trimmed)
+  }
+}
+
+function sanitizePartnerSocialHandle(value: string) {
+  const trimmed = value.trim().replace(/^@+/, "").replace(/^\/+/, "").replace(/\/+$/, "")
+
+  try {
+    return decodeURIComponent(trimmed)
+  } catch {
+    return trimmed
+  }
+}
+
+function buildPartnerSocialUrl(platform: string, handle: string) {
+  const normalizedHandle = sanitizePartnerSocialHandle(handle)
+
+  switch (platform) {
+    case "facebook":
+      return `https://www.facebook.com/${normalizedHandle}`
+    case "instagram":
+      return `https://www.instagram.com/${normalizedHandle}`
+    case "tiktok":
+      return `https://www.tiktok.com/@${normalizedHandle}`
+    case "x":
+      return `https://x.com/${normalizedHandle}`
+    default:
+      return ""
+  }
+}
+
+function normalizeHolidayDate(value: string) {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return ""
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return ""
+  }
+
+  const parsed = new Date(`${trimmed}T00:00:00.000Z`)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return ""
+  }
+
+  return parsed.toISOString().slice(0, 10) === trimmed ? trimmed : ""
+}
+
+function validateTextLength(
+  label: string,
+  value: string | null | undefined,
+  maxLength: number,
+) {
+  if ((value ?? "").length > maxLength) {
+    return `${label} must be ${maxLength} characters or fewer.`
+  }
+
+  return null
+}
+
+function validateTextLengthRules(
+  rules: Array<[label: string, value: string | null | undefined, maxLength: number]>,
+) {
+  for (const [label, value, maxLength] of rules) {
+    const message = validateTextLength(label, value, maxLength)
+
+    if (message) {
+      return message
+    }
+  }
+
+  return null
+}
+
+function validateListTextLengths(
+  label: string,
+  values: string[] | null | undefined,
+) {
+  const items = values ?? []
+
+  for (const item of items) {
+    const itemValidation = validateTextLength(
+      `${label} entry`,
+      item,
+      adminTextLimits.shortText,
+    )
+
+    if (itemValidation) {
+      return itemValidation
+    }
+  }
+
+  return validateTextLength(label, items.join(", "), adminTextLimits.tagList)
 }
 
 function stringValue(formData: FormData, key: string) {
@@ -3111,6 +3851,7 @@ function validatePartnerMediaFiles(mediaValues: PartnerMediaFormValues) {
   const files = [
     mediaValues.logoFile,
     mediaValues.featureFile,
+    mediaValues.discoverFile,
     ...mediaValues.coverFiles,
   ].filter((file): file is File => Boolean(file))
 
@@ -3195,6 +3936,10 @@ function normalizePartnerTypeValue(value: string) {
     : value
 }
 
+function partnerTypeSupportsMenu(value: string) {
+  return normalizePartnerTypeValue(value) === "Food & Drink"
+}
+
 function createShortName(name: string) {
   const firstNamePart = name.split(/[,-]/)[0]?.trim()
 
@@ -3230,4 +3975,14 @@ function safeFileName(name: string) {
   const safeBaseName = slugify(baseName) || "image"
 
   return extension ? `${safeBaseName}.${extension.toLowerCase()}` : safeBaseName
+}
+
+function replaceFileExtension(name: string, nextExtension: string) {
+  const normalizedExtension = nextExtension.replace(/^\.+/, "")
+  const baseName = name.replace(/\.[^.]+$/, "")
+  const safeBaseName = slugify(baseName) || "image"
+
+  return normalizedExtension
+    ? `${safeBaseName}.${normalizedExtension}`
+    : safeBaseName
 }

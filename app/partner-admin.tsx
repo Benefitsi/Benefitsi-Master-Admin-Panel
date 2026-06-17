@@ -15,18 +15,26 @@ import { useRouter } from "next/navigation"
 import type {
   City,
   Deal,
-  FraudEvent,
   MenuCategory,
   MenuItem,
   OwnerOption,
+  PartnerHoliday,
   PartnerMenu,
   PartnerOpeningHour,
   PartnerRewardMilestone,
+  PartnerSocial,
   PartnerStaff,
   PartnerWithDeals,
   StampCardProgress,
   Visit,
 } from "@/lib/admin-data"
+import {
+  adminTextLimits,
+  MAX_PARTNER_SOCIALS,
+  partnerMediaSpecs,
+  partnerSocialPlatformOptions,
+  type PartnerMediaSpec,
+} from "@/lib/partner-config"
 import {
   DEFAULT_AUDIENCE,
   DEFAULT_DEAL_DROP_WEEKDAYS,
@@ -160,51 +168,6 @@ const menuStatusOptions = [
   { value: "archived", label: "Archived" },
 ] as const
 
-type MediaSpec = {
-  label: string
-  previewAspectHeight?: number
-  previewAspectWidth?: number
-  width: number
-  height: number
-  previewMaxWidth: number
-  previewFit: "contain" | "cover"
-}
-
-const partnerMediaSpecs = {
-  logo: {
-    label: "Logo",
-    width: 380,
-    height: 380,
-    previewAspectWidth: 1170,
-    previewAspectHeight: 1200,
-    previewMaxWidth: 260,
-    previewFit: "contain",
-  },
-  feature: {
-    label: "Feature",
-    width: 720,
-    height: 490,
-    previewAspectWidth: 1170,
-    previewAspectHeight: 1200,
-    previewMaxWidth: 260,
-    previewFit: "contain",
-  },
-  cover: {
-    label: "Cover",
-    width: 1170,
-    height: 1200,
-    previewMaxWidth: 260,
-    previewFit: "cover",
-  },
-  menuItem: {
-    label: "Menu item",
-    width: 720,
-    height: 490,
-    previewMaxWidth: 240,
-    previewFit: "cover",
-  },
-} satisfies Record<string, MediaSpec>
-
 type PartnerWorkspaceProps = {
   partners: PartnerWithDeals[]
   cities: City[]
@@ -237,6 +200,27 @@ type InitialMenuItemDraft = {
   sortOrder: string
 }
 
+type SocialHandleDraft = {
+  id: string
+  platform: string
+  handle: string
+}
+
+type InitialMilestoneDraft = {
+  id: string
+  active: boolean
+  audience: string
+  customerDescription: string
+  discountValue: string
+  estimatedSavings: string
+  requiredStamps: string
+  rewardItem: string
+  rewardType: string
+  staffInstructions: string
+  terms: string
+  title: string
+}
+
 type PendingMenuReview = {
   id?: string
   menuName: string
@@ -247,10 +231,14 @@ type PendingMenuReview = {
   updatedAt: string | null
 }
 
+type SectionStatusTone = "info" | "recommended" | "required" | "required-subtle"
+
 type SectionStatus = {
   label: string
-  tone?: "info" | "recommended" | "required" | "required-subtle"
+  tone?: SectionStatusTone
 }
+
+type SectionStatusValue = SectionStatus | SectionStatus[]
 
 export function PartnerWorkspace({
   partners,
@@ -269,6 +257,7 @@ export function PartnerWorkspace({
 
   const partnerCount = partners.length
   const activePartners = partners.filter(isPartnerActive).length
+  const featuredPartners = partners.filter((partner) => partner.is_featured).length
   const dealCount = partners.reduce(
     (count, partner) => count + partner.deals.length,
     0,
@@ -322,9 +311,10 @@ export function PartnerWorkspace({
 
   return (
     <section id="partners" className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <LiveMetric label="Partners" value={partnerCount} />
         <LiveMetric label="Active partners" value={activePartners} />
+        <LiveMetric label="Featured partners" value={featuredPartners} />
         <LiveMetric label="Deals" value={dealCount} />
         <LiveMetric label="Menu approvals required" value={pendingMenuReviews.length} />
       </div>
@@ -398,13 +388,12 @@ export function PartnerWorkspace({
               <PartnerForm cities={cities} owners={owners} mode="create" />
             </EditorShell>
           ) : selectedPartner ? (
-            <PartnerDetail
-              cities={cities}
-              owners={owners}
-              onDeleted={startCreatePartner}
-              partner={selectedPartner}
-              partners={partners}
-            />
+              <PartnerDetail
+                cities={cities}
+                owners={owners}
+                onDeleted={startCreatePartner}
+                partner={selectedPartner}
+              />
           ) : (
             <EditorShell
               title="No partners yet"
@@ -520,6 +509,7 @@ function PartnerListButton({
             <p className="text-xs font-medium text-zinc-600">
               {partner.deals.length} {partner.deals.length === 1 ? "deal" : "deals"}
             </p>
+            {partner.is_featured ? <FeaturedBadge compact /> : null}
             {!hasDeals ? (
               <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
                 Deal recommended
@@ -539,52 +529,62 @@ function PartnerListButton({
 
 function PartnerDetail({
   partner,
-  partners,
   cities,
   owners,
   onDeleted,
 }: {
   partner: PartnerWithDeals
-  partners: PartnerWithDeals[]
   cities: City[]
   owners: OwnerOption[]
   onDeleted: () => void
 }) {
-  const auditEvents = partners.flatMap((item) => item.fraud_events)
+  const partnerFormId = `partner-form-${partner.id ?? "partner"}`
 
   return (
     <div key={partner.id ?? "partner-detail"} className="space-y-5">
       <EditorShell
         title={partner.name || "Untitled partner"}
-        description="Edit partner details, contact information, media, rewards, and Supabase routing fields."
+        description="Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields."
         aside={
           <div className="flex flex-wrap gap-2">
             <StatusPill active={isPartnerActive(partner)} />
-            {partner.is_featured ? <Badge>Featured</Badge> : null}
+            {partner.is_featured ? <FeaturedBadge /> : null}
           </div>
         }
       >
-        <PartnerForm
-          cities={cities}
-          owners={owners}
-          partner={partner}
-          mode="edit"
-        />
+        <div className="space-y-5">
+          <PartnerForm
+            key={partner.id ?? "edit-partner"}
+            formId={partnerFormId}
+            cities={cities}
+            owners={owners}
+            partner={partner}
+            mode="edit"
+          />
+          <div className="space-y-4">
+            <MilestonesPanel partner={partner} embedded />
+            <DealsPanel partner={partner} embedded />
+            <OpeningHoursPanel partner={partner} embedded />
+            {partnerTypeSupportsMenu(partner.type) ? (
+              <MenuPanel partner={partner} embedded />
+            ) : null}
+          </div>
+          <div className="space-y-4">
+            <PartnerPinDisplay mode="edit" pin={partner.pin} />
+            <button
+              type="submit"
+              form={partnerFormId}
+              className="h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
+            >
+              Save partner
+            </button>
+          </div>
+        </div>
       </EditorShell>
 
-      <DealsPanel partner={partner} />
-      <MilestonesPanel partner={partner} />
       <PartnerStaffPanel partner={partner} users={owners} />
-      <OpeningHoursPanel partner={partner} />
-      <MenuPanel partner={partner} />
       <StampProgressPanel progress={partner.stamp_progress} />
       <RedemptionHistoryPanel partner={partner} visits={partner.visits} />
-      <FraudAuditPanel
-        defaultPartnerId={partner.id ?? ""}
-        events={auditEvents}
-        partners={partners}
-      />
-      <QrSecurityNote />
 
       <EditorShell
         title="Remove partner"
@@ -611,7 +611,7 @@ function EditorShell({
   children: ReactNode
   collapsible?: boolean
   defaultOpen?: boolean
-  status?: SectionStatus
+  status?: SectionStatusValue
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const contentOpen = collapsible ? open : true
@@ -666,7 +666,7 @@ function EditorShellTitle({
 }: {
   title: string
   description: string
-  status?: SectionStatus
+  status?: SectionStatusValue
 }) {
   return (
     <span className="min-w-0">
@@ -674,7 +674,7 @@ function EditorShellTitle({
         <span className="text-lg font-semibold tracking-normal text-zinc-950">
           {title}
         </span>
-        {status ? <SectionStatusBadge status={status} /> : null}
+        {status ? <SectionStatusList status={status} /> : null}
       </span>
       <span className="mt-1 block max-w-2xl text-sm leading-6 text-zinc-600">
         {description}
@@ -686,17 +686,25 @@ function EditorShellTitle({
 function PartnerForm({
   partner,
   cities,
+  formId,
   owners,
   mode,
 }: {
   partner?: PartnerWithDeals
   cities: City[]
+  formId?: string
   owners: OwnerOption[]
   mode: "create" | "edit"
 }) {
   const [state, formAction] = useActionState(savePartner, initialState)
   const router = useRouter()
+  const [socialHandles, setSocialHandles] = useState<SocialHandleDraft[]>(() =>
+    socialDraftsFromPartner(partner?.socials),
+  )
   const [initialDeals, setInitialDeals] = useState<InitialDealDraft[]>([])
+  const [initialMilestones, setInitialMilestones] = useState<
+    InitialMilestoneDraft[]
+  >(() => (mode === "create" ? [createInitialMilestoneDraft()] : []))
   const [initialMenuEnabled, setInitialMenuEnabled] = useState(false)
   const [initialMenuCategories, setInitialMenuCategories] = useState<
     InitialMenuCategoryDraft[]
@@ -710,6 +718,8 @@ function PartnerForm({
   const confirmedSubmitRef = useRef(false)
   const pendingSubmitterRef = useRef<HTMLButtonElement | null>(null)
   const partnerTypeDefault = normalizePartnerTypeValue(partner?.type)
+  const [selectedPartnerType, setSelectedPartnerType] =
+    useState(partnerTypeDefault)
   const cityOptions = withCurrentOption(
     cities.map((city) => ({
       value: city.id,
@@ -728,9 +738,16 @@ function PartnerForm({
     partner?.owner_id,
   )
   const coordinateDefaultValue = formatPartnerCoordinates(partner)
+  const menuSupported = partnerTypeSupportsMenu(selectedPartnerType)
   const requiredSectionsOpen = mode === "create"
-  const requiredSectionMarker: boolean | "subtle" =
-    mode === "create" ? true : "subtle"
+  const requiredSectionMarker: boolean | "subtle" = "subtle"
+  const handlePartnerTypeChange = (nextType: string) => {
+    setSelectedPartnerType(nextType)
+
+    if (!partnerTypeSupportsMenu(nextType)) {
+      setInitialMenuEnabled(false)
+    }
+  }
 
   useEffect(() => {
     if (state.ok) {
@@ -742,7 +759,9 @@ function PartnerForm({
     }
 
     const frame = window.requestAnimationFrame(() => {
+      setSocialHandles([])
       setInitialDeals([])
+      setInitialMilestones([createInitialMilestoneDraft()])
       setInitialMenuEnabled(false)
       setInitialMenuCategories([])
       setInitialMenuItems([])
@@ -758,6 +777,7 @@ function PartnerForm({
 
   return (
     <form
+      id={formId}
       key={formVersion}
       ref={formRef}
       action={formAction}
@@ -800,6 +820,7 @@ function PartnerForm({
         name="stamp_target"
         value={partner?.stamp_target ?? MAX_STAMP_CARD_STAMPS}
       />
+      <input type="hidden" name="social_count" value={socialHandles.length} />
 
       <FormSection title="Profile" required={requiredSectionMarker}>
         <FieldGrid>
@@ -812,8 +833,9 @@ function PartnerForm({
           <SelectField
             label="Partner type"
             name="type"
-            defaultValue={partnerTypeDefault}
+            value={selectedPartnerType}
             options={withCurrentOption(partnerTypeOptions, partnerTypeDefault)}
+            onChange={handlePartnerTypeChange}
             required
           />
           <SelectField
@@ -907,10 +929,49 @@ function PartnerForm({
           defaultValue={partner?.address}
           required
         />
+        <div className="border-t border-zinc-100 pt-4">
+          <div className="mb-4 space-y-1">
+            <p className="text-sm font-semibold text-zinc-900">Social media</p>
+            <p className="text-sm leading-6 text-zinc-600">
+              Optional. Add up to {MAX_PARTNER_SOCIALS} social profiles. Enter a
+              handle or full profile URL and the partner record will store the
+              canonical link automatically.
+            </p>
+          </div>
+          <SocialHandlesSection
+            rows={socialHandles}
+            onAdd={() =>
+              setSocialHandles((current) => [
+                ...current,
+                {
+                  id: crypto.randomUUID(),
+                  platform: "",
+                  handle: "",
+                },
+              ])
+            }
+            onRemove={(id) =>
+              setSocialHandles((current) =>
+                current.filter((row) => row.id !== id),
+              )
+            }
+            onUpdate={(id, values) =>
+              setSocialHandles((current) =>
+                current.map((row) =>
+                  row.id === id ? { ...row, ...values } : row,
+                ),
+              )
+            }
+          />
+        </div>
       </FormSection>
 
-      <FormSection title="Media" defaultOpen={false}>
-        <div className="grid gap-4 lg:grid-cols-2">
+      <FormSection
+        title="Media"
+        defaultOpen={false}
+        status={{ label: "Recommended", tone: "recommended" }}
+      >
+        <div className="grid gap-4 lg:auto-rows-fr lg:grid-cols-3">
           <MediaUploadField
             key={`logo-${partner?.logo_url ?? "new"}`}
             label="Partner logo"
@@ -929,6 +990,15 @@ function PartnerForm({
             currentUrl={partner?.feature_card_url}
             spec={partnerMediaSpecs.feature}
           />
+          <MediaUploadField
+            key={`discover-${partner?.discover_card_image_url ?? "new"}`}
+            label="Discover page image"
+            fileName="discover_card_file"
+            existingName="existing_discover_card_image_url"
+            removeName="remove_discover_card_image"
+            currentUrl={partner?.discover_card_image_url}
+            spec={partnerMediaSpecs.discover}
+          />
         </div>
         <CoverUploadField
           key={`covers-${partner?.cover_urls?.join("|") ?? "new"}`}
@@ -936,125 +1006,37 @@ function PartnerForm({
         />
       </FormSection>
 
-      <FormSection title="Internal Settings" defaultOpen={false}>
-        <FieldGrid>
-          <ReadOnlyField
-            label="Partner PIN"
-            value={mode === "edit" ? partner?.pin ?? "Not set" : "Generated after save"}
-            hint={
-              mode === "edit"
-                ? "Auto-generated for this partner and kept read-only here."
-                : "Auto-generated when the partner is created and kept read-only here."
-            }
-          />
-        </FieldGrid>
-      </FormSection>
-
       {mode === "create" ? (
         <>
-          <FormSection title="Operating Hours" defaultOpen={false}>
-            <WeeklyHoursFields />
-          </FormSection>
-
-          <FormSection title="Menu" defaultOpen={false}>
-            <InitialMenuEditor
-              categories={initialMenuCategories}
-              enabled={initialMenuEnabled}
-              items={initialMenuItems}
-              onAddCategory={() =>
-                setInitialMenuCategories((current) => {
-                  const normalized = normalizeInitialCategoryPositions(current)
-
-                  return [
-                    ...normalized,
-                    {
-                      id: crypto.randomUUID(),
-                      name: "",
-                      sortOrder: String(
-                        nextAvailablePosition(
-                          normalized.map((category) => category.sortOrder),
-                        ),
-                      ),
-                    },
-                  ]
-                })
+          <FormSection
+            title="Stamp-card milestones"
+            defaultOpen={requiredSectionsOpen}
+            required={requiredSectionMarker}
+          >
+            <input
+              type="hidden"
+              name="initial_milestone_count"
+              value={initialMilestones.length}
+            />
+            <InitialMilestonesEditor
+              milestones={initialMilestones}
+              onAdd={() =>
+                setInitialMilestones((current) => [
+                  ...current,
+                  createInitialMilestoneDraft(),
+                ])
               }
-              onAddItem={() =>
-                setInitialMenuItems((current) => {
-                  const categoryDraftId =
-                    sortInitialCategories(initialMenuCategories)[0]?.id ?? ""
-                  const normalized = normalizeInitialItemPositions(current)
-
-                  return [
-                    ...normalized,
-                    {
-                      id: crypto.randomUUID(),
-                      categoryDraftId,
-                      description: "",
-                      imagePreviewUrl: "",
-                      isPopular: false,
-                      name: "",
-                      sortOrder: String(
-                        nextAvailablePosition(
-                          normalized
-                            .filter(
-                              (item) =>
-                                item.categoryDraftId === categoryDraftId,
-                            )
-                            .map((item) => item.sortOrder),
-                        ),
-                      ),
-                    },
-                  ]
-                })
-              }
-              onRemoveCategory={(id) => {
-                setInitialMenuCategories((current) =>
-                  normalizeInitialCategoryPositions(
-                    current.filter((category) => category.id !== id),
-                  ),
-                )
-                setInitialMenuItems((current) =>
-                  normalizeInitialItemPositions(
-                    current.map((item) =>
-                      item.categoryDraftId === id
-                        ? { ...item, categoryDraftId: "" }
-                        : item,
-                    ),
-                  ),
-                )
-              }}
-              onRemoveItem={(id) =>
-                setInitialMenuItems((current) =>
-                  normalizeInitialItemPositions(
-                    current.filter((item) => item.id !== id),
-                  ),
+              onRemove={(id) =>
+                setInitialMilestones((current) =>
+                  current.filter((milestone) => milestone.id !== id),
                 )
               }
-              onReorderCategories={(orderedIds) =>
-                setInitialMenuCategories((current) =>
-                  normalizeInitialCategoryPositions(
-                    reorderRowsByIds(current, orderedIds),
-                  ),
-                )
-              }
-              onReorderItems={(orderedIds) =>
-                setInitialMenuItems((current) =>
-                  normalizeInitialItemPositions(reorderRowsByIds(current, orderedIds)),
-                )
-              }
-              onSetEnabled={setInitialMenuEnabled}
-              onUpdateCategory={(id, values) =>
-                setInitialMenuCategories((current) =>
-                  current.map((category) =>
-                    category.id === id ? { ...category, ...values } : category,
-                  ),
-                )
-              }
-              onUpdateItem={(id, values) =>
-                setInitialMenuItems((current) =>
-                  current.map((item) =>
-                    item.id === id ? { ...item, ...values } : item,
+              onUpdate={(id, values) =>
+                setInitialMilestones((current) =>
+                  current.map((milestone) =>
+                    milestone.id === id
+                      ? { ...milestone, ...values }
+                      : milestone,
                   ),
                 )
               }
@@ -1116,27 +1098,135 @@ function PartnerForm({
               }
             />
           </FormSection>
+
+          <FormSection title="Operating Hours" defaultOpen={false}>
+            <WeeklyHoursFields />
+          </FormSection>
+
+          {menuSupported ? (
+            <FormSection title="Menu" defaultOpen={false}>
+              <InitialMenuEditor
+                categories={initialMenuCategories}
+                enabled={initialMenuEnabled}
+                items={initialMenuItems}
+                onAddCategory={() =>
+                  setInitialMenuCategories((current) => {
+                    const normalized = normalizeInitialCategoryPositions(current)
+
+                    return [
+                      ...normalized,
+                      {
+                        id: crypto.randomUUID(),
+                        name: "",
+                        sortOrder: String(
+                          nextAvailablePosition(
+                            normalized.map((category) => category.sortOrder),
+                          ),
+                        ),
+                      },
+                    ]
+                  })
+                }
+                onAddItem={() =>
+                  setInitialMenuItems((current) => {
+                    const categoryDraftId =
+                      sortInitialCategories(initialMenuCategories)[0]?.id ?? ""
+                    const normalized = normalizeInitialItemPositions(current)
+
+                    return [
+                      ...normalized,
+                      {
+                        id: crypto.randomUUID(),
+                        categoryDraftId,
+                        description: "",
+                        imagePreviewUrl: "",
+                        isPopular: false,
+                        name: "",
+                        sortOrder: String(
+                          nextAvailablePosition(
+                            normalized
+                              .filter(
+                                (item) =>
+                                  item.categoryDraftId === categoryDraftId,
+                              )
+                              .map((item) => item.sortOrder),
+                          ),
+                        ),
+                      },
+                    ]
+                  })
+                }
+                onRemoveCategory={(id) => {
+                  setInitialMenuCategories((current) =>
+                    normalizeInitialCategoryPositions(
+                      current.filter((category) => category.id !== id),
+                    ),
+                  )
+                  setInitialMenuItems((current) =>
+                    normalizeInitialItemPositions(
+                      current.map((item) =>
+                        item.categoryDraftId === id
+                          ? { ...item, categoryDraftId: "" }
+                          : item,
+                      ),
+                    ),
+                  )
+                }}
+                onRemoveItem={(id) =>
+                  setInitialMenuItems((current) =>
+                    normalizeInitialItemPositions(
+                      current.filter((item) => item.id !== id),
+                    ),
+                  )
+                }
+                onReorderCategories={(orderedIds) =>
+                  setInitialMenuCategories((current) =>
+                    normalizeInitialCategoryPositions(
+                      reorderRowsByIds(current, orderedIds),
+                    ),
+                  )
+                }
+                onReorderItems={(orderedIds) =>
+                  setInitialMenuItems((current) =>
+                    normalizeInitialItemPositions(
+                      reorderRowsByIds(current, orderedIds),
+                    ),
+                  )
+                }
+                onSetEnabled={setInitialMenuEnabled}
+                onUpdateCategory={(id, values) =>
+                  setInitialMenuCategories((current) =>
+                    current.map((category) =>
+                      category.id === id ? { ...category, ...values } : category,
+                    ),
+                  )
+                }
+                onUpdateItem={(id, values) =>
+                  setInitialMenuItems((current) =>
+                    current.map((item) =>
+                      item.id === id ? { ...item, ...values } : item,
+                    ),
+                  )
+                }
+              />
+            </FormSection>
+          ) : null}
         </>
       ) : null}
 
+      {mode === "create" ? (
+        <PartnerPinDisplay mode="create" pin={partner?.pin ?? null} />
+      ) : null}
+
       <ActionMessage state={state} />
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <SubmitButton
-          label={mode === "create" ? "Add partner" : "Save partner"}
-          pendingLabel={
-            mode === "create" ? "Adding partner..." : "Saving partner..."
-          }
-          name="save_intent"
-          value="save"
-        />
-        <SubmitButton
-          label="Save for later"
-          pendingLabel="Saving for later..."
-          name="save_intent"
-          value="later"
-          tone="muted"
-        />
-      </div>
+      {mode === "create" ? (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <SubmitButton
+            label="Add partner"
+            pendingLabel="Adding partner..."
+          />
+        </div>
+      ) : null}
       <ConfirmDialog
         open={confirmingSave}
         title="Save partner changes?"
@@ -1150,6 +1240,242 @@ function PartnerForm({
         }}
       />
     </form>
+  )
+}
+
+function SocialHandlesSection({
+  rows,
+  onAdd,
+  onRemove,
+  onUpdate,
+}: {
+  rows: SocialHandleDraft[]
+  onAdd: () => void
+  onRemove: (id: string) => void
+  onUpdate: (id: string, values: Partial<SocialHandleDraft>) => void
+}) {
+  return (
+    <div className="space-y-4">
+      {rows.length ? (
+        <div className="space-y-3">
+          {rows.map((row, index) => (
+            <div
+              key={row.id}
+              className="rounded-md border border-zinc-200 bg-zinc-50 p-3"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-zinc-900">
+                  Handle {index + 1}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onRemove(row.id)}
+                  className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                >
+                  Remove
+                </button>
+              </div>
+              <div className="mt-3 grid gap-4 md:grid-cols-2">
+                <SelectField
+                  label="Platform"
+                  name={`social_${index}_platform`}
+                  value={row.platform}
+                  options={partnerSocialPlatformOptions}
+                  onChange={(platform) => onUpdate(row.id, { platform })}
+                  required
+                />
+                <TextField
+                  label="Handle or profile URL"
+                  name={`social_${index}_handle`}
+                  value={row.handle}
+                  onChange={(handle) => onUpdate(row.id, { handle })}
+                  placeholder="@benefitsi or https://instagram.com/benefitsi"
+                  required
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState>No social handles added.</EmptyState>
+      )}
+      <button
+        type="button"
+        onClick={onAdd}
+        disabled={rows.length >= MAX_PARTNER_SOCIALS}
+        className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:text-zinc-400"
+      >
+        Add social handle
+      </button>
+    </div>
+  )
+}
+
+function InitialMilestonesEditor({
+  milestones,
+  onAdd,
+  onRemove,
+  onUpdate,
+}: {
+  milestones: InitialMilestoneDraft[]
+  onAdd: () => void
+  onRemove: (id: string) => void
+  onUpdate: (id: string, values: Partial<InitialMilestoneDraft>) => void
+}) {
+  return (
+    <div className="space-y-4">
+      <InfoNote>
+        At least one milestone is required before a partner can be created.
+      </InfoNote>
+      {milestones.map((milestone, index) => {
+        const showsRewardItem = milestone.rewardType === "item"
+        const showsDiscountValue =
+          milestone.rewardType === "fixed" ||
+          milestone.rewardType === "percent" ||
+          milestone.rewardType === "bonus_stamp"
+
+        return (
+          <div
+            key={milestone.id}
+            className="rounded-md border border-zinc-200 bg-zinc-50 p-4"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-zinc-900">
+                Milestone {index + 1}
+              </p>
+              {milestones.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => onRemove(milestone.id)}
+                  className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+            <FieldGrid>
+              <TextField
+                label="Required stamps"
+                name={`initial_milestone_${index}_required_stamps`}
+                type="number"
+                min={1}
+                max={MAX_STAMP_CARD_STAMPS}
+                value={milestone.requiredStamps}
+                onChange={(requiredStamps) =>
+                  onUpdate(milestone.id, { requiredStamps })
+                }
+                required
+              />
+              <SelectField
+                label="Reward type"
+                name={`initial_milestone_${index}_reward_type`}
+                value={milestone.rewardType}
+                options={rewardTypeOptions}
+                onChange={(rewardType) =>
+                  onUpdate(milestone.id, {
+                    rewardType,
+                    rewardItem:
+                      rewardType === "item" ? milestone.rewardItem : "",
+                  })
+                }
+                required
+              />
+              <TextField
+                label="Title"
+                name={`initial_milestone_${index}_title`}
+                value={milestone.title}
+                onChange={(title) => onUpdate(milestone.id, { title })}
+              />
+              {showsRewardItem ? (
+                <TextField
+                  label="Reward item"
+                  name={`initial_milestone_${index}_reward_item`}
+                  value={milestone.rewardItem}
+                  onChange={(rewardItem) =>
+                    onUpdate(milestone.id, { rewardItem })
+                  }
+                  required
+                />
+              ) : null}
+              {showsDiscountValue ? (
+                <TextField
+                  label={
+                    milestone.rewardType === "bonus_stamp"
+                      ? "Bonus stamp count"
+                      : "Discount value"
+                  }
+                  name={`initial_milestone_${index}_discount_value`}
+                  type="number"
+                  step="any"
+                  value={milestone.discountValue}
+                  onChange={(discountValue) =>
+                    onUpdate(milestone.id, { discountValue })
+                  }
+                  required
+                />
+              ) : null}
+              <TextField
+                label="Estimated savings"
+                name={`initial_milestone_${index}_estimated_savings`}
+                type="number"
+                step="any"
+                value={milestone.estimatedSavings}
+                onChange={(estimatedSavings) =>
+                  onUpdate(milestone.id, { estimatedSavings })
+                }
+              />
+              <SelectField
+                label="Audience"
+                name={`initial_milestone_${index}_audience`}
+                value={milestone.audience}
+                options={milestoneAudienceOptions}
+                onChange={(audience) => onUpdate(milestone.id, { audience })}
+                required
+              />
+            </FieldGrid>
+            <div className="mt-4">
+              <CheckboxField
+                label="Active"
+                name={`initial_milestone_${index}_active`}
+                checked={milestone.active}
+                onChange={(active) => onUpdate(milestone.id, { active })}
+              />
+            </div>
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              <TextAreaField
+                label="Customer description"
+                name={`initial_milestone_${index}_customer_description`}
+                value={milestone.customerDescription}
+                onChange={(customerDescription) =>
+                  onUpdate(milestone.id, { customerDescription })
+                }
+              />
+              <TextAreaField
+                label="Staff instructions"
+                name={`initial_milestone_${index}_staff_instructions`}
+                value={milestone.staffInstructions}
+                onChange={(staffInstructions) =>
+                  onUpdate(milestone.id, { staffInstructions })
+                }
+              />
+              <TextAreaField
+                label="Terms"
+                name={`initial_milestone_${index}_terms`}
+                value={milestone.terms}
+                onChange={(terms) => onUpdate(milestone.id, { terms })}
+              />
+            </div>
+          </div>
+        )
+      })}
+      <button
+        type="button"
+        onClick={onAdd}
+        className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
+      >
+        Add another milestone
+      </button>
+    </div>
   )
 }
 
@@ -1809,7 +2135,13 @@ function InitialMenuEditor({
   )
 }
 
-function DealsPanel({ partner }: { partner: PartnerWithDeals }) {
+function DealsPanel({
+  partner,
+  embedded = false,
+}: {
+  partner: PartnerWithDeals
+  embedded?: boolean
+}) {
   const [newDealDrafts, setNewDealDrafts] = useState<InitialDealDraft[]>([])
   const [autoExpandedDealIds, setAutoExpandedDealIds] = useState<string[]>([])
   const knownDealIdsRef = useRef<Set<string> | null>(null)
@@ -1856,14 +2188,96 @@ function DealsPanel({ partner }: { partner: PartnerWithDeals }) {
     ])
   }
   const hasDealRows = partner.deals.length > 0 || newDealDrafts.length > 0
-  const dealStatus: SectionStatus = hasDealRows
-    ? {
-        label: `${partner.deals.length + newDealDrafts.length} ${
-          partner.deals.length + newDealDrafts.length === 1 ? "deal" : "deals"
-        }`,
-        tone: "info",
-      }
-    : { label: "Deal recommended", tone: "recommended" }
+  const dealCount = partner.deals.length + newDealDrafts.length
+  const dealStatus: SectionStatusValue = hasDealRows
+    ? [
+        { label: "Recommended", tone: "recommended" },
+        {
+          label: `${dealCount} ${dealCount === 1 ? "deal" : "deals"}`,
+          tone: "info",
+        },
+      ]
+    : { label: "Recommended", tone: "recommended" }
+
+  const content = (
+    <div className="space-y-4">
+      {!hasDealRows ? (
+        <WarningNote>
+          At least one deal is recommended, but this partner can exist
+          without deals.
+        </WarningNote>
+      ) : null}
+      {hasDealRows ? (
+        <div className="space-y-3">
+          {partner.deals.map((deal, index) => (
+            <DealCard
+              key={deal.id ?? `${deal.partner_id}-${deal.type}`}
+              autoExpanded={Boolean(
+                deal.id && autoExpandedDealIds.includes(deal.id),
+              )}
+              deal={deal}
+              index={index}
+              onAutoExpandedDismiss={() =>
+                setAutoExpandedDealIds((current) =>
+                  current.filter((id) => id !== deal.id),
+                )
+              }
+              partnerId={partnerId}
+              visits={partner.visits}
+            />
+          ))}
+          {newDealDrafts.map((deal, index) => (
+            <NewDealCard
+              key={deal.id}
+              deal={deal}
+              index={partner.deals.length + index}
+              onAddAnother={addDealDraft}
+              onRemove={() =>
+                setNewDealDrafts((current) =>
+                  current.filter((draft) => draft.id !== deal.id),
+                )
+              }
+              onSaved={() =>
+                setNewDealDrafts((current) =>
+                  current.filter((draft) => draft.id !== deal.id),
+                )
+              }
+              onUpdate={(values) =>
+                setNewDealDrafts((current) =>
+                  current.map((draft) =>
+                    draft.id === deal.id ? { ...draft, ...values } : draft,
+                  ),
+                )
+              }
+              partnerId={partnerId}
+              visits={partner.visits}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
+          No deals staged.
+        </div>
+      )}
+      {partnerId ? (
+        <button
+          type="button"
+          onClick={addDealDraft}
+          className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
+        >
+          Add deal
+        </button>
+      ) : null}
+    </div>
+  )
+
+  if (embedded) {
+    return (
+      <FormSection title="Deals" defaultOpen={false} status={dealStatus}>
+        {content}
+      </FormSection>
+    )
+  }
 
   return (
     <EditorShell
@@ -1873,75 +2287,7 @@ function DealsPanel({ partner }: { partner: PartnerWithDeals }) {
       defaultOpen={false}
       status={dealStatus}
     >
-      <div className="space-y-4">
-        {!hasDealRows ? (
-          <WarningNote>
-            At least one deal is recommended, but this partner can exist
-            without deals.
-          </WarningNote>
-        ) : null}
-        {hasDealRows ? (
-          <div className="space-y-3">
-            {partner.deals.map((deal, index) => (
-              <DealCard
-                key={deal.id ?? `${deal.partner_id}-${deal.type}`}
-                autoExpanded={Boolean(
-                  deal.id && autoExpandedDealIds.includes(deal.id),
-                )}
-                deal={deal}
-                index={index}
-                onAutoExpandedDismiss={() =>
-                  setAutoExpandedDealIds((current) =>
-                    current.filter((id) => id !== deal.id),
-                  )
-                }
-                partnerId={partnerId}
-                visits={partner.visits}
-              />
-            ))}
-            {newDealDrafts.map((deal, index) => (
-              <NewDealCard
-                key={deal.id}
-                deal={deal}
-                index={partner.deals.length + index}
-                onAddAnother={addDealDraft}
-                onRemove={() =>
-                  setNewDealDrafts((current) =>
-                    current.filter((draft) => draft.id !== deal.id),
-                  )
-                }
-                onSaved={() =>
-                  setNewDealDrafts((current) =>
-                    current.filter((draft) => draft.id !== deal.id),
-                  )
-                }
-                onUpdate={(values) =>
-                  setNewDealDrafts((current) =>
-                    current.map((draft) =>
-                      draft.id === deal.id ? { ...draft, ...values } : draft,
-                    ),
-                  )
-                }
-                partnerId={partnerId}
-                visits={partner.visits}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
-            No deals staged.
-          </div>
-        )}
-        {partnerId ? (
-          <button
-            type="button"
-            onClick={addDealDraft}
-            className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
-          >
-            Add deal
-          </button>
-        ) : null}
-      </div>
+      {content}
     </EditorShell>
   )
 }
@@ -4121,9 +4467,66 @@ function DealDropPreviewCard({
   )
 }
 
-function MilestonesPanel({ partner }: { partner: PartnerWithDeals }) {
+function MilestonesPanel({
+  partner,
+  embedded = false,
+}: {
+  partner: PartnerWithDeals
+  embedded?: boolean
+}) {
   const [showNewMilestone, setShowNewMilestone] = useState(false)
   const partnerId = partner.id ?? ""
+  const milestoneStatus: SectionStatus = partner.reward_milestones.length
+    ? {
+        label: `${partner.reward_milestones.length} milestone${
+          partner.reward_milestones.length === 1 ? "" : "s"
+        }`,
+      }
+    : { label: "Required", tone: "required-subtle" }
+
+  const content = (
+    <div className="space-y-3">
+      {showNewMilestone && partnerId ? (
+        <DealFormShell title="Add milestone">
+          <MilestoneForm partner={partner} mode="create" />
+        </DealFormShell>
+      ) : null}
+      {partner.reward_milestones.length ? (
+        <div className="space-y-3">
+          {partner.reward_milestones.map((milestone) => (
+            <MilestoneCard
+              key={milestone.id ?? `${milestone.partner_id}-${milestone.required_stamps}`}
+              milestone={milestone}
+              partner={partner}
+            />
+          ))}
+        </div>
+      ) : (
+        <EmptyState>No stamp-card milestones configured yet.</EmptyState>
+      )}
+      {partnerId ? (
+        <button
+          type="button"
+          onClick={() => setShowNewMilestone((value) => !value)}
+          className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
+        >
+          {showNewMilestone ? "Hide form" : "Add milestone"}
+        </button>
+      ) : null}
+    </div>
+  )
+
+  if (embedded) {
+    return (
+      <FormSection
+        title="Stamp-card milestones"
+        defaultOpen={partner.reward_milestones.length === 0}
+        status={milestoneStatus}
+      >
+        {content}
+      </FormSection>
+    )
+  }
 
   return (
     <EditorShell
@@ -4131,36 +4534,9 @@ function MilestonesPanel({ partner }: { partner: PartnerWithDeals }) {
       description="Manage stamp-card rewards separately from deals."
       collapsible
       defaultOpen={false}
+      status={milestoneStatus}
     >
-      <div className="space-y-3">
-        {showNewMilestone && partnerId ? (
-          <DealFormShell title="Add milestone">
-            <MilestoneForm partner={partner} mode="create" />
-          </DealFormShell>
-        ) : null}
-        {partner.reward_milestones.length ? (
-          <div className="space-y-3">
-            {partner.reward_milestones.map((milestone) => (
-              <MilestoneCard
-                key={milestone.id ?? `${milestone.partner_id}-${milestone.required_stamps}`}
-                milestone={milestone}
-                partner={partner}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyState>No stamp-card milestones configured yet.</EmptyState>
-        )}
-        {partnerId ? (
-          <button
-            type="button"
-            onClick={() => setShowNewMilestone((value) => !value)}
-            className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
-          >
-            {showNewMilestone ? "Hide form" : "Add milestone"}
-          </button>
-        ) : null}
-      </div>
+      {content}
     </EditorShell>
   )
 }
@@ -4366,24 +4742,24 @@ function PartnerStaffPanel({
   return (
     <EditorShell
       title="Partner staff and scanners"
-      description="Authorize partner users who can redeem QR tokens for this partner."
+      description="Authorize partner users as scanners or admins for this partner."
       collapsible
       defaultOpen={false}
     >
       <div className="space-y-4">
-        {partner.id ? (
+        {partner.id && !showNewStaff ? (
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => setShowNewStaff((value) => !value)}
+              onClick={() => setShowNewStaff(true)}
               className="h-9 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white transition hover:bg-teal-800"
             >
-              {showNewStaff ? "Hide form" : "Add staff"}
+              Add access
             </button>
           </div>
         ) : null}
         {showNewStaff ? (
-          <DealFormShell title="Add staff access">
+          <DealFormShell title="Add scanner or admin">
             <PartnerStaffForm partner={partner} users={users} mode="create" />
           </DealFormShell>
         ) : null}
@@ -4399,7 +4775,7 @@ function PartnerStaffPanel({
             ))}
           </div>
         ) : (
-          <EmptyState>No scanner or staff access configured yet.</EmptyState>
+          <EmptyState>No scanner or admin access configured yet.</EmptyState>
         )}
       </div>
     </EditorShell>
@@ -4419,7 +4795,7 @@ function PartnerStaffCard({
 
   return (
     <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4">
-      <div className="flex items-start justify-between gap-3">
+      <div>
         <div>
           <h3 className="text-base font-semibold tracking-normal text-zinc-950">
             {staff.user_name || staff.user_email || staff.user_id || "Staff user"}
@@ -4428,7 +4804,6 @@ function PartnerStaffCard({
             {labelForValue(partnerStaffRoleOptions, staff.role)}
           </p>
         </div>
-        <StatusPill active={Boolean(staff.active)} />
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <button
@@ -4504,11 +4879,6 @@ function PartnerStaffForm({
           required
         />
       </FieldGrid>
-      <CheckboxField
-        label="Active"
-        name="active"
-        defaultChecked={staff?.active ?? true}
-      />
       <ActionMessage state={state} />
       <SubmitButton
         label={mode === "create" ? "Add staff access" : "Save staff access"}
@@ -4518,11 +4888,40 @@ function PartnerStaffForm({
   )
 }
 
-function OpeningHoursPanel({ partner }: { partner: PartnerWithDeals }) {
+function OpeningHoursPanel({
+  partner,
+  embedded = false,
+}: {
+  partner: PartnerWithDeals
+  embedded?: boolean
+}) {
   const partnerId = partner.id ?? ""
   const hoursByWeekday = new Map(
     partner.opening_hours.map((hour) => [hour.weekday, hour] as const),
   )
+
+  const content = (
+    <div className="space-y-4">
+      <InfoNote>
+        Toggle closed days, adjust times, then save the weekly schedule once.
+      </InfoNote>
+      {partnerId ? (
+        <WeeklyOpeningHoursForm
+          holidays={partner.holidays}
+          hoursByWeekday={hoursByWeekday}
+          partnerId={partnerId}
+        />
+      ) : null}
+    </div>
+  )
+
+  if (embedded) {
+    return (
+      <FormSection title="Operating hours" defaultOpen={false}>
+        {content}
+      </FormSection>
+    )
+  }
 
   return (
     <EditorShell
@@ -4531,25 +4930,17 @@ function OpeningHoursPanel({ partner }: { partner: PartnerWithDeals }) {
       collapsible
       defaultOpen={false}
     >
-      <div className="space-y-4">
-        <InfoNote>
-          Toggle closed days, adjust times, then save the weekly schedule once.
-        </InfoNote>
-        {partnerId ? (
-          <WeeklyOpeningHoursForm
-            hoursByWeekday={hoursByWeekday}
-            partnerId={partnerId}
-          />
-        ) : null}
-      </div>
+      {content}
     </EditorShell>
   )
 }
 
 function WeeklyOpeningHoursForm({
+  holidays,
   hoursByWeekday,
   partnerId,
 }: {
+  holidays: PartnerHoliday[]
   hoursByWeekday: Map<number | null, PartnerOpeningHour>
   partnerId: string
 }) {
@@ -4561,24 +4952,39 @@ function WeeklyOpeningHoursForm({
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="partner_id" value={partnerId} />
-      <WeeklyHoursFields hoursByWeekday={hoursByWeekday} />
+      <WeeklyHoursFields holidays={holidays} hoursByWeekday={hoursByWeekday} />
       <ActionMessage state={state} />
       <SubmitButton
-        label="Save weekly hours"
-        pendingLabel="Saving weekly hours..."
+        label="Save operating hours"
+        pendingLabel="Saving operating hours..."
       />
     </form>
   )
 }
 
 function WeeklyHoursFields({
+  holidays = [],
   hoursByWeekday = new Map(),
 }: {
+  holidays?: PartnerHoliday[]
   hoursByWeekday?: Map<number | null, PartnerOpeningHour>
 }) {
   const [bulkOpenTime, setBulkOpenTime] = useState("09:00")
   const [bulkCloseTime, setBulkCloseTime] = useState("18:00")
   const [bulkApplied, setBulkApplied] = useState(false)
+  const [holidayInput, setHolidayInput] = useState("")
+  const [holidayLabelInput, setHolidayLabelInput] = useState("")
+  const [holidayError, setHolidayError] = useState("")
+  const [holidayRows, setHolidayRows] = useState(() =>
+    holidays
+      .map((holiday) => ({
+        date: normalizeHolidayDateInput(holiday.holiday_date),
+        id: crypto.randomUUID(),
+        label: holiday.label ?? "",
+      }))
+      .filter((holiday) => holiday.date)
+      .sort((first, second) => first.date.localeCompare(second.date)),
+  )
   const [weeklyHours, setWeeklyHours] = useState(() =>
     Object.fromEntries(
       openingWeekdayOptions.map((day) => {
@@ -4630,6 +5036,33 @@ function WeeklyHoursFields({
     )
     setBulkApplied(true)
   }
+  const addHoliday = () => {
+    const normalizedHoliday = normalizeHolidayDateInput(holidayInput)
+
+    if (!normalizedHoliday) {
+      setHolidayError("Choose a valid holiday date.")
+      return
+    }
+
+    if (holidayRows.some((holiday) => holiday.date === normalizedHoliday)) {
+      setHolidayError("That holiday is already listed.")
+      return
+    }
+
+    setHolidayRows((current) =>
+      [
+        ...current,
+        {
+          date: normalizedHoliday,
+          id: crypto.randomUUID(),
+          label: holidayLabelInput.trim(),
+        },
+      ].sort((first, second) => first.date.localeCompare(second.date)),
+    )
+    setHolidayInput("")
+    setHolidayLabelInput("")
+    setHolidayError("")
+  }
 
   useEffect(() => {
     if (!bulkApplied) {
@@ -4676,6 +5109,127 @@ function WeeklyHoursFields({
             {bulkApplied ? "Applied" : "Apply to all open days"}
           </button>
         </div>
+      </div>
+      <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+        <input type="hidden" name="holiday_count" value={holidayRows.length} />
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+          <label className="space-y-2 text-sm">
+            <span className="font-medium text-zinc-700">Holiday closures</span>
+            <input
+              type="date"
+              value={holidayInput}
+              onChange={(event) => {
+                setHolidayInput(event.target.value)
+                if (holidayError) {
+                  setHolidayError("")
+                }
+              }}
+              className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+            />
+          </label>
+          <label className="space-y-2 text-sm">
+            <span className="font-medium text-zinc-700">Holiday label</span>
+            <input
+              type="text"
+              value={holidayLabelInput}
+              maxLength={adminTextLimits.label}
+              onChange={(event) => setHolidayLabelInput(event.target.value)}
+              placeholder="Optional label"
+              className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+            />
+            <CharacterCountNote
+              current={holidayLabelInput.length}
+              limit={adminTextLimits.label}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={addHoliday}
+            className="h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 md:self-end"
+          >
+            Add holiday
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-zinc-500">
+          Use the calendar picker to add full-day holiday closures. Labels are
+          optional and help explain special closures.
+        </p>
+        {holidayError ? (
+          <p className="mt-3 text-xs font-medium text-rose-700">
+            {holidayError}
+          </p>
+        ) : null}
+        {holidayRows.length ? (
+          <div className="mt-4 grid gap-3">
+            {holidayRows.map((holiday, index) => (
+              <div
+                key={holiday.id}
+                className="rounded-md border border-zinc-200 bg-white p-3"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="min-w-0 flex-1">
+                    <input
+                      type="hidden"
+                      name={`holiday_${index}_date`}
+                      value={holiday.date}
+                    />
+                    <p className="text-sm font-semibold text-zinc-900">
+                      {formatHolidayDateLabel(holiday.date)}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Full-day closure
+                    </p>
+                  </div>
+                  <label className="min-w-0 flex-1 space-y-2 text-sm">
+                    <span className="font-medium text-zinc-700">
+                      Label
+                    </span>
+                    <input
+                      type="hidden"
+                      name={`holiday_${index}_label`}
+                      value={holiday.label}
+                    />
+                    <input
+                      type="text"
+                      value={holiday.label}
+                      maxLength={adminTextLimits.label}
+                      onChange={(event) =>
+                        setHolidayRows((current) =>
+                          current.map((row) =>
+                            row.id === holiday.id
+                              ? { ...row, label: event.target.value }
+                              : row,
+                          ),
+                        )
+                      }
+                      placeholder="Optional label"
+                      className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                    />
+                    <CharacterCountNote
+                      current={holiday.label.length}
+                      limit={adminTextLimits.label}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setHolidayRows((current) =>
+                        current.filter((row) => row.id !== holiday.id),
+                      )
+                    }
+                    className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-zinc-500">
+            No holiday closures added yet.
+          </p>
+        )}
       </div>
       <div className="overflow-x-auto rounded-md border border-zinc-200 bg-white">
         <div className="min-w-[42rem] divide-y divide-zinc-100">
@@ -4728,16 +5282,23 @@ function WeeklyHoursFields({
                   }
                   className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                 />
-                <input
-                  aria-label={`${day.label} note`}
-                  name={`label_${day.value}`}
-                  placeholder="Optional note"
-                  value={hour.label}
-                  onChange={(event) =>
-                    updateWeeklyHour(day.value, { label: event.target.value })
-                  }
-                  className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-                />
+                <div className="space-y-1">
+                  <input
+                    aria-label={`${day.label} note`}
+                    name={`label_${day.value}`}
+                    placeholder="Optional note"
+                    value={hour.label}
+                    maxLength={adminTextLimits.label}
+                    onChange={(event) =>
+                      updateWeeklyHour(day.value, { label: event.target.value })
+                    }
+                    className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                  />
+                  <CharacterCountNote
+                    current={hour.label.length}
+                    limit={adminTextLimits.label}
+                  />
+                </div>
               </div>
             )
           })}
@@ -4747,9 +5308,54 @@ function WeeklyHoursFields({
   )
 }
 
-function MenuPanel({ partner }: { partner: PartnerWithDeals }) {
+function MenuPanel({
+  partner,
+  embedded = false,
+}: {
+  partner: PartnerWithDeals
+  embedded?: boolean
+}) {
+  if (!partnerTypeSupportsMenu(partner.type)) {
+    return null
+  }
+
   const partnerId = partner.id ?? ""
   const menu = partner.menus[0]
+
+  const content = (
+    <div className="space-y-4">
+      {partner.menus.length > 1 ? (
+        <InfoNote>
+          This admin now supports one menu per partner. It is showing the
+          first menu loaded for this partner.
+        </InfoNote>
+      ) : null}
+      {!menu && partnerId ? (
+        <DealFormShell title="Add menu">
+          <MenuForm partnerId={partnerId} />
+        </DealFormShell>
+      ) : null}
+      {menu ? (
+        <MenuCard
+          key={menu.id ?? `${menu.partner_id}-${menu.name}`}
+          menu={menu}
+          partnerEmail={partner.email}
+          partnerId={partnerId}
+          partnerName={partner.name}
+        />
+      ) : (
+        <EmptyState>No menu configured yet.</EmptyState>
+      )}
+    </div>
+  )
+
+  if (embedded) {
+    return (
+      <FormSection title="Menu" defaultOpen={false}>
+        {content}
+      </FormSection>
+    )
+  }
 
   return (
     <EditorShell
@@ -4758,30 +5364,7 @@ function MenuPanel({ partner }: { partner: PartnerWithDeals }) {
       collapsible
       defaultOpen={false}
     >
-      <div className="space-y-4">
-        {partner.menus.length > 1 ? (
-          <InfoNote>
-            This admin now supports one menu per partner. It is showing the
-            first menu loaded for this partner.
-          </InfoNote>
-        ) : null}
-        {!menu && partnerId ? (
-          <DealFormShell title="Add menu">
-            <MenuForm partnerId={partnerId} />
-          </DealFormShell>
-        ) : null}
-        {menu ? (
-          <MenuCard
-            key={menu.id ?? `${menu.partner_id}-${menu.name}`}
-            menu={menu}
-            partnerEmail={partner.email}
-            partnerId={partnerId}
-            partnerName={partner.name}
-          />
-        ) : (
-          <EmptyState>No menu configured yet.</EmptyState>
-        )}
-      </div>
+      {content}
     </EditorShell>
   )
 }
@@ -4936,7 +5519,7 @@ function MenuCard({
             {menu.description || "No description"}
           </p>
         </div>
-        <Badge>
+        <Badge className="inline-flex min-w-[10.5rem] items-center justify-center whitespace-nowrap">
           Menu status: {labelForValue(menuStatusOptions, menu.status)}
         </Badge>
       </div>
@@ -4948,10 +5531,19 @@ function MenuCard({
           partnerName={partnerName}
         />
       ) : null}
-      <div className="mt-4 grid gap-2 text-sm text-zinc-600 sm:grid-cols-3">
-        <Info label="Categories" value={String(menu.categories.length)} />
-        <Info label="Items" value={String(menu.items.length)} />
-        <Info label="Updated" value={formatDateTime(menu.updated_at)} />
+      <div className="mt-4 flex flex-wrap gap-2 text-sm text-zinc-600">
+        <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 py-2">
+          <span className="font-medium text-zinc-800">Categories:</span>
+          <span>{menu.categories.length}</span>
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 py-2">
+          <span className="font-medium text-zinc-800">Items:</span>
+          <span>{menu.items.length}</span>
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 py-2">
+          <span className="font-medium text-zinc-800">Updated:</span>
+          <span>{formatDateTime(menu.updated_at)}</span>
+        </span>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <button
@@ -5718,6 +6310,14 @@ function RedemptionHistoryPanel({
                         value={partner.name || shortId(visit.partner_id)}
                       />
                       <Info
+                        label="Scanned by"
+                        value={
+                          visit.staff_user_name ||
+                          visit.staff_user_email ||
+                          shortId(visit.staff_user_id)
+                        }
+                      />
+                      <Info
                         label="Selected direct deal"
                         value={shortId(visit.selected_direct_deal_id)}
                       />
@@ -6020,173 +6620,6 @@ function ComebackCandidatesSection({
   )
 }
 
-function FraudAuditPanel({
-  events,
-  partners,
-  defaultPartnerId,
-}: {
-  events: FraudEvent[]
-  partners: PartnerWithDeals[]
-  defaultPartnerId: string
-}) {
-  const [severity, setSeverity] = useState("")
-  const [partnerId, setPartnerId] = useState(defaultPartnerId)
-  const [eventType, setEventType] = useState("")
-  const [dateFrom, setDateFrom] = useState("")
-  const [dateTo, setDateTo] = useState("")
-  const severityOptions = uniqueOptions(events.map((event) => event.severity))
-  const eventTypeOptions = uniqueOptions(events.map((event) => event.event_type))
-  const partnerOptions = partners.map((partner) => ({
-    value: partner.id ?? "",
-    label: partner.name || partner.id || "Unnamed partner",
-  }))
-  const partnerNames = new Map(
-    partners
-      .map((partner) => [partner.id ?? "", partner.name || partner.id || ""] as const)
-      .filter(([id]) => Boolean(id)),
-  )
-  const filteredEvents = events.filter((event) => {
-    if (severity && event.severity !== severity) {
-      return false
-    }
-
-    if (partnerId && event.partner_id !== partnerId) {
-      return false
-    }
-
-    if (eventType && event.event_type !== eventType) {
-      return false
-    }
-
-    if (dateFrom && compareDate(event.created_at, dateFrom) < 0) {
-      return false
-    }
-
-    if (dateTo && compareDate(event.created_at, dateTo) > 0) {
-      return false
-    }
-
-    return true
-  })
-
-  return (
-    <EditorShell
-      title="Fraud and audit events"
-      description="Review redemption and scanner audit events from fraud_events."
-      collapsible
-      defaultOpen={false}
-    >
-      <div className="space-y-4">
-        <InfoNote>
-          Fraud and audit events are security log entries for redemption and
-          scanner activity. They help review suspicious behavior and trace who
-          scanned, redeemed, or triggered a protected action.
-        </InfoNote>
-        <FieldGrid>
-          <SelectField
-            label="Severity"
-            name="fraud_severity_filter"
-            value={severity}
-            options={severityOptions}
-            onChange={setSeverity}
-          />
-          <SelectField
-            label="Partner"
-            name="fraud_partner_filter"
-            value={partnerId}
-            options={partnerOptions}
-            onChange={setPartnerId}
-          />
-          <SelectField
-            label="Event type"
-            name="fraud_event_type_filter"
-            value={eventType}
-            options={eventTypeOptions}
-            onChange={setEventType}
-          />
-          <TextField
-            label="Date from"
-            name="fraud_date_from_filter"
-            type="date"
-            defaultValue={dateFrom}
-            onChange={setDateFrom}
-          />
-          <TextField
-            label="Date to"
-            name="fraud_date_to_filter"
-            type="date"
-            defaultValue={dateTo}
-            onChange={setDateTo}
-          />
-        </FieldGrid>
-        {filteredEvents.length ? (
-          <div className="grid gap-3">
-            {filteredEvents.slice(0, 50).map((event) => (
-              <div
-                key={event.id ?? `${event.event_type}-${event.created_at}`}
-                className="rounded-md border border-zinc-200 bg-zinc-50 p-4"
-              >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h3 className="text-base font-semibold text-zinc-950">
-                      {event.event_type || "Audit event"}
-                    </h3>
-                    <p className="mt-1 text-sm text-zinc-600">
-                      {event.description || event.reason_code || "No description"}
-                    </p>
-                  </div>
-                  <Badge>{event.severity || "severity unknown"}</Badge>
-                </div>
-                <div className="mt-4 grid gap-2 text-sm text-zinc-600 sm:grid-cols-2 xl:grid-cols-3">
-                  <Info label="Reason" value={event.reason_code || "Not set"} />
-                  <Info
-                    label="Partner"
-                    value={
-                      event.partner_id
-                        ? partnerNames.get(event.partner_id) ??
-                          shortId(event.partner_id)
-                        : "Not set"
-                    }
-                  />
-                  <Info label="User" value={event.user_email || shortId(event.user_id)} />
-                  <Info
-                    label="Staff"
-                    value={event.staff_email || shortId(event.staff_user_id)}
-                  />
-                  <Info label="Visit" value={shortId(event.visit_id)} />
-                  <Info label="Redemption" value={shortId(event.redemption_id)} />
-                  <Info label="QR token" value={shortId(event.qr_token_id)} />
-                  <Info label="Created" value={formatDateTime(event.created_at)} />
-                  <Info label="Metadata" value={formatJsonSummary(event.metadata)} />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState>No fraud events match these filters.</EmptyState>
-        )}
-      </div>
-    </EditorShell>
-  )
-}
-
-function QrSecurityNote() {
-  return (
-    <EditorShell
-      title="QR redemption security"
-      description="The admin panel should never create redemption visits by inserting rows."
-      collapsible
-      defaultOpen={false}
-    >
-      <InfoNote>
-        QR codes must contain only the server-generated qr_token. Never include
-        user ID, deal ID, premium status, or other decision data in the QR
-        payload. Scanner apps should use create_qr_token and redeem_visit RPCs.
-      </InfoNote>
-    </EditorShell>
-  )
-}
-
 function DeletePartnerForm({
   partner,
   onDeleted,
@@ -6339,6 +6772,7 @@ function FormSection({
   title,
   children,
   compact = false,
+  collapsible = true,
   defaultOpen = true,
   required,
   status,
@@ -6346,42 +6780,63 @@ function FormSection({
   title: string
   children: ReactNode
   compact?: boolean
+  collapsible?: boolean
   defaultOpen?: boolean
   required?: boolean | "subtle"
-  status?: SectionStatus
+  status?: SectionStatusValue
 }) {
   const [open, setOpen] = useState(defaultOpen)
-  const sectionStatus = required
+  const sectionStatus: SectionStatusValue | undefined = required
     ? required === "subtle"
       ? { label: "Required", tone: "required-subtle" as const }
       : { label: "Required", tone: "required" as const }
     : status
 
   return (
-    <details
+    <div
       className={`rounded-md border border-zinc-200 bg-white text-sm ${
         compact ? "p-2.5" : "p-3"
       }`}
-      open={open}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
     >
-      <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 outline-none transition hover:text-zinc-700 focus-visible:ring-2 focus-visible:ring-teal-100 [&::-webkit-details-marker]:hidden">
-        <span className={`flex items-center gap-2 ${compact ? "min-h-7" : "min-h-8"}`}>
-          <span>{title}</span>
-          {sectionStatus ? <SectionStatusBadge status={sectionStatus} /> : null}
-          <span className="ml-auto text-xs font-semibold normal-case tracking-normal text-zinc-500">
-            {open ? "Collapse" : "Expand"}
-          </span>
-        </span>
-      </summary>
-      <div
-        className={`border-t border-zinc-100 ${
-          compact ? "mt-3 space-y-3 pt-3" : "mt-4 space-y-4 pt-4"
-        }`}
-      >
-        {children}
-      </div>
-    </details>
+      {collapsible ? (
+        <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+          <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 outline-none transition hover:text-zinc-700 focus-visible:ring-2 focus-visible:ring-teal-100 [&::-webkit-details-marker]:hidden">
+            <span
+              className={`flex items-center gap-2 ${compact ? "min-h-7" : "min-h-8"}`}
+            >
+              <span>{title}</span>
+              {sectionStatus ? <SectionStatusList status={sectionStatus} /> : null}
+              <span className="ml-auto text-xs font-semibold normal-case tracking-normal text-zinc-500">
+                {open ? "Collapse" : "Expand"}
+              </span>
+            </span>
+          </summary>
+          <div
+            className={`border-t border-zinc-100 ${
+              compact ? "mt-3 space-y-3 pt-3" : "mt-4 space-y-4 pt-4"
+            }`}
+          >
+            {children}
+          </div>
+        </details>
+      ) : (
+        <>
+          <div className={`flex items-center gap-2 ${compact ? "min-h-7" : "min-h-8"}`}>
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+              {title}
+            </span>
+            {sectionStatus ? <SectionStatusList status={sectionStatus} /> : null}
+          </div>
+          <div
+            className={`border-t border-zinc-100 ${
+              compact ? "mt-3 space-y-3 pt-3" : "mt-4 space-y-4 pt-4"
+            }`}
+          >
+            {children}
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -6415,6 +6870,21 @@ function SectionStatusBadge({ status }: { status: SectionStatus }) {
   )
 }
 
+function SectionStatusList({ status }: { status: SectionStatusValue }) {
+  const statuses = Array.isArray(status) ? status : [status]
+
+  return (
+    <>
+      {statuses.map((entry, index) => (
+        <SectionStatusBadge
+          key={`${entry.label}-${entry.tone ?? "info"}-${index}`}
+          status={entry}
+        />
+      ))}
+    </>
+  )
+}
+
 function FieldGrid({
   children,
   compact = false,
@@ -6433,6 +6903,134 @@ function FieldGrid({
   )
 }
 
+function inferTextFieldMaxLength(name: string, type = "text") {
+  const normalizedName = name.trim().toLowerCase()
+
+  if (!normalizedName) {
+    return undefined
+  }
+
+  if (type === "number" || type === "date" || type === "time") {
+    return undefined
+  }
+
+  if (type === "email" || normalizedName.endsWith("email")) {
+    return adminTextLimits.email
+  }
+
+  if (type === "tel" || normalizedName.endsWith("phone")) {
+    return adminTextLimits.phone
+  }
+
+  if (type === "url" || normalizedName.includes("website") || normalizedName.endsWith("url")) {
+    return adminTextLimits.mediumText
+  }
+
+  if (normalizedName.includes("coordinates")) {
+    return adminTextLimits.coordinates
+  }
+
+  if (normalizedName.endsWith("address")) {
+    return adminTextLimits.mediumText
+  }
+
+  if (normalizedName.endsWith("currency")) {
+    return adminTextLimits.currency
+  }
+
+  if (normalizedName.endsWith("tags") || normalizedName.endsWith("allergens")) {
+    return adminTextLimits.tagList
+  }
+
+  if (normalizedName.endsWith("handle")) {
+    return adminTextLimits.socialHandle
+  }
+
+  if (normalizedName.endsWith("label")) {
+    return adminTextLimits.label
+  }
+
+  if (
+    normalizedName.endsWith("name") ||
+    normalizedName.endsWith("title") ||
+    normalizedName.endsWith("reward_item") ||
+    normalizedName.endsWith("challenge_name") ||
+    normalizedName.endsWith("slug")
+  ) {
+    return adminTextLimits.shortText
+  }
+
+  if (
+    normalizedName.includes("description") ||
+    normalizedName.includes("instructions") ||
+    normalizedName.endsWith("terms")
+  ) {
+    return adminTextLimits.longText
+  }
+
+  if (normalizedName.includes("metadata")) {
+    return adminTextLimits.metadata
+  }
+
+  return undefined
+}
+
+function measureCharacterCount(value: string | number | null | undefined) {
+  return String(value ?? "").length
+}
+
+function CharacterCountNote({
+  current,
+  limit,
+}: {
+  current: number
+  limit: number
+}) {
+  return (
+    <span className="block text-right text-xs text-zinc-500">
+      {current} / {limit} characters
+    </span>
+  )
+}
+
+function FieldSupportText({
+  hint,
+  warning,
+  currentLength,
+  maxLength,
+}: {
+  hint?: string
+  warning?: string
+  currentLength: number
+  maxLength?: number
+}) {
+  if (!hint && !warning && typeof maxLength !== "number") {
+    return null
+  }
+
+  return (
+    <div className="space-y-1">
+      {hint || typeof maxLength === "number" ? (
+        <div
+          className={`flex flex-wrap gap-2 text-xs ${
+            hint ? "items-start justify-between" : "justify-end"
+          }`}
+        >
+          {hint ? <span className="text-zinc-500">{hint}</span> : null}
+          {typeof maxLength === "number" ? (
+            <CharacterCountNote current={currentLength} limit={maxLength} />
+          ) : null}
+        </div>
+      ) : null}
+      {warning ? (
+        <span className="block text-xs font-medium text-amber-700">
+          {warning}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
 type TextFieldProps = {
   label: string
   name: string
@@ -6447,6 +7045,7 @@ type TextFieldProps = {
   suffixText?: string
   value?: string | number
   defaultValue?: string | number | null
+  maxLength?: number
   warning?: string
   onChange?: (value: string) => void
 }
@@ -6465,9 +7064,20 @@ function TextField({
   suffixText,
   value,
   defaultValue,
+  maxLength,
   warning,
   onChange,
 }: TextFieldProps) {
+  const resolvedMaxLength =
+    typeof maxLength === "number"
+      ? maxLength
+      : inferTextFieldMaxLength(name, type)
+  const [uncontrolledLength, setUncontrolledLength] = useState(() =>
+    measureCharacterCount(defaultValue),
+  )
+  const currentLength =
+    value === undefined ? uncontrolledLength : measureCharacterCount(value)
+
   return (
     <label className="block space-y-2 text-sm">
       <FieldLabel label={label} required={required} />
@@ -6491,7 +7101,13 @@ function TextField({
           placeholder={placeholder}
           value={value}
           defaultValue={value === undefined ? defaultValue ?? "" : undefined}
-          onChange={(event) => onChange?.(event.target.value)}
+          maxLength={resolvedMaxLength}
+          onChange={(event) => {
+            if (value === undefined) {
+              setUncontrolledLength(event.target.value.length)
+            }
+            onChange?.(event.target.value)
+          }}
           className="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-sm text-zinc-950 outline-none"
         />
         {suffixText ? (
@@ -6500,12 +7116,12 @@ function TextField({
           </span>
         ) : null}
       </div>
-      {hint ? <span className="block text-xs text-zinc-500">{hint}</span> : null}
-      {warning ? (
-        <span className="block text-xs font-medium text-amber-700">
-          {warning}
-        </span>
-      ) : null}
+      <FieldSupportText
+        hint={hint}
+        warning={warning}
+        currentLength={currentLength}
+        maxLength={resolvedMaxLength}
+      />
     </label>
   )
 }
@@ -6766,7 +7382,7 @@ function MediaUploadField({
   existingName: string
   removeName: string
   currentUrl?: string | null
-  spec: MediaSpec
+  spec: PartnerMediaSpec
   compact?: boolean
   onPreviewChange?: (url: string) => void
 }) {
@@ -6867,54 +7483,60 @@ function MediaUploadField({
           </>
         ) : null}
       </div>
-      <input
-        ref={fileInputRef}
-        name={fileName}
-        type="file"
-        accept={partnerMediaAccept}
-        onChange={async (event) => {
-          const input = event.currentTarget
-          const files = Array.from(input.files ?? [])
+      <div className="mt-auto space-y-2">
+        <input
+          ref={fileInputRef}
+          name={fileName}
+          type="file"
+          accept={partnerMediaAccept}
+          onChange={async (event) => {
+            const input = event.currentTarget
+            const files = Array.from(input.files ?? [])
 
-          if (files.length === 0) {
-            replaceFileInputFiles(input, selectedFiles)
-            return
-          }
+            if (files.length === 0) {
+              replaceFileInputFiles(input, selectedFiles)
+              return
+            }
 
-          setUploadError("")
-          setUploadMessage("Resizing image...")
+            setUploadError("")
+            setUploadMessage("Resizing image...")
 
-          try {
-            const resizedFiles = await resizeImageFiles(files, spec)
-            const previews = createImagePreviews(resizedFiles)
-            replaceFileInputFiles(input, resizedFiles)
-            replaceSelectedMedia(resizedFiles, previews)
-            onPreviewChange?.(previews[0]?.url ?? "")
-            setUploadMessage(`Ready to upload at ${spec.width}px x ${spec.height}px.`)
-          } catch (error) {
-            input.value = ""
-            setSelectedFiles([])
-            setSelectedPreviews((current) => {
-              revokeImagePreviews(current)
-              return []
-            })
-            onPreviewChange?.("")
-            setUploadMessage("")
-            setUploadError(
-              error instanceof Error
-                ? error.message
-                : "Unable to prepare this image.",
-            )
-          }
-        }}
-        className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-teal-700 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-teal-800"
-      />
-      {uploadMessage ? (
-        <p className="text-xs font-medium text-emerald-700">{uploadMessage}</p>
-      ) : null}
-      {uploadError ? (
-        <p className="text-xs font-medium text-rose-700">{uploadError}</p>
-      ) : null}
+            try {
+              const resizedFiles = await resizeImageFiles(files, spec)
+              const previews = createImagePreviews(resizedFiles)
+              replaceFileInputFiles(input, resizedFiles)
+              replaceSelectedMedia(resizedFiles, previews)
+              onPreviewChange?.(previews[0]?.url ?? "")
+              setUploadMessage(
+                `Ready to upload at ${spec.width}px x ${spec.height}px.`,
+              )
+            } catch (error) {
+              input.value = ""
+              setSelectedFiles([])
+              setSelectedPreviews((current) => {
+                revokeImagePreviews(current)
+                return []
+              })
+              onPreviewChange?.("")
+              setUploadMessage("")
+              setUploadError(
+                error instanceof Error
+                  ? error.message
+                  : "Unable to prepare this image.",
+              )
+            }
+          }}
+          className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-teal-700 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-teal-800"
+        />
+        {uploadMessage ? (
+          <p className="text-xs font-medium text-emerald-700">
+            {uploadMessage}
+          </p>
+        ) : null}
+        {uploadError ? (
+          <p className="text-xs font-medium text-rose-700">{uploadError}</p>
+        ) : null}
+      </div>
     </div>
   )
 }
@@ -7131,7 +7753,7 @@ function ImagePreview({
   onRemove?: () => void
   removeLabel?: string
   src?: string
-  spec: MediaSpec
+  spec: PartnerMediaSpec
   selected?: boolean
 }) {
   return (
@@ -7220,15 +7842,15 @@ function revokeImagePreviews(previews: ImagePreview[]) {
   previews.forEach((preview) => URL.revokeObjectURL(preview.url))
 }
 
-function mediaSizeHint(spec: MediaSpec) {
+function mediaSizeHint(spec: PartnerMediaSpec) {
   return `${spec.label} size: ${spec.width}px x ${spec.height}px`
 }
 
-async function resizeImageFiles(files: File[], spec: MediaSpec) {
+async function resizeImageFiles(files: File[], spec: PartnerMediaSpec) {
   return await Promise.all(files.map((file) => resizeImageFile(file, spec)))
 }
 
-async function resizeImageFile(file: File, spec: MediaSpec) {
+async function resizeImageFile(file: File, spec: PartnerMediaSpec) {
   if (!isSupportedImageFile(file)) {
     throw new Error(`"${file.name}" must be a PNG, JPEG, WebP, or SVG image.`)
   }
@@ -7385,6 +8007,26 @@ function ReadOnlyField({
   )
 }
 
+function PartnerPinDisplay({
+  mode,
+  pin,
+}: {
+  mode: "create" | "edit"
+  pin?: number | string | null
+}) {
+  return (
+    <ReadOnlyField
+      label="Partner PIN"
+      value={mode === "edit" ? pin ?? "Not set" : "Generated after save"}
+      hint={
+        mode === "edit"
+          ? "Auto-generated for this partner and kept read-only here."
+          : "Auto-generated when the partner is created and kept read-only here."
+      }
+    />
+  )
+}
+
 function TextAreaField({
   label,
   name,
@@ -7393,6 +8035,7 @@ function TextAreaField({
   required,
   hint,
   placeholder,
+  maxLength,
   onChange,
 }: {
   label: string
@@ -7402,8 +8045,17 @@ function TextAreaField({
   required?: boolean
   hint?: string
   placeholder?: string
+  maxLength?: number
   onChange?: (value: string) => void
 }) {
+  const resolvedMaxLength =
+    typeof maxLength === "number" ? maxLength : inferTextFieldMaxLength(name)
+  const [uncontrolledLength, setUncontrolledLength] = useState(() =>
+    measureCharacterCount(defaultValue),
+  )
+  const currentLength =
+    value === undefined ? uncontrolledLength : measureCharacterCount(value)
+
   return (
     <label className="block space-y-2 text-sm">
       <FieldLabel label={label} required={required} />
@@ -7414,10 +8066,20 @@ function TextAreaField({
         placeholder={placeholder}
         value={value}
         defaultValue={value === undefined ? defaultValue ?? "" : undefined}
-        onChange={(event) => onChange?.(event.target.value)}
+        maxLength={resolvedMaxLength}
+        onChange={(event) => {
+          if (value === undefined) {
+            setUncontrolledLength(event.target.value.length)
+          }
+          onChange?.(event.target.value)
+        }}
         className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
       />
-      {hint ? <span className="block text-xs text-zinc-500">{hint}</span> : null}
+      <FieldSupportText
+        hint={hint}
+        currentLength={currentLength}
+        maxLength={resolvedMaxLength}
+      />
     </label>
   )
 }
@@ -7651,11 +8313,45 @@ function StatusPill({ active }: { active: boolean }) {
   )
 }
 
-function Badge({ children }: { children: ReactNode }) {
+function Badge({
+  children,
+  className = "",
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 shadow-sm">
+    <span
+      className={`rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 shadow-sm ${className}`}
+    >
       {children}
     </span>
+  )
+}
+
+function FeaturedBadge({ compact = false }: { compact?: boolean }) {
+  return (
+    <Badge
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap ${
+        compact ? "px-2 py-0.5" : ""
+      }`}
+    >
+      <StarIcon className="size-3.5" />
+      <span>Featured</span>
+    </Badge>
+  )
+}
+
+function StarIcon({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className={className}
+    >
+      <path d="M10 1.75l2.34 4.74 5.23.76-3.78 3.69.89 5.21L10 13.69l-4.68 2.46.89-5.21-3.78-3.69 5.23-.76L10 1.75z" />
+    </svg>
   )
 }
 
@@ -8029,6 +8725,57 @@ function parseOptionalNumberInput(value?: string | number | null) {
   return Number.isFinite(numericValue) ? numericValue : null
 }
 
+function socialDraftsFromPartner(socials?: PartnerSocial[] | null) {
+  return (socials ?? []).map((social) => ({
+    id: social.id ?? crypto.randomUUID(),
+    platform: social.platform ?? "",
+    handle: social.handle || socialHandleFromUrl(social.url),
+  }))
+}
+
+function socialHandleFromUrl(url?: string | null) {
+  const value = url?.trim()
+
+  if (!value) {
+    return ""
+  }
+
+  try {
+    const parsed = new URL(value)
+    const queryId = parsed.searchParams.get("id")
+
+    if (queryId) {
+      return queryId
+    }
+
+    const [firstSegment = ""] = parsed.pathname
+      .split("/")
+      .map((segment) => segment.trim())
+      .filter(Boolean)
+
+    return firstSegment.replace(/^@+/, "")
+  } catch {
+    return value
+  }
+}
+
+function createInitialMilestoneDraft(): InitialMilestoneDraft {
+  return {
+    id: crypto.randomUUID(),
+    active: true,
+    audience: DEFAULT_AUDIENCE,
+    customerDescription: "",
+    discountValue: "",
+    estimatedSavings: "",
+    requiredStamps: String(MAX_STAMP_CARD_STAMPS),
+    rewardItem: "",
+    rewardType: "item",
+    staffInstructions: "",
+    terms: "",
+    title: "",
+  }
+}
+
 function isSoldOutDealDrop(
   stockTotal: number | null,
   stockRemaining: number | null,
@@ -8250,6 +8997,44 @@ function normalizePartnerTypeValue(value?: string | null) {
   return normalized === "restaurant" || normalized === "restuarant"
     ? "Food & Drink"
     : trimmed
+}
+
+function partnerTypeSupportsMenu(value?: string | null) {
+  return normalizePartnerTypeValue(value) === "Food & Drink"
+}
+
+function normalizeHolidayDateInput(value?: string | null) {
+  const trimmed = value?.trim() ?? ""
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return ""
+  }
+
+  const parsed = new Date(`${trimmed}T00:00:00.000Z`)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return ""
+  }
+
+  return parsed.toISOString().slice(0, 10) === trimmed ? trimmed : ""
+}
+
+function formatHolidayDateLabel(value: string) {
+  const normalized = normalizeHolidayDateInput(value)
+
+  if (!normalized) {
+    return value
+  }
+
+  const parsed = new Date(`${normalized}T00:00:00.000Z`)
+
+  return Number.isNaN(parsed.getTime())
+    ? normalized
+    : parsed.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
 }
 
 function syncExpandedDraftIds(
@@ -8559,25 +9344,6 @@ function formatMetadataInput(value: unknown) {
   }
 }
 
-function formatJsonSummary(value: unknown) {
-  if (!value) {
-    return "Not set"
-  }
-
-  if (typeof value === "string") {
-    return value || "Not set"
-  }
-
-  try {
-    const serialized = JSON.stringify(value)
-    return serialized.length > 80
-      ? `${serialized.slice(0, 77)}...`
-      : serialized
-  } catch {
-    return "Not set"
-  }
-}
-
 function shortId(value?: string | null) {
   if (!value) {
     return "Not set"
@@ -8594,27 +9360,4 @@ function formatIdList(values: Array<string | null | undefined>) {
   }
 
   return visibleValues.slice(0, 3).map(shortId).join(", ")
-}
-
-function uniqueOptions(values: Array<string | null | undefined>) {
-  return Array.from(
-    new Set(values.map((value) => value?.trim()).filter(Boolean) as string[]),
-  )
-    .sort((first, second) => first.localeCompare(second))
-    .map((value) => ({ value, label: value }))
-}
-
-function compareDate(value: string | null, inputDate: string) {
-  if (!value) {
-    return -1
-  }
-
-  const eventTime = new Date(value).getTime()
-  const filterTime = new Date(inputDate).getTime()
-
-  if (Number.isNaN(eventTime) || Number.isNaN(filterTime)) {
-    return 0
-  }
-
-  return eventTime - filterTime
 }

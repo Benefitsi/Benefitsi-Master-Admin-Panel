@@ -5,6 +5,7 @@ import { getDashboardData } from "@/lib/admin-data"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { PartnerWorkspace } from "./partner-admin"
+import Image from "next/image"
 
 export const dynamic = "force-dynamic"
 
@@ -34,8 +35,8 @@ export default async function DashboardPage() {
       <div className="grid min-h-screen lg:grid-cols-[260px_1fr]">
         <aside className="border-r border-zinc-200 bg-white px-5 py-6">
           <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-md bg-teal-700 text-sm font-bold text-white">
-              B
+            <div className="grid size-10 place-items-center rounded-md bg-white text-sm font-bold text-white">
+              <Image src="/Benefitsi_Icon_FullColor_RGB_512.png" alt="Benefitsi Logo" width={35} height={35}/>
             </div>
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-teal-800">
@@ -58,9 +59,8 @@ export default async function DashboardPage() {
         <section className="flex min-w-0 flex-col">
           <header className="flex flex-col gap-4 border-b border-zinc-200 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between lg:px-8">
             <div>
-              <p className="text-sm font-medium text-teal-700">Partners</p>
               <h1 className="mt-1 text-2xl font-semibold tracking-normal text-zinc-950">
-                Partner and deal administration
+                Partner Management
               </h1>
             </div>
 

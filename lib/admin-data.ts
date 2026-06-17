@@ -25,6 +25,7 @@ export type Partner = {
   stamp_target: number | null
   logo_url: string | null
   feature_card_url: string | null
+  discover_card_image_url: string | null
   cover_urls: string[] | null
   loves: number | null
   pin: number | null
@@ -117,6 +118,15 @@ export type PartnerRewardMilestone = {
   updated_at?: string | null
 }
 
+export type PartnerSocial = {
+  id?: string
+  partner_id: string | null
+  platform: string | null
+  url: string | null
+  handle: string | null
+  sort_order: number | null
+}
+
 export type PartnerStaff = {
   id?: string
   partner_id: string | null
@@ -138,6 +148,15 @@ export type PartnerOpeningHour = {
   label: string | null
   is_closed: boolean | null
   sort_order: number | null
+}
+
+export type PartnerHoliday = {
+  id?: string
+  partner_id: string | null
+  holiday_date: string | null
+  label: string | null
+  created_at?: string | null
+  updated_at?: string | null
 }
 
 export type MenuItem = {
@@ -252,10 +271,13 @@ export type Visit = {
   total_stamp_delta: number | null
   redemption_status: string | null
   animation_payload: JsonRecord
+  staff_user_id: string | null
+  staff_user_name: string | null
   qr_token_id?: string | null
   idempotency_key?: string | null
   user_email?: string | null
   user_name?: string | null
+  staff_user_email?: string | null
   applied_benefits: RedemptionAppliedBenefit[]
   deal_redemptions: DealRedemption[]
   qr_tokens: QrToken[]
@@ -281,13 +303,14 @@ export type FraudEvent = {
 
 export type PartnerWithDeals = Partner & {
   deals: Deal[]
+  holidays: PartnerHoliday[]
+  socials: PartnerSocial[]
   reward_milestones: PartnerRewardMilestone[]
   staff: PartnerStaff[]
   opening_hours: PartnerOpeningHour[]
   menus: PartnerMenu[]
   stamp_progress: StampCardProgress[]
   visits: Visit[]
-  fraud_events: FraudEvent[]
   city_name?: string | null
   owner_email?: string | null
 }
@@ -309,6 +332,8 @@ export async function getDashboardData(
     dealsResult,
     citiesResult,
     ownersResult,
+    holidaysResult,
+    socialsResult,
     milestonesResult,
     staffResult,
     openingHoursResult,
@@ -320,7 +345,6 @@ export async function getDashboardData(
     redemptionsResult,
     benefitsResult,
     qrTokensResult,
-    fraudEventsResult,
   ] = await Promise.all([
     supabase
       .from("partners")
@@ -329,6 +353,11 @@ export async function getDashboardData(
     supabase.from("deals").select("*"),
     supabase.from("cities").select("id,name,slug").order("name"),
     fetchOwnerOptions(supabase),
+    supabase.from("partner_holidays").select("*").order("holiday_date"),
+    supabase
+      .from("partner_socials")
+      .select("*")
+      .order("sort_order", { ascending: true, nullsFirst: false }),
     supabase.from("partner_reward_milestones").select("*"),
     supabase.from("partner_staff").select("*"),
     supabase
@@ -365,11 +394,6 @@ export async function getDashboardData(
       .select("*")
       .order("created_at", { ascending: false, nullsFirst: false })
       .limit(300),
-    supabase
-      .from("fraud_events")
-      .select("*")
-      .order("created_at", { ascending: false, nullsFirst: false })
-      .limit(300),
   ])
 
   const errors = [
@@ -377,6 +401,8 @@ export async function getDashboardData(
     dealsResult.error?.message,
     citiesResult.error?.message,
     ownersResult.error,
+    holidaysResult.error?.message,
+    socialsResult.error?.message,
     milestonesResult.error?.message,
     staffResult.error?.message,
     openingHoursResult.error?.message,
@@ -388,23 +414,25 @@ export async function getDashboardData(
     redemptionsResult.error?.message,
     benefitsResult.error?.message,
     qrTokensResult.error?.message,
-    fraudEventsResult.error?.message,
   ].filter(Boolean) as string[]
 
   const partners = ((partnersResult.data ?? []) as Partner[]).map((partner) => ({
     ...partner,
     deals: [],
+    holidays: [],
+    socials: [],
     reward_milestones: [],
     staff: [],
     opening_hours: [],
     menus: [],
     stamp_progress: [],
     visits: [],
-    fraud_events: [],
   }))
   const deals = (dealsResult.data ?? []) as Deal[]
   const cities = (citiesResult.data ?? []) as City[]
   const owners = ownersResult.data
+  const holidays = (holidaysResult.data ?? []) as PartnerHoliday[]
+  const socials = (socialsResult.data ?? []) as PartnerSocial[]
   const milestones =
     (milestonesResult.data ?? []) as PartnerRewardMilestone[]
   const staff = (staffResult.data ?? []) as PartnerStaff[]
@@ -424,7 +452,6 @@ export async function getDashboardData(
   const redemptions = (redemptionsResult.data ?? []) as DealRedemption[]
   const qrTokens = (qrTokensResult.data ?? []) as QrToken[]
   const visits = (visitsResult.data ?? []) as Visit[]
-  const fraudEvents = (fraudEventsResult.data ?? []) as FraudEvent[]
 
   const cityNames = new Map(cities.map((city) => [city.id, city.name]))
   const usersById = new Map(
@@ -446,20 +473,22 @@ export async function getDashboardData(
   annotateStaff(staff, usersById)
   annotateProgress(progress, usersById)
   annotateVisits(visits, usersById, benefits, redemptions, qrTokens)
-  annotateFraudEvents(fraudEvents, usersById)
 
   const dealsByPartner = groupByPartner(deals)
+  const holidaysByPartner = groupByPartner(holidays)
+  const socialsByPartner = groupByPartner(socials)
   const milestonesByPartner = groupByPartner(milestones)
   const staffByPartner = groupByPartner(staff)
   const hoursByPartner = groupByPartner(openingHours)
   const menusByPartner = groupByPartner(annotateMenus(menus, menuCategories, menuItems))
   const progressByPartner = groupByPartner(progress)
   const visitsByPartner = groupByPartner(visits)
-  const fraudByPartner = groupByPartner(fraudEvents)
 
   const partnersWithDeals = partners.map((partner) => ({
     ...partner,
     deals: partner.id ? dealsByPartner.get(partner.id) ?? [] : [],
+    holidays: partner.id ? holidaysByPartner.get(partner.id) ?? [] : [],
+    socials: partner.id ? socialsByPartner.get(partner.id) ?? [] : [],
     reward_milestones: partner.id
       ? milestonesByPartner.get(partner.id) ?? []
       : [],
@@ -468,7 +497,6 @@ export async function getDashboardData(
     menus: partner.id ? menusByPartner.get(partner.id) ?? [] : [],
     stamp_progress: partner.id ? progressByPartner.get(partner.id) ?? [] : [],
     visits: partner.id ? visitsByPartner.get(partner.id) ?? [] : [],
-    fraud_events: partner.id ? fraudByPartner.get(partner.id) ?? [] : [],
     city_name: partner.city_id ? cityNames.get(partner.city_id) ?? null : null,
     owner_email: partner.owner_id
       ? ownerEmails.get(partner.owner_id) ?? null
@@ -619,27 +647,16 @@ function annotateVisits(
 
   for (const visit of visits) {
     const user = visit.user_id ? usersById.get(visit.user_id) : null
+    const staff = visit.staff_user_id ? usersById.get(visit.staff_user_id) : null
     visit.user_email = user?.email ?? null
     visit.user_name = user?.display_name ?? null
+    visit.staff_user_name = visit.staff_user_name || staff?.display_name || null
+    visit.staff_user_email = staff?.email ?? null
     visit.applied_benefits = visit.id ? benefitsByVisit.get(visit.id) ?? [] : []
     visit.deal_redemptions = visit.id
       ? redemptionsByVisit.get(visit.id) ?? []
       : []
     visit.qr_tokens = visit.id ? qrTokensByVisit.get(visit.id) ?? [] : []
-  }
-}
-
-function annotateFraudEvents(
-  events: FraudEvent[],
-  usersById: Map<string, OwnerOption>,
-) {
-  for (const event of events) {
-    const user = event.user_id ? usersById.get(event.user_id) : null
-    const staff = event.staff_user_id
-      ? usersById.get(event.staff_user_id)
-      : null
-    event.user_email = user?.email ?? null
-    event.staff_email = staff?.email ?? null
   }
 }
 
