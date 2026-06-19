@@ -1099,7 +1099,11 @@ function PartnerForm({
             />
           </FormSection>
 
-          <FormSection title="Operating Hours" defaultOpen={false}>
+          <FormSection
+            title="Operating Hours"
+            defaultOpen={requiredSectionsOpen}
+            required={requiredSectionMarker}
+          >
             <WeeklyHoursFields />
           </FormSection>
 
@@ -5264,6 +5268,7 @@ function WeeklyHoursFields({
                   aria-label={`${day.label} opening time`}
                   name={`opens_at_${day.value}`}
                   type="time"
+                  required={!hour.isClosed}
                   value={hour.isClosed ? "" : hour.opensAt}
                   disabled={hour.isClosed}
                   onChange={(event) =>
@@ -5275,6 +5280,7 @@ function WeeklyHoursFields({
                   aria-label={`${day.label} closing time`}
                   name={`closes_at_${day.value}`}
                   type="time"
+                  required={!hour.isClosed}
                   value={hour.isClosed ? "" : hour.closesAt}
                   disabled={hour.isClosed}
                   onChange={(event) =>

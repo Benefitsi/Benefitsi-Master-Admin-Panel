@@ -328,21 +328,31 @@ export async function savePartner(
 
       const openingHours = parseWeeklyOpeningHourRows(formData, partnerId)
       const openingHoursError = invalidWeeklyOpeningHourRow(openingHours)
+      const openingHoursValidation = validateOpeningHourRows(openingHours)
 
       if (openingHoursError) {
-        warnings.push(
-          `Partner was created, but operating hours were skipped: ${weekdayName(openingHoursError.weekday)} needs opening and closing times, or mark it closed.`,
-        )
-      } else {
-        const hoursResult = await supabase
-          .from("partner_opening_hours")
-          .insert(openingHours)
-
-        if (hoursResult.error) {
-          warnings.push(
-            `Partner was created, but operating hours could not be added: ${hoursResult.error.message}`,
-          )
+        await rollbackCreatedPartner(supabase, partnerId)
+        await cleanupUploadedFiles(supabase, uploadedPaths)
+        return {
+          ok: false,
+          message: `${weekdayName(openingHoursError.weekday)} needs opening and closing times, or mark it closed.`,
         }
+      }
+
+      if (openingHoursValidation) {
+        await rollbackCreatedPartner(supabase, partnerId)
+        await cleanupUploadedFiles(supabase, uploadedPaths)
+        return { ok: false, message: openingHoursValidation }
+      }
+
+      const hoursResult = await supabase
+        .from("partner_opening_hours")
+        .insert(openingHours)
+
+      if (hoursResult.error) {
+        await rollbackCreatedPartner(supabase, partnerId)
+        await cleanupUploadedFiles(supabase, uploadedPaths)
+        return { ok: false, message: hoursResult.error.message }
       }
 
       const holidays = parsePartnerHolidays(formData, partnerId)
@@ -442,21 +452,180 @@ export async function deletePartner(
     return { ok: false, message: "Partner id is required." }
   }
 
-  const dealsResult = await supabase.from("deals").delete().eq("partner_id", id)
+  const cleanupResult = await collectPartnerDeletionMediaUrls(supabase, id)
 
-  if (dealsResult.error) {
-    return { ok: false, message: dealsResult.error.message }
+  if (cleanupResult.error) {
+    return { ok: false, message: cleanupResult.error }
   }
 
-  const partnerResult = await supabase.from("partners").delete().eq("id", id)
+  const visitLinkResetResult = await supabase
+    .from("visits")
+    .update({
+      applied_fallback_deal_id: null,
+      deal_selection_id: null,
+      qr_token_id: null,
+      selected_direct_deal_id: null,
+    })
+    .eq("partner_id", id)
 
-  if (partnerResult.error) {
-    return { ok: false, message: partnerResult.error.message }
+  if (visitLinkResetResult.error) {
+    return { ok: false, message: visitLinkResetResult.error.message }
   }
+
+  const qrTokenLinkResetResult = await supabase
+    .from("qr_tokens")
+    .update({
+      deal_selection_id: null,
+      used_for_visit_id: null,
+    })
+    .eq("partner_id", id)
+
+  if (qrTokenLinkResetResult.error) {
+    return { ok: false, message: qrTokenLinkResetResult.error.message }
+  }
+
+  const deletionSteps: Array<{
+    message: string
+    run: () => PromiseLike<{ error: { message: string } | null }>
+  }> = [
+    {
+      message: "Unable to remove partner notifications.",
+      run: () => supabase.from("app_notifications").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove streak rewards.",
+      run: () => supabase.from("user_streak_rewards").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove streak shields.",
+      run: () =>
+        supabase
+          .from("user_streak_shields")
+          .delete()
+          .or(`partner_id.eq.${id},used_for_partner_id.eq.${id}`),
+    },
+    {
+      message: "Unable to remove redemption benefits.",
+      run: () =>
+        supabase
+          .from("redemption_applied_benefits")
+          .delete()
+          .eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove redemption reversals.",
+      run: () =>
+        supabase.from("redemption_reversals").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove deal redemptions.",
+      run: () => supabase.from("deal_redemptions").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove QR tokens.",
+      run: () => supabase.from("qr_tokens").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove visits.",
+      run: () => supabase.from("visits").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove deal selections.",
+      run: () => supabase.from("deal_selections").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove stamp cards.",
+      run: () => supabase.from("stamp_cards").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove user partner stats.",
+      run: () =>
+        supabase.from("user_partner_stats").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove user challenges.",
+      run: () => supabase.from("user_challenges").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove menu items.",
+      run: () =>
+        cleanupResult.menuIds.length
+          ? supabase.from("menu_items").delete().in("menu_id", cleanupResult.menuIds)
+          : Promise.resolve({ error: null }),
+    },
+    {
+      message: "Unable to remove menu categories.",
+      run: () =>
+        cleanupResult.menuIds.length
+          ? supabase
+              .from("menu_categories")
+              .delete()
+              .in("menu_id", cleanupResult.menuIds)
+          : Promise.resolve({ error: null }),
+    },
+    {
+      message: "Unable to remove menus.",
+      run: () => supabase.from("menus").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove partner locations.",
+      run: () =>
+        supabase.from("partner_locations").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove partner staff.",
+      run: () => supabase.from("partner_staff").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove partner social profiles.",
+      run: () =>
+        supabase.from("partner_socials").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove partner holidays.",
+      run: () =>
+        supabase.from("partner_holidays").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove partner operating hours.",
+      run: () =>
+        supabase.from("partner_opening_hours").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove partner milestones.",
+      run: () =>
+        supabase
+          .from("partner_reward_milestones")
+          .delete()
+          .eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove partner microsites.",
+      run: () => supabase.from("microsites").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove partner deals.",
+      run: () => supabase.from("deals").delete().eq("partner_id", id),
+    },
+    {
+      message: "Unable to remove the partner.",
+      run: () => supabase.from("partners").delete().eq("id", id),
+    },
+  ]
+
+  for (const step of deletionSteps) {
+    const result = await step.run()
+
+    if (result.error) {
+      return { ok: false, message: `${step.message} ${result.error.message}` }
+    }
+  }
+
+  await cleanupPublicMediaUrls(supabase, cleanupResult.mediaUrls)
 
   revalidatePath("/")
 
-  return { ok: true, message: "Partner and attached deals removed." }
+  return { ok: true, message: "Partner and all attached data removed." }
 }
 
 export async function saveDeal(
@@ -1152,6 +1321,75 @@ export async function deleteDeal(
   return { ok: true, message: "Deal removed." }
 }
 
+async function collectPartnerDeletionMediaUrls(
+  supabase: SupabaseClient,
+  partnerId: string,
+) {
+  const partnerResult = await supabase
+    .from("partners")
+    .select(
+      "logo_url,feature_card_url,discover_card_image_url,cover_urls",
+    )
+    .eq("id", partnerId)
+    .maybeSingle()
+
+  if (partnerResult.error) {
+    return {
+      error: partnerResult.error.message,
+      mediaUrls: [] as string[],
+      menuIds: [] as string[],
+    }
+  }
+
+  const menuResult = await supabase
+    .from("menus")
+    .select("id")
+    .eq("partner_id", partnerId)
+
+  if (menuResult.error) {
+    return {
+      error: menuResult.error.message,
+      mediaUrls: [] as string[],
+      menuIds: [] as string[],
+    }
+  }
+
+  const menuIds = (menuResult.data ?? [])
+    .map((row) => row.id)
+    .filter((value): value is string => typeof value === "string" && Boolean(value))
+
+  const menuItemResult = menuIds.length
+    ? await supabase
+        .from("menu_items")
+        .select("image_url")
+        .in("menu_id", menuIds)
+    : { data: [], error: null }
+
+  if (menuItemResult.error) {
+    return {
+      error: menuItemResult.error.message,
+      mediaUrls: [] as string[],
+      menuIds: [] as string[],
+    }
+  }
+
+  const partnerUrls = collectNonEmptyStrings([
+    partnerResult.data?.logo_url,
+    partnerResult.data?.feature_card_url,
+    partnerResult.data?.discover_card_image_url,
+    ...stringArrayFromUnknown(partnerResult.data?.cover_urls),
+  ])
+  const menuItemUrls = collectNonEmptyStrings(
+    (menuItemResult.data ?? []).map((row) => row.image_url),
+  )
+
+  return {
+    error: null,
+    mediaUrls: [...new Set([...partnerUrls, ...menuItemUrls])],
+    menuIds,
+  }
+}
+
 function validatePartnerForm(
   formData: FormData,
   mediaValues: PartnerMediaFormValues,
@@ -1220,7 +1458,7 @@ function validatePartnerForm(
     }
   }
 
-  if (hasWeeklyOpeningHourFields(formData)) {
+  if (isCreate || hasWeeklyOpeningHourFields(formData)) {
     const openingHourRows = parseWeeklyOpeningHourRows(formData, "validation")
     const invalidRow = invalidWeeklyOpeningHourRow(openingHourRows)
 
@@ -1367,7 +1605,7 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     description: stringValue(formData, "description"),
     category: listValue(formData, "category"),
     type: partnerType,
-    status: active ? "active" : "inactive",
+    status: active ? "active" : isUpdate ? "paused" : "draft",
     is_featured: checkboxValue(formData, "is_featured"),
     stamp_target: stampTarget,
     loves: isUpdate ? integerValue(formData, "existing_loves") ?? 0 : 0,
@@ -1854,6 +2092,10 @@ async function mutateDealPayloadWithSchemaRetry<
       return result.error.message
     }
 
+    if (missingColumn === "valid_weekdays") {
+      mirrorValidWeekdaysToWeekdays(payload)
+    }
+
     removeMutationColumn(payload, missingColumn)
     removedColumns.add(missingColumn)
   }
@@ -1880,6 +2122,30 @@ function removeMutationColumn(
   }
 
   delete payload[column]
+}
+
+function mirrorValidWeekdaysToWeekdays(
+  payload: Record<string, unknown> | Array<Record<string, unknown>>,
+) {
+  const rows = Array.isArray(payload) ? payload : [payload]
+
+  for (const row of rows) {
+    const validWeekdays = row.valid_weekdays
+    const existingWeekdays = row.weekdays
+
+    if (
+      !Array.isArray(validWeekdays) ||
+      validWeekdays.some((weekday) => typeof weekday !== "number")
+    ) {
+      continue
+    }
+
+    if (Array.isArray(existingWeekdays) && existingWeekdays.length > 0) {
+      continue
+    }
+
+    row.weekdays = [...validWeekdays]
+  }
 }
 
 function parseDealPayload(
@@ -3035,6 +3301,20 @@ async function rollbackCreatedPartner(
     .eq("partner_id", partnerId)
   await supabase.from("partner_opening_hours").delete().eq("partner_id", partnerId)
   await supabase.from("partners").delete().eq("id", partnerId)
+}
+
+function stringArrayFromUnknown(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter(
+        (entry): entry is string => typeof entry === "string" && Boolean(entry),
+      )
+    : []
+}
+
+function collectNonEmptyStrings(values: unknown[]) {
+  return values.filter(
+    (value): value is string => typeof value === "string" && Boolean(value),
+  )
 }
 
 function parsePartnerStaffPayload(formData: FormData): ParsedPartnerStaff {

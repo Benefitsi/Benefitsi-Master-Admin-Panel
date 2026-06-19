@@ -428,7 +428,7 @@ export async function getDashboardData(
     stamp_progress: [],
     visits: [],
   }))
-  const deals = (dealsResult.data ?? []) as Deal[]
+  const deals = ((dealsResult.data ?? []) as Deal[]).map(normalizeLoadedDeal)
   const cities = (citiesResult.data ?? []) as City[]
   const owners = ownersResult.data
   const holidays = (holidaysResult.data ?? []) as PartnerHoliday[]
@@ -562,6 +562,30 @@ function groupByPartner<T extends { partner_id: string | null }>(rows: T[]) {
   }
 
   return grouped
+}
+
+function normalizeLoadedDeal(deal: Deal): Deal {
+  const storedWeekdays = Array.isArray(deal.weekdays)
+    ? (deal.weekdays as unknown[])
+    : []
+  const numericWeekdays = storedWeekdays.filter(
+    (weekday): weekday is number =>
+      typeof weekday === "number" && Number.isInteger(weekday),
+  )
+  const stringWeekdays = storedWeekdays.filter(
+    (weekday): weekday is string => typeof weekday === "string" && Boolean(weekday),
+  )
+
+  return {
+    ...deal,
+    valid_weekdays:
+      Array.isArray(deal.valid_weekdays) && deal.valid_weekdays.length > 0
+        ? deal.valid_weekdays
+        : numericWeekdays.length > 0
+          ? numericWeekdays
+          : deal.valid_weekdays ?? null,
+    weekdays: stringWeekdays.length > 0 ? stringWeekdays : null,
+  }
 }
 
 function annotateMenus(
