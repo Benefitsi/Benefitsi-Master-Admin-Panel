@@ -2607,6 +2607,7 @@ function DealCard({
             partnerId={partnerId}
             mode="edit"
             visits={visits}
+            onCancel={toggleExpanded}
           />
         </div>
       ) : null}
@@ -2635,6 +2636,7 @@ function DealForm({
   deal,
   defaultActive,
   footerAction,
+  onCancel,
   onDraftActiveChange,
   onDraftMetaChange,
   onDraftTypeChange,
@@ -2647,6 +2649,7 @@ function DealForm({
   deal?: Deal
   defaultActive?: boolean
   footerAction?: ReactNode
+  onCancel?: () => void
   onDraftActiveChange?: (active: boolean) => void
   onDraftMetaChange?: (values: Partial<InitialDealDraft>) => void
   onDraftTypeChange?: (dealType: string) => void
@@ -2687,6 +2690,15 @@ function DealForm({
           label={mode === "create" ? "Add deal" : "Save deal"}
           pendingLabel={mode === "create" ? "Adding deal..." : "Saving deal..."}
         />
+        {mode === "edit" && onCancel ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-100"
+          >
+            Cancel
+          </button>
+        ) : null}
         {footerAction}
       </div>
     </form>
@@ -2705,9 +2717,7 @@ type DealFormField =
   | "comebackCandidates"
   | "triggerValue"
   | "expiryDays"
-  | "stock"
   | "limitedWindow"
-  | "reserveOnSelection"
 
 type DealTypeExplanation = {
   description: string
@@ -3171,9 +3181,7 @@ function getDealFormConfig({
       break
     case "limited_drop":
       discountOptions = [...dealDropDiscountTypeOptions]
-      visibleFields.add("stock")
       visibleFields.add("limitedWindow")
-      visibleFields.add("reserveOnSelection")
       visibleFields.add("estimatedSavings")
       break
     case "streak":
@@ -3367,6 +3375,7 @@ type DealValidationMessages = {
   happyHourEnd?: string
   happyHourStart?: string
   inactivityValue?: string
+  minSpend?: string
   rewardItem?: string
   triggerValue?: string
   visitCountRange?: string
@@ -3376,6 +3385,7 @@ function buildDealValidationMessages({
   type,
   discountType,
   discountValue,
+  minSpend,
   rewardItem,
   benefitCount,
   challengeName,
@@ -3391,6 +3401,7 @@ function buildDealValidationMessages({
   type: string
   discountType: string
   discountValue: string
+  minSpend: string
   rewardItem: string
   benefitCount: string
   challengeName: string
@@ -3422,6 +3433,17 @@ function buildDealValidationMessages({
 
   if (discountType === "percent" && parsedDiscountValue && parsedDiscountValue > 100) {
     messages.discountValue = "Enter a percentage between 1 and 100."
+  }
+
+  const parsedMinSpend = parseOptionalNumberInput(minSpend)
+  if (
+    discountType === "fixed" &&
+    parsedMinSpend !== null &&
+    parsedDiscountValue !== null &&
+    parsedMinSpend < parsedDiscountValue
+  ) {
+    messages.minSpend =
+      "Minimum spend is less than the discount amount — users may get more off than they spend."
   }
 
   if (discountType === "item" && !rewardItem.trim()) {
@@ -3662,6 +3684,9 @@ function DealFields({
   const [validUntil, setValidUntil] = useState(
     formatDateTimeInput(deal?.valid_until),
   )
+  const [minSpend, setMinSpend] = useState(
+    formatTextInputValue(deal?.min_spend),
+  )
   const [expiryDays, setExpiryDays] = useState(
     formatTextInputValue(deal?.expiry_days),
   )
@@ -3693,6 +3718,7 @@ function DealFields({
     type: selectedDealType,
     discountType: selectedDiscountType,
     discountValue,
+    minSpend,
     rewardItem,
     benefitCount,
     challengeName,
@@ -3716,7 +3742,6 @@ function DealFields({
     config.visibleFields.has("durationConfig") ||
     config.visibleFields.has("triggerValue") ||
     config.visibleFields.has("expiryDays") ||
-    config.visibleFields.has("stock") ||
     config.visibleFields.has("limitedWindow")
   const rewardDetailsRequired =
     config.requiredFields.has("challengeName") ||
@@ -4229,36 +4254,6 @@ function DealFields({
                 />
               </>
             ) : null}
-            {config.visibleFields.has("stock") ? (
-              <>
-                <TextField
-                  label="Stock total"
-                  name={`${prefix}stock_total`}
-                  type="number"
-                  min={0}
-                  value={dealDropStockTotal}
-                  onChange={(value) => {
-                    setDealDropStockTotal(value)
-                    if (!stockRemainingEdited) {
-                      setDealDropStockRemaining(value)
-                    }
-                  }}
-                  hint="Optional total stock."
-                />
-                <TextField
-                  label="Stock remaining"
-                  name={`${prefix}stock_remaining`}
-                  type="number"
-                  min={0}
-                  value={dealDropStockRemaining}
-                  onChange={(value) => {
-                    setStockRemainingEdited(true)
-                    setDealDropStockRemaining(value)
-                  }}
-                  hint="Remaining redemptions."
-                />
-              </>
-            ) : null}
             {showsAllowFreeTrial ? (
               <CheckboxField
                 label="Allow free user trial"
@@ -4367,8 +4362,10 @@ function DealFields({
             type="number"
             step="any"
             min={0}
-            defaultValue={deal?.min_spend}
+            value={minSpend}
+            onChange={setMinSpend}
             hint={dealFieldHelp.minSpend}
+            warning={validationMessages.minSpend}
           />
           <TextField
             label="Max discount amount"
@@ -4399,14 +4396,6 @@ function DealFields({
               defaultValues={deal?.weekdays}
               options={withCurrentOptions(weekdayOptions, deal?.weekdays)}
               hint={dealFieldHelp.weekdays}
-            />
-          ) : null}
-          {config.visibleFields.has("reserveOnSelection") ? (
-            <CheckboxField
-              label="Reserve stock on selection"
-              name={`${prefix}reserve_on_selection`}
-              defaultChecked={deal?.reserve_on_selection ?? false}
-              hint={dealFieldHelp.reserveOnSelection}
             />
           ) : null}
         </FieldGrid>
