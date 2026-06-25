@@ -3829,12 +3829,6 @@ function DealFields({
       setTriggerValue("")
     }
 
-    if (!nextConfig.visibleFields.has("stock")) {
-      setDealDropStockTotal("")
-      setDealDropStockRemaining("")
-      setStockRemainingEdited(false)
-    }
-
     if (!nextConfig.visibleFields.has("limitedWindow")) {
       setStartsAt("")
       setEndsAt("")
