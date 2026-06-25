@@ -385,7 +385,7 @@ export function PartnerWorkspace({
               title="Add partner"
               description="Create the partner profile, assign its owner, upload media, and add any deals in one save."
             >
-              <PartnerForm cities={cities} owners={owners} mode="create" />
+              <PartnerForm cities={cities} owners={owners} mode="create" partners={partners} />
             </EditorShell>
           ) : selectedPartner ? (
               <PartnerDetail
@@ -399,7 +399,7 @@ export function PartnerWorkspace({
               title="No partners yet"
               description="Add a partner to start managing deals."
             >
-              <PartnerForm cities={cities} owners={owners} mode="create" />
+              <PartnerForm cities={cities} owners={owners} mode="create" partners={partners} />
             </EditorShell>
           )}
         </section>
@@ -562,9 +562,9 @@ function PartnerDetail({
             mode="edit"
           />
           <div className="space-y-4">
+            <OpeningHoursPanel partner={partner} embedded />
             <MilestonesPanel partner={partner} embedded />
             <DealsPanel partner={partner} embedded />
-            <OpeningHoursPanel partner={partner} embedded />
             {partnerTypeSupportsMenu(partner.type) ? (
               <MenuPanel partner={partner} embedded />
             ) : null}
@@ -689,15 +689,19 @@ function PartnerForm({
   formId,
   owners,
   mode,
+  partners = [],
 }: {
   partner?: PartnerWithDeals
   cities: City[]
   formId?: string
   owners: OwnerOption[]
   mode: "create" | "edit"
+  partners?: PartnerWithDeals[]
 }) {
   const [state, formAction] = useActionState(savePartner, initialState)
   const router = useRouter()
+  const [templateSource, setTemplateSource] =
+    useState<PartnerWithDeals | null>(null)
   const [socialHandles, setSocialHandles] = useState<SocialHandleDraft[]>(() =>
     socialDraftsFromPartner(partner?.socials),
   )
@@ -749,6 +753,35 @@ function PartnerForm({
     }
   }
 
+  const applyTemplate = (source: PartnerWithDeals) => {
+    const nextType = normalizePartnerTypeValue(source.type)
+    setTemplateSource(source)
+    setSelectedPartnerType(nextType)
+    setSocialHandles(socialDraftsFromPartner(source.socials))
+    setInitialMilestones(
+      source.reward_milestones.length > 0
+        ? source.reward_milestones.map((milestone) => ({
+            id: crypto.randomUUID(),
+            active: milestone.active ?? true,
+            audience: milestone.audience ?? DEFAULT_AUDIENCE,
+            customerDescription: milestone.customer_description ?? "",
+            discountValue: milestone.discount_value != null ? String(milestone.discount_value) : "",
+            estimatedSavings: milestone.estimated_savings != null ? String(milestone.estimated_savings) : "",
+            requiredStamps: milestone.required_stamps != null ? String(milestone.required_stamps) : String(MAX_STAMP_CARD_STAMPS),
+            rewardItem: milestone.reward_item ?? "",
+            rewardType: milestone.reward_type ?? "item",
+            staffInstructions: milestone.staff_instructions ?? "",
+            terms: milestone.terms ?? "",
+            title: milestone.title ?? "",
+          }))
+        : [createInitialMilestoneDraft()],
+    )
+    if (!partnerTypeSupportsMenu(nextType)) {
+      setInitialMenuEnabled(false)
+    }
+    setFormVersion((v) => v + 1)
+  }
+
   useEffect(() => {
     if (state.ok) {
       router.refresh()
@@ -765,6 +798,7 @@ function PartnerForm({
       setInitialMenuEnabled(false)
       setInitialMenuCategories([])
       setInitialMenuItems([])
+      setTemplateSource(null)
       setFormVersion((value) => value + 1)
 
       document
@@ -822,6 +856,10 @@ function PartnerForm({
       />
       <input type="hidden" name="social_count" value={socialHandles.length} />
 
+      {mode === "create" && partners.length > 0 ? (
+        <CopyFromPartnerPanel partners={partners} onApply={applyTemplate} />
+      ) : null}
+
       <FormSection title="Profile" required={requiredSectionMarker}>
         <FieldGrid>
           <TextField
@@ -841,7 +879,7 @@ function PartnerForm({
           <SelectField
             label="Partner city"
             name="city_id"
-            defaultValue={partner?.city_id}
+            defaultValue={partner?.city_id ?? templateSource?.city_id}
             options={cityOptions.length ? cityOptions : emptyCityOptions}
             required
           />
@@ -884,34 +922,34 @@ function PartnerForm({
         <TextAreaField
           label="Description"
           name="description"
-          defaultValue={partner?.description}
+          defaultValue={partner?.description ?? templateSource?.description}
           required
         />
         <MultiSelectField
           label="Categories"
           name="category"
-          defaultValues={partner?.category}
-          options={withCurrentOptions(categoryOptions, partner?.category)}
+          defaultValues={partner?.category ?? templateSource?.category}
+          options={withCurrentOptions(categoryOptions, partner?.category ?? templateSource?.category)}
           required
         />
       </FormSection>
 
       <FormSection
         title="Contact and Location"
-        defaultOpen={requiredSectionsOpen}
+        defaultOpen={false}
         required={requiredSectionMarker}
       >
         <FieldGrid>
           <TextField
             label="Phone"
             name="phone"
-            defaultValue={partner?.phone}
+            defaultValue={partner?.phone ?? templateSource?.phone}
           />
           <TextField
             label="Website"
             name="website"
             type="url"
-            defaultValue={partner?.website}
+            defaultValue={partner?.website ?? templateSource?.website}
           />
           <TextField
             key={`coordinates-${partner?.id ?? "new"}-${coordinateDefaultValue}`}
@@ -966,6 +1004,16 @@ function PartnerForm({
         </div>
       </FormSection>
 
+      {mode === "create" ? (
+        <FormSection
+          title="Operating Hours"
+          defaultOpen={false}
+          required={requiredSectionMarker}
+        >
+          <WeeklyHoursFields />
+        </FormSection>
+      ) : null}
+
       <FormSection
         title="Media"
         defaultOpen={false}
@@ -1010,7 +1058,7 @@ function PartnerForm({
         <>
           <FormSection
             title="Stamp-card milestones"
-            defaultOpen={requiredSectionsOpen}
+            defaultOpen={false}
             required={requiredSectionMarker}
           >
             <input
@@ -1097,14 +1145,6 @@ function PartnerForm({
                 )
               }
             />
-          </FormSection>
-
-          <FormSection
-            title="Operating Hours"
-            defaultOpen={requiredSectionsOpen}
-            required={requiredSectionMarker}
-          >
-            <WeeklyHoursFields />
           </FormSection>
 
           {menuSupported ? (
@@ -3134,6 +3174,7 @@ function getDealFormConfig({
       visibleFields.add("stock")
       visibleFields.add("limitedWindow")
       visibleFields.add("reserveOnSelection")
+      visibleFields.add("estimatedSavings")
       break
     case "streak":
       visibleFields.add("triggerValue")
@@ -3322,6 +3363,7 @@ type DealValidationMessages = {
   challengeName?: string
   discountValue?: string
   durationValue?: string
+  endsAt?: string
   happyHourEnd?: string
   happyHourStart?: string
   inactivityValue?: string
@@ -3338,6 +3380,7 @@ function buildDealValidationMessages({
   benefitCount,
   challengeName,
   durationValue,
+  endsAt,
   happyHourStart,
   happyHourEnd,
   inactivityValue,
@@ -3352,6 +3395,7 @@ function buildDealValidationMessages({
   benefitCount: string
   challengeName: string
   durationValue: string
+  endsAt: string
   happyHourStart: string
   happyHourEnd: string
   inactivityValue: string
@@ -3424,6 +3468,10 @@ function buildDealValidationMessages({
     parsedMaxVisitCount < parsedMinVisitCount
   ) {
     messages.visitCountRange = "Maximum visits must be at least minimum visits."
+  }
+
+  if (type === "limited_drop" && !endsAt) {
+    messages.endsAt = "Limited Deal Drops must have an end time."
   }
 
   return messages
@@ -3649,6 +3697,7 @@ function DealFields({
     benefitCount,
     challengeName,
     durationValue,
+    endsAt,
     happyHourStart,
     happyHourEnd,
     inactivityValue,
@@ -4093,6 +4142,7 @@ function DealFields({
                 value={estimatedSavings}
                 onChange={setEstimatedSavings}
                 hint="Used for savings stats and animations."
+                recommended={isLimitedDrop}
               />
             ) : null}
             {config.visibleFields.has("happyHour") ? (
@@ -4175,6 +4225,7 @@ function DealFields({
                   value={endsAt}
                   onChange={setEndsAt}
                   hint={dealFieldHelp.validWindow}
+                  warning={validationMessages.endsAt}
                 />
               </>
             ) : null}
@@ -4241,63 +4292,23 @@ function DealFields({
         />
       ) : null}
 
-      <FormSection
-        title="Saved copy shown to users/staff"
-        compact
-      >
-        <p className="text-xs leading-5 text-zinc-500">
-          Only the fields in this section are saved as user and staff copy.
-        </p>
-        <FieldGrid compact>
-          <TextAreaField
-            label="Customer description"
-            name={`${prefix}customer_description`}
-            value={customerDescription}
-            onChange={(value) => {
-              setCustomerDescriptionDirty(true)
-              setCustomerDescription(value)
-            }}
-          />
-          <TextAreaField
-            label="Staff instructions"
-            name={`${prefix}staff_instructions`}
-            value={staffInstructions}
-            onChange={(value) => {
-              setStaffInstructionsDirty(true)
-              setStaffInstructions(value)
-            }}
-          />
-          <TextAreaField
-            label="Terms"
-            name={`${prefix}terms`}
-            value={terms}
-            onChange={(value) => {
-              setTermsDirty(true)
-              setTerms(value)
-            }}
-          />
-        </FieldGrid>
-      </FormSection>
-
       {isLimitedDrop ? (
-        <DealDropPreviewCard
-          audience={selectedAudience}
-          discountType={selectedDiscountType}
-          discountValue={parseOptionalNumberInput(discountValue)}
-          endsAt={endsAt}
-          estimatedSavings={
-            selectedDiscountType === "fixed"
-              ? parseOptionalNumberInput(discountValue)
-              : parseOptionalNumberInput(estimatedSavings)
-          }
-          expiryDays={parseOptionalNumberInput(expiryDays)}
-          rewardItem={rewardItem}
-          rewardText={customerDescription}
-          soldOut={dealDropSoldOut}
-          stockRemaining={parseOptionalNumberInput(dealDropStockRemaining)}
-          stockTotal={parseOptionalNumberInput(dealDropStockTotal)}
-          trialEligible={showsAllowFreeTrial && allowFreeTrial}
-        />
+        <FormSection title="Deal Drop card image" compact>
+          <p className="text-xs leading-5 text-zinc-500">
+            Upload a highlight image for the deal card (710×400px).
+          </p>
+          <MediaUploadField
+            key={`deal-drop-image-${deal?.id ?? "new"}`}
+            label="Deal Drop card image (710×400)"
+            fileName={`${prefix}deal_drop_image_file`}
+            existingName={`${prefix}existing_deal_drop_image_url`}
+            removeName={`${prefix}remove_deal_drop_image`}
+            currentUrl={
+              metadataString(metadataObject(deal?.metadata), "card_image_url") || undefined
+            }
+            spec={partnerMediaSpecs.dealDrop}
+          />
+        </FormSection>
       ) : null}
 
       <AdvancedSettingsSection>
@@ -4921,7 +4932,7 @@ function OpeningHoursPanel({
 
   if (embedded) {
     return (
-      <FormSection title="Operating hours" defaultOpen={false}>
+      <FormSection title="Operating hours" defaultOpen={false} required="subtle">
         {content}
       </FormSection>
     )
@@ -7047,6 +7058,7 @@ type TextFieldProps = {
   hint?: string
   prefixText?: string
   required?: boolean
+  recommended?: boolean
   placeholder?: string
   suffixText?: string
   value?: string | number
@@ -7066,6 +7078,7 @@ function TextField({
   hint,
   prefixText,
   required,
+  recommended,
   placeholder,
   suffixText,
   value,
@@ -7086,7 +7099,7 @@ function TextField({
 
   return (
     <label className="block space-y-2 text-sm">
-      <FieldLabel label={label} required={required} />
+      <FieldLabel label={label} required={required} recommended={recommended} />
       <div
         className={`flex h-10 w-full items-center rounded-md border border-zinc-300 bg-white text-sm text-zinc-950 transition focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100 ${
           prefixText || suffixText ? "overflow-hidden" : ""
@@ -8093,9 +8106,11 @@ function TextAreaField({
 function FieldLabel({
   label,
   required,
+  recommended,
 }: {
   label: string
   required?: boolean
+  recommended?: boolean
 }) {
   return (
     <span className="font-medium text-zinc-700">
@@ -8103,6 +8118,11 @@ function FieldLabel({
       {required ? (
         <span className="ml-1 text-rose-600" aria-label="required">
           *
+        </span>
+      ) : null}
+      {recommended && !required ? (
+        <span className="ml-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold normal-case tracking-normal text-amber-800">
+          Recommended
         </span>
       ) : null}
     </span>
@@ -8763,6 +8783,61 @@ function socialHandleFromUrl(url?: string | null) {
   } catch {
     return value
   }
+}
+
+function CopyFromPartnerPanel({
+  partners,
+  onApply,
+}: {
+  partners: PartnerWithDeals[]
+  onApply: (source: PartnerWithDeals) => void
+}) {
+  const [selectedId, setSelectedId] = useState("")
+  const selectedPartner = partners.find((p) => p.id === selectedId) ?? null
+
+  return (
+    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex-1 space-y-1.5">
+          <p className="font-semibold text-amber-900">Copy from existing partner</p>
+          <p className="text-xs leading-5 text-amber-800">
+            Pre-fill this form from an existing partner's profile. You can edit anything afterwards.
+          </p>
+          <select
+            value={selectedId}
+            onChange={(event) => setSelectedId(event.target.value)}
+            className="mt-1 h-10 w-full rounded-md border border-amber-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+          >
+            <option value="">Select a partner…</option>
+            {partners.map((p) => (
+              <option key={p.id} value={p.id ?? ""}>
+                {p.name || "Untitled partner"}
+                {p.city_name ? ` — ${p.city_name}` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="button"
+          disabled={!selectedPartner}
+          onClick={() => {
+            if (selectedPartner) {
+              onApply(selectedPartner)
+              setSelectedId("")
+            }
+          }}
+          className="h-10 rounded-md bg-amber-700 px-4 text-sm font-semibold text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Apply
+        </button>
+      </div>
+      {selectedPartner ? (
+        <p className="mt-2 text-xs text-amber-800">
+          Will copy: type, city, description, categories, phone, website, social handles, and milestones. Name, email, address, and owner will not be copied.
+        </p>
+      ) : null}
+    </div>
+  )
 }
 
 function createInitialMilestoneDraft(): InitialMilestoneDraft {

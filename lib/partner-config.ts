@@ -50,6 +50,15 @@ export const partnerMediaSpecs = {
     previewMaxWidth: 240,
     previewFit: "cover",
   },
+  dealDrop: {
+    label: "Deal Drop card",
+    width: 710,
+    height: 400,
+    previewAspectWidth: 710,
+    previewAspectHeight: 400,
+    previewMaxWidth: 260,
+    previewFit: "cover",
+  },
 } satisfies Record<string, PartnerMediaSpec>
 
 export const partnerSocialPlatformOptions = [

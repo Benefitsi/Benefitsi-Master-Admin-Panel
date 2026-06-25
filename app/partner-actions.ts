@@ -677,8 +677,49 @@ export async function saveDeal(
     return { ok: false, message: priorityMessage }
   }
 
+  // Handle deal drop card image
+  const dealDropImageFile = fileValue(formData, "deal_drop_image_file")
+  const existingDealDropImageUrl = stringValue(
+    formData,
+    "existing_deal_drop_image_url",
+  )
+  const removeDealDropImage = checkboxValue(formData, "remove_deal_drop_image")
+  // removed_media_urls is populated by MediaUploadField when user hits remove
+  const removedMediaUrls = stringListValue(formData, "removed_media_urls")
+  let dealDropImageUrl: string | null = existingDealDropImageUrl || null
+
+  if (dealDropImageFile) {
+    const mediaError = validateMediaFile(dealDropImageFile)
+
+    if (mediaError) {
+      return { ok: false, message: mediaError }
+    }
+
+    const dealId = id || "new"
+    const partnerId = payload.partner_id
+    const uploaded = await uploadPartnerFile(
+      supabase,
+      dealDropImageFile,
+      partnerMediaSpecs.dealDrop,
+      `deal-drops/${partnerId}/${dealId}-${Date.now()}-${safeFileName(dealDropImageFile.name)}`,
+    )
+    dealDropImageUrl = uploaded.url
+  } else if (removeDealDropImage) {
+    dealDropImageUrl = null
+  }
+
+  // Merge deal drop image URL into metadata
+  const dealMetadata = metadataRecord(payload.metadata)
+
+  if (dealDropImageUrl) {
+    dealMetadata.card_image_url = dealDropImageUrl
+  } else {
+    delete dealMetadata.card_image_url
+  }
+
   const mutationPayload = {
     ...payload,
+    metadata: dealMetadata,
     updated_at: now,
     ...(id ? {} : { created_at: now }),
   }
@@ -688,6 +729,20 @@ export async function saveDeal(
 
   if (mutationMessage) {
     return { ok: false, message: mutationMessage }
+  }
+
+  // Clean up replaced or removed deal drop images.
+  // existingDealDropImageUrl covers the replace case (new file uploaded over old one).
+  // removedMediaUrls covers the remove case (user hit remove without uploading a new file).
+  const urlsToCleanup = [
+    ...(existingDealDropImageUrl && existingDealDropImageUrl !== dealDropImageUrl
+      ? [existingDealDropImageUrl]
+      : []),
+    ...removedMediaUrls.filter((url) => url !== dealDropImageUrl),
+  ]
+
+  if (urlsToCleanup.length > 0) {
+    await cleanupPublicMediaUrls(supabase, urlsToCleanup)
   }
 
   revalidatePath("/")
