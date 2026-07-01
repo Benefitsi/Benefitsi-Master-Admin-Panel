@@ -392,7 +392,7 @@ function normalizeBuilderTranslationKey(text: string) {
     .trim()
 }
 
-function translateBuilderText(locale: BuilderLocale, text: string) {
+function translateBuilderText(locale: BuilderLocale, text: string): string {
   if (locale === "de" || !text) {
     return text
   }
