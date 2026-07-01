@@ -473,9 +473,11 @@ function translateBuilderText(locale: BuilderLocale, text: string): string {
 export function MicrositePanel({
   partner,
   fullscreen = false,
+  previewBasePath = "/microsite-preview",
 }: {
   partner: PartnerWithDeals
   fullscreen?: boolean
+  previewBasePath?: string
 }) {
   const initialConfig = resolveMicrositeConfig(
     partner.microsite?.draftVersion?.config ??
@@ -529,7 +531,7 @@ export function MicrositePanel({
   const selectedElement = getEditableElement(selectedElementId, config)
   const previewIdentifier = partner.slug || partner.subdomain || partner.id || "partner"
   const previewStorageKey = `benefitsi:microsite-preview:${partner.id || partner.slug || "partner"}`
-  const previewHref = `/microsite-preview/${encodeURIComponent(previewIdentifier)}?source=builder`
+  const previewHref = `${previewBasePath}/${encodeURIComponent(previewIdentifier)}?source=builder`
   const publishBlocked = readinessReport.status === "blocked"
   const publishBlockers = readinessReport.items.filter(
     (item) => item.severity === "required" && !item.ok,
@@ -921,7 +923,7 @@ export function MicrositePanel({
             {tr("Aktuelle Vorschau öffnen")}
           </a>
           <a
-            href={`/microsite-preview/${encodeURIComponent(previewIdentifier)}`}
+            href={`${previewBasePath}/${encodeURIComponent(previewIdentifier)}`}
             target="_blank"
             rel="noreferrer"
             className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"

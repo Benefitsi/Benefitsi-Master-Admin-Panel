@@ -28,6 +28,29 @@ NEXT_PUBLIC_SUPABASE_URL=https://slscoqdhbxftcournvut.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 ```
 
+## Partner microsite dashboard access
+
+Partners can now use an isolated dashboard at:
+
+- `http://localhost:3000/partner/login` (or your production domain + `/partner/login`)
+
+Access is scoped and does not change the existing admin panel UI/flow.
+
+### Who can sign in
+
+A Supabase-authenticated user can access the partner dashboard when either of these is true:
+
+1. They are linked as owner: `partners.owner_id` matches `users.id` or `users.uid`
+2. They are linked as staff: `partner_staff.user_id` matches `users.id` or `users.uid` (and `active` is not `false`)
+
+`users.is_partner = true` is expected for partner accounts.
+
+### What partners can access
+
+- `/partner`: list of their linked partner shop microsites
+- `/partner/microsite-builder/[partner]`: microsite editor for only linked partners
+- `/partner/microsite-preview/[partner]`: scoped preview for only linked partners
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

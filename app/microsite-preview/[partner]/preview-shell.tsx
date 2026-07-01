@@ -14,12 +14,14 @@ export function MicrositePreviewShell({
   previewStorageKey,
   useBuilderDraft,
   isMobile,
+  previewBasePath = "/microsite-preview",
 }: {
   partner: PartnerWithDeals
   initialConfig: MicrositeConfig
   previewStorageKey: string
   useBuilderDraft: boolean
   isMobile: boolean
+  previewBasePath?: string
 }) {
   const [config, setConfig] = useState(initialConfig)
   const displayedConfig = useBuilderDraft ? config : initialConfig
@@ -76,13 +78,13 @@ export function MicrositePreviewShell({
         <div className="flex gap-2">
           <a
             className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-zinc-700 transition hover:bg-zinc-50"
-            href={`/microsite-preview/${encodeURIComponent(partner.slug || partner.id || "partner")}`}
+            href={`${previewBasePath}/${encodeURIComponent(partner.slug || partner.id || "partner")}`}
           >
             Gespeicherten Entwurf öffnen
           </a>
           <a
             className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-zinc-700 transition hover:bg-zinc-50"
-            href={`/microsite-preview/${encodeURIComponent(partner.slug || partner.id || "partner")}?viewport=mobile${useBuilderDraft ? "&source=builder" : ""}`}
+            href={`${previewBasePath}/${encodeURIComponent(partner.slug || partner.id || "partner")}?viewport=mobile${useBuilderDraft ? "&source=builder" : ""}`}
           >
             Mobile
           </a>

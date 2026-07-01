@@ -3,7 +3,6 @@
 import { randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { requireAdmin } from "@/lib/admin"
 import {
   resolveMicrositeConfig,
   type MicrositeConfig,
@@ -11,6 +10,8 @@ import {
 } from "@/lib/microsites"
 import { getDashboardData, type Partner, type PartnerWithDeals } from "@/lib/admin-data"
 import { createMicrositeReadinessReport } from "@/lib/microsite-readiness"
+import { canAccessPartner, getPartnerPortalSession } from "@/lib/partner-portal"
+import { createClient } from "@/lib/supabase/server"
 
 export type MicrositeActionState = {
   ok: boolean
@@ -47,7 +48,13 @@ export async function saveMicrositeVersion(
     }
   }
 
-  const { supabase } = await requireAdmin()
+  const access = await authorizeMicrositeEditor(partnerId)
+
+  if (!access.ok) {
+    return access.state
+  }
+
+  const { supabase } = access
   const partnerResult = await supabase
     .from("partners")
     .select("*")
@@ -101,14 +108,14 @@ export async function saveMicrositeVersion(
   }
 
   config = applyUploadedAssets(config, uploadedAssets.urls)
-  const micrositeResult = await findOrCreateMicrosite(partner)
+  const micrositeResult = await findOrCreateMicrosite(supabase, partner)
 
   if (!micrositeResult.ok) {
     return micrositeResult.state
   }
 
   const microsite = micrositeResult.microsite
-  const nextVersion = await nextVersionNumber(microsite.id)
+  const nextVersion = await nextVersionNumber(supabase, microsite.id)
 
   if (!nextVersion.ok) {
     return nextVersion.state
@@ -232,11 +239,43 @@ async function getFullPartnerForReadiness(
   }
 }
 
-async function findOrCreateMicrosite(partner: Partner): Promise<
+async function authorizeMicrositeEditor(partnerId: string): Promise<
+  | { ok: true; supabase: SupabaseClient }
+  | { ok: false; state: MicrositeActionState }
+> {
+  const supabase = await createClient()
+  const portalSession = await getPartnerPortalSession(supabase)
+
+  if (!portalSession) {
+    return {
+      ok: false,
+      state: {
+        ok: false,
+        message: "Bitte melden Sie sich erneut an, um die Microsite zu bearbeiten.",
+      },
+    }
+  }
+
+  if (portalSession.isAdmin || canAccessPartner(portalSession, partnerId)) {
+    return { ok: true, supabase }
+  }
+
+  return {
+    ok: false,
+    state: {
+      ok: false,
+      message: "Dieses Konto hat keinen Zugriff auf diese Partner-Microsite.",
+    },
+  }
+}
+
+async function findOrCreateMicrosite(
+  supabase: SupabaseClient,
+  partner: Partner,
+): Promise<
   | { ok: true; microsite: PartnerMicrosite }
   | { ok: false; state: MicrositeActionState }
 > {
-  const { supabase } = await requireAdmin()
   const existing = await supabase
     .from("microsites")
     .select("*")
@@ -285,11 +324,13 @@ async function findOrCreateMicrosite(partner: Partner): Promise<
   }
 }
 
-async function nextVersionNumber(micrositeId: string): Promise<
+async function nextVersionNumber(
+  supabase: SupabaseClient,
+  micrositeId: string,
+): Promise<
   | { ok: true; number: number }
   | { ok: false; state: MicrositeActionState }
 > {
-  const { supabase } = await requireAdmin()
   const result = await supabase
     .from("microsite_versions")
     .select("version_number")
