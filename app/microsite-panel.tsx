@@ -1,0 +1,3219 @@
+"use client"
+
+import {
+  useActionState,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type FocusEvent,
+  type FormEvent,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+  type SetStateAction,
+} from "react"
+import type { PartnerWithDeals } from "@/lib/admin-data"
+import {
+  resolveMicrositeConfig,
+  type MicrositeConfig,
+} from "@/lib/microsites"
+import {
+  createMicrositeReadinessReport,
+  type MicrositeReadinessReport,
+} from "@/lib/microsite-readiness"
+import {
+  applyMicrositeTemplatePreset,
+  micrositeTemplatePresets,
+  type MicrositeTemplatePreset,
+} from "@/lib/microsite-templates"
+import { RestaurantPremiumMicrosite } from "@/components/microsite/restaurant-premium-microsite"
+import {
+  saveMicrositeVersion,
+  type MicrositeActionState,
+} from "./microsite-actions"
+
+const initialState: MicrositeActionState = { ok: false, message: "" }
+
+export function MicrositePanel({
+  partner,
+  fullscreen = false,
+}: {
+  partner: PartnerWithDeals
+  fullscreen?: boolean
+}) {
+  const initialConfig = resolveMicrositeConfig(
+    partner.microsite?.draftVersion?.config ??
+      partner.microsite?.publishedVersion?.config,
+    partner,
+  )
+  const [config, setConfig] = useState<MicrositeConfig>(initialConfig)
+  const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop")
+  const [previewZoom, setPreviewZoom] = useState(fullscreen ? 0.85 : 1)
+  const [selectedElementId, setSelectedElementId] = useState("hero.headline")
+  const [editorPanelOpen, setEditorPanelOpen] = useState(true)
+  const [editorPanelWidth, setEditorPanelWidth] = useState(360)
+  const previewRef = useRef<HTMLDivElement | null>(null)
+  const selectedElementPanelRef = useRef<HTMLDivElement | null>(null)
+  const inlineTextOverridesInputRef = useRef<HTMLInputElement | null>(null)
+  const inlineTextOverridesRef = useRef<Record<string, string>>({})
+  const spacingDragRef = useRef<{
+    id: string
+    startY: number
+    startMarginTop: number
+    moved: boolean
+  } | null>(null)
+  const [state, formAction, pending] = useActionState(
+    saveMicrositeVersion,
+    initialState,
+  )
+  const assetOptions = Array.from(new Set([
+    partner.logo_url,
+    partner.feature_card_url,
+    ...(partner.cover_urls || []),
+    config.branding.partnerBadgeUrl,
+    config.hero.backgroundImageUrl,
+    config.deals.illustrationUrl,
+    config.deals.topDealImageUrl,
+    config.seo.ogImageUrl,
+    ...config.assets.library.map((asset) => asset.url),
+    ...Object.values(config.elementText).filter((value) => /^https?:\/\/|^\//.test(value)),
+  ].filter((asset): asset is string => Boolean(asset))))
+  const readinessReport = useMemo(
+    () => createMicrositeReadinessReport(partner, config),
+    [partner, config],
+  )
+  const selectedElement = getEditableElement(selectedElementId, config)
+  const previewIdentifier = partner.slug || partner.subdomain || partner.id || "partner"
+  const previewStorageKey = `benefitsi:microsite-preview:${partner.id || partner.slug || "partner"}`
+  const previewHref = `/microsite-preview/${encodeURIComponent(previewIdentifier)}?source=builder`
+  const publishBlocked = readinessReport.status === "blocked"
+  const publishBlockers = readinessReport.items.filter(
+    (item) => item.severity === "required" && !item.ok,
+  )
+  const zoomPercent = Math.round(previewZoom * 100)
+
+  function adjustPreviewZoom(delta: number) {
+    setPreviewZoom((current) =>
+      Math.max(0.5, Math.min(1.5, Number((current + delta).toFixed(2)))),
+    )
+  }
+
+  useEffect(() => {
+    if (state.ok && state.config) {
+      let cancelled = false
+
+      queueMicrotask(() => {
+        if (!cancelled && state.config) {
+          setConfig(resolveMicrositeConfig(state.config, partner))
+          inlineTextOverridesRef.current = {}
+
+          if (inlineTextOverridesInputRef.current) {
+            inlineTextOverridesInputRef.current.value = "{}"
+          }
+        }
+      })
+
+      return () => {
+        cancelled = true
+      }
+    }
+  }, [partner, state.config, state.ok])
+
+  useEffect(() => {
+    const root = previewRef.current
+
+    if (!root) {
+      return
+    }
+
+    root
+      .querySelectorAll(".microsite-builder-selected")
+      .forEach((element) =>
+        element.classList.remove("microsite-builder-selected"),
+      )
+
+    root
+      .querySelector(`[data-microsite-editable="${cssEscape(selectedElementId)}"]`)
+      ?.classList.add("microsite-builder-selected")
+  }, [selectedElementId, config])
+
+  useEffect(() => {
+    selectedElementPanelRef.current?.scrollIntoView({
+      block: "nearest",
+      behavior: "smooth",
+    })
+  }, [selectedElementId])
+
+  useEffect(() => {
+    const root = previewRef.current
+
+    if (!root) {
+      return
+    }
+
+    root
+      .querySelectorAll<HTMLElement>(
+        '[data-microsite-editable-kind="text"]',
+      )
+      .forEach((element) => {
+        element.contentEditable = "true"
+        element.spellcheck = false
+        element.dataset.builderInlineText = "true"
+      })
+  }, [config, previewZoom, viewport])
+
+  function syncInlineTextOverride(id: string, value: string) {
+    if (!id) {
+      return
+    }
+
+    inlineTextOverridesRef.current = {
+      ...inlineTextOverridesRef.current,
+      [id]: value,
+    }
+
+    if (inlineTextOverridesInputRef.current) {
+      inlineTextOverridesInputRef.current.value = JSON.stringify(
+        inlineTextOverridesRef.current,
+      )
+    }
+  }
+
+  function handleInlineTextInput(event: FormEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement | null
+    const editableTarget = target?.closest<HTMLElement>(
+      '[data-microsite-editable-kind="text"]',
+    )
+
+    if (!editableTarget || !previewRef.current?.contains(editableTarget)) {
+      return
+    }
+
+    const id = editableTarget.dataset.micrositeEditable || ""
+
+    setSelectedElementId(id)
+    syncInlineTextOverride(id, textFromEditableElement(editableTarget))
+  }
+
+  function handleInlineTextBlur(event: FocusEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement | null
+    const editableTarget = target?.closest<HTMLElement>(
+      '[data-microsite-editable-kind="text"]',
+    )
+
+    if (!editableTarget || !previewRef.current?.contains(editableTarget)) {
+      return
+    }
+
+    const id = editableTarget.dataset.micrositeEditable || ""
+    const value = textFromEditableElement(editableTarget)
+    const element = getEditableElement(id, config)
+
+    syncInlineTextOverride(id, value)
+
+    if (element?.kind === "text") {
+      setConfig((current) => element.update(current, value))
+    }
+  }
+
+  function handlePreviewClick(event: MouseEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement | null
+    const editableTarget = target?.closest<HTMLElement>(
+      "[data-microsite-editable]",
+    )
+
+    if (!editableTarget || !previewRef.current?.contains(editableTarget)) {
+      return
+    }
+
+    const kind = editableTarget.dataset.micrositeEditableKind
+    const isInteractiveText =
+      kind === "text" &&
+      Boolean(editableTarget.closest("a, button, summary, input, textarea, select"))
+
+    if (kind !== "text" || isInteractiveText) {
+      event.preventDefault()
+    }
+
+    setSelectedElementId(editableTarget.dataset.micrositeEditable || "")
+  }
+
+  function handlePreviewPointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) {
+      return
+    }
+
+    const target = event.target as HTMLElement | null
+    const editableTarget = target?.closest<HTMLElement>(
+      "[data-microsite-editable]",
+    )
+
+    if (!editableTarget || !previewRef.current?.contains(editableTarget)) {
+      return
+    }
+
+    const id = editableTarget.dataset.micrositeEditable || ""
+
+    if (!id) {
+      return
+    }
+
+    setSelectedElementId(id)
+
+    if (editableTarget.dataset.micrositeEditableKind === "text") {
+      window.requestAnimationFrame(() => {
+        placeCaretAtPoint(editableTarget, event.clientX, event.clientY)
+      })
+      return
+    }
+
+    spacingDragRef.current = {
+      id,
+      startY: event.clientY,
+      startMarginTop: config.elementStyles[id]?.marginTop ?? 0,
+      moved: false,
+    }
+
+    const handlePointerMove = (pointerEvent: globalThis.PointerEvent) => {
+      const drag = spacingDragRef.current
+
+      if (!drag) {
+        return
+      }
+
+      const delta = Math.round(pointerEvent.clientY - drag.startY)
+
+      if (Math.abs(delta) < 8 && !drag.moved) {
+        return
+      }
+
+      drag.moved = true
+      setElementStyle(setConfig, drag.id, {
+        marginTop: Math.max(-120, Math.min(240, drag.startMarginTop + delta)),
+      })
+    }
+
+    const handlePointerUp = () => {
+      spacingDragRef.current = null
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", handlePointerUp)
+    }
+
+    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("pointerup", handlePointerUp, { once: true })
+  }
+
+  function handleEditorResizePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse") {
+      return
+    }
+
+    if (!fullscreen || !editorPanelOpen || event.button !== 0) {
+      return
+    }
+
+    event.preventDefault()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    startEditorPanelResize(event.clientX)
+  }
+
+  function handleEditorResizeMouseDown(event: MouseEvent<HTMLDivElement>) {
+    if (!fullscreen || !editorPanelOpen || event.button !== 0) {
+      return
+    }
+
+    event.preventDefault()
+    startEditorPanelResize(event.clientX, "mouse")
+  }
+
+  function startEditorPanelResize(
+    resizeStartX: number,
+    mode: "pointer" | "mouse" = "pointer",
+  ) {
+    const resizeStartWidth = editorPanelWidth
+
+    const handleMove = (
+      pointerEvent: globalThis.PointerEvent | globalThis.MouseEvent,
+    ) => {
+      setEditorPanelWidth(
+        Math.max(
+          280,
+          Math.min(560, resizeStartWidth + pointerEvent.clientX - resizeStartX),
+        ),
+      )
+    }
+
+    const handleUp = () => {
+      if (mode === "mouse") {
+        window.removeEventListener("mousemove", handleMove)
+        window.removeEventListener("mouseup", handleUp)
+      } else {
+        window.removeEventListener("pointermove", handleMove)
+        window.removeEventListener("pointerup", handleUp)
+      }
+    }
+
+    if (mode === "mouse") {
+      window.addEventListener("mousemove", handleMove)
+      window.addEventListener("mouseup", handleUp, { once: true })
+    } else {
+      window.addEventListener("pointermove", handleMove)
+      window.addEventListener("pointerup", handleUp, { once: true })
+    }
+  }
+
+  return (
+    <section className="overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm">
+      <header className="flex flex-col gap-4 border-b border-zinc-200 p-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-teal-700">
+            Microsite
+          </p>
+          <h2 className="mt-1 text-lg font-semibold tracking-normal">
+            Restaurant-Premium-Vorlage
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Für Mobilgeräte optimierte Vorlage · Daten vom Partnerprofil · versionierte Veröffentlichung
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={previewHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => {
+              window.localStorage.setItem(previewStorageKey, JSON.stringify(config))
+            }}
+            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
+          >
+            Aktuelle Vorschau öffnen
+          </a>
+          <a
+            href={`/microsite-preview/${encodeURIComponent(previewIdentifier)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
+          >
+            Gespeicherten Entwurf öffnen
+          </a>
+          <StatusBadge
+            label={partner.microsite?.publishedVersion ? "Live" : "Noch nicht live"}
+            active={Boolean(partner.microsite?.publishedVersion)}
+          />
+          {partner.microsite?.status === "review" ? (
+            <StatusBadge label="In Prüfung" tone="review" />
+          ) : null}
+          {partner.microsite?.draftVersion ? (
+            <StatusBadge label="Entwurf vorhanden" active={false} />
+          ) : null}
+        </div>
+      </header>
+
+      <form
+        action={formAction}
+        className={`grid gap-0 transition-[grid-template-columns] duration-200 ${
+          fullscreen
+            ? "min-h-[calc(100vh-8rem)]"
+            : editorPanelOpen
+              ? "lg:grid-cols-[330px_minmax(0,1fr)]"
+              : "lg:grid-cols-[56px_minmax(0,1fr)]"
+        }`}
+        style={
+          fullscreen
+            ? {
+                gridTemplateColumns: editorPanelOpen
+                  ? `${editorPanelWidth}px minmax(0,1fr)`
+                  : "64px minmax(0,1fr)",
+              }
+            : undefined
+        }
+      >
+        <input type="hidden" name="partner_id" value={partner.id || ""} />
+        <input type="hidden" name="existing_config" value={JSON.stringify(config)} />
+        <input
+          ref={inlineTextOverridesInputRef}
+          type="hidden"
+          name="inline_text_overrides"
+          defaultValue="{}"
+        />
+        <datalist id={`microsite-assets-${partner.id || "new"}`}>
+          {assetOptions.map((asset) => (
+            <option key={asset} value={asset} />
+          ))}
+        </datalist>
+
+        <aside
+          className={`relative self-start border-zinc-200 bg-white ${
+            fullscreen
+              ? "sticky top-0 h-[calc(100vh-8rem)] max-h-[calc(100vh-8rem)] overflow-y-auto border-r"
+              : "border-b lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:border-b-0 lg:border-r"
+          } ${editorPanelOpen ? "space-y-6 p-5" : "p-2"}`}
+        >
+          {fullscreen && editorPanelOpen ? (
+            <div
+              role="separator"
+              aria-label="Editorbreite ändern"
+              title="Editorbreite per Ziehen ändern"
+              onPointerDown={handleEditorResizePointerDown}
+              onMouseDown={handleEditorResizeMouseDown}
+              className="absolute -right-1 top-0 z-50 h-full w-4 cursor-col-resize touch-none bg-transparent transition hover:bg-blue-200/70"
+            />
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setEditorPanelOpen((current) => !current)}
+            aria-label={
+              editorPanelOpen
+                ? "Microsite-Bearbeitung einklappen"
+                : "Microsite-Bearbeitung ausklappen"
+            }
+            aria-expanded={editorPanelOpen}
+            className="mb-3 grid size-10 place-items-center rounded-md border border-zinc-200 bg-white text-lg font-bold text-zinc-700 shadow-sm transition hover:bg-zinc-50"
+          >
+            {editorPanelOpen ? "‹" : "›"}
+          </button>
+
+          {editorPanelOpen ? (
+            <>
+          <div
+            ref={selectedElementPanelRef}
+            className="relative"
+          >
+            <SelectedElementPanel
+              element={selectedElement}
+              config={config}
+              setConfig={setConfig}
+              onInlineTextOverride={syncInlineTextOverride}
+            />
+          </div>
+          <ReadinessPanel report={readinessReport} />
+          <BuilderSectionsPanel onSelect={setSelectedElementId} />
+          <TemplateSystemPanel
+            onApply={(templateId) =>
+              setConfig((current) =>
+                applyMicrositeTemplatePreset(current, templateId),
+              )
+            }
+          />
+          <DataSourcePanel partner={partner} />
+          <MenuSystemPanel partner={partner} />
+          <AssetReadinessPanel partner={partner} config={config} setConfig={setConfig} />
+          <VersionRollbackPanel partner={partner} setConfig={setConfig} />
+          <SeoSystemPanel config={config} setConfig={setConfig} />
+          <BuilderChecklistPanel config={config} setConfig={setConfig} />
+          <WorkflowPanel
+            partner={partner}
+            report={readinessReport}
+            previewIdentifier={previewIdentifier}
+          />
+
+          <ConfigSection title="Marke">
+            <ColorField
+              name="accent"
+              label="Akzentfarbe"
+              value={config.branding.accent}
+              onChange={(value) =>
+                setConfig((current) => ({
+                  ...current,
+                  branding: { ...current.branding, accent: value },
+                }))
+              }
+            />
+            <ColorField
+              name="accent_secondary"
+              label="Gradientfarbe"
+              value={config.branding.accentSecondary}
+              onChange={(value) =>
+                setConfig((current) => ({
+                  ...current,
+                  branding: { ...current.branding, accentSecondary: value },
+                }))
+              }
+            />
+            <SourceLockedField
+              label="Logo"
+              value={partner.logo_url || "Im Partnerprofil hinterlegen"}
+              source="Partnerprofil → Media"
+            />
+            <EditorField
+              name="partner_badge_url"
+              label="Badge-Icon URL"
+              value={config.branding.partnerBadgeUrl}
+              onChange={(value) =>
+                updateBranding(setConfig, "partnerBadgeUrl", value)
+              }
+              placeholder="https://…"
+              list={`microsite-assets-${partner.id || "new"}`}
+            />
+            <AssetUploadField
+              name="badge_file"
+              label="Neues Badge-Icon hochladen"
+              onPreview={(url) =>
+                updateBranding(setConfig, "partnerBadgeUrl", url)
+              }
+            />
+          </ConfigSection>
+
+          <ConfigSection title="Startbereich">
+            <SourceLockedField
+              label="Überschrift"
+              value={config.hero.headline}
+              source="Partnerprofil → Name"
+            />
+            <EditorField
+              name="hero_slogan"
+              label="Slogan"
+              value={config.hero.slogan}
+              onChange={(value) => updateHero(setConfig, "slogan", value)}
+            />
+            <SourceLockedField
+              label="Ort"
+              value={config.hero.locationText}
+              source="Partnerprofil → Stadt/Adresse"
+            />
+            <SourceLockedField
+              label="Öffnungszeiten"
+              value={config.hero.openingText}
+              source="Partnerprofil → Öffnungszeiten"
+            />
+            <EditorField
+              name="hero_image_url"
+              label="Startbild URL"
+              value={config.hero.backgroundImageUrl}
+              onChange={(value) =>
+                updateHero(setConfig, "backgroundImageUrl", value)
+              }
+              list={`microsite-assets-${partner.id || "new"}`}
+            />
+            <AssetUploadField
+              name="hero_file"
+              label="Neues Startbild hochladen"
+              onPreview={(url) =>
+                updateHero(setConfig, "backgroundImageUrl", url)
+              }
+            />
+          </ConfigSection>
+
+          <ConfigSection title="Deals & Vorteile">
+            <EditorField
+              name="deals_headline"
+              label="Überschrift"
+              value={config.deals.headline}
+              onChange={(value) => updateDeals(setConfig, "headline", value)}
+            />
+            <EditorField
+              name="deals_slogan"
+              label="Slogan"
+              value={config.deals.slogan}
+              onChange={(value) => updateDeals(setConfig, "slogan", value)}
+            />
+            <EditorField
+              name="deals_description"
+              label="Beschreibung"
+              value={config.deals.description}
+              onChange={(value) => updateDeals(setConfig, "description", value)}
+              multiline
+            />
+            <EditorField
+              name="deals_illustration_url"
+              label="Intro-Grafik URL"
+              value={config.deals.illustrationUrl}
+              onChange={(value) =>
+                updateDeals(setConfig, "illustrationUrl", value)
+              }
+              list={`microsite-assets-${partner.id || "new"}`}
+            />
+            <AssetUploadField
+              name="deals_illustration_file"
+              label="Neue Intro-Grafik hochladen"
+              onPreview={(url) =>
+                updateDeals(setConfig, "illustrationUrl", url)
+              }
+            />
+            <EditorField
+              name="top_deal_headline"
+              label="Top-Deal Überschrift"
+              value={config.deals.topDealHeadline}
+              onChange={(value) =>
+                updateDeals(setConfig, "topDealHeadline", value)
+              }
+            />
+            <EditorField
+              name="top_deal_image_url"
+              label="Top-Deal Bild URL"
+              value={config.deals.topDealImageUrl}
+              onChange={(value) =>
+                updateDeals(setConfig, "topDealImageUrl", value)
+              }
+              list={`microsite-assets-${partner.id || "new"}`}
+            />
+            <AssetUploadField
+              name="top_deal_file"
+              label="Neues Top-Deal Bild hochladen"
+              onPreview={(url) => updateDeals(setConfig, "topDealImageUrl", url)}
+            />
+          </ConfigSection>
+
+          <ConfigSection title="Weitere Bereiche">
+            <EditorField
+              name="menu_headline"
+              label="Speisekarte Überschrift"
+              value={config.content.menuHeadline}
+              onChange={(value) => updateContent(setConfig, "menuHeadline", value)}
+            />
+            <EditorField
+              name="menu_description"
+              label="Speisekarte Beschreibung"
+              value={config.content.menuDescription}
+              onChange={(value) =>
+                updateContent(setConfig, "menuDescription", value)
+              }
+              multiline
+            />
+            <EditorField
+              name="about_headline"
+              label="Über-uns Überschrift"
+              value={config.content.aboutHeadline}
+              onChange={(value) =>
+                updateContent(setConfig, "aboutHeadline", value)
+              }
+            />
+            <EditorField
+              name="about_text"
+              label="Über-uns Text"
+              value={config.content.aboutText}
+              onChange={(value) => updateContent(setConfig, "aboutText", value)}
+              multiline
+            />
+            <EditorField
+              name="contact_headline"
+              label="Kontakt Überschrift"
+              value={config.content.contactHeadline}
+              onChange={(value) =>
+                updateContent(setConfig, "contactHeadline", value)
+              }
+            />
+            <EditorField
+              name="app_headline"
+              label="App-Banner Überschrift"
+              value={config.content.appHeadline}
+              onChange={(value) => updateContent(setConfig, "appHeadline", value)}
+            />
+            <EditorField
+              name="app_text"
+              label="App-Banner Text"
+              value={config.content.appText}
+              onChange={(value) => updateContent(setConfig, "appText", value)}
+              multiline
+            />
+            <EditorField
+              name="footer_text"
+              label="Footer-Text"
+              value={config.content.footerText}
+              onChange={(value) => updateContent(setConfig, "footerText", value)}
+            />
+          </ConfigSection>
+
+          <ConfigSection title="Version & Notiz">
+            <EditorField
+              name="builder_version_note"
+              label="Interne Versionsnotiz"
+              value={config.builder.versionNote}
+              onChange={(value) =>
+                setConfig((current) => ({
+                  ...current,
+                  builder: { ...current.builder, versionNote: value },
+                }))
+              }
+              placeholder="z. B. Knobi Design finalisiert, mobile geprüft"
+              multiline
+            />
+          </ConfigSection>
+
+          <SocialMediaPanel config={config} setConfig={setConfig} />
+
+          <div className="flex flex-col gap-2">
+            <button
+              type="submit"
+              name="intent"
+              value="draft"
+              disabled={pending}
+              className="h-11 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 disabled:opacity-60"
+            >
+              {pending ? "Speichert…" : "Entwurf speichern"}
+            </button>
+            <button
+              type="submit"
+              name="intent"
+              value="review"
+              disabled={pending}
+              className="h-11 rounded-md border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
+            >
+              Zur Prüfung markieren
+            </button>
+            <button
+              type="submit"
+              name="intent"
+              value="approve"
+              disabled={pending || publishBlocked}
+              title={
+                publishBlocked
+                  ? "Freigabe erst nach erfüllten Pflichtchecks möglich"
+                  : "Microsite intern freigeben"
+              }
+              className="h-11 rounded-md border border-emerald-300 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
+            >
+              Freigeben
+            </button>
+            <button
+              type="submit"
+              name="intent"
+              value="publish"
+              disabled={pending || publishBlocked}
+              title={
+                publishBlocked
+                  ? `Pflichtpunkte fehlen: ${publishBlockers
+                      .slice(0, 4)
+                      .map((item) => item.label)
+                      .join(", ")}`
+                  : "Diese Version live veröffentlichen"
+              }
+              className="h-11 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:opacity-60"
+            >
+              Veröffentlichen
+            </button>
+            {publishBlocked ? (
+              <p className="rounded-md bg-rose-50 px-3 py-2 text-xs font-semibold leading-5 text-rose-700">
+                Live-Publish ist gesperrt, bis alle Pflichtchecks erledigt sind.
+                Entwurf und Prüfung bleiben möglich.
+              </p>
+            ) : null}
+            {state.message ? (
+              <p className={`text-sm ${state.ok ? "text-emerald-700" : "text-red-700"}`}>
+                {state.message}
+              </p>
+            ) : null}
+          </div>
+            </>
+          ) : (
+            <div className="mt-4 flex justify-center">
+              <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500 [writing-mode:vertical-rl]">
+                Editor
+              </span>
+            </div>
+          )}
+        </aside>
+
+        <div className={`min-w-0 overflow-hidden bg-zinc-50 ${fullscreen ? "h-[calc(100vh-8rem)] p-3" : "p-3 sm:p-5"}`}>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-medium text-zinc-700">Live-Vorschau</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center rounded-md border border-zinc-200 bg-white p-1">
+                <button
+                  type="button"
+                  onClick={() => adjustPreviewZoom(-0.1)}
+                  className="grid size-8 place-items-center rounded text-sm font-black text-zinc-700 transition hover:bg-zinc-100"
+                  aria-label="Preview herauszoomen"
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewZoom(1)}
+                  className="h-8 min-w-14 rounded px-2 text-xs font-black text-zinc-700 transition hover:bg-zinc-100"
+                  title="Zoom zurücksetzen"
+                >
+                  {zoomPercent}%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => adjustPreviewZoom(0.1)}
+                  className="grid size-8 place-items-center rounded text-sm font-black text-zinc-700 transition hover:bg-zinc-100"
+                  aria-label="Preview reinzoomen"
+                >
+                  +
+                </button>
+              </div>
+              <div className="inline-flex rounded-md border border-zinc-200 bg-white p-1">
+                {(["desktop", "mobile"] as const).map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setViewport(item)}
+                    className={`rounded px-3 py-1.5 text-xs font-semibold ${
+                      viewport === item ? "bg-zinc-950 text-white" : "text-zinc-600"
+                    }`}
+                  >
+                    {item === "desktop" ? "Desktop" : "Mobil"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div
+            ref={previewRef}
+            onClickCapture={handlePreviewClick}
+            onPointerDownCapture={handlePreviewPointerDown}
+            onInputCapture={handleInlineTextInput}
+            onBlurCapture={handleInlineTextBlur}
+            className={`microsite-builder-surface mx-auto overflow-x-hidden overflow-y-auto transition-all ${
+              viewport === "mobile"
+                ? "w-full max-w-[390px]"
+                : "w-full max-w-full"
+            } ${fullscreen ? "h-[calc(100vh-12rem)]" : ""}`}
+          >
+            <div
+              className={
+                viewport === "mobile"
+                  ? "w-full"
+                  : "w-full min-w-0"
+              }
+              style={{
+                zoom: previewZoom,
+              }}
+            >
+              <RestaurantPremiumMicrosite partner={partner} config={config} />
+            </div>
+          </div>
+        </div>
+      </form>
+    </section>
+  )
+}
+
+type EditableElement = {
+  id: string
+  label: string
+  kind: "text" | "image" | "icon" | "group"
+  value: string
+  update: (config: MicrositeConfig, value: string) => MicrositeConfig
+  uploadName?: string
+}
+
+const themeIconOptions = [
+  { value: "bag", label: "Tasche" },
+  { value: "leaf", label: "Blatt" },
+  { value: "card", label: "Karte" },
+  { value: "people", label: "Familie" },
+  { value: "gift", label: "Geschenk" },
+  { value: "spark", label: "Stern/Funkeln" },
+  { value: "percent", label: "Prozent" },
+  { value: "star", label: "Stern" },
+  { value: "clock", label: "Uhr" },
+  { value: "check", label: "Haken" },
+  { value: "pin", label: "Standort" },
+  { value: "phone", label: "Telefon" },
+  { value: "shield", label: "Schild" },
+  { value: "privacy", label: "Datenschutz" },
+  { value: "local", label: "Lokal" },
+  { value: "bowl", label: "Schüssel" },
+  { value: "smile", label: "Lächeln" },
+  { value: "pizza", label: "Pizza" },
+  { value: "website", label: "Website" },
+  { value: "instagram", label: "Instagram" },
+  { value: "facebook", label: "Facebook" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "youtube", label: "YouTube" },
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "google", label: "Google" },
+  { value: "benefitsi", label: "Benefitsi" },
+]
+
+const socialPlatformOptions = [
+  { id: "instagram", label: "Instagram", defaultVisible: true },
+  { id: "facebook", label: "Facebook", defaultVisible: true },
+  { id: "tiktok", label: "TikTok", defaultVisible: true },
+  { id: "youtube", label: "YouTube", defaultVisible: false },
+  { id: "whatsapp", label: "WhatsApp", defaultVisible: false },
+  { id: "website", label: "Website", defaultVisible: false },
+  { id: "google", label: "Google", defaultVisible: false },
+  { id: "linkedin", label: "LinkedIn", defaultVisible: false },
+] as const
+
+const fontFamilyOptions = [
+  { value: "", label: "Template-Schrift" },
+  { value: "Arial, sans-serif", label: "Arial" },
+  { value: "Georgia, serif", label: "Georgia" },
+  { value: "Inter, sans-serif", label: "Inter" },
+  { value: "Verdana, sans-serif", label: "Verdana" },
+  { value: "Brush Script MT, cursive", label: "Script" },
+]
+
+function ReadinessPanel({ report }: { report: MicrositeReadinessReport }) {
+  const blockedItems = report.items.filter(
+    (item) => item.severity === "required" && !item.ok,
+  )
+  const nextItems = report.items.filter((item) => !item.ok).slice(0, 5)
+
+  return (
+    <ConfigSection title="Bereitschaft">
+      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-zinc-500">
+              Live-Bereitschaft
+            </p>
+            <p className="mt-1 text-2xl font-black tracking-[-0.05em] text-zinc-950">
+              {report.score}%
+            </p>
+          </div>
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-black ${
+              report.status === "live-ready"
+                ? "bg-emerald-100 text-emerald-800"
+                : report.status === "blocked"
+                  ? "bg-rose-100 text-rose-800"
+                  : "bg-amber-100 text-amber-800"
+            }`}
+          >
+            {report.status === "live-ready"
+              ? "Live-bereit"
+              : report.status === "blocked"
+                ? "Blockiert"
+                : "In Arbeit"}
+          </span>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <ReadinessMetric
+            label="Pflicht"
+            value={`${report.requiredDone}/${report.requiredTotal}`}
+          />
+          <ReadinessMetric
+            label="Empfohlen"
+            value={`${report.recommendedDone}/${report.recommendedTotal}`}
+          />
+        </div>
+        {nextItems.length ? (
+          <div className="mt-4 space-y-2">
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-zinc-500">
+              Nächste Aufgaben
+            </p>
+            {nextItems.map((item) => (
+              <ReadinessItemRow key={item.id} item={item} />
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+            Alle aktuellen Checks sind erfüllt.
+          </p>
+        )}
+        {blockedItems.length ? (
+          <p className="mt-3 text-xs leading-5 text-rose-700">
+            Veröffentlichung erst nach den Pflichtpunkten empfehlen.
+          </p>
+        ) : null}
+      </div>
+    </ConfigSection>
+  )
+}
+
+function ReadinessMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-zinc-50 p-3">
+      <p className="font-semibold text-zinc-500">{label}</p>
+      <p className="mt-1 font-mono text-zinc-950">{value}</p>
+    </div>
+  )
+}
+
+function ReadinessItemRow({
+  item,
+}: {
+  item: MicrositeReadinessReport["items"][number]
+}) {
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+      <div className="flex items-start gap-2">
+        <span
+          className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full text-[10px] font-black ${
+            item.ok ? "bg-emerald-500 text-white" : "bg-amber-400 text-white"
+          }`}
+        >
+          {item.ok ? "✓" : "!"}
+        </span>
+        <div>
+          <p className="text-xs font-bold text-zinc-900">{item.label}</p>
+          <p className="mt-0.5 text-[11px] leading-4 text-zinc-500">
+            {item.detail}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BuilderSectionsPanel({
+  onSelect,
+}: {
+  onSelect: (id: string) => void
+}) {
+  const sections = [
+    ["Top-Navigation", "navigation.group"],
+    ["Startbereich", "hero.headline"],
+    ["Deals & Vorteile", "deals.headline"],
+    ["Top-Deal", "deals.topDealHeadline"],
+    ["Stempelkarte", "stamps.headline"],
+    ["Speisekarte", "content.menuHeadline"],
+    ["Über uns", "content.aboutHeadline"],
+    ["Kontakt", "content.contactHeadline"],
+    ["FAQ", "content.faqHeadline"],
+    ["Footer", "content.footerText"],
+  ] as const
+
+  return (
+    <ConfigSection title="Builder-Bereiche">
+      <div className="grid grid-cols-2 gap-2">
+        {sections.map(([label, id]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onSelect(id)}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-xs font-black text-zinc-800 transition hover:border-blue-300 hover:bg-blue-50"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </ConfigSection>
+  )
+}
+
+function TemplateSystemPanel({
+  onApply,
+}: {
+  onApply: (templateId: MicrositeTemplatePreset["id"]) => void
+}) {
+  return (
+    <ConfigSection title="Vorlagen">
+      <div className="space-y-2">
+        {micrositeTemplatePresets.map((template) => (
+          <button
+            key={template.id}
+            type="button"
+            onClick={() => onApply(template.id)}
+            className="w-full rounded-lg border border-zinc-200 bg-white p-3 text-left transition hover:border-teal-300 hover:bg-teal-50"
+          >
+            <span className="text-sm font-black text-zinc-950">
+              {template.name}
+            </span>
+            <span className="mt-1 block text-xs leading-5 text-zinc-500">
+              {template.description}
+            </span>
+          </button>
+        ))}
+      </div>
+    </ConfigSection>
+  )
+}
+
+function DataSourcePanel({ partner }: { partner: PartnerWithDeals }) {
+  const rows = [
+    ["Name", partner.name, "Partnerprofil"],
+    ["Logo", partner.logo_url, "Partnerprofil / Medien"],
+    ["Adresse", partner.address, "Partnerprofil"],
+    ["Telefon", partner.phone, "Partnerprofil"],
+    ["Öffnungszeiten", `${partner.opening_hours.length} Einträge`, "Öffnungszeiten"],
+    ["Speisekarte", `${partner.menus.length} Menüs`, "Menüs & Artikel"],
+    ["Belohnungen", `${partner.reward_milestones.length} Belohnungen`, "Stempelkarte"],
+    ["Microsite-Bilder", "Start/Deals/Über uns separat", "Microsite"],
+    ["SEO", "Title/Description separat", "Microsite"],
+  ]
+
+  return (
+    <ConfigSection title="Datenquellen">
+      <div className="space-y-2 rounded-xl border border-zinc-200 bg-white p-3">
+        {rows.map(([label, value, source]) => (
+          <div key={label} className="flex items-start justify-between gap-3 text-xs">
+            <div>
+              <p className="font-bold text-zinc-800">{label}</p>
+              <p className="mt-0.5 truncate text-zinc-500">{value || "Fehlt"}</p>
+            </div>
+            <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-1 font-semibold text-zinc-600">
+              {source}
+            </span>
+          </div>
+        ))}
+      </div>
+    </ConfigSection>
+  )
+}
+
+function AssetReadinessPanel({
+  partner,
+  config,
+  setConfig,
+}: {
+  partner: PartnerWithDeals
+  config: MicrositeConfig
+  setConfig: Dispatch<SetStateAction<MicrositeConfig>>
+}) {
+  const rows = [
+    ["Partnerlogo", partner.logo_url, "Profil", "branding.logo"],
+    ["Feature-Karte", partner.feature_card_url, "Profil", "partner.feature"],
+    ["Startbild", config.hero.backgroundImageUrl, "Microsite", "hero.backgroundImageUrl"],
+    ["Deals", config.deals.illustrationUrl, "Microsite", "deals.illustrationUrl"],
+    ["Top-Deal", config.deals.topDealImageUrl, "Microsite", "deals.topDealImageUrl"],
+    ["Über uns 1", config.elementText["content.aboutHeroImageUrl"], "Microsite", "content.aboutHeroImageUrl"],
+    ["Über uns 2", config.elementText["content.aboutIngredientImageUrl"], "Microsite", "content.aboutIngredientImageUrl"],
+    ["Reward 5", config.elementText["stamps.reward.5.image"], "Microsite", "stamps.reward.5.image"],
+    ["Reward 10", config.elementText["stamps.reward.10.image"], "Microsite", "stamps.reward.10.image"],
+    ["QR-Code", config.elementText["content.appQrCodeUrl"], "Microsite", "content.appQrCodeUrl"],
+  ]
+
+  return (
+    <ConfigSection title="Asset-Bibliothek">
+      <details className="rounded-xl border border-zinc-200 bg-white p-3" open>
+        <summary className="cursor-pointer text-sm font-black text-zinc-950">
+          Asset-Status & Austauschbarkeit
+        </summary>
+        <div className="mt-3 space-y-2">
+          {rows.map(([label, value, source, slot]) => (
+            <div key={label} className="grid grid-cols-[44px_minmax(0,1fr)] gap-3 rounded-lg bg-zinc-50 p-2 text-xs">
+              <div className="size-11 overflow-hidden rounded-md border border-zinc-200 bg-white">
+                {value ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={value} alt="" className="h-full w-full object-cover" />
+                ) : null}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-zinc-800">{label}</span>
+                  <span className={value ? "text-emerald-700" : "text-amber-700"}>
+                    {value ? "✓ bereit" : "fehlt"}
+                  </span>
+                </div>
+                <p className="mt-0.5 truncate text-[11px] text-zinc-500">{source} · {slot}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 border-t border-zinc-200 pt-3">
+          <p className="text-xs font-black text-zinc-900">Gespeicherte Asset-Library</p>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {config.assets.library.slice(-12).map((asset) => (
+              <button
+                key={`${asset.slot}-${asset.url}`}
+                type="button"
+                title={`${asset.label} · ${asset.slot}`}
+                onClick={() => setConfig((current) => applyAssetToSlot(current, asset.slot, asset.url))}
+                className="group overflow-hidden rounded-lg border border-zinc-200 bg-white text-left transition hover:border-teal-400"
+              >
+                <span className="block aspect-square bg-zinc-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={asset.url} alt="" className="h-full w-full object-cover" />
+                </span>
+                <span className="block truncate px-1.5 py-1 text-[10px] font-bold text-zinc-600 group-hover:text-teal-700">
+                  {asset.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </details>
+    </ConfigSection>
+  )
+}
+
+function VersionRollbackPanel({
+  partner,
+  setConfig,
+}: {
+  partner: PartnerWithDeals
+  setConfig: Dispatch<SetStateAction<MicrositeConfig>>
+}) {
+  const publishedConfig = partner.microsite?.publishedVersion?.config
+  const draftConfig = partner.microsite?.draftVersion?.config
+
+  return (
+    <ConfigSection title="Versionierung & Rückgängig">
+      <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-3 text-xs">
+        <div className="grid grid-cols-2 gap-2">
+          <ReadinessMetric
+            label="Entwurf"
+            value={partner.microsite?.draftVersion?.version_number ? `v${partner.microsite.draftVersion.version_number}` : "—"}
+          />
+          <ReadinessMetric
+            label="Live"
+            value={partner.microsite?.publishedVersion?.version_number ? `v${partner.microsite.publishedVersion.version_number}` : "—"}
+          />
+        </div>
+        <button
+          type="button"
+          disabled={!publishedConfig}
+          onClick={() => {
+            if (publishedConfig) {
+              setConfig((current) => resolveMicrositeConfig(publishedConfig, { ...partner, logo_url: partner.logo_url || current.branding.logoUrl }))
+            }
+          }}
+          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 font-black text-zinc-800 transition hover:border-amber-300 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Live-Version als Entwurf laden
+        </button>
+        <button
+          type="button"
+          disabled={!draftConfig}
+          onClick={() => {
+            if (draftConfig) {
+              setConfig((current) => resolveMicrositeConfig(draftConfig, { ...partner, logo_url: partner.logo_url || current.branding.logoUrl }))
+            }
+          }}
+          className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 font-black text-zinc-800 transition hover:border-teal-300 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Gespeicherten Entwurf neu laden
+        </button>
+        <p className="text-[11px] leading-5 text-zinc-500">
+          Jede Speicherung erzeugt eine neue Version. Veröffentlichen setzt nur die geprüfte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.
+        </p>
+      </div>
+    </ConfigSection>
+  )
+}
+
+function MenuSystemPanel({ partner }: { partner: PartnerWithDeals }) {
+  const menuItems = partner.menus.flatMap((menu) =>
+    menu.categories.length
+      ? menu.categories.flatMap((category) => category.items)
+      : menu.items,
+  )
+  const imageCount = menuItems.filter((item) => item.image_url).length
+  const priceCount = menuItems.filter((item) => item.price !== null && item.price !== "").length
+
+  return (
+    <ConfigSection title="Speisekarte-System">
+      <div className="grid grid-cols-2 gap-2 rounded-xl border border-zinc-200 bg-white p-3 text-xs">
+        <ReadinessMetric label="Artikel" value={`${menuItems.length}`} />
+        <ReadinessMetric label="Preise" value={`${priceCount}/${menuItems.length}`} />
+        <ReadinessMetric label="Bilder" value={`${imageCount}/${menuItems.length}`} />
+        <ReadinessMetric label="Darstellung" value="Fenster + Platzhalter" />
+      </div>
+    </ConfigSection>
+  )
+}
+
+function SeoSystemPanel({
+  config,
+  setConfig,
+}: {
+  config: MicrositeConfig
+  setConfig: Dispatch<SetStateAction<MicrositeConfig>>
+}) {
+  return (
+    <ConfigSection title="SEO / LLM">
+      <EditorField
+        name="seo_title"
+        label="SEO-Titel"
+        value={config.seo.title}
+        onChange={(value) => updateSeo(setConfig, "title", value)}
+      />
+      <EditorField
+        name="seo_description"
+        label="SEO-Beschreibung"
+        value={config.seo.description}
+        onChange={(value) => updateSeo(setConfig, "description", value)}
+        multiline
+      />
+      <EditorField
+        name="seo_keywords"
+        label="Suchbegriffe"
+        value={config.seo.keywords.join(", ")}
+        onChange={(value) =>
+          setConfig((current) => ({
+            ...current,
+            seo: {
+              ...current.seo,
+              keywords: value
+                .split(",")
+                .map((item) => item.trim())
+                .filter(Boolean),
+            },
+          }))
+        }
+        placeholder="Döner, Pizza, Annweiler, Benefitsi"
+      />
+      <EditorField
+        name="seo_og_image_url"
+        label="Social-Vorschau-Bild URL"
+        value={config.seo.ogImageUrl}
+        onChange={(value) => updateSeo(setConfig, "ogImageUrl", value)}
+      />
+      <label className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white p-3 text-xs font-bold text-zinc-700">
+        <input
+          type="checkbox"
+          checked={config.seo.noIndex}
+          onChange={(event) =>
+            setConfig((current) => ({
+              ...current,
+              seo: { ...current.seo, noIndex: event.target.checked },
+            }))
+          }
+        />
+        Öffentliche Seite auf noindex setzen
+      </label>
+    </ConfigSection>
+  )
+}
+
+function BuilderChecklistPanel({
+  config,
+  setConfig,
+}: {
+  config: MicrositeConfig
+  setConfig: Dispatch<SetStateAction<MicrositeConfig>>
+}) {
+  const rows = [
+    ["partnerDataReviewDone", "Partnerdaten geprüft"],
+    ["assetReviewDone", "Assets/Fallbacks geprüft"],
+    ["desktopQaDone", "Desktopprüfung abgeschlossen"],
+    ["mobileQaDone", "Mobilprüfung abgeschlossen"],
+    ["seoReviewDone", "SEO/LLM geprüft"],
+    ["publishReviewDone", "Veröffentlichung final geprüft"],
+  ] as const
+
+  return (
+    <ConfigSection title="Finale Checks">
+      <div className="space-y-2 rounded-xl border border-zinc-200 bg-white p-3">
+        {rows.map(([key, label]) => (
+          <label key={key} className="flex items-center gap-2 text-xs font-bold text-zinc-800">
+            <input
+              type="checkbox"
+              checked={config.builder[key]}
+              onChange={(event) =>
+                setConfig((current) => ({
+                  ...current,
+                  builder: {
+                    ...current.builder,
+                    [key]: event.target.checked,
+                    lastQaAt: new Date().toISOString(),
+                  },
+                }))
+              }
+            />
+            {label}
+          </label>
+        ))}
+      </div>
+    </ConfigSection>
+  )
+}
+
+function WorkflowPanel({
+  partner,
+  report,
+  previewIdentifier,
+}: {
+  partner: PartnerWithDeals
+  report: MicrositeReadinessReport
+  previewIdentifier: string
+}) {
+  const steps = [
+    ["1", "Partnerdaten prüfen", report.items.filter((item) => item.area === "Daten" && !item.ok).length === 0],
+    ["2", "Assets bereit", report.items.filter((item) => item.area === "Assets" && !item.ok).length === 0],
+    ["3", "Mobilprüfung", report.items.filter((item) => item.area === "Mobile" && !item.ok).length === 0],
+    ["4", "SEO/LLM-Prüfung", report.items.filter((item) => item.area === "SEO & LLM" && !item.ok).length === 0],
+    ["5", "Freigabe", partner.microsite?.status === "approved" || Boolean(partner.microsite?.publishedVersion)],
+    ["6", "Live", Boolean(partner.microsite?.publishedVersion)],
+  ] as const
+
+  return (
+    <ConfigSection title="Ablauf">
+      <div className="space-y-2 rounded-xl border border-zinc-200 bg-white p-3">
+        {steps.map(([number, label, ok]) => (
+          <div key={number} className="flex items-center gap-3 text-xs">
+            <span className={`grid size-6 place-items-center rounded-full font-black ${ok ? "bg-emerald-500 text-white" : "bg-zinc-200 text-zinc-600"}`}>
+              {ok ? "✓" : number}
+            </span>
+            <span className="font-semibold text-zinc-800">{label}</span>
+          </div>
+        ))}
+        <p className="pt-2 text-[11px] leading-5 text-zinc-500">
+          Partner-Self-Service sollte nur Daten, Speisekarte und Bilder freigeben – Layout bleibt intern geschützt.
+        </p>
+        <a
+          href={`/partner-self-service/${encodeURIComponent(previewIdentifier)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-black text-zinc-800 transition hover:border-teal-300 hover:bg-teal-50"
+        >
+          Partner-Modus prüfen
+        </a>
+      </div>
+    </ConfigSection>
+  )
+}
+
+function SocialMediaPanel({
+  config,
+  setConfig,
+}: {
+  config: MicrositeConfig
+  setConfig: Dispatch<SetStateAction<MicrositeConfig>>
+}) {
+  return (
+    <ConfigSection title="Social Media">
+      <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-3">
+        {socialPlatformOptions.map((platform) => {
+          const id = `social.${platform.id}`
+          const visible = socialEnabledValue(
+            config,
+            platform.id,
+            platform.defaultVisible,
+          )
+
+          return (
+            <div key={platform.id} className="rounded-lg bg-zinc-50 p-3">
+              <label className="flex items-center justify-between gap-3 text-xs font-black text-zinc-800">
+                {platform.label}
+                <input
+                  type="checkbox"
+                  checked={visible}
+                  onChange={(event) =>
+                    setConfig((current) =>
+                      setElementTextValue(
+                        current,
+                        `${id}.enabled`,
+                        event.target.checked ? "true" : "false",
+                      ),
+                    )
+                  }
+                />
+              </label>
+              <div className="mt-3 grid gap-2">
+                <EditorField
+                  name={`${id}_label`}
+                  label="Beschriftung"
+                  value={config.elementText[`${id}.label`] || platform.label}
+                  onChange={(value) =>
+                    setConfig((current) =>
+                      setElementTextValue(current, `${id}.label`, value),
+                    )
+                  }
+                />
+                <EditorField
+                  name={`${id}_url`}
+                  label="Link"
+                  value={config.elementText[`${id}.url`] || ""}
+                  onChange={(value) =>
+                    setConfig((current) =>
+                      setElementTextValue(current, `${id}.url`, value),
+                    )
+                  }
+                  placeholder="https://…"
+                />
+                <EditorField
+                  name={`${id}_icon_url`}
+                  label="Logo-/Icon-URL"
+                  value={config.elementText[`${id}.iconUrl`] || ""}
+                  onChange={(value) =>
+                    setConfig((current) =>
+                      setElementTextValue(current, `${id}.iconUrl`, value),
+                    )
+                  }
+                  placeholder="https://…"
+                />
+                <AssetUploadField
+                  name={genericElementUploadName(`${id}.iconUrl`)}
+                  label={`${platform.label} Logo hochladen`}
+                  onPreview={(url) =>
+                    setConfig((current) =>
+                      setElementTextValue(current, `${id}.iconUrl`, url),
+                    )
+                  }
+                />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </ConfigSection>
+  )
+}
+
+function SourceLockedField({
+  label,
+  value,
+  source,
+}: {
+  label: string
+  value: string
+  source: string
+}) {
+  return (
+    <div className="space-y-1.5 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-bold text-zinc-700">{label}</span>
+        <span className="rounded-full bg-white px-2 py-1 font-semibold text-teal-700">
+          {source}
+        </span>
+      </div>
+      <p className="break-words text-sm font-semibold text-zinc-950">{value}</p>
+      <p className="text-[11px] leading-4 text-zinc-500">
+        Dieses Feld wird zentral aus den Partnerdaten übernommen und bleibt für Skalierung synchron.
+      </p>
+    </div>
+  )
+}
+
+function SelectedElementPanel({
+  element,
+  config,
+  setConfig,
+  onInlineTextOverride,
+}: {
+  element: EditableElement | null
+  config: MicrositeConfig
+  setConfig: Dispatch<SetStateAction<MicrositeConfig>>
+  onInlineTextOverride: (id: string, value: string) => void
+}) {
+  if (!element) {
+    return (
+      <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-600">
+        Klicke ein Element in der Preview an, um es hier direkt zu bearbeiten.
+      </div>
+    )
+  }
+
+  const elementStyle = config.elementStyles[element.id] ?? {}
+  const isText = element.kind === "text"
+  const isIcon = element.kind === "icon"
+  const isImage = element.kind === "image"
+  const isGroup = element.kind === "group"
+  const isNavigationGroup = element.id === "navigation.group"
+  const socialGroupMatch = element.id.match(/^social\.([a-z]+)$/)
+  const iconImageId = `${element.id}.image`
+
+  return (
+    <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-blue-700">
+        Ausgewähltes Element
+      </p>
+      <h3 className="mt-1 text-sm font-semibold text-zinc-950">
+        {element.label}
+      </h3>
+
+      <div className="mt-4 space-y-3">
+        <p className="rounded-md bg-white/80 px-3 py-2 text-[11px] font-medium leading-5 text-zinc-600">
+          Direkt im Builder: Text anklicken und tippen. Bilder und Gruppen
+          kannst du anklicken und leicht nach oben/unten ziehen, um den
+          Abstand zu verändern.
+        </p>
+
+        {isText ? (
+          <EditorField
+            name={`visual_${element.id}`}
+            label="Text"
+            value={element.value}
+            onChange={(value) => {
+              onInlineTextOverride(element.id, value)
+              setConfig((current) => element.update(current, value))
+            }}
+            multiline={element.value.length > 48}
+          />
+        ) : null}
+
+        {isImage ? (
+          <>
+            <EditorField
+              name={`visual_${element.id}`}
+              label="Bild URL"
+              value={element.value}
+              onChange={(value) =>
+                setConfig((current) => element.update(current, value))
+              }
+            />
+            {element.uploadName ? (
+              <AssetUploadField
+                name={element.uploadName}
+                label="Bild hochladen und beim Speichern ersetzen"
+                onPreview={(url) =>
+                  setConfig((current) => element.update(current, url))
+                }
+              />
+            ) : null}
+          </>
+        ) : null}
+
+        {isIcon ? (
+          <>
+            <label className="block space-y-1.5 text-xs font-medium text-zinc-600">
+              Vorlagen-Icon
+              <select
+                value={element.value}
+                onChange={(event) =>
+                  setConfig((current) =>
+                    element.update(current, event.target.value),
+                  )
+                }
+                className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              >
+                {themeIconOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <EditorField
+              name={`visual_${iconImageId}`}
+              label="Eigenes Icon-Bild URL"
+              value={config.elementText[iconImageId] || ""}
+              onChange={(value) =>
+                setConfig((current) => setElementTextValue(current, iconImageId, value))
+              }
+              placeholder="https://…"
+            />
+            <AssetUploadField
+              name={genericElementUploadName(iconImageId)}
+              label="Eigenes Icon hochladen"
+              onPreview={(url) =>
+                setConfig((current) => setElementTextValue(current, iconImageId, url))
+              }
+            />
+          </>
+        ) : null}
+
+        {isNavigationGroup ? (
+          <>
+            <RangeField
+              label="Top-Nav Höhe"
+              min={52}
+              max={150}
+              value={elementStyle.height}
+              emptyLabel="Auto"
+              onChange={(value) =>
+                setElementStyle(setConfig, element.id, { height: value })
+              }
+            />
+            <RangeField
+              label="Button-Abstand"
+              min={0}
+              max={80}
+              value={elementStyle.gap}
+              emptyLabel="Auto"
+              onChange={(value) =>
+                setElementStyle(setConfig, element.id, { gap: value })
+              }
+            />
+            <RangeField
+              label="Links/Rechts Position"
+              min={-240}
+              max={240}
+              value={elementStyle.xOffset}
+              emptyLabel="0px"
+              onChange={(value) =>
+                setElementStyle(setConfig, element.id, { xOffset: value })
+              }
+            />
+          </>
+        ) : null}
+
+        {socialGroupMatch ? (
+          <SocialElementFields
+            platform={socialGroupMatch[1]}
+            config={config}
+            setConfig={setConfig}
+          />
+        ) : null}
+
+        {isText || isGroup ? (
+          <>
+            <RangeField
+              label="Schriftgröße"
+              min={10}
+              max={120}
+              value={elementStyle.fontSize}
+              emptyLabel="Auto"
+              onChange={(value) =>
+                setElementStyle(setConfig, element.id, { fontSize: value })
+              }
+            />
+            <RangeField
+              label="Max. Textbreite"
+              min={120}
+              max={1000}
+              value={elementStyle.maxWidth}
+              emptyLabel="Auto"
+              onChange={(value) =>
+                setElementStyle(setConfig, element.id, { maxWidth: value })
+              }
+            />
+            <RangeField
+              label="Abstand oben"
+              min={-120}
+              max={240}
+              value={elementStyle.marginTop}
+              emptyLabel="0px"
+              onChange={(value) =>
+                setElementStyle(setConfig, element.id, { marginTop: value })
+              }
+            />
+            <RangeField
+              label="Abstand unten"
+              min={-120}
+              max={240}
+              value={elementStyle.marginBottom}
+              emptyLabel="0px"
+              onChange={(value) =>
+                setElementStyle(setConfig, element.id, { marginBottom: value })
+              }
+            />
+            <div className="grid grid-cols-3 gap-2">
+              <ToggleButton
+                active={Boolean(elementStyle.bold)}
+                label="B"
+                onClick={() =>
+                  setElementStyle(setConfig, element.id, {
+                    bold: !elementStyle.bold,
+                  })
+                }
+              />
+              <ToggleButton
+                active={Boolean(elementStyle.italic)}
+                label="I"
+                onClick={() =>
+                  setElementStyle(setConfig, element.id, {
+                    italic: !elementStyle.italic,
+                  })
+                }
+              />
+              <ToggleButton
+                active={Boolean(elementStyle.underline)}
+                label="U"
+                onClick={() =>
+                  setElementStyle(setConfig, element.id, {
+                    underline: !elementStyle.underline,
+                  })
+                }
+              />
+            </div>
+            <label className="block space-y-1.5 text-xs font-medium text-zinc-600">
+              Schriftart
+              <select
+                value={elementStyle.fontFamily ?? ""}
+                onChange={(event) =>
+                  setElementStyle(setConfig, element.id, {
+                    fontFamily: event.target.value || undefined,
+                  })
+                }
+                className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              >
+                {fontFamilyOptions.map((option) => (
+                  <option key={option.label} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <ElementColorField
+              value={elementStyle.color ?? ""}
+              onChange={(value) =>
+                setElementStyle(setConfig, element.id, { color: value })
+              }
+            />
+          </>
+        ) : null}
+
+        {isIcon ? (
+          <>
+            <RangeField
+              label="Icongröße"
+              min={12}
+              max={96}
+              value={elementStyle.iconSize}
+              emptyLabel="Auto"
+              onChange={(value) =>
+                setElementStyle(setConfig, element.id, { iconSize: value })
+              }
+            />
+            <ElementColorField
+              value={elementStyle.color ?? ""}
+              onChange={(value) =>
+                setElementStyle(setConfig, element.id, { color: value })
+              }
+            />
+          </>
+        ) : null}
+
+        {isImage ? (
+          <RangeField
+            label="Bildgröße"
+            min={50}
+            max={180}
+            value={elementStyle.imageScale ?? 100}
+            emptyLabel="100%"
+            suffix="%"
+            onChange={(value) =>
+              setElementStyle(setConfig, element.id, {
+                imageScale: value || 100,
+              })
+            }
+          />
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function SocialElementFields({
+  platform,
+  config,
+  setConfig,
+}: {
+  platform: string
+  config: MicrositeConfig
+  setConfig: Dispatch<SetStateAction<MicrositeConfig>>
+}) {
+  const id = `social.${platform}`
+  const platformOption = socialPlatformOptions.find((item) => item.id === platform)
+  const label = platformOption?.label ?? platform
+  const defaultVisible = platformOption?.defaultVisible ?? false
+
+  return (
+    <div className="space-y-3 rounded-lg border border-zinc-200 bg-white p-3">
+      <label className="flex items-center justify-between gap-3 text-xs font-black text-zinc-800">
+        Button sichtbar
+        <input
+          type="checkbox"
+          checked={socialEnabledValue(config, platform, defaultVisible)}
+          onChange={(event) =>
+            setConfig((current) =>
+              setElementTextValue(
+                current,
+                `${id}.enabled`,
+                event.target.checked ? "true" : "false",
+              ),
+            )
+          }
+        />
+      </label>
+      <EditorField
+        name={`${id}_selected_label`}
+        label="Beschriftung"
+        value={config.elementText[`${id}.label`] || label}
+        onChange={(value) =>
+          setConfig((current) => setElementTextValue(current, `${id}.label`, value))
+        }
+      />
+      <EditorField
+        name={`${id}_selected_url`}
+        label="Link"
+        value={config.elementText[`${id}.url`] || ""}
+        onChange={(value) =>
+          setConfig((current) => setElementTextValue(current, `${id}.url`, value))
+        }
+        placeholder="https://…"
+      />
+      <EditorField
+        name={`${id}_selected_icon_url`}
+        label="Logo-/Icon-URL"
+        value={config.elementText[`${id}.iconUrl`] || ""}
+        onChange={(value) =>
+          setConfig((current) =>
+            setElementTextValue(current, `${id}.iconUrl`, value),
+          )
+        }
+        placeholder="https://…"
+      />
+      <AssetUploadField
+        name={genericElementUploadName(`${id}.iconUrl`)}
+        label="Logo/Icon hochladen"
+        onPreview={(url) =>
+          setConfig((current) => setElementTextValue(current, `${id}.iconUrl`, url))
+        }
+      />
+    </div>
+  )
+}
+
+function RangeField({
+  label,
+  min,
+  max,
+  value,
+  emptyLabel,
+  suffix = "px",
+  onChange,
+}: {
+  label: string
+  min: number
+  max: number
+  value: number | undefined
+  emptyLabel: string
+  suffix?: string
+  onChange: (value: number | undefined) => void
+}) {
+  const hasValue = value !== undefined
+  const displayValue = hasValue ? value : min
+
+  return (
+    <label className="block space-y-1.5 text-xs font-medium text-zinc-600">
+      <span className="flex items-center justify-between gap-3">
+        {label}
+        <span className="font-mono text-zinc-500">
+          {hasValue ? `${value}${suffix}` : emptyLabel}
+        </span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={displayValue}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="w-full accent-teal-700"
+      />
+      <button
+        type="button"
+        onClick={() => onChange(undefined)}
+        className="text-[11px] font-semibold text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
+      >
+        Zurück auf Auto
+      </button>
+    </label>
+  )
+}
+
+function ToggleButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-9 rounded-md border text-sm font-black ${
+        active
+          ? "border-zinc-950 bg-zinc-950 text-white"
+          : "border-zinc-300 bg-white text-zinc-800"
+      }`}
+    >
+      {label}
+    </button>
+  )
+}
+
+function ElementColorField({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (value: string | undefined) => void
+}) {
+  const displayValue = value || "#111111"
+
+  return (
+    <div className="space-y-1.5 text-xs font-medium text-zinc-600">
+      Farbe
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={displayValue}
+          onChange={(event) => onChange(event.target.value)}
+          aria-label="Elementfarbe auswählen"
+          className="h-10 w-14 cursor-pointer rounded-md border border-zinc-300 bg-white p-1"
+        />
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value || undefined)}
+          placeholder="Auto"
+          pattern="#[0-9a-fA-F]{6}"
+          aria-label="Elementfarbe Hex"
+          className="h-10 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 font-mono text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+        />
+      </div>
+    </div>
+  )
+}
+
+function getEditableElement(
+  id: string,
+  config: MicrositeConfig,
+): EditableElement | null {
+  const simpleElements: Record<
+    string,
+    Omit<EditableElement, "id" | "value"> & { value: string }
+  > = {
+    "branding.logo": {
+      label: "Logo (Partnerprofil)",
+      kind: "group",
+      value: config.branding.logoUrl,
+      update: (current) => current,
+    },
+    "footer.logo": {
+      label: "Footer Logo (Partnerprofil)",
+      kind: "group",
+      value: config.branding.logoUrl,
+      update: (current) => current,
+    },
+    "contact.logo": {
+      label: "Kontakt Logo (Partnerprofil)",
+      kind: "group",
+      value: config.branding.logoUrl,
+      update: (current) => current,
+    },
+    "branding.partnerName": textOverrideElement(
+      "Partnername",
+      config,
+      "branding.partnerName",
+      config.hero.headline,
+    ),
+    "branding.partnerBadgeUrl": {
+      label: "Badge-Icon",
+      kind: "image",
+      value: config.branding.partnerBadgeUrl,
+      uploadName: "badge_file",
+      update: (current, value) => ({
+        ...current,
+        branding: { ...current.branding, partnerBadgeUrl: value },
+      }),
+    },
+    "hero.backgroundImageUrl": {
+      label: "Startbild",
+      kind: "image",
+      value: config.hero.backgroundImageUrl,
+      uploadName: "hero_file",
+      update: (current, value) => ({
+        ...current,
+        hero: { ...current.hero, backgroundImageUrl: value },
+      }),
+    },
+    "hero.headline": textElement("Startbereich Überschrift", config.hero.headline, (current, value) => ({
+      ...current,
+      hero: { ...current.hero, headline: value },
+    })),
+    "deals.label": textElement("Deals-Label", config.deals.label, (current, value) => ({
+      ...current,
+      deals: { ...current.deals, label: value },
+    })),
+    "hero.slogan": textElement("Startbereich Slogan", config.hero.slogan, (current, value) => ({
+      ...current,
+      hero: { ...current.hero, slogan: value },
+    })),
+    "hero.locationText": textElement("Ort", config.hero.locationText, (current, value) => ({
+      ...current,
+      hero: { ...current.hero, locationText: value },
+    })),
+    "hero.openingText": textElement("Öffnungszeiten", config.hero.openingText, (current, value) => ({
+      ...current,
+      hero: { ...current.hero, openingText: value },
+    })),
+    "hero.badgeText": textElement("Badge-Text", config.hero.badgeText, (current, value) => ({
+      ...current,
+      hero: { ...current.hero, badgeText: value },
+    })),
+    "hero.primaryButtonLabel": textElement("Primärer Button", config.hero.primaryButtonLabel, (current, value) => ({
+      ...current,
+      hero: { ...current.hero, primaryButtonLabel: value },
+    })),
+    "hero.secondaryButtonLabel": textElement("Sekundärer Button", config.hero.secondaryButtonLabel, (current, value) => ({
+      ...current,
+      hero: { ...current.hero, secondaryButtonLabel: value },
+    })),
+    "deals.illustrationUrl": {
+      label: "Deals Intro Bild",
+      kind: "image",
+      value: config.deals.illustrationUrl,
+      uploadName: "deals_illustration_file",
+      update: (current, value) => ({
+        ...current,
+        deals: { ...current.deals, illustrationUrl: value },
+      }),
+    },
+    "deals.topDealImageUrl": {
+      label: "Top-Deal Bild",
+      kind: "image",
+      value: config.deals.topDealImageUrl,
+      uploadName: "top_deal_file",
+      update: (current, value) => ({
+        ...current,
+        deals: { ...current.deals, topDealImageUrl: value },
+      }),
+    },
+    "deals.headline": textElement("Deals Überschrift", config.deals.headline, (current, value) => ({
+      ...current,
+      deals: { ...current.deals, headline: value },
+    })),
+    "deals.slogan": textElement("Deals Slogan", config.deals.slogan, (current, value) => ({
+      ...current,
+      deals: { ...current.deals, slogan: value },
+    })),
+    "deals.description": textElement("Deals Beschreibung", config.deals.description, (current, value) => ({
+      ...current,
+      deals: { ...current.deals, description: value },
+    })),
+    "deals.topDealHeadline": textElement("Top-Deal Überschrift", config.deals.topDealHeadline, (current, value) => ({
+      ...current,
+      deals: { ...current.deals, topDealHeadline: value },
+    })),
+    "deals.topDealLabel": textElement("Top-Deal Label", config.deals.topDealLabel, (current, value) => ({
+      ...current,
+      deals: { ...current.deals, topDealLabel: value },
+    })),
+    "deals.topDealDescription": textElement("Top-Deal Beschreibung", config.deals.topDealDescription, (current, value) => ({
+      ...current,
+      deals: { ...current.deals, topDealDescription: value },
+    })),
+    "deals.topDealButtonLabel": textElement("Top-Deal Button", config.deals.topDealButtonLabel, (current, value) => ({
+      ...current,
+      deals: { ...current.deals, topDealButtonLabel: value },
+    })),
+    "stamps.headline": textElement("Stempelkarte Überschrift", config.stamps.headline, (current, value) => ({
+      ...current,
+      stamps: { ...current.stamps, headline: value },
+    })),
+    "stamps.label": textElement("Stempelkarte Label", config.stamps.label, (current, value) => ({
+      ...current,
+      stamps: { ...current.stamps, label: value },
+    })),
+    "stamps.slogan": textElement("Stempelkarte Slogan", config.stamps.slogan, (current, value) => ({
+      ...current,
+      stamps: { ...current.stamps, slogan: value },
+    })),
+    "content.menuLabel": textElement("Speisekarte Label", config.content.menuLabel, (current, value) => ({
+      ...current,
+      content: { ...current.content, menuLabel: value },
+    })),
+    "content.menuHeadline": textElement("Speisekarte Überschrift", config.content.menuHeadline, (current, value) => ({
+      ...current,
+      content: { ...current.content, menuHeadline: value },
+    })),
+    "content.menuDescription": textElement("Speisekarte Beschreibung", config.content.menuDescription, (current, value) => ({
+      ...current,
+      content: { ...current.content, menuDescription: value },
+    })),
+    "content.aboutLabel": textElement("Über uns Label", config.content.aboutLabel, (current, value) => ({
+      ...current,
+      content: { ...current.content, aboutLabel: value },
+    })),
+    "content.aboutHeadline": textElement("Über uns Überschrift", config.content.aboutHeadline, (current, value) => ({
+      ...current,
+      content: { ...current.content, aboutHeadline: value },
+    })),
+    "content.aboutText": textElement("Über uns Text", config.content.aboutText, (current, value) => ({
+      ...current,
+      content: { ...current.content, aboutText: value },
+    })),
+    "content.aboutHeroImageUrl": {
+      label: "Über uns Hintergrundbild",
+      kind: "image",
+      value: config.elementText["content.aboutHeroImageUrl"] || "",
+      uploadName: "about_hero_file",
+      update: (current, value) => ({
+        ...current,
+        elementText: {
+          ...current.elementText,
+          "content.aboutHeroImageUrl": value,
+        },
+      }),
+    },
+    "content.aboutIngredientImageUrl": {
+      label: "Über uns Zutatenbild",
+      kind: "image",
+      value: config.elementText["content.aboutIngredientImageUrl"] || "",
+      uploadName: "about_ingredient_file",
+      update: (current, value) => ({
+        ...current,
+        elementText: {
+          ...current.elementText,
+          "content.aboutIngredientImageUrl": value,
+        },
+      }),
+    },
+    "content.aboutLocationImageUrl": {
+      label: "Über uns Ortsbild",
+      kind: "image",
+      value: config.elementText["content.aboutLocationImageUrl"] || "",
+      uploadName: "about_location_file",
+      update: (current, value) => ({
+        ...current,
+        elementText: {
+          ...current.elementText,
+          "content.aboutLocationImageUrl": value,
+        },
+      }),
+    },
+    "content.aboutPrepImageUrl": {
+      label: "Über uns Detailbild",
+      kind: "image",
+      value: config.elementText["content.aboutPrepImageUrl"] || "",
+      uploadName: "about_prep_file",
+      update: (current, value) => ({
+        ...current,
+        elementText: {
+          ...current.elementText,
+          "content.aboutPrepImageUrl": value,
+        },
+      }),
+    },
+    "content.contactLabel": textElement("Kontakt Label", config.content.contactLabel, (current, value) => ({
+      ...current,
+      content: { ...current.content, contactLabel: value },
+    })),
+    "content.contactHeadline": textElement("Kontakt Überschrift", config.content.contactHeadline, (current, value) => ({
+      ...current,
+      content: { ...current.content, contactHeadline: value },
+    })),
+    "content.appHeadline": textElement("App-Banner Überschrift", config.content.appHeadline, (current, value) => ({
+      ...current,
+      content: { ...current.content, appHeadline: value },
+    })),
+    "content.appText": textElement("App-Banner Text", config.content.appText, (current, value) => ({
+      ...current,
+      content: { ...current.content, appText: value },
+    })),
+    "content.footerText": textElement("Footer-Text", config.content.footerText, (current, value) => ({
+      ...current,
+      content: { ...current.content, footerText: value },
+    })),
+  }
+
+  if (simpleElements[id]) {
+    return { id, ...simpleElements[id] }
+  }
+
+  if (id === "navigation.group") {
+    return {
+      id,
+      label: "Top-Navigation",
+      kind: "group",
+      value: "Top-Navigation",
+      update: (current) => current,
+    }
+  }
+
+  if (id === "footer.benefitsiLogo") {
+    return {
+      id,
+      label: "Benefitsi Footer Logo",
+      kind: "image",
+      value: config.elementText[id] || "",
+      uploadName: genericElementUploadName(id),
+      update: (current, value) => setElementTextValue(current, id, value),
+    }
+  }
+
+  const socialGroupMatch = id.match(/^social\.([a-z]+)$/)
+
+  if (socialGroupMatch) {
+    const platform = socialPlatformOptions.find(
+      (item) => item.id === socialGroupMatch[1],
+    )
+
+    return {
+      id,
+      label: `${platform?.label ?? socialGroupMatch[1]} Button`,
+      kind: "group",
+      value: platform?.label ?? socialGroupMatch[1],
+      update: (current) => current,
+    }
+  }
+
+  const socialImageMatch = id.match(/^social\.([a-z]+)\.iconUrl$/)
+
+  if (socialImageMatch) {
+    const platform = socialPlatformOptions.find(
+      (item) => item.id === socialImageMatch[1],
+    )
+
+    return {
+      id,
+      label: `${platform?.label ?? socialImageMatch[1]} Logo/Icon`,
+      kind: "image",
+      value: config.elementText[id] || "",
+      uploadName: genericElementUploadName(id),
+      update: (current, value) => setElementTextValue(current, id, value),
+    }
+  }
+
+  const socialLabelMatch = id.match(/^social\.([a-z]+)\.label$/)
+
+  if (socialLabelMatch) {
+    const platform = socialPlatformOptions.find(
+      (item) => item.id === socialLabelMatch[1],
+    )
+
+    return {
+      id,
+      ...textOverrideElement(
+        `${platform?.label ?? socialLabelMatch[1]} Label`,
+        config,
+        id,
+        platform?.label ?? socialLabelMatch[1],
+      ),
+    }
+  }
+
+  const navLink = config.navigation.links.find(
+    (link) => id === `navigation.${link.anchor}`,
+  )
+
+  if (navLink) {
+    return {
+      id,
+      label: `Navigation ${navLink.label}`,
+      kind: "text",
+      value: config.elementText[id] || navLink.label,
+      update: (current, value) => ({
+        ...current,
+        elementText: {
+          ...current.elementText,
+          [id]: value,
+        },
+      }),
+    }
+  }
+
+  const topDealBulletMatch = id.match(/^deals\.topDealBullets\.(\d+)$/)
+
+  if (topDealBulletMatch) {
+    const index = Number(topDealBulletMatch[1])
+    const bullet = config.deals.topDealBullets[index]
+
+    if (!bullet) {
+      return null
+    }
+
+    return {
+      id,
+      label: `Top-Deal Punkt ${index + 1}`,
+      kind: "text",
+      value: bullet,
+      update: (current, value) => ({
+        ...current,
+        deals: {
+          ...current.deals,
+          topDealBullets: current.deals.topDealBullets.map((item, itemIndex) =>
+            itemIndex === index ? value : item,
+          ),
+        },
+      }),
+    }
+  }
+
+  const stampNumberMatch = id.match(/^stamps\.number\.(\d+)$/)
+
+  if (stampNumberMatch) {
+    const number = stampNumberMatch[1]
+
+    return {
+      id,
+      ...textOverrideElement(`Stempel ${number}`, config, id, number),
+    }
+  }
+
+  const editableTextFallbacks: Record<string, { label: string; fallback: string }> = {
+    "deals.benefit.0.title": {
+      label: "Benefit 1 Titel",
+      fallback: "Exklusive Partner Deals",
+    },
+    "deals.benefit.0.text": {
+      label: "Benefit 1 Text",
+      fallback: "Nur für Benefitsi Mitglieder",
+    },
+    "deals.benefit.1.title": {
+      label: "Benefit 2 Titel",
+      fallback: "Einfach & automatisch",
+    },
+    "deals.benefit.1.text": {
+      label: "Benefit 2 Text",
+      fallback: "Vorteile nutzen & sparen",
+    },
+    "stamps.reward.5.label": {
+      label: "5 Stempel Belohnung",
+      fallback: "Bonus",
+    },
+    "stamps.reward.10.label": {
+      label: "10 Stempel Belohnung",
+      fallback: "Hauptbelohnung",
+    },
+    "stamps.welcomeBonus.title": {
+      label: "Willkommensbonus Titel",
+      fallback: "Direkt 2 Stempel beim ersten Besuch.",
+    },
+    "content.aboutSlogan": {
+      label: "Über uns Slogan",
+      fallback: "Aus Leidenschaft für gutes Essen und unsere Heimat.",
+    },
+    "content.aboutTextSecond": {
+      label: "Über uns Zusatztext",
+      fallback:
+        "Ob in der Mittagspause, nach der Wanderung oder beim Abendessen mit Freunden – wir sind für dich da. Schnell, lecker und immer mit einem Lächeln.",
+    },
+    "content.aboutThanks": {
+      label: "Über uns Dank",
+      fallback: "Danke, Annweiler – ihr seid die Besten!",
+    },
+    "content.aboutSignature": {
+      label: "Über uns Signatur",
+      fallback: "Euer Knobi-Team",
+    },
+    "content.contactSlogan": {
+      label: "Kontakt Slogan",
+      fallback: "Wir freuen uns auf dich.",
+    },
+    "content.contactOpening": {
+      label: "Kontakt Öffnungszeiten",
+      fallback: config.hero.openingText.replace("Heute geöffnet ·", "Täglich"),
+    },
+    "content.contactSocialText": {
+      label: "Social-Media-Text",
+      fallback: "Folge uns für Aktionen & Neuigkeiten.",
+    },
+    "content.contact.address": {
+      label: "Kontakt Adresse",
+      fallback: "Adresse im Admin ergänzen",
+    },
+    "content.contact.phone": {
+      label: "Kontakt Telefon",
+      fallback: "Telefon im Admin ergänzen",
+    },
+    "content.contact.opening": {
+      label: "Kontakt Öffnungszeiten",
+      fallback: config.hero.openingText.replace("Heute geöffnet ·", "Täglich"),
+    },
+    "content.faqLabel": {
+      label: "FAQ-Label",
+      fallback: "FAQ",
+    },
+    "content.faqHeadline": {
+      label: "FAQ Überschrift",
+      fallback: "Häufige Fragen. Schnelle Antworten.",
+    },
+    "content.faqText": {
+      label: "FAQ Text",
+      fallback:
+        "Alles Wichtige zu deiner Benefitsi Mitgliedschaft und den Vorteilen bei Knobi Döner & Pizza Haus.",
+    },
+    "content.aboutValue.0": {
+      label: "Über uns Wert 1",
+      fallback: "Täglich frisch",
+    },
+    "content.aboutValue.1": {
+      label: "Über uns Wert 2",
+      fallback: "Hausgemachte Saucen",
+    },
+    "content.aboutValue.2": {
+      label: "Über uns Wert 3",
+      fallback: "Freundlicher Service",
+    },
+    "content.aboutValue.3": {
+      label: "Über uns Wert 4",
+      fallback: "Döner, Pizza und Fast Food",
+    },
+    "content.appKicker": {
+      label: "App-Banner Label",
+      fallback: "In der Benefitsi App",
+    },
+    "content.appBenefit.0": {
+      label: "App Vorteil 1",
+      fallback: "Stempelstand jederzeit einsehbar",
+    },
+    "content.appBenefit.1": {
+      label: "App Vorteil 2",
+      fallback: "Belohnungen automatisch freischalten",
+    },
+    "content.appBenefit.2": {
+      label: "App Vorteil 3",
+      fallback: "Einfach, schnell & digital",
+    },
+    "content.appQrLabel": {
+      label: "QR-Code Hinweis",
+      fallback: "App öffnen & einchecken",
+    },
+    "content.appQrText": {
+      label: "QR-Code Text",
+      fallback: "QR-Code scannen",
+    },
+    "content.appButtonLabel": {
+      label: "App-Schaltfläche",
+      fallback: "App öffnen",
+    },
+    "stamps.description": {
+      label: "Stempelkarte Hinweis",
+      fallback:
+        "Belohnungen und benötigte Stempel werden direkt aus den Partnerdaten übernommen.",
+    },
+    "footer.trust.0.label": {
+      label: "Footer Vertrauen 1",
+      fallback: "Sicher & geprüft",
+    },
+    "footer.trust.1.label": {
+      label: "Footer Vertrauen 2",
+      fallback: "DSGVO konform",
+    },
+    "footer.trust.2.label": {
+      label: "Footer Vertrauen 3",
+      fallback: "Lokale Partner",
+    },
+  }
+
+  if (editableTextFallbacks[id]) {
+    const item = editableTextFallbacks[id]
+    return { id, ...textOverrideElement(item.label, config, id, item.fallback) }
+  }
+
+  const rewardImageMatch = id.match(/^stamps\.reward\.(\d+)\.image$/)
+
+  if (rewardImageMatch) {
+    const stamp = rewardImageMatch[1]
+
+    return {
+      id,
+      label: `${stamp} Stempel Belohnungsbild`,
+      kind: "image",
+      value: config.elementText[id] || "",
+      uploadName: genericElementUploadName(id),
+      update: (current, value) => ({
+        ...current,
+        elementText: {
+          ...current.elementText,
+          [id]: value,
+        },
+      }),
+    }
+  }
+
+  if (id === "content.appQrCodeUrl") {
+    return {
+      id,
+      label: "App QR-Code",
+      kind: "image",
+      value: config.elementText[id] || "",
+      uploadName: "app_qr_code_file",
+      update: (current, value) => ({
+        ...current,
+        elementText: {
+          ...current.elementText,
+          [id]: value,
+        },
+      }),
+    }
+  }
+
+  if (id === "content.contactLocationIcon") {
+    return {
+      id,
+      label: "Kontakt Standort Icon",
+      kind: "image",
+      value: config.elementText[id] || "/benefitsi-location-pin.png",
+      uploadName: "contact_location_icon_file",
+      update: (current, value) => ({
+        ...current,
+        elementText: {
+          ...current.elementText,
+          [id]: value,
+        },
+      }),
+    }
+  }
+
+  const faqMatch = id.match(/^content\.faq\.(\d+)\.(question|answer)$/)
+
+  if (faqMatch) {
+    const index = Number(faqMatch[1])
+    const field = faqMatch[2] as "question" | "answer"
+    const faqFallbacks = [
+      {
+        question: "Wie funktioniert die Stempelkarte?",
+        answer:
+          "Nach deinem Besuch checkst du in der Benefitsi App ein und sammelst automatisch Stempel. Sobald eine Belohnung erreicht ist, wird sie in der App freigeschaltet.",
+      },
+      {
+        question: "Welche Vorteile gibt es mit Premium?",
+        answer:
+          "Premium-Mitglieder erhalten zusätzliche Deals, exklusive Belohnungen und besondere Aktionen bei teilnehmenden lokalen Partnern.",
+      },
+      {
+        question: "Wie nutze ich den 2 für 1 Deal?",
+        answer:
+          "Aktiviere den Vorteil vor deiner Bestellung in der App. Vor Ort zeigst du den aktiven Vorteil einfach beim Bezahlen vor.",
+      },
+      {
+        question: "Brauche ich die Benefitsi App?",
+        answer:
+          "Ja, Deals, Stempel und Belohnungen werden digital in der App gesammelt und eingelöst.",
+      },
+      {
+        question: "Kann ich online bestellen?",
+        answer:
+          "Wenn der Partner Online-Bestellung anbietet, findest du den passenden Button direkt auf der Microsite oder in der Benefitsi App.",
+      },
+      {
+        question: "Kostet die Teilnahme etwas?",
+        answer:
+          "Viele Vorteile sind kostenlos nutzbar. Manche Premium-Vorteile sind Benefitsi Premium-Mitgliedern vorbehalten.",
+      },
+    ]
+    const fallback = faqFallbacks[index]?.[field]
+
+    if (!fallback) {
+      return null
+    }
+
+    return {
+      id,
+      ...textOverrideElement(
+        field === "question" ? `FAQ Frage ${index + 1}` : `FAQ Antwort ${index + 1}`,
+        config,
+        id,
+        fallback,
+      ),
+    }
+  }
+
+  const benefitIconFallbacks: Record<string, { label: string; fallback: string }> = {
+    "deals.benefit.0.icon": {
+      label: "Benefit 1 Icon",
+      fallback: "gift",
+    },
+    "deals.benefit.1.icon": {
+      label: "Benefit 2 Icon",
+      fallback: "spark",
+    },
+  }
+
+  const genericIconFallbacks: Record<string, { label: string; fallback: string }> = {
+    ...benefitIconFallbacks,
+    "hero.locationIcon": {
+      label: "Ort Icon",
+      fallback: "pin",
+    },
+    "hero.openingIcon": {
+      label: "Öffnungszeiten Icon",
+      fallback: "status",
+    },
+    "content.appKicker.icon": {
+      label: "App-Banner Icon",
+      fallback: "benefitsi",
+    },
+    "stamps.welcomeBonus.icon": {
+      label: "Willkommensbonus Icon",
+      fallback: "check",
+    },
+    "content.aboutValue.0.icon": {
+      label: "Über uns Icon 1",
+      fallback: "leaf",
+    },
+    "content.aboutValue.1.icon": {
+      label: "Über uns Icon 2",
+      fallback: "bowl",
+    },
+    "content.aboutValue.2.icon": {
+      label: "Über uns Icon 3",
+      fallback: "smile",
+    },
+    "content.aboutValue.3.icon": {
+      label: "Über uns Icon 4",
+      fallback: "pizza",
+    },
+    "content.contact.address.icon": {
+      label: "Adresse Icon",
+      fallback: "pin",
+    },
+    "content.contact.phone.icon": {
+      label: "Telefon Icon",
+      fallback: "phone",
+    },
+    "content.contact.opening.icon": {
+      label: "Öffnungszeiten Icon",
+      fallback: "clock",
+    },
+    "footer.trust.0.icon": {
+      label: "Footer Vertrauen Icon 1",
+      fallback: "shield",
+    },
+    "footer.trust.1.icon": {
+      label: "Footer Vertrauen Icon 2",
+      fallback: "privacy",
+    },
+    "footer.trust.2.icon": {
+      label: "Footer Vertrauen Icon 3",
+      fallback: "local",
+    },
+  }
+
+  const stampIconMatch = id.match(/^stamps\.(?:number|reward)\.(\d+)\.icon$/)
+
+  if (stampIconMatch) {
+    return {
+      id,
+      ...iconOverrideElement(
+        `${stampIconMatch[1]} Stempel Icon`,
+        config,
+        id,
+        id.includes(".reward.") ? "gift" : "check",
+      ),
+    }
+  }
+
+  if (genericIconFallbacks[id]) {
+    const item = genericIconFallbacks[id]
+    return { id, ...iconOverrideElement(item.label, config, id, item.fallback) }
+  }
+
+  const topDealBulletIconMatch = id.match(/^deals\.topDealBullets\.(\d+)\.icon$/)
+
+  if (topDealBulletIconMatch) {
+    return {
+      id,
+      ...iconOverrideElement(
+        `Top-Deal Punkt ${Number(topDealBulletIconMatch[1]) + 1} Icon`,
+        config,
+        id,
+        "check",
+      ),
+    }
+  }
+
+  const appBenefitIconMatch = id.match(/^content\.appBenefit\.(\d+)\.icon$/)
+
+  if (appBenefitIconMatch) {
+    return {
+      id,
+      ...iconOverrideElement(
+        `App Vorteil ${Number(appBenefitIconMatch[1]) + 1} Icon`,
+        config,
+        id,
+        "check",
+      ),
+    }
+  }
+
+  const serviceMatch = id.match(/^hero\.services\.(\d+)\.(label|icon)$/)
+
+  if (serviceMatch) {
+    const index = Number(serviceMatch[1])
+    const field = serviceMatch[2]
+    const service = config.hero.services[index]
+
+    if (!service) {
+      return null
+    }
+
+    return {
+      id,
+      label:
+        field === "icon"
+          ? `Service ${index + 1} Icon`
+          : `Service ${index + 1} Text`,
+      kind: field === "icon" ? "icon" : "text",
+      value: field === "icon" ? service.icon : service.label,
+      update: (current, value) => ({
+        ...current,
+        hero: {
+          ...current.hero,
+          services: current.hero.services.map((item, itemIndex) =>
+            itemIndex === index ? { ...item, [field]: value } : item,
+          ),
+        },
+      }),
+    }
+  }
+
+  return null
+}
+
+function textElement(
+  label: string,
+  value: string,
+  update: EditableElement["update"],
+) {
+  return {
+    label,
+    kind: "text" as const,
+    value,
+    update,
+  }
+}
+
+function textOverrideElement(
+  label: string,
+  config: MicrositeConfig,
+  id: string,
+  fallback: string,
+): Omit<EditableElement, "id"> {
+  return textElement(label, config.elementText[id] || fallback, (current, value) => ({
+    ...current,
+    elementText: {
+      ...current.elementText,
+      [id]: value,
+    },
+  }))
+}
+
+function iconOverrideElement(
+  label: string,
+  config: MicrositeConfig,
+  id: string,
+  fallback: string,
+): Omit<EditableElement, "id"> {
+  return {
+    label,
+    kind: "icon",
+    value: config.elementText[id] || fallback,
+    update: (current, value) => setElementTextValue(current, id, value),
+  }
+}
+
+function applyAssetToSlot(
+  config: MicrositeConfig,
+  slot: string,
+  url: string,
+): MicrositeConfig {
+  switch (slot) {
+    case "branding.partnerBadge":
+      return { ...config, branding: { ...config.branding, partnerBadgeUrl: url } }
+    case "hero.backgroundImageUrl":
+      return { ...config, hero: { ...config.hero, backgroundImageUrl: url } }
+    case "deals.illustrationUrl":
+      return { ...config, deals: { ...config.deals, illustrationUrl: url } }
+    case "deals.topDealImageUrl":
+      return { ...config, deals: { ...config.deals, topDealImageUrl: url } }
+    case "seo.ogImageUrl":
+      return { ...config, seo: { ...config.seo, ogImageUrl: url } }
+    default:
+      if (slot.startsWith("content.") || slot.startsWith("stamps.") || slot.startsWith("social.") || slot.startsWith("footer.")) {
+        return setElementTextValue(config, slot, url)
+      }
+      return config
+  }
+}
+
+function setElementStyle(
+  setter: Dispatch<SetStateAction<MicrositeConfig>>,
+  id: string,
+  patch: Partial<MicrositeConfig["elementStyles"][string]>,
+) {
+  setter((current) => {
+    const nextStyle = {
+      ...(current.elementStyles[id] ?? {}),
+      ...patch,
+    }
+
+    for (const [key, value] of Object.entries(nextStyle)) {
+      if (value === undefined || value === "") {
+        delete nextStyle[key as keyof typeof nextStyle]
+      }
+    }
+
+    return {
+      ...current,
+      elementStyles: {
+        ...current.elementStyles,
+        [id]: nextStyle,
+      },
+    }
+  })
+}
+
+function cssEscape(value: string) {
+  return value.replace(/["\\]/g, "\\$&")
+}
+
+function genericElementUploadName(id: string) {
+  return `element_image_file__${encodeURIComponent(id)}`
+}
+
+function setElementTextValue(
+  config: MicrositeConfig,
+  id: string,
+  value: string,
+): MicrositeConfig {
+  const nextElementText = {
+    ...config.elementText,
+  }
+
+  if (value.trim()) {
+    nextElementText[id] = value
+  } else {
+    delete nextElementText[id]
+  }
+
+  return {
+    ...config,
+    elementText: nextElementText,
+  }
+}
+
+function socialEnabledValue(
+  config: MicrositeConfig,
+  platform: string,
+  defaultVisible: boolean,
+) {
+  const value = config.elementText[`social.${platform}.enabled`]
+
+  if (value === "true") {
+    return true
+  }
+
+  if (value === "false") {
+    return false
+  }
+
+  return defaultVisible
+}
+
+function textFromEditableElement(element: HTMLElement) {
+  return element.innerText
+    .replace(/\u00a0/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+}
+
+function placeCaretAtPoint(element: HTMLElement, x: number, y: number) {
+  const ownerDocument = element.ownerDocument
+  const selection = ownerDocument.defaultView?.getSelection()
+
+  if (!selection) {
+    return
+  }
+
+  const documentWithCaret = ownerDocument as Document & {
+    caretPositionFromPoint?: (
+      x: number,
+      y: number,
+    ) => { offsetNode: Node; offset: number } | null
+    caretRangeFromPoint?: (x: number, y: number) => Range | null
+  }
+
+  let range: Range | null = null
+  const caretPosition = documentWithCaret.caretPositionFromPoint?.(x, y)
+
+  if (caretPosition) {
+    range = ownerDocument.createRange()
+    range.setStart(caretPosition.offsetNode, caretPosition.offset)
+  } else {
+    range = documentWithCaret.caretRangeFromPoint?.(x, y) ?? null
+  }
+
+  if (!range) {
+    return
+  }
+
+  if (
+    range.startContainer !== element &&
+    !element.contains(range.startContainer)
+  ) {
+    return
+  }
+
+  element.focus({ preventScroll: true })
+  range.collapse(true)
+  selection.removeAllRanges()
+  selection.addRange(range)
+}
+
+function ConfigSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <details open className="space-y-3">
+      <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.12em] text-zinc-500">
+        {title}
+      </summary>
+      <div className="space-y-3 pt-2">{children}</div>
+    </details>
+  )
+}
+
+function EditorField({
+  name,
+  label,
+  value,
+  onChange,
+  placeholder,
+  multiline,
+  list,
+}: {
+  name: string
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  multiline?: boolean
+  list?: string
+}) {
+  const classes =
+    "w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+
+  return (
+    <label className="block space-y-1.5 text-xs font-medium text-zinc-600">
+      {label}
+      {multiline ? (
+        <textarea
+          name={name}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={`${classes} min-h-20 py-2`}
+        />
+      ) : (
+        <input
+          name={name}
+          value={value}
+          placeholder={placeholder}
+          list={list}
+          onChange={(event) => onChange(event.target.value)}
+          className={`${classes} h-10`}
+        />
+      )}
+    </label>
+  )
+}
+
+function ColorField({
+  name,
+  label,
+  value,
+  onChange,
+}: {
+  name: string
+  label: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className="space-y-1.5 text-xs font-medium text-zinc-600">
+      <span>{label}</span>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-10 w-14 cursor-pointer rounded-md border border-zinc-300 bg-white p-1"
+          aria-label={`${label} Picker`}
+        />
+        <input
+          name={name}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          pattern="#[0-9a-fA-F]{6}"
+          placeholder="#f59e0b"
+          className="h-10 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 font-mono text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+          aria-label={label}
+        />
+      </div>
+    </div>
+  )
+}
+
+function AssetUploadField({
+  name,
+  label,
+  onPreview,
+}: {
+  name: string
+  label: string
+  onPreview?: (url: string) => void
+}) {
+  const [fileName, setFileName] = useState("")
+
+  return (
+    <label className="block space-y-1.5 text-xs font-medium text-zinc-600">
+      {label}
+      <input
+        type="file"
+        name={name}
+        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+
+          setFileName(file?.name ?? "")
+
+          if (file && onPreview) {
+            onPreview(URL.createObjectURL(file))
+          }
+        }}
+        className="block w-full rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2 text-xs file:mr-2 file:rounded file:border-0 file:bg-teal-50 file:px-2 file:py-1 file:font-semibold file:text-teal-800"
+      />
+      {fileName ? (
+        <span className="block rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+          Vorschau aktiv: {fileName}. Zum dauerhaften Speichern bitte Entwurf speichern.
+        </span>
+      ) : null}
+    </label>
+  )
+}
+
+function StatusBadge({
+  label,
+  active = false,
+  tone,
+}: {
+  label: string
+  active?: boolean
+  tone?: "review"
+}) {
+  const classes =
+    tone === "review"
+      ? "border-blue-200 bg-blue-50 text-blue-700"
+      : active
+        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+        : "border-amber-200 bg-amber-50 text-amber-700"
+
+  return (
+    <span
+      className={`rounded-full border px-3 py-1 text-xs font-semibold ${classes}`}
+    >
+      {label}
+    </span>
+  )
+}
+
+function updateBranding(
+  setter: Dispatch<SetStateAction<MicrositeConfig>>,
+  key: keyof MicrositeConfig["branding"],
+  value: string,
+) {
+  setter((current) => ({
+    ...current,
+    branding: { ...current.branding, [key]: value },
+  }))
+}
+
+function updateHero(
+  setter: Dispatch<SetStateAction<MicrositeConfig>>,
+  key: Exclude<keyof MicrositeConfig["hero"], "services">,
+  value: string,
+) {
+  setter((current) => ({
+    ...current,
+    hero: { ...current.hero, [key]: value },
+  }))
+}
+
+function updateDeals(
+  setter: Dispatch<SetStateAction<MicrositeConfig>>,
+  key: Exclude<keyof MicrositeConfig["deals"], "topDealBullets">,
+  value: string,
+) {
+  setter((current) => ({
+    ...current,
+    deals: { ...current.deals, [key]: value },
+  }))
+}
+
+function updateContent(
+  setter: Dispatch<SetStateAction<MicrositeConfig>>,
+  key: keyof MicrositeConfig["content"],
+  value: string,
+) {
+  setter((current) => ({
+    ...current,
+    content: { ...current.content, [key]: value },
+  }))
+}
+
+function updateSeo(
+  setter: Dispatch<SetStateAction<MicrositeConfig>>,
+  key: Exclude<keyof MicrositeConfig["seo"], "keywords" | "noIndex">,
+  value: string,
+) {
+  setter((current) => ({
+    ...current,
+    seo: { ...current.seo, [key]: value },
+  }))
+}

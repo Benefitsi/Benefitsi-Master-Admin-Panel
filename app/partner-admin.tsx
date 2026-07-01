@@ -77,6 +77,7 @@ import {
   saveWeeklyOpeningHours,
   type PartnerActionState,
 } from "./partner-actions"
+import { MicrositePanel } from "./microsite-panel"
 
 const initialState: PartnerActionState = {
   ok: false,
@@ -539,6 +540,12 @@ function PartnerDetail({
   onDeleted: () => void
 }) {
   const partnerFormId = `partner-form-${partner.id ?? "partner"}`
+  const builderIdentifier =
+    partner.microsite?.slug ||
+    partner.slug ||
+    partner.subdomain ||
+    partner.id ||
+    "partner"
 
   return (
     <div key={partner.id ?? "partner-detail"} className="space-y-5">
@@ -562,6 +569,22 @@ function PartnerDetail({
             mode="edit"
           />
           <div className="space-y-4">
+            <section className="rounded-md border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="font-semibold">Microsite builder</p>
+                  <p className="mt-1 text-teal-800">
+                    Open the full-width builder to edit the public partner microsite with live preview.
+                  </p>
+                </div>
+                <a
+                  href={`/microsite-builder/${encodeURIComponent(builderIdentifier)}`}
+                  className="inline-flex h-10 items-center justify-center rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
+                >
+                  Open builder
+                </a>
+              </div>
+            </section>
             <OpeningHoursPanel partner={partner} embedded />
             <MilestonesPanel partner={partner} embedded />
             <DealsPanel partner={partner} embedded />
@@ -569,6 +592,10 @@ function PartnerDetail({
               <MenuPanel partner={partner} embedded />
             ) : null}
           </div>
+          <MicrositePanel
+            key={`${partner.id ?? partner.name ?? "microsite"}-${partner.microsite?.draftVersion?.id ?? partner.microsite?.publishedVersion?.id ?? "new"}`}
+            partner={partner}
+          />
           <div className="space-y-4">
             <PartnerPinDisplay mode="edit" pin={partner.pin} />
             <button
@@ -8784,7 +8811,7 @@ function CopyFromPartnerPanel({
         <div className="flex-1 space-y-1.5">
           <p className="font-semibold text-amber-900">Copy from existing partner</p>
           <p className="text-xs leading-5 text-amber-800">
-            Pre-fill this form from an existing partner's profile. You can edit anything afterwards.
+            Pre-fill this form from an existing partner&apos;s profile. You can edit anything afterwards.
           </p>
           <select
             value={selectedId}

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import type { MicrositeVersion, PartnerMicrosite } from "./microsites"
 
 export type Coordinates = {
   latitude: number | null
@@ -311,6 +312,8 @@ export type PartnerWithDeals = Partner & {
   menus: PartnerMenu[]
   stamp_progress: StampCardProgress[]
   visits: Visit[]
+  fraud_events: FraudEvent[]
+  microsite: PartnerMicrosite | null
   city_name?: string | null
   owner_email?: string | null
 }
@@ -345,6 +348,8 @@ export async function getDashboardData(
     redemptionsResult,
     benefitsResult,
     qrTokensResult,
+    micrositesResult,
+    micrositeVersionsResult,
   ] = await Promise.all([
     supabase
       .from("partners")
@@ -394,6 +399,11 @@ export async function getDashboardData(
       .select("*")
       .order("created_at", { ascending: false, nullsFirst: false })
       .limit(300),
+    supabase.from("microsites").select("*"),
+    supabase
+      .from("microsite_versions")
+      .select("*")
+      .order("version_number", { ascending: false, nullsFirst: false }),
   ])
 
   const errors = [
@@ -414,6 +424,8 @@ export async function getDashboardData(
     redemptionsResult.error?.message,
     benefitsResult.error?.message,
     qrTokensResult.error?.message,
+    micrositesResult.error?.message,
+    micrositeVersionsResult.error?.message,
   ].filter(Boolean) as string[]
 
   const partners = ((partnersResult.data ?? []) as Partner[]).map((partner) => ({
@@ -427,6 +439,8 @@ export async function getDashboardData(
     menus: [],
     stamp_progress: [],
     visits: [],
+    fraud_events: [],
+    microsite: null,
   }))
   const deals = ((dealsResult.data ?? []) as Deal[]).map(normalizeLoadedDeal)
   const cities = (citiesResult.data ?? []) as City[]
@@ -452,6 +466,12 @@ export async function getDashboardData(
   const redemptions = (redemptionsResult.data ?? []) as DealRedemption[]
   const qrTokens = (qrTokensResult.data ?? []) as QrToken[]
   const visits = (visitsResult.data ?? []) as Visit[]
+  const microsites = (micrositesResult.data ?? []) as Omit<
+    PartnerMicrosite,
+    "draftVersion" | "publishedVersion"
+  >[]
+  const micrositeVersions =
+    (micrositeVersionsResult.data ?? []) as MicrositeVersion[]
 
   const cityNames = new Map(cities.map((city) => [city.id, city.name]))
   const usersById = new Map(
@@ -483,6 +503,7 @@ export async function getDashboardData(
   const menusByPartner = groupByPartner(annotateMenus(menus, menuCategories, menuItems))
   const progressByPartner = groupByPartner(progress)
   const visitsByPartner = groupByPartner(visits)
+  const micrositeByPartner = annotateMicrosites(microsites, micrositeVersions)
 
   const partnersWithDeals = partners.map((partner) => ({
     ...partner,
@@ -497,6 +518,8 @@ export async function getDashboardData(
     menus: partner.id ? menusByPartner.get(partner.id) ?? [] : [],
     stamp_progress: partner.id ? progressByPartner.get(partner.id) ?? [] : [],
     visits: partner.id ? visitsByPartner.get(partner.id) ?? [] : [],
+    fraud_events: [],
+    microsite: partner.id ? micrositeByPartner.get(partner.id) ?? null : null,
     city_name: partner.city_id ? cityNames.get(partner.city_id) ?? null : null,
     owner_email: partner.owner_id
       ? ownerEmails.get(partner.owner_id) ?? null
@@ -634,6 +657,39 @@ function annotateMenus(
     categories: menu.id ? categoriesByMenu.get(menu.id) ?? [] : [],
     items: menu.id ? itemsByMenu.get(menu.id) ?? [] : [],
   }))
+}
+
+function annotateMicrosites(
+  microsites: Omit<PartnerMicrosite, "draftVersion" | "publishedVersion">[],
+  versions: MicrositeVersion[],
+) {
+  const versionsByMicrosite = new Map<string, MicrositeVersion[]>()
+  const grouped = new Map<string, PartnerMicrosite>()
+
+  for (const version of versions) {
+    versionsByMicrosite.set(version.microsite_id, [
+      ...(versionsByMicrosite.get(version.microsite_id) ?? []),
+      version,
+    ])
+  }
+
+  for (const microsite of microsites) {
+    const micrositeVersions = versionsByMicrosite.get(microsite.id) ?? []
+    const publishedVersion =
+      micrositeVersions.find(
+        (version) => version.id === microsite.published_version_id,
+      ) ?? null
+    const draftVersion =
+      micrositeVersions.find((version) => version.status === "draft") ?? null
+
+    grouped.set(microsite.partner_id, {
+      ...microsite,
+      draftVersion,
+      publishedVersion,
+    })
+  }
+
+  return grouped
 }
 
 function annotateStaff(
