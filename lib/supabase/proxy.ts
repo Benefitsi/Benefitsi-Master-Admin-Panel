@@ -31,9 +31,11 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims()
 
   const user = data?.claims
-  const isLoginRoute = request.nextUrl.pathname.startsWith("/login")
+  const pathname = request.nextUrl.pathname
+  const isPublicAuthRoute =
+    pathname.startsWith("/login") || pathname.startsWith("/partner/login")
 
-  if (!user && !isLoginRoute) {
+  if (!user && !isPublicAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
