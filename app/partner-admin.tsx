@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import {
   useActionState,
   useCallback,
@@ -540,85 +541,141 @@ function PartnerDetail({
   onDeleted: () => void
 }) {
   const partnerFormId = `partner-form-${partner.id ?? "partner"}`
+  const partnerIdentity = partner.id ?? "partner"
   const builderIdentifier =
     partner.microsite?.slug ||
     partner.slug ||
     partner.subdomain ||
     partner.id ||
     "partner"
+  const [viewState, setViewState] = useState<{
+    partnerIdentity: string
+    activeView: "settings" | "microsite"
+  }>({
+    partnerIdentity,
+    activeView: "settings",
+  })
+  const activeView =
+    viewState.partnerIdentity === partnerIdentity
+      ? viewState.activeView
+      : "settings"
+
+  function setActiveView(nextView: "settings" | "microsite") {
+    setViewState({
+      partnerIdentity,
+      activeView: nextView,
+    })
+  }
 
   return (
     <div key={partner.id ?? "partner-detail"} className="space-y-5">
       <EditorShell
         title={partner.name || "Untitled partner"}
-        description="Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields."
+        description={
+          activeView === "settings"
+            ? "Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields."
+            : "Edit the public microsite separately from the partner settings."
+        }
         aside={
           <div className="flex flex-wrap gap-2">
+            <div className="inline-flex rounded-md border border-zinc-200 bg-zinc-50 p-1">
+              <button
+                type="button"
+                onClick={() => setActiveView("settings")}
+                className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
+                  activeView === "settings"
+                    ? "bg-white text-teal-800 shadow-sm"
+                    : "text-zinc-600 hover:text-zinc-900"
+                }`}
+              >
+                Partner settings
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView("microsite")}
+                className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
+                  activeView === "microsite"
+                    ? "bg-white text-teal-800 shadow-sm"
+                    : "text-zinc-600 hover:text-zinc-900"
+                }`}
+              >
+                Microsite builder
+              </button>
+            </div>
             <StatusPill active={isPartnerActive(partner)} />
             {partner.is_featured ? <FeaturedBadge /> : null}
           </div>
         }
       >
-        <div className="space-y-5">
-          <PartnerForm
-            key={partner.id ?? "edit-partner"}
-            formId={partnerFormId}
-            cities={cities}
-            owners={owners}
-            partner={partner}
-            mode="edit"
-          />
-          <div className="space-y-4">
+        {activeView === "settings" ? (
+          <div className="space-y-5">
+            <PartnerForm
+              key={partner.id ?? "edit-partner"}
+              formId={partnerFormId}
+              cities={cities}
+              owners={owners}
+              partner={partner}
+              mode="edit"
+            />
+            <div className="space-y-4">
+              <OpeningHoursPanel partner={partner} embedded />
+              <MilestonesPanel partner={partner} embedded />
+              <DealsPanel partner={partner} embedded />
+              {partnerTypeSupportsMenu(partner.type) ? (
+                <MenuPanel partner={partner} embedded />
+              ) : null}
+            </div>
+            <div className="space-y-4">
+              <PartnerPinDisplay mode="edit" pin={partner.pin} />
+              <button
+                type="submit"
+                form={partnerFormId}
+                className="h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
+              >
+                Save partner
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-5">
             <section className="rounded-md border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="font-semibold">Microsite builder</p>
                   <p className="mt-1 text-teal-800">
-                    Open the full-width builder to edit the public partner microsite with live preview.
+                    Edit the microsite here, or open the full-width builder for more space.
                   </p>
                 </div>
-                <a
+                <Link
                   href={`/microsite-builder/${encodeURIComponent(builderIdentifier)}`}
                   className="inline-flex h-10 items-center justify-center rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
                 >
-                  Open builder
-                </a>
+                  Open full-width builder
+                </Link>
               </div>
             </section>
-            <OpeningHoursPanel partner={partner} embedded />
-            <MilestonesPanel partner={partner} embedded />
-            <DealsPanel partner={partner} embedded />
-            {partnerTypeSupportsMenu(partner.type) ? (
-              <MenuPanel partner={partner} embedded />
-            ) : null}
+            <MicrositePanel
+              key={`${partner.id ?? partner.name ?? "microsite"}-${partner.microsite?.draftVersion?.id ?? partner.microsite?.publishedVersion?.id ?? "new"}`}
+              partner={partner}
+            />
           </div>
-          <MicrositePanel
-            key={`${partner.id ?? partner.name ?? "microsite"}-${partner.microsite?.draftVersion?.id ?? partner.microsite?.publishedVersion?.id ?? "new"}`}
-            partner={partner}
-          />
-          <div className="space-y-4">
-            <PartnerPinDisplay mode="edit" pin={partner.pin} />
-            <button
-              type="submit"
-              form={partnerFormId}
-              className="h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
-            >
-              Save partner
-            </button>
-          </div>
-        </div>
+        )}
       </EditorShell>
 
-      <PartnerStaffPanel partner={partner} users={owners} />
-      <StampProgressPanel progress={partner.stamp_progress} />
-      <RedemptionHistoryPanel partner={partner} visits={partner.visits} />
+      {activeView === "settings" ? (
+        <>
+          <PartnerStaffPanel partner={partner} users={owners} />
+          <StampProgressPanel progress={partner.stamp_progress} />
+          <RedemptionHistoryPanel partner={partner} visits={partner.visits} />
 
-      <EditorShell
-        title="Remove partner"
-        description="Deleting a partner also removes attached Supabase records through database relationships."
-      >
-        <DeletePartnerForm partner={partner} onDeleted={onDeleted} />
-      </EditorShell>
+          <EditorShell
+            title="Remove partner"
+            description="Deleting a partner also removes attached Supabase records through database relationships."
+          >
+            <DeletePartnerForm partner={partner} onDeleted={onDeleted} />
+          </EditorShell>
+        </>
+      ) : null}
     </div>
   )
 }
@@ -8338,7 +8395,7 @@ function LogoPreview({
 function StatusPill({ active }: { active: boolean }) {
   return (
     <span
-      className={`rounded-md border px-2 py-1 text-xs font-semibold shadow-sm ${
+      className={`inline-flex min-h-6 items-center rounded-md border px-2 py-1 text-xs font-semibold leading-none shadow-sm ${
         active
           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
           : "border-zinc-200 bg-zinc-100 text-zinc-600"
