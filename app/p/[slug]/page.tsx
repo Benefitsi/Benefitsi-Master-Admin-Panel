@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
-import { RestaurantPremiumMicrosite } from "@/components/microsite/restaurant-premium-microsite"
+import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
 import { getPublishedMicrositePage } from "@/lib/public-microsite"
 import {
   createMicrositeMetadata,
@@ -60,10 +60,7 @@ export default async function PublishedPartnerMicrositePage({
           __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
         }}
       />
-      <RestaurantPremiumMicrosite
-        partner={microsite.partner}
-        config={microsite.config}
-      />
+      <MicrositeRenderer partner={microsite.partner} config={microsite.config} />
     </main>
   )
 }

@@ -66,6 +66,10 @@ export function createMicrositeReadinessReport(
   const partnerDataReviewDone = Boolean(config.builder.partnerDataReviewDone)
   const seoReviewDone = Boolean(config.builder.seoReviewDone)
   const publishReviewDone = Boolean(config.builder.publishReviewDone)
+  const requiresMenu = config.template.startsWith("restaurant")
+  const offerOverviewReady = requiresMenu
+    ? menuItems.length > 0 && menuItemsWithPrice.length === menuItems.length
+    : menuItems.length > 0 || config.hero.services.length >= 3
 
   const items: MicrositeReadinessItem[] = [
     required("partner-review", "Partnerdaten geprüft", "Name, Logo, Adresse, Telefon und Öffnungszeiten wurden bewusst geprüft.", partnerDataReviewDone, "Daten"),
@@ -74,7 +78,15 @@ export function createMicrositeReadinessReport(
     required("partner-address", "Adresse", "Adresse/Standort ist für Kontakt, Maps und LocalBusiness-Schema vorhanden.", Boolean(partner.address), "Daten"),
     required("partner-phone", "Telefon", "Telefonnummer ist für mobile Aktionen und Local SEO vorhanden.", Boolean(partner.phone), "Daten"),
     required("opening-hours", "Öffnungszeiten", "Öffnungszeiten sind gepflegt und werden in Hero/Kontakt/Schema verwendet.", partner.opening_hours.length > 0, "Daten"),
-    required("menu-prices", "Speisekarte mit Preisen", "Gerichte und Preise kommen aus den Partnerdaten.", menuItems.length > 0 && menuItemsWithPrice.length === menuItems.length, "Daten"),
+    required(
+      "menu-prices",
+      requiresMenu ? "Speisekarte mit Preisen" : "Leistungsübersicht vorhanden",
+      requiresMenu
+        ? "Gerichte und Preise kommen aus den Partnerdaten."
+        : "Services, Treatments oder Highlights sind für diesen Partnertyp sichtbar gepflegt.",
+      offerOverviewReady,
+      "Daten",
+    ),
     recommended("coordinates", "Google-Maps-Koordinaten", "Koordinaten verbessern Maps, Route und strukturierte Daten.", Boolean(partner.coordinates), "SEO & LLM"),
     recommended("microsite-hero", "Hero-Bild", "Hero nutzt ein microsite-spezifisches Kampagnenbild.", Boolean(config.hero.backgroundImageUrl), "Assets"),
     recommended("microsite-deals-image", "Deals-Bild", "Deals & Vorteile haben ein eigenes Bild.", Boolean(config.deals.illustrationUrl), "Assets"),

@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   useContext,
   type Dispatch,
   type FocusEvent,
@@ -30,13 +31,21 @@ import {
   micrositeTemplatePresets,
   type MicrositeTemplatePreset,
 } from "@/lib/microsite-templates"
-import { RestaurantPremiumMicrosite } from "@/components/microsite/restaurant-premium-microsite"
+import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
+import { PrintableStudioPanel } from "@/components/microsite/printable-studio-panel"
+import {
+  defaultMicrositeTemplateForPartner,
+  partnerSocialLabel,
+  partnerSocialUrl,
+} from "@/lib/microsite-personalization"
 import {
   saveMicrositeVersion,
   type MicrositeActionState,
 } from "./microsite-actions"
 
 const initialState: MicrositeActionState = { ok: false, message: "" }
+const BUILDER_LOCALE_STORAGE_KEY = "benefitsi:builder-locale"
+const BUILDER_LOCALE_EVENT = "benefitsi:builder-locale-change"
 
 type BuilderLocale = "de" | "en"
 
@@ -58,71 +67,101 @@ function useBuilderI18n() {
   return value
 }
 
+function readBuilderLocaleSnapshot(): BuilderLocale {
+  if (typeof window === "undefined") {
+    return "de"
+  }
+
+  const storedLocale = window.localStorage.getItem(BUILDER_LOCALE_STORAGE_KEY)
+  return storedLocale === "en" ? "en" : "de"
+}
+
+function subscribeToBuilderLocale(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => undefined
+  }
+
+  const handleChange = () => onStoreChange()
+
+  window.addEventListener("storage", handleChange)
+  window.addEventListener(BUILDER_LOCALE_EVENT, handleChange)
+
+  return () => {
+    window.removeEventListener("storage", handleChange)
+    window.removeEventListener(BUILDER_LOCALE_EVENT, handleChange)
+  }
+}
+
+function writeBuilderLocale(locale: BuilderLocale) {
+  window.localStorage.setItem(BUILDER_LOCALE_STORAGE_KEY, locale)
+  window.dispatchEvent(new Event(BUILDER_LOCALE_EVENT))
+}
+
 const builderTranslations: Record<string, string> = {
   "Microsite": "Microsite",
   "Restaurant-Premium-Vorlage": "Restaurant premium template",
-  "Für Mobilgeräte optimierte Vorlage · Daten vom Partnerprofil · versionierte Veröffentlichung":
-    "Mobile-first template · partner-profile data · versioned publishing",
-  "Aktuelle Vorschau öffnen": "Open current preview",
-  "Gespeicherten Entwurf öffnen": "Open saved draft",
+  "FÃ¼r MobilgerÃ¤te optimierte Vorlage Â· Daten vom Partnerprofil Â· versionierte VerÃ¶ffentlichung":
+    "Mobile-first template Â· partner-profile data Â· versioned publishing",
+  "Aktuelle Vorschau Ã¶ffnen": "Open current preview",
+  "Gespeicherten Entwurf Ã¶ffnen": "Open saved draft",
   "Noch nicht live": "Not live yet",
-  "In Prüfung": "In review",
+  "In PrÃ¼fung": "In review",
   "Entwurf vorhanden": "Draft available",
-  "Editorbreite ändern": "Resize editor width",
-  "Editorbreite per Ziehen ändern": "Drag to resize editor width",
+  "Editorbreite Ã¤ndern": "Resize editor width",
+  "Editorbreite per Ziehen Ã¤ndern": "Drag to resize editor width",
   "Microsite-Bearbeitung einklappen": "Collapse microsite editor",
   "Microsite-Bearbeitung ausklappen": "Expand microsite editor",
   "Marke": "Brand",
   "Akzentfarbe": "Accent color",
   "Gradientfarbe": "Gradient color",
   "Im Partnerprofil hinterlegen": "Set in the partner profile",
-  "Partnerprofil → Media": "Partner profile -> Media",
+  "Partnerprofil â†’ Media": "Partner profile -> Media",
   "Badge-Icon URL": "Badge icon URL",
   "Neues Badge-Icon hochladen": "Upload new badge icon",
   "Startbereich": "Hero section",
-  "Überschrift": "Headline",
-  "Partnerprofil → Name": "Partner profile -> Name",
+  "Ãœberschrift": "Headline",
+  "Partnerprofil â†’ Name": "Partner profile -> Name",
   "Ort": "Location",
-  "Partnerprofil → Stadt/Adresse": "Partner profile -> City/address",
-  "Öffnungszeiten": "Opening hours",
-  "Partnerprofil → Öffnungszeiten": "Partner profile -> Opening hours",
+  "Partnerprofil â†’ Stadt/Adresse": "Partner profile -> City/address",
+  "Ã–ffnungszeiten": "Opening hours",
+  "Partnerprofil â†’ Ã–ffnungszeiten": "Partner profile -> Opening hours",
   "Startbild URL": "Hero image URL",
   "Neues Startbild hochladen": "Upload new hero image",
   "Deals & Vorteile": "Deals & benefits",
   "Beschreibung": "Description",
   "Intro-Grafik URL": "Intro image URL",
   "Neue Intro-Grafik hochladen": "Upload new intro image",
-  "Top-Deal Überschrift": "Top deal headline",
+  "Top-Deal Ãœberschrift": "Top deal headline",
   "Top-Deal Bild URL": "Top deal image URL",
   "Neues Top-Deal Bild hochladen": "Upload new top deal image",
   "Weitere Bereiche": "More sections",
-  "Speisekarte Überschrift": "Menu headline",
+  "Speisekarte Ãœberschrift": "Menu headline",
   "Speisekarte Beschreibung": "Menu description",
-  "Über-uns Überschrift": "About headline",
-  "Über-uns Text": "About text",
-  "Kontakt Überschrift": "Contact headline",
-  "App-Banner Überschrift": "App banner headline",
+  "Ãœber-uns Ãœberschrift": "About headline",
+  "Ãœber-uns Text": "About text",
+  "Kontakt Ãœberschrift": "Contact headline",
+  "App-Banner Ãœberschrift": "App banner headline",
   "App-Banner Text": "App banner text",
   "Footer-Text": "Footer text",
   "Version & Notiz": "Version & note",
   "Interne Versionsnotiz": "Internal version note",
-  "z. B. Knobi Design finalisiert, mobile geprüft":
+  "z. B. Knobi Design finalisiert, mobile geprÃ¼ft":
     "e.g. Knobi design finalized, mobile QA done",
-  "Speichert…": "Saving...",
+  "Speichertâ€¦": "Saving...",
   "Entwurf speichern": "Save draft",
-  "Zur Prüfung markieren": "Mark for review",
-  "Freigabe erst nach erfüllten Pflichtchecks möglich":
+  "Zur PrÃ¼fung markieren": "Mark for review",
+  "Freigabe erst nach erfÃ¼llten Pflichtchecks mÃ¶glich":
     "Approval is only available after all required checks are complete",
   "Microsite intern freigeben": "Approve microsite internally",
   "Freigeben": "Approve",
-  "Diese Version live veröffentlichen": "Publish this version live",
-  "Veröffentlichen": "Publish",
-  "Live-Publish ist gesperrt, bis alle Pflichtchecks erledigt sind. Entwurf und Prüfung bleiben möglich.":
+  "Diese Version live verÃ¶ffentlichen": "Publish this version live",
+  "VerÃ¶ffentlichen": "Publish",
+  "Live-Publish ist gesperrt, bis alle Pflichtchecks erledigt sind. Entwurf und PrÃ¼fung bleiben mÃ¶glich.":
     "Live publish is locked until all required checks are complete. Draft and review actions are still available.",
   "Editor": "Editor",
   "Live-Vorschau": "Live preview",
   "Preview herauszoomen": "Zoom out preview",
-  "Zoom zurücksetzen": "Reset zoom",
+  "Zoom zurÃ¼cksetzen": "Reset zoom",
   "Preview reinzoomen": "Zoom in preview",
   "Mobil": "Mobile",
   "Bereitschaft": "Readiness",
@@ -132,9 +171,9 @@ const builderTranslations: Record<string, string> = {
   "In Arbeit": "In progress",
   "Pflicht": "Required",
   "Empfohlen": "Recommended",
-  "Nächste Aufgaben": "Next tasks",
-  "Alle aktuellen Checks sind erfüllt.": "All current checks are complete.",
-  "Veröffentlichung erst nach den Pflichtpunkten empfehlen.":
+  "NÃ¤chste Aufgaben": "Next tasks",
+  "Alle aktuellen Checks sind erfÃ¼llt.": "All current checks are complete.",
+  "VerÃ¶ffentlichung erst nach den Pflichtpunkten empfehlen.":
     "Only recommend publishing after the required items are complete.",
   "Builder-Bereiche": "Builder sections",
   "Top-Navigation": "Top navigation",
@@ -143,32 +182,45 @@ const builderTranslations: Record<string, string> = {
   "Clean Food Page": "Clean Food Page",
   "Emotionaler Hero, Deals, Stempelkarte, App-Banner und starke lokale Story.":
     "Emotional hero, deals, stamp card, app banner, and a strong local story.",
-  "Ruhiger, regionaler Auftritt für Restaurants, Cafés und lokale Gastgeber.":
+  "Ruhiger, regionaler Auftritt fÃ¼r Restaurants, CafÃ©s und lokale Gastgeber.":
     "A calmer regional presentation for restaurants, cafes, and local hosts.",
-  "Klarer, reduzierter Aufbau für schnelle Partnerseiten mit wenig Bildmaterial.":
+  "Klarer, reduzierter Aufbau fÃ¼r schnelle Partnerseiten mit wenig Bildmaterial.":
     "A clean, reduced layout for fast partner pages with limited imagery.",
+  "Salon Editorial": "Salon Editorial",
+  "Wellness Serene": "Wellness Serene",
+  "Cinema Spotlight": "Cinema Spotlight",
+  "Magazinartiger Look fÃ¼r Hair, Beauty und Service-Studios mit Fokus auf Treatments.":
+    "Editorial microsite for hair, beauty, and service studios with a treatment-first focus.",
+  "Ruhige, hochwertige Wellness-Sprache fÃ¼r Massage, Spa und Regeneration.":
+    "A calm premium wellness direction for massage, spa, and recovery partners.",
+  "Kontrastreiche Event-Optik fÃ¼r Kino, Freizeit und erlebnisorientierte Partner.":
+    "A high-contrast event look for cinema, activities, and experience-led partners.",
   "Top-Deal": "Top deal",
   "Stempelkarte": "Stamp card",
   "Speisekarte": "Menu",
-  "Über uns": "About",
+  "Ãœber uns": "About",
   "Kontakt": "Contact",
   "Footer": "Footer",
   "Vorlagen": "Templates",
   "Datenquellen": "Data sources",
   "Name": "Name",
   "Logo": "Logo",
+  "Typ": "Type",
+  "Kategorien": "Categories",
   "Adresse": "Address",
   "Telefon": "Phone",
-  "Einträge": "entries",
-  "Menüs": "menus",
+  "Website": "Website",
+  "E-Mail": "Email",
+  "EintrÃ¤ge": "entries",
+  "MenÃ¼s": "menus",
   "Belohnungen": "Rewards",
   "Microsite-Bilder": "Microsite images",
-  "Start/Deals/Über uns separat": "Hero/deals/about are managed separately",
+  "Start/Deals/Ãœber uns separat": "Hero/deals/about are managed separately",
   "SEO": "SEO",
   "Title/Description separat": "Title/description managed separately",
   "Partnerprofil": "Partner profile",
   "Partnerprofil / Medien": "Partner profile / Media",
-  "Menüs & Artikel": "Menus & items",
+  "MenÃ¼s & Artikel": "Menus & items",
   "Fehlt": "Missing",
   "Asset-Bibliothek": "Asset library",
   "Asset-Status & Austauschbarkeit": "Asset status & reusability",
@@ -176,19 +228,19 @@ const builderTranslations: Record<string, string> = {
   "Feature-Karte": "Feature card",
   "Startbild": "Hero image",
   "Deals": "Deals",
-  "Über uns 1": "About image 1",
-  "Über uns 2": "About image 2",
+  "Ãœber uns 1": "About image 1",
+  "Ãœber uns 2": "About image 2",
   "bereit": "ready",
   "fehlt": "missing",
   "Gespeicherte Asset-Library": "Saved asset library",
-  "Versionierung & Rückgängig": "Versioning & rollback",
+  "Versionierung & RÃ¼ckgÃ¤ngig": "Versioning & rollback",
   "Entwurf": "Draft",
   "Live": "Live",
   "Live-Version als Entwurf laden": "Load live version into draft",
   "Gespeicherten Entwurf neu laden": "Reload saved draft",
-  "Jede Speicherung erzeugt eine neue Version. Veröffentlichen setzt nur the geprüfte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.":
+  "Jede Speicherung erzeugt eine neue Version. VerÃ¶ffentlichen setzt nur the geprÃ¼fte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.":
     "Every save creates a new version. Publishing only puts the approved version live; older live versions remain as a safety net.",
-  "Jede Speicherung erzeugt eine neue Version. Veröffentlichen setzt nur die geprüfte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.":
+  "Jede Speicherung erzeugt eine neue Version. VerÃ¶ffentlichen setzt nur die geprÃ¼fte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.":
     "Every save creates a new version. Publishing only puts the approved version live; older live versions remain as a safety net.",
   "Speisekarte-System": "Menu system",
   "Artikel": "Items",
@@ -200,34 +252,34 @@ const builderTranslations: Record<string, string> = {
   "SEO-Titel": "SEO title",
   "SEO-Beschreibung": "SEO description",
   "Suchbegriffe": "Keywords",
-  "Döner, Pizza, Annweiler, Benefitsi":
+  "DÃ¶ner, Pizza, Annweiler, Benefitsi":
     "doner, pizza, annweiler, benefitsi",
   "Social-Vorschau-Bild URL": "Social preview image URL",
-  "Öffentliche Seite auf noindex setzen": "Set public page to noindex",
+  "Ã–ffentliche Seite auf noindex setzen": "Set public page to noindex",
   "Finale Checks": "Final checks",
-  "Partnerdaten geprüft": "Partner data reviewed",
-  "Assets/Fallbacks geprüft": "Assets/fallbacks reviewed",
-  "Desktopprüfung abgeschlossen": "Desktop QA complete",
-  "Mobilprüfung abgeschlossen": "Mobile QA complete",
-  "SEO/LLM geprüft": "SEO/LLM reviewed",
-  "Veröffentlichung final geprüft": "Publishing review complete",
+  "Partnerdaten geprÃ¼ft": "Partner data reviewed",
+  "Assets/Fallbacks geprÃ¼ft": "Assets/fallbacks reviewed",
+  "DesktopprÃ¼fung abgeschlossen": "Desktop QA complete",
+  "MobilprÃ¼fung abgeschlossen": "Mobile QA complete",
+  "SEO/LLM geprÃ¼ft": "SEO/LLM reviewed",
+  "VerÃ¶ffentlichung final geprÃ¼ft": "Publishing review complete",
   "Ablauf": "Workflow",
-  "Partnerdaten prüfen": "Review partner data",
+  "Partnerdaten prÃ¼fen": "Review partner data",
   "Assets bereit": "Assets ready",
-  "Mobilprüfung": "Mobile QA",
-  "SEO/LLM-Prüfung": "SEO/LLM review",
+  "MobilprÃ¼fung": "Mobile QA",
+  "SEO/LLM-PrÃ¼fung": "SEO/LLM review",
   "Freigabe": "Approval",
-  "Partner-Self-Service sollte nur Daten, Speisekarte und Bilder freigeben – Layout bleibt intern geschützt.":
+  "Partner-Self-Service sollte nur Daten, Speisekarte und Bilder freigeben â€“ Layout bleibt intern geschÃ¼tzt.":
     "Partner self-service should only expose data, menu, and images; layout stays protected internally.",
-  "Partner-Modus prüfen": "Open partner mode",
+  "Partner-Modus prÃ¼fen": "Open partner mode",
   "Social Media": "Social media",
   "Beschriftung": "Label",
   "Link": "Link",
   "Logo-/Icon-URL": "Logo/icon URL",
-  "Dieses Feld wird zentral aus den Partnerdaten übernommen und bleibt für Skalierung synchron.":
+  "Dieses Feld wird zentral aus den Partnerdaten Ã¼bernommen und bleibt fÃ¼r Skalierung synchron.":
     "This field is synced from partner data so it stays consistent at scale.",
-  "Ausgewähltes Element": "Selected element",
-  "Direkt im Builder: Text anklicken und tippen. Bilder und Gruppen kannst du anklicken und leicht nach oben/unten ziehen, um den Abstand zu verändern.":
+  "AusgewÃ¤hltes Element": "Selected element",
+  "Direkt im Builder: Text anklicken und tippen. Bilder und Gruppen kannst du anklicken und leicht nach oben/unten ziehen, um den Abstand zu verÃ¤ndern.":
     "Edit text inline directly in the builder. Click images and groups, then drag slightly up or down to adjust spacing.",
   "Text": "Text",
   "Bild URL": "Image URL",
@@ -236,15 +288,32 @@ const builderTranslations: Record<string, string> = {
   "Vorlagen-Icon": "Template icon",
   "Eigenes Icon-Bild URL": "Custom icon image URL",
   "Eigenes Icon hochladen": "Upload custom icon",
-  "Top-Nav Höhe": "Top nav height",
-  "Schriftgröße": "Font size",
-  "Icongröße": "Icon size",
-  "Bildgröße": "Image scale",
-  "Zurück auf Auto": "Reset to auto",
-  "Elementfarbe auswählen": "Choose element color",
+  "Top-Nav HÃ¶he": "Top nav height",
+  "SchriftgrÃ¶ÃŸe": "Font size",
+  "IcongrÃ¶ÃŸe": "Icon size",
+  "BildgrÃ¶ÃŸe": "Image scale",
+  "ZurÃ¼ck auf Auto": "Reset to auto",
+  "Elementfarbe auswÃ¤hlen": "Choose element color",
   "Elementfarbe Hex": "Element color hex",
   "Farbe": "Color",
   "Sprache": "Language",
+  "Print-Studio": "Print studio",
+  "Element": "Element",
+  "Layout": "Layout",
+  "Inhalt": "Content",
+  "Assets": "Assets",
+  "Print": "Print",
+  "Alle Bereiche einklappen": "Collapse all sections",
+  "Alle Bereiche ausklappen": "Expand all sections",
+  "Formate": "Formats",
+  "Designs": "Designs",
+  "Headline": "Headline",
+  "Subheadline": "Subheadline",
+  "CTA": "CTA",
+  "Hinweis": "Note",
+  "Print-Vorschau Ã¶ffnen": "Open print preview",
+  "Print-Vorschau öffnen": "Open print preview",
+  "Jetzt drucken": "Print now",
   "Desktop": "Desktop",
   "Auto": "Auto",
   "Button-Abstand": "Button spacing",
@@ -272,7 +341,7 @@ const builderTranslations: Record<string, string> = {
   "Benefit 2 Titel": "Benefit 2 title",
   "Benefit 2 Text": "Benefit 2 text",
   "Willkommensbonus Titel": "Welcome bonus title",
-  "Kontakt Öffnungszeiten": "Contact opening hours",
+  "Kontakt Ã–ffnungszeiten": "Contact opening hours",
   "Footer Vertrauen 1": "Footer trust 1",
   "Footer Vertrauen 2": "Footer trust 2",
   "Footer Vertrauen 3": "Footer trust 3",
@@ -295,8 +364,8 @@ const builderTranslations: Record<string, string> = {
   "FAQ Antwort": "FAQ answer",
   "Vorschau aktiv: {fileName}. Zum dauerhaften Speichern bitte Entwurf speichern.":
     "Preview active: {fileName}. Save the draft to keep this change.",
-  "Schüssel": "Bowl",
-  "Lächeln": "Smile",
+  "SchÃ¼ssel": "Bowl",
+  "LÃ¤cheln": "Smile",
   "Tasche": "Bag",
   "Blatt": "Leaf",
   "Karte": "Card",
@@ -312,56 +381,56 @@ const builderTranslations: Record<string, string> = {
   "Datenschutz": "Privacy",
   "Lokal": "Local",
   "Kontakt Logo (Partnerprofil)": "Contact logo (partner profile)",
-  "Startbereich Überschrift": "Hero headline",
+  "Startbereich Ãœberschrift": "Hero headline",
   "Deals-Label": "Deals label",
   "Startbereich Slogan": "Hero slogan",
-  "Primärer Button": "Primary button",
-  "Sekundärer Button": "Secondary button",
+  "PrimÃ¤rer Button": "Primary button",
+  "SekundÃ¤rer Button": "Secondary button",
   "Deals Intro Bild": "Deals intro image",
-  "Deals Überschrift": "Deals headline",
+  "Deals Ãœberschrift": "Deals headline",
   "Deals Slogan": "Deals slogan",
   "Deals Beschreibung": "Deals description",
-  "Stempelkarte Überschrift": "Stamp card headline",
+  "Stempelkarte Ãœberschrift": "Stamp card headline",
   "Stempelkarte Label": "Stamp card label",
   "Stempelkarte Slogan": "Stamp card slogan",
-  "Über uns Label": "About label",
-  "Über uns Überschrift": "About headline",
-  "Über uns Text": "About text",
-  "Über uns Hintergrundbild": "About background image",
-  "Über uns Zutatenbild": "About ingredients image",
-  "Über uns Ortsbild": "About location image",
-  "Über uns Detailbild": "About detail image",
+  "Ãœber uns Label": "About label",
+  "Ãœber uns Ãœberschrift": "About headline",
+  "Ãœber uns Text": "About text",
+  "Ãœber uns Hintergrundbild": "About background image",
+  "Ãœber uns Zutatenbild": "About ingredients image",
+  "Ãœber uns Ortsbild": "About location image",
+  "Ãœber uns Detailbild": "About detail image",
   "Kontakt Label": "Contact label",
   "Kontakt Standort Icon": "Contact location icon",
-  "FAQ Überschrift": "FAQ headline",
-  "Über uns Slogan": "About slogan",
-  "Über uns Zusatztext": "About secondary text",
-  "Über uns Dank": "About thank-you text",
-  "Über uns Signatur": "About signature",
+  "FAQ Ãœberschrift": "FAQ headline",
+  "Ãœber uns Slogan": "About slogan",
+  "Ãœber uns Zusatztext": "About secondary text",
+  "Ãœber uns Dank": "About thank-you text",
+  "Ãœber uns Signatur": "About signature",
   "Kontakt Slogan": "Contact slogan",
   "Social-Media-Text": "Social media text",
   "Kontakt Adresse": "Contact address",
   "Kontakt Telefon": "Contact phone",
   "FAQ-Label": "FAQ label",
   "FAQ Text": "FAQ text",
-  "Über uns Wert 1": "About value 1",
-  "Über uns Wert 2": "About value 2",
-  "Über uns Wert 3": "About value 3",
-  "Über uns Wert 4": "About value 4",
+  "Ãœber uns Wert 1": "About value 1",
+  "Ãœber uns Wert 2": "About value 2",
+  "Ãœber uns Wert 3": "About value 3",
+  "Ãœber uns Wert 4": "About value 4",
   "App-Banner Label": "App banner label",
   "App Vorteil 1": "App benefit 1",
   "App Vorteil 2": "App benefit 2",
   "App Vorteil 3": "App benefit 3",
   "QR-Code Hinweis": "QR-code note",
   "QR-Code Text": "QR-code text",
-  "App-Schaltfläche": "App button",
+  "App-SchaltflÃ¤che": "App button",
   "Stempelkarte Hinweis": "Stamp-card note",
-  "Sicher & geprüft": "Safe & verified",
-  "Öffnungszeiten Icon": "Opening-hours icon",
-  "Über uns Icon 1": "About icon 1",
-  "Über uns Icon 2": "About icon 2",
-  "Über uns Icon 3": "About icon 3",
-  "Über uns Icon 4": "About icon 4",
+  "Sicher & geprÃ¼ft": "Safe & verified",
+  "Ã–ffnungszeiten Icon": "Opening-hours icon",
+  "Ãœber uns Icon 1": "About icon 1",
+  "Ãœber uns Icon 2": "About icon 2",
+  "Ãœber uns Icon 3": "About icon 3",
+  "Ãœber uns Icon 4": "About icon 4",
   "5 Stempel Belohnung": "5-stamp reward",
   "10 Stempel Belohnung": "10-stamp reward",
 }
@@ -375,16 +444,16 @@ const normalizedBuilderTranslations = Object.fromEntries(
 
 function normalizeBuilderTranslationKey(text: string) {
   return text
-    .replace(/â€¦/g, "...")
-    .replace(/â†’/g, "->")
-    .replace(/Â·/g, " ")
-    .replace(/Ã¼|ü/gi, "u")
-    .replace(/Ã¶|ö/gi, "o")
-    .replace(/Ã¤|ä/gi, "a")
-    .replace(/ÃŸ|ß/g, "ss")
-    .replace(/Ã©|é/gi, "e")
-    .replace(/Ã¡|á/gi, "a")
-    .replace(/–|—/g, "-")
+    .replace(/Ã¢â‚¬Â¦/g, "...")
+    .replace(/Ã¢â€ â€™/g, "->")
+    .replace(/Ã‚Â·/g, " ")
+    .replace(/ÃƒÂ¼|Ã¼/gi, "u")
+    .replace(/ÃƒÂ¶|Ã¶/gi, "o")
+    .replace(/ÃƒÂ¤|Ã¤/gi, "a")
+    .replace(/ÃƒÅ¸|ÃŸ/g, "ss")
+    .replace(/ÃƒÂ©|Ã©/gi, "e")
+    .replace(/ÃƒÂ¡|Ã¡/gi, "a")
+    .replace(/â€“|â€”/g, "-")
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
@@ -392,77 +461,127 @@ function normalizeBuilderTranslationKey(text: string) {
     .trim()
 }
 
+function repairBuilderText(text: string) {
+  return text
+    .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦|Ã¢â‚¬Â¦/g, "...")
+    .replace(/ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢|Ã¢â€ â€™/g, "â†’")
+    .replace(/ÃƒÂ¢Ã‹â€ Ã¢â‚¬â„¢|Ã¢Ë†â€™/g, "âˆ’")
+    .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“|Ã¢â‚¬â€œ/g, "â€“")
+    .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â|Ã¢â‚¬â€/g, "â€”")
+    .replace(/Ã¢â‚¬Â¹/g, "â€¹")
+    .replace(/Ã¢â‚¬Âº/g, "â€º")
+    .replace(/Ã¢Å“â€œ/g, "âœ“")
+    .replace(/ÃƒÆ’Ã¢â‚¬Å¾|Ãƒâ€ž/g, "Ã„")
+    .replace(/ÃƒÆ’Ã¢â‚¬â€œ|Ãƒâ€“/g, "Ã–")
+    .replace(/ÃƒÆ’Ã…â€œ|ÃƒÅ“/g, "Ãœ")
+    .replace(/ÃƒÆ’Ã‚Â¼|ÃƒÂ¼/g, "Ã¼")
+    .replace(/ÃƒÆ’Ã‚Â¶|ÃƒÂ¶/g, "Ã¶")
+    .replace(/ÃƒÆ’Ã‚Â¤|ÃƒÂ¤/g, "Ã¤")
+    .replace(/ÃƒÆ’Ã…Â¸|ÃƒÅ¸/g, "ÃŸ")
+    .replace(/ÃƒÆ’Ã‚Â©|ÃƒÂ©/g, "Ã©")
+    .replace(/ÃƒÆ’Ã‚Â¡|ÃƒÂ¡/g, "Ã¡")
+    .replace(/Ã‚Â·|Ãƒâ€šÃ‚Â·/g, "Â·")
+    .replace(/Ãƒâ€š/g, "")
+    .replace(/Ã‚/g, "")
+}
+
+function normalizeRepairedBuilderTranslationKey(text: string) {
+  return repairBuilderText(text)
+    .replace(/->|â†’/g, " ")
+    .replace(/Ã‚Â·|Â·/g, " ")
+    .replace(/Ã¢â‚¬â€œ|Ã¢â‚¬â€|â€“|â€”|âˆ’/g, "-")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+}
+
+const repairedNormalizedBuilderTranslations = Object.fromEntries(
+  Object.entries(builderTranslations).map(([key, value]) => [
+    normalizeRepairedBuilderTranslationKey(key),
+    value,
+  ]),
+)
+
 function translateBuilderText(locale: BuilderLocale, text: string): string {
-  if (locale === "de" || !text) {
-    return text
+  const repairedText = repairBuilderText(text)
+
+  if (locale === "de" || !repairedText) {
+    return repairedText
   }
 
   const directTranslation =
-    builderTranslations[text] ??
-    normalizedBuilderTranslations[normalizeBuilderTranslationKey(text)]
+    builderTranslations[repairedText] ??
+    repairedNormalizedBuilderTranslations[
+      normalizeRepairedBuilderTranslationKey(repairedText)
+    ] ??
+    normalizedBuilderTranslations[normalizeBuilderTranslationKey(repairedText)]
 
   if (directTranslation) {
     return directTranslation
   }
 
-  const navigationMatch = text.match(/^Navigation (.+)$/)
+  const navigationMatch = repairedText.match(/^Navigation (.+)$/)
   if (navigationMatch) {
     return `Navigation ${translateBuilderText(locale, navigationMatch[1])}`
   }
 
-  const faqQuestionMatch = text.match(/^FAQ Frage (\d+)$/)
+  const faqQuestionMatch = repairedText.match(/^FAQ Frage (\d+)$/)
   if (faqQuestionMatch) {
     return `FAQ question ${faqQuestionMatch[1]}`
   }
 
-  const faqAnswerMatch = text.match(/^FAQ Antwort (\d+)$/)
+  const faqAnswerMatch = repairedText.match(/^FAQ Antwort (\d+)$/)
   if (faqAnswerMatch) {
     return `FAQ answer ${faqAnswerMatch[1]}`
   }
 
-  const serviceIconMatch = text.match(/^Service (\d+) Icon$/)
+  const serviceIconMatch = repairedText.match(/^Service (\d+) Icon$/)
   if (serviceIconMatch) {
     return `Service ${serviceIconMatch[1]} icon`
   }
 
-  const serviceTextMatch = text.match(/^Service (\d+) Text$/)
+  const serviceTextMatch = repairedText.match(/^Service (\d+) Text$/)
   if (serviceTextMatch) {
     return `Service ${serviceTextMatch[1]} text`
   }
 
-  const topDealBulletMatch = text.match(/^Top-Deal Punkt (\d+)$/)
+  const topDealBulletMatch = repairedText.match(/^Top-Deal Punkt (\d+)$/)
   if (topDealBulletMatch) {
     return `Top-deal bullet ${topDealBulletMatch[1]}`
   }
 
-  const topDealBulletIconMatch = text.match(/^Top-Deal Punkt (\d+) Icon$/)
+  const topDealBulletIconMatch = repairedText.match(/^Top-Deal Punkt (\d+) Icon$/)
   if (topDealBulletIconMatch) {
     return `Top-deal bullet ${topDealBulletIconMatch[1]} icon`
   }
 
-  const stampMatch = text.match(/^Stempel (\d+)$/)
+  const stampMatch = repairedText.match(/^Stempel (\d+)$/)
   if (stampMatch) {
     return `Stamp ${stampMatch[1]}`
   }
 
-  const stampIconMatch = text.match(/^(\d+) Stempel Icon$/)
+  const stampIconMatch = repairedText.match(/^(\d+) Stempel Icon$/)
   if (stampIconMatch) {
     return `${stampIconMatch[1]}-stamp icon`
   }
 
-  const stampRewardImageMatch = text.match(/^(\d+) Stempel Belohnungsbild$/)
+  const stampRewardImageMatch = repairedText.match(/^(\d+) Stempel Belohnungsbild$/)
   if (stampRewardImageMatch) {
     return `${stampRewardImageMatch[1]}-stamp reward image`
   }
 
-  const appBenefitIconMatch = text.match(/^App Vorteil (\d+) Icon$/)
+  const appBenefitIconMatch = repairedText.match(/^App Vorteil (\d+) Icon$/)
   if (appBenefitIconMatch) {
     return `App benefit ${appBenefitIconMatch[1]} icon`
   }
 
-  return text
-    .replace(/(\d+)\s+Einträge\b/g, "$1 entries")
-    .replace(/(\d+)\s+Menüs\b/g, "$1 menus")
+  return repairedText
+    .replace(/(\d+)\s+EintrÃ¤ge\b/g, "$1 entries")
+    .replace(/(\d+)\s+MenÃ¼s\b/g, "$1 menus")
+    .replace(/(\d+)\s+EintrÃ¤ge\b/g, "$1 entries")
+    .replace(/(\d+)\s+MenÃ¼s\b/g, "$1 menus")
     .replace(/(\d+)\s+Belohnungen\b/g, "$1 rewards")
     .replace(/^([A-Za-z]+) Button$/, "$1 button")
     .replace(/^([A-Za-z]+) Label$/, "$1 label")
@@ -490,15 +609,14 @@ export function MicrositePanel({
   const [selectedElementId, setSelectedElementId] = useState("hero.headline")
   const [editorPanelOpen, setEditorPanelOpen] = useState(true)
   const [editorPanelWidth, setEditorPanelWidth] = useState(360)
-  const [builderLocale, setBuilderLocale] = useState<BuilderLocale>(() => {
-    if (typeof window === "undefined") {
-      return "de"
-    }
-
-    const storedLocale = window.localStorage.getItem("benefitsi:builder-locale")
-    return storedLocale === "en" ? "en" : "de"
-  })
+  const [allBuilderSectionsCollapsed, setAllBuilderSectionsCollapsed] = useState(true)
+  const builderLocale = useSyncExternalStore<BuilderLocale>(
+    subscribeToBuilderLocale,
+    readBuilderLocaleSnapshot,
+    () => "de",
+  )
   const previewRef = useRef<HTMLDivElement | null>(null)
+  const sidebarRef = useRef<HTMLElement | null>(null)
   const selectedElementPanelRef = useRef<HTMLDivElement | null>(null)
   const inlineTextOverridesInputRef = useRef<HTMLInputElement | null>(null)
   const inlineTextOverridesRef = useRef<Record<string, string>>({})
@@ -529,6 +647,10 @@ export function MicrositePanel({
     [partner, config],
   )
   const selectedElement = getEditableElement(selectedElementId, config)
+  const activeTemplatePreset =
+    micrositeTemplatePresets.find((template) => template.id === config.template) ??
+    micrositeTemplatePresets[0]
+  const recommendedTemplateId = defaultMicrositeTemplateForPartner(partner)
   const previewIdentifier = partner.slug || partner.subdomain || partner.id || "partner"
   const previewStorageKey = `benefitsi:microsite-preview:${partner.id || partner.slug || "partner"}`
   const previewHref = `${previewBasePath}/${encodeURIComponent(previewIdentifier)}?source=builder`
@@ -541,14 +663,92 @@ export function MicrositePanel({
     () => (text: string) => translateBuilderText(builderLocale, text),
     [builderLocale],
   )
+  const builderQuickSections = [
+    ["selected", tr("Element")],
+    ["templates", tr("Layout")],
+    ["brand", tr("Marke")],
+    ["hero", tr("Inhalt")],
+    ["assets", tr("Assets")],
+    ["seo", "SEO"],
+    ["print", tr("Print")],
+  ] as const
   const useViewportShell = fullscreen
   const inlineSidebarClasses = editorPanelOpen
-    ? "min-h-[calc(100dvh-11rem)] max-h-[calc(100dvh-11rem)] overflow-y-auto border-b lg:min-h-0 lg:max-h-[calc(100vh-1rem)] lg:border-b-0 lg:border-r"
-    : "border-b lg:sticky lg:top-4 lg:max-h-[calc(100vh-1rem)] lg:overflow-y-auto lg:border-b-0 lg:border-r"
+    ? "min-h-[calc(100dvh-11rem)] max-h-[calc(100dvh-11rem)] overflow-x-hidden overflow-y-auto border-b lg:min-h-0 lg:max-h-[calc(100vh-1rem)] lg:border-b-0 lg:border-r"
+    : "overflow-x-hidden border-b lg:sticky lg:top-4 lg:max-h-[calc(100vh-1rem)] lg:overflow-x-hidden lg:overflow-y-auto lg:border-b-0 lg:border-r"
+
+  function setBuilderLocale(locale: BuilderLocale) {
+    writeBuilderLocale(locale)
+  }
+
+  function syncBuilderSectionCollapseState() {
+    const details = sidebarRef.current?.querySelectorAll<HTMLDetailsElement>("details")
+
+    if (!details?.length) {
+      return
+    }
+
+    setAllBuilderSectionsCollapsed(Array.from(details).every((item) => !item.open))
+  }
+
+  function toggleAllBuilderSections() {
+    const details = sidebarRef.current?.querySelectorAll<HTMLDetailsElement>("details")
+
+    if (!details?.length) {
+      return
+    }
+
+    const nextOpen = allBuilderSectionsCollapsed
+    details.forEach((item) => {
+      item.open = nextOpen
+    })
+    setAllBuilderSectionsCollapsed(!nextOpen)
+  }
+
+  function jumpToBuilderSection(section: string) {
+    const sidebar = sidebarRef.current
+    const target = sidebar?.querySelector<HTMLElement>(`[data-builder-section="${section}"]`)
+
+    if (!sidebar || !target) {
+      return
+    }
+
+    const nestedDetails = target.querySelectorAll<HTMLDetailsElement>("details")
+
+    nestedDetails.forEach((item) => {
+      item.open = true
+    })
+    if (nestedDetails.length) {
+      setAllBuilderSectionsCollapsed(false)
+    }
+
+    sidebar.scrollTo({
+      top: Math.max(target.offsetTop - 28, 0),
+      behavior: "smooth",
+    })
+  }
 
   useEffect(() => {
-    window.localStorage.setItem("benefitsi:builder-locale", builderLocale)
-  }, [builderLocale])
+    const sidebar = sidebarRef.current
+
+    if (!sidebar) {
+      return
+    }
+
+    syncBuilderSectionCollapseState()
+
+    const handleToggle = (event: Event) => {
+      if (event.target instanceof HTMLDetailsElement) {
+        syncBuilderSectionCollapseState()
+      }
+    }
+
+    sidebar.addEventListener("toggle", handleToggle, true)
+
+    return () => {
+      sidebar.removeEventListener("toggle", handleToggle, true)
+    }
+  }, [editorPanelOpen])
 
   const previewToolbar = (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -561,7 +761,7 @@ export function MicrositePanel({
             className="grid size-8 place-items-center rounded text-sm font-black text-zinc-700 transition hover:bg-zinc-100"
             aria-label={tr("Preview herauszoomen")}
           >
-            âˆ’
+            -
           </button>
           <button
             type="button"
@@ -879,16 +1079,17 @@ export function MicrositePanel({
     <section
       className="overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm"
     >
-      <header className="flex flex-col gap-4 border-b border-zinc-200 p-5 lg:flex-row lg:items-center lg:justify-between">
+      <header className="border-b border-zinc-200 bg-white">
+        <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-teal-700">
             {tr("Microsite")}
           </p>
           <h2 className="mt-1 text-lg font-semibold tracking-normal">
-            {tr("Restaurant-Premium-Vorlage")}
+            {tr(activeTemplatePreset.name)}
           </h2>
           <p className="mt-1 text-sm text-zinc-500">
-            {tr("Für Mobilgeräte optimierte Vorlage · Daten vom Partnerprofil · versionierte Veröffentlichung")}
+            {tr(activeTemplatePreset.description)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -920,7 +1121,7 @@ export function MicrositePanel({
             }}
             className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
           >
-            {tr("Aktuelle Vorschau öffnen")}
+            {tr("Aktuelle Vorschau Ã¶ffnen")}
           </a>
           <a
             href={`${previewBasePath}/${encodeURIComponent(previewIdentifier)}`}
@@ -928,19 +1129,51 @@ export function MicrositePanel({
             rel="noreferrer"
             className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
           >
-            {tr("Gespeicherten Entwurf öffnen")}
+            {tr("Gespeicherten Entwurf Ã¶ffnen")}
           </a>
           <StatusBadge
             label={partner.microsite?.publishedVersion ? "Live" : "Noch nicht live"}
             active={Boolean(partner.microsite?.publishedVersion)}
           />
           {partner.microsite?.status === "review" ? (
-            <StatusBadge label="In Prüfung" tone="review" />
+            <StatusBadge label="In PrÃ¼fung" tone="review" />
           ) : null}
           {partner.microsite?.draftVersion ? (
             <StatusBadge label="Entwurf vorhanden" active={false} />
           ) : null}
         </div>
+        </div>
+        {editorPanelOpen ? (
+          <div
+            className={`border-t border-zinc-200 px-5 py-3 ${
+              fullscreen ? "sticky top-0 z-30 bg-white/95 backdrop-blur" : ""
+            }`}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleAllBuilderSections}
+                title={allBuilderSectionsCollapsed ? tr("Alle Bereiche ausklappen") : tr("Alle Bereiche einklappen")}
+                aria-label={allBuilderSectionsCollapsed ? tr("Alle Bereiche ausklappen") : tr("Alle Bereiche einklappen")}
+                className="grid size-8 shrink-0 place-items-center rounded-full border border-zinc-200 bg-white text-xs font-black text-zinc-700 shadow-sm transition hover:bg-zinc-50"
+              >
+                {allBuilderSectionsCollapsed ? "+" : "-"}
+              </button>
+              <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                {builderQuickSections.map(([section, label]) => (
+                  <button
+                    key={section}
+                    type="button"
+                    onClick={() => jumpToBuilderSection(section)}
+                    className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </header>
       <form
         action={formAction}
@@ -976,17 +1209,18 @@ export function MicrositePanel({
         </datalist>
 
         <aside
-          className={`relative self-start border-zinc-200 bg-white ${
+          ref={sidebarRef}
+          className={`relative min-w-0 self-start overflow-x-hidden border-zinc-200 bg-white ${
             fullscreen
-              ? "sticky top-0 h-[calc(100vh-8rem)] max-h-[calc(100vh-8rem)] overflow-y-auto border-r"
+              ? "sticky top-0 h-[calc(100vh-8rem)] max-h-[calc(100vh-8rem)] overflow-x-hidden overflow-y-auto border-r"
               : inlineSidebarClasses
           } ${editorPanelOpen ? "space-y-6 p-5" : "p-2"}`}
         >
           {fullscreen && editorPanelOpen ? (
             <div
               role="separator"
-              aria-label={tr("Editorbreite ändern")}
-              title={tr("Editorbreite per Ziehen ändern")}
+              aria-label={tr("Editorbreite Ã¤ndern")}
+              title={tr("Editorbreite per Ziehen Ã¤ndern")}
               onPointerDown={handleEditorResizePointerDown}
               onMouseDown={handleEditorResizeMouseDown}
               className="absolute -right-1 top-0 z-50 h-full w-4 cursor-col-resize touch-none bg-transparent transition hover:bg-blue-200/70"
@@ -1003,16 +1237,18 @@ export function MicrositePanel({
             aria-expanded={editorPanelOpen}
             className="mb-3 grid size-10 place-items-center rounded-md border border-zinc-200 bg-white text-lg font-bold text-zinc-700 shadow-sm transition hover:bg-zinc-50"
           >
-            {editorPanelOpen ? "‹" : "›"}
+            {editorPanelOpen ? "<" : ">"}
           </button>
 
           {editorPanelOpen ? (
             <>
           <div
             ref={selectedElementPanelRef}
-            className="relative"
+            data-builder-section="selected"
+            className="relative min-w-0"
           >
             <SelectedElementPanel
+              partner={partner}
               element={selectedElement}
               config={config}
               setConfig={setConfig}
@@ -1021,18 +1257,26 @@ export function MicrositePanel({
           </div>
           <ReadinessPanel report={readinessReport} />
           <BuilderSectionsPanel onSelect={setSelectedElementId} />
-          <TemplateSystemPanel
-            onApply={(templateId) =>
-              setConfig((current) =>
-                applyMicrositeTemplatePreset(current, templateId),
-              )
-            }
-          />
+          <div data-builder-section="templates">
+            <TemplateSystemPanel
+              recommendedTemplateId={recommendedTemplateId}
+              selectedTemplateId={config.template}
+              onApply={(templateId) =>
+                setConfig((current) =>
+                  applyMicrositeTemplatePreset(current, templateId),
+                )
+              }
+            />
+          </div>
           <DataSourcePanel partner={partner} />
           <MenuSystemPanel partner={partner} />
-          <AssetReadinessPanel partner={partner} config={config} setConfig={setConfig} />
+          <div data-builder-section="assets">
+            <AssetReadinessPanel partner={partner} config={config} setConfig={setConfig} />
+          </div>
           <VersionRollbackPanel partner={partner} setConfig={setConfig} />
-          <SeoSystemPanel config={config} setConfig={setConfig} />
+          <div data-builder-section="seo">
+            <SeoSystemPanel config={config} setConfig={setConfig} />
+          </div>
           <BuilderChecklistPanel config={config} setConfig={setConfig} />
           <WorkflowPanel
             partner={partner}
@@ -1040,6 +1284,7 @@ export function MicrositePanel({
             previewIdentifier={previewIdentifier}
           />
 
+          <div data-builder-section="brand">
           <ConfigSection title="Marke">
             <ColorField
               name="accent"
@@ -1066,7 +1311,7 @@ export function MicrositePanel({
             <SourceLockedField
               label="Logo"
               value={partner.logo_url || "Im Partnerprofil hinterlegen"}
-              source="Partnerprofil → Media"
+              source="Partnerprofil â†’ Media"
             />
             <EditorField
               name="partner_badge_url"
@@ -1075,7 +1320,7 @@ export function MicrositePanel({
               onChange={(value) =>
                 updateBranding(setConfig, "partnerBadgeUrl", value)
               }
-              placeholder="https://…"
+              placeholder="https://..."
               list={`microsite-assets-${partner.id || "new"}`}
             />
             <AssetUploadField
@@ -1086,12 +1331,14 @@ export function MicrositePanel({
               }
             />
           </ConfigSection>
+          </div>
 
+          <div data-builder-section="hero">
           <ConfigSection title="Startbereich">
             <SourceLockedField
-              label="Überschrift"
+              label="Ãœberschrift"
               value={config.hero.headline}
-              source="Partnerprofil → Name"
+              source="Partnerprofil â†’ Name"
             />
             <EditorField
               name="hero_slogan"
@@ -1102,12 +1349,12 @@ export function MicrositePanel({
             <SourceLockedField
               label="Ort"
               value={config.hero.locationText}
-              source="Partnerprofil → Stadt/Adresse"
+              source="Partnerprofil â†’ Stadt/Adresse"
             />
             <SourceLockedField
-              label="Öffnungszeiten"
+              label="Ã–ffnungszeiten"
               value={config.hero.openingText}
-              source="Partnerprofil → Öffnungszeiten"
+              source="Partnerprofil â†’ Ã–ffnungszeiten"
             />
             <EditorField
               name="hero_image_url"
@@ -1126,11 +1373,12 @@ export function MicrositePanel({
               }
             />
           </ConfigSection>
+          </div>
 
           <ConfigSection title="Deals & Vorteile">
             <EditorField
               name="deals_headline"
-              label="Überschrift"
+              label="Ãœberschrift"
               value={config.deals.headline}
               onChange={(value) => updateDeals(setConfig, "headline", value)}
             />
@@ -1165,7 +1413,7 @@ export function MicrositePanel({
             />
             <EditorField
               name="top_deal_headline"
-              label="Top-Deal Überschrift"
+              label="Top-Deal Ãœberschrift"
               value={config.deals.topDealHeadline}
               onChange={(value) =>
                 updateDeals(setConfig, "topDealHeadline", value)
@@ -1190,7 +1438,7 @@ export function MicrositePanel({
           <ConfigSection title="Weitere Bereiche">
             <EditorField
               name="menu_headline"
-              label="Speisekarte Überschrift"
+              label="Speisekarte Ãœberschrift"
               value={config.content.menuHeadline}
               onChange={(value) => updateContent(setConfig, "menuHeadline", value)}
             />
@@ -1205,7 +1453,7 @@ export function MicrositePanel({
             />
             <EditorField
               name="about_headline"
-              label="Über-uns Überschrift"
+              label="Ãœber-uns Ãœberschrift"
               value={config.content.aboutHeadline}
               onChange={(value) =>
                 updateContent(setConfig, "aboutHeadline", value)
@@ -1213,14 +1461,14 @@ export function MicrositePanel({
             />
             <EditorField
               name="about_text"
-              label="Über-uns Text"
+              label="Ãœber-uns Text"
               value={config.content.aboutText}
               onChange={(value) => updateContent(setConfig, "aboutText", value)}
               multiline
             />
             <EditorField
               name="contact_headline"
-              label="Kontakt Überschrift"
+              label="Kontakt Ãœberschrift"
               value={config.content.contactHeadline}
               onChange={(value) =>
                 updateContent(setConfig, "contactHeadline", value)
@@ -1228,7 +1476,7 @@ export function MicrositePanel({
             />
             <EditorField
               name="app_headline"
-              label="App-Banner Überschrift"
+              label="App-Banner Ãœberschrift"
               value={config.content.appHeadline}
               onChange={(value) => updateContent(setConfig, "appHeadline", value)}
             />
@@ -1258,12 +1506,23 @@ export function MicrositePanel({
                   builder: { ...current.builder, versionNote: value },
                 }))
               }
-              placeholder="z. B. Knobi Design finalisiert, mobile geprüft"
+              placeholder="z. B. Knobi Design finalisiert, mobile geprÃ¼ft"
               multiline
             />
           </ConfigSection>
 
-          <SocialMediaPanel config={config} setConfig={setConfig} />
+          <SocialMediaPanel partner={partner} config={config} setConfig={setConfig} />
+
+          <div data-builder-section="print">
+            <ConfigSection title="Print-Studio">
+              <PrintableStudioPanel
+                partner={partner}
+                config={config}
+                setConfig={setConfig}
+                tr={tr}
+              />
+            </ConfigSection>
+          </div>
 
           <div className="flex flex-col gap-2">
             <button
@@ -1273,7 +1532,7 @@ export function MicrositePanel({
               disabled={pending}
               className="h-11 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 disabled:opacity-60"
             >
-              {pending ? tr("Speichert…") : tr("Entwurf speichern")}
+              {pending ? tr("Speichertâ€¦") : tr("Entwurf speichern")}
             </button>
             <button
               type="submit"
@@ -1282,7 +1541,7 @@ export function MicrositePanel({
               disabled={pending}
               className="h-11 rounded-md border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
             >
-              {tr("Zur Prüfung markieren")}
+              {tr("Zur PrÃ¼fung markieren")}
             </button>
             <button
               type="submit"
@@ -1291,7 +1550,7 @@ export function MicrositePanel({
               disabled={pending || publishBlocked}
               title={
                 publishBlocked
-                  ? tr("Freigabe erst nach erfüllten Pflichtchecks möglich")
+                  ? tr("Freigabe erst nach erfÃ¼llten Pflichtchecks mÃ¶glich")
                   : tr("Microsite intern freigeben")
               }
               className="h-11 rounded-md border border-emerald-300 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
@@ -1309,15 +1568,15 @@ export function MicrositePanel({
                       .slice(0, 4)
                       .map((item) => tr(item.label))
                       .join(", ")}`
-                  : tr("Diese Version live veröffentlichen")
+                  : tr("Diese Version live verÃ¶ffentlichen")
               }
               className="h-11 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:opacity-60"
             >
-              {tr("Veröffentlichen")}
+              {tr("VerÃ¶ffentlichen")}
             </button>
             {publishBlocked ? (
               <p className="rounded-md bg-rose-50 px-3 py-2 text-xs font-semibold leading-5 text-rose-700">
-                {tr("Live-Publish ist gesperrt, bis alle Pflichtchecks erledigt sind. Entwurf und Prüfung bleiben möglich.")}
+                {tr("Live-Publish ist gesperrt, bis alle Pflichtchecks erledigt sind. Entwurf und PrÃ¼fung bleiben mÃ¶glich.")}
               </p>
             ) : null}
             {state.message ? (
@@ -1352,13 +1611,13 @@ export function MicrositePanel({
                   className="grid size-8 place-items-center rounded text-sm font-black text-zinc-700 transition hover:bg-zinc-100"
                   aria-label={tr("Preview herauszoomen")}
                 >
-                  −
+                  âˆ’
                 </button>
                 <button
                   type="button"
                   onClick={() => setPreviewZoom(1)}
                   className="h-8 min-w-14 rounded px-2 text-xs font-black text-zinc-700 transition hover:bg-zinc-100"
-                  title={tr("Zoom zurücksetzen")}
+                  title={tr("Zoom zurÃ¼cksetzen")}
                 >
                   {zoomPercent}%
                 </button>
@@ -1410,7 +1669,7 @@ export function MicrositePanel({
                 zoom: previewZoom,
               }}
             >
-              <RestaurantPremiumMicrosite partner={partner} config={config} />
+              <MicrositeRenderer partner={partner} config={config} />
             </div>
           </div>
         </div>
@@ -1445,8 +1704,8 @@ const themeIconOptions = [
   { value: "shield", label: "Schild" },
   { value: "privacy", label: "Datenschutz" },
   { value: "local", label: "Lokal" },
-  { value: "bowl", label: "Schüssel" },
-  { value: "smile", label: "Lächeln" },
+  { value: "bowl", label: "SchÃ¼ssel" },
+  { value: "smile", label: "LÃ¤cheln" },
   { value: "pizza", label: "Pizza" },
   { value: "website", label: "Website" },
   { value: "instagram", label: "Instagram" },
@@ -1527,7 +1786,7 @@ function ReadinessPanel({ report }: { report: MicrositeReadinessReport }) {
         {nextItems.length ? (
           <div className="mt-4 space-y-2">
             <p className="text-xs font-bold uppercase tracking-[0.1em] text-zinc-500">
-              {tr("Nächste Aufgaben")}
+              {tr("NÃ¤chste Aufgaben")}
             </p>
             {nextItems.map((item) => (
               <ReadinessItemRow key={item.id} item={item} />
@@ -1535,12 +1794,12 @@ function ReadinessPanel({ report }: { report: MicrositeReadinessReport }) {
           </div>
         ) : (
           <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
-            {tr("Alle aktuellen Checks sind erfüllt.")}
+            {tr("Alle aktuellen Checks sind erfÃ¼llt.")}
           </p>
         )}
         {blockedItems.length ? (
           <p className="mt-3 text-xs leading-5 text-rose-700">
-            {tr("Veröffentlichung erst nach den Pflichtpunkten empfehlen.")}
+            {tr("VerÃ¶ffentlichung erst nach den Pflichtpunkten empfehlen.")}
           </p>
         ) : null}
       </div>
@@ -1553,7 +1812,7 @@ function ReadinessMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-zinc-50 p-3">
       <p className="font-semibold text-zinc-500">{tr(label)}</p>
-      <p className="mt-1 font-mono text-zinc-950">{value}</p>
+      <p className="mt-1 text-sm font-semibold tabular-nums text-zinc-950">{value}</p>
     </div>
   )
 }
@@ -1572,7 +1831,7 @@ function ReadinessItemRow({
             item.ok ? "bg-emerald-500 text-white" : "bg-amber-400 text-white"
           }`}
         >
-          {item.ok ? "✓" : "!"}
+          {item.ok ? "\u2713" : "!"}
         </span>
         <div>
           <p className="text-xs font-bold text-zinc-900">{tr(item.label)}</p>
@@ -1598,7 +1857,7 @@ function BuilderSectionsPanel({
     ["Top-Deal", "deals.topDealHeadline"],
     ["Stempelkarte", "stamps.headline"],
     ["Speisekarte", "content.menuHeadline"],
-    ["Über uns", "content.aboutHeadline"],
+    ["Ãœber uns", "content.aboutHeadline"],
     ["Kontakt", "content.contactHeadline"],
     ["FAQ", "content.faqHeadline"],
     ["Footer", "content.footerText"],
@@ -1622,30 +1881,189 @@ function BuilderSectionsPanel({
   )
 }
 
+function templatePreviewMeta(templateId: MicrositeTemplatePreset["id"]) {
+  if (templateId === "restaurant-local") {
+    return {
+      category: "Local dining",
+      mood: "Warm, regional, and story-led.",
+      frame: "border-amber-200 bg-[#fff7ed]",
+      badge: "bg-white text-amber-700",
+      hero: "bg-[linear-gradient(135deg,#fed7aa_0%,#fdba74_48%,#0ea5e9_100%)]",
+      cardStrong: "bg-white/95",
+      cardSoft: "bg-amber-100/90",
+      lineStrong: "bg-amber-700/80",
+      lineSoft: "bg-sky-400/75",
+      orb: "bg-sky-400/80",
+    }
+  }
+
+  if (templateId === "restaurant-clean") {
+    return {
+      category: "Minimal food",
+      mood: "Reduced, fast, and image-light.",
+      frame: "border-zinc-200 bg-zinc-50",
+      badge: "bg-white text-zinc-700",
+      hero: "bg-[linear-gradient(135deg,#111827_0%,#334155_58%,#14b8a6_100%)]",
+      cardStrong: "bg-white/95",
+      cardSoft: "bg-zinc-200/90",
+      lineStrong: "bg-zinc-700/80",
+      lineSoft: "bg-teal-400/80",
+      orb: "bg-teal-400/90",
+    }
+  }
+
+  if (templateId === "salon-editorial") {
+    return {
+      category: "Beauty studio",
+      mood: "Editorial, premium, and service-led.",
+      frame: "border-rose-200 bg-[#fff1f2]",
+      badge: "bg-white text-rose-700",
+      hero: "bg-[linear-gradient(135deg,#fbcfe8_0%,#fda4af_52%,#b45309_100%)]",
+      cardStrong: "bg-white/95",
+      cardSoft: "bg-rose-100/90",
+      lineStrong: "bg-rose-700/80",
+      lineSoft: "bg-amber-500/75",
+      orb: "bg-amber-500/80",
+    }
+  }
+
+  if (templateId === "atelier-noir") {
+    return {
+      category: "Beauty noir",
+      mood: "Dark, luxe, and fashion-forward.",
+      frame: "border-amber-300 bg-[#17131c]",
+      badge: "bg-white/10 text-amber-100",
+      hero: "bg-[linear-gradient(135deg,#18111b_0%,#3b1f2e_46%,#f59e0b_100%)]",
+      cardStrong: "bg-white/12",
+      cardSoft: "bg-white/6",
+      lineStrong: "bg-amber-300/90",
+      lineSoft: "bg-rose-300/75",
+      orb: "bg-rose-300/80",
+    }
+  }
+
+  if (templateId === "wellness-serene") {
+    return {
+      category: "Wellness",
+      mood: "Calm, restorative, and breathable.",
+      frame: "border-emerald-200 bg-[#ecfdf5]",
+      badge: "bg-white text-emerald-700",
+      hero: "bg-[linear-gradient(135deg,#d1fae5_0%,#a7f3d0_50%,#93c5fd_100%)]",
+      cardStrong: "bg-white/95",
+      cardSoft: "bg-emerald-100/90",
+      lineStrong: "bg-emerald-700/75",
+      lineSoft: "bg-sky-400/75",
+      orb: "bg-sky-300/90",
+    }
+  }
+
+  if (templateId === "festival-neon") {
+    return {
+      category: "Nightlife",
+      mood: "Electric, bold, and high-energy.",
+      frame: "border-cyan-300 bg-[#07111f]",
+      badge: "bg-white/10 text-cyan-100",
+      hero: "bg-[linear-gradient(135deg,#07111f_0%,#2563eb_38%,#22d3ee_62%,#f43f5e_100%)]",
+      cardStrong: "bg-white/12",
+      cardSoft: "bg-white/6",
+      lineStrong: "bg-cyan-300/90",
+      lineSoft: "bg-rose-300/80",
+      orb: "bg-cyan-300/80",
+    }
+  }
+
+  if (templateId === "cinema-spotlight") {
+    return {
+      category: "Entertainment",
+      mood: "High-contrast, event-forward, and dramatic.",
+      frame: "border-fuchsia-300 bg-[#18181b]",
+      badge: "bg-white/10 text-fuchsia-100",
+      hero: "bg-[linear-gradient(135deg,#111827_0%,#7e22ce_48%,#e11d48_100%)]",
+      cardStrong: "bg-white/10",
+      cardSoft: "bg-white/5",
+      lineStrong: "bg-rose-300/90",
+      lineSoft: "bg-fuchsia-300/75",
+      orb: "bg-fuchsia-400/80",
+    }
+  }
+
+  return {
+    category: "Restaurant",
+    mood: "Emotional, offer-led, and conversion-focused.",
+    frame: "border-amber-200 bg-[#fffbeb]",
+    badge: "bg-white text-amber-700",
+    hero: "bg-[linear-gradient(135deg,#f59e0b_0%,#f97316_46%,#16c4cc_100%)]",
+    cardStrong: "bg-white/95",
+    cardSoft: "bg-amber-100/90",
+    lineStrong: "bg-amber-700/80",
+    lineSoft: "bg-cyan-400/75",
+    orb: "bg-cyan-400/85",
+  }
+}
+
 function TemplateSystemPanel({
+  recommendedTemplateId,
+  selectedTemplateId,
   onApply,
 }: {
+  recommendedTemplateId: MicrositeTemplatePreset["id"]
+  selectedTemplateId: MicrositeConfig["template"]
   onApply: (templateId: MicrositeTemplatePreset["id"]) => void
 }) {
   const { tr } = useBuilderI18n()
   return (
     <ConfigSection title="Vorlagen">
       <div className="space-y-2">
-        {micrositeTemplatePresets.map((template) => (
-          <button
-            key={template.id}
-            type="button"
-            onClick={() => onApply(template.id)}
-            className="w-full rounded-lg border border-zinc-200 bg-white p-3 text-left transition hover:border-teal-300 hover:bg-teal-50"
-          >
-            <span className="text-sm font-black text-zinc-950">
-              {tr(template.name)}
-            </span>
-            <span className="mt-1 block text-xs leading-5 text-zinc-500">
-              {tr(template.description)}
-            </span>
-          </button>
-        ))}
+        {micrositeTemplatePresets.map((template) => {
+          const preview = templatePreviewMeta(template.id)
+
+          return (
+            <button
+              key={template.id}
+              type="button"
+              onClick={() => onApply(template.id)}
+              className={`w-full rounded-xl border p-2.5 text-left transition ${
+                selectedTemplateId === template.id
+                  ? "border-teal-400 bg-teal-50 shadow-[0_14px_35px_rgba(20,184,166,.12)]"
+                  : "border-zinc-200 bg-white hover:border-teal-300 hover:bg-teal-50/60"
+              }`}
+            >
+              <div className={`overflow-hidden rounded-xl border p-2.5 ${preview.frame}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${preview.badge}`}>
+                    {preview.category}
+                  </span>
+                  <span className={`size-6 rounded-full ${preview.orb}`} />
+                </div>
+                <div className="mt-2.5 grid grid-cols-[minmax(0,1.2fr)_minmax(72px,.8fr)] gap-2">
+                  <div className={`min-h-20 rounded-[1rem] ${preview.hero}`} />
+                  <div className="grid gap-2">
+                    <div className={`h-8 rounded-[0.85rem] ${preview.cardStrong}`} />
+                    <div className={`h-10 rounded-[0.85rem] ${preview.cardSoft}`} />
+                  </div>
+                </div>
+                <div className="mt-2.5 flex items-center gap-1.5">
+                  <span className={`h-2 w-12 rounded-full ${preview.lineStrong}`} />
+                  <span className={`h-2 w-8 rounded-full ${preview.lineSoft}`} />
+                </div>
+              </div>
+              <span className="mt-2.5 flex flex-wrap items-center gap-2 text-sm font-black text-zinc-950">
+                <span>{tr(template.name)}</span>
+                {recommendedTemplateId === template.id ? (
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-teal-700">
+                    Auto
+                  </span>
+                ) : null}
+              </span>
+              <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                {preview.mood}
+              </span>
+              <span className="mt-1 block text-[11px] leading-5 text-zinc-500">
+                {tr(template.description)}
+              </span>
+            </button>
+          )
+        })}
       </div>
     </ConfigSection>
   )
@@ -1653,15 +2071,23 @@ function TemplateSystemPanel({
 
 function DataSourcePanel({ partner }: { partner: PartnerWithDeals }) {
   const { tr } = useBuilderI18n()
+  const socialCount = partner.socials.filter((item) => Boolean(item.url || item.handle)).length
+  const categoryLabel = partner.category?.filter(Boolean).join(", ") || "Fehlt"
   const rows = [
     ["Name", partner.name, "Partnerprofil"],
     ["Logo", partner.logo_url, "Partnerprofil / Medien"],
+    ["Typ", partner.type, "Partnerprofil"],
+    ["Kategorien", categoryLabel, "Partnerprofil"],
+    ["Beschreibung", partner.description, "Partnerprofil"],
     ["Adresse", partner.address, "Partnerprofil"],
     ["Telefon", partner.phone, "Partnerprofil"],
-    ["Öffnungszeiten", `${partner.opening_hours.length} Einträge`, "Öffnungszeiten"],
-    ["Speisekarte", `${partner.menus.length} Menüs`, "Menüs & Artikel"],
+    ["Website", partner.website, "Partnerprofil"],
+    ["E-Mail", partner.email, "Partnerprofil"],
+    ["Social Media", `${socialCount} EintrÃ¤ge`, "Partnerprofil"],
+    ["Ã–ffnungszeiten", `${partner.opening_hours.length} EintrÃ¤ge`, "Ã–ffnungszeiten"],
+    ["Speisekarte", `${partner.menus.length} MenÃ¼s`, "MenÃ¼s & Artikel"],
     ["Belohnungen", `${partner.reward_milestones.length} Belohnungen`, "Stempelkarte"],
-    ["Microsite-Bilder", "Start/Deals/Über uns separat", "Microsite"],
+    ["Microsite-Bilder", "Start/Deals/Ãœber uns separat", "Microsite"],
     ["SEO", "Title/Description separat", "Microsite"],
   ]
 
@@ -1670,9 +2096,9 @@ function DataSourcePanel({ partner }: { partner: PartnerWithDeals }) {
       <div className="space-y-2 rounded-xl border border-zinc-200 bg-white p-3">
         {rows.map(([label, value, source]) => (
           <div key={String(label)} className="flex items-start justify-between gap-3 text-xs">
-            <div>
+            <div className="min-w-0">
               <p className="font-bold text-zinc-800">{tr(String(label))}</p>
-              <p className="mt-0.5 truncate text-zinc-500">
+              <p className="mt-0.5 break-words text-zinc-500">
                 {tr(String(value || "Fehlt"))}
               </p>
             </div>
@@ -1686,6 +2112,144 @@ function DataSourcePanel({ partner }: { partner: PartnerWithDeals }) {
   )
 }
 
+type AssetQualityTarget = {
+  label: string
+  value: string
+  source: string
+  slot: string
+  minWidth: number
+  minHeight: number
+  preferredAspect?: number
+  aspectTolerance?: number
+}
+
+type AssetQualitySnapshot = {
+  status: "loading" | "ready" | "error"
+  width?: number
+  height?: number
+}
+
+function useAssetQualitySnapshots(urls: string[]) {
+  const [snapshots, setSnapshots] = useState<Record<string, AssetQualitySnapshot>>({})
+  const validUrlKey = JSON.stringify(Array.from(new Set(urls.filter(Boolean))))
+  const validUrls = useMemo(() => JSON.parse(validUrlKey) as string[], [validUrlKey])
+
+  useEffect(() => {
+    if (!validUrls.length) {
+      return
+    }
+
+    let cancelled = false
+
+    validUrls.forEach((url) => {
+      const image = new Image()
+
+      image.onload = () => {
+        if (cancelled) {
+          return
+        }
+
+        setSnapshots((current) => ({
+          ...current,
+          [url]: {
+            status: "ready",
+            width: image.naturalWidth,
+            height: image.naturalHeight,
+          },
+        }))
+      }
+
+      image.onerror = () => {
+        if (cancelled) {
+          return
+        }
+
+        setSnapshots((current) => ({
+          ...current,
+          [url]: { status: "error" },
+        }))
+      }
+
+      image.src = url
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [validUrls])
+
+  return validUrls.reduce<Record<string, AssetQualitySnapshot>>((accumulator, url) => {
+    if (snapshots[url]) {
+      accumulator[url] = snapshots[url]
+    }
+
+    return accumulator
+  }, {})
+}
+
+function evaluateAssetQuality(
+  target: AssetQualityTarget,
+  snapshot?: AssetQualitySnapshot,
+) {
+  if (!target.value) {
+    return {
+      tone: "missing" as const,
+      label: "Missing",
+      detail: `Upload at least ${target.minWidth} x ${target.minHeight}px.`,
+    }
+  }
+
+  if (!snapshot || snapshot.status === "loading") {
+    return {
+      tone: "loading" as const,
+      label: "Checking",
+      detail: "Reading image size...",
+    }
+  }
+
+  if (snapshot.status === "error" || !snapshot.width || !snapshot.height) {
+    return {
+      tone: "error" as const,
+      label: "Broken",
+      detail: "The image could not be loaded. Re-upload or replace it.",
+    }
+  }
+
+  const resolutionTooSmall =
+    snapshot.width < target.minWidth || snapshot.height < target.minHeight
+  const aspectRatio =
+    target.preferredAspect && snapshot.height
+      ? snapshot.width / snapshot.height
+      : undefined
+  const aspectMismatch =
+    typeof aspectRatio === "number" &&
+    typeof target.preferredAspect === "number" &&
+    Math.abs(aspectRatio - target.preferredAspect) >
+      (target.aspectTolerance ?? 0.28)
+
+  if (resolutionTooSmall) {
+    return {
+      tone: "warn" as const,
+      label: "Low-res",
+      detail: `Use at least ${target.minWidth} x ${target.minHeight}px. Current: ${snapshot.width} x ${snapshot.height}px.`,
+    }
+  }
+
+  if (aspectMismatch) {
+    return {
+      tone: "warn" as const,
+      label: "Aspect",
+      detail: `The crop may feel awkward. Current: ${snapshot.width} x ${snapshot.height}px.`,
+    }
+  }
+
+  return {
+    tone: "good" as const,
+    label: "Good",
+    detail: `${snapshot.width} x ${snapshot.height}px`,
+  }
+}
+
 function AssetReadinessPanel({
   partner,
   config,
@@ -1696,47 +2260,89 @@ function AssetReadinessPanel({
   setConfig: Dispatch<SetStateAction<MicrositeConfig>>
 }) {
   const { tr } = useBuilderI18n()
-  const rows = [
-    ["Partnerlogo", partner.logo_url, "Profil", "branding.logo"],
-    ["Feature-Karte", partner.feature_card_url, "Profil", "partner.feature"],
-    ["Startbild", config.hero.backgroundImageUrl, "Microsite", "hero.backgroundImageUrl"],
-    ["Deals", config.deals.illustrationUrl, "Microsite", "deals.illustrationUrl"],
-    ["Top-Deal", config.deals.topDealImageUrl, "Microsite", "deals.topDealImageUrl"],
-    ["Über uns 1", config.elementText["content.aboutHeroImageUrl"], "Microsite", "content.aboutHeroImageUrl"],
-    ["Über uns 2", config.elementText["content.aboutIngredientImageUrl"], "Microsite", "content.aboutIngredientImageUrl"],
-    ["Reward 5", config.elementText["stamps.reward.5.image"], "Microsite", "stamps.reward.5.image"],
-    ["Reward 10", config.elementText["stamps.reward.10.image"], "Microsite", "stamps.reward.10.image"],
-    ["QR-Code", config.elementText["content.appQrCodeUrl"], "Microsite", "content.appQrCodeUrl"],
+  const rows: AssetQualityTarget[] = [
+    { label: "Partnerlogo", value: partner.logo_url || "", source: "Profil", slot: "branding.logo", minWidth: 512, minHeight: 512, preferredAspect: 1, aspectTolerance: 0.2 },
+    { label: "Feature-Karte", value: partner.feature_card_url || "", source: "Profil", slot: "partner.feature", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Startbild", value: config.hero.backgroundImageUrl, source: "Microsite", slot: "hero.backgroundImageUrl", minWidth: 1600, minHeight: 1200, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Deals", value: config.deals.illustrationUrl, source: "Microsite", slot: "deals.illustrationUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Top-Deal", value: config.deals.topDealImageUrl, source: "Microsite", slot: "deals.topDealImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Ãœber uns 1", value: config.elementText["content.aboutHeroImageUrl"] || "", source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Ãœber uns 2", value: config.elementText["content.aboutIngredientImageUrl"] || "", source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Reward 5", value: config.elementText["stamps.reward.5.image"] || "", source: "Microsite", slot: "stamps.reward.5.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
+    { label: "Reward 10", value: config.elementText["stamps.reward.10.image"] || "", source: "Microsite", slot: "stamps.reward.10.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
+    { label: "QR-Code", value: config.elementText["content.appQrCodeUrl"] || "", source: "Microsite", slot: "content.appQrCodeUrl", minWidth: 600, minHeight: 600, preferredAspect: 1, aspectTolerance: 0.12 },
   ]
+  const assetSnapshots = useAssetQualitySnapshots(rows.map((row) => row.value))
+  const qualityIssues = rows.filter((row) => {
+    const quality = evaluateAssetQuality(row, assetSnapshots[row.value])
+    return quality.tone === "warn" || quality.tone === "error" || quality.tone === "missing"
+  })
 
   return (
     <ConfigSection title="Asset-Bibliothek">
-      <details className="rounded-xl border border-zinc-200 bg-white p-3" open>
+      <details className="rounded-xl border border-zinc-200 bg-white p-3">
         <summary className="cursor-pointer text-sm font-black text-zinc-950">
           {tr("Asset-Status & Austauschbarkeit")}
         </summary>
+        {qualityIssues.length ? (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+            <p className="font-black">Auto photo audit</p>
+            <p className="mt-1">
+              {qualityIssues.length} asset{qualityIssues.length === 1 ? "" : "s"} need attention. Replace blurry or undersized photos before publishing or printing.
+            </p>
+          </div>
+        ) : null}
         <div className="mt-3 space-y-2">
-          {rows.map(([label, value, source, slot]) => (
-            <div key={String(label)} className="grid grid-cols-[44px_minmax(0,1fr)] gap-3 rounded-lg bg-zinc-50 p-2 text-xs">
-              <div className="size-11 overflow-hidden rounded-md border border-zinc-200 bg-white">
-                {value ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={value} alt="" className="h-full w-full object-cover" />
-                ) : null}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-zinc-800">{tr(String(label))}</span>
-                  <span className={value ? "text-emerald-700" : "text-amber-700"}>
-                    {value ? `✓ ${tr("bereit")}` : tr("fehlt")}
-                  </span>
+          {rows.map((row) => {
+            const quality = evaluateAssetQuality(row, assetSnapshots[row.value])
+            const qualityToneClass =
+              quality.tone === "good"
+                ? "bg-emerald-100 text-emerald-700"
+                : quality.tone === "loading"
+                  ? "bg-zinc-200 text-zinc-700"
+                  : quality.tone === "error"
+                    ? "bg-rose-100 text-rose-700"
+                    : "bg-amber-100 text-amber-800"
+
+            return (
+              <div
+                key={row.label}
+                className="grid grid-cols-[44px_minmax(0,1fr)] gap-3 rounded-lg bg-zinc-50 p-2 text-xs"
+              >
+                <div className="grid size-11 place-items-center overflow-hidden rounded-md border border-zinc-200 bg-white">
+                  {row.value ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={row.value} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400">
+                      N/A
+                    </span>
+                  )}
                 </div>
-                <p className="mt-0.5 truncate text-[11px] text-zinc-500">
-                  {tr(String(source))} · {slot}
-                </p>
+                <div className="min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-zinc-800">{tr(row.label)}</span>
+                    <span className={row.value ? "text-emerald-700" : "text-amber-700"}>
+                      {row.value ? `\u2713 ${tr("bereit")}` : tr("fehlt")}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] ${qualityToneClass}`}
+                    >
+                      {quality.label}
+                    </span>
+                    <p className="min-w-0 flex-1 text-[11px] leading-4 text-zinc-500">
+                      {quality.detail}
+                    </p>
+                  </div>
+                  <p className="mt-1 truncate text-[11px] text-zinc-500">
+                    {tr(row.source)} · {row.slot}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
         <div className="mt-4 border-t border-zinc-200 pt-3">
           <p className="text-xs font-black text-zinc-900">
@@ -1747,7 +2353,7 @@ function AssetReadinessPanel({
               <button
                 key={`${asset.slot}-${asset.url}`}
                 type="button"
-                title={`${asset.label} · ${asset.slot}`}
+                title={`${asset.label} Â· ${asset.slot}`}
                 onClick={() => setConfig((current) => applyAssetToSlot(current, asset.slot, asset.url))}
                 className="group overflow-hidden rounded-lg border border-zinc-200 bg-white text-left transition hover:border-teal-400"
               >
@@ -1779,16 +2385,16 @@ function VersionRollbackPanel({
   const draftConfig = partner.microsite?.draftVersion?.config
 
   return (
-    <ConfigSection title="Versionierung & Rückgängig">
+    <ConfigSection title="Versionierung & RÃ¼ckgÃ¤ngig">
       <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-3 text-xs">
         <div className="grid grid-cols-2 gap-2">
           <ReadinessMetric
             label="Entwurf"
-            value={partner.microsite?.draftVersion?.version_number ? `v${partner.microsite.draftVersion.version_number}` : "—"}
+            value={partner.microsite?.draftVersion?.version_number ? `v${partner.microsite.draftVersion.version_number}` : "â€”"}
           />
           <ReadinessMetric
             label="Live"
-            value={partner.microsite?.publishedVersion?.version_number ? `v${partner.microsite.publishedVersion.version_number}` : "—"}
+            value={partner.microsite?.publishedVersion?.version_number ? `v${partner.microsite.publishedVersion.version_number}` : "â€”"}
           />
         </div>
         <button
@@ -1816,7 +2422,7 @@ function VersionRollbackPanel({
           {tr("Gespeicherten Entwurf neu laden")}
         </button>
         <p className="text-[11px] leading-5 text-zinc-500">
-          {tr("Jede Speicherung erzeugt eine neue Version. Veröffentlichen setzt nur die geprüfte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.")}
+          {tr("Jede Speicherung erzeugt eine neue Version. VerÃ¶ffentlichen setzt nur die geprÃ¼fte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.")}
         </p>
       </div>
     </ConfigSection>
@@ -1883,7 +2489,7 @@ function SeoSystemPanel({
             },
           }))
         }
-        placeholder={tr("Döner, Pizza, Annweiler, Benefitsi")}
+        placeholder={tr("DÃ¶ner, Pizza, Annweiler, Benefitsi")}
       />
       <EditorField
         name="seo_og_image_url"
@@ -1902,7 +2508,7 @@ function SeoSystemPanel({
             }))
           }
         />
-        {tr("Öffentliche Seite auf noindex setzen")}
+        {tr("Ã–ffentliche Seite auf noindex setzen")}
       </label>
     </ConfigSection>
   )
@@ -1917,12 +2523,12 @@ function BuilderChecklistPanel({
 }) {
   const { tr } = useBuilderI18n()
   const rows = [
-    ["partnerDataReviewDone", "Partnerdaten geprüft"],
-    ["assetReviewDone", "Assets/Fallbacks geprüft"],
-    ["desktopQaDone", "Desktopprüfung abgeschlossen"],
-    ["mobileQaDone", "Mobilprüfung abgeschlossen"],
-    ["seoReviewDone", "SEO/LLM geprüft"],
-    ["publishReviewDone", "Veröffentlichung final geprüft"],
+    ["partnerDataReviewDone", "Partnerdaten geprÃ¼ft"],
+    ["assetReviewDone", "Assets/Fallbacks geprÃ¼ft"],
+    ["desktopQaDone", "DesktopprÃ¼fung abgeschlossen"],
+    ["mobileQaDone", "MobilprÃ¼fung abgeschlossen"],
+    ["seoReviewDone", "SEO/LLM geprÃ¼ft"],
+    ["publishReviewDone", "VerÃ¶ffentlichung final geprÃ¼ft"],
   ] as const
 
   return (
@@ -1963,10 +2569,10 @@ function WorkflowPanel({
 }) {
   const { tr } = useBuilderI18n()
   const steps = [
-    ["1", "Partnerdaten prüfen", report.items.filter((item) => item.area === "Daten" && !item.ok).length === 0],
+    ["1", "Partnerdaten prÃ¼fen", report.items.filter((item) => item.area === "Daten" && !item.ok).length === 0],
     ["2", "Assets bereit", report.items.filter((item) => item.area === "Assets" && !item.ok).length === 0],
-    ["3", "Mobilprüfung", report.items.filter((item) => item.area === "Mobile" && !item.ok).length === 0],
-    ["4", "SEO/LLM-Prüfung", report.items.filter((item) => item.area === "SEO & LLM" && !item.ok).length === 0],
+    ["3", "MobilprÃ¼fung", report.items.filter((item) => item.area === "Mobile" && !item.ok).length === 0],
+    ["4", "SEO/LLM-PrÃ¼fung", report.items.filter((item) => item.area === "SEO & LLM" && !item.ok).length === 0],
     ["5", "Freigabe", partner.microsite?.status === "approved" || Boolean(partner.microsite?.publishedVersion)],
     ["6", "Live", Boolean(partner.microsite?.publishedVersion)],
   ] as const
@@ -1977,13 +2583,13 @@ function WorkflowPanel({
         {steps.map(([number, label, ok]) => (
           <div key={number} className="flex items-center gap-3 text-xs">
             <span className={`grid size-6 place-items-center rounded-full font-black ${ok ? "bg-emerald-500 text-white" : "bg-zinc-200 text-zinc-600"}`}>
-              {ok ? "✓" : number}
+              {ok ? "âœ“" : number}
             </span>
             <span className="font-semibold text-zinc-800">{tr(label)}</span>
           </div>
         ))}
         <p className="pt-2 text-[11px] leading-5 text-zinc-500">
-          {tr("Partner-Self-Service sollte nur Daten, Speisekarte und Bilder freigeben – Layout bleibt intern geschützt.")}
+          {tr("Partner-Self-Service sollte nur Daten, Speisekarte und Bilder freigeben â€“ Layout bleibt intern geschÃ¼tzt.")}
         </p>
         <a
           href={`/partner-self-service/${encodeURIComponent(previewIdentifier)}`}
@@ -1991,7 +2597,7 @@ function WorkflowPanel({
           rel="noreferrer"
           className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-black text-zinc-800 transition hover:border-teal-300 hover:bg-teal-50"
         >
-          {tr("Partner-Modus prüfen")}
+          {tr("Partner-Modus prÃ¼fen")}
         </a>
       </div>
     </ConfigSection>
@@ -1999,9 +2605,11 @@ function WorkflowPanel({
 }
 
 function SocialMediaPanel({
+  partner,
   config,
   setConfig,
 }: {
+  partner: PartnerWithDeals
   config: MicrositeConfig
   setConfig: Dispatch<SetStateAction<MicrositeConfig>>
 }) {
@@ -2038,7 +2646,11 @@ function SocialMediaPanel({
                 <EditorField
                   name={`${id}_label`}
                   label="Beschriftung"
-                  value={config.elementText[`${id}.label`] || platform.label}
+                  value={
+                    config.elementText[`${id}.label`] ||
+                    partnerSocialLabel(partner, platform.id) ||
+                    platform.label
+                  }
                   onChange={(value) =>
                     setConfig((current) =>
                       setElementTextValue(current, `${id}.label`, value),
@@ -2048,13 +2660,13 @@ function SocialMediaPanel({
                 <EditorField
                   name={`${id}_url`}
                   label="Link"
-                  value={config.elementText[`${id}.url`] || ""}
+                  value={config.elementText[`${id}.url`] || partnerSocialUrl(partner, platform.id)}
                   onChange={(value) =>
                     setConfig((current) =>
                       setElementTextValue(current, `${id}.url`, value),
                     )
                   }
-                  placeholder="https://…"
+                  placeholder="https://..."
                 />
                 <EditorField
                   name={`${id}_icon_url`}
@@ -2065,7 +2677,7 @@ function SocialMediaPanel({
                       setElementTextValue(current, `${id}.iconUrl`, value),
                     )
                   }
-                  placeholder="https://…"
+                  placeholder="https://..."
                 />
                 <AssetUploadField
                   name={genericElementUploadName(`${id}.iconUrl`)}
@@ -2105,18 +2717,20 @@ function SourceLockedField({
       </div>
       <p className="break-words text-sm font-semibold text-zinc-950">{value}</p>
       <p className="text-[11px] leading-4 text-zinc-500">
-        {tr("Dieses Feld wird zentral aus den Partnerdaten übernommen und bleibt für Skalierung synchron.")}
+        {tr("Dieses Feld wird zentral aus den Partnerdaten Ã¼bernommen und bleibt fÃ¼r Skalierung synchron.")}
       </p>
     </div>
   )
 }
 
 function SelectedElementPanel({
+  partner,
   element,
   config,
   setConfig,
   onInlineTextOverride,
 }: {
+  partner: PartnerWithDeals
   element: EditableElement | null
   config: MicrositeConfig
   setConfig: Dispatch<SetStateAction<MicrositeConfig>>
@@ -2141,9 +2755,9 @@ function SelectedElementPanel({
   const iconImageId = `${element.id}.image`
 
   return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+    <div className="min-w-0 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/50 p-4">
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-blue-700">
-        {tr("Ausgewähltes Element")}
+        {tr("AusgewÃ¤hltes Element")}
       </p>
       <h3 className="mt-1 text-sm font-semibold text-zinc-950">
         {tr(element.label)}
@@ -2151,7 +2765,7 @@ function SelectedElementPanel({
 
       <div className="mt-4 space-y-3">
         <p className="rounded-md bg-white/80 px-3 py-2 text-[11px] font-medium leading-5 text-zinc-600">
-          {tr("Direkt im Builder: Text anklicken und tippen. Bilder und Gruppen kannst du anklicken und leicht nach oben/unten ziehen, um den Abstand zu verändern.")}
+          {tr("Direkt im Builder: Text anklicken und tippen. Bilder und Gruppen kannst du anklicken und leicht nach oben/unten ziehen, um den Abstand zu verÃ¤ndern.")}
         </p>
 
         {isText ? (
@@ -2216,7 +2830,7 @@ function SelectedElementPanel({
               onChange={(value) =>
                 setConfig((current) => setElementTextValue(current, iconImageId, value))
               }
-              placeholder="https://…"
+              placeholder="https://..."
             />
             <AssetUploadField
               name={genericElementUploadName(iconImageId)}
@@ -2231,7 +2845,7 @@ function SelectedElementPanel({
         {isNavigationGroup ? (
           <>
             <RangeField
-              label="Top-Nav Höhe"
+              label="Top-Nav HÃ¶he"
               min={52}
               max={150}
               value={elementStyle.height}
@@ -2265,6 +2879,7 @@ function SelectedElementPanel({
 
         {socialGroupMatch ? (
           <SocialElementFields
+            partner={partner}
             platform={socialGroupMatch[1]}
             config={config}
             setConfig={setConfig}
@@ -2274,7 +2889,7 @@ function SelectedElementPanel({
         {isText || isGroup ? (
           <>
             <RangeField
-              label="Schriftgröße"
+              label="SchriftgrÃ¶ÃŸe"
               min={10}
               max={120}
               value={elementStyle.fontSize}
@@ -2372,7 +2987,7 @@ function SelectedElementPanel({
         {isIcon ? (
           <>
             <RangeField
-              label="Icongröße"
+              label="IcongrÃ¶ÃŸe"
               min={12}
               max={96}
               value={elementStyle.iconSize}
@@ -2392,7 +3007,7 @@ function SelectedElementPanel({
 
         {isImage ? (
           <RangeField
-            label="Bildgröße"
+            label="BildgrÃ¶ÃŸe"
             min={50}
             max={180}
             value={elementStyle.imageScale ?? 100}
@@ -2411,10 +3026,12 @@ function SelectedElementPanel({
 }
 
 function SocialElementFields({
+  partner,
   platform,
   config,
   setConfig,
 }: {
+  partner: PartnerWithDeals
   platform: string
   config: MicrositeConfig
   setConfig: Dispatch<SetStateAction<MicrositeConfig>>
@@ -2446,7 +3063,11 @@ function SocialElementFields({
       <EditorField
         name={`${id}_selected_label`}
         label="Beschriftung"
-        value={config.elementText[`${id}.label`] || label}
+        value={
+          config.elementText[`${id}.label`] ||
+          partnerSocialLabel(partner, platform) ||
+          label
+        }
         onChange={(value) =>
           setConfig((current) => setElementTextValue(current, `${id}.label`, value))
         }
@@ -2454,11 +3075,11 @@ function SocialElementFields({
       <EditorField
         name={`${id}_selected_url`}
         label="Link"
-        value={config.elementText[`${id}.url`] || ""}
+        value={config.elementText[`${id}.url`] || partnerSocialUrl(partner, platform)}
         onChange={(value) =>
           setConfig((current) => setElementTextValue(current, `${id}.url`, value))
         }
-        placeholder="https://…"
+        placeholder="https://..."
       />
       <EditorField
         name={`${id}_selected_icon_url`}
@@ -2469,7 +3090,7 @@ function SocialElementFields({
             setElementTextValue(current, `${id}.iconUrl`, value),
           )
         }
-        placeholder="https://…"
+        placeholder="https://..."
       />
       <AssetUploadField
         name={genericElementUploadName(`${id}.iconUrl`)}
@@ -2507,7 +3128,7 @@ function RangeField({
     <label className="block space-y-1.5 text-xs font-medium text-zinc-600">
       <span className="flex items-center justify-between gap-3">
         {tr(label)}
-        <span className="font-mono text-zinc-500">
+        <span className="text-sm font-semibold tabular-nums text-zinc-500">
           {hasValue ? `${value}${suffix}` : tr(emptyLabel)}
         </span>
       </span>
@@ -2524,7 +3145,7 @@ function RangeField({
         onClick={() => onChange(undefined)}
         className="text-[11px] font-semibold text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
       >
-        {tr("Zurück auf Auto")}
+        {tr("ZurÃ¼ck auf Auto")}
       </button>
     </label>
   )
@@ -2572,7 +3193,7 @@ function ElementColorField({
           type="color"
           value={displayValue}
           onChange={(event) => onChange(event.target.value)}
-          aria-label={tr("Elementfarbe auswählen")}
+          aria-label={tr("Elementfarbe auswÃ¤hlen")}
           className="h-10 w-14 cursor-pointer rounded-md border border-zinc-300 bg-white p-1"
         />
         <input
@@ -2581,7 +3202,7 @@ function ElementColorField({
           placeholder={tr("Auto")}
           pattern="#[0-9a-fA-F]{6}"
           aria-label={tr("Elementfarbe Hex")}
-          className="h-10 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 font-mono text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+          className="h-10 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
         />
       </div>
     </div>
@@ -2640,7 +3261,7 @@ function getEditableElement(
         hero: { ...current.hero, backgroundImageUrl: value },
       }),
     },
-    "hero.headline": textElement("Startbereich Überschrift", config.hero.headline, (current, value) => ({
+    "hero.headline": textElement("Startbereich Ãœberschrift", config.hero.headline, (current, value) => ({
       ...current,
       hero: { ...current.hero, headline: value },
     })),
@@ -2656,7 +3277,7 @@ function getEditableElement(
       ...current,
       hero: { ...current.hero, locationText: value },
     })),
-    "hero.openingText": textElement("Öffnungszeiten", config.hero.openingText, (current, value) => ({
+    "hero.openingText": textElement("Ã–ffnungszeiten", config.hero.openingText, (current, value) => ({
       ...current,
       hero: { ...current.hero, openingText: value },
     })),
@@ -2664,11 +3285,11 @@ function getEditableElement(
       ...current,
       hero: { ...current.hero, badgeText: value },
     })),
-    "hero.primaryButtonLabel": textElement("Primärer Button", config.hero.primaryButtonLabel, (current, value) => ({
+    "hero.primaryButtonLabel": textElement("PrimÃ¤rer Button", config.hero.primaryButtonLabel, (current, value) => ({
       ...current,
       hero: { ...current.hero, primaryButtonLabel: value },
     })),
-    "hero.secondaryButtonLabel": textElement("Sekundärer Button", config.hero.secondaryButtonLabel, (current, value) => ({
+    "hero.secondaryButtonLabel": textElement("SekundÃ¤rer Button", config.hero.secondaryButtonLabel, (current, value) => ({
       ...current,
       hero: { ...current.hero, secondaryButtonLabel: value },
     })),
@@ -2692,7 +3313,7 @@ function getEditableElement(
         deals: { ...current.deals, topDealImageUrl: value },
       }),
     },
-    "deals.headline": textElement("Deals Überschrift", config.deals.headline, (current, value) => ({
+    "deals.headline": textElement("Deals Ãœberschrift", config.deals.headline, (current, value) => ({
       ...current,
       deals: { ...current.deals, headline: value },
     })),
@@ -2704,7 +3325,7 @@ function getEditableElement(
       ...current,
       deals: { ...current.deals, description: value },
     })),
-    "deals.topDealHeadline": textElement("Top-Deal Überschrift", config.deals.topDealHeadline, (current, value) => ({
+    "deals.topDealHeadline": textElement("Top-Deal Ãœberschrift", config.deals.topDealHeadline, (current, value) => ({
       ...current,
       deals: { ...current.deals, topDealHeadline: value },
     })),
@@ -2720,7 +3341,7 @@ function getEditableElement(
       ...current,
       deals: { ...current.deals, topDealButtonLabel: value },
     })),
-    "stamps.headline": textElement("Stempelkarte Überschrift", config.stamps.headline, (current, value) => ({
+    "stamps.headline": textElement("Stempelkarte Ãœberschrift", config.stamps.headline, (current, value) => ({
       ...current,
       stamps: { ...current.stamps, headline: value },
     })),
@@ -2736,7 +3357,7 @@ function getEditableElement(
       ...current,
       content: { ...current.content, menuLabel: value },
     })),
-    "content.menuHeadline": textElement("Speisekarte Überschrift", config.content.menuHeadline, (current, value) => ({
+    "content.menuHeadline": textElement("Speisekarte Ãœberschrift", config.content.menuHeadline, (current, value) => ({
       ...current,
       content: { ...current.content, menuHeadline: value },
     })),
@@ -2744,20 +3365,20 @@ function getEditableElement(
       ...current,
       content: { ...current.content, menuDescription: value },
     })),
-    "content.aboutLabel": textElement("Über uns Label", config.content.aboutLabel, (current, value) => ({
+    "content.aboutLabel": textElement("Ãœber uns Label", config.content.aboutLabel, (current, value) => ({
       ...current,
       content: { ...current.content, aboutLabel: value },
     })),
-    "content.aboutHeadline": textElement("Über uns Überschrift", config.content.aboutHeadline, (current, value) => ({
+    "content.aboutHeadline": textElement("Ãœber uns Ãœberschrift", config.content.aboutHeadline, (current, value) => ({
       ...current,
       content: { ...current.content, aboutHeadline: value },
     })),
-    "content.aboutText": textElement("Über uns Text", config.content.aboutText, (current, value) => ({
+    "content.aboutText": textElement("Ãœber uns Text", config.content.aboutText, (current, value) => ({
       ...current,
       content: { ...current.content, aboutText: value },
     })),
     "content.aboutHeroImageUrl": {
-      label: "Über uns Hintergrundbild",
+      label: "Ãœber uns Hintergrundbild",
       kind: "image",
       value: config.elementText["content.aboutHeroImageUrl"] || "",
       uploadName: "about_hero_file",
@@ -2770,7 +3391,7 @@ function getEditableElement(
       }),
     },
     "content.aboutIngredientImageUrl": {
-      label: "Über uns Zutatenbild",
+      label: "Ãœber uns Zutatenbild",
       kind: "image",
       value: config.elementText["content.aboutIngredientImageUrl"] || "",
       uploadName: "about_ingredient_file",
@@ -2783,7 +3404,7 @@ function getEditableElement(
       }),
     },
     "content.aboutLocationImageUrl": {
-      label: "Über uns Ortsbild",
+      label: "Ãœber uns Ortsbild",
       kind: "image",
       value: config.elementText["content.aboutLocationImageUrl"] || "",
       uploadName: "about_location_file",
@@ -2796,7 +3417,7 @@ function getEditableElement(
       }),
     },
     "content.aboutPrepImageUrl": {
-      label: "Über uns Detailbild",
+      label: "Ãœber uns Detailbild",
       kind: "image",
       value: config.elementText["content.aboutPrepImageUrl"] || "",
       uploadName: "about_prep_file",
@@ -2812,11 +3433,11 @@ function getEditableElement(
       ...current,
       content: { ...current.content, contactLabel: value },
     })),
-    "content.contactHeadline": textElement("Kontakt Überschrift", config.content.contactHeadline, (current, value) => ({
+    "content.contactHeadline": textElement("Kontakt Ãœberschrift", config.content.contactHeadline, (current, value) => ({
       ...current,
       content: { ...current.content, contactHeadline: value },
     })),
-    "content.appHeadline": textElement("App-Banner Überschrift", config.content.appHeadline, (current, value) => ({
+    "content.appHeadline": textElement("App-Banner Ãœberschrift", config.content.appHeadline, (current, value) => ({
       ...current,
       content: { ...current.content, appHeadline: value },
     })),
@@ -2971,7 +3592,7 @@ function getEditableElement(
     },
     "deals.benefit.0.text": {
       label: "Benefit 1 Text",
-      fallback: "Nur für Benefitsi Mitglieder",
+      fallback: "Nur fÃ¼r Benefitsi Mitglieder",
     },
     "deals.benefit.1.title": {
       label: "Benefit 2 Titel",
@@ -2994,20 +3615,20 @@ function getEditableElement(
       fallback: "Direkt 2 Stempel beim ersten Besuch.",
     },
     "content.aboutSlogan": {
-      label: "Über uns Slogan",
-      fallback: "Aus Leidenschaft für gutes Essen und unsere Heimat.",
+      label: "Ãœber uns Slogan",
+      fallback: "Aus Leidenschaft fÃ¼r gutes Essen und unsere Heimat.",
     },
     "content.aboutTextSecond": {
-      label: "Über uns Zusatztext",
+      label: "Ãœber uns Zusatztext",
       fallback:
-        "Ob in der Mittagspause, nach der Wanderung oder beim Abendessen mit Freunden – wir sind für dich da. Schnell, lecker und immer mit einem Lächeln.",
+        "Ob in der Mittagspause, nach der Wanderung oder beim Abendessen mit Freunden â€“ wir sind fÃ¼r dich da. Schnell, lecker und immer mit einem LÃ¤cheln.",
     },
     "content.aboutThanks": {
-      label: "Über uns Dank",
-      fallback: "Danke, Annweiler – ihr seid die Besten!",
+      label: "Ãœber uns Dank",
+      fallback: "Danke, Annweiler â€“ ihr seid die Besten!",
     },
     "content.aboutSignature": {
-      label: "Über uns Signatur",
+      label: "Ãœber uns Signatur",
       fallback: "Euer Knobi-Team",
     },
     "content.contactSlogan": {
@@ -3015,53 +3636,53 @@ function getEditableElement(
       fallback: "Wir freuen uns auf dich.",
     },
     "content.contactOpening": {
-      label: "Kontakt Öffnungszeiten",
-      fallback: config.hero.openingText.replace("Heute geöffnet ·", "Täglich"),
+      label: "Kontakt Ã–ffnungszeiten",
+      fallback: config.hero.openingText.replace("Heute geÃ¶ffnet Â·", "TÃ¤glich"),
     },
     "content.contactSocialText": {
       label: "Social-Media-Text",
-      fallback: "Folge uns für Aktionen & Neuigkeiten.",
+      fallback: "Folge uns fÃ¼r Aktionen & Neuigkeiten.",
     },
     "content.contact.address": {
       label: "Kontakt Adresse",
-      fallback: "Adresse im Admin ergänzen",
+      fallback: "Adresse im Admin ergÃ¤nzen",
     },
     "content.contact.phone": {
       label: "Kontakt Telefon",
-      fallback: "Telefon im Admin ergänzen",
+      fallback: "Telefon im Admin ergÃ¤nzen",
     },
     "content.contact.opening": {
-      label: "Kontakt Öffnungszeiten",
-      fallback: config.hero.openingText.replace("Heute geöffnet ·", "Täglich"),
+      label: "Kontakt Ã–ffnungszeiten",
+      fallback: config.hero.openingText.replace("Heute geÃ¶ffnet Â·", "TÃ¤glich"),
     },
     "content.faqLabel": {
       label: "FAQ-Label",
       fallback: "FAQ",
     },
     "content.faqHeadline": {
-      label: "FAQ Überschrift",
-      fallback: "Häufige Fragen. Schnelle Antworten.",
+      label: "FAQ Ãœberschrift",
+      fallback: "HÃ¤ufige Fragen. Schnelle Antworten.",
     },
     "content.faqText": {
       label: "FAQ Text",
       fallback:
-        "Alles Wichtige zu deiner Benefitsi Mitgliedschaft und den Vorteilen bei Knobi Döner & Pizza Haus.",
+        "Alles Wichtige zu deiner Benefitsi Mitgliedschaft und den Vorteilen bei Knobi DÃ¶ner & Pizza Haus.",
     },
     "content.aboutValue.0": {
-      label: "Über uns Wert 1",
-      fallback: "Täglich frisch",
+      label: "Ãœber uns Wert 1",
+      fallback: "TÃ¤glich frisch",
     },
     "content.aboutValue.1": {
-      label: "Über uns Wert 2",
+      label: "Ãœber uns Wert 2",
       fallback: "Hausgemachte Saucen",
     },
     "content.aboutValue.2": {
-      label: "Über uns Wert 3",
+      label: "Ãœber uns Wert 3",
       fallback: "Freundlicher Service",
     },
     "content.aboutValue.3": {
-      label: "Über uns Wert 4",
-      fallback: "Döner, Pizza und Fast Food",
+      label: "Ãœber uns Wert 4",
+      fallback: "DÃ¶ner, Pizza und Fast Food",
     },
     "content.appKicker": {
       label: "App-Banner Label",
@@ -3081,24 +3702,24 @@ function getEditableElement(
     },
     "content.appQrLabel": {
       label: "QR-Code Hinweis",
-      fallback: "App öffnen & einchecken",
+      fallback: "App Ã¶ffnen & einchecken",
     },
     "content.appQrText": {
       label: "QR-Code Text",
       fallback: "QR-Code scannen",
     },
     "content.appButtonLabel": {
-      label: "App-Schaltfläche",
-      fallback: "App öffnen",
+      label: "App-SchaltflÃ¤che",
+      fallback: "App Ã¶ffnen",
     },
     "stamps.description": {
       label: "Stempelkarte Hinweis",
       fallback:
-        "Belohnungen und benötigte Stempel werden direkt aus den Partnerdaten übernommen.",
+        "Belohnungen und benÃ¶tigte Stempel werden direkt aus den Partnerdaten Ã¼bernommen.",
     },
     "footer.trust.0.label": {
       label: "Footer Vertrauen 1",
-      fallback: "Sicher & geprüft",
+      fallback: "Sicher & geprÃ¼ft",
     },
     "footer.trust.1.label": {
       label: "Footer Vertrauen 2",
@@ -3184,17 +3805,17 @@ function getEditableElement(
       {
         question: "Welche Vorteile gibt es mit Premium?",
         answer:
-          "Premium-Mitglieder erhalten zusätzliche Deals, exklusive Belohnungen und besondere Aktionen bei teilnehmenden lokalen Partnern.",
+          "Premium-Mitglieder erhalten zusÃ¤tzliche Deals, exklusive Belohnungen und besondere Aktionen bei teilnehmenden lokalen Partnern.",
       },
       {
-        question: "Wie nutze ich den 2 für 1 Deal?",
+        question: "Wie nutze ich den 2 fÃ¼r 1 Deal?",
         answer:
           "Aktiviere den Vorteil vor deiner Bestellung in der App. Vor Ort zeigst du den aktiven Vorteil einfach beim Bezahlen vor.",
       },
       {
         question: "Brauche ich die Benefitsi App?",
         answer:
-          "Ja, Deals, Stempel und Belohnungen werden digital in der App gesammelt und eingelöst.",
+          "Ja, Deals, Stempel und Belohnungen werden digital in der App gesammelt und eingelÃ¶st.",
       },
       {
         question: "Kann ich online bestellen?",
@@ -3242,7 +3863,7 @@ function getEditableElement(
       fallback: "pin",
     },
     "hero.openingIcon": {
-      label: "Öffnungszeiten Icon",
+      label: "Ã–ffnungszeiten Icon",
       fallback: "status",
     },
     "content.appKicker.icon": {
@@ -3254,19 +3875,19 @@ function getEditableElement(
       fallback: "check",
     },
     "content.aboutValue.0.icon": {
-      label: "Über uns Icon 1",
+      label: "Ãœber uns Icon 1",
       fallback: "leaf",
     },
     "content.aboutValue.1.icon": {
-      label: "Über uns Icon 2",
+      label: "Ãœber uns Icon 2",
       fallback: "bowl",
     },
     "content.aboutValue.2.icon": {
-      label: "Über uns Icon 3",
+      label: "Ãœber uns Icon 3",
       fallback: "smile",
     },
     "content.aboutValue.3.icon": {
-      label: "Über uns Icon 4",
+      label: "Ãœber uns Icon 4",
       fallback: "pizza",
     },
     "content.contact.address.icon": {
@@ -3278,7 +3899,7 @@ function getEditableElement(
       fallback: "phone",
     },
     "content.contact.opening.icon": {
-      label: "Öffnungszeiten Icon",
+      label: "Ã–ffnungszeiten Icon",
       fallback: "clock",
     },
     "footer.trust.0.icon": {
@@ -3569,11 +4190,11 @@ function placeCaretAtPoint(element: HTMLElement, x: number, y: number) {
 function ConfigSection({ title, children }: { title: string; children: ReactNode }) {
   const { tr } = useBuilderI18n()
   return (
-    <details open className="space-y-3">
-      <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.12em] text-zinc-500">
+    <details className="min-w-0 space-y-3">
+      <summary className="cursor-pointer break-words text-xs font-bold uppercase tracking-[0.12em] text-zinc-500">
         {tr(title)}
       </summary>
-      <div className="space-y-3 pt-2">{children}</div>
+      <div className="min-w-0 space-y-3 pt-2">{children}</div>
     </details>
   )
 }
@@ -3653,7 +4274,7 @@ function ColorField({
           onChange={(event) => onChange(event.target.value)}
           pattern="#[0-9a-fA-F]{6}"
           placeholder="#f59e0b"
-          className="h-10 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 font-mono text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+          className="h-10 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
           aria-label={tr(label)}
         />
       </div>

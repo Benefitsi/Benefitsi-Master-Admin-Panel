@@ -1,3 +1,14 @@
+import {
+  defaultMicrositeCopyForPartner,
+  defaultMicrositeTemplateForPartner,
+  sanitizePrintableFormatId,
+  sanitizePrintableTemplateId,
+  sanitizeTemplateId,
+  type MicrositeTemplateId,
+  type PrintableFormatId,
+  type PrintableTemplateId,
+} from "./microsite-personalization"
+
 export type MicrositeStatus = "draft" | "review" | "approved" | "published" | "archived"
 
 export type MicrositeAsset = {
@@ -10,7 +21,7 @@ export type MicrositeAsset = {
 }
 
 export type MicrositeConfig = {
-  template: "restaurant-premium"
+  template: MicrositeTemplateId
   branding: {
     accent: string
     accentSecondary: string
@@ -82,6 +93,14 @@ export type MicrositeConfig = {
     lastQaAt: string
     versionNote: string
   }
+  printables: {
+    activeFormat: PrintableFormatId
+    activeTemplate: PrintableTemplateId
+    headline: string
+    subheadline: string
+    cta: string
+    note: string
+  }
   elementStyles: Record<string, MicrositeElementStyle>
   elementText: Record<string, string>
 }
@@ -133,9 +152,20 @@ type PartnerSeed = {
   short_name?: string | null
   city_name?: string | null
   address?: string | null
+  description?: string | null
+  category?: string[] | null
+  type?: string | null
   logo_url?: string | null
   feature_card_url?: string | null
   cover_urls?: string[] | null
+  website?: string | null
+  phone?: string | null
+  email?: string | null
+  socials?: Array<{
+    platform: string | null
+    url: string | null
+    handle: string | null
+  }> | null
   opening_hours?: Array<{
     weekday: number | null
     opens_at: string | null
@@ -160,9 +190,11 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
   const location = micrositeLocationText(partner)
   const backgroundImage =
     partner.cover_urls?.[0] || partner.feature_card_url || "/upload-image.jpg"
+  const defaults = defaultMicrositeCopyForPartner(partner)
+  const defaultTemplate = defaultMicrositeTemplateForPartner(partner)
 
   return {
-    template: "restaurant-premium",
+    template: defaultTemplate,
     branding: {
       accent: "#f59e0b",
       accentSecondary: "#16c4cc",
@@ -174,19 +206,14 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
     },
     hero: {
       headline: name,
-      slogan: "Lecker. Frisch. Aus der Region.",
+      slogan: defaults.heroSlogan,
       locationText: location,
       openingText: micrositeOpeningText(partner),
       backgroundImageUrl: backgroundImage,
       badgeText: "Offizieller Benefitsi Partner",
       primaryButtonLabel: "Deals ansehen",
-      secondaryButtonLabel: "Speisekarte ansehen",
-      services: [
-        { label: "Abholung", icon: "bag" },
-        { label: "Vegetarische Gerichte", icon: "leaf" },
-        { label: "Bar / EC / PayPal", icon: "card" },
-        { label: "Familienfreundlich", icon: "people" },
-      ],
+      secondaryButtonLabel: `${defaults.menuLabel} ansehen`,
+      services: defaults.services,
     },
     deals: {
       label: "Deals & Vorteile",
@@ -212,20 +239,17 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       slogan: "Ihre Treue wird belohnt!",
     },
     content: {
-      menuLabel: "Speisekarte",
-      menuHeadline: "Beliebte Gerichte direkt entdecken.",
-      menuDescription:
-        "Eine kompakte Auswahl aus der aktuellen Partner-Speisekarte.",
+      menuLabel: defaults.menuLabel,
+      menuHeadline: defaults.menuHeadline,
+      menuDescription: defaults.menuDescription,
       aboutLabel: "Über uns",
       aboutHeadline: `${partner.short_name || name} auf einen Blick`,
-      aboutText:
-        "Frische Zutaten, schnelle Abholung und lokale Vorteile in der Benefitsi App.",
+      aboutText: defaults.aboutText,
       contactLabel: "Kontakt",
-      contactHeadline: "Bereit für deinen nächsten Besuch?",
-      appHeadline: "Alle Vorteile in deiner Benefitsi App",
-      appText:
-        "Deals aktivieren, Punkte sammeln & lokale Partner unterstützen.",
-      footerText: "Lokale Vorteile. Einfach gesammelt. Fair für Partner.",
+      contactHeadline: defaults.contactHeadline,
+      appHeadline: defaults.appHeadline,
+      appText: defaults.appText,
+      footerText: defaults.footerText,
     },
     seo: {
       title: `${name} in ${location} | Deals, Stempelkarte & Speisekarte`,
@@ -246,6 +270,14 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       publishReviewDone: false,
       lastQaAt: "",
       versionNote: "",
+    },
+    printables: {
+      activeFormat: "flyer-a5",
+      activeTemplate: "bold-offer",
+      headline: defaults.printHeadline,
+      subheadline: defaults.printSubheadline,
+      cta: "Jetzt in der Benefitsi App entdecken",
+      note: defaults.printNote,
     },
     elementStyles: {},
     elementText: {},
@@ -274,9 +306,11 @@ export function resolveMicrositeConfig(
   const seo = isRecord(config.seo) ? config.seo : {}
   const assets = isRecord(config.assets) ? config.assets : {}
   const builder = isRecord(config.builder) ? config.builder : {}
+  const printables = isRecord(config.printables) ? config.printables : {}
 
   return {
     ...fallback,
+    template: sanitizeTemplateId(config.template, fallback.template),
     branding: {
       ...fallback.branding,
       accent: safeColor(branding.accent, fallback.branding.accent),
@@ -402,6 +436,24 @@ export function resolveMicrositeConfig(
       publishReviewDone: typeof builder.publishReviewDone === "boolean" ? builder.publishReviewDone : fallback.builder.publishReviewDone,
       lastQaAt: safeString(builder.lastQaAt, fallback.builder.lastQaAt),
       versionNote: safeString(builder.versionNote, fallback.builder.versionNote),
+    },
+    printables: {
+      ...fallback.printables,
+      activeFormat: sanitizePrintableFormatId(
+        printables.activeFormat,
+        fallback.printables.activeFormat,
+      ),
+      activeTemplate: sanitizePrintableTemplateId(
+        printables.activeTemplate,
+        fallback.printables.activeTemplate,
+      ),
+      headline: safeString(printables.headline, fallback.printables.headline),
+      subheadline: safeString(
+        printables.subheadline,
+        fallback.printables.subheadline,
+      ),
+      cta: safeString(printables.cta, fallback.printables.cta),
+      note: safeString(printables.note, fallback.printables.note),
     },
     elementStyles: normalizeElementStyles(elementStyles),
     elementText: normalizeElementTextOverrides(elementText),

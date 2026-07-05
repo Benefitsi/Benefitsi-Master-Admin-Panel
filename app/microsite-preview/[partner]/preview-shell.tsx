@@ -6,7 +6,7 @@ import {
   resolveMicrositeConfig,
   type MicrositeConfig,
 } from "@/lib/microsites"
-import { RestaurantPremiumMicrosite } from "@/components/microsite/restaurant-premium-microsite"
+import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
 
 export function MicrositePreviewShell({
   partner,
@@ -91,7 +91,7 @@ export function MicrositePreviewShell({
         </div>
       </div>
       <div className={isMobile ? "mx-auto max-w-[390px]" : ""}>
-        <RestaurantPremiumMicrosite partner={partner} config={displayedConfig} />
+        <MicrositeRenderer partner={partner} config={displayedConfig} />
       </div>
     </main>
   )

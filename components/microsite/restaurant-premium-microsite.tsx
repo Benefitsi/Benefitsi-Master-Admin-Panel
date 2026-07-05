@@ -10,6 +10,10 @@ import type {
 } from "@/lib/admin-data"
 import type { MicrositeConfig, MicrositeElementStyle } from "@/lib/microsites"
 import { defaultMicrositeFaqItems } from "@/lib/microsite-seo"
+import {
+  partnerSocialLabel,
+  partnerSocialUrl,
+} from "@/lib/microsite-personalization"
 
 type MicrositeMenuItem = MenuItem & {
   categoryName?: string | null
@@ -46,6 +50,36 @@ const socialPlatforms: Array<{
   { platform: "linkedin", label: "LinkedIn", defaultVisible: false },
 ]
 
+function restaurantThemeForTemplate(template: MicrositeConfig["template"]) {
+  if (template === "restaurant-local") {
+    return {
+      shell: "bg-[#fdfaf5] text-[#2f241c] shadow-[0_30px_90px_rgba(96,63,30,.12)]",
+      header: "border-amber-100/80 bg-[#fff8f1]/92",
+      nav: "border-amber-200/70 bg-white/78 text-[#6b4f3a] shadow-[inset_0_1px_0_rgba(255,255,255,.95),0_12px_34px_rgba(96,63,30,.08)]",
+      mobileButton: "border-amber-200 bg-white text-[#6b4f3a] hover:bg-amber-50",
+      mobilePanel: "border-amber-100 bg-white text-[#4b3425] shadow-[0_24px_64px_rgba(96,63,30,.16)]",
+    }
+  }
+
+  if (template === "restaurant-clean") {
+    return {
+      shell: "bg-[#fbfbfb] text-[#111827] shadow-[0_30px_90px_rgba(15,23,42,.08)]",
+      header: "border-zinc-200 bg-white/92",
+      nav: "border-zinc-200 bg-zinc-50/86 text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,.95),0_12px_34px_rgba(15,23,42,.05)]",
+      mobileButton: "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50",
+      mobilePanel: "border-zinc-200 bg-white text-zinc-800 shadow-[0_24px_64px_rgba(15,23,42,.14)]",
+    }
+  }
+
+  return {
+    shell: "bg-[#fffdf8] text-[#151515] shadow-[0_30px_90px_rgba(15,23,42,.10)]",
+    header: "border-white/70 bg-white/88",
+    nav: "border-zinc-200/70 bg-white/72 text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,.95),0_12px_34px_rgba(15,23,42,.06)]",
+    mobileButton: "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50",
+    mobilePanel: "border-zinc-200 bg-white text-zinc-800 shadow-[0_24px_64px_rgba(15,23,42,.18)]",
+  }
+}
+
 export function RestaurantPremiumMicrosite({
   partner,
   config,
@@ -53,6 +87,7 @@ export function RestaurantPremiumMicrosite({
   partner: PartnerWithDeals
   config: MicrositeConfig
 }) {
+  const theme = restaurantThemeForTemplate(config.template)
   const style = {
     "--site-accent": config.branding.accent,
     "--site-secondary": config.branding.accentSecondary,
@@ -61,10 +96,10 @@ export function RestaurantPremiumMicrosite({
   return (
     <article
       style={style}
-      className="premium-microsite @container relative isolate overflow-hidden rounded-[1.6rem] bg-[#fffdf8] text-[#151515] shadow-[0_30px_90px_rgba(15,23,42,.10)]"
+      className={`premium-microsite @container relative isolate overflow-hidden rounded-[1.6rem] ${theme.shell}`}
     >
       <PremiumMotionEffects />
-      <SiteHeader partner={partner} config={config} />
+      <SiteHeader partner={partner} config={config} theme={theme} />
       <HeroSection config={config} />
       <DealsSection partner={partner} config={config} />
       <MenuSection partner={partner} config={config} />
@@ -150,9 +185,11 @@ function PremiumMotionEffects() {
 function SiteHeader({
   partner,
   config,
+  theme,
 }: {
   partner: PartnerWithDeals
   config: MicrositeConfig
+  theme: ReturnType<typeof restaurantThemeForTemplate>
 }) {
   const navStyle = config.elementStyles["navigation.group"] ?? {}
   const [menuOpen, setMenuOpen] = useState(false)
@@ -161,7 +198,7 @@ function SiteHeader({
   return (
     <header
       {...editable("navigation.group", "group", "Top-Navigation")}
-      className="sticky top-0 z-40 flex items-center border-b border-white/70 bg-white/88 px-4 py-2.5 shadow-[0_18px_55px_-34px_rgba(15,23,42,.55)] backdrop-blur-2xl @min-[640px]:px-6 @min-[1024px]:px-8"
+      className={`sticky top-0 z-40 flex items-center border-b px-4 py-2.5 shadow-[0_18px_55px_-34px_rgba(15,23,42,.55)] backdrop-blur-2xl @min-[640px]:px-6 @min-[1024px]:px-8 ${theme.header}`}
       style={{
         minHeight: navStyle.height ? `${navStyle.height}px` : undefined,
         ...spacingStyleFor(config, "navigation.group"),
@@ -186,7 +223,7 @@ function SiteHeader({
           </div>
         </div>
         <nav
-          className="hidden min-w-0 items-center justify-end gap-0.5 rounded-full border border-zinc-200/70 bg-white/72 px-1 py-1 text-[12px] font-bold text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,.95),0_12px_34px_rgba(15,23,42,.06)] backdrop-blur-xl @min-[640px]:flex"
+          className={`hidden min-w-0 items-center justify-end gap-0.5 rounded-full border px-1 py-1 text-[12px] font-bold backdrop-blur-xl @min-[640px]:flex ${theme.nav}`}
           style={navigationTabsStyleFor(config)}
         >
           {navLinks.map((link) => (
@@ -197,11 +234,11 @@ function SiteHeader({
           <button
             type="button"
             onClick={() => setMenuOpen((current) => !current)}
-            className="premium-button inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-black text-zinc-900 shadow-sm transition hover:bg-zinc-50"
+            className={`premium-button inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black shadow-sm transition ${theme.mobileButton}`}
             aria-expanded={menuOpen}
             aria-controls="microsite-mobile-navigation"
           >
-            Menü
+            Menu
             <span className="grid gap-1">
               <span className="block h-0.5 w-4 rounded bg-current" />
               <span className="block h-0.5 w-4 rounded bg-current" />
@@ -212,7 +249,7 @@ function SiteHeader({
         {menuOpen ? (
           <nav
             id="microsite-mobile-navigation"
-            className="absolute right-0 top-[calc(100%+.65rem)] z-50 grid w-[min(88vw,330px)] gap-1 rounded-2xl border border-zinc-200 bg-white p-2 text-sm font-bold text-zinc-800 shadow-[0_24px_64px_rgba(15,23,42,.18)] @min-[640px]:hidden"
+            className={`absolute right-0 top-[calc(100%+.65rem)] z-50 grid w-[min(88vw,330px)] gap-1 rounded-2xl border p-2 text-sm font-bold @min-[640px]:hidden ${theme.mobilePanel}`}
           >
             {navLinks.map((link) => (
               <NavigationLink
@@ -1475,14 +1512,17 @@ function CompactContactSection({
           >
             {textValue(config, "content.contactSocialText", "Folge uns für Aktionen & Neuigkeiten.")}
           </p>
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             {socialPlatforms
-              .filter((item) => socialVisible(config, item.platform, item.defaultVisible))
+              .filter((item) =>
+                socialVisible(config, partner, item.platform, item.defaultVisible),
+              )
               .map((item) => (
                 <SocialBadge
                   key={item.platform}
                   platform={item.platform}
                   label={item.label}
+                  partner={partner}
                   config={config}
                 />
               ))}
@@ -2411,16 +2451,22 @@ function ContactInfoLine({
 function SocialBadge({
   platform,
   label,
+  partner,
   config,
 }: {
   platform: SocialPlatform
   label: string
+  partner: PartnerWithDeals
   config: MicrositeConfig
 }) {
   const id = `social.${platform}`
   const iconUrl = textValue(config, `${id}.iconUrl`, "")
-  const href = textValue(config, `${id}.url`, "#kontakt")
-  const displayLabel = textValue(config, `${id}.label`, label)
+  const href = textValue(config, `${id}.url`, partnerSocialUrl(partner, platform) || "#kontakt")
+  const displayLabel = textValue(
+    config,
+    `${id}.label`,
+    partnerSocialLabel(partner, platform) || label,
+  )
   const color =
     platform === "instagram"
       ? "from-fuchsia-500 via-pink-500 to-orange-400"
@@ -2527,6 +2573,7 @@ function SocialIcon({ platform }: { platform: SocialPlatform }) {
 
 function socialVisible(
   config: MicrositeConfig,
+  partner: PartnerWithDeals,
   platform: SocialPlatform,
   defaultVisible: boolean,
 ) {
@@ -2538,6 +2585,10 @@ function socialVisible(
 
   if (value === "false") {
     return false
+  }
+
+  if (partnerSocialUrl(partner, platform)) {
+    return true
   }
 
   return defaultVisible

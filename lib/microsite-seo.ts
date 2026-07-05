@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import type { MenuItem, PartnerWithDeals } from "./admin-data"
 import type { MicrositeConfig } from "./microsites"
+import { partnerSocialUrl } from "./microsite-personalization"
 
 export const defaultMicrositeFaqItems = [
   {
@@ -46,8 +47,9 @@ export function createMicrositeMetadata({
 }): Metadata {
   const name = partner.name || config.hero.headline
   const location = config.hero.locationText
-  const fallbackTitle = `${name} in ${location} | Deals, Stempelkarte & Speisekarte`
-  const fallbackDescription = `${name}: ${config.hero.slogan} Entdecke Benefitsi Deals, Stempelkarte, Speisekarte, Öffnungszeiten und Kontakt in ${location}.`
+  const offerLabel = config.content.menuLabel || "Angebote"
+  const fallbackTitle = `${name} in ${location} | Deals, Benefitsi & ${offerLabel}`
+  const fallbackDescription = `${name}: ${config.hero.slogan} Entdecke Benefitsi Deals, ${offerLabel}, Öffnungszeiten und Kontakt in ${location}.`
   const title = config.seo.title || fallbackTitle
   const description = truncateDescription(config.seo.description || fallbackDescription)
   const canonical = canonicalUrlFor(partner, slug)
@@ -127,9 +129,18 @@ export function createMicrositeStructuredData({
     ...(partner.cover_urls ?? []),
   ])
   const restaurantId = `${canonical}#restaurant`
+  const businessType = schemaBusinessType(partner, config)
+  const sameAs = uniqueStrings([
+    partner.website,
+    partnerSocialUrl(partner, "instagram"),
+    partnerSocialUrl(partner, "facebook"),
+    partnerSocialUrl(partner, "tiktok"),
+    partnerSocialUrl(partner, "youtube"),
+    partnerSocialUrl(partner, "linkedin"),
+  ])
 
   const restaurant = compactJsonLd({
-    "@type": "Restaurant",
+    "@type": businessType,
     "@id": restaurantId,
     name,
     url: canonical,
@@ -156,9 +167,10 @@ export function createMicrositeStructuredData({
           longitude: coordinates.longitude,
         }
       : undefined,
-    servesCuisine: cuisineForPartner(partner),
+    servesCuisine:
+      businessType === "Restaurant" ? cuisineForPartner(partner) : undefined,
     openingHoursSpecification: openingHoursForSchema(partner),
-    sameAs: partner.website ? [partner.website] : undefined,
+    sameAs: sameAs.length ? sameAs : undefined,
     hasMenu: menuItems.length ? { "@id": `${canonical}#menu` } : undefined,
   })
 
@@ -341,6 +353,46 @@ function cuisineForPartner(partner: PartnerWithDeals) {
   if (/restaurant/.test(haystack)) cuisines.push("Restaurant")
 
   return [...new Set(cuisines)]
+}
+
+function schemaBusinessType(
+  partner: PartnerWithDeals,
+  config: MicrositeConfig,
+) {
+  if (config.template === "salon-editorial" || config.template === "atelier-noir") {
+    return "BeautySalon"
+  }
+
+  if (config.template === "wellness-serene") {
+    return "DaySpa"
+  }
+
+  if (config.template === "cinema-spotlight" || config.template === "festival-neon") {
+    return "MovieTheater"
+  }
+
+  const haystack = [
+    partner.type,
+    ...(partner.category ?? []),
+    partner.name,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  if (/salon|friseur|barber|beauty|kosmetik/.test(haystack)) {
+    return "BeautySalon"
+  }
+
+  if (/massage|spa|wellness|yoga|therapy|therapie/.test(haystack)) {
+    return "DaySpa"
+  }
+
+  if (/cinema|kino|movie|film/.test(haystack)) {
+    return "MovieTheater"
+  }
+
+  return "Restaurant"
 }
 
 function parseCoordinates(value: PartnerWithDeals["coordinates"]) {
