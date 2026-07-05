@@ -100,68 +100,68 @@ function writeBuilderLocale(locale: BuilderLocale) {
 const builderTranslations: Record<string, string> = {
   "Microsite": "Microsite",
   "Restaurant-Premium-Vorlage": "Restaurant premium template",
-  "FÃ¼r MobilgerÃ¤te optimierte Vorlage Â· Daten vom Partnerprofil Â· versionierte VerÃ¶ffentlichung":
-    "Mobile-first template Â· partner-profile data Â· versioned publishing",
-  "Aktuelle Vorschau Ã¶ffnen": "Open current preview",
-  "Gespeicherten Entwurf Ã¶ffnen": "Open saved draft",
+  "Für Mobilgeräte optimierte Vorlage · Daten vom Partnerprofil · versionierte Veröffentlichung":
+    "Mobile-first template · partner-profile data · versioned publishing",
+  "Aktuelle Vorschau öffnen": "Open current preview",
+  "Gespeicherten Entwurf öffnen": "Open saved draft",
   "Noch nicht live": "Not live yet",
-  "In PrÃ¼fung": "In review",
+  "In Prüfung": "In review",
   "Entwurf vorhanden": "Draft available",
-  "Editorbreite Ã¤ndern": "Resize editor width",
-  "Editorbreite per Ziehen Ã¤ndern": "Drag to resize editor width",
+  "Editorbreite ändern": "Resize editor width",
+  "Editorbreite per Ziehen ändern": "Drag to resize editor width",
   "Microsite-Bearbeitung einklappen": "Collapse microsite editor",
   "Microsite-Bearbeitung ausklappen": "Expand microsite editor",
   "Marke": "Brand",
   "Akzentfarbe": "Accent color",
   "Gradientfarbe": "Gradient color",
   "Im Partnerprofil hinterlegen": "Set in the partner profile",
-  "Partnerprofil â†’ Media": "Partner profile -> Media",
+  "Partnerprofil → Media": "Partner profile -> Media",
   "Badge-Icon URL": "Badge icon URL",
   "Neues Badge-Icon hochladen": "Upload new badge icon",
   "Startbereich": "Hero section",
-  "Ãœberschrift": "Headline",
-  "Partnerprofil â†’ Name": "Partner profile -> Name",
+  "Überschrift": "Headline",
+  "Partnerprofil → Name": "Partner profile -> Name",
   "Ort": "Location",
-  "Partnerprofil â†’ Stadt/Adresse": "Partner profile -> City/address",
-  "Ã–ffnungszeiten": "Opening hours",
-  "Partnerprofil â†’ Ã–ffnungszeiten": "Partner profile -> Opening hours",
+  "Partnerprofil → Stadt/Adresse": "Partner profile -> City/address",
+  "Öffnungszeiten": "Opening hours",
+  "Partnerprofil → Öffnungszeiten": "Partner profile -> Opening hours",
   "Startbild URL": "Hero image URL",
   "Neues Startbild hochladen": "Upload new hero image",
   "Deals & Vorteile": "Deals & benefits",
   "Beschreibung": "Description",
   "Intro-Grafik URL": "Intro image URL",
   "Neue Intro-Grafik hochladen": "Upload new intro image",
-  "Top-Deal Ãœberschrift": "Top deal headline",
+  "Top-Deal Überschrift": "Top deal headline",
   "Top-Deal Bild URL": "Top deal image URL",
   "Neues Top-Deal Bild hochladen": "Upload new top deal image",
   "Weitere Bereiche": "More sections",
-  "Speisekarte Ãœberschrift": "Menu headline",
+  "Speisekarte Überschrift": "Menu headline",
   "Speisekarte Beschreibung": "Menu description",
-  "Ãœber-uns Ãœberschrift": "About headline",
-  "Ãœber-uns Text": "About text",
-  "Kontakt Ãœberschrift": "Contact headline",
-  "App-Banner Ãœberschrift": "App banner headline",
+  "Über-uns Überschrift": "About headline",
+  "Über-uns Text": "About text",
+  "Kontakt Überschrift": "Contact headline",
+  "App-Banner Überschrift": "App banner headline",
   "App-Banner Text": "App banner text",
   "Footer-Text": "Footer text",
   "Version & Notiz": "Version & note",
   "Interne Versionsnotiz": "Internal version note",
-  "z. B. Knobi Design finalisiert, mobile geprÃ¼ft":
+  "z. B. Knobi Design finalisiert, mobile geprüft":
     "e.g. Knobi design finalized, mobile QA done",
-  "Speichertâ€¦": "Saving...",
+  "Speichert…": "Saving...",
   "Entwurf speichern": "Save draft",
-  "Zur PrÃ¼fung markieren": "Mark for review",
-  "Freigabe erst nach erfÃ¼llten Pflichtchecks mÃ¶glich":
+  "Zur Prüfung markieren": "Mark for review",
+  "Freigabe erst nach erfüllten Pflichtchecks möglich":
     "Approval is only available after all required checks are complete",
   "Microsite intern freigeben": "Approve microsite internally",
   "Freigeben": "Approve",
-  "Diese Version live verÃ¶ffentlichen": "Publish this version live",
-  "VerÃ¶ffentlichen": "Publish",
-  "Live-Publish ist gesperrt, bis alle Pflichtchecks erledigt sind. Entwurf und PrÃ¼fung bleiben mÃ¶glich.":
+  "Diese Version live veröffentlichen": "Publish this version live",
+  "Veröffentlichen": "Publish",
+  "Live-Publish ist gesperrt, bis alle Pflichtchecks erledigt sind. Entwurf und Prüfung bleiben möglich.":
     "Live publish is locked until all required checks are complete. Draft and review actions are still available.",
   "Editor": "Editor",
   "Live-Vorschau": "Live preview",
   "Preview herauszoomen": "Zoom out preview",
-  "Zoom zurÃ¼cksetzen": "Reset zoom",
+  "Zoom zurücksetzen": "Reset zoom",
   "Preview reinzoomen": "Zoom in preview",
   "Mobil": "Mobile",
   "Bereitschaft": "Readiness",
@@ -171,9 +171,9 @@ const builderTranslations: Record<string, string> = {
   "In Arbeit": "In progress",
   "Pflicht": "Required",
   "Empfohlen": "Recommended",
-  "NÃ¤chste Aufgaben": "Next tasks",
-  "Alle aktuellen Checks sind erfÃ¼llt.": "All current checks are complete.",
-  "VerÃ¶ffentlichung erst nach den Pflichtpunkten empfehlen.":
+  "Nächste Aufgaben": "Next tasks",
+  "Alle aktuellen Checks sind erfüllt.": "All current checks are complete.",
+  "Veröffentlichung erst nach den Pflichtpunkten empfehlen.":
     "Only recommend publishing after the required items are complete.",
   "Builder-Bereiche": "Builder sections",
   "Top-Navigation": "Top navigation",
@@ -182,23 +182,23 @@ const builderTranslations: Record<string, string> = {
   "Clean Food Page": "Clean Food Page",
   "Emotionaler Hero, Deals, Stempelkarte, App-Banner und starke lokale Story.":
     "Emotional hero, deals, stamp card, app banner, and a strong local story.",
-  "Ruhiger, regionaler Auftritt fÃ¼r Restaurants, CafÃ©s und lokale Gastgeber.":
+  "Ruhiger, regionaler Auftritt für Restaurants, Cafés und lokale Gastgeber.":
     "A calmer regional presentation for restaurants, cafes, and local hosts.",
-  "Klarer, reduzierter Aufbau fÃ¼r schnelle Partnerseiten mit wenig Bildmaterial.":
+  "Klarer, reduzierter Aufbau für schnelle Partnerseiten mit wenig Bildmaterial.":
     "A clean, reduced layout for fast partner pages with limited imagery.",
   "Salon Editorial": "Salon Editorial",
   "Wellness Serene": "Wellness Serene",
   "Cinema Spotlight": "Cinema Spotlight",
-  "Magazinartiger Look fÃ¼r Hair, Beauty und Service-Studios mit Fokus auf Treatments.":
+  "Magazinartiger Look für Hair, Beauty und Service-Studios mit Fokus auf Treatments.":
     "Editorial microsite for hair, beauty, and service studios with a treatment-first focus.",
-  "Ruhige, hochwertige Wellness-Sprache fÃ¼r Massage, Spa und Regeneration.":
+  "Ruhige, hochwertige Wellness-Sprache für Massage, Spa und Regeneration.":
     "A calm premium wellness direction for massage, spa, and recovery partners.",
-  "Kontrastreiche Event-Optik fÃ¼r Kino, Freizeit und erlebnisorientierte Partner.":
+  "Kontrastreiche Event-Optik für Kino, Freizeit und erlebnisorientierte Partner.":
     "A high-contrast event look for cinema, activities, and experience-led partners.",
   "Top-Deal": "Top deal",
   "Stempelkarte": "Stamp card",
   "Speisekarte": "Menu",
-  "Ãœber uns": "About",
+  "Über uns": "About",
   "Kontakt": "Contact",
   "Footer": "Footer",
   "Vorlagen": "Templates",
@@ -211,16 +211,16 @@ const builderTranslations: Record<string, string> = {
   "Telefon": "Phone",
   "Website": "Website",
   "E-Mail": "Email",
-  "EintrÃ¤ge": "entries",
-  "MenÃ¼s": "menus",
+  "Einträge": "entries",
+  "Menüs": "menus",
   "Belohnungen": "Rewards",
   "Microsite-Bilder": "Microsite images",
-  "Start/Deals/Ãœber uns separat": "Hero/deals/about are managed separately",
+  "Start/Deals/Über uns separat": "Hero/deals/about are managed separately",
   "SEO": "SEO",
   "Title/Description separat": "Title/description managed separately",
   "Partnerprofil": "Partner profile",
   "Partnerprofil / Medien": "Partner profile / Media",
-  "MenÃ¼s & Artikel": "Menus & items",
+  "Menüs & Artikel": "Menus & items",
   "Fehlt": "Missing",
   "Asset-Bibliothek": "Asset library",
   "Asset-Status & Austauschbarkeit": "Asset status & reusability",
@@ -228,19 +228,19 @@ const builderTranslations: Record<string, string> = {
   "Feature-Karte": "Feature card",
   "Startbild": "Hero image",
   "Deals": "Deals",
-  "Ãœber uns 1": "About image 1",
-  "Ãœber uns 2": "About image 2",
+  "Über uns 1": "About image 1",
+  "Über uns 2": "About image 2",
   "bereit": "ready",
   "fehlt": "missing",
   "Gespeicherte Asset-Library": "Saved asset library",
-  "Versionierung & RÃ¼ckgÃ¤ngig": "Versioning & rollback",
+  "Versionierung & Rückgängig": "Versioning & rollback",
   "Entwurf": "Draft",
   "Live": "Live",
   "Live-Version als Entwurf laden": "Load live version into draft",
   "Gespeicherten Entwurf neu laden": "Reload saved draft",
-  "Jede Speicherung erzeugt eine neue Version. VerÃ¶ffentlichen setzt nur the geprÃ¼fte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.":
+  "Jede Speicherung erzeugt eine neue Version. Veröffentlichen setzt nur the geprüfte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.":
     "Every save creates a new version. Publishing only puts the approved version live; older live versions remain as a safety net.",
-  "Jede Speicherung erzeugt eine neue Version. VerÃ¶ffentlichen setzt nur die geprÃ¼fte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.":
+  "Jede Speicherung erzeugt eine neue Version. Veröffentlichen setzt nur die geprüfte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.":
     "Every save creates a new version. Publishing only puts the approved version live; older live versions remain as a safety net.",
   "Speisekarte-System": "Menu system",
   "Artikel": "Items",
@@ -252,34 +252,34 @@ const builderTranslations: Record<string, string> = {
   "SEO-Titel": "SEO title",
   "SEO-Beschreibung": "SEO description",
   "Suchbegriffe": "Keywords",
-  "DÃ¶ner, Pizza, Annweiler, Benefitsi":
+  "Döner, Pizza, Annweiler, Benefitsi":
     "doner, pizza, annweiler, benefitsi",
   "Social-Vorschau-Bild URL": "Social preview image URL",
-  "Ã–ffentliche Seite auf noindex setzen": "Set public page to noindex",
+  "Öffentliche Seite auf noindex setzen": "Set public page to noindex",
   "Finale Checks": "Final checks",
-  "Partnerdaten geprÃ¼ft": "Partner data reviewed",
-  "Assets/Fallbacks geprÃ¼ft": "Assets/fallbacks reviewed",
-  "DesktopprÃ¼fung abgeschlossen": "Desktop QA complete",
-  "MobilprÃ¼fung abgeschlossen": "Mobile QA complete",
-  "SEO/LLM geprÃ¼ft": "SEO/LLM reviewed",
-  "VerÃ¶ffentlichung final geprÃ¼ft": "Publishing review complete",
+  "Partnerdaten geprüft": "Partner data reviewed",
+  "Assets/Fallbacks geprüft": "Assets/fallbacks reviewed",
+  "Desktopprüfung abgeschlossen": "Desktop QA complete",
+  "Mobilprüfung abgeschlossen": "Mobile QA complete",
+  "SEO/LLM geprüft": "SEO/LLM reviewed",
+  "Veröffentlichung final geprüft": "Publishing review complete",
   "Ablauf": "Workflow",
-  "Partnerdaten prÃ¼fen": "Review partner data",
+  "Partnerdaten prüfen": "Review partner data",
   "Assets bereit": "Assets ready",
-  "MobilprÃ¼fung": "Mobile QA",
-  "SEO/LLM-PrÃ¼fung": "SEO/LLM review",
+  "Mobilprüfung": "Mobile QA",
+  "SEO/LLM-Prüfung": "SEO/LLM review",
   "Freigabe": "Approval",
-  "Partner-Self-Service sollte nur Daten, Speisekarte und Bilder freigeben â€“ Layout bleibt intern geschÃ¼tzt.":
+  "Partner-Self-Service sollte nur Daten, Speisekarte und Bilder freigeben – Layout bleibt intern geschützt.":
     "Partner self-service should only expose data, menu, and images; layout stays protected internally.",
-  "Partner-Modus prÃ¼fen": "Open partner mode",
+  "Partner-Modus prüfen": "Open partner mode",
   "Social Media": "Social media",
   "Beschriftung": "Label",
   "Link": "Link",
   "Logo-/Icon-URL": "Logo/icon URL",
-  "Dieses Feld wird zentral aus den Partnerdaten Ã¼bernommen und bleibt fÃ¼r Skalierung synchron.":
+  "Dieses Feld wird zentral aus den Partnerdaten übernommen und bleibt für Skalierung synchron.":
     "This field is synced from partner data so it stays consistent at scale.",
-  "AusgewÃ¤hltes Element": "Selected element",
-  "Direkt im Builder: Text anklicken und tippen. Bilder und Gruppen kannst du anklicken und leicht nach oben/unten ziehen, um den Abstand zu verÃ¤ndern.":
+  "Ausgewähltes Element": "Selected element",
+  "Direkt im Builder: Text anklicken und tippen. Bilder und Gruppen kannst du anklicken und leicht nach oben/unten ziehen, um den Abstand zu verändern.":
     "Edit text inline directly in the builder. Click images and groups, then drag slightly up or down to adjust spacing.",
   "Text": "Text",
   "Bild URL": "Image URL",
@@ -288,12 +288,12 @@ const builderTranslations: Record<string, string> = {
   "Vorlagen-Icon": "Template icon",
   "Eigenes Icon-Bild URL": "Custom icon image URL",
   "Eigenes Icon hochladen": "Upload custom icon",
-  "Top-Nav HÃ¶he": "Top nav height",
-  "SchriftgrÃ¶ÃŸe": "Font size",
-  "IcongrÃ¶ÃŸe": "Icon size",
-  "BildgrÃ¶ÃŸe": "Image scale",
-  "ZurÃ¼ck auf Auto": "Reset to auto",
-  "Elementfarbe auswÃ¤hlen": "Choose element color",
+  "Top-Nav Höhe": "Top nav height",
+  "Schriftgröße": "Font size",
+  "Icongröße": "Icon size",
+  "Bildgröße": "Image scale",
+  "Zurück auf Auto": "Reset to auto",
+  "Elementfarbe auswählen": "Choose element color",
   "Elementfarbe Hex": "Element color hex",
   "Farbe": "Color",
   "Sprache": "Language",
@@ -311,7 +311,6 @@ const builderTranslations: Record<string, string> = {
   "Subheadline": "Subheadline",
   "CTA": "CTA",
   "Hinweis": "Note",
-  "Print-Vorschau Ã¶ffnen": "Open print preview",
   "Print-Vorschau öffnen": "Open print preview",
   "Jetzt drucken": "Print now",
   "Desktop": "Desktop",
@@ -341,7 +340,7 @@ const builderTranslations: Record<string, string> = {
   "Benefit 2 Titel": "Benefit 2 title",
   "Benefit 2 Text": "Benefit 2 text",
   "Willkommensbonus Titel": "Welcome bonus title",
-  "Kontakt Ã–ffnungszeiten": "Contact opening hours",
+  "Kontakt Öffnungszeiten": "Contact opening hours",
   "Footer Vertrauen 1": "Footer trust 1",
   "Footer Vertrauen 2": "Footer trust 2",
   "Footer Vertrauen 3": "Footer trust 3",
@@ -364,8 +363,8 @@ const builderTranslations: Record<string, string> = {
   "FAQ Antwort": "FAQ answer",
   "Vorschau aktiv: {fileName}. Zum dauerhaften Speichern bitte Entwurf speichern.":
     "Preview active: {fileName}. Save the draft to keep this change.",
-  "SchÃ¼ssel": "Bowl",
-  "LÃ¤cheln": "Smile",
+  "Schüssel": "Bowl",
+  "Lächeln": "Smile",
   "Tasche": "Bag",
   "Blatt": "Leaf",
   "Karte": "Card",
@@ -381,56 +380,56 @@ const builderTranslations: Record<string, string> = {
   "Datenschutz": "Privacy",
   "Lokal": "Local",
   "Kontakt Logo (Partnerprofil)": "Contact logo (partner profile)",
-  "Startbereich Ãœberschrift": "Hero headline",
+  "Startbereich Überschrift": "Hero headline",
   "Deals-Label": "Deals label",
   "Startbereich Slogan": "Hero slogan",
-  "PrimÃ¤rer Button": "Primary button",
-  "SekundÃ¤rer Button": "Secondary button",
+  "Primärer Button": "Primary button",
+  "Sekundärer Button": "Secondary button",
   "Deals Intro Bild": "Deals intro image",
-  "Deals Ãœberschrift": "Deals headline",
+  "Deals Überschrift": "Deals headline",
   "Deals Slogan": "Deals slogan",
   "Deals Beschreibung": "Deals description",
-  "Stempelkarte Ãœberschrift": "Stamp card headline",
+  "Stempelkarte Überschrift": "Stamp card headline",
   "Stempelkarte Label": "Stamp card label",
   "Stempelkarte Slogan": "Stamp card slogan",
-  "Ãœber uns Label": "About label",
-  "Ãœber uns Ãœberschrift": "About headline",
-  "Ãœber uns Text": "About text",
-  "Ãœber uns Hintergrundbild": "About background image",
-  "Ãœber uns Zutatenbild": "About ingredients image",
-  "Ãœber uns Ortsbild": "About location image",
-  "Ãœber uns Detailbild": "About detail image",
+  "Über uns Label": "About label",
+  "Über uns Überschrift": "About headline",
+  "Über uns Text": "About text",
+  "Über uns Hintergrundbild": "About background image",
+  "Über uns Zutatenbild": "About ingredients image",
+  "Über uns Ortsbild": "About location image",
+  "Über uns Detailbild": "About detail image",
   "Kontakt Label": "Contact label",
   "Kontakt Standort Icon": "Contact location icon",
-  "FAQ Ãœberschrift": "FAQ headline",
-  "Ãœber uns Slogan": "About slogan",
-  "Ãœber uns Zusatztext": "About secondary text",
-  "Ãœber uns Dank": "About thank-you text",
-  "Ãœber uns Signatur": "About signature",
+  "FAQ Überschrift": "FAQ headline",
+  "Über uns Slogan": "About slogan",
+  "Über uns Zusatztext": "About secondary text",
+  "Über uns Dank": "About thank-you text",
+  "Über uns Signatur": "About signature",
   "Kontakt Slogan": "Contact slogan",
   "Social-Media-Text": "Social media text",
   "Kontakt Adresse": "Contact address",
   "Kontakt Telefon": "Contact phone",
   "FAQ-Label": "FAQ label",
   "FAQ Text": "FAQ text",
-  "Ãœber uns Wert 1": "About value 1",
-  "Ãœber uns Wert 2": "About value 2",
-  "Ãœber uns Wert 3": "About value 3",
-  "Ãœber uns Wert 4": "About value 4",
+  "Über uns Wert 1": "About value 1",
+  "Über uns Wert 2": "About value 2",
+  "Über uns Wert 3": "About value 3",
+  "Über uns Wert 4": "About value 4",
   "App-Banner Label": "App banner label",
   "App Vorteil 1": "App benefit 1",
   "App Vorteil 2": "App benefit 2",
   "App Vorteil 3": "App benefit 3",
   "QR-Code Hinweis": "QR-code note",
   "QR-Code Text": "QR-code text",
-  "App-SchaltflÃ¤che": "App button",
+  "App-Schaltfläche": "App button",
   "Stempelkarte Hinweis": "Stamp-card note",
-  "Sicher & geprÃ¼ft": "Safe & verified",
-  "Ã–ffnungszeiten Icon": "Opening-hours icon",
-  "Ãœber uns Icon 1": "About icon 1",
-  "Ãœber uns Icon 2": "About icon 2",
-  "Ãœber uns Icon 3": "About icon 3",
-  "Ãœber uns Icon 4": "About icon 4",
+  "Sicher & geprüft": "Safe & verified",
+  "Öffnungszeiten Icon": "Opening-hours icon",
+  "Über uns Icon 1": "About icon 1",
+  "Über uns Icon 2": "About icon 2",
+  "Über uns Icon 3": "About icon 3",
+  "Über uns Icon 4": "About icon 4",
   "5 Stempel Belohnung": "5-stamp reward",
   "10 Stempel Belohnung": "10-stamp reward",
 }
@@ -442,8 +441,77 @@ const normalizedBuilderTranslations = Object.fromEntries(
   ]),
 )
 
+const cp1252ByteOverrides: Record<string, number> = {
+  "€": 0x80,
+  "‚": 0x82,
+  "ƒ": 0x83,
+  "„": 0x84,
+  "…": 0x85,
+  "†": 0x86,
+  "‡": 0x87,
+  "ˆ": 0x88,
+  "‰": 0x89,
+  "Š": 0x8a,
+  "‹": 0x8b,
+  "Œ": 0x8c,
+  "Ž": 0x8e,
+  "‘": 0x91,
+  "’": 0x92,
+  "“": 0x93,
+  "”": 0x94,
+  "•": 0x95,
+  "–": 0x96,
+  "—": 0x97,
+  "˜": 0x98,
+  "™": 0x99,
+  "š": 0x9a,
+  "›": 0x9b,
+  "œ": 0x9c,
+  "ž": 0x9e,
+  "Ÿ": 0x9f,
+}
+
+function decodeBuilderMojibake(text: string) {
+  let current = text
+
+  for (let index = 0; index < 4; index += 1) {
+    if (!/[ÃÂâ]/.test(current)) {
+      break
+    }
+
+    const bytes: number[] = []
+    let canDecode = true
+
+    for (const char of current) {
+      const override = cp1252ByteOverrides[char]
+      const codePoint = override ?? char.codePointAt(0)
+
+      if (codePoint === undefined || codePoint > 0xff) {
+        canDecode = false
+        break
+      }
+
+      bytes.push(codePoint)
+    }
+
+    if (!canDecode) {
+      break
+    }
+
+    const decoded = new TextDecoder("utf-8").decode(Uint8Array.from(bytes))
+
+    if (decoded === current) {
+      break
+    }
+
+    current = decoded
+  }
+
+  return current
+}
+
 function normalizeBuilderTranslationKey(text: string) {
-  return text
+  return decodeBuilderMojibake(text)
     .replace(/Ã¢â‚¬Â¦/g, "...")
     .replace(/Ã¢â€ â€™/g, "->")
     .replace(/Ã‚Â·/g, " ")
@@ -462,25 +530,25 @@ function normalizeBuilderTranslationKey(text: string) {
 }
 
 function repairBuilderText(text: string) {
-  return text
+  return decodeBuilderMojibake(text)
     .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦|Ã¢â‚¬Â¦/g, "...")
-    .replace(/ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢|Ã¢â€ â€™/g, "â†’")
-    .replace(/ÃƒÂ¢Ã‹â€ Ã¢â‚¬â„¢|Ã¢Ë†â€™/g, "âˆ’")
-    .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“|Ã¢â‚¬â€œ/g, "â€“")
-    .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â|Ã¢â‚¬â€/g, "â€”")
-    .replace(/Ã¢â‚¬Â¹/g, "â€¹")
-    .replace(/Ã¢â‚¬Âº/g, "â€º")
-    .replace(/Ã¢Å“â€œ/g, "âœ“")
-    .replace(/ÃƒÆ’Ã¢â‚¬Å¾|Ãƒâ€ž/g, "Ã„")
-    .replace(/ÃƒÆ’Ã¢â‚¬â€œ|Ãƒâ€“/g, "Ã–")
-    .replace(/ÃƒÆ’Ã…â€œ|ÃƒÅ“/g, "Ãœ")
-    .replace(/ÃƒÆ’Ã‚Â¼|ÃƒÂ¼/g, "Ã¼")
-    .replace(/ÃƒÆ’Ã‚Â¶|ÃƒÂ¶/g, "Ã¶")
-    .replace(/ÃƒÆ’Ã‚Â¤|ÃƒÂ¤/g, "Ã¤")
-    .replace(/ÃƒÆ’Ã…Â¸|ÃƒÅ¸/g, "ÃŸ")
-    .replace(/ÃƒÆ’Ã‚Â©|ÃƒÂ©/g, "Ã©")
-    .replace(/ÃƒÆ’Ã‚Â¡|ÃƒÂ¡/g, "Ã¡")
-    .replace(/Ã‚Â·|Ãƒâ€šÃ‚Â·/g, "Â·")
+    .replace(/ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢|Ã¢â€ â€™/g, "→")
+    .replace(/ÃƒÂ¢Ã‹â€ Ã¢â‚¬â„¢|Ã¢Ë†â€™/g, "−")
+    .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“|Ã¢â‚¬â€œ/g, "–")
+    .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â|Ã¢â‚¬â€/g, "—")
+    .replace(/Ã¢â‚¬Â¹/g, "‹")
+    .replace(/Ã¢â‚¬Âº/g, "›")
+    .replace(/Ã¢Å“â€œ/g, "✓")
+    .replace(/ÃƒÆ’Ã¢â‚¬Å¾|Ãƒâ€ž/g, "Ä")
+    .replace(/ÃƒÆ’Ã¢â‚¬â€œ|Ãƒâ€“/g, "Ö")
+    .replace(/ÃƒÆ’Ã…â€œ|ÃƒÅ“/g, "Ü")
+    .replace(/ÃƒÆ’Ã‚Â¼|ÃƒÂ¼/g, "ü")
+    .replace(/ÃƒÆ’Ã‚Â¶|ÃƒÂ¶/g, "ö")
+    .replace(/ÃƒÆ’Ã‚Â¤|ÃƒÂ¤/g, "ä")
+    .replace(/ÃƒÆ’Ã…Â¸|ÃƒÅ¸/g, "ß")
+    .replace(/ÃƒÆ’Ã‚Â©|ÃƒÂ©/g, "é")
+    .replace(/ÃƒÆ’Ã‚Â¡|ÃƒÂ¡/g, "á")
+    .replace(/Ã‚Â·|Ãƒâ€šÃ‚Â·/g, "·")
     .replace(/Ãƒâ€š/g, "")
     .replace(/Ã‚/g, "")
 }
@@ -767,7 +835,7 @@ export function MicrositePanel({
             type="button"
             onClick={() => setPreviewZoom(1)}
             className="h-8 min-w-14 rounded px-2 text-xs font-black text-zinc-700 transition hover:bg-zinc-100"
-            title={tr("Zoom zurÃ¼cksetzen")}
+            title={tr("Zoom zurücksetzen")}
           >
             {zoomPercent}%
           </button>
@@ -1121,7 +1189,7 @@ export function MicrositePanel({
             }}
             className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
           >
-            {tr("Aktuelle Vorschau Ã¶ffnen")}
+            {tr("Aktuelle Vorschau öffnen")}
           </a>
           <a
             href={`${previewBasePath}/${encodeURIComponent(previewIdentifier)}`}
@@ -1129,14 +1197,14 @@ export function MicrositePanel({
             rel="noreferrer"
             className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
           >
-            {tr("Gespeicherten Entwurf Ã¶ffnen")}
+            {tr("Gespeicherten Entwurf öffnen")}
           </a>
           <StatusBadge
             label={partner.microsite?.publishedVersion ? "Live" : "Noch nicht live"}
             active={Boolean(partner.microsite?.publishedVersion)}
           />
           {partner.microsite?.status === "review" ? (
-            <StatusBadge label="In PrÃ¼fung" tone="review" />
+            <StatusBadge label="In Prüfung" tone="review" />
           ) : null}
           {partner.microsite?.draftVersion ? (
             <StatusBadge label="Entwurf vorhanden" active={false} />
@@ -1219,8 +1287,8 @@ export function MicrositePanel({
           {fullscreen && editorPanelOpen ? (
             <div
               role="separator"
-              aria-label={tr("Editorbreite Ã¤ndern")}
-              title={tr("Editorbreite per Ziehen Ã¤ndern")}
+              aria-label={tr("Editorbreite ändern")}
+              title={tr("Editorbreite per Ziehen ändern")}
               onPointerDown={handleEditorResizePointerDown}
               onMouseDown={handleEditorResizeMouseDown}
               className="absolute -right-1 top-0 z-50 h-full w-4 cursor-col-resize touch-none bg-transparent transition hover:bg-blue-200/70"
@@ -1311,7 +1379,7 @@ export function MicrositePanel({
             <SourceLockedField
               label="Logo"
               value={partner.logo_url || "Im Partnerprofil hinterlegen"}
-              source="Partnerprofil â†’ Media"
+              source="Partnerprofil → Media"
             />
             <EditorField
               name="partner_badge_url"
@@ -1336,9 +1404,9 @@ export function MicrositePanel({
           <div data-builder-section="hero">
           <ConfigSection title="Startbereich">
             <SourceLockedField
-              label="Ãœberschrift"
+              label="Überschrift"
               value={config.hero.headline}
-              source="Partnerprofil â†’ Name"
+              source="Partnerprofil → Name"
             />
             <EditorField
               name="hero_slogan"
@@ -1349,12 +1417,12 @@ export function MicrositePanel({
             <SourceLockedField
               label="Ort"
               value={config.hero.locationText}
-              source="Partnerprofil â†’ Stadt/Adresse"
+              source="Partnerprofil → Stadt/Adresse"
             />
             <SourceLockedField
-              label="Ã–ffnungszeiten"
+              label="Öffnungszeiten"
               value={config.hero.openingText}
-              source="Partnerprofil â†’ Ã–ffnungszeiten"
+              source="Partnerprofil → Öffnungszeiten"
             />
             <EditorField
               name="hero_image_url"
@@ -1378,7 +1446,7 @@ export function MicrositePanel({
           <ConfigSection title="Deals & Vorteile">
             <EditorField
               name="deals_headline"
-              label="Ãœberschrift"
+              label="Überschrift"
               value={config.deals.headline}
               onChange={(value) => updateDeals(setConfig, "headline", value)}
             />
@@ -1413,7 +1481,7 @@ export function MicrositePanel({
             />
             <EditorField
               name="top_deal_headline"
-              label="Top-Deal Ãœberschrift"
+              label="Top-Deal Überschrift"
               value={config.deals.topDealHeadline}
               onChange={(value) =>
                 updateDeals(setConfig, "topDealHeadline", value)
@@ -1438,7 +1506,7 @@ export function MicrositePanel({
           <ConfigSection title="Weitere Bereiche">
             <EditorField
               name="menu_headline"
-              label="Speisekarte Ãœberschrift"
+              label="Speisekarte Überschrift"
               value={config.content.menuHeadline}
               onChange={(value) => updateContent(setConfig, "menuHeadline", value)}
             />
@@ -1453,7 +1521,7 @@ export function MicrositePanel({
             />
             <EditorField
               name="about_headline"
-              label="Ãœber-uns Ãœberschrift"
+              label="Über-uns Überschrift"
               value={config.content.aboutHeadline}
               onChange={(value) =>
                 updateContent(setConfig, "aboutHeadline", value)
@@ -1461,14 +1529,14 @@ export function MicrositePanel({
             />
             <EditorField
               name="about_text"
-              label="Ãœber-uns Text"
+              label="Über-uns Text"
               value={config.content.aboutText}
               onChange={(value) => updateContent(setConfig, "aboutText", value)}
               multiline
             />
             <EditorField
               name="contact_headline"
-              label="Kontakt Ãœberschrift"
+              label="Kontakt Überschrift"
               value={config.content.contactHeadline}
               onChange={(value) =>
                 updateContent(setConfig, "contactHeadline", value)
@@ -1476,7 +1544,7 @@ export function MicrositePanel({
             />
             <EditorField
               name="app_headline"
-              label="App-Banner Ãœberschrift"
+              label="App-Banner Überschrift"
               value={config.content.appHeadline}
               onChange={(value) => updateContent(setConfig, "appHeadline", value)}
             />
@@ -1506,7 +1574,7 @@ export function MicrositePanel({
                   builder: { ...current.builder, versionNote: value },
                 }))
               }
-              placeholder="z. B. Knobi Design finalisiert, mobile geprÃ¼ft"
+              placeholder="z. B. Knobi Design finalisiert, mobile geprüft"
               multiline
             />
           </ConfigSection>
@@ -1532,7 +1600,7 @@ export function MicrositePanel({
               disabled={pending}
               className="h-11 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 disabled:opacity-60"
             >
-              {pending ? tr("Speichertâ€¦") : tr("Entwurf speichern")}
+              {pending ? tr("Speichert…") : tr("Entwurf speichern")}
             </button>
             <button
               type="submit"
@@ -1541,7 +1609,7 @@ export function MicrositePanel({
               disabled={pending}
               className="h-11 rounded-md border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
             >
-              {tr("Zur PrÃ¼fung markieren")}
+              {tr("Zur Prüfung markieren")}
             </button>
             <button
               type="submit"
@@ -1550,7 +1618,7 @@ export function MicrositePanel({
               disabled={pending || publishBlocked}
               title={
                 publishBlocked
-                  ? tr("Freigabe erst nach erfÃ¼llten Pflichtchecks mÃ¶glich")
+                  ? tr("Freigabe erst nach erfüllten Pflichtchecks möglich")
                   : tr("Microsite intern freigeben")
               }
               className="h-11 rounded-md border border-emerald-300 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
@@ -1568,15 +1636,15 @@ export function MicrositePanel({
                       .slice(0, 4)
                       .map((item) => tr(item.label))
                       .join(", ")}`
-                  : tr("Diese Version live verÃ¶ffentlichen")
+                  : tr("Diese Version live veröffentlichen")
               }
               className="h-11 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:opacity-60"
             >
-              {tr("VerÃ¶ffentlichen")}
+              {tr("Veröffentlichen")}
             </button>
             {publishBlocked ? (
               <p className="rounded-md bg-rose-50 px-3 py-2 text-xs font-semibold leading-5 text-rose-700">
-                {tr("Live-Publish ist gesperrt, bis alle Pflichtchecks erledigt sind. Entwurf und PrÃ¼fung bleiben mÃ¶glich.")}
+                {tr("Live-Publish ist gesperrt, bis alle Pflichtchecks erledigt sind. Entwurf und Prüfung bleiben möglich.")}
               </p>
             ) : null}
             {state.message ? (
@@ -1611,13 +1679,13 @@ export function MicrositePanel({
                   className="grid size-8 place-items-center rounded text-sm font-black text-zinc-700 transition hover:bg-zinc-100"
                   aria-label={tr("Preview herauszoomen")}
                 >
-                  âˆ’
+                  −
                 </button>
                 <button
                   type="button"
                   onClick={() => setPreviewZoom(1)}
                   className="h-8 min-w-14 rounded px-2 text-xs font-black text-zinc-700 transition hover:bg-zinc-100"
-                  title={tr("Zoom zurÃ¼cksetzen")}
+                  title={tr("Zoom zurücksetzen")}
                 >
                   {zoomPercent}%
                 </button>
@@ -1704,8 +1772,8 @@ const themeIconOptions = [
   { value: "shield", label: "Schild" },
   { value: "privacy", label: "Datenschutz" },
   { value: "local", label: "Lokal" },
-  { value: "bowl", label: "SchÃ¼ssel" },
-  { value: "smile", label: "LÃ¤cheln" },
+  { value: "bowl", label: "Schüssel" },
+  { value: "smile", label: "Lächeln" },
   { value: "pizza", label: "Pizza" },
   { value: "website", label: "Website" },
   { value: "instagram", label: "Instagram" },
@@ -1786,7 +1854,7 @@ function ReadinessPanel({ report }: { report: MicrositeReadinessReport }) {
         {nextItems.length ? (
           <div className="mt-4 space-y-2">
             <p className="text-xs font-bold uppercase tracking-[0.1em] text-zinc-500">
-              {tr("NÃ¤chste Aufgaben")}
+              {tr("Nächste Aufgaben")}
             </p>
             {nextItems.map((item) => (
               <ReadinessItemRow key={item.id} item={item} />
@@ -1794,12 +1862,12 @@ function ReadinessPanel({ report }: { report: MicrositeReadinessReport }) {
           </div>
         ) : (
           <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
-            {tr("Alle aktuellen Checks sind erfÃ¼llt.")}
+            {tr("Alle aktuellen Checks sind erfüllt.")}
           </p>
         )}
         {blockedItems.length ? (
           <p className="mt-3 text-xs leading-5 text-rose-700">
-            {tr("VerÃ¶ffentlichung erst nach den Pflichtpunkten empfehlen.")}
+            {tr("Veröffentlichung erst nach den Pflichtpunkten empfehlen.")}
           </p>
         ) : null}
       </div>
@@ -1857,7 +1925,7 @@ function BuilderSectionsPanel({
     ["Top-Deal", "deals.topDealHeadline"],
     ["Stempelkarte", "stamps.headline"],
     ["Speisekarte", "content.menuHeadline"],
-    ["Ãœber uns", "content.aboutHeadline"],
+    ["Über uns", "content.aboutHeadline"],
     ["Kontakt", "content.contactHeadline"],
     ["FAQ", "content.faqHeadline"],
     ["Footer", "content.footerText"],
@@ -2083,11 +2151,11 @@ function DataSourcePanel({ partner }: { partner: PartnerWithDeals }) {
     ["Telefon", partner.phone, "Partnerprofil"],
     ["Website", partner.website, "Partnerprofil"],
     ["E-Mail", partner.email, "Partnerprofil"],
-    ["Social Media", `${socialCount} EintrÃ¤ge`, "Partnerprofil"],
-    ["Ã–ffnungszeiten", `${partner.opening_hours.length} EintrÃ¤ge`, "Ã–ffnungszeiten"],
-    ["Speisekarte", `${partner.menus.length} MenÃ¼s`, "MenÃ¼s & Artikel"],
+    ["Social Media", `${socialCount} Einträge`, "Partnerprofil"],
+    ["Öffnungszeiten", `${partner.opening_hours.length} Einträge`, "Öffnungszeiten"],
+    ["Speisekarte", `${partner.menus.length} Menüs`, "Menüs & Artikel"],
     ["Belohnungen", `${partner.reward_milestones.length} Belohnungen`, "Stempelkarte"],
-    ["Microsite-Bilder", "Start/Deals/Ãœber uns separat", "Microsite"],
+    ["Microsite-Bilder", "Start/Deals/Über uns separat", "Microsite"],
     ["SEO", "Title/Description separat", "Microsite"],
   ]
 
@@ -2266,8 +2334,8 @@ function AssetReadinessPanel({
     { label: "Startbild", value: config.hero.backgroundImageUrl, source: "Microsite", slot: "hero.backgroundImageUrl", minWidth: 1600, minHeight: 1200, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     { label: "Deals", value: config.deals.illustrationUrl, source: "Microsite", slot: "deals.illustrationUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     { label: "Top-Deal", value: config.deals.topDealImageUrl, source: "Microsite", slot: "deals.topDealImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "Ãœber uns 1", value: config.elementText["content.aboutHeroImageUrl"] || "", source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "Ãœber uns 2", value: config.elementText["content.aboutIngredientImageUrl"] || "", source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Über uns 1", value: config.elementText["content.aboutHeroImageUrl"] || "", source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Über uns 2", value: config.elementText["content.aboutIngredientImageUrl"] || "", source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     { label: "Reward 5", value: config.elementText["stamps.reward.5.image"] || "", source: "Microsite", slot: "stamps.reward.5.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
     { label: "Reward 10", value: config.elementText["stamps.reward.10.image"] || "", source: "Microsite", slot: "stamps.reward.10.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
     { label: "QR-Code", value: config.elementText["content.appQrCodeUrl"] || "", source: "Microsite", slot: "content.appQrCodeUrl", minWidth: 600, minHeight: 600, preferredAspect: 1, aspectTolerance: 0.12 },
@@ -2353,7 +2421,7 @@ function AssetReadinessPanel({
               <button
                 key={`${asset.slot}-${asset.url}`}
                 type="button"
-                title={`${asset.label} Â· ${asset.slot}`}
+                title={`${asset.label} · ${asset.slot}`}
                 onClick={() => setConfig((current) => applyAssetToSlot(current, asset.slot, asset.url))}
                 className="group overflow-hidden rounded-lg border border-zinc-200 bg-white text-left transition hover:border-teal-400"
               >
@@ -2385,16 +2453,16 @@ function VersionRollbackPanel({
   const draftConfig = partner.microsite?.draftVersion?.config
 
   return (
-    <ConfigSection title="Versionierung & RÃ¼ckgÃ¤ngig">
+    <ConfigSection title="Versionierung & Rückgängig">
       <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-3 text-xs">
         <div className="grid grid-cols-2 gap-2">
           <ReadinessMetric
             label="Entwurf"
-            value={partner.microsite?.draftVersion?.version_number ? `v${partner.microsite.draftVersion.version_number}` : "â€”"}
+            value={partner.microsite?.draftVersion?.version_number ? `v${partner.microsite.draftVersion.version_number}` : "—"}
           />
           <ReadinessMetric
             label="Live"
-            value={partner.microsite?.publishedVersion?.version_number ? `v${partner.microsite.publishedVersion.version_number}` : "â€”"}
+            value={partner.microsite?.publishedVersion?.version_number ? `v${partner.microsite.publishedVersion.version_number}` : "—"}
           />
         </div>
         <button
@@ -2422,7 +2490,7 @@ function VersionRollbackPanel({
           {tr("Gespeicherten Entwurf neu laden")}
         </button>
         <p className="text-[11px] leading-5 text-zinc-500">
-          {tr("Jede Speicherung erzeugt eine neue Version. VerÃ¶ffentlichen setzt nur die geprÃ¼fte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.")}
+          {tr("Jede Speicherung erzeugt eine neue Version. Veröffentlichen setzt nur die geprüfte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.")}
         </p>
       </div>
     </ConfigSection>
@@ -2489,7 +2557,7 @@ function SeoSystemPanel({
             },
           }))
         }
-        placeholder={tr("DÃ¶ner, Pizza, Annweiler, Benefitsi")}
+        placeholder={tr("Döner, Pizza, Annweiler, Benefitsi")}
       />
       <EditorField
         name="seo_og_image_url"
@@ -2508,7 +2576,7 @@ function SeoSystemPanel({
             }))
           }
         />
-        {tr("Ã–ffentliche Seite auf noindex setzen")}
+        {tr("Öffentliche Seite auf noindex setzen")}
       </label>
     </ConfigSection>
   )
@@ -2523,12 +2591,12 @@ function BuilderChecklistPanel({
 }) {
   const { tr } = useBuilderI18n()
   const rows = [
-    ["partnerDataReviewDone", "Partnerdaten geprÃ¼ft"],
-    ["assetReviewDone", "Assets/Fallbacks geprÃ¼ft"],
-    ["desktopQaDone", "DesktopprÃ¼fung abgeschlossen"],
-    ["mobileQaDone", "MobilprÃ¼fung abgeschlossen"],
-    ["seoReviewDone", "SEO/LLM geprÃ¼ft"],
-    ["publishReviewDone", "VerÃ¶ffentlichung final geprÃ¼ft"],
+    ["partnerDataReviewDone", "Partnerdaten geprüft"],
+    ["assetReviewDone", "Assets/Fallbacks geprüft"],
+    ["desktopQaDone", "Desktopprüfung abgeschlossen"],
+    ["mobileQaDone", "Mobilprüfung abgeschlossen"],
+    ["seoReviewDone", "SEO/LLM geprüft"],
+    ["publishReviewDone", "Veröffentlichung final geprüft"],
   ] as const
 
   return (
@@ -2569,10 +2637,10 @@ function WorkflowPanel({
 }) {
   const { tr } = useBuilderI18n()
   const steps = [
-    ["1", "Partnerdaten prÃ¼fen", report.items.filter((item) => item.area === "Daten" && !item.ok).length === 0],
+    ["1", "Partnerdaten prüfen", report.items.filter((item) => item.area === "Daten" && !item.ok).length === 0],
     ["2", "Assets bereit", report.items.filter((item) => item.area === "Assets" && !item.ok).length === 0],
-    ["3", "MobilprÃ¼fung", report.items.filter((item) => item.area === "Mobile" && !item.ok).length === 0],
-    ["4", "SEO/LLM-PrÃ¼fung", report.items.filter((item) => item.area === "SEO & LLM" && !item.ok).length === 0],
+    ["3", "Mobilprüfung", report.items.filter((item) => item.area === "Mobile" && !item.ok).length === 0],
+    ["4", "SEO/LLM-Prüfung", report.items.filter((item) => item.area === "SEO & LLM" && !item.ok).length === 0],
     ["5", "Freigabe", partner.microsite?.status === "approved" || Boolean(partner.microsite?.publishedVersion)],
     ["6", "Live", Boolean(partner.microsite?.publishedVersion)],
   ] as const
@@ -2583,13 +2651,13 @@ function WorkflowPanel({
         {steps.map(([number, label, ok]) => (
           <div key={number} className="flex items-center gap-3 text-xs">
             <span className={`grid size-6 place-items-center rounded-full font-black ${ok ? "bg-emerald-500 text-white" : "bg-zinc-200 text-zinc-600"}`}>
-              {ok ? "âœ“" : number}
+              {ok ? "✓" : number}
             </span>
             <span className="font-semibold text-zinc-800">{tr(label)}</span>
           </div>
         ))}
         <p className="pt-2 text-[11px] leading-5 text-zinc-500">
-          {tr("Partner-Self-Service sollte nur Daten, Speisekarte und Bilder freigeben â€“ Layout bleibt intern geschÃ¼tzt.")}
+          {tr("Partner-Self-Service sollte nur Daten, Speisekarte und Bilder freigeben – Layout bleibt intern geschützt.")}
         </p>
         <a
           href={`/partner-self-service/${encodeURIComponent(previewIdentifier)}`}
@@ -2597,7 +2665,7 @@ function WorkflowPanel({
           rel="noreferrer"
           className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-black text-zinc-800 transition hover:border-teal-300 hover:bg-teal-50"
         >
-          {tr("Partner-Modus prÃ¼fen")}
+          {tr("Partner-Modus prüfen")}
         </a>
       </div>
     </ConfigSection>
@@ -2717,7 +2785,7 @@ function SourceLockedField({
       </div>
       <p className="break-words text-sm font-semibold text-zinc-950">{value}</p>
       <p className="text-[11px] leading-4 text-zinc-500">
-        {tr("Dieses Feld wird zentral aus den Partnerdaten Ã¼bernommen und bleibt fÃ¼r Skalierung synchron.")}
+        {tr("Dieses Feld wird zentral aus den Partnerdaten übernommen und bleibt für Skalierung synchron.")}
       </p>
     </div>
   )
@@ -2757,7 +2825,7 @@ function SelectedElementPanel({
   return (
     <div className="min-w-0 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/50 p-4">
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-blue-700">
-        {tr("AusgewÃ¤hltes Element")}
+        {tr("Ausgewähltes Element")}
       </p>
       <h3 className="mt-1 text-sm font-semibold text-zinc-950">
         {tr(element.label)}
@@ -2765,7 +2833,7 @@ function SelectedElementPanel({
 
       <div className="mt-4 space-y-3">
         <p className="rounded-md bg-white/80 px-3 py-2 text-[11px] font-medium leading-5 text-zinc-600">
-          {tr("Direkt im Builder: Text anklicken und tippen. Bilder und Gruppen kannst du anklicken und leicht nach oben/unten ziehen, um den Abstand zu verÃ¤ndern.")}
+          {tr("Direkt im Builder: Text anklicken und tippen. Bilder und Gruppen kannst du anklicken und leicht nach oben/unten ziehen, um den Abstand zu verändern.")}
         </p>
 
         {isText ? (
@@ -2845,7 +2913,7 @@ function SelectedElementPanel({
         {isNavigationGroup ? (
           <>
             <RangeField
-              label="Top-Nav HÃ¶he"
+              label="Top-Nav Höhe"
               min={52}
               max={150}
               value={elementStyle.height}
@@ -2889,7 +2957,7 @@ function SelectedElementPanel({
         {isText || isGroup ? (
           <>
             <RangeField
-              label="SchriftgrÃ¶ÃŸe"
+              label="Schriftgröße"
               min={10}
               max={120}
               value={elementStyle.fontSize}
@@ -2987,7 +3055,7 @@ function SelectedElementPanel({
         {isIcon ? (
           <>
             <RangeField
-              label="IcongrÃ¶ÃŸe"
+              label="Icongröße"
               min={12}
               max={96}
               value={elementStyle.iconSize}
@@ -3007,7 +3075,7 @@ function SelectedElementPanel({
 
         {isImage ? (
           <RangeField
-            label="BildgrÃ¶ÃŸe"
+            label="Bildgröße"
             min={50}
             max={180}
             value={elementStyle.imageScale ?? 100}
@@ -3145,7 +3213,7 @@ function RangeField({
         onClick={() => onChange(undefined)}
         className="text-[11px] font-semibold text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
       >
-        {tr("ZurÃ¼ck auf Auto")}
+        {tr("Zurück auf Auto")}
       </button>
     </label>
   )
@@ -3193,7 +3261,7 @@ function ElementColorField({
           type="color"
           value={displayValue}
           onChange={(event) => onChange(event.target.value)}
-          aria-label={tr("Elementfarbe auswÃ¤hlen")}
+          aria-label={tr("Elementfarbe auswählen")}
           className="h-10 w-14 cursor-pointer rounded-md border border-zinc-300 bg-white p-1"
         />
         <input
@@ -3261,7 +3329,7 @@ function getEditableElement(
         hero: { ...current.hero, backgroundImageUrl: value },
       }),
     },
-    "hero.headline": textElement("Startbereich Ãœberschrift", config.hero.headline, (current, value) => ({
+    "hero.headline": textElement("Startbereich Überschrift", config.hero.headline, (current, value) => ({
       ...current,
       hero: { ...current.hero, headline: value },
     })),
@@ -3277,7 +3345,7 @@ function getEditableElement(
       ...current,
       hero: { ...current.hero, locationText: value },
     })),
-    "hero.openingText": textElement("Ã–ffnungszeiten", config.hero.openingText, (current, value) => ({
+    "hero.openingText": textElement("Öffnungszeiten", config.hero.openingText, (current, value) => ({
       ...current,
       hero: { ...current.hero, openingText: value },
     })),
@@ -3285,11 +3353,11 @@ function getEditableElement(
       ...current,
       hero: { ...current.hero, badgeText: value },
     })),
-    "hero.primaryButtonLabel": textElement("PrimÃ¤rer Button", config.hero.primaryButtonLabel, (current, value) => ({
+    "hero.primaryButtonLabel": textElement("Primärer Button", config.hero.primaryButtonLabel, (current, value) => ({
       ...current,
       hero: { ...current.hero, primaryButtonLabel: value },
     })),
-    "hero.secondaryButtonLabel": textElement("SekundÃ¤rer Button", config.hero.secondaryButtonLabel, (current, value) => ({
+    "hero.secondaryButtonLabel": textElement("Sekundärer Button", config.hero.secondaryButtonLabel, (current, value) => ({
       ...current,
       hero: { ...current.hero, secondaryButtonLabel: value },
     })),
@@ -3313,7 +3381,7 @@ function getEditableElement(
         deals: { ...current.deals, topDealImageUrl: value },
       }),
     },
-    "deals.headline": textElement("Deals Ãœberschrift", config.deals.headline, (current, value) => ({
+    "deals.headline": textElement("Deals Überschrift", config.deals.headline, (current, value) => ({
       ...current,
       deals: { ...current.deals, headline: value },
     })),
@@ -3325,7 +3393,7 @@ function getEditableElement(
       ...current,
       deals: { ...current.deals, description: value },
     })),
-    "deals.topDealHeadline": textElement("Top-Deal Ãœberschrift", config.deals.topDealHeadline, (current, value) => ({
+    "deals.topDealHeadline": textElement("Top-Deal Überschrift", config.deals.topDealHeadline, (current, value) => ({
       ...current,
       deals: { ...current.deals, topDealHeadline: value },
     })),
@@ -3341,7 +3409,7 @@ function getEditableElement(
       ...current,
       deals: { ...current.deals, topDealButtonLabel: value },
     })),
-    "stamps.headline": textElement("Stempelkarte Ãœberschrift", config.stamps.headline, (current, value) => ({
+    "stamps.headline": textElement("Stempelkarte Überschrift", config.stamps.headline, (current, value) => ({
       ...current,
       stamps: { ...current.stamps, headline: value },
     })),
@@ -3357,7 +3425,7 @@ function getEditableElement(
       ...current,
       content: { ...current.content, menuLabel: value },
     })),
-    "content.menuHeadline": textElement("Speisekarte Ãœberschrift", config.content.menuHeadline, (current, value) => ({
+    "content.menuHeadline": textElement("Speisekarte Überschrift", config.content.menuHeadline, (current, value) => ({
       ...current,
       content: { ...current.content, menuHeadline: value },
     })),
@@ -3365,20 +3433,20 @@ function getEditableElement(
       ...current,
       content: { ...current.content, menuDescription: value },
     })),
-    "content.aboutLabel": textElement("Ãœber uns Label", config.content.aboutLabel, (current, value) => ({
+    "content.aboutLabel": textElement("Über uns Label", config.content.aboutLabel, (current, value) => ({
       ...current,
       content: { ...current.content, aboutLabel: value },
     })),
-    "content.aboutHeadline": textElement("Ãœber uns Ãœberschrift", config.content.aboutHeadline, (current, value) => ({
+    "content.aboutHeadline": textElement("Über uns Überschrift", config.content.aboutHeadline, (current, value) => ({
       ...current,
       content: { ...current.content, aboutHeadline: value },
     })),
-    "content.aboutText": textElement("Ãœber uns Text", config.content.aboutText, (current, value) => ({
+    "content.aboutText": textElement("Über uns Text", config.content.aboutText, (current, value) => ({
       ...current,
       content: { ...current.content, aboutText: value },
     })),
     "content.aboutHeroImageUrl": {
-      label: "Ãœber uns Hintergrundbild",
+      label: "Über uns Hintergrundbild",
       kind: "image",
       value: config.elementText["content.aboutHeroImageUrl"] || "",
       uploadName: "about_hero_file",
@@ -3391,7 +3459,7 @@ function getEditableElement(
       }),
     },
     "content.aboutIngredientImageUrl": {
-      label: "Ãœber uns Zutatenbild",
+      label: "Über uns Zutatenbild",
       kind: "image",
       value: config.elementText["content.aboutIngredientImageUrl"] || "",
       uploadName: "about_ingredient_file",
@@ -3404,7 +3472,7 @@ function getEditableElement(
       }),
     },
     "content.aboutLocationImageUrl": {
-      label: "Ãœber uns Ortsbild",
+      label: "Über uns Ortsbild",
       kind: "image",
       value: config.elementText["content.aboutLocationImageUrl"] || "",
       uploadName: "about_location_file",
@@ -3417,7 +3485,7 @@ function getEditableElement(
       }),
     },
     "content.aboutPrepImageUrl": {
-      label: "Ãœber uns Detailbild",
+      label: "Über uns Detailbild",
       kind: "image",
       value: config.elementText["content.aboutPrepImageUrl"] || "",
       uploadName: "about_prep_file",
@@ -3433,11 +3501,11 @@ function getEditableElement(
       ...current,
       content: { ...current.content, contactLabel: value },
     })),
-    "content.contactHeadline": textElement("Kontakt Ãœberschrift", config.content.contactHeadline, (current, value) => ({
+    "content.contactHeadline": textElement("Kontakt Überschrift", config.content.contactHeadline, (current, value) => ({
       ...current,
       content: { ...current.content, contactHeadline: value },
     })),
-    "content.appHeadline": textElement("App-Banner Ãœberschrift", config.content.appHeadline, (current, value) => ({
+    "content.appHeadline": textElement("App-Banner Überschrift", config.content.appHeadline, (current, value) => ({
       ...current,
       content: { ...current.content, appHeadline: value },
     })),
@@ -3592,7 +3660,7 @@ function getEditableElement(
     },
     "deals.benefit.0.text": {
       label: "Benefit 1 Text",
-      fallback: "Nur fÃ¼r Benefitsi Mitglieder",
+      fallback: "Nur für Benefitsi Mitglieder",
     },
     "deals.benefit.1.title": {
       label: "Benefit 2 Titel",
@@ -3615,20 +3683,20 @@ function getEditableElement(
       fallback: "Direkt 2 Stempel beim ersten Besuch.",
     },
     "content.aboutSlogan": {
-      label: "Ãœber uns Slogan",
-      fallback: "Aus Leidenschaft fÃ¼r gutes Essen und unsere Heimat.",
+      label: "Über uns Slogan",
+      fallback: "Aus Leidenschaft für gutes Essen und unsere Heimat.",
     },
     "content.aboutTextSecond": {
-      label: "Ãœber uns Zusatztext",
+      label: "Über uns Zusatztext",
       fallback:
-        "Ob in der Mittagspause, nach der Wanderung oder beim Abendessen mit Freunden â€“ wir sind fÃ¼r dich da. Schnell, lecker und immer mit einem LÃ¤cheln.",
+        "Ob in der Mittagspause, nach der Wanderung oder beim Abendessen mit Freunden – wir sind für dich da. Schnell, lecker und immer mit einem Lächeln.",
     },
     "content.aboutThanks": {
-      label: "Ãœber uns Dank",
-      fallback: "Danke, Annweiler â€“ ihr seid die Besten!",
+      label: "Über uns Dank",
+      fallback: "Danke, Annweiler – ihr seid die Besten!",
     },
     "content.aboutSignature": {
-      label: "Ãœber uns Signatur",
+      label: "Über uns Signatur",
       fallback: "Euer Knobi-Team",
     },
     "content.contactSlogan": {
@@ -3636,53 +3704,53 @@ function getEditableElement(
       fallback: "Wir freuen uns auf dich.",
     },
     "content.contactOpening": {
-      label: "Kontakt Ã–ffnungszeiten",
-      fallback: config.hero.openingText.replace("Heute geÃ¶ffnet Â·", "TÃ¤glich"),
+      label: "Kontakt Öffnungszeiten",
+      fallback: config.hero.openingText.replace("Heute geöffnet ·", "Täglich"),
     },
     "content.contactSocialText": {
       label: "Social-Media-Text",
-      fallback: "Folge uns fÃ¼r Aktionen & Neuigkeiten.",
+      fallback: "Folge uns für Aktionen & Neuigkeiten.",
     },
     "content.contact.address": {
       label: "Kontakt Adresse",
-      fallback: "Adresse im Admin ergÃ¤nzen",
+      fallback: "Adresse im Admin ergänzen",
     },
     "content.contact.phone": {
       label: "Kontakt Telefon",
-      fallback: "Telefon im Admin ergÃ¤nzen",
+      fallback: "Telefon im Admin ergänzen",
     },
     "content.contact.opening": {
-      label: "Kontakt Ã–ffnungszeiten",
-      fallback: config.hero.openingText.replace("Heute geÃ¶ffnet Â·", "TÃ¤glich"),
+      label: "Kontakt Öffnungszeiten",
+      fallback: config.hero.openingText.replace("Heute geöffnet ·", "Täglich"),
     },
     "content.faqLabel": {
       label: "FAQ-Label",
       fallback: "FAQ",
     },
     "content.faqHeadline": {
-      label: "FAQ Ãœberschrift",
-      fallback: "HÃ¤ufige Fragen. Schnelle Antworten.",
+      label: "FAQ Überschrift",
+      fallback: "Häufige Fragen. Schnelle Antworten.",
     },
     "content.faqText": {
       label: "FAQ Text",
       fallback:
-        "Alles Wichtige zu deiner Benefitsi Mitgliedschaft und den Vorteilen bei Knobi DÃ¶ner & Pizza Haus.",
+        "Alles Wichtige zu deiner Benefitsi Mitgliedschaft und den Vorteilen bei Knobi Döner & Pizza Haus.",
     },
     "content.aboutValue.0": {
-      label: "Ãœber uns Wert 1",
-      fallback: "TÃ¤glich frisch",
+      label: "Über uns Wert 1",
+      fallback: "Täglich frisch",
     },
     "content.aboutValue.1": {
-      label: "Ãœber uns Wert 2",
+      label: "Über uns Wert 2",
       fallback: "Hausgemachte Saucen",
     },
     "content.aboutValue.2": {
-      label: "Ãœber uns Wert 3",
+      label: "Über uns Wert 3",
       fallback: "Freundlicher Service",
     },
     "content.aboutValue.3": {
-      label: "Ãœber uns Wert 4",
-      fallback: "DÃ¶ner, Pizza und Fast Food",
+      label: "Über uns Wert 4",
+      fallback: "Döner, Pizza und Fast Food",
     },
     "content.appKicker": {
       label: "App-Banner Label",
@@ -3702,24 +3770,24 @@ function getEditableElement(
     },
     "content.appQrLabel": {
       label: "QR-Code Hinweis",
-      fallback: "App Ã¶ffnen & einchecken",
+      fallback: "App öffnen & einchecken",
     },
     "content.appQrText": {
       label: "QR-Code Text",
       fallback: "QR-Code scannen",
     },
     "content.appButtonLabel": {
-      label: "App-SchaltflÃ¤che",
-      fallback: "App Ã¶ffnen",
+      label: "App-Schaltfläche",
+      fallback: "App öffnen",
     },
     "stamps.description": {
       label: "Stempelkarte Hinweis",
       fallback:
-        "Belohnungen und benÃ¶tigte Stempel werden direkt aus den Partnerdaten Ã¼bernommen.",
+        "Belohnungen und benötigte Stempel werden direkt aus den Partnerdaten übernommen.",
     },
     "footer.trust.0.label": {
       label: "Footer Vertrauen 1",
-      fallback: "Sicher & geprÃ¼ft",
+      fallback: "Sicher & geprüft",
     },
     "footer.trust.1.label": {
       label: "Footer Vertrauen 2",
@@ -3805,17 +3873,17 @@ function getEditableElement(
       {
         question: "Welche Vorteile gibt es mit Premium?",
         answer:
-          "Premium-Mitglieder erhalten zusÃ¤tzliche Deals, exklusive Belohnungen und besondere Aktionen bei teilnehmenden lokalen Partnern.",
+          "Premium-Mitglieder erhalten zusätzliche Deals, exklusive Belohnungen und besondere Aktionen bei teilnehmenden lokalen Partnern.",
       },
       {
-        question: "Wie nutze ich den 2 fÃ¼r 1 Deal?",
+        question: "Wie nutze ich den 2 für 1 Deal?",
         answer:
           "Aktiviere den Vorteil vor deiner Bestellung in der App. Vor Ort zeigst du den aktiven Vorteil einfach beim Bezahlen vor.",
       },
       {
         question: "Brauche ich die Benefitsi App?",
         answer:
-          "Ja, Deals, Stempel und Belohnungen werden digital in der App gesammelt und eingelÃ¶st.",
+          "Ja, Deals, Stempel und Belohnungen werden digital in der App gesammelt und eingelöst.",
       },
       {
         question: "Kann ich online bestellen?",
@@ -3863,7 +3931,7 @@ function getEditableElement(
       fallback: "pin",
     },
     "hero.openingIcon": {
-      label: "Ã–ffnungszeiten Icon",
+      label: "Öffnungszeiten Icon",
       fallback: "status",
     },
     "content.appKicker.icon": {
@@ -3875,19 +3943,19 @@ function getEditableElement(
       fallback: "check",
     },
     "content.aboutValue.0.icon": {
-      label: "Ãœber uns Icon 1",
+      label: "Über uns Icon 1",
       fallback: "leaf",
     },
     "content.aboutValue.1.icon": {
-      label: "Ãœber uns Icon 2",
+      label: "Über uns Icon 2",
       fallback: "bowl",
     },
     "content.aboutValue.2.icon": {
-      label: "Ãœber uns Icon 3",
+      label: "Über uns Icon 3",
       fallback: "smile",
     },
     "content.aboutValue.3.icon": {
-      label: "Ãœber uns Icon 4",
+      label: "Über uns Icon 4",
       fallback: "pizza",
     },
     "content.contact.address.icon": {
@@ -3899,7 +3967,7 @@ function getEditableElement(
       fallback: "phone",
     },
     "content.contact.opening.icon": {
-      label: "Ã–ffnungszeiten Icon",
+      label: "Öffnungszeiten Icon",
       fallback: "clock",
     },
     "footer.trust.0.icon": {
