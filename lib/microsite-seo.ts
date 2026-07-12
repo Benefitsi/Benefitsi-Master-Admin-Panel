@@ -70,7 +70,7 @@ export function createMicrositeMetadata({
     },
     openGraph: {
       type: "website",
-      locale: "de_DE",
+      locale: config.language === "en" ? "en_US" : "de_DE",
       url: canonical,
       title,
       description,

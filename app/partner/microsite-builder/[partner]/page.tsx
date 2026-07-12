@@ -54,7 +54,7 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
     partner.slug || partner.subdomain || partner.id || identifier
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f3efe7] text-zinc-950">
+    <main className="min-h-screen overflow-x-clip bg-[#f3efe7] text-zinc-950">
       <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:px-6">
         <div className="mx-auto flex max-w-[1800px] flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">

@@ -50,6 +50,10 @@ const socialPlatforms: Array<{
   { platform: "linkedin", label: "LinkedIn", defaultVisible: false },
 ]
 
+const BENEFITSI_ICON_SRC = "/Benefitsi_Icon_FullColor_RGB_512.png"
+const BENEFITSI_QR_PLACEHOLDER_SRC = "/benefitsi-app-qr-placeholder.png"
+const PARTNER_DETAIL_SCREEN_SRC = "/partner-details-page.jpg"
+
 function restaurantThemeForTemplate(template: MicrositeConfig["template"]) {
   if (template === "restaurant-local") {
     return {
@@ -80,6 +84,33 @@ function restaurantThemeForTemplate(template: MicrositeConfig["template"]) {
   }
 }
 
+function restaurantSectionClass(
+  template: MicrositeConfig["template"],
+  section: "deals" | "menu" | "about",
+) {
+  if (template === "restaurant-local") {
+    if (section === "menu") {
+      return "bg-[#f6ead9]"
+    }
+
+    return "bg-[#fbf3e6]"
+  }
+
+  if (template === "restaurant-clean") {
+    if (section === "menu") {
+      return "bg-white"
+    }
+
+    if (section === "about") {
+      return "bg-[#f4f5f7]"
+    }
+
+    return "bg-[#fbfbfb]"
+  }
+
+  return section === "menu" ? "bg-[#f8f6f1]" : "bg-[#fffdf8]"
+}
+
 export function RestaurantPremiumMicrosite({
   partner,
   config,
@@ -100,10 +131,10 @@ export function RestaurantPremiumMicrosite({
     >
       <PremiumMotionEffects />
       <SiteHeader partner={partner} config={config} theme={theme} />
-      <HeroSection config={config} />
-      <DealsSection partner={partner} config={config} />
-      <MenuSection partner={partner} config={config} />
-      <AboutContactSection partner={partner} config={config} />
+      <HeroSection config={config} template={config.template} />
+      <DealsSection partner={partner} config={config} template={config.template} />
+      <MenuSection partner={partner} config={config} template={config.template} />
+      <AboutContactSection partner={partner} config={config} template={config.template} />
       <FaqSection config={config} />
       <FooterSection partner={partner} config={config} />
     </article>
@@ -295,12 +326,26 @@ function NavigationLink({
   )
 }
 
-function HeroSection({ config }: { config: MicrositeConfig }) {
+function HeroSection({
+  config,
+  template,
+}: {
+  config: MicrositeConfig
+  template: MicrositeConfig["template"]
+}) {
+  if (template === "restaurant-local") {
+    return <LocalRestaurantHero config={config} />
+  }
+
+  if (template === "restaurant-clean") {
+    return <CleanFoodHero config={config} />
+  }
+
   return (
     <section className="relative min-h-[690px] overflow-hidden bg-[#fffdf8] @min-[1024px]:min-h-[760px]">
       <div
         aria-hidden="true"
-        className="premium-parallax absolute -inset-y-8 right-0 w-full bg-cover bg-center opacity-95 @min-[640px]:w-[66%]"
+        className="premium-parallax absolute bottom-11 right-0 top-0 w-full bg-cover bg-center opacity-95 @min-[640px]:w-[66%]"
         style={{
           backgroundImage: `url("${config.hero.backgroundImageUrl}")`,
           ...imageStyleFor(config, "hero.backgroundImageUrl"),
@@ -309,7 +354,7 @@ function HeroSection({ config }: { config: MicrositeConfig }) {
       <span
         {...editable("hero.backgroundImageUrl", "image", "Startbild")}
         aria-hidden="true"
-        className="absolute inset-y-0 right-0 z-[20] min-w-[104px] w-[42%]"
+        className="absolute bottom-11 right-0 top-0 z-[20] min-w-[104px] w-[42%]"
       />
       <div
         aria-hidden="true"
@@ -394,9 +439,11 @@ function HeroSection({ config }: { config: MicrositeConfig }) {
 function DealsSection({
   partner,
   config,
+  template,
 }: {
   partner: PartnerWithDeals
   config: MicrositeConfig
+  template: MicrositeConfig["template"]
 }) {
   const rewardMilestones = partner.reward_milestones.filter(
     (milestone) => milestone.active !== false,
@@ -447,7 +494,7 @@ function DealsSection({
   ]
 
   return (
-    <section id="deals" className="bg-[#fffdf8] px-5 pb-10 @min-[640px]:px-8 @min-[1024px]:px-10">
+    <section id="deals" className={`${restaurantSectionClass(template, "deals")} px-5 pb-10 @min-[640px]:px-8 @min-[1024px]:px-10`}>
       <div className="mx-auto max-w-6xl space-y-5">
         <div className="premium-reveal grid gap-7 pb-2 pt-9 @min-[1024px]:grid-cols-[.92fr_1.08fr] @min-[1024px]:items-center">
           <div>
@@ -508,8 +555,10 @@ function DealsSection({
               className="premium-parallax h-[260px] w-full object-cover @min-[640px]:h-[350px]"
               style={imageStyleFor(config, "deals.illustrationUrl")}
             />
-            <span className="absolute right-5 top-5 rounded-full border-2 border-[var(--site-accent)] bg-white/85 px-4 py-5 text-center text-[10px] font-bold uppercase text-[var(--site-accent)]">
-              Nur in der<br />App erhältlich
+            <span className="absolute right-4 top-4 z-30 grid min-h-24 min-w-24 place-items-center rounded-full border-2 border-[var(--site-accent)] bg-white px-4 py-4 text-center shadow-lg @min-[640px]:right-5 @min-[640px]:top-5">
+              <span className="text-[10px] font-black uppercase leading-4 !text-[var(--site-accent)]">
+                Nur in der<br />App erhältlich
+              </span>
             </span>
           </figure>
         </div>
@@ -763,7 +812,7 @@ function AppDownloadBanner({
     "content.appDownloadUrl",
     appDownloadUrlForPartner(partner),
   )
-  const qrUrl = textValue(config, "content.appQrCodeUrl", qrCodeUrl(appUrl))
+  const qrUrl = textValue(config, "content.appQrCodeUrl", BENEFITSI_QR_PLACEHOLDER_SRC)
 
   return (
     <div
@@ -772,21 +821,24 @@ function AppDownloadBanner({
     >
       <div className="pointer-events-none absolute -bottom-11 left-[-8%] h-16 w-[116%] rounded-[50%] border-b-[6px] border-b-transparent bg-white [border-image:linear-gradient(90deg,var(--site-secondary),#1186ee)_1]" />
 
-      <div className="relative grid gap-7 @min-[820px]:grid-cols-[220px_1fr_260px] @min-[1024px]:grid-cols-[250px_1fr_300px] @min-[820px]:items-center">
-        <div className="hidden self-end @min-[820px]:block">
+      <div className="relative grid gap-7 @min-[900px]:grid-cols-[minmax(210px,.72fr)_minmax(0,1.22fr)_minmax(260px,.78fr)] @min-[900px]:items-center">
+        <div className="self-end">
           <AppPhoneMockup partner={partner} config={config} />
         </div>
 
-        <div className="max-w-xl">
+        <div className="min-w-0 max-w-xl">
           <div className="flex items-center gap-3">
-            <ThemeIcon
-              id="content.appKicker.icon"
-              name="benefitsi"
-              config={config}
-              label="App-Banner Icon"
-              className="grid size-11 place-items-center rounded-2xl bg-sky-50 text-[#15b8d5] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_10px_22px_rgba(2,132,199,.12)]"
-              iconClassName="size-7"
-            />
+            <span
+              {...editable("content.appKicker.icon", "image", "App-Banner Icon")}
+              className="grid size-11 place-items-center rounded-2xl bg-sky-50 shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_10px_22px_rgba(2,132,199,.12)]"
+            >
+              <img
+                src={BENEFITSI_ICON_SRC}
+                alt=""
+                className="size-7 object-contain"
+                style={imageStyleFor(config, "content.appKicker.icon")}
+              />
+            </span>
             <p
               {...editable("content.appKicker", "text", "App-Banner Label")}
               className="text-sm font-semibold text-zinc-700"
@@ -841,30 +893,48 @@ function AppDownloadBanner({
           </ul>
 
           <div className="mt-5 flex flex-wrap gap-3">
-            <StoreBadge store="app-store" />
-            <StoreBadge store="google-play" />
+            <StoreBadge store="app-store" href={appUrl} />
+            <StoreBadge store="google-play" href={appUrl} />
+          </div>
+
+          <div className="mt-5 grid gap-2 @min-[520px]:grid-cols-3">
+            <AppVisualPill
+              id="content.appVisual.0"
+              icon="benefitsi"
+              label={textValue(config, "content.appVisual.0", "Benefitsi App")}
+              config={config}
+            />
+            <AppVisualPill
+              id="content.appVisual.1"
+              icon="plate"
+              label={textValue(config, "content.appVisual.1", "Speisekarte")}
+              config={config}
+            />
+            <AppVisualPill
+              id="content.appVisual.2"
+              icon="qr"
+              label={textValue(config, "content.appVisual.2", "Scan & Vorteil")}
+              config={config}
+            />
           </div>
         </div>
 
-        <div className="grid gap-4 border-zinc-200 @min-[820px]:border-l @min-[820px]:pl-7">
-          <div className="flex items-center gap-4 @min-[820px]:justify-center">
+        <div className="grid gap-4 border-zinc-200 @min-[900px]:border-l @min-[900px]:pl-7">
+          <div className="grid justify-items-start gap-3 @min-[520px]:grid-cols-[auto_1fr] @min-[520px]:items-center @min-[900px]:grid-cols-1 @min-[900px]:justify-items-center">
             <a
               href={appUrl}
-              className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-[0_16px_36px_rgba(15,23,42,.08)] transition hover:-translate-y-0.5"
+              className="aspect-square w-48 max-w-full rounded-[1.4rem] border border-zinc-200 bg-white p-3 shadow-[0_16px_36px_rgba(15,23,42,.08)] transition hover:-translate-y-0.5 @min-[1024px]:w-56"
               aria-label="Benefitsi App QR-Code öffnen"
             >
               <img
                 {...editable("content.appQrCodeUrl", "image", "App QR-Code")}
                 src={qrUrl}
-                alt=""
-                className="size-28 rounded-xl"
+                alt={`QR-Code zum Öffnen der Benefitsi App für ${partner.name || "diesen Partner"}`}
+                className="h-full w-full rounded-xl object-contain"
                 style={imageStyleFor(config, "content.appQrCodeUrl")}
               />
             </a>
-            <div className="hidden text-[var(--site-accent)] @min-[1024px]:block">
-              <QrArrowIcon />
-            </div>
-            <div>
+            <div className="@min-[900px]:text-center">
               <p
                 {...editable("content.appQrLabel", "text", "QR-Code Hinweis")}
                 className="text-2xl italic leading-tight text-[var(--site-accent)] [font-family:'Brush_Script_MT','Segoe_Print',cursive]"
@@ -894,75 +964,245 @@ function AppDownloadBanner({
             </span>
           </a>
         </div>
+        </div>
       </div>
-    </div>
+  )
+}
+
+function LocalRestaurantHero({ config }: { config: MicrositeConfig }) {
+  const heroImage = config.hero.backgroundImageUrl || "/upload-image.jpg"
+
+  return (
+    <section className="relative overflow-hidden bg-[#24170f] px-5 py-10 text-[#fff7ed] @min-[640px]:px-8 @min-[1024px]:px-10 @min-[1024px]:py-14">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_0%,rgba(245,158,11,.24),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(14,165,233,.16),transparent_28%)]" />
+      <div className="relative mx-auto grid max-w-6xl gap-7 @min-[960px]:grid-cols-[minmax(0,.95fr)_minmax(0,1.05fr)] @min-[960px]:items-center">
+        <div className="premium-reveal min-w-0 rounded-[2rem] border border-white/10 bg-white/[.06] p-5 shadow-[0_28px_70px_rgba(0,0,0,.2)] @min-[760px]:p-7">
+          <p
+            {...editable("hero.badgeText", "text", "Badge-Text")}
+            className="inline-flex max-w-full rounded-full bg-[#fbbf24] px-4 py-2 text-xs font-black uppercase tracking-[.08em] text-[#24170f] shadow-sm"
+            style={textStyleFor(config, "hero.badgeText")}
+          >
+            {config.hero.badgeText}
+          </p>
+          <h1
+            {...editable("hero.headline", "text", "Startbereich Überschrift")}
+            className="mt-5 max-w-[14ch] text-[clamp(2.35rem,7vw,5rem)] font-black leading-[1.02] text-white [text-wrap:balance]"
+            style={textStyleFor(config, "hero.headline")}
+          >
+            {config.hero.headline}
+          </h1>
+          <p
+            {...editable("hero.slogan", "text", "Startbereich Slogan")}
+            className="mt-4 max-w-xl text-[clamp(1.1rem,2.4vw,1.6rem)] leading-tight text-[#fed7aa]"
+            style={textStyleFor(config, "hero.slogan")}
+          >
+            {config.hero.slogan}
+          </p>
+          <div className="mt-7 grid gap-3 @min-[640px]:grid-cols-2">
+            <MetaLine id="hero.locationText" iconId="hero.locationIcon" iconName="pin" text={config.hero.locationText} config={config} />
+            <MetaLine id="hero.openingText" iconId="hero.openingIcon" iconName="clock" text={config.hero.openingText} accent config={config} />
+          </div>
+          <div className="mt-8 flex flex-col gap-3 @min-[640px]:flex-row">
+            <HeroButton id="hero.primaryButtonLabel" primary label={config.hero.primaryButtonLabel} config={config} />
+            <HeroButton id="hero.secondaryButtonLabel" label={config.hero.secondaryButtonLabel} config={config} />
+          </div>
+        </div>
+
+        <div className="premium-reveal relative min-h-[380px] @min-[640px]:min-h-[500px]">
+          <div className="absolute -inset-2 rotate-[-1.5deg] rounded-[2rem] bg-[#fbbf24]" />
+          <img
+            {...editable("hero.backgroundImageUrl", "image", "Startbild")}
+            src={heroImage}
+            alt=""
+            className="premium-parallax relative h-[380px] w-full rounded-[2rem] object-cover shadow-[0_28px_70px_rgba(0,0,0,.28)] @min-[640px]:h-[500px]"
+            style={imageStyleFor(config, "hero.backgroundImageUrl")}
+          />
+          <div className="absolute bottom-5 left-5 right-5 rounded-[1.3rem] bg-[#1f140d]/90 p-4 text-white shadow-[0_18px_46px_rgba(0,0,0,.24)] ring-1 ring-white/10 backdrop-blur-xl">
+            <p className="text-xs font-black uppercase tracking-[.12em] text-[#fbbf24]">Lokal empfohlen</p>
+            <div className="mt-3 grid grid-cols-1 gap-2 @min-[520px]:grid-cols-2">
+              {config.hero.services.slice(0, 2).map((service, index) => (
+                <div key={service.label} className="flex min-w-0 items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm font-bold text-white">
+                  <ServiceIcon id={`hero.services.${index}.icon`} name={service.icon} config={config} className="grid size-8 shrink-0 place-items-center rounded-full bg-[#fbbf24] text-[#24170f]" />
+                  <span className="min-w-0 break-words">{service.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CleanFoodHero({ config }: { config: MicrositeConfig }) {
+  return (
+    <section className="relative overflow-hidden bg-[#fbfbfb] px-5 py-10 @min-[640px]:px-8 @min-[1024px]:px-10 @min-[1024px]:py-14">
+      <div className="mx-auto grid max-w-6xl gap-8 @min-[920px]:grid-cols-[minmax(0,1fr)_420px] @min-[920px]:items-center">
+        <div className="premium-reveal min-w-0">
+          <p
+            {...editable("hero.badgeText", "text", "Badge-Text")}
+            className="inline-flex max-w-full rounded-full bg-zinc-950 px-4 py-2 text-xs font-black uppercase tracking-[.08em] text-white"
+            style={textStyleFor(config, "hero.badgeText")}
+          >
+            {config.hero.badgeText}
+          </p>
+          <h1
+            {...editable("hero.headline", "text", "Startbereich Überschrift")}
+            className="mt-5 max-w-[13ch] text-[clamp(2.5rem,7vw,5.25rem)] font-black leading-[.98] text-zinc-950 [text-wrap:balance]"
+            style={textStyleFor(config, "hero.headline")}
+          >
+            {config.hero.headline}
+          </h1>
+          <p
+            {...editable("hero.slogan", "text", "Startbereich Slogan")}
+            className="mt-5 max-w-2xl text-[clamp(1.05rem,2vw,1.35rem)] leading-8 text-zinc-600"
+            style={textStyleFor(config, "hero.slogan")}
+          >
+            {config.hero.slogan}
+          </p>
+          <div className="mt-8 flex flex-col gap-3 @min-[640px]:flex-row">
+            <HeroButton id="hero.primaryButtonLabel" primary label={config.hero.primaryButtonLabel} config={config} />
+            <HeroButton id="hero.secondaryButtonLabel" label={config.hero.secondaryButtonLabel} config={config} />
+          </div>
+          <div className="mt-8 grid gap-3 @min-[640px]:grid-cols-3">
+            {config.hero.services.slice(0, 3).map((service, index) => (
+              <div key={service.label} className="rounded-2xl bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,.06)] ring-1 ring-zinc-100">
+                <ServiceIcon id={`hero.services.${index}.icon`} name={service.icon} config={config} className="grid size-9 place-items-center rounded-xl bg-zinc-950 text-white" />
+                <p className="mt-3 text-sm font-black text-zinc-950">{service.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="premium-reveal">
+          <div className="overflow-hidden rounded-[2rem] bg-white p-3 shadow-[0_28px_80px_rgba(15,23,42,.12)] ring-1 ring-zinc-100">
+            <img
+              {...editable("hero.backgroundImageUrl", "image", "Startbild")}
+              src={config.hero.backgroundImageUrl}
+              alt=""
+              className="premium-parallax h-[390px] w-full rounded-[1.5rem] object-cover"
+              style={imageStyleFor(config, "hero.backgroundImageUrl")}
+            />
+            <div className="grid grid-cols-2 gap-3 p-3">
+              <MetaLine id="hero.locationText" iconId="hero.locationIcon" iconName="pin" text={config.hero.locationText} config={config} />
+              <MetaLine id="hero.openingText" iconId="hero.openingIcon" iconName="status" text={config.hero.openingText} accent config={config} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
 function AppPhoneMockup({
-  partner,
   config,
 }: {
   partner: PartnerWithDeals
   config: MicrositeConfig
 }) {
+  const screenshotUrl = textValue(
+    config,
+    "content.appPhoneScreenshotUrl",
+    PARTNER_DETAIL_SCREEN_SRC,
+  )
+
   return (
-    <div className="relative mx-auto w-[190px] rounded-[2rem] border-[7px] border-zinc-900 bg-white p-3 shadow-[0_24px_52px_rgba(15,23,42,.22)]">
-      <div className="absolute left-1/2 top-2 h-4 w-16 -translate-x-1/2 rounded-full bg-zinc-950" />
-      <div className="pt-8">
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-[11px] font-black text-zinc-900">
-            <BenefitsiMark className="size-4" />
-            benefitsi
-          </span>
-          <span className="space-y-1">
-            <span className="block h-0.5 w-3 rounded bg-zinc-700" />
-            <span className="block h-0.5 w-3 rounded bg-zinc-700" />
-          </span>
-        </div>
-        <p className="mt-5 text-[15px] font-black leading-tight tracking-[-0.04em] text-zinc-950">
-          {partner.name || config.hero.headline}
-        </p>
-        <p className="mt-1 text-[9px] text-zinc-500">{config.hero.locationText}</p>
-        <div className="mt-4 rounded-xl bg-zinc-950 p-3 text-center text-white shadow-inner">
-          <p className="text-left text-[10px] font-bold">Deine Benefitsi Vorteile</p>
-          <p className="mt-3 text-3xl font-black">10 %</p>
-          <p className="text-xs font-bold text-[var(--site-accent)]">Cashback</p>
-          <p className="mt-1 text-[9px] text-zinc-300">bei jeder Bestellung</p>
-          <span className="mt-3 inline-flex rounded-full bg-cyan-400 px-4 py-1 text-[9px] font-bold text-zinc-950">
-            Vorteil aktiv
-          </span>
-        </div>
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[8px] text-zinc-700">
-          <span>Cashback sammeln</span>
-          <span>Vorteile einlösen</span>
-          <span>Lokal unterstützen</span>
-        </div>
-        <div className="mt-4 rounded-lg bg-blue-500 px-3 py-2 text-center text-[10px] font-bold text-white">
-          Jetzt profitieren
-        </div>
+    <div className="relative isolate mx-auto w-[min(72vw,250px)] rounded-[2.85rem] bg-[#111214] p-[9px] shadow-[0_34px_70px_rgba(15,23,42,.32),inset_0_0_0_1px_rgba(255,255,255,.08)] @min-[1024px]:w-[270px]">
+      <div className="absolute -left-1 top-24 h-14 w-1 rounded-l bg-zinc-800" />
+      <div className="absolute -left-1 top-44 h-10 w-1 rounded-l bg-zinc-800" />
+      <div className="absolute -right-1 top-32 h-20 w-1 rounded-r bg-zinc-800" />
+      <div className="pointer-events-none absolute left-1/2 top-[10px] z-20 h-6 w-24 -translate-x-1/2 rounded-b-2xl bg-[#111214]" />
+      <div
+        className="relative isolate aspect-[720/1600] overflow-hidden rounded-[2.25rem] bg-[#111214]"
+        style={{ clipPath: "inset(0 round 2.25rem)" }}
+      >
+        <img
+          {...editable("content.appPhoneScreenshotUrl", "image", "App Screenshot im iPhone")}
+          src={screenshotUrl}
+          alt=""
+          className="h-full w-full scale-[1.012] object-cover"
+          style={imageStyleFor(config, "content.appPhoneScreenshotUrl")}
+        />
+        <div className="pointer-events-none absolute inset-0 rounded-[2.25rem] shadow-[inset_0_0_0_1.5px_rgba(255,255,255,.2),inset_0_-24px_50px_rgba(15,23,42,.12)]" />
       </div>
     </div>
   )
 }
 
-function StoreBadge({ store }: { store: "app-store" | "google-play" }) {
+function AppVisualPill({
+  id,
+  icon,
+  label,
+  config,
+}: {
+  id: string
+  icon: string
+  label: string
+  config: MicrositeConfig
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 rounded-2xl bg-zinc-50 px-3 py-2 ring-1 ring-zinc-100">
+      <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-white text-[var(--site-accent)] shadow-sm ring-1 ring-zinc-100">
+        {icon === "benefitsi" ? (
+          <img src={BENEFITSI_ICON_SRC} alt="" className="size-5 object-contain" />
+        ) : (
+          <ThemeGlyph name={icon} className="size-4" />
+        )}
+      </span>
+      <span
+        {...editable(id, "text", "App Visual")}
+        className="min-w-0 whitespace-normal break-words text-xs font-black leading-tight text-zinc-700"
+        style={textStyleFor(config, id)}
+      >
+        {label}
+      </span>
+    </div>
+  )
+}
+
+function StoreBadge({
+  store,
+  href,
+}: {
+  store: "app-store" | "google-play"
+  href: string
+}) {
   const isAppStore = store === "app-store"
 
   return (
-    <span
-      className="inline-flex min-w-[158px] items-center gap-2 rounded-[0.7rem] bg-zinc-950 px-3 py-2 text-white shadow-[0_10px_24px_rgba(15,23,42,.14)] ring-1 ring-white/10"
+    <a
+      href={href}
+      className="inline-flex min-w-[190px] items-center gap-3 rounded-[0.9rem] bg-black px-4 py-3 text-white shadow-[0_14px_30px_rgba(15,23,42,.18)] ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-zinc-900"
       aria-label={isAppStore ? "Laden im App Store" : "Jetzt bei Google Play"}
     >
       {isAppStore ? <AppleGlyph /> : <PlayGlyph />}
       <span>
-        <span className="block text-[9px] font-semibold uppercase leading-none text-zinc-300">
+        <span className="block text-[10px] font-semibold uppercase leading-none text-zinc-300">
           {isAppStore ? "Laden im" : "Jetzt bei"}
         </span>
-        <span className="block text-sm font-black leading-tight">
+        <span className="block text-[1.05rem] font-black leading-tight">
           {isAppStore ? "App Store" : "Google Play"}
         </span>
       </span>
+    </a>
+  )
+}
+
+function BenefitsiLockup({
+  compact = false,
+  className = "",
+}: {
+  compact?: boolean
+  className?: string
+}) {
+  return (
+    <span className={`inline-flex items-center gap-2 font-black text-zinc-950 ${className}`}>
+      <img
+        src={BENEFITSI_ICON_SRC}
+        alt=""
+        className={`${compact ? "size-5" : "size-8"} rounded-[0.55rem] object-contain`}
+      />
+      <span>benefitsi</span>
     </span>
   )
 }
@@ -991,40 +1231,20 @@ function BenefitsiMark({ className = "size-6" }: { className?: string }) {
 
 function AppleGlyph() {
   return (
-    <svg viewBox="0 0 20 20" aria-hidden="true" className="size-6" fill="currentColor">
-      <path d="M13.4 2.2c.1 1.1-.4 2.1-1.1 2.8-.7.7-1.7 1.2-2.7 1.1-.1-1 .4-2 1.1-2.7.7-.8 1.8-1.3 2.7-1.2Z" />
-      <path d="M17 14.6c-.4.9-.7 1.4-1.2 2.2-.8 1.2-1.9 2.7-3.3 2.7-1.2 0-1.6-.8-3.3-.8s-2.1.8-3.3.8c-1.4 0-2.5-1.4-3.3-2.6-2.3-3.6-2.5-7.8-1.1-10 1-1.6 2.6-2.5 4.1-2.5 1.6 0 2.5.8 3.8.8 1.2 0 2-.8 3.8-.8 1.3 0 2.8.7 3.8 2-3.3 1.8-2.8 6.5.4 8.2Z" />
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-8" fill="currentColor">
+      <path d="M16.46 12.42c-.03-3.03 2.48-4.49 2.6-4.56-1.42-2.07-3.62-2.35-4.39-2.39-1.85-.19-3.64 1.1-4.58 1.1-.96 0-2.41-1.07-3.98-1.04-2.03.03-3.92 1.2-4.96 3.03-2.14 3.7-.55 9.14 1.5 12.13 1.03 1.47 2.23 3.11 3.79 3.05 1.53-.06 2.1-.98 3.95-.98 1.83 0 2.37.98 3.97.95 1.64-.03 2.67-1.48 3.66-2.97 1.19-1.68 1.66-3.34 1.68-3.42-.04-.01-3.2-1.23-3.24-4.9Z" />
+      <path d="M13.46 3.5c.83-1.04 1.39-2.45 1.24-3.87-1.2.05-2.7.83-3.56 1.84-.76.88-1.44 2.35-1.26 3.72 1.35.1 2.72-.68 3.58-1.69Z" />
     </svg>
   )
 }
 
 function PlayGlyph() {
   return (
-    <svg viewBox="0 0 20 20" aria-hidden="true" className="size-6">
+    <svg viewBox="0 0 20 20" aria-hidden="true" className="size-8">
       <path d="M3.2 2.4 11 10l-7.8 7.6a2 2 0 0 1-.2-.9V3.3c0-.3.1-.6.2-.9Z" fill="#38bdf8" />
       <path d="m11 10 2.4-2.4 3.2 1.8c.6.4.6 1.2 0 1.6l-3.2 1.8L11 10Z" fill="#facc15" />
       <path d="m3.2 2.4 10.2 5.2L11 10 3.2 2.4Z" fill="#22c55e" />
       <path d="M3.2 17.6 11 10l2.4 2.4L3.2 17.6Z" fill="#ef4444" />
-    </svg>
-  )
-}
-
-function QrArrowIcon() {
-  return (
-    <svg viewBox="0 0 72 40" aria-hidden="true" className="h-10 w-16" fill="none">
-      <path
-        d="M66 8C47 9 34 16 20 28"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="3"
-      />
-      <path
-        d="M24 18 18 30l13-2"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="3"
-      />
     </svg>
   )
 }
@@ -1061,16 +1281,14 @@ function contactHeadlineFor(config: MicrositeConfig) {
   return "Wir sind für dich da."
 }
 
-function qrCodeUrl(value: string) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(value)}`
-}
-
 function MenuSection({
   partner,
   config,
+  template,
 }: {
   partner: PartnerWithDeals
   config: MicrositeConfig
+  template: MicrositeConfig["template"]
 }) {
   const items = useMemo(() => menuItemsForPartner(partner), [partner])
   const filters = useMemo(() => menuFiltersForItems(items), [items])
@@ -1097,7 +1315,7 @@ function MenuSection({
   const imageLessCount = items.filter((item) => !item.image_url).length
 
   return (
-    <section id="speisekarte" className="bg-[#f8f6f1] px-5 py-12 @min-[640px]:px-8 @min-[1024px]:px-10">
+    <section id="speisekarte" className={`${restaurantSectionClass(template, "menu")} px-5 py-12 @min-[640px]:px-8 @min-[1024px]:px-10`}>
       <div className="mx-auto max-w-6xl">
         <div className="premium-reveal flex flex-col gap-5 @min-[640px]:flex-row @min-[900px]:items-end @min-[900px]:justify-between">
           <div className="max-w-2xl">
@@ -1239,9 +1457,11 @@ Für diese Suche oder diesen Filter gibt es aktuell keine Einträge.
 function AboutContactSection({
   partner,
   config,
+  template,
 }: {
   partner: PartnerWithDeals
   config: MicrositeConfig
+  template: MicrositeConfig["template"]
 }) {
   const aboutHeroImage = textValue(
     config,
@@ -1265,7 +1485,7 @@ function AboutContactSection({
   )
 
   return (
-    <section className="bg-[#fffdf8] px-5 py-8 @min-[640px]:px-8 @min-[1024px]:px-10">
+    <section className={`${restaurantSectionClass(template, "about")} px-5 py-8 @min-[640px]:px-8 @min-[1024px]:px-10`}>
       <div
         id="ueber-uns"
         className="premium-reveal relative mx-auto max-w-6xl overflow-hidden rounded-[1.85rem] border border-white/80 bg-white shadow-[0_30px_85px_rgba(15,23,42,.10)]"
@@ -1543,12 +1763,12 @@ function CompactContactSection({
           allowFullScreen
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/20 to-transparent" />
-        <div className="absolute left-1/2 top-1/2 z-10 block -translate-x-1/2 -translate-y-full">
+        <div className="absolute left-1/2 top-1/2 z-10 block -translate-x-1/2 -translate-y-full rounded-full bg-white/95 p-2 shadow-[0_16px_34px_rgba(0,0,0,.28)]">
           <img
             {...editable("content.contactLocationIcon", "image", "Standort-Icon")}
             src={textValue(config, "content.contactLocationIcon", "/benefitsi-location-pin.png")}
             alt=""
-            className="h-20 w-20 drop-shadow-[0_16px_26px_rgba(0,0,0,.28)]"
+            className="h-20 w-20"
             style={imageStyleFor(config, "content.contactLocationIcon")}
           />
         </div>
@@ -1715,14 +1935,7 @@ function FooterSection({
                 style={imageStyleFor(config, "footer.benefitsiLogo")}
               />
             ) : (
-              <>
-                <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-[var(--site-secondary)] to-[#1186ee] text-base font-black text-white">
-                  b
-                </span>
-                <span className="text-[1.45rem] font-black tracking-[-0.06em] text-zinc-950">
-                  benefitsi
-                </span>
-              </>
+              <BenefitsiLockup className="text-[1.45rem]" />
             )}
           </div>
 
@@ -1846,14 +2059,18 @@ function BrandMark({
     : {}
 
   return src && !imageFailed ? (
-    <img
+    <span
       {...attrs}
-      src={src}
-      alt=""
-      onError={() => setFailedSrc(src || null)}
-      className={`${sizeClass} rounded-full object-contain`}
-      style={style}
-    />
+      className={`grid ${sizeClass} shrink-0 place-items-center overflow-hidden rounded-full bg-white shadow-sm ring-1 ring-zinc-200/80`}
+    >
+      <img
+        src={src}
+        alt=""
+        onError={() => setFailedSrc(src || null)}
+        className="h-full w-full rounded-full object-cover"
+        style={style}
+      />
+    </span>
   ) : (
     <span
       {...attrs}
@@ -1925,7 +2142,7 @@ function MetaLine({
         name={iconName}
         config={config}
         label={`${text} Icon`}
-        className={`grid size-6 place-items-center ${accent ? "text-emerald-600" : "text-zinc-950"}`}
+        className={`grid size-6 place-items-center ${accent ? "text-emerald-500" : "text-current"}`}
         iconClassName={iconName === "status" ? "block size-3.5 animate-pulse rounded-full bg-emerald-500 ring-4 ring-emerald-100 text-transparent" : "text-lg leading-none"}
       />
       {text}
@@ -2007,12 +2224,14 @@ function ServiceIcon({
   id,
   name,
   config,
+  className,
 }: {
   id: string
   name: string
   config: MicrositeConfig
+  className?: string
 }) {
-  return <ThemeIcon id={id} name={name} config={config} />
+  return <ThemeIcon id={id} name={name} config={config} className={className} />
 }
 
 function ThemeIcon({
@@ -2113,7 +2332,7 @@ function ThemeGlyph({
   if (name === "whatsapp") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true" className={svgClassName} style={style} fill="currentColor">
-        <path d="M12 3.4a8.1 8.1 0 0 0-7 12.2L4 20.8l5.3-1.4A8.1 8.1 0 1 0 12 3.4Zm0 14.7c-1.3 0-2.5-.4-3.5-1l-.2-.2-3.1.8.8-3-.2-.3A6.4 6.4 0 1 1 12 18.1Zm3.6-4.8c-.2-.1-1.2-.6-1.4-.7-.2-.1-.4-.1-.5.1l-.7.8c-.1.2-.3.2-.5.1-1.2-.6-2-1.1-2.8-2.4-.2-.3 0-.4.1-.6l.4-.5c.1-.2.1-.3 0-.5l-.6-1.4c-.2-.4-.3-.3-.5-.3h-.4c-.2 0-.5.1-.7.3-.2.2-.9.8-.9 2s.9 2.4 1 2.5c.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.5.6.2 1.2.1 1.6.1.5-.1 1.2-.5 1.4-1 .2-.5.2-.9.1-1 0-.1-.2-.2-.4-.3Z" />
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
       </svg>
     )
   }
@@ -2188,6 +2407,32 @@ function ThemeGlyph({
       </>
     ),
     check: <path d="m5 12.4 4 3.8L19 7" />,
+    home: (
+      <>
+        <path d="M4.5 10.8 12 4.8l7.5 6v8.4h-5v-5h-5v5h-5v-8.4Z" />
+        <path d="M9.5 19.2v-5h5v5" />
+      </>
+    ),
+    share: (
+      <>
+        <circle cx="7" cy="12" r="2.2" />
+        <circle cx="17" cy="6.5" r="2.2" />
+        <circle cx="17" cy="17.5" r="2.2" />
+        <path d="m8.9 10.9 6.2-3.3M8.9 13.1l6.2 3.3" />
+      </>
+    ),
+    qr: (
+      <>
+        <path d="M5 5h5v5H5zM14 5h5v5h-5zM5 14h5v5H5z" />
+        <path d="M14 14h2.5v2.5H19M19 14v1.2M14 19h1.2M17 19h2" />
+      </>
+    ),
+    trend: (
+      <>
+        <path d="M4.5 17.5 9.5 12l3.6 3.1 6.4-8.6" />
+        <path d="M15.5 6.5h4v4" />
+      </>
+    ),
     pin: (
       <>
         <path d="M18.5 10.2c0 4.8-6.5 9.3-6.5 9.3s-6.5-4.5-6.5-9.3a6.5 6.5 0 1 1 13 0Z" />
@@ -2467,22 +2712,7 @@ function SocialBadge({
     `${id}.label`,
     partnerSocialLabel(partner, platform) || label,
   )
-  const color =
-    platform === "instagram"
-      ? "from-fuchsia-500 via-pink-500 to-orange-400"
-      : platform === "facebook"
-        ? "from-blue-500 to-blue-700"
-        : platform === "youtube"
-          ? "from-red-500 to-red-700"
-          : platform === "whatsapp"
-            ? "from-emerald-400 to-emerald-600"
-            : platform === "linkedin"
-              ? "from-sky-600 to-blue-800"
-              : platform === "google"
-                ? "from-blue-500 via-emerald-500 to-amber-400"
-                : platform === "website"
-                  ? "from-zinc-600 to-zinc-900"
-        : "from-zinc-950 to-black"
+  const color = socialBadgeBackground(platform)
 
   return (
     <a
@@ -2490,17 +2720,17 @@ function SocialBadge({
       href={href}
       target={href.startsWith("http") ? "_blank" : undefined}
       rel={href.startsWith("http") ? "noreferrer" : undefined}
-      className="grid justify-items-center gap-1 text-[10px] font-semibold text-zinc-300 transition hover:-translate-y-0.5 hover:text-white"
+      className="grid min-w-[4.5rem] justify-items-center gap-1.5 text-center text-[10px] font-semibold text-zinc-300 transition hover:-translate-y-0.5 hover:text-white"
     >
       <span
         {...editable(`${id}.iconUrl`, "image", `${displayLabel} Icon`)}
-        className={`grid size-12 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br ${color} text-white shadow-[0_12px_24px_rgba(0,0,0,.22)]`}
+        className={`grid size-14 place-items-center overflow-hidden rounded-[1.25rem] ${color} text-white shadow-[0_12px_24px_rgba(0,0,0,.22)] ring-1 ring-white/10`}
       >
         {iconUrl ? (
           <img
             src={iconUrl}
             alt=""
-            className="h-full w-full object-contain p-2"
+            className="h-full w-full object-contain p-1.5"
             style={imageStyleFor(config, `${id}.iconUrl`)}
           />
         ) : (
@@ -2517,26 +2747,66 @@ function SocialBadge({
   )
 }
 
-function SocialIcon({ platform }: { platform: SocialPlatform }) {
+function socialBadgeBackground(platform: SocialPlatform) {
+  if (platform === "instagram") {
+    return "bg-[radial-gradient(circle_at_30%_110%,#feda75_0,#fa7e1e_28%,#d62976_52%,#962fbf_75%,#4f5bd5_100%)]"
+  }
+
+  if (platform === "facebook") {
+    return "bg-[#1877f2]"
+  }
+
+  if (platform === "youtube") {
+    return "bg-[#ff0000]"
+  }
+
+  if (platform === "whatsapp") {
+    return "bg-[#00bf6f]"
+  }
+
+  if (platform === "linkedin") {
+    return "bg-[#0a66c2]"
+  }
+
+  if (platform === "google") {
+    return "bg-[conic-gradient(from_180deg,#4285f4,#34a853,#fbbc05,#ea4335,#4285f4)]"
+  }
+
+  if (platform === "website") {
+    return "bg-zinc-800"
+  }
+
+  return "bg-black"
+}
+
+function SocialIcon({
+  platform,
+  sizeClassName = "size-8",
+}: {
+  platform: SocialPlatform
+  sizeClassName?: string
+}) {
   if (platform === "facebook") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="currentColor">
-        <path d="M14.2 8.4V6.9c0-.7.5-.9 1-.9h1.8V3.1c-.3 0-1.4-.1-2.7-.1-2.7 0-4.5 1.6-4.5 4.7v.7H7v3.2h2.8V21h3.5v-9.4h2.8l.5-3.2h-3.4Z" />
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={sizeClassName} fill="currentColor">
+        <path d="M14.7 8.1V6.6c0-.7.4-1 1.1-1h1.9V2.4c-.3 0-1.5-.1-2.9-.1-2.8 0-4.8 1.7-4.8 4.9v.9H7v3.5h3V22h3.7V11.6h3l.6-3.5h-3.6Z" />
       </svg>
     )
   }
 
   if (platform === "tiktok") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="currentColor">
-        <path d="M15.2 3c.4 2.3 1.7 3.7 4 3.9v3.2c-1.4.1-2.7-.3-4-1.1v5.9c0 3-2 5.6-5.2 5.6-3 0-5.2-2.1-5.2-5 0-3.5 3.4-6 6.7-4.9V14c-1.3-.5-3 .4-3 1.8 0 1 .8 1.7 1.7 1.7 1.1 0 1.8-.7 1.8-2.1V3h3.2Z" />
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={sizeClassName}>
+        <path d="M15.2 3c.4 2.3 1.7 3.7 4 3.9v3.2c-1.4.1-2.7-.3-4-1.1v5.9c0 3-2 5.6-5.2 5.6-3 0-5.2-2.1-5.2-5 0-3.5 3.4-6 6.7-4.9V14c-1.3-.5-3 .4-3 1.8 0 1 .8 1.7 1.7 1.7 1.1 0 1.8-.7 1.8-2.1V3h3.2Z" fill="#25f4ee" transform="translate(-1 1)" />
+        <path d="M15.2 3c.4 2.3 1.7 3.7 4 3.9v3.2c-1.4.1-2.7-.3-4-1.1v5.9c0 3-2 5.6-5.2 5.6-3 0-5.2-2.1-5.2-5 0-3.5 3.4-6 6.7-4.9V14c-1.3-.5-3 .4-3 1.8 0 1 .8 1.7 1.7 1.7 1.1 0 1.8-.7 1.8-2.1V3h3.2Z" fill="#fe2c55" transform="translate(1 -1)" />
+        <path d="M15.2 3c.4 2.3 1.7 3.7 4 3.9v3.2c-1.4.1-2.7-.3-4-1.1v5.9c0 3-2 5.6-5.2 5.6-3 0-5.2-2.1-5.2-5 0-3.5 3.4-6 6.7-4.9V14c-1.3-.5-3 .4-3 1.8 0 1 .8 1.7 1.7 1.7 1.1 0 1.8-.7 1.8-2.1V3h3.2Z" fill="white" />
       </svg>
     )
   }
 
   if (platform === "youtube") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="currentColor">
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={sizeClassName} fill="currentColor">
         <path d="M21 8.3a3 3 0 0 0-2.1-2.1C17.1 5.7 12 5.7 12 5.7s-5.1 0-6.9.5A3 3 0 0 0 3 8.3 31 31 0 0 0 2.5 12c0 1.2.1 2.5.5 3.7a3 3 0 0 0 2.1 2.1c1.8.5 6.9.5 6.9.5s5.1 0 6.9-.5a3 3 0 0 0 2.1-2.1c.4-1.2.5-2.5.5-3.7s-.1-2.5-.5-3.7ZM10.1 15.1V8.9l5.4 3.1-5.4 3.1Z" />
       </svg>
     )
@@ -2544,29 +2814,36 @@ function SocialIcon({ platform }: { platform: SocialPlatform }) {
 
   if (platform === "whatsapp") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="currentColor">
-        <path d="M12 3.4a8.1 8.1 0 0 0-7 12.2L4 20.8l5.3-1.4A8.1 8.1 0 1 0 12 3.4Zm0 14.7c-1.3 0-2.5-.4-3.5-1l-.2-.2-3.1.8.8-3-.2-.3A6.4 6.4 0 1 1 12 18.1Zm3.6-4.8c-.2-.1-1.2-.6-1.4-.7-.2-.1-.4-.1-.5.1l-.7.8c-.1.2-.3.2-.5.1-1.2-.6-2-1.1-2.8-2.4-.2-.3 0-.4.1-.6l.4-.5c.1-.2.1-.3 0-.5l-.6-1.4c-.2-.4-.3-.3-.5-.3h-.4c-.2 0-.5.1-.7.3-.2.2-.9.8-.9 2s.9 2.4 1 2.5c.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.5.6.2 1.2.1 1.6.1.5-.1 1.2-.5 1.4-1 .2-.5.2-.9.1-1 0-.1-.2-.2-.4-.3Z" />
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={sizeClassName} fill="currentColor">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
       </svg>
     )
   }
 
   if (platform === "linkedin") {
-    return <span className="text-xl font-black leading-none">in</span>
+    return <span className={`font-black leading-none ${sizeClassName}`}>in</span>
   }
 
   if (platform === "website") {
-    return <ThemeGlyph name="website" className="size-6" />
+    return <ThemeGlyph name="website" className="size-7" />
   }
 
   if (platform === "google") {
-    return <span className="text-xl font-black leading-none">G</span>
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={sizeClassName}>
+        <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3Z" />
+        <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.5L15.4 17c-.9.6-2 .9-3.4.9a5.9 5.9 0 0 1-5.5-4H3.2v2.6A10 10 0 0 0 12 22Z" />
+        <path fill="#FBBC05" d="M6.5 13.9a6 6 0 0 1 0-3.8V7.5H3.2a10 10 0 0 0 0 9l3.3-2.6Z" />
+        <path fill="#EA4335" d="M12 6.1c1.5 0 2.8.5 3.8 1.5l2.8-2.8A9.5 9.5 0 0 0 12 2 10 10 0 0 0 3.2 7.5l3.3 2.6A5.9 5.9 0 0 1 12 6.1Z" />
+      </svg>
+    )
   }
 
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="none">
-      <rect x="5" y="5" width="14" height="14" rx="4" stroke="currentColor" strokeWidth="2" />
-      <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="2" />
-      <circle cx="16.5" cy="7.8" r="1" fill="currentColor" />
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={sizeClassName} fill="none">
+      <rect x="4.8" y="4.8" width="14.4" height="14.4" rx="4.4" stroke="currentColor" strokeWidth="2.3" />
+      <circle cx="12" cy="12" r="3.4" stroke="currentColor" strokeWidth="2.3" />
+      <circle cx="16.5" cy="7.7" r="1.15" fill="currentColor" />
     </svg>
   )
 }

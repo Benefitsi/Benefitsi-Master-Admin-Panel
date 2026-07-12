@@ -10,6 +10,7 @@ import {
   useSyncExternalStore,
   useContext,
   type Dispatch,
+  type CSSProperties,
   type FocusEvent,
   type FormEvent,
   type MouseEvent,
@@ -34,6 +35,7 @@ import {
 import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
 import { PrintableStudioPanel } from "@/components/microsite/printable-studio-panel"
 import {
+  defaultMicrositeCopyForPartner,
   defaultMicrositeTemplateForPartner,
   partnerSocialLabel,
   partnerSocialUrl,
@@ -701,6 +703,7 @@ export function MicrositePanel({
   const assetOptions = Array.from(new Set([
     partner.logo_url,
     partner.feature_card_url,
+    partner.discover_card_image_url,
     ...(partner.cover_urls || []),
     config.branding.partnerBadgeUrl,
     config.hero.backgroundImageUrl,
@@ -1145,7 +1148,7 @@ export function MicrositePanel({
       }}
     >
     <section
-      className="overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm"
+      className={`${fullscreen ? "overflow-visible" : "overflow-hidden"} rounded-md border border-zinc-200 bg-white shadow-sm`}
     >
       <header className="border-b border-zinc-200 bg-white">
         <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
@@ -1245,20 +1248,20 @@ export function MicrositePanel({
       </header>
       <form
         action={formAction}
-        className={`grid gap-0 transition-[grid-template-columns] duration-200 ${
+        className={`grid min-w-0 max-w-full grid-cols-1 gap-0 transition-[grid-template-columns] duration-200 ${
           useViewportShell
-            ? "min-h-[calc(100vh-8rem)]"
+            ? "min-h-[calc(100vh-8rem)] overflow-visible lg:grid-cols-[var(--editor-panel-width)_minmax(0,1fr)]"
             : editorPanelOpen
-              ? "lg:grid-cols-[330px_minmax(0,1fr)]"
-              : "lg:grid-cols-[56px_minmax(0,1fr)]"
+              ? "overflow-hidden lg:grid-cols-[330px_minmax(0,1fr)]"
+              : "overflow-hidden lg:grid-cols-[56px_minmax(0,1fr)]"
         } ${!fullscreen ? (editorPanelOpen ? "lg:grid-cols-[330px_minmax(0,1fr)]" : "lg:grid-cols-[56px_minmax(0,1fr)]") : ""}`}
         style={
           fullscreen
             ? {
-                gridTemplateColumns: editorPanelOpen
-                  ? `${editorPanelWidth}px minmax(0,1fr)`
-                  : "64px minmax(0,1fr)",
-              }
+                "--editor-panel-width": editorPanelOpen
+                  ? `${editorPanelWidth}px`
+                  : "64px",
+              } as CSSProperties
             : undefined
         }
       >
@@ -1278,9 +1281,9 @@ export function MicrositePanel({
 
         <aside
           ref={sidebarRef}
-          className={`relative min-w-0 self-start overflow-x-hidden border-zinc-200 bg-white ${
+            className={`relative w-full min-w-0 max-w-full self-start overflow-x-hidden border-zinc-200 bg-white ${
             fullscreen
-              ? "sticky top-0 h-[calc(100vh-8rem)] max-h-[calc(100vh-8rem)] overflow-x-hidden overflow-y-auto border-r"
+              ? "border-b overflow-x-hidden overflow-y-auto lg:sticky lg:top-20 lg:h-[calc(100dvh-5rem)] lg:max-h-[calc(100dvh-5rem)] lg:border-b-0 lg:border-r"
               : inlineSidebarClasses
           } ${editorPanelOpen ? "space-y-6 p-5" : "p-2"}`}
         >
@@ -1354,6 +1357,14 @@ export function MicrositePanel({
 
           <div data-builder-section="brand">
           <ConfigSection title="Marke">
+            <MicrositeLanguagePicker
+              language={config.language}
+              onChange={(language) =>
+                setConfig((current) =>
+                  applyMicrositeLanguage(current, partner, language),
+                )
+              }
+            />
             <ColorField
               name="accent"
               label="Akzentfarbe"
@@ -1556,6 +1567,26 @@ export function MicrositePanel({
               multiline
             />
             <EditorField
+              name="app_phone_screenshot_url"
+              label="iPhone App-Screenshot URL"
+              value={config.elementText["content.appPhoneScreenshotUrl"] || "/partner-details-page.jpg"}
+              onChange={(value) =>
+                setConfig((current) =>
+                  setElementTextValue(current, "content.appPhoneScreenshotUrl", value),
+                )
+              }
+              list={`microsite-assets-${partner.id || "new"}`}
+            />
+            <AssetUploadField
+              name="app_phone_screenshot_file"
+              label="Neuen iPhone App-Screenshot hochladen"
+              onPreview={(url) =>
+                setConfig((current) =>
+                  setElementTextValue(current, "content.appPhoneScreenshotUrl", url),
+                )
+              }
+            />
+            <EditorField
               name="footer_text"
               label="Footer-Text"
               value={config.content.footerText}
@@ -1664,7 +1695,7 @@ export function MicrositePanel({
         </aside>
 
         <div
-          className={`min-w-0 overflow-hidden bg-zinc-50 ${
+          className={`min-w-0 max-w-full overflow-hidden bg-zinc-50 ${
             useViewportShell ? "flex min-h-0 flex-col p-3" : "p-3 sm:p-5"
           }`}
         >
@@ -2336,6 +2367,7 @@ function AssetReadinessPanel({
     { label: "Top-Deal", value: config.deals.topDealImageUrl, source: "Microsite", slot: "deals.topDealImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     { label: "Über uns 1", value: config.elementText["content.aboutHeroImageUrl"] || "", source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     { label: "Über uns 2", value: config.elementText["content.aboutIngredientImageUrl"] || "", source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "iPhone Screenshot", value: config.elementText["content.appPhoneScreenshotUrl"] || "/partner-details-page.jpg", source: "Microsite", slot: "content.appPhoneScreenshotUrl", minWidth: 720, minHeight: 1400, preferredAspect: 9 / 20, aspectTolerance: 0.12 },
     { label: "Reward 5", value: config.elementText["stamps.reward.5.image"] || "", source: "Microsite", slot: "stamps.reward.5.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
     { label: "Reward 10", value: config.elementText["stamps.reward.10.image"] || "", source: "Microsite", slot: "stamps.reward.10.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
     { label: "QR-Code", value: config.elementText["content.appQrCodeUrl"] || "", source: "Microsite", slot: "content.appQrCodeUrl", minWidth: 600, minHeight: 600, preferredAspect: 1, aspectTolerance: 0.12 },
@@ -3780,6 +3812,18 @@ function getEditableElement(
       label: "App-Schaltfläche",
       fallback: "App öffnen",
     },
+    "content.appVisual.0": {
+      label: "App Visual 1",
+      fallback: "Benefitsi App",
+    },
+    "content.appVisual.1": {
+      label: "App Visual 2",
+      fallback: "Speisekarte",
+    },
+    "content.appVisual.2": {
+      label: "App Visual 3",
+      fallback: "Scan & Vorteil",
+    },
     "stamps.description": {
       label: "Stempelkarte Hinweis",
       fallback:
@@ -3839,6 +3883,17 @@ function getEditableElement(
           [id]: value,
         },
       }),
+    }
+  }
+
+  if (id === "content.appPhoneScreenshotUrl") {
+    return {
+      id,
+      label: "iPhone App-Screenshot",
+      kind: "image",
+      value: config.elementText[id] || "/partner-details-page.jpg",
+      uploadName: "app_phone_screenshot_file",
+      update: (current, value) => setElementTextValue(current, id, value),
     }
   }
 
@@ -4415,6 +4470,45 @@ function StatusBadge({
   )
 }
 
+function MicrositeLanguagePicker({
+  language,
+  onChange,
+}: {
+  language: MicrositeConfig["language"]
+  onChange: (language: MicrositeConfig["language"]) => void
+}) {
+  const { tr } = useBuilderI18n()
+
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-bold text-zinc-700">{tr("Microsite-Sprache")}</p>
+          <p className="mt-0.5 text-xs leading-5 text-zinc-500">
+            {tr("Aktualisiert Navigation, Standardtexte und SEO-Grundcopy.")}
+          </p>
+        </div>
+        <div className="inline-flex shrink-0 rounded-md border border-zinc-300 bg-white p-1">
+          {(["de", "en"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onChange(option)}
+              className={`rounded px-3 py-1.5 text-xs font-bold uppercase transition ${
+                language === option
+                  ? "bg-teal-700 text-white"
+                  : "text-zinc-600 hover:bg-zinc-100"
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function updateBranding(
   setter: Dispatch<SetStateAction<MicrositeConfig>>,
   key: keyof MicrositeConfig["branding"],
@@ -4457,6 +4551,226 @@ function updateContent(
     ...current,
     content: { ...current.content, [key]: value },
   }))
+}
+
+function applyMicrositeLanguage(
+  config: MicrositeConfig,
+  partner: PartnerWithDeals,
+  language: MicrositeConfig["language"],
+): MicrositeConfig {
+  const name = partner.short_name?.trim() || partner.name?.trim() || config.hero.headline
+  const location = config.hero.locationText
+  const copy =
+    language === "en"
+      ? englishMicrositeCopyForPartner(partner, name, location)
+      : defaultMicrositeCopyForPartner(partner)
+  const navigation =
+    language === "en"
+      ? [
+          { label: "Deals", anchor: "deals" },
+          { label: "Stamp Card", anchor: "stempelkarte" },
+          { label: copy.menuLabel, anchor: "speisekarte" },
+          { label: "About", anchor: "ueber-uns" },
+          { label: "Benefitsi App", anchor: "app" },
+          { label: "Contact", anchor: "kontakt" },
+        ]
+      : [
+          { label: "Deals", anchor: "deals" },
+          { label: "Stempelkarte", anchor: "stempelkarte" },
+          { label: copy.menuLabel, anchor: "speisekarte" },
+          { label: "Über Uns", anchor: "ueber-uns" },
+          { label: "Benefitsi-App", anchor: "app" },
+          { label: "Kontakt", anchor: "kontakt" },
+        ]
+  const languageText =
+    language === "en"
+      ? {
+          "content.appKicker": "In the Benefitsi app",
+          "content.appBenefit.0": "Check stamp progress anytime",
+          "content.appBenefit.1": "Unlock rewards automatically",
+          "content.appBenefit.2": "Use deals quickly and digitally",
+          "content.appQrLabel": "Open app & check in",
+          "content.appQrText": "Scan QR code",
+          "content.appButtonLabel": "Open app",
+          "content.appVisual.0": "Benefitsi App",
+          "content.appVisual.1": copy.menuLabel,
+          "content.appVisual.2": "Scan & reward",
+          "content.contactSocialText": "Follow us for offers and news.",
+        }
+      : {
+          "content.appKicker": "In der Benefitsi App",
+          "content.appBenefit.0": "Stempelstand jederzeit einsehbar",
+          "content.appBenefit.1": "Belohnungen automatisch freischalten",
+          "content.appBenefit.2": "Einfach, schnell & digital",
+          "content.appQrLabel": "App öffnen & einchecken",
+          "content.appQrText": "QR-Code scannen",
+          "content.appButtonLabel": "App öffnen",
+          "content.appVisual.0": "Benefitsi App",
+          "content.appVisual.1": copy.menuLabel,
+          "content.appVisual.2": "Scan & Vorteil",
+          "content.contactSocialText": "Folge uns für Aktionen & Neuigkeiten.",
+        }
+
+  return {
+    ...config,
+    language,
+    navigation: { links: navigation },
+    hero: {
+      ...config.hero,
+      badgeText:
+        language === "en"
+          ? "Official Benefitsi Partner"
+          : "Offizieller Benefitsi Partner",
+      primaryButtonLabel: language === "en" ? "View deals" : "Deals ansehen",
+      secondaryButtonLabel:
+        language === "en" ? `View ${copy.menuLabel}` : `${copy.menuLabel} ansehen`,
+      slogan: copy.heroSlogan,
+    },
+    deals: {
+      ...config.deals,
+      label: language === "en" ? "Deals & Benefits" : "Deals & Vorteile",
+      headline:
+        language === "en"
+          ? `Exclusive Benefitsi deals at ${name}`
+          : `Exklusive Benefitsi Deals bei ${name}`,
+      slogan: language === "en" ? "Enjoy more, save more." : "Mehr genießen, mehr sparen!",
+      description:
+        language === "en"
+          ? "Discover the best benefits and reward every visit."
+          : "Entdecke die besten Vorteile und belohne dich bei jedem Besuch.",
+      topDealButtonLabel:
+        language === "en"
+          ? "Activate benefit in the app"
+          : "Vorteil in der App aktivieren",
+    },
+    stamps: {
+      ...config.stamps,
+      label: language === "en" ? "Stamp Card" : "Stempelkarte",
+      headline:
+        language === "en"
+          ? "Collect stamps. Enjoy rewards."
+          : "Stempel sammeln. Belohnung genießen.",
+      slogan: language === "en" ? "Your loyalty pays off." : "Ihre Treue wird belohnt!",
+    },
+    content: {
+      ...config.content,
+      menuLabel: copy.menuLabel,
+      menuHeadline: copy.menuHeadline,
+      menuDescription: copy.menuDescription,
+      aboutLabel: language === "en" ? "About us" : "Über uns",
+      aboutHeadline:
+        language === "en"
+          ? `${name} at a glance`
+          : `${name} auf einen Blick`,
+      aboutText: copy.aboutText,
+      contactLabel: language === "en" ? "Contact" : "Kontakt",
+      contactHeadline: copy.contactHeadline,
+      appHeadline: copy.appHeadline,
+      appText: copy.appText,
+      footerText: copy.footerText,
+    },
+    seo: {
+      ...config.seo,
+      title:
+        language === "en"
+          ? `${name} in ${location} | Deals, stamp card & menu`
+          : `${name} in ${location} | Deals, Stempelkarte & Speisekarte`,
+      description:
+        language === "en"
+          ? `${name}: ${location}. Benefitsi deals, stamp card, menu, opening hours and contact at a glance.`
+          : `${name}: ${location}. Benefitsi Deals, Stempelkarte, Speisekarte, Öffnungszeiten und Kontakt auf einen Blick.`,
+      keywords:
+        language === "en"
+          ? [name, location, "Benefitsi", "deals", "stamp card", "menu"]
+          : [name, location, "Benefitsi", "Deals", "Stempelkarte", "Speisekarte"],
+    },
+    elementText: {
+      ...config.elementText,
+      ...languageText,
+    },
+  }
+}
+
+function englishMicrositeCopyForPartner(
+  partner: PartnerWithDeals,
+  name: string,
+  location: string,
+) {
+  const categoryText = partner.category?.filter(Boolean).slice(0, 3).join(", ")
+  const description = partner.description?.trim()
+  const profile = defaultMicrositeTemplateForPartner(partner)
+
+  if (profile === "salon-editorial" || profile === "atelier-noir") {
+    return {
+      heroSlogan: "Style, care and trust in one place.",
+      aboutText:
+        description ||
+        `${name} combines personal service, reliable appointments and a polished studio experience in ${location}.`,
+      menuLabel: "Services",
+      menuHeadline: "Popular services at a glance.",
+      menuDescription:
+        "Treatments, add-ons and signature services are presented clearly for quick booking decisions.",
+      contactHeadline: "Book your next appointment.",
+      appHeadline: "Your benefits and repeat visits in one app",
+      appText:
+        "Activate offers, collect loyalty benefits and stay connected with your favorite studio.",
+      footerText: "Modern service, loyal guests and a strong local presence.",
+    }
+  }
+
+  if (profile === "wellness-serene") {
+    return {
+      heroSlogan: "Calm, care and a reason to come back.",
+      aboutText:
+        description ||
+        `${name} creates a restorative experience in ${location} with premium treatments and Benefitsi rewards for returning guests.`,
+      menuLabel: "Treatments",
+      menuHeadline: "Signature treatments and member favorites.",
+      menuDescription:
+        "Massages, packages, wellness rituals and premium add-ons can be explored in a calm, high-quality layout.",
+      contactHeadline: "Ready to unwind?",
+      appHeadline: "Wellness offers and loyalty benefits in your pocket",
+      appText:
+        "Unlock tailored offers, collect visits and make it easier to come back.",
+      footerText: "Calm premium storytelling, reliable care and stronger retention for local wellness partners.",
+    }
+  }
+
+  if (profile === "cinema-spotlight") {
+    return {
+      heroSlogan: "Nights out, member perks and local experiences worth repeating.",
+      aboutText:
+        description ||
+        `${name} turns visits into repeatable experiences with exclusive offers and stronger local discovery in ${location}.`,
+      menuLabel: "Highlights",
+      menuHeadline: "Experiences guests should not miss.",
+      menuDescription:
+        "Screenings, events, bundles or special activities are presented in a fast, scannable way.",
+      contactHeadline: "Plan your next visit.",
+      appHeadline: "Your next event and every benefit, always at hand",
+      appText:
+        "Promote highlights, collect repeat visits and guide guests toward the next booking.",
+      footerText: "More visibility for events, better discovery and repeat visits with Benefitsi.",
+    }
+  }
+
+  return {
+    heroSlogan: "Fresh, local and always worth another visit.",
+    aboutText:
+      description ||
+      `${name} brings local flavor, reliable service and Benefitsi rewards together in ${location}.`,
+    menuLabel: "Menu",
+    menuHeadline: "Popular dishes and guest favorites.",
+    menuDescription:
+      "Show the current menu, highlight favorites and let guests explore before visiting.",
+    contactHeadline: "Ready for your next visit?",
+    appHeadline: "All local benefits in your Benefitsi app",
+    appText:
+      "Activate deals, collect loyalty stamps and keep your favorite partner one tap away.",
+    footerText: categoryText
+      ? `${categoryText}, loyal guests and one microsite for more repeat visits.`
+      : "Local flavor, loyal guests and one microsite for more repeat visits.",
+  }
 }
 
 function updateSeo(

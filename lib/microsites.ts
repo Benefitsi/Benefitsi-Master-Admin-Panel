@@ -10,6 +10,7 @@ import {
 } from "./microsite-personalization"
 
 export type MicrositeStatus = "draft" | "review" | "approved" | "published" | "archived"
+export type MicrositeLanguage = "de" | "en"
 
 export type MicrositeAsset = {
   id: string
@@ -22,6 +23,7 @@ export type MicrositeAsset = {
 
 export type MicrositeConfig = {
   template: MicrositeTemplateId
+  language: MicrositeLanguage
   branding: {
     accent: string
     accentSecondary: string
@@ -157,6 +159,7 @@ type PartnerSeed = {
   type?: string | null
   logo_url?: string | null
   feature_card_url?: string | null
+  discover_card_image_url?: string | null
   cover_urls?: string[] | null
   website?: string | null
   phone?: string | null
@@ -189,12 +192,16 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
   const name = partner.name?.trim() || partner.short_name?.trim() || "Restaurant"
   const location = micrositeLocationText(partner)
   const backgroundImage =
-    partner.cover_urls?.[0] || partner.feature_card_url || "/upload-image.jpg"
+    partner.cover_urls?.[0] ||
+    partner.discover_card_image_url ||
+    partner.feature_card_url ||
+    "/upload-image.jpg"
   const defaults = defaultMicrositeCopyForPartner(partner)
   const defaultTemplate = defaultMicrositeTemplateForPartner(partner)
 
   return {
     template: defaultTemplate,
+    language: "de",
     branding: {
       accent: "#f59e0b",
       accentSecondary: "#16c4cc",
@@ -221,11 +228,13 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       slogan: "Mehr genießen, mehr sparen!",
       description:
         "Entdecke die besten Vorteile und belohne dich bei jedem Besuch.",
-      illustrationUrl: partner.feature_card_url || backgroundImage,
+      illustrationUrl:
+        partner.discover_card_image_url || partner.feature_card_url || backgroundImage,
       topDealLabel: "Top Deal",
       topDealHeadline: "2 für 1 Döner",
       topDealDescription: "Zwei Döner genießen – nur einen bezahlen!",
-      topDealImageUrl: partner.feature_card_url || backgroundImage,
+      topDealImageUrl:
+        partner.discover_card_image_url || partner.feature_card_url || backgroundImage,
       topDealBullets: [
         "Gültig für alle Döner",
         "Täglich einlösbar",
@@ -311,6 +320,7 @@ export function resolveMicrositeConfig(
   return {
     ...fallback,
     template: sanitizeTemplateId(config.template, fallback.template),
+    language: sanitizeMicrositeLanguage(config.language, fallback.language),
     branding: {
       ...fallback.branding,
       accent: safeColor(branding.accent, fallback.branding.accent),
@@ -467,6 +477,9 @@ function defaultAssetLibrary(partner: PartnerSeed, backgroundImage: string) {
       : null,
     partner.feature_card_url
       ? { id: "partner-feature", url: partner.feature_card_url, label: "Feature-Bild", slot: "partner.feature", source: "partner" as const }
+      : null,
+    partner.discover_card_image_url
+      ? { id: "partner-discover", url: partner.discover_card_image_url, label: "Discover-Bild", slot: "partner.discover", source: "partner" as const }
       : null,
     backgroundImage
       ? { id: "hero-default", url: backgroundImage, label: "Standard Startbild", slot: "hero.background", source: "partner" as const }
@@ -656,6 +669,13 @@ function safeColor(value: unknown, fallback: string) {
   return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value)
     ? value
     : fallback
+}
+
+function sanitizeMicrositeLanguage(
+  value: unknown,
+  fallback: MicrositeLanguage,
+): MicrositeLanguage {
+  return value === "en" || value === "de" ? value : fallback
 }
 
 function normalizeElementStyles(
