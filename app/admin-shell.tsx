@@ -11,6 +11,7 @@ import {
 } from "react"
 import { signOut } from "./actions"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
+import { BrandLogo } from "@/components/brand-logo"
 
 export function AdminShell({
   adminName,
@@ -28,41 +29,38 @@ export function AdminShell({
   const [collapsed, setCollapsed] = useState(false)
 
   return (
-    <main className="min-h-screen bg-[#f3f5f7] text-zinc-950">
+    <main className="min-h-screen bg-[#f7f6f1] text-[#061829]">
       <div
         className={`grid min-h-screen transition-[grid-template-columns] duration-200 ${
           collapsed
             ? "lg:grid-cols-[72px_minmax(0,1fr)]"
-            : "lg:grid-cols-[220px_minmax(0,1fr)]"
+            : "lg:grid-cols-[244px_minmax(0,1fr)]"
         }`}
       >
         <aside
-          className={`border-r border-zinc-200 bg-white py-4 transition-[padding] duration-200 ${
-            collapsed ? "px-3" : "px-4"
+          className={`border-b border-white/10 bg-[#061829] py-4 text-white transition-[padding] duration-200 lg:sticky lg:top-0 lg:h-[100dvh] lg:border-b-0 lg:border-r ${
+            collapsed ? "lg:px-3" : "lg:px-4"
           }`}
         >
           <div
-            className={`flex items-center ${
-              collapsed ? "flex-col gap-3" : "justify-between gap-3"
+            className={`flex items-center justify-between gap-3 ${
+              collapsed ? "lg:flex-col" : ""
             }`}
           >
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-white ring-1 ring-zinc-100">
+            <div className="flex min-w-0 items-center">
+              <div className={`${collapsed ? "hidden lg:grid" : "hidden"} size-10 shrink-0 place-items-center rounded-xl bg-white/10 ring-1 ring-white/10`}>
                 <Image
                   src="/Benefitsi_Icon_FullColor_RGB_512.png"
-                  alt="Benefitsi Logo"
+                  alt=""
                   width={34}
                   height={34}
                 />
               </div>
-              {!collapsed ? (
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold uppercase tracking-[0.16em] text-teal-800">
-                    Benefitsi
-                  </p>
-                  <p className="text-xs text-zinc-500">Admin panel</p>
-                </div>
-              ) : null}
+              <BrandLogo
+                surface="dark"
+                priority
+                className={`${collapsed ? "lg:hidden" : ""} h-auto w-[158px] sm:w-[175px]`}
+              />
             </div>
             <button
               type="button"
@@ -70,7 +68,7 @@ export function AdminShell({
               aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
               aria-expanded={!collapsed}
               title={collapsed ? "Expand navigation" : "Collapse navigation"}
-              className="grid size-8 shrink-0 place-items-center rounded-md border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-800"
+              className="hidden size-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/5 text-white/75 transition hover:border-[#17d4d7]/60 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17d4d7] lg:grid"
             >
               <svg
                 aria-hidden="true"
@@ -90,10 +88,10 @@ export function AdminShell({
           </div>
 
           {!collapsed ? (
-            <nav aria-label="Admin navigation" className="mt-5 space-y-1">
+            <nav aria-label="Admin navigation" className="mt-4 space-y-1 lg:mt-8">
               <Link
                 href="/#partners"
-                className="flex h-9 items-center rounded-md bg-teal-50 px-3 text-sm font-semibold text-teal-800"
+                className="flex h-11 items-center rounded-xl border border-[#17d4d7]/20 bg-[#118cff]/22 px-3 text-sm font-bold text-white shadow-[inset_3px_0_0_#17d4d7] transition hover:bg-[#118cff]/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17d4d7]"
               >
                 Partner
               </Link>
@@ -102,23 +100,23 @@ export function AdminShell({
         </aside>
 
         <section className="flex min-w-0 flex-col">
-          <header className="flex flex-col gap-3 border-b border-zinc-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between lg:px-5">
+          <header className="flex flex-col gap-4 border-b border-[#061829]/10 bg-[#f7f6f1]/95 px-4 py-5 backdrop-blur sm:flex-row sm:items-center sm:justify-between lg:px-7 lg:py-6">
             <div className="min-w-0">
-              <h1 className="truncate text-xl font-semibold tracking-normal text-zinc-950">
+              <h1 className="truncate text-[1.7rem] font-black tracking-[-0.035em] text-[#061829]">
                 {title}
               </h1>
-              <p className="mt-0.5 truncate text-sm text-zinc-500">{subtitle}</p>
+              <p className="mt-1 truncate text-sm text-[#526170]">{subtitle}</p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <SystemSwitcher micrositeCount={micrositeCount} />
-              <p className="max-w-full truncate text-sm text-zinc-600">
+              <p className="max-w-full truncate text-sm font-medium text-[#526170]">
                 {adminName}
               </p>
               <form action={signOut}>
                 <PendingSubmitButton
                   pendingLabel="Signing out..."
-                  className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100 sm:w-auto"
+                  className="h-10 w-full rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-bold text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff] active:scale-[.98] sm:w-auto"
                 >
                   Sign out
                 </PendingSubmitButton>
@@ -126,7 +124,7 @@ export function AdminShell({
             </div>
           </header>
 
-          <div className="space-y-4 px-4 py-4 lg:px-5">{children}</div>
+          <div className="space-y-5 px-4 py-5 lg:px-7 lg:py-6">{children}</div>
         </section>
       </div>
     </main>

@@ -62,8 +62,8 @@ export default async function MicrositesPage() {
         </section>
       ) : null}
 
-      <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
-        <header className="border-b border-zinc-200 px-4 py-4 sm:px-5">
+      <section className="overflow-hidden rounded-2xl border border-[#061829]/10 bg-white shadow-[0_18px_48px_rgba(6,24,41,.05)]">
+        <header className="border-b border-[#061829]/10 px-4 py-4 sm:px-5">
           <h2 className="text-base font-bold text-[#061829]">
             Partner-Microsites
           </h2>
@@ -72,7 +72,7 @@ export default async function MicrositesPage() {
           </p>
         </header>
 
-        <div className="divide-y divide-zinc-200">
+        <div className="divide-y divide-[#061829]/10">
           {dashboard.partners.map((partner) => (
             <MicrositeRow key={partner.id || partner.name} partner={partner} />
           ))}
@@ -92,13 +92,13 @@ function Metric({
   tone?: "neutral" | "green" | "blue"
 }) {
   const toneClass = {
-    neutral: "border-zinc-200 bg-white text-[#061829]",
-    green: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    blue: "border-blue-200 bg-blue-50 text-blue-800",
+    neutral: "border-[#061829]/10 bg-white text-[#061829]",
+    green: "border-[#17d4d7]/35 bg-[#effdfb] text-[#08777a]",
+    blue: "border-[#118cff]/25 bg-[#f1f7ff] text-[#075fb8]",
   }[tone]
 
   return (
-    <article className={`rounded-xl border p-4 ${toneClass}`}>
+    <article className={`rounded-2xl border p-5 shadow-[0_12px_30px_rgba(6,24,41,.035)] ${toneClass}`}>
       <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-70">
         {label}
       </p>
@@ -130,7 +130,7 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
   return (
     <article className="grid gap-4 px-4 py-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
       <div className="flex min-w-0 items-center gap-3">
-        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#eef8f9] text-sm font-bold text-teal-800">
+        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#eafcfc] text-sm font-black text-[#08777a]">
           {(partner.name || "P").slice(0, 1).toUpperCase()}
         </div>
         <div className="min-w-0">
@@ -149,7 +149,7 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <Link
           href={`/microsite-builder/${encodeURIComponent(identifier)}`}
-          className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#118cff] px-3 text-sm font-semibold text-white transition hover:bg-[#087be5]"
+          className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#17d4d7_0%,#118cff_100%)] px-4 text-sm font-bold text-white shadow-[0_8px_20px_rgba(17,140,255,.18)] transition hover:-translate-y-px hover:shadow-[0_10px_24px_rgba(17,140,255,.24)] active:translate-y-0 active:scale-[.98]"
         >
           Builder
         </Link>

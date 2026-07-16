@@ -88,7 +88,7 @@ export default async function SystemPage() {
         />
       </section>
 
-      <section className="rounded-2xl border border-zinc-200 bg-white p-5">
+      <section className="rounded-2xl border border-[#061829]/10 bg-white p-5 shadow-[0_18px_48px_rgba(6,24,41,.05)]">
         <h2 className="text-base font-bold text-[#061829]">Systemzuständigkeit</h2>
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           <Responsibility
