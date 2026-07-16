@@ -1,7 +1,7 @@
 import Link from "next/link"
-import Image from "next/image"
 import { redirect } from "next/navigation"
 import { signOutPartner } from "./actions"
+import { BrandLogo } from "@/components/brand-logo"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { getDashboardData } from "@/lib/admin-data"
 import {
@@ -40,29 +40,19 @@ export default async function PartnerDashboardPage() {
     "Partner"
 
   return (
-    <main className="min-h-screen bg-[#f6f7f4] text-zinc-950">
+    <main className="min-h-screen bg-[#f7f6f1] text-[#061829]">
       <div className="mx-auto max-w-6xl px-5 py-6 lg:px-8">
-        <header className="flex flex-col gap-4 rounded-md border border-zinc-200 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/Benefitsi_Icon_FullColor_RGB_512.png"
-              alt="Benefitsi Logo"
-              width={32}
-              height={32}
-            />
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-teal-800">
-                Benefitsi
-              </p>
-              <p className="text-xs text-zinc-500">Partner dashboard</p>
-            </div>
+        <header className="flex flex-col gap-4 rounded-2xl border border-[#061829]/10 bg-white px-5 py-5 shadow-[0_18px_48px_rgba(6,24,41,.05)] sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <BrandLogo className="h-auto w-44" priority />
+            <p className="mt-2 text-xs font-medium text-[#526170]">Partner Dashboard</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <p className="max-w-full truncate text-sm text-zinc-600">{userName}</p>
             <form action={signOutPartner}>
               <PendingSubmitButton
                 pendingLabel="Signing out..."
-                className="h-10 w-full rounded-md border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100 sm:w-auto"
+                className="h-10 w-full rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-bold text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff] sm:w-auto"
               >
                 Sign out
               </PendingSubmitButton>
@@ -70,8 +60,8 @@ export default async function PartnerDashboardPage() {
           </div>
         </header>
 
-        <section className="mt-6 rounded-md border border-zinc-200 bg-white p-5">
-          <h1 className="text-2xl font-semibold tracking-normal text-zinc-950">
+        <section className="mt-6 rounded-2xl border border-[#061829]/10 bg-white p-5">
+          <h1 className="text-2xl font-black tracking-[-0.035em] text-[#061829]">
             Your partner microsites
           </h1>
           <p className="mt-2 text-sm text-zinc-600">
@@ -100,9 +90,9 @@ export default async function PartnerDashboardPage() {
             return (
               <article
                 key={partner.id || builderIdentifier}
-                className="rounded-md border border-zinc-200 bg-white p-5"
+                className="rounded-2xl border border-[#061829]/10 bg-white p-5"
               >
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-teal-700">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#118cff]">
                   Partner
                 </p>
                 <h2 className="mt-1 text-lg font-semibold text-zinc-950">
@@ -114,7 +104,7 @@ export default async function PartnerDashboardPage() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link
                     href={`/partner/microsite-builder/${encodeURIComponent(builderIdentifier)}`}
-                    className="rounded-md bg-teal-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-teal-800"
+                    className="rounded-xl bg-[linear-gradient(135deg,#17d4d7_0%,#118cff_100%)] px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-px active:translate-y-0 active:scale-[.98]"
                   >
                     Edit microsite
                   </Link>

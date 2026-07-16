@@ -30,7 +30,10 @@ export default async function DashboardPage() {
     "Admin"
 
   return (
-    <AdminShell adminName={adminName}>
+    <AdminShell
+      adminName={adminName}
+      micrositeCount={dashboard.partners.length}
+    >
       {dashboard.errors.length > 0 ? (
         <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-semibold">Supabase returned warnings</p>
@@ -42,11 +45,13 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
-      <PartnerWorkspace
-        partners={dashboard.partners}
-        cities={dashboard.cities}
-        owners={dashboard.owners}
-      />
+      <div id="partners" className="scroll-mt-24">
+        <PartnerWorkspace
+          partners={dashboard.partners}
+          cities={dashboard.cities}
+          owners={dashboard.owners}
+        />
+      </div>
     </AdminShell>
   )
 }

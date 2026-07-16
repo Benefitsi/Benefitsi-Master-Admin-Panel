@@ -32,7 +32,7 @@ export function LoginForm({ isConfigured }: LoginFormProps) {
           autoComplete="email"
           required
           disabled={disabled}
-          className="h-11 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:cursor-not-allowed disabled:bg-zinc-100"
+          className="h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-2 focus:ring-[#118cff]/15 disabled:cursor-not-allowed disabled:bg-zinc-100"
           placeholder="admin@benefitsi.com"
         />
       </div>
@@ -51,7 +51,7 @@ export function LoginForm({ isConfigured }: LoginFormProps) {
           autoComplete="current-password"
           required
           disabled={disabled}
-          className="h-11 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:cursor-not-allowed disabled:bg-zinc-100"
+          className="h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-2 focus:ring-[#118cff]/15 disabled:cursor-not-allowed disabled:bg-zinc-100"
           placeholder="Enter your password"
         />
       </div>
@@ -75,7 +75,7 @@ export function LoginForm({ isConfigured }: LoginFormProps) {
         type="submit"
         disabled={disabled}
         aria-busy={pending}
-        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#17d4d7_0%,#118cff_100%)] px-4 text-sm font-bold text-white shadow-[0_10px_24px_rgba(17,140,255,.2)] transition hover:-translate-y-px hover:shadow-[0_12px_28px_rgba(17,140,255,.26)] active:translate-y-0 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:shadow-none"
       >
         {pending ? <LoadingSpinner /> : null}
         {pending ? "Signing in..." : "Sign in"}
