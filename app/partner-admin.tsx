@@ -58,6 +58,7 @@ import {
 } from "@/lib/reward-config"
 import {
   approveMenu,
+  createPartnerCoverUpload,
   deleteDeal,
   deleteMenu,
   deleteMenuCategory,
@@ -79,6 +80,7 @@ import {
 } from "./partner-actions"
 import { MicrositePanel } from "./microsite-panel"
 import { LoadingSpinner } from "@/components/loading-ui"
+import { createClient as createBrowserClient } from "@/lib/supabase/client"
 
 const initialState: PartnerActionState = {
   ok: false,
@@ -8398,7 +8400,7 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
   const savedCovers = normalizeMediaUrls(covers)
   const [removedUrls, setRemovedUrls] = useState<string[]>([])
   const [selectedCovers, setSelectedCovers] = useState<
-    Array<{ file: File; id: string; preview: ImagePreview }>
+    Array<{ id: string; preview: ImagePreview; url: string }>
   >([])
   const [coverOrder, setCoverOrder] = useState(() =>
     savedCovers.map((_, index) => `existing:${index}`),
@@ -8437,9 +8439,9 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
 
   useEffect(() => () => revokeImagePreviews(selectedPreviewsRef.current), [])
 
-  const syncFileInput = (nextCovers: typeof selectedCovers) => {
+  const syncFileInput = () => {
     if (fileInputRef.current) {
-      replaceFileInputFiles(fileInputRef.current, nextCovers.map((cover) => cover.file))
+      fileInputRef.current.value = ""
     }
   }
 
@@ -8449,7 +8451,7 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
     if (removed) revokeImagePreviews([removed.preview])
     setSelectedCovers(nextCovers)
     setCoverOrder((current) => current.filter((coverId) => coverId !== `selected:${id}`))
-    syncFileInput(nextCovers)
+    syncFileInput()
     if (nextCovers.length === 0) {
       setUploadMessage("")
     }
@@ -8460,6 +8462,41 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
       setCoverOrder((current) => moveIdBeforeTarget(current, draggedCoverId, targetId))
     }
     setDraggedCoverId("")
+  }
+
+  const moveCoverBy = (id: string, offset: number) => {
+    setCoverOrder((current) => {
+      const fromIndex = current.indexOf(id)
+      const toIndex = fromIndex + offset
+
+      if (fromIndex < 0 || toIndex < 0 || toIndex >= current.length) return current
+
+      const next = [...current]
+      ;[next[fromIndex], next[toIndex]] = [next[toIndex], next[fromIndex]]
+      return next
+    })
+  }
+
+  const uploadCover = async (file: File) => {
+    const target = await createPartnerCoverUpload(file.name, file.type, file.size)
+
+    if (!target.ok) throw new Error(target.message)
+
+    const supabase = createBrowserClient()
+    const { error } = await supabase.storage
+      .from(target.bucket)
+      .uploadToSignedUrl(target.path, target.token, file, {
+        cacheControl: "31536000",
+        contentType: file.type,
+      })
+
+    if (error) throw new Error(`Unable to upload "${file.name}": ${error.message}`)
+
+    return {
+      id: crypto.randomUUID(),
+      preview: { name: file.name, url: target.publicUrl },
+      url: target.publicUrl,
+    }
   }
 
   return (
@@ -8479,11 +8516,14 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
       {visibleCovers.map((coverUrl) => (
         <input key={coverUrl} type="hidden" name="existing_cover_urls" value={coverUrl} />
       ))}
+      {selectedCovers.map((cover) => (
+        <input key={cover.id} type="hidden" name="existing_cover_urls" value={cover.url} />
+      ))}
       {orderedCoverIds.map((id) => {
         const [kind, value] = id.split(":")
         const token = kind === "existing"
           ? `existing:${existingFormIndex.get(Number(value))}`
-          : `upload:${selectedCovers.findIndex((cover) => cover.id === value)}`
+          : `existing:${visibleCovers.length + selectedCovers.findIndex((cover) => cover.id === value)}`
         return <input key={`order-${id}`} type="hidden" name="cover_order" value={token} />
       })}
       {orderedCoverIds.length ? (
@@ -8497,14 +8537,70 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
             return (
               <div
                 key={id}
+                data-cover-id={id}
                 draggable
                 onDragStart={() => setDraggedCoverId(id)}
                 onDragEnd={() => setDraggedCoverId("")}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={() => moveCover(id)}
-                className={`space-y-2 rounded-md p-1 transition ${draggedCoverId === id ? "opacity-50" : "cursor-grab"}`}
+                onPointerDown={(event) => {
+                  if ((event.target as HTMLElement).closest("button")) return
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                  setDraggedCoverId(id)
+                }}
+                onPointerMove={(event) => {
+                  if (!draggedCoverId) return
+                  const targetId = document
+                    .elementFromPoint(event.clientX, event.clientY)
+                    ?.closest<HTMLElement>("[data-cover-id]")
+                    ?.dataset.coverId
+
+                  if (targetId && targetId !== draggedCoverId) {
+                    setCoverOrder((current) => {
+                      const fromIndex = current.indexOf(draggedCoverId)
+                      const targetIndex = current.indexOf(targetId)
+
+                      if (fromIndex < 0 || targetIndex < 0) return current
+
+                      const next = [...current]
+                      next.splice(fromIndex, 1)
+                      next.splice(targetIndex, 0, draggedCoverId)
+                      return next
+                    })
+                  }
+                }}
+                onPointerUp={(event) => {
+                  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                    event.currentTarget.releasePointerCapture(event.pointerId)
+                  }
+                  setDraggedCoverId("")
+                }}
+                onPointerCancel={() => setDraggedCoverId("")}
+                className={`space-y-2 rounded-md p-1 transition touch-none ${draggedCoverId === id ? "opacity-50" : "cursor-grab"}`}
               >
-                <span className="text-xs font-semibold text-zinc-500">{index + 1}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-zinc-500">{index + 1}</span>
+                  <span className="flex gap-1">
+                    <button
+                      type="button"
+                      disabled={index === 0}
+                      onClick={() => moveCoverBy(id, -1)}
+                      aria-label="Move cover photo earlier"
+                      className="size-8 rounded border border-zinc-300 bg-white text-zinc-700 disabled:opacity-40"
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      disabled={index === orderedCoverIds.length - 1}
+                      onClick={() => moveCoverBy(id, 1)}
+                      aria-label="Move cover photo later"
+                      className="size-8 rounded border border-zinc-300 bg-white text-zinc-700 disabled:opacity-40"
+                    >
+                      →
+                    </button>
+                  </span>
+                </div>
                 <ImagePreview
                   alt={selected?.preview.name || "Cover photo preview"}
                   src={selected?.preview.url || coverUrl}
@@ -8568,7 +8664,7 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
           const files = Array.from(input.files ?? [])
 
           if (files.length === 0) {
-            syncFileInput(selectedCovers)
+            syncFileInput()
             return
           }
 
@@ -8576,7 +8672,7 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
           setUploadMessage("Resizing cover photos...")
 
           if (files.length > remainingCoverSlots) {
-            syncFileInput(selectedCovers)
+            syncFileInput()
             setUploadMessage("")
             setUploadError(
               `Select up to ${remainingCoverSlots} more cover photo${remainingCoverSlots === 1 ? "" : "s"}.`,
@@ -8587,24 +8683,23 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
           try {
             setIsProcessing(true)
             const resizedFiles = await resizeImageFiles(files, spec)
-            const previews = createImagePreviews(resizedFiles)
-            const additions = resizedFiles.map((file, index) => ({
-              file,
-              id: crypto.randomUUID(),
-              preview: previews[index],
-            }))
+            const additions: Awaited<ReturnType<typeof uploadCover>>[] = []
+
+            for (const file of resizedFiles) {
+              additions.push(await uploadCover(file))
+            }
             const nextCovers = [...selectedCovers, ...additions]
             setSelectedCovers(nextCovers)
             setCoverOrder((current) => [
               ...current,
               ...additions.map((cover) => `selected:${cover.id}`),
             ])
-            replaceFileInputFiles(input, nextCovers.map((cover) => cover.file))
+            input.value = ""
             setUploadMessage(
-              `${nextCovers.length} new cover photo${nextCovers.length === 1 ? "" : "s"} ready.`,
+              `${nextCovers.length} new cover photo${nextCovers.length === 1 ? "" : "s"} uploaded and ready.`,
             )
           } catch (error) {
-            syncFileInput(selectedCovers)
+            syncFileInput()
             setUploadMessage("")
             setUploadError(
               error instanceof Error

@@ -42,6 +42,16 @@ export type PartnerActionState = {
   created?: boolean
 }
 
+export type PartnerCoverUploadTarget =
+  | {
+      ok: true
+      bucket: string
+      path: string
+      publicUrl: string
+      token: string
+    }
+  | { ok: false; message: string }
+
 type UploadedStoragePath = {
   bucket: string
   path: string
@@ -206,6 +216,46 @@ const PARTNER_MEDIA_BUCKET =
   process.env.SUPABASE_PARTNER_MEDIA_BUCKET ?? "partner-assets"
 const UPLOAD_PLACEHOLDER_PATH = "/upload-image.jpg"
 const openingWeekdays = [1, 2, 3, 4, 5, 6, 7] as const
+
+export async function createPartnerCoverUpload(
+  fileName: string,
+  contentType: string,
+  size: number,
+): Promise<PartnerCoverUploadTarget> {
+  const { supabase } = await requireAdmin()
+
+  if (!ALLOWED_PARTNER_MEDIA_TYPES.has(contentType)) {
+    return { ok: false, message: "Cover photos must be PNG, JPEG, WebP, or SVG images." }
+  }
+
+  if (!Number.isFinite(size) || size <= 0 || size > MAX_PARTNER_MEDIA_BYTES) {
+    return { ok: false, message: "Each cover photo must be 10 MB or smaller." }
+  }
+
+  const path = `staged-covers/${randomUUID()}-${safeFileName(fileName)}`
+  const { data, error } = await supabase.storage
+    .from(PARTNER_MEDIA_BUCKET)
+    .createSignedUploadUrl(path)
+
+  if (error || !data) {
+    return {
+      ok: false,
+      message: error?.message ?? "Unable to prepare the cover photo upload.",
+    }
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(PARTNER_MEDIA_BUCKET).getPublicUrl(path)
+
+  return {
+    ok: true,
+    bucket: PARTNER_MEDIA_BUCKET,
+    path,
+    publicUrl,
+    token: data.token,
+  }
+}
 
 export async function savePartner(
   _prevState: PartnerActionState,
