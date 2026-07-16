@@ -52,6 +52,7 @@ type PartnerMediaFormValues = {
   featureFile: File | null
   discoverFile: File | null
   coverFiles: File[]
+  coverOrder: string[]
   existingLogoUrl: string
   existingFeatureCardUrl: string
   existingDiscoverCardUrl: string
@@ -213,7 +214,7 @@ export async function savePartner(
   const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
   const isUpdate = Boolean(id)
-  const partnerId = id || randomUUID()
+  const partnerId = isUpdate ? id : createUuidV4()
   const mediaValues = collectPartnerMedia(formData)
   const validationError = validatePartnerForm(formData, mediaValues)
 
@@ -1643,7 +1644,6 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     stringValue(formData, "save_intent") === "later"
       ? false
       : checkboxValue(formData, "active")
-  const existingPin = integerValue(formData, "existing_pin")
   const stampTarget =
     positiveIntegerValue(formData, "stamp_target") ??
     positiveIntegerValue(formData, "existing_stamp_target") ??
@@ -1664,7 +1664,7 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     is_featured: checkboxValue(formData, "is_featured"),
     stamp_target: stampTarget,
     loves: isUpdate ? integerValue(formData, "existing_loves") ?? 0 : 0,
-    pin: isUpdate && existingPin ? existingPin : randomFourDigitPin(),
+    pin: null,
     address: stringValue(formData, "address"),
     phone: stringValue(formData, "phone"),
     website: stringValue(formData, "website"),
@@ -1682,67 +1682,82 @@ async function resolvePartnerMedia(
   partnerId: string,
   slug: string,
 ) {
-  const uploadedPaths: UploadedStoragePath[] = []
-  let logoUrl = mediaValues.existingLogoUrl
-  let featureCardUrl = mediaValues.existingFeatureCardUrl
-  let discoverCardUrl = mediaValues.existingDiscoverCardUrl
-  const coverUrls = [...mediaValues.existingCoverUrls]
+  const uploadTime = Date.now()
+  const [logoUpload, featureUpload, discoverUpload, ...coverUploads] =
+    await Promise.all([
+      mediaValues.logoFile
+        ? uploadPartnerFile(
+            supabase,
+            mediaValues.logoFile,
+            partnerMediaSpecs.logo,
+            `${partnerId}/logo-${uploadTime}-${safeFileName(mediaValues.logoFile.name)}`,
+          )
+        : Promise.resolve(null),
+      mediaValues.featureFile
+        ? uploadPartnerFile(
+            supabase,
+            mediaValues.featureFile,
+            partnerMediaSpecs.feature,
+            `${partnerId}/feature-${uploadTime}-${safeFileName(mediaValues.featureFile.name)}`,
+          )
+        : Promise.resolve(null),
+      mediaValues.discoverFile
+        ? uploadPartnerFile(
+            supabase,
+            mediaValues.discoverFile,
+            partnerMediaSpecs.discover,
+            `${partnerId}/discover-${uploadTime}-${safeFileName(mediaValues.discoverFile.name)}`,
+          )
+        : Promise.resolve(null),
+      ...mediaValues.coverFiles.map((coverFile, index) =>
+        uploadPartnerFile(
+          supabase,
+          coverFile,
+          partnerMediaSpecs.cover,
+          `${partnerId}/covers/${slug}-${uploadTime}-${index}-${safeFileName(coverFile.name)}`,
+        ),
+      ),
+    ])
+  const uploadedPaths: UploadedStoragePath[] = [
+    logoUpload,
+    featureUpload,
+    discoverUpload,
+    ...coverUploads,
+  ].flatMap((upload) => (upload ? [upload] : []))
+  const logoUrl =
+    logoUpload?.url ??
+    (mediaValues.removedMediaUrls.includes(mediaValues.existingLogoUrl)
+      ? ""
+      : mediaValues.existingLogoUrl)
+  const featureCardUrl =
+    featureUpload?.url ??
+    (mediaValues.removedMediaUrls.includes(mediaValues.existingFeatureCardUrl)
+      ? ""
+      : mediaValues.existingFeatureCardUrl)
+  const discoverCardUrl =
+    discoverUpload?.url ??
+    (mediaValues.removedMediaUrls.includes(mediaValues.existingDiscoverCardUrl)
+      ? ""
+      : mediaValues.existingDiscoverCardUrl)
+  const fallbackOrder = [
+    ...mediaValues.existingCoverUrls.map((_, index) => `existing:${index}`),
+    ...coverUploads.map((_, index) => `upload:${index}`),
+  ]
+  const coverUrls = (mediaValues.coverOrder.length
+    ? mediaValues.coverOrder
+    : fallbackOrder
+  ).flatMap((token) => {
+    const [kind, rawIndex] = token.split(":")
+    const index = Number(rawIndex)
+    const url =
+      kind === "existing"
+        ? mediaValues.existingCoverUrls[index]
+        : kind === "upload"
+          ? coverUploads[index]?.url
+          : undefined
 
-  if (mediaValues.logoFile) {
-    const uploaded = await uploadPartnerFile(
-      supabase,
-      mediaValues.logoFile,
-      partnerMediaSpecs.logo,
-      `${partnerId}/logo-${Date.now()}-${safeFileName(mediaValues.logoFile.name)}`,
-    )
-
-    logoUrl = uploaded.url
-    uploadedPaths.push(uploaded)
-  } else if (mediaValues.removedMediaUrls.includes(logoUrl)) {
-    logoUrl = ""
-  }
-
-  if (mediaValues.featureFile) {
-    const uploaded = await uploadPartnerFile(
-      supabase,
-      mediaValues.featureFile,
-      partnerMediaSpecs.feature,
-      `${partnerId}/feature-${Date.now()}-${safeFileName(mediaValues.featureFile.name)}`,
-    )
-
-    featureCardUrl = uploaded.url
-    uploadedPaths.push(uploaded)
-  } else if (mediaValues.removedMediaUrls.includes(featureCardUrl)) {
-    featureCardUrl = ""
-  }
-
-  if (mediaValues.discoverFile) {
-    const uploaded = await uploadPartnerFile(
-      supabase,
-      mediaValues.discoverFile,
-      partnerMediaSpecs.discover,
-      `${partnerId}/discover-${Date.now()}-${safeFileName(mediaValues.discoverFile.name)}`,
-    )
-
-    discoverCardUrl = uploaded.url
-    uploadedPaths.push(uploaded)
-  } else if (mediaValues.removedMediaUrls.includes(discoverCardUrl)) {
-    discoverCardUrl = ""
-  }
-
-  for (const [index, coverFile] of mediaValues.coverFiles.entries()) {
-    const uploaded = await uploadPartnerFile(
-      supabase,
-      coverFile,
-      partnerMediaSpecs.cover,
-      `${partnerId}/covers/${slug}-${Date.now()}-${index}-${safeFileName(
-        coverFile.name,
-      )}`,
-    )
-
-    coverUrls.push(uploaded.url)
-    uploadedPaths.push(uploaded)
-  }
+    return url ? [url] : []
+  })
 
   return {
     logoUrl,
@@ -1873,9 +1888,11 @@ async function cleanupUploadedFiles(
   supabase: SupabaseClient,
   uploadedPaths: UploadedStoragePath[],
 ) {
-  for (const { bucket, path } of uploadedPaths) {
-    await supabase.storage.from(bucket).remove([path])
-  }
+  await Promise.all(
+    uploadedPaths.map(({ bucket, path }) =>
+      supabase.storage.from(bucket).remove([path]),
+    ),
+  )
 }
 
 async function cleanupPublicMediaUrls(supabase: SupabaseClient, urls: string[]) {
@@ -3868,29 +3885,34 @@ async function updateSortOrderRows(
   orderedIds: string[],
 ) {
   const temporaryBase = 1_000_000
+  const temporaryResults = await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase
+        .from(table)
+        .update({ sort_order: temporaryBase + index })
+        .eq("id", id)
+        .eq(scopeColumn, scopeId),
+    ),
+  )
+  const temporaryError = temporaryResults.find((result) => result.error)?.error
 
-  for (let index = 0; index < orderedIds.length; index += 1) {
-    const temporaryResult = await supabase
-      .from(table)
-      .update({ sort_order: temporaryBase + index })
-      .eq("id", orderedIds[index])
-      .eq(scopeColumn, scopeId)
-
-    if (temporaryResult.error) {
-      return temporaryResult.error.message
-    }
+  if (temporaryError) {
+    return temporaryError.message
   }
 
-  for (let index = 0; index < orderedIds.length; index += 1) {
-    const result = await supabase
-      .from(table)
-      .update({ sort_order: index })
-      .eq("id", orderedIds[index])
-      .eq(scopeColumn, scopeId)
+  const results = await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase
+        .from(table)
+        .update({ sort_order: index })
+        .eq("id", id)
+        .eq(scopeColumn, scopeId),
+    ),
+  )
+  const error = results.find((result) => result.error)?.error
 
-    if (result.error) {
-      return result.error.message
-    }
+  if (error) {
+    return error.message
   }
 
   return null
@@ -3902,6 +3924,7 @@ function collectPartnerMedia(formData: FormData): PartnerMediaFormValues {
     featureFile: fileValue(formData, "feature_card_file"),
     discoverFile: fileValue(formData, "discover_card_file"),
     coverFiles: fileValues(formData, "cover_files"),
+    coverOrder: stringListValue(formData, "cover_order"),
     existingLogoUrl: stringValue(formData, "existing_logo_url"),
     existingFeatureCardUrl: stringValue(formData, "existing_feature_card_url"),
     existingDiscoverCardUrl: stringValue(
@@ -4281,8 +4304,14 @@ function createShortName(name: string) {
   return (firstNamePart || name).slice(0, 32)
 }
 
-function randomFourDigitPin() {
-  return Math.floor(1000 + Math.random() * 9000)
+function createUuidV4() {
+  const id = randomUUID()
+
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+    throw new Error("Unable to generate a valid partner UUID.")
+  }
+
+  return id
 }
 
 function weekdayName(weekday: number | null) {

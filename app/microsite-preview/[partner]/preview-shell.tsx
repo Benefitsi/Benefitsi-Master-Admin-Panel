@@ -70,27 +70,27 @@ export function MicrositePreviewShell({
   }, [partner.microsite?.draftVersion, partner.microsite?.publishedVersion, useBuilderDraft])
 
   return (
-    <main className="min-h-screen bg-[#f7f6f3] px-3 py-3 sm:px-5 sm:py-5">
+    <main className="min-h-screen min-w-0 overflow-x-clip bg-[#f7f6f3] px-2 py-3 sm:px-5 sm:py-5">
       <div className="mx-auto mb-3 flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs font-semibold">
         <span className="rounded-full border border-zinc-200 bg-white px-3 py-2 text-zinc-600">
           {statusLabel}
         </span>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <a
-            className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-zinc-700 transition hover:bg-zinc-50"
+            className="min-w-0 rounded-md border border-zinc-200 bg-white px-3 py-2 text-center text-zinc-700 transition hover:bg-zinc-50"
             href={`${previewBasePath}/${encodeURIComponent(partner.slug || partner.id || "partner")}`}
           >
             Gespeicherten Entwurf öffnen
           </a>
           <a
-            className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-zinc-700 transition hover:bg-zinc-50"
+            className="min-w-0 rounded-md border border-zinc-200 bg-white px-3 py-2 text-center text-zinc-700 transition hover:bg-zinc-50"
             href={`${previewBasePath}/${encodeURIComponent(partner.slug || partner.id || "partner")}?viewport=mobile${useBuilderDraft ? "&source=builder" : ""}`}
           >
             Mobile
           </a>
         </div>
       </div>
-      <div className={isMobile ? "mx-auto max-w-[390px]" : ""}>
+      <div className={isMobile ? "mx-auto w-full min-w-0 max-w-[390px]" : "min-w-0"}>
         <MicrositeRenderer partner={partner} config={displayedConfig} />
       </div>
     </main>

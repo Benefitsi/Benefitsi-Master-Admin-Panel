@@ -2,6 +2,7 @@ import Image from "next/image"
 import { redirect } from "next/navigation"
 import { signOutPartner } from "../actions"
 import { PartnerLoginForm } from "./login-form"
+import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { getPartnerPortalSession } from "@/lib/partner-portal"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
@@ -109,12 +110,12 @@ async function NonPartnerSessionNotice() {
     <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
       <p className="font-medium">The current account is not linked to a partner shop.</p>
       <form action={signOutPartner} className="mt-2">
-        <button
-          type="submit"
+        <PendingSubmitButton
+          pendingLabel="Signing out..."
           className="h-9 rounded-md bg-amber-900 px-3 text-xs font-semibold text-white transition hover:bg-amber-950"
         >
           Sign out of this account
-        </button>
+        </PendingSubmitButton>
       </form>
     </div>
   )

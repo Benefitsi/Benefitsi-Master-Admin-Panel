@@ -34,6 +34,7 @@ import {
 } from "@/lib/microsite-templates"
 import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
 import { PrintableStudioPanel } from "@/components/microsite/printable-studio-panel"
+import { LoadingSpinner } from "@/components/loading-ui"
 import {
   defaultMicrositeCopyForPartner,
   defaultMicrositeTemplateForPartner,
@@ -700,6 +701,7 @@ export function MicrositePanel({
     saveMicrositeVersion,
     initialState,
   )
+  const [pendingIntent, setPendingIntent] = useState("")
   const assetOptions = Array.from(new Set([
     partner.logo_url,
     partner.feature_card_url,
@@ -1248,6 +1250,7 @@ export function MicrositePanel({
       </header>
       <form
         action={formAction}
+        aria-busy={pending}
         className={`grid min-w-0 max-w-full grid-cols-1 gap-0 transition-[grid-template-columns] duration-200 ${
           useViewportShell
             ? "min-h-[calc(100vh-8rem)] overflow-visible lg:grid-cols-[var(--editor-panel-width)_minmax(0,1fr)]"
@@ -1628,38 +1631,45 @@ export function MicrositePanel({
               type="submit"
               name="intent"
               value="draft"
+              onClick={() => setPendingIntent("draft")}
               disabled={pending}
-              className="h-11 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 disabled:opacity-60"
             >
-              {pending ? tr("Speichert…") : tr("Entwurf speichern")}
+              {pending && pendingIntent === "draft" ? <LoadingSpinner /> : null}
+              {pending && pendingIntent === "draft" ? tr("Speichert…") : tr("Entwurf speichern")}
             </button>
             <button
               type="submit"
               name="intent"
               value="review"
+              onClick={() => setPendingIntent("review")}
               disabled={pending}
-              className="h-11 rounded-md border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
             >
-              {tr("Zur Prüfung markieren")}
+              {pending && pendingIntent === "review" ? <LoadingSpinner /> : null}
+              {pending && pendingIntent === "review" ? tr("Wird markiert…") : tr("Zur Prüfung markieren")}
             </button>
             <button
               type="submit"
               name="intent"
               value="approve"
+              onClick={() => setPendingIntent("approve")}
               disabled={pending || publishBlocked}
               title={
                 publishBlocked
                   ? tr("Freigabe erst nach erfüllten Pflichtchecks möglich")
                   : tr("Microsite intern freigeben")
               }
-              className="h-11 rounded-md border border-emerald-300 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
             >
-              {tr("Freigeben")}
+              {pending && pendingIntent === "approve" ? <LoadingSpinner /> : null}
+              {pending && pendingIntent === "approve" ? tr("Wird freigegeben…") : tr("Freigeben")}
             </button>
             <button
               type="submit"
               name="intent"
               value="publish"
+              onClick={() => setPendingIntent("publish")}
               disabled={pending || publishBlocked}
               title={
                 publishBlocked
@@ -1669,9 +1679,10 @@ export function MicrositePanel({
                       .join(", ")}`
                   : tr("Diese Version live veröffentlichen")
               }
-              className="h-11 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:opacity-60"
             >
-              {tr("Veröffentlichen")}
+              {pending && pendingIntent === "publish" ? <LoadingSpinner /> : null}
+              {pending && pendingIntent === "publish" ? tr("Wird veröffentlicht…") : tr("Veröffentlichen")}
             </button>
             {publishBlocked ? (
               <p className="rounded-md bg-rose-50 px-3 py-2 text-xs font-semibold leading-5 text-rose-700">

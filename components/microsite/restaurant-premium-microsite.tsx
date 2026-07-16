@@ -127,7 +127,7 @@ export function RestaurantPremiumMicrosite({
   return (
     <article
       style={style}
-      className={`premium-microsite @container relative isolate overflow-hidden rounded-[1.6rem] ${theme.shell}`}
+      className={`premium-microsite @container relative isolate w-full min-w-0 max-w-full overflow-hidden rounded-none [overflow-wrap:anywhere] @min-[480px]:rounded-[1.6rem] ${theme.shell}`}
     >
       <PremiumMotionEffects />
       <SiteHeader partner={partner} config={config} theme={theme} />
@@ -243,10 +243,10 @@ function SiteHeader({
             style={imageStyleFor(config, "branding.logo")}
             size="nav"
           />
-          <div className="hidden @min-[640px]:block">
+          <div className="hidden min-w-0 max-w-56 @min-[640px]:block @min-[1180px]:max-w-64">
             <p
               {...editable("branding.partnerName", "text", "Partnername")}
-              className="max-w-[24ch] truncate text-base font-extrabold tracking-[-0.035em] @min-[1024px]:text-lg"
+              className="w-full max-w-full truncate text-base font-extrabold tracking-[-0.035em] @min-[1024px]:text-lg"
               style={textStyleFor(config, "branding.partnerName")}
             >
               {textValue(config, "branding.partnerName", partner.name || config.hero.headline)}
@@ -254,18 +254,18 @@ function SiteHeader({
           </div>
         </div>
         <nav
-          className={`hidden min-w-0 items-center justify-end gap-0.5 rounded-full border px-1 py-1 text-[12px] font-bold backdrop-blur-xl @min-[640px]:flex ${theme.nav}`}
+          className={`hidden min-w-0 items-center justify-end gap-0.5 rounded-full border px-1 py-1 text-[12px] font-bold backdrop-blur-xl @min-[1180px]:flex ${theme.nav}`}
           style={navigationTabsStyleFor(config)}
         >
           {navLinks.map((link) => (
             <NavigationLink key={link.anchor} link={link} config={config} />
           ))}
         </nav>
-        <div className="flex justify-end @min-[640px]:hidden">
+        <div className="flex justify-end @min-[1180px]:hidden">
           <button
             type="button"
             onClick={() => setMenuOpen((current) => !current)}
-            className={`premium-button inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black shadow-sm transition ${theme.mobileButton}`}
+            className={`premium-button inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black shadow-sm transition ${theme.mobileButton}`}
             aria-expanded={menuOpen}
             aria-controls="microsite-mobile-navigation"
           >
@@ -280,7 +280,7 @@ function SiteHeader({
         {menuOpen ? (
           <nav
             id="microsite-mobile-navigation"
-            className={`absolute right-0 top-[calc(100%+.65rem)] z-50 grid w-[min(88vw,330px)] gap-1 rounded-2xl border p-2 text-sm font-bold @min-[640px]:hidden ${theme.mobilePanel}`}
+            className={`absolute right-0 top-[calc(100%+.65rem)] z-50 grid w-[min(88vw,330px)] gap-1 rounded-2xl border p-2 text-sm font-bold @min-[1180px]:hidden ${theme.mobilePanel}`}
           >
             {navLinks.map((link) => (
               <NavigationLink
@@ -1172,7 +1172,7 @@ function StoreBadge({
   return (
     <a
       href={href}
-      className="inline-flex min-w-[190px] items-center gap-3 rounded-[0.9rem] bg-black px-4 py-3 text-white shadow-[0_14px_30px_rgba(15,23,42,.18)] ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-zinc-900"
+      className="inline-flex w-full min-w-0 max-w-full items-center justify-center gap-3 rounded-[0.9rem] bg-black px-4 py-3 text-white shadow-[0_14px_30px_rgba(15,23,42,.18)] ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-zinc-900 @min-[420px]:w-auto @min-[420px]:min-w-[190px]"
       aria-label={isAppStore ? "Laden im App Store" : "Jetzt bei Google Play"}
     >
       {isAppStore ? <AppleGlyph /> : <PlayGlyph />}
@@ -2531,7 +2531,7 @@ function textStyleFor(config: MicrositeConfig, id: string): CSSProperties {
 
   return {
     ...baseElementStyle(style),
-    maxWidth: style.maxWidth ? `${style.maxWidth}px` : undefined,
+    maxWidth: style.maxWidth ? `min(${style.maxWidth}px, 100%)` : undefined,
     ...spacingStyleFor(config, id),
   }
 }
@@ -2584,12 +2584,16 @@ function imageStyleFor(config: MicrositeConfig, id: string): CSSProperties {
 
 function baseElementStyle(style: MicrositeElementStyle): CSSProperties {
   return {
-    fontSize: style.fontSize ? `${style.fontSize}px` : undefined,
+    fontSize: style.fontSize
+      ? `min(${style.fontSize}px, ${Math.max(12, Math.round(style.fontSize * 0.18))}cqi)`
+      : undefined,
     color: style.color,
     fontWeight: style.bold ? 800 : undefined,
     fontStyle: style.italic ? "italic" : undefined,
     textDecoration: style.underline ? "underline" : undefined,
     fontFamily: style.fontFamily,
+    overflowWrap: "anywhere",
+    wordBreak: "break-word",
   }
 }
 
@@ -2599,17 +2603,17 @@ function MenuCard({ item }: { item: MicrositeMenuItem }) {
   const imageFailed = Boolean(item.image_url && failedSrc === item.image_url)
 
   return (
-    <div className="premium-card premium-reveal flex gap-4 rounded-[1.15rem] border border-white/80 bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,.055)]">
+    <div className="premium-card premium-reveal flex min-w-0 flex-col gap-4 rounded-[1.15rem] border border-white/80 bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,.055)] @min-[420px]:flex-row">
       {item.image_url && !imageFailed ? (
         <img
           src={item.image_url}
           alt=""
           onError={() => setFailedSrc(item.image_url)}
-          className="size-20 rounded-xl object-cover"
+          className="aspect-[4/3] w-full rounded-xl object-cover @min-[420px]:size-20 @min-[420px]:shrink-0"
         />
       ) : (
         <span
-          className={`grid size-20 shrink-0 place-items-center rounded-xl ${
+          className={`grid aspect-[4/3] w-full shrink-0 place-items-center rounded-xl @min-[420px]:size-20 ${
             isDrink
               ? "bg-sky-50 text-sky-600"
               : "bg-orange-50 text-[var(--site-accent)]"

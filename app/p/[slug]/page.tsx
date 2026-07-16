@@ -53,7 +53,7 @@ export default async function PublishedPartnerMicrositePage({
   })
 
   return (
-    <main className="min-h-screen bg-[#f7f6f3] px-0 py-0 sm:px-4 sm:py-4">
+    <main className="min-h-screen min-w-0 overflow-x-clip bg-[#f7f6f3] px-0 py-0 sm:px-4 sm:py-4">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

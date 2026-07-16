@@ -12,7 +12,6 @@ import {
   type ReactNode,
 } from "react"
 import { useFormStatus } from "react-dom"
-import { useRouter } from "next/navigation"
 import type {
   City,
   Deal,
@@ -79,10 +78,33 @@ import {
   type PartnerActionState,
 } from "./partner-actions"
 import { MicrositePanel } from "./microsite-panel"
+import { LoadingSpinner } from "@/components/loading-ui"
 
 const initialState: PartnerActionState = {
   ok: false,
   message: "",
+}
+
+function useActionSuccess(
+  state: PartnerActionState,
+  onSuccess?: () => void,
+) {
+  const onSuccessRef = useRef(onSuccess)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess
+  }, [onSuccess])
+
+  useEffect(() => {
+    if (state.ok) {
+      onSuccessRef.current?.()
+      const details = formRef.current?.closest("details")
+      if (details?.open) details.open = false
+    }
+  }, [state])
+
+  return formRef
 }
 
 const partnerTypeOptions = [
@@ -179,6 +201,7 @@ type PartnerWorkspaceProps = {
 type InitialDealDraft = {
   id: string
   active: boolean
+  audience?: string
   benefitCategory?: string
   dealType?: string
   discountType?: string
@@ -241,6 +264,68 @@ type SectionStatus = {
 }
 
 type SectionStatusValue = SectionStatus | SectionStatus[]
+
+type PartnerSettingsTab =
+  | "details"
+  | "rewards"
+  | "deals"
+  | "menu"
+  | "access"
+  | "activity"
+  | "danger"
+
+type CreatePartnerTab = "profile" | "operations" | "offers" | "menu" | "review"
+
+type CreatePartnerReviewSnapshot = {
+  name: string
+  type: string
+  city: string
+  owner: string
+  email: string
+  phone: string
+  website: string
+  address: string
+  categories: string[]
+  active: boolean
+  featured: boolean
+  requiredComplete: number
+  requiredTotal: number
+  openDays: number
+  coverCount: number
+  milestoneCount: number
+  dealCount: number
+  menuStatus: "Set" | "Incomplete" | "Not set"
+  logoSet: boolean
+  featureCardSet: boolean
+  discoveryImageSet: boolean
+  descriptionSet: boolean
+  coordinatesSet: boolean
+  socialCount: number
+}
+
+const partnerSettingsTabCopy: Record<
+  PartnerSettingsTab,
+  { title: string; description: string }
+> = {
+  details: { title: "Partner profile", description: "Business information, contact details, location, branding, and media." },
+  rewards: { title: "Hours and loyalty rewards", description: "Opening schedule, holiday closures, and stamp-card milestones." },
+  deals: { title: "Deals and offers", description: "Customer offers, eligibility rules, availability, and redemption settings." },
+  menu: { title: "Menu management", description: "Menu details, categories, items, pricing, images, and display order." },
+  access: { title: "Staff access", description: "Manage the staff members who can administer or scan for this partner." },
+  activity: { title: "Customer activity", description: "Review stamp-card progress, visits, applied benefits, and redemptions." },
+  danger: { title: "Delete partner", description: "Permanently remove this partner and its attached records." },
+}
+
+const createPartnerTabCopy: Record<
+  CreatePartnerTab,
+  { title: string; description: string }
+> = {
+  profile: { title: "Business profile", description: "Enter the partner's identity, ownership, contact details, and location." },
+  operations: { title: "Operations and media", description: "Configure opening hours, holiday closures, branding, and cover images." },
+  offers: { title: "Rewards and deals", description: "Set up stamp-card milestones and optional customer deals." },
+  menu: { title: "Starter menu", description: "Create the initial menu, categories, items, prices, and images." },
+  review: { title: "Review and create", description: "Review required sections, then create the partner and all staged content." },
+}
 
 export function PartnerWorkspace({
   partners,
@@ -312,8 +397,8 @@ export function PartnerWorkspace({
     partners[0]
 
   return (
-    <section id="partners" className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <section id="partners" className="space-y-3">
+      <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-5">
         <LiveMetric label="Partners" value={partnerCount} />
         <LiveMetric label="Active partners" value={activePartners} />
         <LiveMetric label="Featured partners" value={featuredPartners} />
@@ -329,17 +414,15 @@ export function PartnerWorkspace({
         }}
       />
 
-      <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <aside className="rounded-md border border-zinc-200 bg-white shadow-sm">
-          <div className="border-b border-zinc-200 p-4">
+      <div className="grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]">
+        <aside className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+          <div className="border-b border-zinc-200 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold tracking-normal">
                   Partners
                 </h2>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Select a partner to edit its profile and deals.
-                </p>
+                <p className="mt-0.5 text-xs text-zinc-500">Select a partner to edit.</p>
               </div>
               <button
                 type="button"
@@ -354,11 +437,11 @@ export function PartnerWorkspace({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search partners"
-              className="mt-4 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              className="mt-3 h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
             />
           </div>
 
-          <div className="max-h-[calc(100vh-280px)] space-y-2 overflow-y-auto p-3">
+          <div className="max-h-[calc(100vh-220px)] space-y-1.5 overflow-y-auto p-2">
             {filteredPartners.length ? (
               filteredPartners.map((partner) => (
                 <PartnerListButton
@@ -412,9 +495,9 @@ export function PartnerWorkspace({
 
 function LiveMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
-      <p className="text-sm font-medium text-zinc-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-normal text-zinc-950">
+    <div className="border-b border-zinc-200 px-3 py-2.5 last:border-b-0 sm:border-b-0">
+      <p className="text-xs font-medium text-zinc-500">{label}</p>
+      <p className="mt-0.5 text-xl font-semibold tracking-normal text-zinc-950">
         {value}
       </p>
     </div>
@@ -436,7 +519,7 @@ function PendingMenuReviewPanel({
   }
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white px-3 py-2 shadow-sm">
+    <div className="rounded-xl border border-zinc-200 bg-white px-3 py-2 shadow-sm">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div className="flex items-center gap-2 text-sm">
           <span className="font-semibold text-zinc-900">Menu approvals required</span>
@@ -487,13 +570,13 @@ function PartnerListButton({
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full rounded-md border p-3 text-left transition ${
+      className={`w-full rounded-lg border p-2.5 text-left transition ${
         selected
-          ? "border-teal-600 bg-teal-50"
+          ? "border-teal-300 bg-teal-50 shadow-sm ring-1 ring-teal-100"
           : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50"
       }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2.5">
         <LogoPreview url={partner.logo_url} name={partner.name} />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
@@ -559,6 +642,32 @@ function PartnerDetail({
     viewState.partnerIdentity === partnerIdentity
       ? viewState.activeView
       : "settings"
+  const [tabState, setTabState] = useState<{
+    partnerIdentity: string
+    tab: PartnerSettingsTab
+  }>({ partnerIdentity, tab: "details" })
+  const requestedTab =
+    tabState.partnerIdentity === partnerIdentity ? tabState.tab : "details"
+  const settingsTab =
+    requestedTab === "menu" && !partnerTypeSupportsMenu(partner.type)
+      ? "details"
+      : requestedTab
+  const settingsTabs: Array<{
+    id: PartnerSettingsTab
+    label: string
+    hasRequiredFields?: boolean
+  }> = [
+    { id: "details", label: "Partner Profile", hasRequiredFields: true },
+    { id: "rewards", label: "Hours & Rewards", hasRequiredFields: true },
+    { id: "deals", label: "Deals & Offers", hasRequiredFields: true },
+    ...(partnerTypeSupportsMenu(partner.type)
+      ? [{ id: "menu" as const, label: "Menu Management", hasRequiredFields: true }]
+      : []),
+    { id: "access", label: "Staff Access", hasRequiredFields: true },
+    { id: "activity", label: "Customer Activity" },
+    { id: "danger", label: "Delete Partner" },
+  ]
+  const activeTabCopy = partnerSettingsTabCopy[settingsTab]
 
   function setActiveView(nextView: "settings" | "microsite") {
     setViewState({
@@ -570,6 +679,7 @@ function PartnerDetail({
   return (
     <div key={partner.id ?? "partner-detail"} className="space-y-5">
       <EditorShell
+        compact={activeView === "settings"}
         title={partner.name || "Untitled partner"}
         description={
           activeView === "settings"
@@ -578,14 +688,14 @@ function PartnerDetail({
         }
         aside={
           <div className="flex flex-wrap gap-2">
-            <div className="inline-flex rounded-md border border-zinc-200 bg-zinc-50 p-1">
+            <div className="inline-flex overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
               <button
                 type="button"
                 onClick={() => setActiveView("settings")}
-                className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
+                className={`px-3 py-2 text-sm font-semibold transition ${
                   activeView === "settings"
-                    ? "bg-white text-teal-800 shadow-sm"
-                    : "text-zinc-600 hover:text-zinc-900"
+                    ? "bg-teal-700 text-white"
+                    : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
                 }`}
               >
                 Partner settings
@@ -593,10 +703,10 @@ function PartnerDetail({
               <button
                 type="button"
                 onClick={() => setActiveView("microsite")}
-                className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
+                className={`px-3 py-2 text-sm font-semibold transition ${
                   activeView === "microsite"
-                    ? "bg-white text-teal-800 shadow-sm"
-                    : "text-zinc-600 hover:text-zinc-900"
+                    ? "bg-teal-700 text-white"
+                    : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
                 }`}
               >
                 Microsite builder
@@ -608,33 +718,106 @@ function PartnerDetail({
         }
       >
         {activeView === "settings" ? (
-          <div className="space-y-5">
-            <PartnerForm
-              key={partner.id ?? "edit-partner"}
-              formId={partnerFormId}
-              cities={cities}
-              owners={owners}
-              partner={partner}
-              mode="edit"
-            />
-            <div className="space-y-4">
-              <OpeningHoursPanel partner={partner} embedded />
-              <MilestonesPanel partner={partner} embedded />
-              <DealsPanel partner={partner} embedded />
-              {partnerTypeSupportsMenu(partner.type) ? (
-                <MenuPanel partner={partner} embedded />
-              ) : null}
-            </div>
-            <div className="space-y-4">
-              <PartnerPinDisplay mode="edit" pin={partner.pin} />
-              <button
-                type="submit"
-                form={partnerFormId}
-                className="h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
-              >
-                Save partner
-              </button>
-            </div>
+          <div>
+            <nav
+              aria-label="Partner settings"
+              className="mb-4 overflow-x-auto pb-1"
+            >
+              <div className="inline-flex min-w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
+              {settingsTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() =>
+                    setTabState({ partnerIdentity, tab: tab.id })
+                  }
+                  aria-current={settingsTab === tab.id ? "page" : undefined}
+                  className={`min-w-[9.5rem] flex-1 px-3 py-2.5 text-center text-xs font-semibold transition sm:text-sm ${
+                    settingsTab === tab.id
+                      ? tab.id === "danger"
+                        ? "bg-rose-700 text-white"
+                        : "bg-teal-700 text-white"
+                      : tab.id === "danger"
+                        ? "bg-white text-rose-700 hover:bg-rose-50"
+                        : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                  }`}
+                >
+                  <span className="inline-flex items-start justify-center gap-0.5">
+                    <span>{tab.label}</span>
+                    {tab.hasRequiredFields ? (
+                      <span
+                        aria-hidden="true"
+                        className="text-sm font-black leading-none text-rose-500"
+                        title="Contains required fields"
+                      >
+                        *
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              ))}
+              </div>
+            </nav>
+
+            <section className="min-w-0 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:p-4">
+            <header className="mb-4 border-b border-zinc-200 pb-3">
+              <h3 className="text-lg font-semibold tracking-tight text-zinc-950">
+                {activeTabCopy.title}
+              </h3>
+              <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+                {activeTabCopy.description}
+              </p>
+            </header>
+            {settingsTab === "details" ? (
+              <div className="space-y-3">
+                <PartnerForm
+                  key={partner.id ?? "edit-partner"}
+                  formId={partnerFormId}
+                  cities={cities}
+                  owners={owners}
+                  partner={partner}
+                  mode="edit"
+                />
+                <div className="flex flex-wrap items-end justify-between gap-3 border-t border-zinc-200 pt-3">
+                  <div className="max-w-xs flex-1">
+                    <PartnerPinDisplay
+                      mode="edit"
+                      partnerId={partner.id}
+                      pin={partner.pin}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {settingsTab === "rewards" ? (
+              <div className="space-y-3">
+                <OpeningHoursPanel partner={partner} embedded />
+                <MilestonesPanel partner={partner} embedded />
+              </div>
+            ) : null}
+            {settingsTab === "deals" ? <DealsPanel partner={partner} embedded /> : null}
+            {settingsTab === "menu" ? <MenuPanel partner={partner} embedded /> : null}
+            {settingsTab === "access" ? (
+              <PartnerStaffPanel partner={partner} users={owners} embedded />
+            ) : null}
+            {settingsTab === "activity" ? (
+              <div className="space-y-4">
+                <section>
+                  <h3 className="mb-2 text-sm font-semibold text-zinc-900">Stamp-card progress</h3>
+                  <StampProgressPanel progress={partner.stamp_progress} embedded />
+                </section>
+                <section className="border-t border-zinc-200 pt-4">
+                  <h3 className="mb-2 text-sm font-semibold text-zinc-900">Redemption history</h3>
+                  <RedemptionHistoryPanel partner={partner} visits={partner.visits} embedded />
+                </section>
+              </div>
+            ) : null}
+            {settingsTab === "danger" ? (
+              <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">
+                <DeletePartnerForm partner={partner} onDeleted={onDeleted} />
+              </div>
+            ) : null}
+            </section>
           </div>
         ) : (
           <div className="space-y-5">
@@ -662,20 +845,6 @@ function PartnerDetail({
         )}
       </EditorShell>
 
-      {activeView === "settings" ? (
-        <>
-          <PartnerStaffPanel partner={partner} users={owners} />
-          <StampProgressPanel progress={partner.stamp_progress} />
-          <RedemptionHistoryPanel partner={partner} visits={partner.visits} />
-
-          <EditorShell
-            title="Remove partner"
-            description="Deleting a partner also removes attached Supabase records through database relationships."
-          >
-            <DeletePartnerForm partner={partner} onDeleted={onDeleted} />
-          </EditorShell>
-        </>
-      ) : null}
     </div>
   )
 }
@@ -686,7 +855,9 @@ function EditorShell({
   aside,
   children,
   collapsible = false,
+  compact = true,
   defaultOpen = true,
+  flat = false,
   status,
 }: {
   title: string
@@ -694,17 +865,21 @@ function EditorShell({
   aside?: ReactNode
   children: ReactNode
   collapsible?: boolean
+  compact?: boolean
   defaultOpen?: boolean
+  flat?: boolean
   status?: SectionStatusValue
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const contentOpen = collapsible ? open : true
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white shadow-sm">
+    <div className={flat ? "" : compact ? "overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm" : "rounded-md border border-zinc-200 bg-white shadow-sm"}>
       <div
-        className={`flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between ${
-          contentOpen ? "border-b border-zinc-200" : ""
+        className={`flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${
+          flat ? "pb-4" : compact ? "p-3.5" : "p-5"
+        } ${
+          contentOpen && !flat ? "border-b border-zinc-200" : ""
         }`}
       >
         {collapsible ? (
@@ -738,7 +913,7 @@ function EditorShell({
           </div>
         ) : null}
       </div>
-      <div className={contentOpen ? "p-5" : "hidden"}>{children}</div>
+      <div className={contentOpen ? (flat ? "" : compact ? "p-3.5" : "p-5") : "hidden"}>{children}</div>
     </div>
   )
 }
@@ -783,7 +958,6 @@ function PartnerForm({
   partners?: PartnerWithDeals[]
 }) {
   const [state, formAction] = useActionState(savePartner, initialState)
-  const router = useRouter()
   const [templateSource, setTemplateSource] =
     useState<PartnerWithDeals | null>(null)
   const [socialHandles, setSocialHandles] = useState<SocialHandleDraft[]>(() =>
@@ -800,7 +974,11 @@ function PartnerForm({
   const [initialMenuItems, setInitialMenuItems] = useState<
     InitialMenuItemDraft[]
   >([])
+  const [createTab, setCreateTab] = useState<CreatePartnerTab>("profile")
+  const [reviewSnapshot, setReviewSnapshot] =
+    useState<CreatePartnerReviewSnapshot | null>(null)
   const [confirmingSave, setConfirmingSave] = useState(false)
+  const [validationMessage, setValidationMessage] = useState("")
   const [formVersion, setFormVersion] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
   const confirmedSubmitRef = useRef(false)
@@ -827,13 +1005,27 @@ function PartnerForm({
   )
   const coordinateDefaultValue = formatPartnerCoordinates(partner)
   const menuSupported = partnerTypeSupportsMenu(selectedPartnerType)
-  const requiredSectionsOpen = mode === "create"
+  const createTabs: Array<{
+    id: CreatePartnerTab
+    label: string
+    hasRequiredFields?: boolean
+  }> = [
+    { id: "profile", label: "Business Profile", hasRequiredFields: true },
+    { id: "operations", label: "Operations & Media", hasRequiredFields: true },
+    { id: "offers", label: "Rewards & Deals", hasRequiredFields: true },
+    ...(menuSupported
+      ? [{ id: "menu" as const, label: "Starter Menu", hasRequiredFields: true }]
+      : []),
+    { id: "review", label: "Review & Create" },
+  ]
+  const activeCreateTabCopy = createPartnerTabCopy[createTab]
   const requiredSectionMarker: boolean | "subtle" = "subtle"
   const handlePartnerTypeChange = (nextType: string) => {
     setSelectedPartnerType(nextType)
 
     if (!partnerTypeSupportsMenu(nextType)) {
       setInitialMenuEnabled(false)
+      if (createTab === "menu") setCreateTab("operations")
     }
   }
 
@@ -868,7 +1060,11 @@ function PartnerForm({
 
   useEffect(() => {
     if (state.ok) {
-      router.refresh()
+      formRef.current
+        ?.querySelectorAll<HTMLDetailsElement>("details[open]")
+        .forEach((details) => {
+          details.open = false
+        })
     }
 
     if (!(mode === "create" && state.ok && state.created)) {
@@ -882,6 +1078,8 @@ function PartnerForm({
       setInitialMenuEnabled(false)
       setInitialMenuCategories([])
       setInitialMenuItems([])
+      setCreateTab("profile")
+      setReviewSnapshot(null)
       setTemplateSource(null)
       setFormVersion((value) => value + 1)
 
@@ -891,7 +1089,7 @@ function PartnerForm({
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [mode, router, state.created, state.ok])
+  }, [mode, state.created, state.ok])
 
   return (
     <form
@@ -899,11 +1097,65 @@ function PartnerForm({
       key={formVersion}
       ref={formRef}
       action={formAction}
-      className="space-y-7"
+      className="space-y-3"
+      noValidate
+      onInput={() => {
+        if (validationMessage) setValidationMessage("")
+      }}
       onSubmit={(event) => {
         const submitter = (event.nativeEvent as SubmitEvent).submitter
         pendingSubmitterRef.current =
           submitter instanceof HTMLButtonElement ? submitter : null
+
+        const form = event.currentTarget
+        const invalidField = Array.from(form.elements).find(
+          (element): element is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement =>
+            element instanceof HTMLInputElement ||
+            element instanceof HTMLSelectElement ||
+            element instanceof HTMLTextAreaElement
+              ? element.willValidate && !element.validity.valid
+              : false,
+        )
+
+        if (invalidField) {
+          event.preventDefault()
+          pendingSubmitterRef.current = null
+          const invalidTab = invalidField
+            .closest<HTMLElement>("[data-create-tab]")
+            ?.dataset.createTab as CreatePartnerTab | undefined
+          const tabLabel = createTabs.find((tab) => tab.id === invalidTab)?.label
+
+          if (mode === "create" && invalidTab) {
+            setCreateTab(invalidTab)
+          }
+
+          setValidationMessage(
+            tabLabel
+              ? `Please complete the required fields in ${tabLabel} before creating the partner.`
+              : "Please complete all required partner fields before saving.",
+          )
+          window.requestAnimationFrame(() => {
+            invalidField.focus({ preventScroll: true })
+            invalidField.scrollIntoView({ behavior: "smooth", block: "center" })
+            invalidField.reportValidity()
+          })
+          return
+        }
+
+        if (mode === "create" && new FormData(form).getAll("category").length === 0) {
+          event.preventDefault()
+          pendingSubmitterRef.current = null
+          setCreateTab("profile")
+          setValidationMessage(
+            "Please select at least one category in Business Profile before creating the partner.",
+          )
+          window.requestAnimationFrame(() => {
+            form
+              .querySelector<HTMLElement>("[data-create-tab='profile'] details:last-of-type")
+              ?.scrollIntoView({ behavior: "smooth", block: "center" })
+          })
+          return
+        }
 
         if (mode !== "edit") {
           return
@@ -939,6 +1191,80 @@ function PartnerForm({
         value={partner?.stamp_target ?? MAX_STAMP_CARD_STAMPS}
       />
       <input type="hidden" name="social_count" value={socialHandles.length} />
+
+      {mode === "create" ? (
+        <nav aria-label="Add partner steps" className="overflow-x-auto pb-1">
+          <div className="inline-flex min-w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
+            {createTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  if (tab.id === "review") {
+                    setReviewSnapshot(
+                      createPartnerReviewSnapshot(formRef.current, {
+                        dealCount: initialDeals.length,
+                        menuCategoryCount: initialMenuCategories.length,
+                        menuEnabled: initialMenuEnabled,
+                        menuItemCount: initialMenuItems.length,
+                        milestoneCount: initialMilestones.length,
+                      }),
+                    )
+                  }
+                  setCreateTab(tab.id)
+                }}
+                aria-current={createTab === tab.id ? "step" : undefined}
+                className={`min-w-[10rem] flex-1 px-3 py-2.5 text-center text-xs font-semibold transition sm:text-sm ${
+                  createTab === tab.id
+                    ? "bg-teal-700 text-white"
+                    : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                }`}
+              >
+                  <span className="inline-flex items-start justify-center gap-0.5">
+                    <span>{tab.label}</span>
+                    {tab.hasRequiredFields ? (
+                      <span
+                        aria-hidden="true"
+                        className="text-sm font-black leading-none text-rose-500"
+                        title="Contains required fields"
+                      >
+                        *
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+            ))}
+          </div>
+        </nav>
+      ) : null}
+
+      <div className={mode === "create" ? "rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:p-4" : "flex flex-col gap-4"}>
+      {mode === "create" ? (
+        <header className="mb-4 border-b border-zinc-200 pb-3">
+          <h3 className="text-lg font-semibold tracking-tight text-zinc-950">
+            {activeCreateTabCopy.title}
+          </h3>
+          <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+            {activeCreateTabCopy.description}
+          </p>
+        </header>
+      ) : null}
+
+      {validationMessage ? (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-800"
+        >
+          {validationMessage}
+        </div>
+      ) : null}
+      <ActionMessage state={state} />
+
+      <div
+        data-create-tab="profile"
+        className={mode !== "create" || createTab === "profile" ? "flex flex-col gap-4" : "hidden"}
+      >
 
       {mode === "create" && partners.length > 0 ? (
         <CopyFromPartnerPanel partners={partners} onApply={applyTemplate} />
@@ -1088,6 +1414,13 @@ function PartnerForm({
         </div>
       </FormSection>
 
+      </div>
+
+      <div
+        data-create-tab="operations"
+        className={mode !== "create" || createTab === "operations" ? "flex flex-col gap-4" : "hidden"}
+      >
+
       {mode === "create" ? (
         <FormSection
           title="Operating Hours"
@@ -1138,8 +1471,13 @@ function PartnerForm({
         />
       </FormSection>
 
+      </div>
+
       {mode === "create" ? (
-        <>
+        <div
+          data-create-tab="offers"
+          className={createTab === "offers" ? "flex flex-col gap-4" : "hidden"}
+        >
           <FormSection
             title="Stamp-card milestones"
             defaultOpen={false}
@@ -1231,7 +1569,14 @@ function PartnerForm({
             />
           </FormSection>
 
-          {menuSupported ? (
+        </div>
+      ) : null}
+
+      {mode === "create" && menuSupported ? (
+        <div
+          data-create-tab="menu"
+          className={createTab === "menu" ? "flex flex-col gap-4" : "hidden"}
+        >
             <FormSection title="Menu" defaultOpen={false}>
               <InitialMenuEditor
                 categories={initialMenuCategories}
@@ -1338,15 +1683,17 @@ function PartnerForm({
                 }
               />
             </FormSection>
-          ) : null}
+        </div>
+      ) : null}
+
+      <div className={mode === "create" && createTab === "review" ? "space-y-3" : mode === "create" ? "hidden" : "contents"}>
+      {mode === "create" ? (
+        <>
+          <CreatePartnerReview snapshot={reviewSnapshot} />
+          <PartnerPinDisplay mode="create" pin={partner?.pin ?? null} />
         </>
       ) : null}
 
-      {mode === "create" ? (
-        <PartnerPinDisplay mode="create" pin={partner?.pin ?? null} />
-      ) : null}
-
-      <ActionMessage state={state} />
       {mode === "create" ? (
         <div className="flex flex-col gap-2 sm:flex-row">
           <SubmitButton
@@ -1355,6 +1702,13 @@ function PartnerForm({
           />
         </div>
       ) : null}
+      </div>
+      {mode === "edit" ? (
+        <div className="flex justify-end border-t border-zinc-200 pt-3">
+          <SubmitButton label="Save partner" pendingLabel="Saving partner..." size="compact" />
+        </div>
+      ) : null}
+      </div>
       <ConfirmDialog
         open={confirmingSave}
         title="Save partner changes?"
@@ -1368,6 +1722,239 @@ function PartnerForm({
         }}
       />
     </form>
+  )
+}
+
+function createPartnerReviewSnapshot(
+  form: HTMLFormElement | null,
+  staged: {
+    dealCount: number
+    menuCategoryCount: number
+    menuEnabled: boolean
+    menuItemCount: number
+    milestoneCount: number
+  },
+): CreatePartnerReviewSnapshot | null {
+  if (!form) return null
+
+  const formData = new FormData(form)
+  const value = (name: string) => String(formData.get(name) ?? "").trim()
+  const selectedLabel = (name: string) => {
+    const field = form.elements.namedItem(name)
+    return field instanceof HTMLSelectElement
+      ? field.selectedOptions[0]?.text.trim() || value(name)
+      : value(name)
+  }
+  const requiredFields = Array.from(
+    form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+      "input[required], select[required], textarea[required]",
+    ),
+  ).filter((field) => !field.disabled)
+  const existingCovers = formData
+    .getAll("existing_cover_urls")
+    .filter((entry) => typeof entry === "string" && entry.trim()).length
+  const uploadedCovers = formData
+    .getAll("cover_files")
+    .filter((entry) => entry instanceof File && entry.size > 0).length
+  const categories = formData
+    .getAll("category")
+    .map(String)
+    .map((category) => category.trim())
+    .filter(Boolean)
+  const mediaIsSet = (existingName: string, fileName: string) =>
+    Boolean(value(existingName)) ||
+    formData
+      .getAll(fileName)
+      .some((entry) => entry instanceof File && entry.size > 0)
+  const menuStatus = !staged.menuEnabled
+    ? "Not set"
+    : staged.menuCategoryCount > 0 && staged.menuItemCount > 0
+      ? "Set"
+      : "Incomplete"
+
+  return {
+    name: value("name") || "Untitled partner",
+    type: selectedLabel("type") || "Type not selected",
+    city: selectedLabel("city_id") || "City not selected",
+    owner: selectedLabel("owner_id") || "Owner not selected",
+    email: value("email") || "Email not added",
+    phone: value("phone") || "Phone not added",
+    website: value("website") || "Website not added",
+    address: value("address") || "Address not added",
+    categories,
+    active: formData.has("active"),
+    featured: formData.has("is_featured"),
+    requiredComplete:
+      requiredFields.filter((field) => field.validity.valid).length +
+      (categories.length ? 1 : 0),
+    requiredTotal: requiredFields.length + 1,
+    openDays: Array.from({ length: 7 }, (_, index) => index + 1).filter(
+      (weekday) => !formData.has(`is_closed_${weekday}`),
+    ).length,
+    coverCount: existingCovers + uploadedCovers,
+    milestoneCount: staged.milestoneCount,
+    dealCount: staged.dealCount,
+    menuStatus,
+    logoSet: mediaIsSet("existing_logo_url", "logo_file"),
+    featureCardSet: mediaIsSet("existing_feature_card_url", "feature_card_file"),
+    discoveryImageSet: mediaIsSet(
+      "existing_discover_card_image_url",
+      "discover_card_file",
+    ),
+    descriptionSet: Boolean(value("description")),
+    coordinatesSet: Boolean(value("coordinates")),
+    socialCount: Number(value("social_count")) || 0,
+  }
+}
+
+function CreatePartnerReview({
+  snapshot,
+}: {
+  snapshot: CreatePartnerReviewSnapshot | null
+}) {
+  if (!snapshot) {
+    return <InfoNote>Open this tab again to refresh the partner summary.</InfoNote>
+  }
+
+  const completion = snapshot.requiredTotal
+    ? Math.round((snapshot.requiredComplete / snapshot.requiredTotal) * 100)
+    : 100
+  const ready = completion === 100 && snapshot.categories.length > 0
+
+  return (
+    <article className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+      <div className="relative overflow-hidden bg-[linear-gradient(135deg,#0f766e_0%,#115e59_52%,#134e4a_100%)] px-4 py-3 text-white sm:px-5">
+        <div className="absolute -right-10 -top-16 size-36 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-100">
+              Partner launch brief
+            </p>
+            <h4 className="mt-1 truncate text-lg font-bold tracking-tight">
+              {snapshot.name}
+            </h4>
+            <p className="mt-0.5 text-xs text-teal-50/85">
+              {snapshot.type} · {snapshot.city}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-semibold">
+                {snapshot.active ? "Active on launch" : "Saved as inactive"}
+              </span>
+              {snapshot.featured ? (
+                <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[11px] font-bold text-amber-950">
+                  Featured
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div
+            className="grid size-16 shrink-0 place-items-center rounded-full p-1.5"
+            style={{
+              background: `conic-gradient(#99f6e4 ${completion}%, rgba(255,255,255,.2) ${completion}% 100%)`,
+            }}
+          >
+            <div className="grid size-full place-items-center rounded-full bg-teal-900 text-center">
+              <span>
+                <strong className="block text-base leading-none">{completion}%</strong>
+                <span className="mt-0.5 block text-[8px] font-bold uppercase tracking-wide text-teal-100">
+                  complete
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-0 lg:grid-cols-[1.1fr_.9fr]">
+        <div className="p-4 sm:p-5">
+          <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+            Business snapshot
+          </h5>
+          <dl className="mt-3 divide-y divide-zinc-100">
+            <ReviewDetail label="Owner" value={snapshot.owner} />
+            <ReviewDetail label="Email" value={snapshot.email} />
+            <ReviewDetail label="Phone" value={snapshot.phone} />
+            <ReviewDetail label="Website" value={snapshot.website} />
+            <ReviewDetail label="Address" value={snapshot.address} />
+          </dl>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {snapshot.categories.length ? (
+              snapshot.categories.map((category) => (
+                <span
+                  key={category}
+                  className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-semibold text-zinc-700"
+                >
+                  {category}
+                </span>
+              ))
+            ) : (
+              <span className="text-xs font-semibold text-rose-700">No categories selected</span>
+            )}
+          </div>
+        </div>
+
+        <div className="border-t border-zinc-200 bg-zinc-50/70 p-4 sm:p-5 lg:border-l lg:border-t-0">
+          <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+            Launch inventory
+          </h5>
+          <div className="mt-3 grid gap-x-4 sm:grid-cols-2">
+            <ReviewStatus label="Logo" value={snapshot.logoSet ? "Set" : "Not set"} ready={snapshot.logoSet} />
+            <ReviewStatus label="Feature card" value={snapshot.featureCardSet ? "Set" : "Not set"} ready={snapshot.featureCardSet} />
+            <ReviewStatus label="Discovery image" value={snapshot.discoveryImageSet ? "Set" : "Not set"} ready={snapshot.discoveryImageSet} />
+            <ReviewStatus label="Cover gallery" value={snapshot.coverCount ? `${snapshot.coverCount} image${snapshot.coverCount === 1 ? "" : "s"}` : "Not set"} ready={snapshot.coverCount > 0} />
+            <ReviewStatus label="Description" value={snapshot.descriptionSet ? "Set" : "Not set"} ready={snapshot.descriptionSet} />
+            <ReviewStatus label="Map location" value={snapshot.coordinatesSet ? "Set" : "Not set"} ready={snapshot.coordinatesSet} />
+            <ReviewStatus label="Opening hours" value={`${snapshot.openDays}/7 days open`} ready={snapshot.openDays > 0} />
+            <ReviewStatus label="Social profiles" value={snapshot.socialCount ? `${snapshot.socialCount} set` : "Not set"} ready={snapshot.socialCount > 0} optional />
+            <ReviewStatus label="Rewards" value={snapshot.milestoneCount ? `${snapshot.milestoneCount} milestone${snapshot.milestoneCount === 1 ? "" : "s"}` : "Not set"} ready={snapshot.milestoneCount > 0} optional />
+            <ReviewStatus label="Deals" value={snapshot.dealCount ? `${snapshot.dealCount} deal${snapshot.dealCount === 1 ? "" : "s"}` : "Not set"} ready={snapshot.dealCount > 0} optional />
+            <ReviewStatus label="Menu" value={snapshot.menuStatus} ready={snapshot.menuStatus === "Set"} optional={snapshot.menuStatus === "Not set"} />
+          </div>
+          <div
+            className={`mt-5 rounded-lg border px-3 py-3 text-sm font-medium ${
+              ready
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-amber-200 bg-amber-50 text-amber-900"
+            }`}
+          >
+            {ready
+              ? "Ready to create. All required partner details are complete."
+              : `${snapshot.requiredComplete} of ${snapshot.requiredTotal} required fields are complete. Review the marked tabs before creating.`}
+          </div>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function ReviewDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1 py-2.5 sm:grid-cols-[7rem_1fr] sm:gap-3">
+      <dt className="text-xs font-semibold text-zinc-500">{label}</dt>
+      <dd className="min-w-0 break-words text-sm font-medium text-zinc-800">{value}</dd>
+    </div>
+  )
+}
+
+function ReviewStatus({
+  label,
+  value,
+  ready,
+  optional = false,
+}: {
+  label: string
+  value: string
+  ready: boolean
+  optional?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-zinc-200 py-2">
+      <span className="text-xs font-medium text-zinc-600">{label}</span>
+      <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${ready ? "text-emerald-700" : optional ? "text-zinc-500" : "text-amber-700"}`}>
+        <span className={`size-1.5 rounded-full ${ready ? "bg-emerald-500" : optional ? "bg-zinc-400" : "bg-amber-500"}`} />
+        {value}
+      </span>
+    </div>
   )
 }
 
@@ -1465,7 +2052,7 @@ function InitialMilestonesEditor({
         return (
           <div
             key={milestone.id}
-            className="rounded-md border border-zinc-200 bg-zinc-50 p-4"
+            className="rounded-lg border border-zinc-200 bg-white p-3"
           >
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-zinc-900">
@@ -1649,6 +2236,7 @@ function InitialDealsEditor({
               >
                 <DealCardHeader
                   active={deal.active}
+                  audienceLabel={dealAudienceValueLabel(deal.audience)}
                   benefitCategory={
                     deal.benefitCategory ??
                     draftDealBenefitCategory(deal.dealType, deal.discountType)
@@ -1868,7 +2456,7 @@ function InitialMenuEditor({
       </label>
 
       {enabled ? (
-        <div className="space-y-5 rounded-md border border-zinc-200 bg-zinc-50 p-4">
+        <div className="space-y-4">
           <input
             type="hidden"
             name="initial_menu_category_count"
@@ -2048,6 +2636,7 @@ function InitialMenuEditor({
               <div className="space-y-3">
                 {orderedItems.map((item, index) => {
                   const expanded = expandedItemIds.includes(item.id)
+                  const imageInputId = `initial-menu-item-image-${item.id}`
                   const categoryLabel =
                     labelForValue(categoryOptions, item.categoryDraftId) ||
                     "No category"
@@ -2076,10 +2665,23 @@ function InitialMenuEditor({
                           aria-expanded={expanded}
                         >
                           <span className="flex min-w-0 items-center gap-3">
-                            <ThumbnailPreview
-                              alt={`${item.name || `Item ${index + 1}`} preview`}
-                              src={item.imagePreviewUrl}
-                            />
+                            <span
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setExpandedItemIds((current) =>
+                                  current.includes(item.id)
+                                    ? current
+                                    : [...current, item.id],
+                                )
+                                document.getElementById(imageInputId)?.click()
+                              }}
+                              title="Change menu item image"
+                            >
+                              <ThumbnailPreview
+                                alt={`${item.name || `Item ${index + 1}`} preview`}
+                                src={item.imagePreviewUrl}
+                              />
+                            </span>
                             <span className="min-w-0">
                               <span className="block truncate text-sm font-semibold text-zinc-800">
                                 {item.name || `Item ${index + 1}`}
@@ -2224,6 +2826,7 @@ function InitialMenuEditor({
                           removeName={`initial_menu_item_${index}_remove_image`}
                           spec={partnerMediaSpecs.menuItem}
                           compact
+                          inputId={imageInputId}
                           onPreviewChange={(imagePreviewUrl) =>
                             onUpdateItem(item.id, { imagePreviewUrl })
                           }
@@ -2423,6 +3026,7 @@ function DealsPanel({
 function DealCardHeader({
   actions,
   active,
+  audienceLabel,
   benefitCategory,
   dealType,
   expanded,
@@ -2433,6 +3037,7 @@ function DealCardHeader({
 }: {
   actions: ReactNode
   active: boolean
+  audienceLabel: string
   benefitCategory: string
   dealType: string
   expanded: boolean
@@ -2464,6 +3069,9 @@ function DealCardHeader({
           </span>
         </button>
         <div className="flex flex-wrap gap-1.5">
+          <DealBadge tone={dealAudienceTone(audienceLabel)}>
+            {audienceLabel}
+          </DealBadge>
           <DealBadge>
             {labelForValue(benefitCategoryOptions, benefitCategory) ||
               "Benefit not set"}
@@ -2483,11 +3091,17 @@ function DealBadge({
   tone = "neutral",
 }: {
   children: ReactNode
-  tone?: "neutral" | "active" | "muted"
+  tone?: "neutral" | "active" | "muted" | "free" | "premium" | "both"
 }) {
   const toneClasses =
     tone === "active"
       ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+      : tone === "free"
+        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : tone === "premium"
+        ? "border-amber-300 bg-amber-50 text-amber-800"
+      : tone === "both"
+        ? "border-indigo-200 bg-indigo-50 text-indigo-700"
       : tone === "muted"
         ? "border-zinc-200 bg-zinc-50 text-zinc-500"
         : "border-zinc-200 bg-zinc-50 text-zinc-600"
@@ -2499,6 +3113,28 @@ function DealBadge({
       {children}
     </span>
   )
+}
+
+function dealAudienceTone(
+  label: string,
+): "free" | "premium" | "both" {
+  if (label === "Premium") return "premium"
+  if (label === "Free") return "free"
+  return "both"
+}
+
+function dealAudienceLabel(deal: Deal) {
+  return dealAudienceValueLabel(
+    deal.audience || (deal.premium_only ? "premium" : "both"),
+  )
+}
+
+function dealAudienceValueLabel(audience = "both") {
+  if (audience === "premium") return "Premium"
+  if (audience === "free") return "Free"
+  if (audience === "both") return "Free + Premium"
+
+  return labelForValue(audienceOptions, audience) || "Free + Premium"
 }
 
 function draftDealBenefitCategory(
@@ -2533,9 +3169,10 @@ function NewDealCard({
   const [expanded, setExpanded] = useState(true)
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-3">
+    <div className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs">
       <DealCardHeader
         active={deal.active}
+        audienceLabel={dealAudienceValueLabel(deal.audience)}
         benefitCategory={
           deal.benefitCategory ??
           draftDealBenefitCategory(deal.dealType, deal.discountType)
@@ -2635,9 +3272,10 @@ function DealCard({
   }
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-3">
+    <div className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs">
       <DealCardHeader
         active={deal.active ?? false}
+        audienceLabel={dealAudienceLabel(deal)}
         benefitCategory={
           deal.benefit_category ??
           inferBenefitCategory(
@@ -2692,6 +3330,7 @@ function DealCard({
             mode="edit"
             visits={visits}
             onCancel={toggleExpanded}
+            onSaved={toggleExpanded}
           />
         </div>
       ) : null}
@@ -2744,17 +3383,10 @@ function DealForm({
   visits?: Visit[]
 }) {
   const [state, formAction] = useActionState(saveDeal, initialState)
-  const router = useRouter()
-
-  useEffect(() => {
-    if (state.ok) {
-      onSaved?.()
-      router.refresh()
-    }
-  }, [onSaved, router, state.ok])
+  const formRef = useActionSuccess(state, onSaved)
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form ref={formRef} action={formAction} className="space-y-4">
       <input type="hidden" name="id" value={deal?.id ?? ""} />
       <input type="hidden" name="partner_id" value={partnerId} />
 
@@ -4075,7 +4707,10 @@ function DealFields({
             name={`${prefix}audience`}
             value={selectedAudience}
             options={withCurrentOption(audienceOptions, deal?.audience)}
-            onChange={setSelectedAudience}
+            onChange={(audience) => {
+              setSelectedAudience(audience)
+              onDraftMetaChange?.({ audience })
+            }}
             required
           />
           <CheckboxField
@@ -4570,7 +5205,11 @@ function MilestonesPanel({
     <div className="space-y-3">
       {showNewMilestone && partnerId ? (
         <DealFormShell title="Add milestone">
-          <MilestoneForm partner={partner} mode="create" />
+          <MilestoneForm
+            partner={partner}
+            mode="create"
+            onSaved={() => setShowNewMilestone(false)}
+          />
         </DealFormShell>
       ) : null}
       {partner.reward_milestones.length ? (
@@ -4633,7 +5272,7 @@ function MilestoneCard({
   const [editing, setEditing] = useState(false)
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-4">
+    <div className="rounded-lg border border-zinc-200 bg-white p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
@@ -4663,7 +5302,12 @@ function MilestoneCard({
       </div>
       {editing ? (
         <div className="mt-4 border-t border-zinc-200 pt-4">
-          <MilestoneForm milestone={milestone} partner={partner} mode="edit" />
+          <MilestoneForm
+            milestone={milestone}
+            partner={partner}
+            mode="edit"
+            onSaved={() => setEditing(false)}
+          />
         </div>
       ) : null}
     </div>
@@ -4672,14 +5316,17 @@ function MilestoneCard({
 
 function MilestoneForm({
   milestone,
+  onSaved,
   partner,
   mode,
 }: {
   milestone?: PartnerRewardMilestone
+  onSaved?: () => void
   partner: PartnerWithDeals
   mode: "create" | "edit"
 }) {
   const [state, formAction] = useActionState(saveRewardMilestone, initialState)
+  const formRef = useActionSuccess(state, onSaved)
   const [rewardType, setRewardType] = useState(
     milestone?.reward_type ?? "item",
   )
@@ -4689,7 +5336,7 @@ function MilestoneForm({
   const requiredSectionsOpen = mode === "create"
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form ref={formRef} action={formAction} className="space-y-5">
       <input type="hidden" name="id" value={milestone?.id ?? ""} />
       <input type="hidden" name="partner_id" value={partner.id ?? ""} />
       <input
@@ -4813,40 +5460,70 @@ function MilestoneForm({
 }
 
 function PartnerStaffPanel({
+  embedded = false,
   partner,
   users,
 }: {
+  embedded?: boolean
   partner: PartnerWithDeals
   users: OwnerOption[]
 }) {
   const [showNewStaff, setShowNewStaff] = useState(partner.staff.length === 0)
 
-  return (
-    <EditorShell
-      title="Partner staff and scanners"
-      description="Authorize partner users as scanners or admins for this partner."
-      collapsible
-      defaultOpen={false}
-    >
+  const content = (
       <div className="space-y-4">
-        {partner.id && !showNewStaff ? (
-          <div className="flex justify-end">
+        <div className="flex flex-col gap-3 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal-100 text-sm font-bold text-teal-800">
+              {partner.staff.length}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-zinc-950">
+                Authorized staff
+              </p>
+              <p className="mt-0.5 text-xs leading-5 text-zinc-500">
+                Give selected users scanner or administrative access.
+              </p>
+            </div>
+          </div>
+          {partner.id && !showNewStaff ? (
             <button
               type="button"
               onClick={() => setShowNewStaff(true)}
-              className="h-9 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white transition hover:bg-teal-800"
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-teal-700 px-3.5 text-sm font-semibold text-white transition hover:bg-teal-800"
             >
-              Add access
+              <span aria-hidden="true" className="text-base leading-none">+</span>
+              Add staff access
             </button>
+          ) : null}
+        </div>
+        {showNewStaff ? (
+          <div className="rounded-lg border border-teal-200 bg-teal-50/60 p-3 sm:p-4">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-semibold text-zinc-950">Add staff access</h4>
+                <p className="mt-1 text-xs text-zinc-600">Choose a user and assign the appropriate role.</p>
+              </div>
+              {partner.staff.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowNewStaff(false)}
+                  className="h-8 rounded-md border border-zinc-300 bg-white px-2.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                >
+                  Cancel
+                </button>
+              ) : null}
+            </div>
+            <PartnerStaffForm
+              partner={partner}
+              users={users}
+              mode="create"
+              onSaved={() => setShowNewStaff(false)}
+            />
           </div>
         ) : null}
-        {showNewStaff ? (
-          <DealFormShell title="Add scanner or admin">
-            <PartnerStaffForm partner={partner} users={users} mode="create" />
-          </DealFormShell>
-        ) : null}
         {partner.staff.length ? (
-          <div className="grid gap-4 2xl:grid-cols-2">
+          <div className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white">
             {partner.staff.map((staff) => (
               <PartnerStaffCard
                 key={staff.id ?? `${staff.partner_id}-${staff.user_id}`}
@@ -4860,6 +5537,20 @@ function PartnerStaffPanel({
           <EmptyState>No scanner or admin access configured yet.</EmptyState>
         )}
       </div>
+  )
+
+  if (embedded) {
+    return content
+  }
+
+  return (
+    <EditorShell
+      title="Partner staff and scanners"
+      description="Authorize partner users as scanners or admins for this partner."
+      collapsible
+      defaultOpen={false}
+    >
+      {content}
     </EditorShell>
   )
 }
@@ -4874,36 +5565,44 @@ function PartnerStaffCard({
   users: OwnerOption[]
 }) {
   const [editing, setEditing] = useState(false)
+  const staffName =
+    staff.user_name || staff.user_email || staff.user_id || "Staff user"
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4">
-      <div>
-        <div>
-          <h3 className="text-base font-semibold tracking-normal text-zinc-950">
-            {staff.user_name || staff.user_email || staff.user_id || "Staff user"}
-          </h3>
-          <p className="mt-1 text-sm text-zinc-600">
-            {labelForValue(partnerStaffRoleOptions, staff.role)}
-          </p>
+    <div className="p-3 sm:p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-zinc-100 text-xs font-bold uppercase text-zinc-700">
+            {staffName.slice(0, 2)}
+          </span>
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold text-zinc-950">
+              {staffName}
+            </h3>
+            <span className="mt-1 inline-flex rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-600">
+              {labelForValue(partnerStaffRoleOptions, staff.role)}
+            </span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <button
+            type="button"
+            onClick={() => setEditing((value) => !value)}
+            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
+          >
+            {editing ? "Close" : "Edit access"}
+          </button>
+          {staff.id ? <DeletePartnerStaffForm staffId={staff.id} /> : null}
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setEditing((value) => !value)}
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
-        >
-          {editing ? "Close editor" : "Edit access"}
-        </button>
-        {staff.id ? <DeletePartnerStaffForm staffId={staff.id} /> : null}
-      </div>
       {editing ? (
-        <div className="mt-4 border-t border-zinc-200 pt-4">
+        <div className="mt-4 border-t border-zinc-200 bg-zinc-50/70 px-3 pb-3 pt-4 sm:px-4 sm:pb-4">
           <PartnerStaffForm
             partner={partner}
             staff={staff}
             users={users}
             mode="edit"
+            onSaved={() => setEditing(false)}
           />
         </div>
       ) : null}
@@ -4912,17 +5611,20 @@ function PartnerStaffCard({
 }
 
 function PartnerStaffForm({
+  onSaved,
   partner,
   staff,
   users,
   mode,
 }: {
+  onSaved?: () => void
   partner: PartnerWithDeals
   staff?: PartnerStaff
   users: OwnerOption[]
   mode: "create" | "edit"
 }) {
   const [state, formAction] = useActionState(savePartnerStaff, initialState)
+  const formRef = useActionSuccess(state, onSaved)
   const userOptions = users.map((user) => ({
     value: user.id ?? user.uid ?? "",
     label:
@@ -4933,7 +5635,7 @@ function PartnerStaffForm({
   }))
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form ref={formRef} action={formAction} className="space-y-5">
       <input type="hidden" name="id" value={staff?.id ?? ""} />
       <input type="hidden" name="partner_id" value={partner.id ?? ""} />
       <FieldGrid>
@@ -5030,9 +5732,10 @@ function WeeklyOpeningHoursForm({
     saveWeeklyOpeningHours,
     initialState,
   )
+  const formRef = useActionSuccess(state)
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form ref={formRef} action={formAction} className="space-y-4">
       <input type="hidden" name="partner_id" value={partnerId} />
       <WeeklyHoursFields holidays={holidays} hoursByWeekday={hoursByWeekday} />
       <ActionMessage state={state} />
@@ -5593,7 +6296,7 @@ function MenuCard({
   }
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4">
+    <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-base font-semibold text-zinc-950">
@@ -5641,7 +6344,11 @@ function MenuCard({
       </div>
       {editingMenu ? (
         <div className="mt-4 border-t border-zinc-200 pt-4">
-          <MenuForm menu={menu} partnerId={partnerId} />
+          <MenuForm
+            menu={menu}
+            partnerId={partnerId}
+            onSaved={() => setEditingMenu(false)}
+          />
         </div>
       ) : null}
       {reorderMessage ? (
@@ -5656,7 +6363,8 @@ function MenuCard({
         </p>
       ) : null}
       {isReordering ? (
-        <p className="mt-3 text-xs font-medium text-zinc-500">
+        <p role="status" className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-zinc-500">
+          <LoadingSpinner className="size-3" />
           Saving order...
         </p>
       ) : null}
@@ -5863,15 +6571,18 @@ function MenuApprovalNotice({
 
 function MenuForm({
   menu,
+  onSaved,
   partnerId,
 }: {
   menu?: PartnerMenu
+  onSaved?: () => void
   partnerId: string
 }) {
   const [state, formAction] = useActionState(saveMenu, initialState)
+  const formRef = useActionSuccess(state, onSaved)
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form ref={formRef} action={formAction} className="space-y-4">
       <input type="hidden" name="id" value={menu?.id ?? ""} />
       <input type="hidden" name="partner_id" value={partnerId} />
       <FieldGrid>
@@ -5956,7 +6667,7 @@ function MenuCategoryCard({
   }
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-3">
+    <div className="rounded-lg border border-zinc-200 bg-white p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h5 className="text-sm font-semibold text-zinc-950">
@@ -6005,17 +6716,10 @@ function MenuCategoryForm({
   onSaved?: () => void
 }) {
   const [state, formAction] = useActionState(saveMenuCategory, initialState)
-  const router = useRouter()
-
-  useEffect(() => {
-    if (state.ok) {
-      onSaved?.()
-      router.refresh()
-    }
-  }, [onSaved, router, state.ok])
+  const formRef = useActionSuccess(state, onSaved)
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form ref={formRef} action={formAction} className="space-y-4">
       <input type="hidden" name="id" value={category?.id ?? ""} />
       <input type="hidden" name="menu_id" value={menuId} />
       <FieldGrid>
@@ -6082,6 +6786,7 @@ function MenuItemCard({
 }) {
   const [manuallyEditing, setManuallyEditing] = useState(false)
   const editing = manuallyEditing || autoEditing
+  const imageInputId = `menu-item-image-${item.id ?? "new"}`
 
   const closeEditor = () => {
     setManuallyEditing(false)
@@ -6098,13 +6803,26 @@ function MenuItemCard({
   }
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-3">
+    <div className="rounded-lg border border-zinc-200 bg-white p-3">
       <div className="grid gap-3 sm:grid-cols-[9rem_1fr]">
-        <ImagePreview
-          alt={`${item.name || "Menu item"} picture`}
-          src={item.image_url ?? undefined}
-          spec={partnerMediaSpecs.menuItem}
-        />
+        <button
+          type="button"
+          onClick={() => {
+            setManuallyEditing(true)
+            window.setTimeout(() => document.getElementById(imageInputId)?.click(), 0)
+          }}
+          className="group relative rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-teal-200"
+          title="Change menu item picture"
+        >
+          <ImagePreview
+            alt={`${item.name || "Menu item"} picture`}
+            src={item.image_url ?? undefined}
+            spec={partnerMediaSpecs.menuItem}
+          />
+          <span className="absolute inset-x-2 bottom-2 rounded bg-zinc-950/75 px-2 py-1 text-center text-xs font-semibold text-white opacity-90 transition group-hover:bg-teal-800">
+            Change image
+          </span>
+        </button>
         <div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -6141,6 +6859,7 @@ function MenuItemCard({
         <div className="mt-3 border-t border-zinc-200 pt-3">
           <MenuItemForm
             categoryOptions={categoryOptions}
+            imageInputId={imageInputId}
             item={item}
             menuId={menuId}
             onSaved={closeEditor}
@@ -6154,28 +6873,23 @@ function MenuItemCard({
 function MenuItemForm({
   categoryOptions,
   defaultSortOrder = 0,
+  imageInputId,
   item,
   menuId,
   onSaved,
 }: {
   categoryOptions: { value: string; label: string }[]
   defaultSortOrder?: number
+  imageInputId?: string
   item?: MenuItem
   menuId: string
   onSaved?: () => void
 }) {
   const [state, formAction] = useActionState(saveMenuItem, initialState)
-  const router = useRouter()
-
-  useEffect(() => {
-    if (state.ok) {
-      onSaved?.()
-      router.refresh()
-    }
-  }, [onSaved, router, state.ok])
+  const formRef = useActionSuccess(state, onSaved)
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form ref={formRef} action={formAction} className="space-y-4">
       <input type="hidden" name="id" value={item?.id ?? ""} />
       <input type="hidden" name="menu_id" value={menuId} />
       {item?.is_stamp_eligible ? (
@@ -6248,6 +6962,7 @@ function MenuItemForm({
         currentUrl={item?.image_url}
         spec={partnerMediaSpecs.menuItem}
         compact
+        inputId={imageInputId}
       />
       <ActionMessage state={state} />
       <SubmitButton
@@ -6282,17 +6997,16 @@ function DeleteMenuItemForm({ itemId }: { itemId: string }) {
   )
 }
 
-function StampProgressPanel({ progress }: { progress: StampCardProgress[] }) {
+function StampProgressPanel({
+  embedded = false,
+  progress,
+}: {
+  embedded?: boolean
+  progress: StampCardProgress[]
+}) {
   const visibleProgress = progress.slice(0, stampProgressDisplayLimit)
 
-  return (
-    <EditorShell
-      title="Stamp-card progress"
-      description={`Progress comes from stamp_cards_progress_view. MVP cards complete at ${MAX_STAMP_CARD_STAMPS} stamps.`}
-      collapsible
-      defaultOpen={false}
-    >
-      {progress.length ? (
+  const content = progress.length ? (
         <div className="space-y-3">
           <ResultLimitNote
             itemLabel="progress rows"
@@ -6336,28 +7050,37 @@ function StampProgressPanel({ progress }: { progress: StampCardProgress[] }) {
           </div>
         </div>
       ) : (
-        <EmptyState>No stamp-card progress rows loaded for this partner.</EmptyState>
-      )}
+    <EmptyState>No stamp-card progress rows loaded for this partner.</EmptyState>
+  )
+
+  if (embedded) {
+    return content
+  }
+
+  return (
+    <EditorShell
+      title="Stamp-card progress"
+      description={`Progress comes from stamp_cards_progress_view. MVP cards complete at ${MAX_STAMP_CARD_STAMPS} stamps.`}
+      collapsible
+      defaultOpen={false}
+    >
+      {content}
     </EditorShell>
   )
 }
 
 function RedemptionHistoryPanel({
+  embedded = false,
   partner,
   visits,
 }: {
+  embedded?: boolean
   partner: PartnerWithDeals
   visits: Visit[]
 }) {
   const visibleVisits = visits.slice(0, redemptionHistoryDisplayLimit)
 
-  return (
-    <EditorShell
-      title="Redemption history"
-      description="Visits can contain multiple applied benefits; the server decides the full reward bundle."
-      collapsible
-      defaultOpen={false}
-    >
+  const content = (
       <div className="space-y-4">
         {visits.length ? (
           <>
@@ -6371,7 +7094,7 @@ function RedemptionHistoryPanel({
                 {visibleVisits.map((visit) => (
                   <div
                     key={visit.id ?? `${visit.partner_id}-${visit.visited_at}`}
-                    className="rounded-md border border-zinc-200 bg-zinc-50 p-4"
+                    className="rounded-lg border border-zinc-200 bg-zinc-50 p-3"
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
@@ -6504,6 +7227,20 @@ function RedemptionHistoryPanel({
           <EmptyState>No redemption visits loaded for this partner.</EmptyState>
         )}
       </div>
+  )
+
+  if (embedded) {
+    return content
+  }
+
+  return (
+    <EditorShell
+      title="Redemption history"
+      description="Visits can contain multiple applied benefits; the server decides the full reward bundle."
+      collapsible
+      defaultOpen={false}
+    >
+      {content}
     </EditorShell>
   )
 }
@@ -6715,7 +7452,6 @@ function DeletePartnerForm({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const confirmedSubmitRef = useRef(false)
-  const router = useRouter()
 
   useEffect(() => {
     if (!state.ok) {
@@ -6723,8 +7459,7 @@ function DeletePartnerForm({
     }
 
     onDeleted()
-    router.refresh()
-  }, [onDeleted, router, state.ok])
+  }, [onDeleted, state.ok])
 
   return (
     <form
@@ -6878,26 +7613,37 @@ function FormSection({
 
   return (
     <div
-      className={`rounded-md border border-zinc-200 bg-white text-sm ${
-        compact ? "p-2.5" : "p-3"
+      className={`overflow-hidden rounded-xl border bg-white text-sm transition-shadow ${
+        open ? "border-zinc-300 shadow-sm" : "border-zinc-200"
       }`}
     >
       {collapsible ? (
         <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
-          <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 outline-none transition hover:text-zinc-700 focus-visible:ring-2 focus-visible:ring-teal-100 [&::-webkit-details-marker]:hidden">
-            <span
-              className={`flex items-center gap-2 ${compact ? "min-h-7" : "min-h-8"}`}
-            >
-              <span>{title}</span>
-              {sectionStatus ? <SectionStatusList status={sectionStatus} /> : null}
-              <span className="ml-auto text-xs font-semibold normal-case tracking-normal text-zinc-500">
-                {open ? "Collapse" : "Expand"}
+          <summary className="cursor-pointer list-none px-3 outline-none transition hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-200 [&::-webkit-details-marker]:hidden sm:px-4">
+            <span className={`flex items-center gap-2 ${compact ? "min-h-10" : "min-h-11"}`}>
+              <span className="text-sm font-semibold tracking-normal text-zinc-900">
+                {title}
               </span>
+              {sectionStatus ? <SectionStatusList status={sectionStatus} /> : null}
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 20 20"
+                fill="none"
+                className={`ml-auto size-4 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
+              >
+                <path
+                  d="m5 7.5 5 5 5-5"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </span>
           </summary>
           <div
-            className={`border-t border-zinc-100 ${
-              compact ? "mt-3 space-y-3 pt-3" : "mt-4 space-y-4 pt-4"
+            className={`border-t border-zinc-200 bg-zinc-50/70 ${
+              compact ? "space-y-2.5 p-3" : "space-y-3 p-3 sm:p-4"
             }`}
           >
             {children}
@@ -6905,15 +7651,15 @@ function FormSection({
         </details>
       ) : (
         <>
-          <div className={`flex items-center gap-2 ${compact ? "min-h-7" : "min-h-8"}`}>
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+          <div className={`flex items-center gap-2 px-3 sm:px-4 ${compact ? "min-h-10" : "min-h-11"}`}>
+            <span className="text-sm font-semibold text-zinc-900">
               {title}
             </span>
             {sectionStatus ? <SectionStatusList status={sectionStatus} /> : null}
           </div>
           <div
-            className={`border-t border-zinc-100 ${
-              compact ? "mt-3 space-y-3 pt-3" : "mt-4 space-y-4 pt-4"
+            className={`border-t border-zinc-200 bg-zinc-50/70 ${
+              compact ? "space-y-2.5 p-3" : "space-y-3 p-3 sm:p-4"
             }`}
           >
             {children}
@@ -6979,7 +7725,7 @@ function FieldGrid({
   return (
     <div
       className={`grid md:grid-cols-2 2xl:grid-cols-3 ${
-        compact ? "gap-3" : "gap-4"
+        compact ? "gap-2.5" : "gap-3"
       }`}
     >
       {children}
@@ -7165,10 +7911,10 @@ function TextField({
     value === undefined ? uncontrolledLength : measureCharacterCount(value)
 
   return (
-    <label className="block space-y-2 text-sm">
+    <label className="block space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} recommended={recommended} />
       <div
-        className={`flex h-10 w-full items-center rounded-md border border-zinc-300 bg-white text-sm text-zinc-950 transition focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100 ${
+        className={`flex h-9 w-full items-center rounded-lg border border-zinc-300 bg-white text-sm text-zinc-950 transition focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100 ${
           prefixText || suffixText ? "overflow-hidden" : ""
         }`}
       >
@@ -7232,7 +7978,7 @@ function SelectField({
   onChange?: (value: string) => void
 }) {
   return (
-    <label className="block space-y-2 text-sm">
+    <label className="block space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
       <select
         name={name}
@@ -7240,7 +7986,7 @@ function SelectField({
         value={value}
         defaultValue={value === undefined ? defaultValue ?? "" : undefined}
         onChange={(event) => onChange?.(event.target.value)}
-        className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+        className="h-9 w-full rounded-lg border border-zinc-300 bg-white px-2.5 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
       >
         <option value="">Select...</option>
         {options
@@ -7307,7 +8053,7 @@ function MultiSelectField({
   }, [open])
 
   return (
-    <div className="space-y-2 text-sm">
+    <div className="space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
       <details
         ref={detailsRef}
@@ -7316,7 +8062,7 @@ function MultiSelectField({
         onToggle={(event) => setOpen(event.currentTarget.open)}
       >
         <summary
-          className="flex min-h-10 cursor-pointer list-none items-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+          className="flex min-h-9 cursor-pointer list-none items-center rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
           onClick={(event) => {
             event.preventDefault()
             setOpen((value) => !value)
@@ -7461,6 +8207,7 @@ function MediaUploadField({
   currentUrl,
   spec,
   compact = false,
+  inputId,
   onPreviewChange,
 }: {
   label: string
@@ -7470,6 +8217,7 @@ function MediaUploadField({
   currentUrl?: string | null
   spec: PartnerMediaSpec
   compact?: boolean
+  inputId?: string
   onPreviewChange?: (url: string) => void
 }) {
   const [removed, setRemoved] = useState(false)
@@ -7477,6 +8225,7 @@ function MediaUploadField({
   const [selectedPreviews, setSelectedPreviews] = useState<ImagePreview[]>([])
   const [uploadMessage, setUploadMessage] = useState("")
   const [uploadError, setUploadError] = useState("")
+  const [isProcessing, setIsProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const selectedPreviewsRef = useRef<ImagePreview[]>([])
   const hasSelectedPreviews = selectedPreviews.length > 0
@@ -7513,7 +8262,7 @@ function MediaUploadField({
   }
 
   return (
-    <div className="flex h-full flex-col gap-2 rounded-md border border-zinc-200 p-2 text-sm">
+    <div aria-busy={isProcessing} className="flex h-full flex-col gap-2 rounded-md border border-zinc-200 p-2 text-sm">
       <div className="space-y-1">
         <p className="font-medium text-zinc-700">{label}</p>
         <p className="text-xs text-zinc-500">
@@ -7524,7 +8273,7 @@ function MediaUploadField({
         <input type="hidden" name={existingName} value={currentUrl} />
       ) : null}
       <div
-        className={`flex items-center justify-center rounded-md bg-zinc-50/60 p-2 ${
+        className={`relative flex items-center justify-center rounded-md bg-zinc-50/60 p-2 ${
           compact ? "min-h-[8rem]" : "min-h-[220px]"
         }`}
       >
@@ -7534,6 +8283,7 @@ function MediaUploadField({
             src={selectedPreview.url}
             spec={spec}
             selected
+            onActivate={() => fileInputRef.current?.click()}
             onRemove={clearSelectedMedia}
             removeLabel={`Remove ${label}`}
           />
@@ -7542,12 +8292,24 @@ function MediaUploadField({
             alt={`${label} preview`}
             src={currentUrl ?? ""}
             spec={spec}
+            onActivate={() => fileInputRef.current?.click()}
             onRemove={() => setRemoved(true)}
             removeLabel={`Remove ${label}`}
           />
         ) : (
-          <ImagePreview alt={`${label} upload placeholder`} spec={spec} />
+          <ImagePreview
+            alt={`${label} upload placeholder`}
+            spec={spec}
+            onActivate={() => fileInputRef.current?.click()}
+          />
         )}
+        {isProcessing ? (
+          <div role="status" className="absolute inset-2 z-10 grid place-items-center rounded-md bg-white/85 text-teal-800 backdrop-blur-sm">
+            <span className="inline-flex items-center gap-2 text-xs font-semibold">
+              <LoadingSpinner /> Preparing image…
+            </span>
+          </div>
+        ) : null}
       </div>
       <div className="min-h-9">
         {selectedPreview ? (
@@ -7572,9 +8334,11 @@ function MediaUploadField({
       <div className="mt-auto space-y-2">
         <input
           ref={fileInputRef}
+          id={inputId}
           name={fileName}
           type="file"
           accept={partnerMediaAccept}
+          disabled={isProcessing}
           onChange={async (event) => {
             const input = event.currentTarget
             const files = Array.from(input.files ?? [])
@@ -7586,6 +8350,7 @@ function MediaUploadField({
 
             setUploadError("")
             setUploadMessage("Resizing image...")
+            setIsProcessing(true)
 
             try {
               const resizedFiles = await resizeImageFiles(files, spec)
@@ -7610,6 +8375,8 @@ function MediaUploadField({
                   ? error.message
                   : "Unable to prepare this image.",
               )
+            } finally {
+              setIsProcessing(false)
             }
           }}
           className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-teal-700 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-teal-800"
@@ -7628,63 +8395,79 @@ function MediaUploadField({
 }
 
 function CoverUploadField({ covers }: { covers?: string[] | null }) {
+  const savedCovers = normalizeMediaUrls(covers)
   const [removedUrls, setRemovedUrls] = useState<string[]>([])
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [selectedPreviews, setSelectedPreviews] = useState<ImagePreview[]>([])
+  const [selectedCovers, setSelectedCovers] = useState<
+    Array<{ file: File; id: string; preview: ImagePreview }>
+  >([])
+  const [coverOrder, setCoverOrder] = useState(() =>
+    savedCovers.map((_, index) => `existing:${index}`),
+  )
+  const [draggedCoverId, setDraggedCoverId] = useState("")
   const [uploadMessage, setUploadMessage] = useState("")
   const [uploadError, setUploadError] = useState("")
+  const [isProcessing, setIsProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const selectedPreviewsRef = useRef<ImagePreview[]>([])
-  const coverUrls = normalizeMediaUrls(covers)
-  const visibleCovers = coverUrls.filter(
+  const visibleCovers = savedCovers.filter(
     (coverUrl) => !removedUrls.includes(coverUrl),
   )
-  const removedCovers = coverUrls.filter((coverUrl) =>
+  const removedCovers = savedCovers.filter((coverUrl) =>
     removedUrls.includes(coverUrl),
   )
-  const hasSelectedPreviews = selectedPreviews.length > 0
-  const hasVisibleCovers = visibleCovers.length > 0
   const spec = partnerMediaSpecs.cover
   const sizeHint = mediaSizeHint(spec)
-  const availableCoverSlots = Math.max(maxCoverPhotos - visibleCovers.length, 0)
-  const remainingCoverSlots = Math.max(
-    maxCoverPhotos - visibleCovers.length - selectedPreviews.length,
-    0,
+  const remainingCoverSlots = Math.max(maxCoverPhotos - visibleCovers.length - selectedCovers.length, 0)
+  const existingFormIndex = new Map(
+    savedCovers
+      .map((url, originalIndex) => ({ originalIndex, url }))
+      .filter(({ url }) => !removedUrls.includes(url))
+      .map(({ originalIndex }, formIndex) => [originalIndex, formIndex]),
   )
+  const orderedCoverIds = coverOrder.filter((id) => {
+    const [kind, value] = id.split(":")
+    return kind === "existing"
+      ? existingFormIndex.has(Number(value))
+      : selectedCovers.some((cover) => cover.id === value)
+  })
 
   useEffect(() => {
-    selectedPreviewsRef.current = selectedPreviews
-  }, [selectedPreviews])
+    selectedPreviewsRef.current = selectedCovers.map((cover) => cover.preview)
+  }, [selectedCovers])
 
   useEffect(() => () => revokeImagePreviews(selectedPreviewsRef.current), [])
 
-  const replaceSelectedCovers = (files: File[], previews: ImagePreview[]) => {
-    setSelectedFiles(files)
-    setSelectedPreviews((current) => {
-      revokeImagePreviews(current)
-      return previews
-    })
+  const syncFileInput = (nextCovers: typeof selectedCovers) => {
+    if (fileInputRef.current) {
+      replaceFileInputFiles(fileInputRef.current, nextCovers.map((cover) => cover.file))
+    }
   }
 
-  const removeSelectedCover = (index: number) => {
-    const nextFiles = selectedFiles.filter((_, fileIndex) => fileIndex !== index)
-    const nextPreviews = selectedPreviews.filter(
-      (_, previewIndex) => previewIndex !== index,
-    )
-
-    if (fileInputRef.current) {
-      replaceFileInputFiles(fileInputRef.current, nextFiles)
-    }
-
-    replaceSelectedCovers(nextFiles, nextPreviews)
-    if (nextFiles.length === 0) {
+  const removeSelectedCover = (id: string) => {
+    const removed = selectedCovers.find((cover) => cover.id === id)
+    const nextCovers = selectedCovers.filter((cover) => cover.id !== id)
+    if (removed) revokeImagePreviews([removed.preview])
+    setSelectedCovers(nextCovers)
+    setCoverOrder((current) => current.filter((coverId) => coverId !== `selected:${id}`))
+    syncFileInput(nextCovers)
+    if (nextCovers.length === 0) {
       setUploadMessage("")
     }
   }
 
+  const moveCover = (targetId: string) => {
+    if (draggedCoverId && draggedCoverId !== targetId) {
+      setCoverOrder((current) => moveIdBeforeTarget(current, draggedCoverId, targetId))
+    }
+    setDraggedCoverId("")
+  }
+
   return (
-    <div className="space-y-2 rounded-md border border-zinc-200 p-2 text-sm">
-      <p className="font-medium text-zinc-700">Cover photos</p>
+    <div aria-busy={isProcessing} className="space-y-3 border-t border-zinc-200 pt-4 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-medium text-zinc-800">Cover photos</p>
+        <span className="text-xs font-medium text-zinc-500">Drag previews to rearrange</span>
+      </div>
       <p className="text-xs text-zinc-500">
         {sizeHint}. Images are resized automatically before upload. Max{" "}
         {maxCoverPhotos} cover photos, 10 MB each.
@@ -7693,45 +8476,53 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
         {visibleCovers.length} of {maxCoverPhotos} cover photos saved
         {remainingCoverSlots ? `; ${remainingCoverSlots} slot${remainingCoverSlots === 1 ? "" : "s"} available.` : "."}
       </p>
-      {hasVisibleCovers || hasSelectedPreviews ? (
+      {visibleCovers.map((coverUrl) => (
+        <input key={coverUrl} type="hidden" name="existing_cover_urls" value={coverUrl} />
+      ))}
+      {orderedCoverIds.map((id) => {
+        const [kind, value] = id.split(":")
+        const token = kind === "existing"
+          ? `existing:${existingFormIndex.get(Number(value))}`
+          : `upload:${selectedCovers.findIndex((cover) => cover.id === value)}`
+        return <input key={`order-${id}`} type="hidden" name="cover_order" value={token} />
+      })}
+      {orderedCoverIds.length ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleCovers.map((coverUrl) => (
-            <div key={coverUrl} className="space-y-2">
-              <input
-                type="hidden"
-                name="existing_cover_urls"
-                value={coverUrl}
-              />
-              <ImagePreview
-                alt="Cover photo preview"
-                src={coverUrl}
-                spec={spec}
-                onRemove={() =>
-                  setRemovedUrls((current) =>
-                    current.includes(coverUrl)
-                      ? current
-                      : [...current, coverUrl],
-                  )
-                }
-                removeLabel="Remove cover photo"
-              />
-            </div>
-          ))}
-          {selectedPreviews.map((preview, index) => (
-            <div key={preview.url} className="space-y-2">
-              <ImagePreview
-                alt={preview.name}
-                src={preview.url}
-                spec={spec}
-                selected
-                onRemove={() => removeSelectedCover(index)}
-                removeLabel={`Remove ${preview.name}`}
-              />
-              <p className="truncate text-xs font-medium text-zinc-600">
-                {preview.name}
-              </p>
-            </div>
-          ))}
+          {orderedCoverIds.map((id, index) => {
+            const [kind, value] = id.split(":")
+            const coverUrl = kind === "existing" ? savedCovers[Number(value)] : ""
+            const selected = kind === "selected"
+              ? selectedCovers.find((cover) => cover.id === value)
+              : undefined
+            return (
+              <div
+                key={id}
+                draggable
+                onDragStart={() => setDraggedCoverId(id)}
+                onDragEnd={() => setDraggedCoverId("")}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => moveCover(id)}
+                className={`space-y-2 rounded-md p-1 transition ${draggedCoverId === id ? "opacity-50" : "cursor-grab"}`}
+              >
+                <span className="text-xs font-semibold text-zinc-500">{index + 1}</span>
+                <ImagePreview
+                  alt={selected?.preview.name || "Cover photo preview"}
+                  src={selected?.preview.url || coverUrl}
+                  spec={spec}
+                  selected={Boolean(selected)}
+                  onRemove={() => {
+                    if (selected) {
+                      removeSelectedCover(selected.id)
+                    } else {
+                      setRemovedUrls((current) => [...current, coverUrl])
+                      setCoverOrder((current) => current.filter((coverId) => coverId !== id))
+                    }
+                  }}
+                  removeLabel="Remove cover photo"
+                />
+              </div>
+            )
+          })}
         </div>
       ) : (
         <ImagePreview alt="Cover photo upload placeholder" spec={spec} />
@@ -7748,9 +8539,14 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
               <button
                 type="button"
                 onClick={() =>
-                  setRemovedUrls((current) =>
-                    current.filter((url) => url !== coverUrl),
-                  )
+                  {
+                    setRemovedUrls((current) => current.filter((url) => url !== coverUrl))
+                    const originalIndex = savedCovers.indexOf(coverUrl)
+                    setCoverOrder((current) => [
+                      ...current,
+                      `existing:${originalIndex}`,
+                    ])
+                  }
                 }
                 className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
               >
@@ -7766,52 +8562,66 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
         type="file"
         accept={partnerMediaAccept}
         multiple
-        disabled={availableCoverSlots === 0}
+        disabled={remainingCoverSlots === 0 || isProcessing}
         onChange={async (event) => {
           const input = event.currentTarget
           const files = Array.from(input.files ?? [])
 
           if (files.length === 0) {
-            replaceFileInputFiles(input, selectedFiles)
+            syncFileInput(selectedCovers)
             return
           }
 
           setUploadError("")
           setUploadMessage("Resizing cover photos...")
 
-          if (files.length > availableCoverSlots) {
-            replaceFileInputFiles(input, selectedFiles)
+          if (files.length > remainingCoverSlots) {
+            syncFileInput(selectedCovers)
             setUploadMessage("")
             setUploadError(
-              `Select up to ${availableCoverSlots} more cover photo${availableCoverSlots === 1 ? "" : "s"}.`,
+              `Select up to ${remainingCoverSlots} more cover photo${remainingCoverSlots === 1 ? "" : "s"}.`,
             )
             return
           }
 
           try {
+            setIsProcessing(true)
             const resizedFiles = await resizeImageFiles(files, spec)
-            replaceFileInputFiles(input, resizedFiles)
-            replaceSelectedCovers(resizedFiles, createImagePreviews(resizedFiles))
+            const previews = createImagePreviews(resizedFiles)
+            const additions = resizedFiles.map((file, index) => ({
+              file,
+              id: crypto.randomUUID(),
+              preview: previews[index],
+            }))
+            const nextCovers = [...selectedCovers, ...additions]
+            setSelectedCovers(nextCovers)
+            setCoverOrder((current) => [
+              ...current,
+              ...additions.map((cover) => `selected:${cover.id}`),
+            ])
+            replaceFileInputFiles(input, nextCovers.map((cover) => cover.file))
             setUploadMessage(
-              `${resizedFiles.length} cover photo${resizedFiles.length === 1 ? "" : "s"} ready at ${spec.width}px x ${spec.height}px.`,
+              `${nextCovers.length} new cover photo${nextCovers.length === 1 ? "" : "s"} ready.`,
             )
           } catch (error) {
-            input.value = ""
-            setSelectedFiles([])
-            setSelectedPreviews((current) => {
-              revokeImagePreviews(current)
-              return []
-            })
+            syncFileInput(selectedCovers)
             setUploadMessage("")
             setUploadError(
               error instanceof Error
                 ? error.message
                 : "Unable to prepare these cover photos.",
             )
+          } finally {
+            setIsProcessing(false)
           }
         }}
         className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-teal-700 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-teal-800"
       />
+      {isProcessing ? (
+        <p role="status" className="inline-flex items-center gap-2 text-xs font-semibold text-teal-700">
+          <LoadingSpinner className="size-3" /> Preparing cover images…
+        </p>
+      ) : null}
       {uploadMessage ? (
         <p className="text-xs font-medium text-emerald-700">{uploadMessage}</p>
       ) : null}
@@ -7829,6 +8639,7 @@ type ImagePreview = {
 
 function ImagePreview({
   alt,
+  onActivate,
   onRemove,
   removeLabel,
   src,
@@ -7836,6 +8647,7 @@ function ImagePreview({
   selected = false,
 }: {
   alt: string
+  onActivate?: () => void
   onRemove?: () => void
   removeLabel?: string
   src?: string
@@ -7844,9 +8656,19 @@ function ImagePreview({
 }) {
   return (
     <div
+      role={onActivate ? "button" : undefined}
+      tabIndex={onActivate ? 0 : undefined}
+      title={onActivate ? "Click to choose a different image" : undefined}
+      onClick={onActivate}
+      onKeyDown={(event) => {
+        if (onActivate && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault()
+          onActivate()
+        }
+      }}
       className={`relative overflow-hidden rounded-md border ${
         selected ? "border-teal-200 bg-white" : "border-zinc-200 bg-white"
-      }`}
+      } ${onActivate ? "cursor-pointer outline-none transition hover:border-teal-400 hover:ring-2 hover:ring-teal-100 focus-visible:ring-2 focus-visible:ring-teal-300" : ""}`}
       style={{
         aspectRatio: `${spec.previewAspectWidth ?? spec.width} / ${
           spec.previewAspectHeight ?? spec.height
@@ -7879,7 +8701,10 @@ function ImagePreview({
       {onRemove ? (
         <button
           type="button"
-          onClick={onRemove}
+          onClick={(event) => {
+            event.stopPropagation()
+            onRemove()
+          }}
           aria-label={removeLabel ?? "Remove image"}
           className="absolute right-2 top-2 grid size-7 place-items-center rounded-full border border-white/80 bg-zinc-950/75 text-xs font-bold leading-none text-white shadow-sm transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-100"
         >
@@ -7933,7 +8758,13 @@ function mediaSizeHint(spec: PartnerMediaSpec) {
 }
 
 async function resizeImageFiles(files: File[], spec: PartnerMediaSpec) {
-  return await Promise.all(files.map((file) => resizeImageFile(file, spec)))
+  const resizedFiles: File[] = []
+
+  for (const file of files) {
+    resizedFiles.push(await resizeImageFile(file, spec))
+  }
+
+  return resizedFiles
 }
 
 async function resizeImageFile(file: File, spec: PartnerMediaSpec) {
@@ -8095,22 +8926,37 @@ function ReadOnlyField({
 
 function PartnerPinDisplay({
   mode,
+  partnerId,
   pin,
 }: {
   mode: "create" | "edit"
+  partnerId?: string | null
   pin?: number | string | null
 }) {
+  const generatedPin = partnerId ? derivePartnerPin(partnerId) : null
+
   return (
     <ReadOnlyField
       label="Partner PIN"
-      value={mode === "edit" ? pin ?? "Not set" : "Generated after save"}
+      value={mode === "edit" ? pin ?? generatedPin : "Generated automatically on creation"}
       hint={
         mode === "edit"
-          ? "Auto-generated for this partner and kept read-only here."
+          ? "Automatically generated from the permanent partner record and kept read-only."
           : "Auto-generated when the partner is created and kept read-only here."
       }
     />
   )
+}
+
+function derivePartnerPin(partnerId: string) {
+  let hash = 2166136261
+
+  for (let index = 0; index < partnerId.length; index += 1) {
+    hash ^= partnerId.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return 1000 + ((hash >>> 0) % 9000)
 }
 
 function TextAreaField({
@@ -8143,11 +8989,11 @@ function TextAreaField({
     value === undefined ? uncontrolledLength : measureCharacterCount(value)
 
   return (
-    <label className="block space-y-2 text-sm">
+    <label className="block space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
       <textarea
         name={name}
-        rows={4}
+        rows={3}
         required={required}
         placeholder={placeholder}
         value={value}
@@ -8159,7 +9005,7 @@ function TextAreaField({
           }
           onChange?.(event.target.value)
         }}
-        className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
       />
       <FieldSupportText
         hint={hint}
@@ -8212,7 +9058,7 @@ function CheckboxField({
   onChange?: (checked: boolean) => void
 }) {
   return (
-    <label className="flex min-h-10 items-start gap-2 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700">
+    <label className="flex min-h-9 items-start gap-2 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm font-medium text-zinc-700">
       <input
         type="checkbox"
         name={name}
@@ -8290,9 +9136,11 @@ function SubmitButton({
       type="submit"
       name={name}
       disabled={pending}
+      aria-busy={isActivePending}
       value={value}
-      className={`${sizeClasses} rounded-md font-semibold transition disabled:cursor-not-allowed ${toneClasses}`}
+      className={`${sizeClasses} inline-flex items-center justify-center gap-2 rounded-md font-semibold transition disabled:cursor-not-allowed ${toneClasses}`}
     >
+      {isActivePending ? <LoadingSpinner className={size === "tiny" ? "size-3" : "size-4"} /> : null}
       {isActivePending ? pendingLabel : label}
     </button>
   )

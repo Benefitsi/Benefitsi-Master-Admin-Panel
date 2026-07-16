@@ -4,6 +4,7 @@ import { getAdminSession } from "@/lib/admin"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { LoginForm } from "./login-form"
+import { PendingSubmitButton } from "@/components/pending-submit-button"
 import Image from "next/image"
 
 export const dynamic = "force-dynamic"
@@ -96,12 +97,12 @@ async function NonAdminSessionNotice() {
     <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
       <p className="font-medium">The current account is not an admin.</p>
       <form action={signOut} className="mt-2">
-        <button
-          type="submit"
+        <PendingSubmitButton
+          pendingLabel="Signing out..."
           className="h-9 rounded-md bg-amber-900 px-3 text-xs font-semibold text-white transition hover:bg-amber-950"
         >
           Sign out of this account
-        </button>
+        </PendingSubmitButton>
       </form>
     </div>
   )

@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState } from "react"
+import { LoadingSpinner } from "@/components/loading-ui"
 import { partnerLogin, type PartnerLoginActionState } from "./actions"
 
 const initialState: PartnerLoginActionState = {
@@ -67,8 +68,10 @@ export function PartnerLoginForm({ isConfigured }: PartnerLoginFormProps) {
       <button
         type="submit"
         disabled={disabled}
-        className="h-11 w-full rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+        aria-busy={pending}
+        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
       >
+        {pending ? <LoadingSpinner /> : null}
         {pending ? "Signing in..." : "Sign in"}
       </button>
     </form>

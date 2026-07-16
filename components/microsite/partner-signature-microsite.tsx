@@ -54,7 +54,7 @@ export function PartnerSignatureMicrosite({
 
   return (
     <article
-      className={`@container relative min-w-0 max-w-full overflow-hidden rounded-[1.2rem] @min-[640px]:rounded-[1.8rem] ${theme.shell}`}
+      className={`@container relative w-full min-w-0 max-w-full overflow-hidden rounded-none [overflow-wrap:anywhere] @min-[480px]:rounded-[1.2rem] @min-[640px]:rounded-[1.8rem] ${theme.shell}`}
       style={
         {
           "--site-accent": config.branding.accent,
@@ -547,7 +547,7 @@ function SignatureHeader({
         </div>
 
         <nav
-          className="hidden min-w-0 items-center gap-2 @min-[1024px]:flex"
+          className="hidden min-w-0 items-center gap-2 @min-[1180px]:flex"
           style={navigationGroupStyleFor(config)}
         >
           {config.navigation.links.map((link) => (
@@ -566,14 +566,14 @@ function SignatureHeader({
         <button
           type="button"
           onClick={() => setMenuOpen((current) => !current)}
-          className={`grid size-10 place-items-center rounded-full shadow-sm @min-[1024px]:hidden ${theme.mobileMenu}`}
+          className={`grid size-10 shrink-0 place-items-center rounded-full shadow-sm @min-[1180px]:hidden ${theme.mobileMenu}`}
         >
           <Glyph name="menu" className="size-5" />
         </button>
       </div>
 
       {menuOpen ? (
-        <div className={`px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.08)] @min-[640px]:px-5 @min-[1024px]:hidden ${theme.mobilePanel}`}>
+        <div className={`px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.08)] @min-[640px]:px-5 @min-[1180px]:hidden ${theme.mobilePanel}`}>
           <div className="grid gap-2">
             {config.navigation.links.map((link) => (
               <a
@@ -735,7 +735,7 @@ function SignatureStoreBadge({
   return (
     <a
       href={href}
-      className="inline-flex min-w-[170px] items-center gap-3 rounded-[0.9rem] bg-black px-4 py-3 text-white shadow-[0_14px_30px_rgba(0,0,0,.18)] ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-zinc-900"
+      className="inline-flex w-full min-w-0 max-w-full items-center justify-center gap-3 rounded-[0.9rem] bg-black px-4 py-3 text-white shadow-[0_14px_30px_rgba(0,0,0,.18)] ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-zinc-900 @min-[420px]:w-auto @min-[420px]:min-w-[170px]"
       aria-label={isAppStore ? "Laden im App Store" : "Jetzt bei Google Play"}
     >
       {isAppStore ? <SignatureAppleGlyph /> : <SignaturePlayGlyph />}
@@ -1303,7 +1303,9 @@ function navigationGroupStyleFor(config: MicrositeConfig): CSSProperties {
 
 function baseElementStyle(style: MicrositeElementStyle): CSSProperties {
   return {
-    fontSize: style.fontSize ? `${style.fontSize}px` : undefined,
+    fontSize: style.fontSize
+      ? `min(${style.fontSize}px, ${Math.max(12, Math.round(style.fontSize * 0.18))}cqi)`
+      : undefined,
     color: style.color,
     fontWeight: style.bold ? 800 : undefined,
     fontStyle: style.italic ? "italic" : undefined,

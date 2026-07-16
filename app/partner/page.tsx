@@ -2,6 +2,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { redirect } from "next/navigation"
 import { signOutPartner } from "./actions"
+import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { getDashboardData } from "@/lib/admin-data"
 import {
   filterPartnersForPortal,
@@ -59,12 +60,12 @@ export default async function PartnerDashboardPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <p className="max-w-full truncate text-sm text-zinc-600">{userName}</p>
             <form action={signOutPartner}>
-              <button
-                type="submit"
+              <PendingSubmitButton
+                pendingLabel="Signing out..."
                 className="h-10 w-full rounded-md border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100 sm:w-auto"
               >
                 Sign out
-              </button>
+              </PendingSubmitButton>
             </form>
           </div>
         </header>

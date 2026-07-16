@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { signOutPartner } from "../../actions"
+import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { MicrositePanel } from "@/app/microsite-panel"
 import { getDashboardData } from "@/lib/admin-data"
 import {
@@ -80,12 +81,12 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
               Open live preview
             </Link>
             <form action={signOutPartner}>
-              <button
-                type="submit"
+              <PendingSubmitButton
+                pendingLabel="Signing out..."
                 className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-bold text-zinc-800 transition hover:bg-zinc-100"
               >
                 Sign out
-              </button>
+              </PendingSubmitButton>
             </form>
           </div>
         </div>
