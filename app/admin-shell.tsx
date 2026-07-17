@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import {
   useEffect,
   useRef,
@@ -27,6 +28,7 @@ export function AdminShell({
   children: ReactNode
 }) {
   const [collapsed, setCollapsed] = useState(false)
+  const pathname = usePathname()
 
   return (
     <main className="min-h-screen bg-[#f7f6f1] text-[#061829]">
@@ -87,16 +89,22 @@ export function AdminShell({
             </button>
           </div>
 
-          {!collapsed ? (
-            <nav aria-label="Admin navigation" className="mt-4 space-y-1 lg:mt-8">
-              <Link
-                href="/#partners"
-                className="flex h-11 items-center rounded-xl border border-[#17d4d7]/20 bg-[#118cff]/22 px-3 text-sm font-bold text-white shadow-[inset_3px_0_0_#17d4d7] transition hover:bg-[#118cff]/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17d4d7]"
-              >
-                Partner
-              </Link>
-            </nav>
-          ) : null}
+          <nav aria-label="Admin navigation" className="mt-4 space-y-1 lg:mt-8">
+            <AdminNavigationLink
+              href="/#partners"
+              label="Partner"
+              active={pathname === "/"}
+              collapsed={collapsed}
+              icon={<PartnerIcon className="size-5" />}
+            />
+            <AdminNavigationLink
+              href="/analytics"
+              label="Business Control Center"
+              active={pathname.startsWith("/analytics")}
+              collapsed={collapsed}
+              icon={<AnalyticsIcon className="size-5" />}
+            />
+          </nav>
         </aside>
 
         <section className="flex min-w-0 flex-col">
@@ -128,6 +136,39 @@ export function AdminShell({
         </section>
       </div>
     </main>
+  )
+}
+
+function AdminNavigationLink({
+  href,
+  label,
+  active,
+  collapsed,
+  icon,
+}: {
+  href: string
+  label: string
+  active: boolean
+  collapsed: boolean
+  icon: ReactNode
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      aria-label={collapsed ? label : undefined}
+      title={collapsed ? label : undefined}
+      className={`flex min-h-11 items-center gap-3 rounded-xl border text-sm font-bold text-white transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17d4d7] ${
+        collapsed ? "justify-center px-2" : "px-3"
+      } ${
+        active
+          ? "border-[#17d4d7]/20 bg-[#118cff]/22 shadow-[inset_3px_0_0_#17d4d7] hover:bg-[#118cff]/30"
+          : "border-transparent text-white/72 hover:border-white/10 hover:bg-white/8 hover:text-white"
+      }`}
+    >
+      <span className="shrink-0" aria-hidden="true">{icon}</span>
+      <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
+    </Link>
   )
 }
 
@@ -414,6 +455,40 @@ function ArrowRightIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
       <path d="M4 10h12m-4-4 4 4-4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function PartnerIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M4 20v-8.5L12 5l8 6.5V20M8.5 20v-5h7v5M7 9V5h3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function AnalyticsIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M4 20V10m5 10V4m6 16v-7m5 7V7"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="m4 7 5-4 6 7 5-5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
