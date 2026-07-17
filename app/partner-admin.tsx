@@ -1131,12 +1131,23 @@ function PartnerForm({
             setCreateTab(invalidTab)
           }
 
+          const fieldLabel = invalidField.labels?.[0]?.firstElementChild?.textContent
+            ?.replace(/\s+/g, " ")
+            .replace(/\s*\*\s*$/, "")
+            .trim()
+
           setValidationMessage(
-            tabLabel
-              ? `Please complete the required fields in ${tabLabel} before creating the partner.`
-              : "Please complete all required partner fields before saving.",
+            invalidField.validity.valueMissing
+              ? tabLabel
+                ? `Please complete the required fields in ${tabLabel} before creating the partner.`
+                : "Please complete all required partner fields before saving."
+              : `${fieldLabel ? `${fieldLabel}: ` : ""}${invalidField.validationMessage}`,
           )
           window.requestAnimationFrame(() => {
+            const collapsedSection = invalidField.closest("details:not([open])")
+            if (collapsedSection instanceof HTMLDetailsElement) {
+              collapsedSection.open = true
+            }
             invalidField.focus({ preventScroll: true })
             invalidField.scrollIntoView({ behavior: "smooth", block: "center" })
             invalidField.reportValidity()
@@ -7615,7 +7626,7 @@ function FormSection({
 
   return (
     <div
-      className={`overflow-hidden rounded-xl border bg-white text-sm transition-shadow ${
+      className={`${open ? "overflow-visible" : "overflow-hidden"} rounded-xl border bg-white text-sm transition-shadow ${
         open ? "border-zinc-300 shadow-sm" : "border-zinc-200"
       }`}
     >
@@ -8402,6 +8413,7 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
   const [selectedCovers, setSelectedCovers] = useState<
     Array<{ id: string; preview: ImagePreview; url: string }>
   >([])
+  const [discardedUploadedUrls, setDiscardedUploadedUrls] = useState<string[]>([])
   const [coverOrder, setCoverOrder] = useState(() =>
     savedCovers.map((_, index) => `existing:${index}`),
   )
@@ -8410,6 +8422,7 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
   const [uploadError, setUploadError] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const replacementTargetRef = useRef("")
   const selectedPreviewsRef = useRef<ImagePreview[]>([])
   const visibleCovers = savedCovers.filter(
     (coverUrl) => !removedUrls.includes(coverUrl),
@@ -8448,7 +8461,10 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
   const removeSelectedCover = (id: string) => {
     const removed = selectedCovers.find((cover) => cover.id === id)
     const nextCovers = selectedCovers.filter((cover) => cover.id !== id)
-    if (removed) revokeImagePreviews([removed.preview])
+    if (removed) {
+      revokeImagePreviews([removed.preview])
+      setDiscardedUploadedUrls((current) => [...current, removed.url])
+    }
     setSelectedCovers(nextCovers)
     setCoverOrder((current) => current.filter((coverId) => coverId !== `selected:${id}`))
     syncFileInput()
@@ -8475,6 +8491,11 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
       ;[next[fromIndex], next[toIndex]] = [next[toIndex], next[fromIndex]]
       return next
     })
+  }
+
+  const chooseReplacement = (id: string) => {
+    replacementTargetRef.current = id
+    fileInputRef.current?.click()
   }
 
   const uploadCover = async (file: File) => {
@@ -8519,6 +8540,14 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
       {selectedCovers.map((cover) => (
         <input key={cover.id} type="hidden" name="existing_cover_urls" value={cover.url} />
       ))}
+      {discardedUploadedUrls.map((coverUrl) => (
+        <input
+          key={`discarded-${coverUrl}`}
+          type="hidden"
+          name="removed_media_urls"
+          value={coverUrl}
+        />
+      ))}
       {orderedCoverIds.map((id) => {
         const [kind, value] = id.split(":")
         const token = kind === "existing"
@@ -8544,7 +8573,7 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={() => moveCover(id)}
                 onPointerDown={(event) => {
-                  if ((event.target as HTMLElement).closest("button")) return
+                  if ((event.target as HTMLElement).closest("button, [role='button']")) return
                   event.currentTarget.setPointerCapture(event.pointerId)
                   setDraggedCoverId(id)
                 }}
@@ -8606,6 +8635,7 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
                   src={selected?.preview.url || coverUrl}
                   spec={spec}
                   selected={Boolean(selected)}
+                  onActivate={() => chooseReplacement(id)}
                   onRemove={() => {
                     if (selected) {
                       removeSelectedCover(selected.id)
@@ -8621,7 +8651,11 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
           })}
         </div>
       ) : (
-        <ImagePreview alt="Cover photo upload placeholder" spec={spec} />
+        <ImagePreview
+          alt="Cover photo upload placeholder"
+          spec={spec}
+          onActivate={() => chooseReplacement("")}
+        />
       )}
       {removedCovers.length ? (
         <div className="flex flex-wrap gap-2">
@@ -8658,10 +8692,12 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
         type="file"
         accept={partnerMediaAccept}
         multiple
-        disabled={remainingCoverSlots === 0 || isProcessing}
+        disabled={isProcessing}
         onChange={async (event) => {
           const input = event.currentTarget
           const files = Array.from(input.files ?? [])
+          const replacementTarget = replacementTargetRef.current
+          replacementTargetRef.current = ""
 
           if (files.length === 0) {
             syncFileInput()
@@ -8671,7 +8707,14 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
           setUploadError("")
           setUploadMessage("Resizing cover photos...")
 
-          if (files.length > remainingCoverSlots) {
+          if (replacementTarget && files.length !== 1) {
+            syncFileInput()
+            setUploadMessage("")
+            setUploadError("Select one image to replace this cover photo.")
+            return
+          }
+
+          if (!replacementTarget && files.length > remainingCoverSlots) {
             syncFileInput()
             setUploadMessage("")
             setUploadError(
@@ -8688,15 +8731,56 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
             for (const file of resizedFiles) {
               additions.push(await uploadCover(file))
             }
-            const nextCovers = [...selectedCovers, ...additions]
-            setSelectedCovers(nextCovers)
-            setCoverOrder((current) => [
-              ...current,
-              ...additions.map((cover) => `selected:${cover.id}`),
-            ])
+            const replacement = additions[0]
+            let nextCovers: typeof selectedCovers
+
+            if (replacementTarget && replacement) {
+              const [targetKind, targetValue] = replacementTarget.split(":")
+
+              if (targetKind === "existing") {
+                const replacedUrl = savedCovers[Number(targetValue)]
+                if (replacedUrl) {
+                  setRemovedUrls((current) =>
+                    current.includes(replacedUrl) ? current : [...current, replacedUrl],
+                  )
+                }
+                nextCovers = [...selectedCovers, replacement]
+              } else {
+                const replacedCover = selectedCovers.find(
+                  (cover) => cover.id === targetValue,
+                )
+                if (replacedCover) {
+                  revokeImagePreviews([replacedCover.preview])
+                  setDiscardedUploadedUrls((current) => [
+                    ...current,
+                    replacedCover.url,
+                  ])
+                }
+                nextCovers = [
+                  ...selectedCovers.filter((cover) => cover.id !== targetValue),
+                  replacement,
+                ]
+              }
+
+              setSelectedCovers(nextCovers)
+              setCoverOrder((current) =>
+                current.map((id) =>
+                  id === replacementTarget ? `selected:${replacement.id}` : id,
+                ),
+              )
+            } else {
+              nextCovers = [...selectedCovers, ...additions]
+              setSelectedCovers(nextCovers)
+              setCoverOrder((current) => [
+                ...current,
+                ...additions.map((cover) => `selected:${cover.id}`),
+              ])
+            }
             input.value = ""
             setUploadMessage(
-              `${nextCovers.length} new cover photo${nextCovers.length === 1 ? "" : "s"} uploaded and ready.`,
+              replacementTarget
+                ? "Cover photo replaced and ready."
+                : `${nextCovers.length} new cover photo${nextCovers.length === 1 ? "" : "s"} uploaded and ready.`,
             )
           } catch (error) {
             syncFileInput()

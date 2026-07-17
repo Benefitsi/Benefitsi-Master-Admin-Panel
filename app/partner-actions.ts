@@ -2007,22 +2007,7 @@ async function markOwnerAsPartner(supabase: SupabaseClient, ownerId: string) {
     return null
   }
 
-  const message = byId.error.message.toLowerCase()
-
-  if (message.includes("column") || message.includes("schema cache")) {
-    return `Owner was selected, but the users table could not be marked as partner: ${byId.error.message}`
-  }
-
-  const byUid = await supabase
-    .from("users")
-    .update({ is_partner: true })
-    .eq("uid", ownerId)
-
-  if (!byUid.error) {
-    return null
-  }
-
-  return `Owner was selected, but could not be marked as partner: ${byUid.error.message}`
+  return `Owner was selected, but could not be marked as partner: ${byId.error.message}`
 }
 
 async function createInitialMenu(
