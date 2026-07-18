@@ -30,6 +30,21 @@ textarea {
   font: inherit;
 }
 
+/* Partner Management keeps Tailwind's semantic teal utility names internally,
+   but scopes them to the Benefitsi blue brand palette at runtime. Status
+   colors such as emerald, amber, and rose remain semantic and unchanged. */
+.partner-management-brand {
+  --color-teal-50: #f3f8ff;
+  --color-teal-100: #d9ecff;
+  --color-teal-200: #b8dcff;
+  --color-teal-300: #8bcaff;
+  --color-teal-400: #55aefc;
+  --color-teal-600: #118cff;
+  --color-teal-700: #118cff;
+  --color-teal-800: #0b75d9;
+  --color-teal-900: #061829;
+}
+
 .loading-skeleton {
   position: relative;
   overflow: hidden;
