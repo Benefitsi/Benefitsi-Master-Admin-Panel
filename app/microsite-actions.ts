@@ -197,6 +197,67 @@ export async function saveMicrositeVersion(
   }
 }
 
+export async function discardMicrositeDraft(
+  partnerId: string,
+): Promise<MicrositeActionState> {
+  if (!partnerId) {
+    return { ok: false, message: "Kein Partner für den Entwurf ausgewählt." }
+  }
+
+  const access = await authorizeMicrositeEditor(partnerId)
+  if (!access.ok) return access.state
+
+  const { supabase } = access
+  const micrositeResult = await supabase
+    .from("microsites")
+    .select("id, slug, published_version_id")
+    .eq("partner_id", partnerId)
+    .maybeSingle()
+
+  if (micrositeResult.error) {
+    return { ok: false, message: micrositeResult.error.message }
+  }
+  if (!micrositeResult.data) {
+    return { ok: false, message: "Für diesen Partner ist kein gespeicherter Entwurf vorhanden." }
+  }
+
+  const archiveResult = await supabase
+    .from("microsite_versions")
+    .update({ status: "archived" })
+    .eq("microsite_id", micrositeResult.data.id)
+    .eq("status", "draft")
+
+  if (archiveResult.error) {
+    return { ok: false, message: archiveResult.error.message }
+  }
+
+  const statusResult = await supabase
+    .from("microsites")
+    .update({
+      status: micrositeResult.data.published_version_id ? "published" : "draft",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", micrositeResult.data.id)
+
+  if (statusResult.error) {
+    return { ok: false, message: statusResult.error.message }
+  }
+
+  const previewSlug = micrositeResult.data.slug || partnerId
+  revalidatePath("/")
+  revalidatePath(`/microsite-builder/${previewSlug}`)
+  revalidatePath(`/partner/microsite-builder/${previewSlug}`)
+  revalidatePath(`/microsite-preview/${previewSlug}`)
+  revalidatePath(`/partner/microsite-preview/${previewSlug}`)
+
+  return {
+    ok: true,
+    message: micrositeResult.data.published_version_id
+      ? "Entwurf verworfen. Die aktuelle Live-Version wurde geladen."
+      : "Entwurf verworfen. Die aktuellen Partnerdaten wurden geladen.",
+  }
+}
+
 async function getFullPartnerForReadiness(
   supabase: SupabaseClient,
   partnerId: string,

@@ -213,6 +213,7 @@ type InitialDealDraft = {
 
 type InitialMenuCategoryDraft = {
   id: string
+  imagePreviewUrl: string
   name: string
   sortOrder: string
 }
@@ -304,6 +305,14 @@ type CreatePartnerReviewSnapshot = {
   coordinatesSet: boolean
   socialCount: number
 }
+
+type MenuItemEditorState =
+  | { mode: "create" }
+  | { mode: "edit" | "duplicate"; item: MenuItem }
+
+type MenuCategoryEditorState =
+  | { mode: "create" }
+  | { mode: "edit"; category: MenuCategory }
 
 const partnerSettingsTabCopy: Record<
   PartnerSettingsTab,
@@ -476,6 +485,7 @@ export function PartnerWorkspace({
             </EditorShell>
           ) : selectedPartner ? (
               <PartnerDetail
+                key={selectedPartner.id ?? selectedPartner.name ?? "partner"}
                 cities={cities}
                 owners={owners}
                 onDeleted={startCreatePartner}
@@ -581,7 +591,7 @@ function PartnerListButton({
       <div className="flex items-start gap-2.5">
         <LogoPreview url={partner.logo_url} name={partner.name} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-start justify-between gap-2">
             <p className="truncate text-sm font-semibold text-zinc-950">
               {partner.name || "Untitled partner"}
             </p>
@@ -598,12 +608,12 @@ function PartnerListButton({
             </p>
             {partner.is_featured ? <FeaturedBadge compact /> : null}
             {!hasDeals ? (
-              <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
+              <span className="whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
                 Deal recommended
               </span>
             ) : null}
             {pendingMenuCount ? (
-              <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
+              <span className="whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
                 {pendingMenuCount} menu {pendingMenuCount === 1 ? "review" : "reviews"}
               </span>
             ) : null}
@@ -723,9 +733,9 @@ function PartnerDetail({
           <div>
             <nav
               aria-label="Partner settings"
-              className="mb-4 overflow-x-auto pb-1"
+              className="mb-4"
             >
-              <div className="inline-flex min-w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
+              <div className="flex w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
               {settingsTabs.map((tab) => (
                 <button
                   key={tab.id}
@@ -733,8 +743,9 @@ function PartnerDetail({
                   onClick={() =>
                     setTabState({ partnerIdentity, tab: tab.id })
                   }
+                  title={tab.label}
                   aria-current={settingsTab === tab.id ? "page" : undefined}
-                  className={`min-w-[9.5rem] flex-1 px-3 py-2.5 text-center text-xs font-semibold transition sm:text-sm ${
+                  className={`min-w-0 flex-1 px-1 py-2.5 text-center text-[10px] font-semibold leading-tight transition xl:text-[11px] 2xl:text-xs ${
                     settingsTab === tab.id
                       ? tab.id === "danger"
                         ? "bg-rose-700 text-white"
@@ -744,7 +755,7 @@ function PartnerDetail({
                         : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
                   }`}
                 >
-                  <span className="inline-flex items-start justify-center gap-0.5">
+                  <span className="inline-flex max-w-full items-start justify-center gap-0.5 whitespace-nowrap">
                     <span>{tab.label}</span>
                     {tab.hasRequiredFields ? (
                       <span
@@ -1206,8 +1217,8 @@ function PartnerForm({
       <input type="hidden" name="social_count" value={socialHandles.length} />
 
       {mode === "create" ? (
-        <nav aria-label="Add partner steps" className="overflow-x-auto pb-1">
-          <div className="inline-flex min-w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
+        <nav aria-label="Add partner steps">
+          <div className="flex w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
             {createTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -1226,14 +1237,15 @@ function PartnerForm({
                   }
                   setCreateTab(tab.id)
                 }}
+                title={tab.label}
                 aria-current={createTab === tab.id ? "step" : undefined}
-                className={`min-w-[10rem] flex-1 px-3 py-2.5 text-center text-xs font-semibold transition sm:text-sm ${
+                className={`min-w-0 flex-1 px-1.5 py-2.5 text-center text-[10px] font-semibold leading-tight transition sm:text-[11px] xl:text-xs ${
                   createTab === tab.id
                     ? "bg-teal-700 text-white"
                     : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
                 }`}
               >
-                  <span className="inline-flex items-start justify-center gap-0.5">
+                  <span className="inline-flex max-w-full items-start justify-center gap-0.5 whitespace-nowrap">
                     <span>{tab.label}</span>
                     {tab.hasRequiredFields ? (
                       <span
@@ -1437,7 +1449,6 @@ function PartnerForm({
       {mode === "create" ? (
         <FormSection
           title="Operating Hours"
-          defaultOpen={false}
           required={requiredSectionMarker}
         >
           <WeeklyHoursFields />
@@ -1458,6 +1469,7 @@ function PartnerForm({
             removeName="remove_logo"
             currentUrl={partner?.logo_url}
             spec={partnerMediaSpecs.logo}
+            compact
           />
           <MediaUploadField
             key={`feature-${partner?.feature_card_url ?? "new"}`}
@@ -1467,6 +1479,7 @@ function PartnerForm({
             removeName="remove_feature_card"
             currentUrl={partner?.feature_card_url}
             spec={partnerMediaSpecs.feature}
+            compact
           />
           <MediaUploadField
             key={`discover-${partner?.discover_card_image_url ?? "new"}`}
@@ -1476,6 +1489,7 @@ function PartnerForm({
             removeName="remove_discover_card_image"
             currentUrl={partner?.discover_card_image_url}
             spec={partnerMediaSpecs.discover}
+            compact
           />
         </div>
         <CoverUploadField
@@ -1493,7 +1507,6 @@ function PartnerForm({
         >
           <FormSection
             title="Stamp-card milestones"
-            defaultOpen={false}
             required={requiredSectionMarker}
           >
             <input
@@ -1590,7 +1603,7 @@ function PartnerForm({
           data-create-tab="menu"
           className={createTab === "menu" ? "flex flex-col gap-4" : "hidden"}
         >
-            <FormSection title="Menu" defaultOpen={false}>
+            <FormSection title="Menu">
               <InitialMenuEditor
                 categories={initialMenuCategories}
                 enabled={initialMenuEnabled}
@@ -1603,6 +1616,7 @@ function PartnerForm({
                       ...normalized,
                       {
                         id: crypto.randomUUID(),
+                        imagePreviewUrl: "",
                         name: "",
                         sortOrder: String(
                           nextAvailablePosition(
@@ -2517,6 +2531,7 @@ function InitialMenuEditor({
               <div className="space-y-3">
                 {orderedCategories.map((category, index) => {
                   const expanded = expandedCategoryIds.includes(category.id)
+                  const imageInputId = `initial-menu-category-image-${category.id}`
 
                   return (
                     <div
@@ -2541,11 +2556,19 @@ function InitialMenuEditor({
                           className="min-w-0 text-left"
                           aria-expanded={expanded}
                         >
-                          <span className="block truncate text-sm font-semibold text-zinc-800">
-                            {category.name || `Category ${index + 1}`}
-                          </span>
-                          <span className="mt-1 block text-xs text-zinc-500">
-                            Position {category.sortOrder || "not set"}
+                          <span className="flex min-w-0 items-center gap-3">
+                            <ThumbnailPreview
+                              alt={`${category.name || `Category ${index + 1}`} preview`}
+                              src={category.imagePreviewUrl}
+                            />
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-semibold text-zinc-800">
+                                {category.name || `Category ${index + 1}`}
+                              </span>
+                              <span className="mt-1 block text-xs text-zinc-500">
+                                Position {category.sortOrder || "not set"}
+                              </span>
+                            </span>
                           </span>
                         </button>
                         <div className="flex flex-wrap gap-2">
@@ -2604,6 +2627,20 @@ function InitialMenuEditor({
                             hint="Smaller numbers appear first."
                           />
                         </FieldGrid>
+                        <MediaUploadField
+                          key={`initial-menu-category-${category.id}`}
+                          label="Menu category picture"
+                          fileName={`initial_menu_category_${index}_image_file`}
+                          existingName={`initial_menu_category_${index}_existing_image_url`}
+                          removeName={`initial_menu_category_${index}_remove_image`}
+                          spec={partnerMediaSpecs.menuCategory}
+                          compact
+                          dense
+                          inputId={imageInputId}
+                          onPreviewChange={(imagePreviewUrl) =>
+                            onUpdateCategory(category.id, { imagePreviewUrl })
+                          }
+                        />
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
@@ -3017,7 +3054,7 @@ function DealsPanel({
 
   if (embedded) {
     return (
-      <FormSection title="Deals" defaultOpen={false} status={dealStatus}>
+      <FormSection title="Deals" status={dealStatus}>
         {content}
       </FormSection>
     )
@@ -5014,6 +5051,75 @@ function DealFields({
       ) : null}
 
       {isLimitedDrop ? (
+        <FormSection title="Deal Drop inventory" compact required="subtle">
+          <FieldGrid compact>
+            <TextField
+              label="Stock total"
+              name={`${prefix}stock_total`}
+              type="number"
+              min={0}
+              value={dealDropStockTotal}
+              onChange={(value) => {
+                setDealDropStockTotal(value)
+                if (!stockRemainingEdited) setDealDropStockRemaining(value)
+              }}
+              required={useBrowserValidation}
+            />
+            <TextField
+              label="Stock remaining"
+              name={`${prefix}stock_remaining`}
+              type="number"
+              min={0}
+              value={dealDropStockRemaining}
+              onChange={(value) => {
+                setDealDropStockRemaining(value)
+                setStockRemainingEdited(true)
+              }}
+              required={useBrowserValidation}
+            />
+          </FieldGrid>
+          {dealDropSoldOut ? (
+            <p className="text-xs font-semibold text-amber-700">
+              This Deal Drop is currently sold out.
+            </p>
+          ) : null}
+        </FormSection>
+      ) : null}
+
+      <FormSection title="Customer and staff copy" compact>
+        <TextAreaField
+          label="Customer description"
+          name={`${prefix}customer_description`}
+          value={customerDescription}
+          onChange={(value) => {
+            setCustomerDescription(value)
+            setCustomerDescriptionDirty(true)
+          }}
+          showCharacterCount={false}
+        />
+        <TextAreaField
+          label="Staff instructions"
+          name={`${prefix}staff_instructions`}
+          value={staffInstructions}
+          onChange={(value) => {
+            setStaffInstructions(value)
+            setStaffInstructionsDirty(true)
+          }}
+          showCharacterCount={false}
+        />
+        <TextAreaField
+          label="Terms"
+          name={`${prefix}terms`}
+          value={terms}
+          onChange={(value) => {
+            setTerms(value)
+            setTermsDirty(true)
+          }}
+          showCharacterCount={false}
+        />
+      </FormSection>
+
+      {isLimitedDrop ? (
         <FormSection title="Deal Drop card image" compact>
           <p className="text-xs leading-5 text-zinc-500">
             Upload a highlight image for the deal card (710×400px).
@@ -5030,6 +5136,23 @@ function DealFields({
             spec={partnerMediaSpecs.dealDrop}
           />
         </FormSection>
+      ) : null}
+
+      {isLimitedDrop ? (
+        <DealDropPreviewCard
+          audience={selectedAudience}
+          discountType={selectedDiscountType}
+          discountValue={parseOptionalNumberInput(discountValue)}
+          endsAt={endsAt}
+          estimatedSavings={parseOptionalNumberInput(estimatedSavings)}
+          expiryDays={parseOptionalNumberInput(expiryDays)}
+          rewardItem={rewardItem}
+          rewardText={customerDescription}
+          soldOut={dealDropSoldOut}
+          stockRemaining={parseOptionalNumberInput(dealDropStockRemaining)}
+          stockTotal={parseOptionalNumberInput(dealDropStockTotal)}
+          trialEligible={allowFreeTrial}
+        />
       ) : null}
 
       <AdvancedSettingsSection>
@@ -5714,7 +5837,7 @@ function OpeningHoursPanel({
 
   if (embedded) {
     return (
-      <FormSection title="Operating hours" defaultOpen={false} required="subtle">
+      <FormSection title="Operating hours" required="subtle">
         {content}
       </FormSection>
     )
@@ -5908,11 +6031,18 @@ function WeeklyHoursFields({
           </button>
         </div>
       </div>
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+      <section className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+        <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+          <h4 className="text-sm font-semibold text-zinc-900">Holiday closures</h4>
+          <p className="mt-1 text-xs leading-5 text-zinc-500">
+            Add full-day closures and an optional short label for visitors.
+          </p>
+        </div>
+        <div className="p-3 sm:p-4">
         <input type="hidden" name="holiday_count" value={holidayRows.length} />
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+        <div className="grid gap-3 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(14rem,1.2fr)_auto] lg:items-start">
           <label className="space-y-2 text-sm">
-            <span className="font-medium text-zinc-700">Holiday closures</span>
+            <span className="font-medium text-zinc-700">Date</span>
             <input
               type="date"
               value={holidayInput}
@@ -5943,15 +6073,11 @@ function WeeklyHoursFields({
           <button
             type="button"
             onClick={addHoliday}
-            className="h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 md:self-end"
+            className="h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 lg:mt-7"
           >
             Add holiday
           </button>
         </div>
-        <p className="mt-3 text-xs text-zinc-500">
-          Use the calendar picker to add full-day holiday closures. Labels are
-          optional and help explain special closures.
-        </p>
         {holidayError ? (
           <p className="mt-3 text-xs font-medium text-rose-700">
             {holidayError}
@@ -5962,52 +6088,27 @@ function WeeklyHoursFields({
             {holidayRows.map((holiday, index) => (
               <div
                 key={holiday.id}
-                className="rounded-md border border-zinc-200 bg-white p-3"
+                className="rounded-lg border border-zinc-200 bg-zinc-50/70 p-3"
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                  <div className="min-w-0 flex-1">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
                     <input
                       type="hidden"
                       name={`holiday_${index}_date`}
                       value={holiday.date}
                     />
-                    <p className="text-sm font-semibold text-zinc-900">
-                      {formatHolidayDateLabel(holiday.date)}
-                    </p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Full-day closure
-                    </p>
-                  </div>
-                  <label className="min-w-0 flex-1 space-y-2 text-sm">
-                    <span className="font-medium text-zinc-700">
-                      Label
-                    </span>
                     <input
                       type="hidden"
                       name={`holiday_${index}_label`}
                       value={holiday.label}
                     />
-                    <input
-                      type="text"
-                      value={holiday.label}
-                      maxLength={adminTextLimits.label}
-                      onChange={(event) =>
-                        setHolidayRows((current) =>
-                          current.map((row) =>
-                            row.id === holiday.id
-                              ? { ...row, label: event.target.value }
-                              : row,
-                          ),
-                        )
-                      }
-                      placeholder="Optional label"
-                      className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-                    />
-                    <CharacterCountNote
-                      current={holiday.label.length}
-                      limit={adminTextLimits.label}
-                    />
-                  </label>
+                    <p className="text-sm font-semibold text-zinc-900">
+                      {formatHolidayDateLabel(holiday.date)}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {holiday.label || "Full-day closure"}
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={() =>
@@ -6015,7 +6116,7 @@ function WeeklyHoursFields({
                         current.filter((row) => row.id !== holiday.id),
                       )
                     }
-                    className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                    className="h-9 shrink-0 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-700 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
                   >
                     Remove
                   </button>
@@ -6028,16 +6129,17 @@ function WeeklyHoursFields({
             No holiday closures added yet.
           </p>
         )}
-      </div>
+        </div>
+      </section>
       <div className="overflow-x-auto rounded-md border border-zinc-200 bg-white">
-        <div className="min-w-[42rem] divide-y divide-zinc-100">
+        <div className="min-w-[34rem] divide-y divide-zinc-100">
           {openingWeekdayOptions.map((day) => {
             const hour = weeklyHours[day.value]
 
             return (
               <div
                 key={day.value}
-                className="grid grid-cols-[8rem_7rem_1fr_1fr_1.25fr] items-center gap-3 px-3 py-3 text-sm"
+                className="grid grid-cols-[8rem_7rem_1fr_1fr] items-center gap-3 px-3 py-3 text-sm"
               >
                 <p className="font-semibold text-zinc-900">{day.label}</p>
                 <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
@@ -6082,23 +6184,7 @@ function WeeklyHoursFields({
                   }
                   className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                 />
-                <div className="space-y-1">
-                  <input
-                    aria-label={`${day.label} note`}
-                    name={`label_${day.value}`}
-                    placeholder="Optional note"
-                    value={hour.label}
-                    maxLength={adminTextLimits.label}
-                    onChange={(event) =>
-                      updateWeeklyHour(day.value, { label: event.target.value })
-                    }
-                    className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-                  />
-                  <CharacterCountNote
-                    current={hour.label.length}
-                    limit={adminTextLimits.label}
-                  />
-                </div>
+                <input type="hidden" name={`label_${day.value}`} value={hour.label} />
               </div>
             )
           })}
@@ -6151,7 +6237,7 @@ function MenuPanel({
 
   if (embedded) {
     return (
-      <FormSection title="Menu" defaultOpen={false}>
+      <FormSection title="Menu">
         {content}
       </FormSection>
     )
@@ -6181,19 +6267,19 @@ function MenuCard({
   partnerName?: string | null
 }) {
   const [editingMenu, setEditingMenu] = useState(false)
-  const [showNewCategory, setShowNewCategory] = useState(menu.categories.length === 0)
-  const [showNewItem, setShowNewItem] = useState(menu.items.length === 0)
+  const [categoryEditor, setCategoryEditor] = useState<MenuCategoryEditorState | null>(
+    menu.categories.length === 0 ? { mode: "create" } : null,
+  )
+  const [itemEditor, setItemEditor] = useState<MenuItemEditorState | null>(null)
+  const [selectedItemCategoryId, setSelectedItemCategoryId] = useState(
+    menu.categories[0]?.id ?? "__uncategorized",
+  )
   const [categoryOrderIds, setCategoryOrderIds] = useState<string[]>([])
   const [itemOrderIds, setItemOrderIds] = useState<string[]>([])
-  const [autoEditingCategoryIds, setAutoEditingCategoryIds] = useState<string[]>([])
-  const [autoEditingItemIds, setAutoEditingItemIds] = useState<string[]>([])
   const [draggedCategoryId, setDraggedCategoryId] = useState("")
   const [draggedItemId, setDraggedItemId] = useState("")
   const [reorderMessage, setReorderMessage] = useState("")
   const [isReordering, startReorderTransition] = useTransition()
-  const knownCategoryIdsRef = useRef<Set<string> | null>(null)
-  const knownItemIdsRef = useRef<Set<string> | null>(null)
-  const knownMenuIdRef = useRef("")
   const categoryCards = applyLocalSortOrder(
     sortMenuCategories(menu.categories),
     categoryOrderIds,
@@ -6211,48 +6297,29 @@ function MenuCard({
     value: category.id ?? "",
     label: category.name || category.id || "Unnamed category",
   }))
-
-  useEffect(() => {
-    const menuId = menu.id ?? ""
-    const currentCategoryIds = menu.categories
-      .map((category) => category.id)
-      .filter((id): id is string => Boolean(id))
-    const currentItemIds = menu.items
-      .map((item) => item.id)
-      .filter((id): id is string => Boolean(id))
-
-    if (knownMenuIdRef.current !== menuId) {
-      knownMenuIdRef.current = menuId
-      knownCategoryIdsRef.current = new Set(currentCategoryIds)
-      knownItemIdsRef.current = new Set(currentItemIds)
-      setAutoEditingCategoryIds([])
-      setAutoEditingItemIds([])
-      return
-    }
-
-    const knownCategoryIds =
-      knownCategoryIdsRef.current ?? new Set(currentCategoryIds)
-    const knownItemIds = knownItemIdsRef.current ?? new Set(currentItemIds)
-    const newCategoryIds = currentCategoryIds.filter(
-      (id) => !knownCategoryIds.has(id),
-    )
-    const newItemIds = currentItemIds.filter((id) => !knownItemIds.has(id))
-
-    if (newCategoryIds.length) {
-      setAutoEditingCategoryIds((current) =>
-        Array.from(new Set([...current, ...newCategoryIds])),
-      )
-    }
-
-    if (newItemIds.length) {
-      setAutoEditingItemIds((current) =>
-        Array.from(new Set([...current, ...newItemIds])),
-      )
-    }
-
-    knownCategoryIdsRef.current = new Set(currentCategoryIds)
-    knownItemIdsRef.current = new Set(currentItemIds)
-  }, [menu.categories, menu.id, menu.items])
+  const uncategorizedItemCount = itemCards.filter((item) => !item.category_id).length
+  const itemCategoryTabs = [
+    ...categoryCards
+      .filter((category): category is MenuCategory & { id: string } => Boolean(category.id))
+      .map((category) => ({
+        value: category.id,
+        label: category.name || "Untitled category",
+        count: itemCards.filter((item) => item.category_id === category.id).length,
+      })),
+    ...(uncategorizedItemCount || categoryCards.length === 0
+      ? [{ value: "__uncategorized", label: "Other", count: uncategorizedItemCount }]
+      : []),
+  ]
+  const activeItemCategoryId = itemCategoryTabs.some(
+    (tab) => tab.value === selectedItemCategoryId,
+  )
+    ? selectedItemCategoryId
+    : itemCategoryTabs[0]?.value ?? "__uncategorized"
+  const visibleItemCards = itemCards.filter((item) =>
+    activeItemCategoryId === "__uncategorized"
+      ? !item.category_id
+      : item.category_id === activeItemCategoryId,
+  )
 
   const persistCategoryOrder = (targetId: string) => {
     if (!menu.id || !draggedCategoryId || draggedCategoryId === targetId) {
@@ -6387,23 +6454,14 @@ function MenuCard({
           <h4 className="text-sm font-semibold text-zinc-900">Categories</h4>
           <button
             type="button"
-            onClick={() => setShowNewCategory((value) => !value)}
-            className="h-8 rounded-md border border-teal-700 bg-white px-3 text-xs font-semibold text-teal-800 transition hover:bg-teal-50"
+            onClick={() => setCategoryEditor({ mode: "create" })}
+            className="inline-flex h-9 items-center gap-2 rounded-xl bg-[#061829] px-3 text-xs font-bold text-white shadow-sm transition hover:bg-[#102c43]"
           >
-            {showNewCategory ? "Hide form" : "Add category"}
+            <span aria-hidden="true">+</span> Add category
           </button>
         </div>
-        {showNewCategory && menu.id ? (
-          <DealFormShell title="Add category">
-            <MenuCategoryForm
-              defaultSortOrder={nextCategorySortOrder}
-              menuId={menu.id}
-              onSaved={() => setShowNewCategory(false)}
-            />
-          </DealFormShell>
-        ) : null}
         {categoryCards.length ? (
-          <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
             {categoryCards.map((category) => (
               <div
                 key={category.id ?? `${category.menu_id}-${category.name}`}
@@ -6417,16 +6475,8 @@ function MenuCard({
                 }`}
               >
                 <MenuCategoryCard
-                  autoEditing={Boolean(
-                    category.id && autoEditingCategoryIds.includes(category.id),
-                  )}
                   category={category}
-                  menuId={menu.id ?? ""}
-                  onAutoEditingDismiss={() =>
-                    setAutoEditingCategoryIds((current) =>
-                      current.filter((id) => id !== category.id),
-                    )
-                  }
+                  onEdit={() => setCategoryEditor({ mode: "edit", category })}
                 />
               </div>
             ))}
@@ -6441,26 +6491,42 @@ function MenuCard({
           <h4 className="text-sm font-semibold text-zinc-900">Items</h4>
           <button
             type="button"
-            onClick={() => setShowNewItem((value) => !value)}
-            className="h-8 rounded-md border border-teal-700 bg-white px-3 text-xs font-semibold text-teal-800 transition hover:bg-teal-50"
+            onClick={() => setItemEditor({ mode: "create" })}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#061829] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#102c43] active:scale-[.98]"
           >
-            {showNewItem ? "Hide form" : "Add item"}
+            <span aria-hidden="true" className="grid size-5 place-items-center rounded-full bg-white/12 text-base leading-none">+</span>
+            New item
           </button>
         </div>
-        {showNewItem && menu.id ? (
-          <DealFormShell title="Add menu item">
-            <MenuItemForm
-              categoryOptions={categoryOptions}
-              defaultSortOrder={nextItemSortOrder}
-              menuId={menu.id}
-              onSaved={() => setShowNewItem(false)}
-            />
-          </DealFormShell>
+        {itemCategoryTabs.length ? (
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Menu item categories">
+            {itemCategoryTabs.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                role="tab"
+                aria-selected={activeItemCategoryId === tab.value}
+                onClick={() => setSelectedItemCategoryId(tab.value)}
+                className={`inline-flex min-h-9 items-center gap-2 whitespace-nowrap rounded-lg border px-3 text-xs font-semibold transition ${
+                  activeItemCategoryId === tab.value
+                    ? "border-[#061829] bg-[#061829] text-white shadow-sm"
+                    : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-950"
+                }`}
+              >
+                {tab.label}
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                  activeItemCategoryId === tab.value ? "bg-white/15" : "bg-zinc-100"
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
         ) : null}
-        {itemCards.length ? (
-          <div className="max-h-[46rem] overflow-y-auto pr-2">
-            <div className="grid gap-4 2xl:grid-cols-2">
-              {itemCards.map((item) => (
+        {visibleItemCards.length ? (
+          <div className="max-h-[46rem] overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/60 p-2 sm:p-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+              {visibleItemCards.map((item) => (
                 <div
                   key={item.id ?? `${item.menu_id}-${item.name}`}
                   draggable={Boolean(item.id)}
@@ -6473,26 +6539,45 @@ function MenuCard({
                   }`}
                 >
                   <MenuItemCard
-                    autoEditing={Boolean(
-                      item.id && autoEditingItemIds.includes(item.id),
-                    )}
-                    categoryOptions={categoryOptions}
                     item={item}
-                    menuId={menu.id ?? ""}
-                    onAutoEditingDismiss={() =>
-                      setAutoEditingItemIds((current) =>
-                        current.filter((id) => id !== item.id),
-                      )
-                    }
+                    onDuplicate={() => setItemEditor({ mode: "duplicate", item })}
+                    onEdit={() => setItemEditor({ mode: "edit", item })}
                   />
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <EmptyState>No menu items configured yet.</EmptyState>
+          <EmptyState>No items in this category yet.</EmptyState>
         )}
       </div>
+      <MenuCategoryEditorDialog
+        defaultSortOrder={nextCategorySortOrder}
+        editor={categoryEditor}
+        menuId={menu.id ?? ""}
+        onClose={() => setCategoryEditor(null)}
+      />
+      <MenuItemEditorDialog
+        categoryOptions={categoryOptions}
+        defaultCategoryId={
+          activeItemCategoryId === "__uncategorized" ? "" : activeItemCategoryId
+        }
+        defaultSortOrder={
+          itemEditor?.mode === "duplicate"
+            ? nextAvailablePosition(
+                itemCards
+                  .filter(
+                    (item) =>
+                      item.category_id === itemEditor.item.category_id,
+                  )
+                  .map((item) => item.sort_order),
+              )
+            : nextItemSortOrder
+        }
+        editor={itemEditor}
+        menuId={menu.id ?? ""}
+        onClose={() => setItemEditor(null)}
+      />
     </div>
   )
 }
@@ -6652,67 +6737,110 @@ function DeleteMenuForm({ menuId }: { menuId: string }) {
 }
 
 function MenuCategoryCard({
-  autoEditing = false,
   category,
-  menuId,
-  onAutoEditingDismiss,
+  onEdit,
 }: {
-  autoEditing?: boolean
   category: MenuCategory
-  menuId: string
-  onAutoEditingDismiss?: () => void
+  onEdit: () => void
 }) {
-  const [manuallyEditing, setManuallyEditing] = useState(false)
-  const editing = manuallyEditing || autoEditing
+  return (
+    <button
+      type="button"
+      onClick={onEdit}
+      className="group relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-zinc-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
+      title="Edit category"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        alt={`${category.name || "Menu category"} picture`}
+        src={category.image_url || uploadPlaceholderSrc}
+        className={`absolute inset-0 size-full ${category.image_url ? "object-cover" : "object-contain p-7"}`}
+      />
+      <span className="absolute inset-0 bg-gradient-to-t from-[#061829]/95 via-[#061829]/15 to-transparent" />
+      <span className="absolute inset-x-0 bottom-0 block p-3 text-white">
+        <span className="block truncate text-sm font-bold">
+          {category.name || "Untitled category"}
+        </span>
+        <span className="mt-1 block text-[11px] font-semibold text-white/75">
+          {category.items.length} {category.items.length === 1 ? "item" : "items"}
+        </span>
+      </span>
+    </button>
+  )
+}
 
-  const closeEditor = () => {
-    setManuallyEditing(false)
-    onAutoEditingDismiss?.()
-  }
+function MenuCategoryEditorDialog({
+  defaultSortOrder,
+  editor,
+  menuId,
+  onClose,
+}: {
+  defaultSortOrder: number
+  editor: MenuCategoryEditorState | null
+  menuId: string
+  onClose: () => void
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null)
 
-  const toggleEditor = () => {
-    if (editing) {
-      closeEditor()
-      return
+  useEffect(() => {
+    if (!editor) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose()
     }
+    document.addEventListener("keydown", closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [editor, onClose])
 
-    setManuallyEditing(true)
-  }
+  if (!editor || !menuId) return null
+  const category = editor.mode === "edit" ? editor.category : undefined
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h5 className="text-sm font-semibold text-zinc-950">
-            {category.name || "Untitled category"}
-          </h5>
-          <p className="mt-1 text-xs text-zinc-500">
-            {category.items.length} {category.items.length === 1 ? "item" : "items"}
-          </p>
-        </div>
-        <Badge>
-          {category.items.length} {category.items.length === 1 ? "item" : "items"}
-        </Badge>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={toggleEditor}
-          className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
-        >
-          {editing ? "Close editor" : "Edit category"}
-        </button>
-        {category.id ? <DeleteMenuCategoryForm categoryId={category.id} /> : null}
-      </div>
-      {editing ? (
-        <div className="mt-3 border-t border-zinc-200 pt-3">
+    <div
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-[#061829]/65 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="menu-category-dialog-title"
+        className="flex max-h-[90dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border border-zinc-200 bg-white shadow-2xl sm:rounded-2xl"
+      >
+        <header className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+          <h3 id="menu-category-dialog-title" className="text-lg font-bold text-zinc-950">
+            {category ? "Edit menu category" : "Add menu category"}
+          </h3>
+          <div className="flex items-center gap-2">
+            {category?.id ? (
+              <DeleteMenuCategoryForm categoryId={category.id} onDeleted={onClose} />
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="grid size-9 place-items-center rounded-full border border-zinc-300 bg-white text-lg text-zinc-600 transition hover:bg-zinc-100"
+            >
+              ×
+            </button>
+          </div>
+        </header>
+        <div className="overflow-y-auto p-3 sm:p-4">
           <MenuCategoryForm
             category={category}
+            defaultSortOrder={defaultSortOrder}
             menuId={menuId}
-            onSaved={closeEditor}
+            onSaved={onClose}
           />
         </div>
-      ) : null}
+      </section>
     </div>
   )
 }
@@ -6732,22 +6860,33 @@ function MenuCategoryForm({
   const formRef = useActionSuccess(state, onSaved)
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-4">
+    <form ref={formRef} action={formAction} className="space-y-3">
       <input type="hidden" name="id" value={category?.id ?? ""} />
       <input type="hidden" name="menu_id" value={menuId} />
+      <MediaUploadField
+        key={`menu-category-${category?.image_url ?? category?.id ?? "new"}`}
+        label="Menu category picture"
+        fileName="image_file"
+        existingName="existing_image_url"
+        removeName="remove_image"
+        currentUrl={category?.image_url}
+        spec={partnerMediaSpecs.menuCategory}
+        compact
+        dense
+      />
       <FieldGrid>
         <TextField
           label="Name"
           name="name"
           defaultValue={category?.name}
           required
+          showCharacterCount={false}
         />
         <TextField
           label="Position in menu"
           name="sort_order"
           type="number"
           min={0}
-          hint="Smaller numbers appear first."
           defaultValue={category?.sort_order ?? defaultSortOrder}
         />
       </FieldGrid>
@@ -6760,11 +6899,19 @@ function MenuCategoryForm({
   )
 }
 
-function DeleteMenuCategoryForm({ categoryId }: { categoryId: string }) {
+function DeleteMenuCategoryForm({
+  categoryId,
+  onDeleted,
+}: {
+  categoryId: string
+  onDeleted?: () => void
+}) {
   const [state, formAction] = useActionState(deleteMenuCategory, initialState)
+  const formRef = useActionSuccess(state, onDeleted)
 
   return (
     <form
+      ref={formRef}
       action={formAction}
       onSubmit={(event) => {
         if (!window.confirm("Delete this menu category?")) {
@@ -6785,140 +6932,220 @@ function DeleteMenuCategoryForm({ categoryId }: { categoryId: string }) {
 }
 
 function MenuItemCard({
-  autoEditing = false,
-  categoryOptions,
   item,
-  menuId,
-  onAutoEditingDismiss,
+  onDuplicate,
+  onEdit,
 }: {
-  autoEditing?: boolean
-  categoryOptions: { value: string; label: string }[]
   item: MenuItem
-  menuId: string
-  onAutoEditingDismiss?: () => void
+  onDuplicate: () => void
+  onEdit: () => void
 }) {
-  const [manuallyEditing, setManuallyEditing] = useState(false)
-  const editing = manuallyEditing || autoEditing
-  const imageInputId = `menu-item-image-${item.id ?? "new"}`
+  return (
+    <article className="group relative aspect-square min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg">
+      <button
+        type="button"
+        onClick={onEdit}
+        className="absolute inset-0 size-full text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-300"
+        title="Edit item"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          alt={`${item.name || "Menu item"} picture`}
+          src={item.image_url || uploadPlaceholderSrc}
+          className={`absolute inset-0 size-full ${item.image_url ? "object-cover" : "object-contain p-6"}`}
+        />
+        <span className="absolute inset-0 bg-gradient-to-t from-[#061829]/95 via-[#061829]/12 to-transparent" />
+        <span className="absolute inset-x-0 bottom-0 block p-2.5 text-white">
+          <span className="block truncate text-sm font-bold">
+            {item.name || "Untitled item"}
+          </span>
+          <span className="mt-1 flex items-center justify-between gap-2 text-[11px] font-semibold text-white/80">
+            <span className="truncate">{item.is_popular ? "Popular" : "Menu item"}</span>
+            <span className="shrink-0 rounded-full bg-white/15 px-2 py-0.5 text-white">
+              {formatPrice(item.price, item.currency)}
+            </span>
+          </span>
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={onDuplicate}
+        aria-label={`Duplicate ${item.name || "menu item"}`}
+        title="Duplicate item"
+        className="absolute right-2 top-2 z-10 grid size-8 place-items-center rounded-full border border-white/70 bg-white/92 text-sm font-bold text-[#061829] shadow-md backdrop-blur transition hover:scale-105 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+      >
+        ⧉
+      </button>
+    </article>
+  )
+}
 
-  const closeEditor = () => {
-    setManuallyEditing(false)
-    onAutoEditingDismiss?.()
-  }
+function MenuItemEditorDialog({
+  categoryOptions,
+  defaultCategoryId,
+  defaultSortOrder,
+  editor,
+  menuId,
+  onClose,
+}: {
+  categoryOptions: { value: string; label: string }[]
+  defaultCategoryId: string
+  defaultSortOrder: number
+  editor: MenuItemEditorState | null
+  menuId: string
+  onClose: () => void
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null)
 
-  const toggleEditor = () => {
-    if (editing) {
-      closeEditor()
-      return
+  useEffect(() => {
+    if (!editor) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    const timeout = window.setTimeout(() => {
+      dialogRef.current
+        ?.querySelector<HTMLElement>("input:not([type='hidden']):not([type='file']), select, textarea, button")
+        ?.focus()
+    }, 0)
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose()
     }
+    document.addEventListener("keydown", closeOnEscape)
 
-    setManuallyEditing(true)
-  }
+    return () => {
+      window.clearTimeout(timeout)
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [editor, onClose])
+
+  if (!editor || !menuId) return null
+
+  const item = editor.mode === "create" ? undefined : editor.item
+  const title =
+    editor.mode === "edit"
+      ? "Edit menu item"
+      : editor.mode === "duplicate"
+        ? "Duplicate menu item"
+        : "Add menu item"
+  const description =
+    editor.mode === "duplicate"
+      ? "Review the copied details, then create the new item."
+      : "Keep the menu focused by editing one item at a time."
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-3">
-      <div className="grid gap-3 sm:grid-cols-[9rem_1fr]">
-        <button
-          type="button"
-          onClick={() => {
-            setManuallyEditing(true)
-            window.setTimeout(() => document.getElementById(imageInputId)?.click(), 0)
-          }}
-          className="group relative rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-teal-200"
-          title="Change menu item picture"
-        >
-          <ImagePreview
-            alt={`${item.name || "Menu item"} picture`}
-            src={item.image_url ?? undefined}
-            spec={partnerMediaSpecs.menuItem}
-          />
-          <span className="absolute inset-x-2 bottom-2 rounded bg-zinc-950/75 px-2 py-1 text-center text-xs font-semibold text-white opacity-90 transition group-hover:bg-teal-800">
-            Change image
-          </span>
-        </button>
-        <div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h5 className="text-sm font-semibold text-zinc-950">
-                {item.name || "Untitled item"}
-              </h5>
-              <p className="mt-1 text-xs text-zinc-500">
-                {labelForValue(categoryOptions, item.category_id) ||
-                  "No category"}
-              </p>
-            </div>
-            <Badge>{formatPrice(item.price, item.currency)}</Badge>
+    <div
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-[#061829]/65 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="menu-item-dialog-title"
+        aria-describedby="menu-item-dialog-description"
+        className="flex max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-zinc-200 bg-white shadow-2xl sm:max-h-[88dvh] sm:rounded-2xl"
+      >
+        <header className="flex items-start justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+          <div className="min-w-0">
+            <h3 id="menu-item-dialog-title" className="text-lg font-bold tracking-tight text-zinc-950">
+              {title}
+            </h3>
+            <p id="menu-item-dialog-description" className="mt-0.5 text-xs text-zinc-500">
+              {description}
+            </p>
           </div>
-          <p className="mt-3 line-clamp-2 text-sm leading-6 text-zinc-600">
-            {truncateText(item.description ?? "", 140) || "No description"}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {item.is_popular ? <Badge>Popular</Badge> : null}
-            {item.tags?.map((tag) => <Badge key={tag}>{tag}</Badge>)}
+          <div className="flex shrink-0 items-center gap-2">
+            {editor.mode === "edit" && item?.id ? (
+              <DeleteMenuItemForm itemId={item.id} onDeleted={onClose} />
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="grid size-9 place-items-center rounded-full border border-zinc-300 bg-white text-lg font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950"
+            >
+              ×
+            </button>
           </div>
-        </div>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={toggleEditor}
-          className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
-        >
-          {editing ? "Close editor" : "Edit item"}
-        </button>
-        {item.id ? <DeleteMenuItemForm itemId={item.id} /> : null}
-      </div>
-      {editing ? (
-        <div className="mt-3 border-t border-zinc-200 pt-3">
+        </header>
+        <div className="overflow-y-auto p-3 sm:p-4">
           <MenuItemForm
             categoryOptions={categoryOptions}
-            imageInputId={imageInputId}
+            defaultCategoryId={defaultCategoryId}
+            defaultSortOrder={defaultSortOrder}
+            imageInputId={`menu-item-dialog-image-${item?.id ?? "new"}`}
+            intent={editor.mode}
             item={item}
             menuId={menuId}
-            onSaved={closeEditor}
+            onSaved={onClose}
           />
         </div>
-      ) : null}
+      </section>
     </div>
   )
 }
 
 function MenuItemForm({
   categoryOptions,
+  defaultCategoryId = "",
   defaultSortOrder = 0,
   imageInputId,
   item,
+  intent = item ? "edit" : "create",
   menuId,
   onSaved,
 }: {
   categoryOptions: { value: string; label: string }[]
+  defaultCategoryId?: string
   defaultSortOrder?: number
   imageInputId?: string
   item?: MenuItem
+  intent?: "create" | "edit" | "duplicate"
   menuId: string
   onSaved?: () => void
 }) {
   const [state, formAction] = useActionState(saveMenuItem, initialState)
   const formRef = useActionSuccess(state, onSaved)
+  const isEditing = intent === "edit"
+  const defaultName =
+    intent === "duplicate" && item?.name ? `${item.name} (copy)` : item?.name
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-4">
-      <input type="hidden" name="id" value={item?.id ?? ""} />
+    <form ref={formRef} action={formAction} className="space-y-3">
+      <input type="hidden" name="id" value={isEditing ? item?.id ?? "" : ""} />
       <input type="hidden" name="menu_id" value={menuId} />
       {item?.is_stamp_eligible ? (
         <input type="hidden" name="is_stamp_eligible" value="on" />
       ) : null}
+      <MediaUploadField
+        key={`menu-item-${item?.image_url ?? item?.id ?? "new"}`}
+        label="Menu item picture"
+        fileName="image_file"
+        existingName="existing_image_url"
+        removeName="remove_image"
+        currentUrl={item?.image_url}
+        spec={partnerMediaSpecs.menuItem}
+        compact
+        dense
+        inputId={imageInputId}
+      />
       <FieldGrid>
         <TextField
           label="Item name"
           name="name"
-          defaultValue={item?.name}
+          defaultValue={defaultName}
           required
+          showCharacterCount={false}
         />
         <SelectField
           label="Category"
           name="category_id"
-          defaultValue={item?.category_id}
+          defaultValue={item?.category_id ?? defaultCategoryId}
           options={withCurrentOption(categoryOptions, item?.category_id)}
         />
         <TextField
@@ -6932,32 +7159,37 @@ function MenuItemForm({
           label="Currency"
           name="currency"
           defaultValue={item?.currency ?? "EUR"}
+          showCharacterCount={false}
         />
         <TextField
           label="Position in category"
           name="sort_order"
           type="number"
           min={0}
-          hint="Smaller numbers appear first."
-          defaultValue={item?.sort_order ?? defaultSortOrder}
+          defaultValue={
+            intent === "duplicate"
+              ? defaultSortOrder
+              : item?.sort_order ?? defaultSortOrder
+          }
         />
         <TextField
           label="Tags"
           name="tags"
           defaultValue={item?.tags?.join(", ")}
-          hint="Separate tags with commas."
+          showCharacterCount={false}
         />
         <TextField
           label="Allergens"
           name="allergens"
           defaultValue={item?.allergens?.join(", ")}
-          hint="Separate allergens with commas."
+          showCharacterCount={false}
         />
       </FieldGrid>
       <TextAreaField
         label="Description"
         name="description"
         defaultValue={item?.description}
+        showCharacterCount={false}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <CheckboxField
@@ -6966,31 +7198,28 @@ function MenuItemForm({
           defaultChecked={item?.is_popular ?? false}
         />
       </div>
-      <MediaUploadField
-        key={`menu-item-${item?.image_url ?? item?.id ?? "new"}`}
-        label="Menu item picture"
-        fileName="image_file"
-        existingName="existing_image_url"
-        removeName="remove_image"
-        currentUrl={item?.image_url}
-        spec={partnerMediaSpecs.menuItem}
-        compact
-        inputId={imageInputId}
-      />
       <ActionMessage state={state} />
       <SubmitButton
-        label={item ? "Save item" : "Add item"}
-        pendingLabel={item ? "Saving item..." : "Adding item..."}
+        label={isEditing ? "Save item" : intent === "duplicate" ? "Duplicate item" : "Add item"}
+        pendingLabel={isEditing ? "Saving item..." : "Adding item..."}
       />
     </form>
   )
 }
 
-function DeleteMenuItemForm({ itemId }: { itemId: string }) {
+function DeleteMenuItemForm({
+  itemId,
+  onDeleted,
+}: {
+  itemId: string
+  onDeleted?: () => void
+}) {
   const [state, formAction] = useActionState(deleteMenuItem, initialState)
+  const formRef = useActionSuccess(state, onDeleted)
 
   return (
     <form
+      ref={formRef}
       action={formAction}
       onSubmit={(event) => {
         if (!window.confirm("Delete this menu item?")) {
@@ -7891,6 +8120,7 @@ type TextFieldProps = {
   defaultValue?: string | number | null
   maxLength?: number
   warning?: string
+  showCharacterCount?: boolean
   onChange?: (value: string) => void
 }
 
@@ -7911,6 +8141,7 @@ function TextField({
   defaultValue,
   maxLength,
   warning,
+  showCharacterCount = true,
   onChange,
 }: TextFieldProps) {
   const resolvedMaxLength =
@@ -7965,7 +8196,7 @@ function TextField({
         hint={hint}
         warning={warning}
         currentLength={currentLength}
-        maxLength={resolvedMaxLength}
+        maxLength={showCharacterCount ? resolvedMaxLength : undefined}
       />
     </label>
   )
@@ -8220,6 +8451,7 @@ function MediaUploadField({
   currentUrl,
   spec,
   compact = false,
+  dense = false,
   inputId,
   onPreviewChange,
 }: {
@@ -8230,6 +8462,7 @@ function MediaUploadField({
   currentUrl?: string | null
   spec: PartnerMediaSpec
   compact?: boolean
+  dense?: boolean
   inputId?: string
   onPreviewChange?: (url: string) => void
 }) {
@@ -8275,19 +8508,19 @@ function MediaUploadField({
   }
 
   return (
-    <div aria-busy={isProcessing} className="flex h-full flex-col gap-2 rounded-md border border-zinc-200 p-2 text-sm">
-      <div className="space-y-1">
-        <p className="font-medium text-zinc-700">{label}</p>
+    <div aria-busy={isProcessing} className={`flex h-full flex-col rounded-xl border border-zinc-200 bg-white text-sm shadow-sm ${dense ? "gap-1.5 p-2.5" : "gap-2 p-3"}`}>
+      <div className={dense ? "flex items-center justify-between gap-3" : "space-y-1"}>
+        <p className="font-semibold text-zinc-800">{label}</p>
         <p className="text-xs text-zinc-500">
-          {sizeHint}. Images are resized automatically before upload. Max 10 MB.
+          {sizeHint} · Max 10 MB
         </p>
       </div>
       {currentUrl && !removed ? (
         <input type="hidden" name={existingName} value={currentUrl} />
       ) : null}
       <div
-        className={`relative flex items-center justify-center rounded-md bg-zinc-50/60 p-2 ${
-          compact ? "min-h-[8rem]" : "min-h-[220px]"
+        className={`relative flex items-center justify-center rounded-md bg-zinc-50/60 ${
+          dense ? "min-h-[5.25rem] p-1" : compact ? "min-h-[7rem] p-2" : "min-h-[9rem] p-2"
         }`}
       >
         {selectedPreview ? (
@@ -8295,6 +8528,7 @@ function MediaUploadField({
             alt={selectedPreview.name}
             src={selectedPreview.url}
             spec={spec}
+            maxWidth={dense ? 150 : undefined}
             selected
             onActivate={() => fileInputRef.current?.click()}
             onRemove={clearSelectedMedia}
@@ -8305,6 +8539,7 @@ function MediaUploadField({
             alt={`${label} preview`}
             src={currentUrl ?? ""}
             spec={spec}
+            maxWidth={dense ? 150 : undefined}
             onActivate={() => fileInputRef.current?.click()}
             onRemove={() => setRemoved(true)}
             removeLabel={`Remove ${label}`}
@@ -8313,6 +8548,7 @@ function MediaUploadField({
           <ImagePreview
             alt={`${label} upload placeholder`}
             spec={spec}
+            maxWidth={dense ? 150 : undefined}
             onActivate={() => fileInputRef.current?.click()}
           />
         )}
@@ -8324,7 +8560,12 @@ function MediaUploadField({
           </div>
         ) : null}
       </div>
-      <div className="min-h-9">
+      {!dense ? (
+        <p className="text-center text-[11px] font-medium text-zinc-500">
+          Click the image to upload or replace it.
+        </p>
+      ) : null}
+      <div className={dense ? "min-h-0" : "min-h-9"}>
         {selectedPreview ? (
           <p className="truncate text-xs font-medium text-zinc-600">
             {selectedPreview.name}
@@ -8392,7 +8633,7 @@ function MediaUploadField({
               setIsProcessing(false)
             }
           }}
-          className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-teal-700 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-teal-800"
+          className="sr-only"
         />
         {uploadMessage ? (
           <p className="text-xs font-medium text-emerald-700">
@@ -8556,7 +8797,7 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
         return <input key={`order-${id}`} type="hidden" name="cover_order" value={token} />
       })}
       {orderedCoverIds.length ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {orderedCoverIds.map((id, index) => {
             const [kind, value] = id.split(":")
             const coverUrl = kind === "existing" ? savedCovers[Number(value)] : ""
@@ -8686,6 +8927,18 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
           ))}
         </div>
       ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={isProcessing || remainingCoverSlots === 0}
+          onClick={() => chooseReplacement("")}
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <span aria-hidden="true">+</span>
+          Add cover photos
+        </button>
+        <span className="text-xs text-zinc-500">Click any preview to replace it.</span>
+      </div>
       <input
         ref={fileInputRef}
         name="cover_files"
@@ -8794,7 +9047,7 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
             setIsProcessing(false)
           }
         }}
-        className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-teal-700 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-teal-800"
+        className="sr-only"
       />
       {isProcessing ? (
         <p role="status" className="inline-flex items-center gap-2 text-xs font-semibold text-teal-700">
@@ -8824,6 +9077,7 @@ function ImagePreview({
   src,
   spec,
   selected = false,
+  maxWidth,
 }: {
   alt: string
   onActivate?: () => void
@@ -8832,6 +9086,7 @@ function ImagePreview({
   src?: string
   spec: PartnerMediaSpec
   selected?: boolean
+  maxWidth?: number
 }) {
   return (
     <div
@@ -8853,7 +9108,7 @@ function ImagePreview({
           spec.previewAspectHeight ?? spec.height
         }`,
         height: "auto",
-        maxWidth: `${spec.previewMaxWidth}px`,
+        maxWidth: `${maxWidth ?? spec.previewMaxWidth}px`,
         width: "100%",
       }}
     >
@@ -9147,6 +9402,7 @@ function TextAreaField({
   hint,
   placeholder,
   maxLength,
+  showCharacterCount = true,
   onChange,
 }: {
   label: string
@@ -9157,6 +9413,7 @@ function TextAreaField({
   hint?: string
   placeholder?: string
   maxLength?: number
+  showCharacterCount?: boolean
   onChange?: (value: string) => void
 }) {
   const resolvedMaxLength =
@@ -9189,7 +9446,7 @@ function TextAreaField({
       <FieldSupportText
         hint={hint}
         currentLength={currentLength}
-        maxLength={resolvedMaxLength}
+        maxLength={showCharacterCount ? resolvedMaxLength : undefined}
       />
     </label>
   )
@@ -9422,7 +9679,7 @@ function LogoPreview({
 function StatusPill({ active }: { active: boolean }) {
   return (
     <span
-      className={`inline-flex min-h-6 items-center rounded-md border px-2 py-1 text-xs font-semibold leading-none shadow-sm ${
+      className={`inline-flex min-h-6 shrink-0 items-center whitespace-nowrap rounded-md border px-2 py-1 text-xs font-semibold leading-none shadow-sm ${
         active
           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
           : "border-zinc-200 bg-zinc-100 text-zinc-600"

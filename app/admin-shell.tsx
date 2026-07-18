@@ -13,21 +13,35 @@ import {
 import { signOut } from "./actions"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { BrandLogo } from "@/components/brand-logo"
+import {
+  AdminLanguageControl,
+  AdminLanguageProvider,
+} from "./admin-language"
 
-export function AdminShell({
-  adminName,
-  title = "Partnerverwaltung",
-  subtitle = "Alle Partner und ihre Informationen",
-  micrositeCount,
-  children,
-}: {
+type AdminShellProps = {
   adminName: string
   title?: string
   subtitle?: string
   micrositeCount?: number
   children: ReactNode
-}) {
-  const [collapsed, setCollapsed] = useState(false)
+}
+
+export function AdminShell(props: AdminShellProps) {
+  return (
+    <AdminLanguageProvider>
+      <AdminShellContent {...props} />
+    </AdminLanguageProvider>
+  )
+}
+
+function AdminShellContent({
+  adminName,
+  title = "Partnerverwaltung",
+  subtitle = "Alle Partner und ihre Informationen",
+  micrositeCount,
+  children,
+}: AdminShellProps) {
+  const [collapsed, setCollapsed] = useState(true)
   const pathname = usePathname()
 
   return (
@@ -117,6 +131,7 @@ export function AdminShell({
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <AdminLanguageControl className="self-start sm:self-auto" />
               <SystemSwitcher micrositeCount={micrositeCount} />
               <p className="max-w-full truncate text-sm font-medium text-[#526170]">
                 {adminName}

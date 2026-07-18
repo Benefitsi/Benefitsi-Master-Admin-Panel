@@ -45,6 +45,19 @@ textarea {
   --color-teal-900: #061829;
 }
 
+.admin-ui {
+  font-feature-settings: "kern" 1, "liga" 1, "ss01" 1;
+  text-rendering: optimizeLegibility;
+}
+
+.admin-ui :where(button, input, select, textarea) {
+  letter-spacing: -0.005em;
+}
+
+.admin-ui :where(p, span, a, button, label, th, td):not([data-admin-i18n-ignore="true"] *) {
+  overflow-wrap: anywhere;
+}
+
 .loading-skeleton {
   position: relative;
   overflow: hidden;
