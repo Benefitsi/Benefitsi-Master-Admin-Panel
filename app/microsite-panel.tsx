@@ -7,8 +7,8 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
   useContext,
+  useTransition,
   type Dispatch,
   type CSSProperties,
   type FocusEvent,
@@ -35,6 +35,8 @@ import {
 import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
 import { PrintableStudioPanel } from "@/components/microsite/printable-studio-panel"
 import { LoadingSpinner } from "@/components/loading-ui"
+import { useRouter } from "next/navigation"
+import { useAdminLanguage } from "./admin-language"
 import {
   defaultMicrositeCopyForPartner,
   defaultMicrositeTemplateForPartner,
@@ -42,19 +44,16 @@ import {
   partnerSocialUrl,
 } from "@/lib/microsite-personalization"
 import {
+  discardMicrositeDraft,
   saveMicrositeVersion,
   type MicrositeActionState,
 } from "./microsite-actions"
 
 const initialState: MicrositeActionState = { ok: false, message: "" }
-const BUILDER_LOCALE_STORAGE_KEY = "benefitsi:builder-locale"
-const BUILDER_LOCALE_EVENT = "benefitsi:builder-locale-change"
-
 type BuilderLocale = "de" | "en"
 
 type BuilderI18nValue = {
   locale: BuilderLocale
-  setLocale: (locale: BuilderLocale) => void
   tr: (text: string) => string
 }
 
@@ -70,36 +69,6 @@ function useBuilderI18n() {
   return value
 }
 
-function readBuilderLocaleSnapshot(): BuilderLocale {
-  if (typeof window === "undefined") {
-    return "de"
-  }
-
-  const storedLocale = window.localStorage.getItem(BUILDER_LOCALE_STORAGE_KEY)
-  return storedLocale === "en" ? "en" : "de"
-}
-
-function subscribeToBuilderLocale(onStoreChange: () => void) {
-  if (typeof window === "undefined") {
-    return () => undefined
-  }
-
-  const handleChange = () => onStoreChange()
-
-  window.addEventListener("storage", handleChange)
-  window.addEventListener(BUILDER_LOCALE_EVENT, handleChange)
-
-  return () => {
-    window.removeEventListener("storage", handleChange)
-    window.removeEventListener(BUILDER_LOCALE_EVENT, handleChange)
-  }
-}
-
-function writeBuilderLocale(locale: BuilderLocale) {
-  window.localStorage.setItem(BUILDER_LOCALE_STORAGE_KEY, locale)
-  window.dispatchEvent(new Event(BUILDER_LOCALE_EVENT))
-}
-
 const builderTranslations: Record<string, string> = {
   "Microsite": "Microsite",
   "Restaurant-Premium-Vorlage": "Restaurant premium template",
@@ -110,6 +79,13 @@ const builderTranslations: Record<string, string> = {
   "Noch nicht live": "Not live yet",
   "In Prüfung": "In review",
   "Entwurf vorhanden": "Draft available",
+  "Bearbeitung: gespeicherter Entwurf": "Editing: saved draft",
+  "Bearbeitung: aktuelle Live-Version": "Editing: current live version",
+  "Bearbeitung: aktuelle Partnerdaten": "Editing: current partner data",
+  "Der Builder lädt gespeicherte Entwürfe standardmäßig zuerst.": "The builder loads saved drafts first by default.",
+  "Entwurf verwerfen und aktuelle Version laden": "Discard draft and load current version",
+  "Entwurf wirklich verwerfen? Die aktuelle Live-Version wird anschließend geladen.": "Discard this draft? The current live version will be loaded afterward.",
+  "Entwurf wird verworfen…": "Discarding draft...",
   "Editorbreite ändern": "Resize editor width",
   "Editorbreite per Ziehen ändern": "Drag to resize editor width",
   "Microsite-Bearbeitung einklappen": "Collapse microsite editor",
@@ -681,11 +657,7 @@ export function MicrositePanel({
   const [editorPanelOpen, setEditorPanelOpen] = useState(true)
   const [editorPanelWidth, setEditorPanelWidth] = useState(360)
   const [allBuilderSectionsCollapsed, setAllBuilderSectionsCollapsed] = useState(true)
-  const builderLocale = useSyncExternalStore<BuilderLocale>(
-    subscribeToBuilderLocale,
-    readBuilderLocaleSnapshot,
-    () => "de",
-  )
+  const { language: builderLocale } = useAdminLanguage()
   const previewRef = useRef<HTMLDivElement | null>(null)
   const sidebarRef = useRef<HTMLElement | null>(null)
   const selectedElementPanelRef = useRef<HTMLDivElement | null>(null)
@@ -749,10 +721,6 @@ export function MicrositePanel({
   const inlineSidebarClasses = editorPanelOpen
     ? "min-h-[calc(100dvh-11rem)] max-h-[calc(100dvh-11rem)] overflow-x-hidden overflow-y-auto border-b lg:min-h-0 lg:max-h-[calc(100vh-1rem)] lg:border-b-0 lg:border-r"
     : "overflow-x-hidden border-b lg:sticky lg:top-4 lg:max-h-[calc(100vh-1rem)] lg:overflow-x-hidden lg:overflow-y-auto lg:border-b-0 lg:border-r"
-
-  function setBuilderLocale(locale: BuilderLocale) {
-    writeBuilderLocale(locale)
-  }
 
   function syncBuilderSectionCollapseState() {
     const details = sidebarRef.current?.querySelectorAll<HTMLDetailsElement>("details")
@@ -1145,7 +1113,6 @@ export function MicrositePanel({
     <BuilderI18nContext.Provider
       value={{
         locale: builderLocale,
-        setLocale: setBuilderLocale,
         tr,
       }}
     >
@@ -1166,25 +1133,6 @@ export function MicrositePanel({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-white p-1">
-            <span className="px-2 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
-              {tr("Sprache")}
-            </span>
-            {(["de", "en"] as const).map((locale) => (
-              <button
-                key={locale}
-                type="button"
-                onClick={() => setBuilderLocale(locale)}
-                className={`rounded px-2.5 py-1 text-[11px] font-bold uppercase transition ${
-                  builderLocale === locale
-                    ? "bg-zinc-950 text-white"
-                    : "text-zinc-600 hover:bg-zinc-100"
-                }`}
-              >
-                {locale}
-              </button>
-            ))}
-          </div>
           <a
             href={previewHref}
             target="_blank"
@@ -1196,14 +1144,6 @@ export function MicrositePanel({
           >
             {tr("Aktuelle Vorschau öffnen")}
           </a>
-          <a
-            href={`${previewBasePath}/${encodeURIComponent(previewIdentifier)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
-          >
-            {tr("Gespeicherten Entwurf öffnen")}
-          </a>
           <StatusBadge
             label={partner.microsite?.publishedVersion ? "Live" : "Noch nicht live"}
             active={Boolean(partner.microsite?.publishedVersion)}
@@ -1212,8 +1152,12 @@ export function MicrositePanel({
             <StatusBadge label="In Prüfung" tone="review" />
           ) : null}
           {partner.microsite?.draftVersion ? (
-            <StatusBadge label="Entwurf vorhanden" active={false} />
-          ) : null}
+            <StatusBadge label="Bearbeitung: gespeicherter Entwurf" active={false} />
+          ) : partner.microsite?.publishedVersion ? (
+            <StatusBadge label="Bearbeitung: aktuelle Live-Version" active={false} />
+          ) : (
+            <StatusBadge label="Bearbeitung: aktuelle Partnerdaten" active={false} />
+          )}
         </div>
         </div>
         {editorPanelOpen ? (
@@ -1360,14 +1304,6 @@ export function MicrositePanel({
 
           <div data-builder-section="brand">
           <ConfigSection title="Marke">
-            <MicrositeLanguagePicker
-              language={config.language}
-              onChange={(language) =>
-                setConfig((current) =>
-                  applyMicrositeLanguage(current, partner, language),
-                )
-              }
-            />
             <ColorField
               name="accent"
               label="Akzentfarbe"
@@ -1763,6 +1699,7 @@ export function MicrositePanel({
             onPointerDownCapture={handlePreviewPointerDown}
             onInputCapture={handleInlineTextInput}
             onBlurCapture={handleInlineTextBlur}
+            data-admin-i18n-ignore="true"
             className={`microsite-builder-surface mx-auto overflow-x-hidden overflow-y-auto transition-all ${
               viewport === "mobile"
                 ? "w-full max-w-[390px]"
@@ -2492,6 +2429,9 @@ function VersionRollbackPanel({
   setConfig: Dispatch<SetStateAction<MicrositeConfig>>
 }) {
   const { tr } = useBuilderI18n()
+  const router = useRouter()
+  const [discardPending, startDiscardTransition] = useTransition()
+  const [discardMessage, setDiscardMessage] = useState("")
   const publishedConfig = partner.microsite?.publishedVersion?.config
   const draftConfig = partner.microsite?.draftVersion?.config
 
@@ -2508,30 +2448,44 @@ function VersionRollbackPanel({
             value={partner.microsite?.publishedVersion?.version_number ? `v${partner.microsite.publishedVersion.version_number}` : "—"}
           />
         </div>
+        {draftConfig ? (
+          <p className="rounded-lg bg-teal-50 px-3 py-2 text-[11px] font-semibold leading-5 text-teal-800">
+            {tr("Der Builder lädt gespeicherte Entwürfe standardmäßig zuerst.")}
+          </p>
+        ) : null}
         <button
           type="button"
-          disabled={!publishedConfig}
+          disabled={!draftConfig || !partner.id || discardPending}
           onClick={() => {
-            if (publishedConfig) {
-              setConfig((current) => resolveMicrositeConfig(publishedConfig, { ...partner, logo_url: partner.logo_url || current.branding.logoUrl }))
-            }
+            if (!draftConfig) return
+            if (!window.confirm(tr("Entwurf wirklich verwerfen? Die aktuelle Live-Version wird anschließend geladen."))) return
+
+            setDiscardMessage("")
+            startDiscardTransition(async () => {
+              const result = await discardMicrositeDraft(partner.id || "")
+              setDiscardMessage(result.message)
+              if (!result.ok) return
+
+              setConfig((current) =>
+                resolveMicrositeConfig(publishedConfig, {
+                  ...partner,
+                  logo_url: partner.logo_url || current.branding.logoUrl,
+                }),
+              )
+              router.refresh()
+            })
           }}
-          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 font-black text-zinc-800 transition hover:border-amber-300 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 font-black text-rose-700 transition hover:border-rose-300 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {tr("Live-Version als Entwurf laden")}
+          {discardPending
+            ? tr("Entwurf wird verworfen…")
+            : tr("Entwurf verwerfen und aktuelle Version laden")}
         </button>
-        <button
-          type="button"
-          disabled={!draftConfig}
-          onClick={() => {
-            if (draftConfig) {
-              setConfig((current) => resolveMicrositeConfig(draftConfig, { ...partner, logo_url: partner.logo_url || current.branding.logoUrl }))
-            }
-          }}
-          className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 font-black text-zinc-800 transition hover:border-teal-300 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {tr("Gespeicherten Entwurf neu laden")}
-        </button>
+        {discardMessage ? (
+          <p className="text-[11px] font-semibold leading-5 text-zinc-600" role="status">
+            {tr(discardMessage)}
+          </p>
+        ) : null}
         <p className="text-[11px] leading-5 text-zinc-500">
           {tr("Jede Speicherung erzeugt eine neue Version. Veröffentlichen setzt nur die geprüfte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.")}
         </p>

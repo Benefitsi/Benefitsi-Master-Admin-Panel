@@ -183,6 +183,7 @@ export type MenuCategory = {
   menu_id: string | null
   name: string | null
   slug: string | null
+  image_url: string | null
   sort_order: number | null
   items: MenuItem[]
 }
@@ -354,7 +355,8 @@ export async function getDashboardData(
     supabase
       .from("partners")
       .select("*")
-      .order("created_at", { ascending: false, nullsFirst: false }),
+      .order("created_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: true }),
     supabase.from("deals").select("*"),
     supabase.from("cities").select("id,name,slug").order("name"),
     fetchOwnerOptions(supabase),
@@ -595,8 +597,15 @@ function normalizeLoadedDeal(deal: Deal): Deal {
     (weekday): weekday is number =>
       typeof weekday === "number" && Number.isInteger(weekday),
   )
+  const numericStringWeekdays = storedWeekdays.flatMap((weekday) => {
+    if (typeof weekday !== "string" || !/^[1-7]$/.test(weekday)) return []
+    return [Number(weekday)]
+  })
   const stringWeekdays = storedWeekdays.filter(
-    (weekday): weekday is string => typeof weekday === "string" && Boolean(weekday),
+    (weekday): weekday is string =>
+      typeof weekday === "string" &&
+      Boolean(weekday) &&
+      !/^[1-7]$/.test(weekday),
   )
 
   return {
@@ -606,6 +615,8 @@ function normalizeLoadedDeal(deal: Deal): Deal {
         ? deal.valid_weekdays
         : numericWeekdays.length > 0
           ? numericWeekdays
+          : numericStringWeekdays.length > 0
+            ? numericStringWeekdays
           : deal.valid_weekdays ?? null,
     weekdays: stringWeekdays.length > 0 ? stringWeekdays : null,
   }

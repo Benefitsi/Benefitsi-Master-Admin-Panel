@@ -178,6 +178,7 @@ type ParsedMenuCategory = {
   menu_id: string
   name: string
   slug: string
+  image_url: string | null
   sort_order: number | null
 }
 
@@ -198,6 +199,7 @@ type ParsedMenuItem = {
 
 type ParsedInitialMenuCategory = ParsedMenuCategory & {
   draft_id: string
+  image_file: File | null
 }
 
 type ParsedInitialMenuItem = ParsedMenuItem & {
@@ -1174,6 +1176,21 @@ export async function deleteMenu(
     return { ok: false, message: "Menu id is required." }
   }
 
+  const [itemMediaResult, categoryMediaResult] = await Promise.all([
+    supabase.from("menu_items").select("image_url").eq("menu_id", id),
+    supabase.from("menu_categories").select("image_url").eq("menu_id", id),
+  ])
+
+  if (itemMediaResult.error || categoryMediaResult.error) {
+    return {
+      ok: false,
+      message:
+        itemMediaResult.error?.message ||
+        categoryMediaResult.error?.message ||
+        "Unable to inspect menu media before deletion.",
+    }
+  }
+
   const itemsResult = await supabase.from("menu_items").delete().eq("menu_id", id)
 
   if (itemsResult.error) {
@@ -1195,6 +1212,14 @@ export async function deleteMenu(
     return { ok: false, message: menuResult.error.message }
   }
 
+  await cleanupPublicMediaUrls(
+    supabase,
+    collectNonEmptyStrings([
+      ...(itemMediaResult.data ?? []).map((row) => row.image_url),
+      ...(categoryMediaResult.data ?? []).map((row) => row.image_url),
+    ]),
+  )
+
   revalidatePath("/")
 
   return { ok: true, message: "Menu removed." }
@@ -1206,10 +1231,50 @@ export async function saveMenuCategory(
 ): Promise<PartnerActionState> {
   const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
-  const payload = parseMenuCategoryPayload(formData)
+  const imageFile = fileValue(formData, "image_file")
+  const existingImageUrl = stringValue(formData, "existing_image_url")
+  const removeImage = checkboxValue(formData, "remove_image")
+  const uploadedPaths: UploadedStoragePath[] = []
+  const oldImageUrlsToCleanup: string[] = []
+  let imageUrl = removeImage ? null : existingImageUrl || null
+
+  if (imageFile) {
+    const mediaError = validateMediaFile(imageFile)
+    const menuId = stringValue(formData, "menu_id")
+
+    if (mediaError) return { ok: false, message: mediaError }
+    if (!menuId) {
+      return { ok: false, message: "A menu category must be attached to a menu." }
+    }
+
+    try {
+      const uploaded = await uploadPartnerFile(
+        supabase,
+        imageFile,
+        partnerMediaSpecs.menuCategory,
+        `menu-categories/${menuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
+      )
+      imageUrl = uploaded.url
+      uploadedPaths.push(uploaded)
+      if (existingImageUrl) oldImageUrlsToCleanup.push(existingImageUrl)
+    } catch (error) {
+      return {
+        ok: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to upload the menu category image.",
+      }
+    }
+  } else if (removeImage && existingImageUrl) {
+    oldImageUrlsToCleanup.push(existingImageUrl)
+  }
+
+  const payload = parseMenuCategoryPayload(formData, imageUrl)
   const validationMessage = validateMenuCategoryPayload(payload)
 
   if (validationMessage) {
+    await cleanupUploadedFiles(supabase, uploadedPaths)
     return { ok: false, message: validationMessage }
   }
 
@@ -1220,6 +1285,7 @@ export async function saveMenuCategory(
   )
 
   if (positionMessage) {
+    await cleanupUploadedFiles(supabase, uploadedPaths)
     return { ok: false, message: positionMessage }
   }
 
@@ -1228,8 +1294,11 @@ export async function saveMenuCategory(
     : await supabase.from("menu_categories").insert(payload)
 
   if (result.error) {
+    await cleanupUploadedFiles(supabase, uploadedPaths)
     return { ok: false, message: result.error.message }
   }
+
+  await cleanupPublicMediaUrls(supabase, oldImageUrlsToCleanup)
 
   revalidatePath("/")
 
@@ -1250,6 +1319,16 @@ export async function deleteMenuCategory(
     return { ok: false, message: "Menu category id is required." }
   }
 
+  const existingResult = await supabase
+    .from("menu_categories")
+    .select("image_url")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (existingResult.error) {
+    return { ok: false, message: existingResult.error.message }
+  }
+
   const itemsResult = await supabase
     .from("menu_items")
     .update({ category_id: null })
@@ -1267,6 +1346,12 @@ export async function deleteMenuCategory(
   if (categoryResult.error) {
     return { ok: false, message: categoryResult.error.message }
   }
+
+  const imageUrl =
+    typeof existingResult.data?.image_url === "string"
+      ? existingResult.data.image_url
+      : ""
+  await cleanupPublicMediaUrls(supabase, imageUrl ? [imageUrl] : [])
 
   revalidatePath("/")
 
@@ -1479,6 +1564,21 @@ async function collectPartnerDeletionMediaUrls(
     }
   }
 
+  const menuCategoryResult = menuIds.length
+    ? await supabase
+        .from("menu_categories")
+        .select("image_url")
+        .in("menu_id", menuIds)
+    : { data: [], error: null }
+
+  if (menuCategoryResult.error) {
+    return {
+      error: menuCategoryResult.error.message,
+      mediaUrls: [] as string[],
+      menuIds: [] as string[],
+    }
+  }
+
   const partnerUrls = collectNonEmptyStrings([
     partnerResult.data?.logo_url,
     partnerResult.data?.feature_card_url,
@@ -1489,9 +1589,15 @@ async function collectPartnerDeletionMediaUrls(
     (menuItemResult.data ?? []).map((row) => row.image_url),
   )
 
+  const menuCategoryUrls = collectNonEmptyStrings(
+    (menuCategoryResult.data ?? []).map((row) => row.image_url),
+  )
+
   return {
     error: null,
-    mediaUrls: [...new Set([...partnerUrls, ...menuItemUrls])],
+    mediaUrls: [
+      ...new Set([...partnerUrls, ...menuItemUrls, ...menuCategoryUrls]),
+    ],
     menuIds,
   }
 }
@@ -2010,6 +2116,43 @@ async function markOwnerAsPartner(supabase: SupabaseClient, ownerId: string) {
   return `Owner was selected, but could not be marked as partner: ${byId.error.message}`
 }
 
+async function uploadInitialMenuCategoryImages(
+  supabase: SupabaseClient,
+  formData: FormData,
+  menuId: string,
+) {
+  const count = integerValue(formData, "initial_menu_category_count") ?? 0
+  const uploadedPaths: UploadedStoragePath[] = []
+  const imageUrlsByIndex = new Map<number, string>()
+
+  try {
+    for (let index = 0; index < count; index += 1) {
+      const file = fileValue(
+        formData,
+        `initial_menu_category_${index}_image_file`,
+      )
+      if (!file) continue
+
+      const mediaError = validateMediaFile(file)
+      if (mediaError) throw new Error(mediaError)
+
+      const uploaded = await uploadPartnerFile(
+        supabase,
+        file,
+        partnerMediaSpecs.menuCategory,
+        `menu-categories/${menuId}/${Date.now()}-${index}-${safeFileName(file.name)}`,
+      )
+      imageUrlsByIndex.set(index, uploaded.url)
+      uploadedPaths.push(uploaded)
+    }
+  } catch (error) {
+    await cleanupUploadedFiles(supabase, uploadedPaths)
+    throw error
+  }
+
+  return { imageUrlsByIndex, uploadedPaths }
+}
+
 async function createInitialMenu(
   supabase: SupabaseClient,
   formData: FormData,
@@ -2045,11 +2188,29 @@ async function createInitialMenu(
 
   const categoryIdsByDraft = new Map<string, string>()
   const categories = parseInitialMenuCategoryPayloads(formData, menuId)
+  let categoryImageUploads: Awaited<
+    ReturnType<typeof uploadInitialMenuCategoryImages>
+  >
 
-  for (const category of categories) {
+  try {
+    categoryImageUploads = await uploadInitialMenuCategoryImages(
+      supabase,
+      formData,
+      menuId,
+    )
+  } catch (error) {
+    return `starter menu category images could not be uploaded: ${
+      error instanceof Error ? error.message : "Unknown upload error."
+    }`
+  }
+
+  for (const [categoryIndex, category] of categories.entries()) {
+    category.image_url =
+      categoryImageUploads.imageUrlsByIndex.get(categoryIndex) ?? null
     const categoryValidation = validateMenuCategoryPayload(category)
 
     if (categoryValidation) {
+      await cleanupUploadedFiles(supabase, categoryImageUploads.uploadedPaths)
       return `starter menu categories were skipped: ${categoryValidation}`
     }
 
@@ -2059,12 +2220,14 @@ async function createInitialMenu(
         menu_id: category.menu_id,
         name: category.name,
         slug: category.slug,
+        image_url: category.image_url,
         sort_order: category.sort_order,
       })
       .select("id")
       .single()
 
     if (categoryResult.error) {
+      await cleanupUploadedFiles(supabase, categoryImageUploads.uploadedPaths)
       return `starter menu categories could not be added: ${categoryResult.error.message}`
     }
 
@@ -2082,6 +2245,7 @@ async function createInitialMenu(
   const itemValidation = dryRunItems.map(validateMenuItemPayload).find(Boolean)
 
   if (itemValidation) {
+    await cleanupUploadedFiles(supabase, categoryImageUploads.uploadedPaths)
     return `starter menu items were skipped: ${itemValidation}`
   }
 
@@ -2094,6 +2258,7 @@ async function createInitialMenu(
       menuId,
     )
   } catch (error) {
+    await cleanupUploadedFiles(supabase, categoryImageUploads.uploadedPaths)
     return `starter menu item images could not be uploaded: ${
       error instanceof Error ? error.message : "Unknown upload error."
     }`
@@ -2127,7 +2292,10 @@ async function createInitialMenu(
     )
 
     if (itemResult.error) {
-      await cleanupUploadedFiles(supabase, imageUploads.uploadedPaths)
+      await cleanupUploadedFiles(supabase, [
+        ...categoryImageUploads.uploadedPaths,
+        ...imageUploads.uploadedPaths,
+      ])
       return `starter menu items could not be added: ${itemResult.error.message}`
     }
   }
@@ -3609,7 +3777,9 @@ function parseInitialMenuCategoryPayloads(
       menu_id: menuId,
       name,
       slug: stringValue(formData, `${prefix}slug`) || slugify(name),
+      image_url: null,
       sort_order: integerValue(formData, `${prefix}sort_order`) ?? index,
+      image_file: fileValue(formData, `${prefix}image_file`),
     })
   }
 
@@ -3698,13 +3868,17 @@ function validateMenuPayload(payload: ParsedMenu) {
   return null
 }
 
-function parseMenuCategoryPayload(formData: FormData): ParsedMenuCategory {
+function parseMenuCategoryPayload(
+  formData: FormData,
+  imageUrl: string | null,
+): ParsedMenuCategory {
   const name = stringValue(formData, "name")
 
   return {
     menu_id: stringValue(formData, "menu_id"),
     name,
     slug: stringValue(formData, "slug") || slugify(name),
+    image_url: imageUrl,
     sort_order: integerValue(formData, "sort_order") ?? 0,
   }
 }

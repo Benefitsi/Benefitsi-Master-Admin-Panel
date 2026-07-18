@@ -5,6 +5,7 @@ import { getDashboardData } from "@/lib/admin-data"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { MicrositePanel } from "../../microsite-panel"
+import { AdminLanguageControl, AdminLanguageProvider } from "../../admin-language"
 
 export const dynamic = "force-dynamic"
 
@@ -44,6 +45,7 @@ export default async function MicrositeBuilderPage({ params }: PageProps) {
     partner.slug || partner.subdomain || partner.id || identifier
 
   return (
+    <AdminLanguageProvider>
     <main className="min-h-screen overflow-x-clip bg-[#f3efe7] text-zinc-950">
       <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:px-6">
         <div className="mx-auto flex max-w-[1800px] flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -55,7 +57,8 @@ export default async function MicrositeBuilderPage({ params }: PageProps) {
               {partner.name || "Partner"}
             </h1>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <AdminLanguageControl />
             <Link
               href="/"
               className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-bold text-zinc-800 transition hover:bg-zinc-50"
@@ -81,5 +84,6 @@ export default async function MicrositeBuilderPage({ params }: PageProps) {
         />
       </section>
     </main>
+    </AdminLanguageProvider>
   )
 }

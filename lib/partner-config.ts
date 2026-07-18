@@ -50,6 +50,13 @@ export const partnerMediaSpecs = {
     previewMaxWidth: 240,
     previewFit: "cover",
   },
+  menuCategory: {
+    label: "Menu category",
+    width: 720,
+    height: 400,
+    previewMaxWidth: 240,
+    previewFit: "cover",
+  },
   dealDrop: {
     label: "Deal Drop card",
     width: 710,
