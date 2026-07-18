@@ -408,7 +408,7 @@ export function PartnerWorkspace({
     partners[0]
 
   return (
-    <section id="partners" className="space-y-3">
+    <section id="partners" className="partner-management-brand space-y-3">
       <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-5">
         <LiveMetric label="Partners" value={partnerCount} />
         <LiveMetric label="Active partners" value={activePartners} />
@@ -1850,7 +1850,7 @@ function CreatePartnerReview({
 
   return (
     <article className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-      <div className="relative overflow-hidden bg-[linear-gradient(135deg,#0f766e_0%,#115e59_52%,#134e4a_100%)] px-4 py-3 text-white sm:px-5">
+      <div className="relative overflow-hidden bg-[linear-gradient(135deg,#118cff_0%,#0b75d9_52%,#061829_100%)] px-4 py-3 text-white sm:px-5">
         <div className="absolute -right-10 -top-16 size-36 rounded-full bg-white/10 blur-2xl" />
         <div className="relative flex items-center justify-between gap-4">
           <div className="min-w-0">
@@ -1877,7 +1877,7 @@ function CreatePartnerReview({
           <div
             className="grid size-16 shrink-0 place-items-center rounded-full p-1.5"
             style={{
-              background: `conic-gradient(#99f6e4 ${completion}%, rgba(255,255,255,.2) ${completion}% 100%)`,
+              background: `conic-gradient(#8bcaff ${completion}%, rgba(255,255,255,.2) ${completion}% 100%)`,
             }}
           >
             <div className="grid size-full place-items-center rounded-full bg-teal-900 text-center">
