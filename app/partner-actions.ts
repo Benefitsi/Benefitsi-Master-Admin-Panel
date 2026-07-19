@@ -50,6 +50,8 @@ export type PartnerActionState = {
     sort_order: number | null
   }
   deletedId?: string
+  importedCategories?: number
+  importedItems?: number
 }
 
 export type PartnerCoverUploadTarget =
@@ -202,6 +204,7 @@ type ParsedMenuItem = {
   image_url: string | null
   tags: string[]
   allergens: string[]
+  addons: ParsedMenuItemAddon[]
   is_popular: boolean
   is_stamp_eligible: boolean
   sort_order: number | null
@@ -1522,6 +1525,280 @@ export async function deleteMenuItem(
   }
 
   return { ok: true, message: "Menu item removed.", deletedId: id }
+}
+
+export async function duplicateMenuCategory(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+
+  if (!id) return { ok: false, message: "Menu category id is required." }
+
+  const [categoryResult, itemsResult] = await Promise.all([
+    supabase.from("menu_categories").select("*").eq("id", id).maybeSingle(),
+    supabase
+      .from("menu_items")
+      .select("*")
+      .eq("category_id", id)
+      .order("sort_order", { ascending: true }),
+  ])
+
+  if (categoryResult.error || !categoryResult.data) {
+    return { ok: false, message: categoryResult.error?.message ?? "Menu category not found." }
+  }
+  if (itemsResult.error) return { ok: false, message: itemsResult.error.message }
+
+  const category = categoryResult.data
+  const orderResult = await supabase
+    .from("menu_categories")
+    .select("sort_order")
+    .eq("menu_id", category.menu_id)
+  if (orderResult.error) return { ok: false, message: orderResult.error.message }
+
+  const copyResult = await supabase
+    .from("menu_categories")
+    .insert({
+      menu_id: category.menu_id,
+      name: `${category.name || "Category"} (copy)`,
+      slug: `${category.slug || slugify(category.name || "category")}-copy-${Date.now()}`,
+      image_url: category.image_url,
+      sort_order: nextAvailableSortOrder(orderResult.data?.map((row) => row.sort_order) ?? []),
+    })
+    .select("id")
+    .single()
+
+  if (copyResult.error) return { ok: false, message: copyResult.error.message }
+
+  const itemCopies = (itemsResult.data ?? []).map((item, index) => {
+    const copy = { ...item }
+    delete copy.id
+    delete copy.created_at
+    delete copy.updated_at
+    return {
+      ...copy,
+      category_id: copyResult.data.id,
+      sort_order: index,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+  })
+
+  if (itemCopies.length) {
+    const insertItemsResult = await supabase.from("menu_items").insert(itemCopies)
+    if (insertItemsResult.error) {
+      await supabase.from("menu_categories").delete().eq("id", copyResult.data.id)
+      return { ok: false, message: insertItemsResult.error.message }
+    }
+  }
+
+  revalidatePath("/")
+  return {
+    ok: true,
+    message: `Category duplicated with ${itemCopies.length} ${itemCopies.length === 1 ? "item" : "items"}.`,
+  }
+}
+
+export async function importMenuFile(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const menuId = stringValue(formData, "menu_id")
+  const importMode = stringValue(formData, "import_mode")
+  const file = fileValue(formData, "menu_file")
+
+  if (!menuId) return { ok: false, message: "A menu is required for import." }
+  if (!['append', 'replace'].includes(importMode)) {
+    return { ok: false, message: "Choose whether to append to or replace the existing menu." }
+  }
+  if (!file) return { ok: false, message: "Choose a JSON or CSV file." }
+  if (file.size > 2 * 1024 * 1024) return { ok: false, message: "Menu import files must be 2 MB or smaller." }
+
+  let imported: ImportedMenuCategory[]
+  try {
+    const text = await file.text()
+    imported = file.name.toLowerCase().endsWith(".json")
+      ? parseImportedMenuJson(text)
+      : parseImportedMenuCsv(text)
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Unable to read the menu file." }
+  }
+
+  if (!imported.length) return { ok: false, message: "The file does not contain any categories." }
+  const itemCount = imported.reduce((total, category) => total + category.items.length, 0)
+  if (imported.length > 200 || itemCount > 2000) {
+    return { ok: false, message: "Import up to 200 categories and 2,000 items at a time." }
+  }
+
+  for (const [categoryIndex, category] of imported.entries()) {
+    const categoryValidation = validateMenuCategoryPayload({
+      menu_id: menuId,
+      name: category.name,
+      slug: slugify(category.name),
+      image_url: category.image_url,
+      sort_order: categoryIndex,
+    })
+    if (categoryValidation) return { ok: false, message: categoryValidation }
+    for (const item of category.items) {
+      const itemValidation = validateMenuItemPayload({
+        menu_id: menuId,
+        category_id: "pending-import",
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        currency: "EUR",
+        image_url: item.image_url,
+        tags: item.tags,
+        allergens: item.allergens,
+        addons: item.addons,
+        is_popular: item.is_popular,
+        is_stamp_eligible: false,
+        sort_order: 0,
+      })
+      if (itemValidation) return { ok: false, message: itemValidation }
+    }
+  }
+
+  const [categoryOrderResult, existingCategoriesResult, existingItemsResult] = await Promise.all([
+    supabase.from("menu_categories").select("sort_order").eq("menu_id", menuId),
+    supabase.from("menu_categories").select("id,image_url").eq("menu_id", menuId),
+    supabase.from("menu_items").select("id,image_url").eq("menu_id", menuId),
+  ])
+  if (categoryOrderResult.error || existingCategoriesResult.error || existingItemsResult.error) {
+    return {
+      ok: false,
+      message:
+        categoryOrderResult.error?.message ||
+        existingCategoriesResult.error?.message ||
+        existingItemsResult.error?.message ||
+        "Unable to inspect the existing menu.",
+    }
+  }
+  const firstCategoryOrder =
+    importMode === "replace"
+      ? 1_000_000
+      : nextAvailableSortOrder(categoryOrderResult.data?.map((row) => row.sort_order) ?? [])
+  const createdCategoryIds: string[] = []
+
+  for (const [categoryIndex, category] of imported.entries()) {
+    if (!category.name.trim()) return { ok: false, message: `Category ${categoryIndex + 1} needs a name.` }
+    const categoryInsert = await supabase
+      .from("menu_categories")
+      .insert({
+        menu_id: menuId,
+        name: category.name.trim(),
+        slug: `${slugify(category.name)}-${Date.now()}-${categoryIndex}`,
+        image_url: category.image_url || null,
+        sort_order: firstCategoryOrder + categoryIndex,
+      })
+      .select("id")
+      .single()
+
+    if (categoryInsert.error) {
+      if (createdCategoryIds.length) await rollbackImportedMenu(supabase, createdCategoryIds)
+      return { ok: false, message: categoryInsert.error.message }
+    }
+    createdCategoryIds.push(categoryInsert.data.id)
+
+    const items = category.items.map((item, itemIndex) => ({
+      menu_id: menuId,
+      category_id: categoryInsert.data.id,
+      name: item.name.trim(),
+      description: item.description || null,
+      price: item.price,
+      currency: "EUR",
+      image_url: item.image_url || null,
+      tags: item.tags,
+      allergens: item.allergens,
+      addons: item.addons,
+      is_popular: item.is_popular,
+      is_stamp_eligible: false,
+      sort_order: itemIndex,
+    }))
+    const invalidItem = items.findIndex((item) => !item.name)
+    if (invalidItem >= 0) {
+      await rollbackImportedMenu(supabase, createdCategoryIds)
+      return { ok: false, message: `An item in category "${category.name}" needs a name.` }
+    }
+    if (items.length) {
+      const itemInsert = await supabase.from("menu_items").insert(items)
+      if (itemInsert.error) {
+        await rollbackImportedMenu(supabase, createdCategoryIds)
+        return { ok: false, message: itemInsert.error.message }
+      }
+    }
+  }
+
+  if (importMode === "replace") {
+    const oldItemIds = (existingItemsResult.data ?? []).map((item) => item.id)
+    const oldCategoryIds = (existingCategoriesResult.data ?? []).map((category) => category.id)
+    const deleteItemsResult = oldItemIds.length
+      ? await supabase.from("menu_items").delete().in("id", oldItemIds)
+      : { error: null }
+    if (deleteItemsResult.error) {
+      await rollbackImportedMenu(supabase, createdCategoryIds)
+      return { ok: false, message: deleteItemsResult.error.message }
+    }
+    const deleteCategoriesResult = oldCategoryIds.length
+      ? await supabase.from("menu_categories").delete().in("id", oldCategoryIds)
+      : { error: null }
+    if (deleteCategoriesResult.error) {
+      return { ok: false, message: deleteCategoriesResult.error.message }
+    }
+
+    const orderResults = await Promise.all(
+      createdCategoryIds.map((id, index) =>
+        supabase.from("menu_categories").update({ sort_order: index }).eq("id", id),
+      ),
+    )
+    const orderError = orderResults.find((result) => result.error)?.error
+    if (orderError) return { ok: false, message: orderError.message }
+
+    const importedImageUrls = new Set(
+      imported.flatMap((category) => [
+        category.image_url,
+        ...category.items.map((item) => item.image_url),
+      ]).filter((url): url is string => Boolean(url)),
+    )
+    const oldImageUrls = collectNonEmptyStrings([
+      ...(existingCategoriesResult.data ?? []).map((category) => category.image_url),
+      ...(existingItemsResult.data ?? []).map((item) => item.image_url),
+    ]).filter((url) => !importedImageUrls.has(url))
+    if (oldImageUrls.length) after(() => cleanupPublicMediaUrls(supabase, oldImageUrls))
+  }
+
+  revalidatePath("/")
+  return {
+    ok: true,
+    message: `${importMode === "replace" ? "Replaced the menu with" : "Appended"} ${imported.length} categories and ${itemCount} items.`,
+    importedCategories: imported.length,
+    importedItems: itemCount,
+  }
+}
+
+type ParsedMenuItemAddon = {
+  title: string
+  description: string | null
+  cost: number
+}
+
+type ImportedMenuItem = {
+  name: string
+  description: string | null
+  price: number | null
+  image_url: string | null
+  tags: string[]
+  allergens: string[]
+  addons: ParsedMenuItemAddon[]
+  is_popular: boolean
+}
+
+type ImportedMenuCategory = {
+  name: string
+  image_url: string | null
+  items: ImportedMenuItem[]
 }
 
 export async function deleteDeal(
@@ -3848,6 +4125,7 @@ function parseInitialMenuItemPayloads(
       image_url: imageUrlsByIndex.get(index) ?? null,
       tags: listValue(formData, `${prefix}tags`),
       allergens: listValue(formData, `${prefix}allergens`),
+      addons: parseMenuItemAddons(jsonValue(formData, `${prefix}addons`)),
       is_popular: checkboxValue(formData, `${prefix}is_popular`),
       is_stamp_eligible: checkboxValue(
         formData,
@@ -3956,6 +4234,7 @@ function parseMenuItemPayload(
     image_url: imageUrl,
     tags: listValue(formData, "tags"),
     allergens: listValue(formData, "allergens"),
+    addons: parseMenuItemAddons(jsonValue(formData, "addons")),
     is_popular: checkboxValue(formData, "is_popular"),
     is_stamp_eligible: checkboxValue(formData, "is_stamp_eligible"),
     sort_order: integerValue(formData, "sort_order") ?? 0,
@@ -4000,7 +4279,41 @@ function validateMenuItemPayload(payload: ParsedMenuItem) {
     return allergenValidation
   }
 
+  if (payload.currency !== "EUR") {
+    return "Choose a supported currency."
+  }
+
+  for (const [index, addon] of payload.addons.entries()) {
+    if (!addon.title) return `Add-on ${index + 1} needs a title.`
+    if (!Number.isFinite(addon.cost) || addon.cost < 0) {
+      return `Add-on ${index + 1} needs a valid non-negative cost.`
+    }
+    const addonTextValidation = validateTextLengthRules([
+      [`Add-on ${index + 1} title`, addon.title, adminTextLimits.shortText],
+      [`Add-on ${index + 1} description`, addon.description, adminTextLimits.longText],
+    ])
+    if (addonTextValidation) return addonTextValidation
+  }
+
   return null
+}
+
+function parseMenuItemAddons(value: unknown): ParsedMenuItemAddon[] {
+  if (!Array.isArray(value)) return []
+
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return []
+    const record = entry as Record<string, unknown>
+    const title = typeof record.title === "string" ? record.title.trim() : ""
+    const description =
+      typeof record.description === "string" && record.description.trim()
+        ? record.description.trim()
+        : null
+    const numericCost =
+      typeof record.cost === "number" ? record.cost : Number(record.cost)
+
+    return [{ title, description, cost: numericCost }]
+  })
 }
 
 async function resolveMenuCategoryPosition(
@@ -4114,6 +4427,163 @@ function nextOpenSortOrder(
   }
 
   return sortOrder
+}
+
+function nextAvailableSortOrder(usedSortOrders: Array<number | null>) {
+  const values = usedSortOrders.filter(
+    (value): value is number => typeof value === "number" && Number.isFinite(value),
+  )
+  return values.length ? Math.max(...values) + 1 : 0
+}
+
+async function rollbackImportedMenu(
+  supabase: SupabaseClient,
+  categoryIds: string[],
+) {
+  await supabase.from("menu_items").delete().in("category_id", categoryIds)
+  await supabase.from("menu_categories").delete().in("id", categoryIds)
+}
+
+function parseImportedMenuJson(text: string): ImportedMenuCategory[] {
+  let value: unknown
+  try {
+    value = JSON.parse(text)
+  } catch {
+    throw new Error("The JSON file is not valid JSON.")
+  }
+  const categoryValues =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>).categories
+      : value
+  if (!Array.isArray(categoryValues)) {
+    throw new Error('JSON must contain a "categories" array.')
+  }
+
+  return categoryValues.map((entry, categoryIndex) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new Error(`Category ${categoryIndex + 1} must be an object.`)
+    }
+    const record = entry as Record<string, unknown>
+    const rawItems = Array.isArray(record.items) ? record.items : []
+    return {
+      name: importedString(record.name),
+      image_url: importedNullableString(record.image_url),
+      items: rawItems.map((item, itemIndex) =>
+        normalizeImportedMenuItem(item, `Item ${itemIndex + 1} in category ${categoryIndex + 1}`),
+      ),
+    }
+  })
+}
+
+function parseImportedMenuCsv(text: string): ImportedMenuCategory[] {
+  const rows = parseCsvRows(text)
+  if (rows.length < 2) throw new Error("The CSV file needs a header and at least one data row.")
+  const headers = rows[0].map((header) => header.trim().toLowerCase())
+  const requiredHeaders = ["category", "item_name"]
+  if (requiredHeaders.some((header) => !headers.includes(header))) {
+    throw new Error('CSV headers must include "category" and "item_name".')
+  }
+  const categories = new Map<string, ImportedMenuCategory>()
+
+  for (const values of rows.slice(1)) {
+    const row = Object.fromEntries(headers.map((header, index) => [header, values[index]?.trim() ?? ""]))
+    if (!row.category && !row.item_name) continue
+    if (!row.category) throw new Error("Every CSV row needs a category.")
+    let category = categories.get(row.category)
+    if (!category) {
+      category = { name: row.category, image_url: row.category_image_url || null, items: [] }
+      categories.set(row.category, category)
+    }
+    if (row.item_name) {
+      let addons: unknown = []
+      if (row.addons) {
+        try { addons = JSON.parse(row.addons) } catch { throw new Error(`Add-ons for "${row.item_name}" must be valid JSON.`) }
+      }
+      category.items.push({
+        name: row.item_name,
+        description: row.description || null,
+        price: importedNumber(row.price),
+        image_url: row.image_url || null,
+        tags: splitImportedList(row.tags),
+        allergens: splitImportedList(row.allergens),
+        addons: parseMenuItemAddons(addons),
+        is_popular: /^(true|1|yes)$/i.test(row.is_popular),
+      })
+    }
+  }
+  return [...categories.values()]
+}
+
+function normalizeImportedMenuItem(value: unknown, label: string): ImportedMenuItem {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be an object.`)
+  }
+  const record = value as Record<string, unknown>
+  return {
+    name: importedString(record.name),
+    description: importedNullableString(record.description),
+    price: importedNumber(record.price),
+    image_url: importedNullableString(record.image_url),
+    tags: importedStringList(record.tags),
+    allergens: importedStringList(record.allergens),
+    addons: parseMenuItemAddons(record.addons),
+    is_popular: record.is_popular === true,
+  }
+}
+
+function importedString(value: unknown) {
+  return typeof value === "string" ? value.trim() : ""
+}
+
+function importedNullableString(value: unknown) {
+  return importedString(value) || null
+}
+
+function importedNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return null
+  const number = typeof value === "number" ? value : Number(value)
+  if (!Number.isFinite(number) || number < 0) throw new Error(`Invalid price value "${String(value)}".`)
+  return number
+}
+
+function importedStringList(value: unknown) {
+  if (Array.isArray(value)) return value.map(importedString).filter(Boolean)
+  return typeof value === "string" ? splitImportedList(value) : []
+}
+
+function splitImportedList(value: string) {
+  return value.split(/[|;]/).map((entry) => entry.trim()).filter(Boolean)
+}
+
+function parseCsvRows(text: string) {
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ""
+  let quoted = false
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index]
+    if (quoted && character === '"' && text[index + 1] === '"') {
+      field += '"'
+      index += 1
+    } else if (character === '"') {
+      quoted = !quoted
+    } else if (character === "," && !quoted) {
+      row.push(field)
+      field = ""
+    } else if ((character === "\n" || character === "\r") && !quoted) {
+      if (character === "\r" && text[index + 1] === "\n") index += 1
+      row.push(field)
+      if (row.some((value) => value.trim())) rows.push(row)
+      row = []
+      field = ""
+    } else {
+      field += character
+    }
+  }
+  row.push(field)
+  if (row.some((value) => value.trim())) rows.push(row)
+  if (rows[0]?.[0]) rows[0][0] = rows[0][0].replace(/^\uFEFF/, "")
+  return rows
 }
 
 function uniqueOrderedIds(ids: string[]) {

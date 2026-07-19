@@ -171,6 +171,7 @@ export type MenuItem = {
   image_url: string | null
   tags: string[] | null
   allergens: string[] | null
+  addons: MenuItemAddon[] | null
   is_popular: boolean | null
   is_stamp_eligible: boolean | null
   sort_order: number | null
@@ -326,6 +327,12 @@ export type DashboardData = {
   partnerCount: number
   dealCount: number
   errors: string[]
+}
+
+export type MenuItemAddon = {
+  title: string
+  description?: string | null
+  cost: number
 }
 
 export async function getDashboardData(

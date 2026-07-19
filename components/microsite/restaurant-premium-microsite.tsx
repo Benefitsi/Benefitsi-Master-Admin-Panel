@@ -2609,11 +2609,11 @@ function MenuCard({ item }: { item: MicrositeMenuItem }) {
           src={item.image_url}
           alt=""
           onError={() => setFailedSrc(item.image_url)}
-          className="aspect-[4/3] w-full rounded-xl object-cover @min-[420px]:size-20 @min-[420px]:shrink-0"
+          className="aspect-square w-full rounded-xl object-cover @min-[420px]:size-20 @min-[420px]:shrink-0"
         />
       ) : (
         <span
-          className={`grid aspect-[4/3] w-full shrink-0 place-items-center rounded-xl @min-[420px]:size-20 ${
+          className={`grid aspect-square w-full shrink-0 place-items-center rounded-xl @min-[420px]:size-20 ${
             isDrink
               ? "bg-sky-50 text-sky-600"
               : "bg-orange-50 text-[var(--site-accent)]"
@@ -2650,6 +2650,20 @@ function MenuCard({ item }: { item: MicrositeMenuItem }) {
               <span key={tag} className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
                 {tag}
               </span>
+            ))}
+          </div>
+        ) : null}
+        {item.addons?.length ? (
+          <div className="mt-3 space-y-1.5 border-t border-zinc-100 pt-3">
+            <p className="text-[11px] font-bold uppercase tracking-[.08em] text-zinc-400">Add-ons</p>
+            {item.addons.map((addon, index) => (
+              <div key={`${addon.title}-${index}`} className="flex items-start justify-between gap-3 text-xs">
+                <span className="min-w-0 text-zinc-600">
+                  <span className="font-semibold text-zinc-700">{addon.title}</span>
+                  {addon.description ? <span className="block text-zinc-400">{addon.description}</span> : null}
+                </span>
+                <span className="shrink-0 font-semibold text-[var(--site-accent)]">+{formatPrice(addon.cost, item.currency)}</span>
+              </div>
             ))}
           </div>
         ) : null}

@@ -17,6 +17,7 @@ import type {
   Deal,
   MenuCategory,
   MenuItem,
+  MenuItemAddon,
   OwnerOption,
   PartnerHoliday,
   PartnerMenu,
@@ -63,6 +64,8 @@ import {
   deleteMenu,
   deleteMenuCategory,
   deleteMenuItem,
+  duplicateMenuCategory,
+  importMenuFile,
   deletePartnerStaff,
   deletePartner,
   deleteRewardMilestone,
@@ -266,6 +269,8 @@ const menuStatusOptions = [
   { value: "published", label: "Published" },
   { value: "archived", label: "Archived" },
 ] as const
+
+const menuCurrencyOptions = [{ value: "EUR", label: "EUR (€)" }] as const
 
 type PartnerWorkspaceProps = {
   partners: PartnerWithDeals[]
@@ -2974,10 +2979,12 @@ function InitialMenuEditor({
                             type="number"
                             step="0.01"
                           />
-                          <TextField
+                          <SelectField
                             label="Currency"
                             name={`initial_menu_item_${index}_currency`}
                             defaultValue="EUR"
+                            options={menuCurrencyOptions}
+                            required
                           />
                           <TextField
                             label="Position in category"
@@ -3008,6 +3015,10 @@ function InitialMenuEditor({
                           onChange={(value) =>
                             onUpdateItem(item.id, { description: value })
                           }
+                        />
+                        <MenuItemAddonsField
+                          defaultValue={[]}
+                          name={`initial_menu_item_${index}_addons`}
                         />
                         <label className="flex h-10 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700">
                           <input
@@ -3208,11 +3219,7 @@ function DealsPanel({
   )
 
   if (embedded) {
-    return (
-      <FormSection title="Deals" status={dealStatus}>
-        {content}
-      </FormSection>
-    )
+    return content
   }
 
   return (
@@ -6391,11 +6398,7 @@ function MenuPanel({
   )
 
   if (embedded) {
-    return (
-      <FormSection title="Menu">
-        {content}
-      </FormSection>
-    )
+    return content
   }
 
   return (
@@ -6422,9 +6425,7 @@ function MenuCard({
   partnerName?: string | null
 }) {
   const [editingMenu, setEditingMenu] = useState(false)
-  const [categoryEditor, setCategoryEditor] = useState<MenuCategoryEditorState | null>(
-    menu.categories.length === 0 ? { mode: "create" } : null,
-  )
+  const [categoryEditor, setCategoryEditor] = useState<MenuCategoryEditorState | null>(null)
   const [itemEditor, setItemEditor] = useState<MenuItemEditorState | null>(null)
   const [selectedItemCategoryId, setSelectedItemCategoryId] = useState(
     menu.categories[0]?.id ?? "__uncategorized",
@@ -6634,6 +6635,13 @@ function MenuCard({
         >
           {editingMenu ? "Close editor" : "Edit menu"}
         </button>
+        {menu.id ? (
+          <MenuImportDialog
+            categoryCount={localCategories.length}
+            itemCount={localItems.length}
+            menuId={menu.id}
+          />
+        ) : null}
         {menu.id ? <DeleteMenuForm menuId={menu.id} /> : null}
       </div>
       {editingMenu ? (
@@ -6691,6 +6699,7 @@ function MenuCard({
                 <MenuCategoryCard
                   category={category}
                   onDelete={handleCategoryDeleted}
+                  onDuplicate={() => window.location.reload()}
                   onEdit={() => setCategoryEditor({ mode: "edit", category })}
                 />
               </div>
@@ -6955,17 +6964,205 @@ function DeleteMenuForm({ menuId }: { menuId: string }) {
   )
 }
 
+function MenuImportDialog({
+  categoryCount,
+  itemCount,
+  menuId,
+}: {
+  categoryCount: number
+  itemCount: number
+  menuId: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [importMode, setImportMode] = useState<"append" | "replace" | "">("")
+  const [state, formAction] = useActionState(importMenuFile, initialState)
+  const formRef = useActionSuccess(state, () => window.location.reload())
+
+  useEffect(() => {
+    if (!open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("keydown", closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [open])
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setImportMode("")
+          setOpen(true)
+        }}
+        className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
+      >
+        Import menu
+      </button>
+      {open ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-[#061829]/65 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setOpen(false)
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="menu-import-dialog-title"
+            className="w-full max-w-lg overflow-hidden rounded-t-2xl border border-zinc-200 bg-white shadow-2xl sm:rounded-2xl"
+          >
+            <header className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+              <div>
+                <h3 id="menu-import-dialog-title" className="text-lg font-bold text-zinc-950">Import menu</h3>
+                <p className="mt-0.5 text-xs text-zinc-500">Upload JSON or CSV categories and items.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Close menu import"
+                className="grid size-9 place-items-center rounded-full border border-zinc-300 bg-white text-lg text-zinc-600 hover:bg-zinc-100"
+              >
+                ×
+              </button>
+            </header>
+            <form
+              ref={formRef}
+              action={formAction}
+              className="space-y-4 p-4"
+              onSubmit={(event) => {
+                if (
+                  importMode === "replace" &&
+                  !window.confirm(
+                    `Replace the current menu? This will remove ${categoryCount} categories and ${itemCount} items after the new file is imported successfully.`,
+                  )
+                ) {
+                  event.preventDefault()
+                }
+              }}
+            >
+              <input type="hidden" name="menu_id" value={menuId} />
+              <p className="text-xs leading-5 text-zinc-600">
+                This menu already has {categoryCount} categories and {itemCount} items. Choose how the imported content should be handled.
+              </p>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-zinc-900">Import behavior</legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className={`cursor-pointer rounded-lg border p-3 transition ${importMode === "append" ? "border-teal-600 bg-teal-50 ring-2 ring-teal-100" : "border-zinc-200 bg-white hover:border-zinc-300"}`}>
+                    <span className="flex items-start gap-2">
+                      <input
+                        type="radio"
+                        name="import_mode"
+                        value="append"
+                        checked={importMode === "append"}
+                        onChange={() => setImportMode("append")}
+                        required
+                        className="mt-0.5 size-4 accent-teal-700"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-zinc-900">Append</span>
+                        <span className="mt-1 block text-xs leading-5 text-zinc-500">Keep the current menu and add the imported categories after it.</span>
+                      </span>
+                    </span>
+                  </label>
+                  <label className={`cursor-pointer rounded-lg border p-3 transition ${importMode === "replace" ? "border-rose-500 bg-rose-50 ring-2 ring-rose-100" : "border-zinc-200 bg-white hover:border-zinc-300"}`}>
+                    <span className="flex items-start gap-2">
+                      <input
+                        type="radio"
+                        name="import_mode"
+                        value="replace"
+                        checked={importMode === "replace"}
+                        onChange={() => setImportMode("replace")}
+                        required
+                        className="mt-0.5 size-4 accent-rose-700"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-zinc-900">Replace</span>
+                        <span className="mt-1 block text-xs leading-5 text-zinc-500">Replace all current categories and items after the new import succeeds.</span>
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
+              <input
+                type="file"
+                name="menu_file"
+                accept=".json,.csv,application/json,text/csv"
+                required
+                className="block w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-[#061829] file:px-3 file:py-1.5 file:font-semibold file:text-white"
+              />
+              <div className="flex flex-wrap gap-2">
+                <SubmitButton label="Import menu" pendingLabel="Importing menu..." size="compact" />
+                <button type="button" onClick={() => downloadMenuTemplate("csv")} className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100">
+                  CSV template
+                </button>
+                <button type="button" onClick={() => downloadMenuTemplate("json")} className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100">
+                  JSON template
+                </button>
+              </div>
+              <ActionMessage state={state} />
+            </form>
+          </section>
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+function downloadMenuTemplate(format: "csv" | "json") {
+  const jsonTemplate = {
+    categories: [
+      {
+        name: "Main dishes",
+        image_url: "",
+        items: [
+          {
+            name: "Example item",
+            description: "Optional description",
+            price: 9.5,
+            currency: "EUR",
+            image_url: "",
+            tags: ["vegetarian"],
+            allergens: ["gluten"],
+            is_popular: false,
+            addons: [{ title: "Extra cheese", description: "Optional description", cost: 1.5 }],
+          },
+        ],
+      },
+    ],
+  }
+  const csvTemplate = [
+    "category,category_image_url,item_name,description,price,currency,image_url,tags,allergens,is_popular,addons",
+    'Main dishes,,Example item,Optional description,9.50,EUR,,vegetarian,gluten,false,"[{""title"":""Extra cheese"",""description"":""Optional description"",""cost"":1.5}]"',
+  ].join("\r\n")
+  const content = format === "json" ? JSON.stringify(jsonTemplate, null, 2) : csvTemplate
+  const url = URL.createObjectURL(new Blob([content], { type: format === "json" ? "application/json" : "text/csv" }))
+  const anchor = document.createElement("a")
+  anchor.href = url
+  anchor.download = `menu-template.${format}`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
 function MenuCategoryCard({
   category,
   onDelete,
+  onDuplicate,
   onEdit,
 }: {
   category: MenuCategory
   onDelete: (state: PartnerActionState) => void
+  onDuplicate: () => void
   onEdit: () => void
 }) {
   return (
-    <article className="group relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-zinc-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg">
+    <article className="group relative aspect-[1200/504] w-full overflow-hidden rounded-xl border border-zinc-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg">
       <button
         type="button"
         onClick={onEdit}
@@ -6988,6 +7185,13 @@ function MenuCategoryCard({
           </span>
         </span>
       </button>
+      {category.id ? (
+        <DuplicateMenuCategoryButton
+          categoryId={category.id}
+          categoryName={category.name}
+          onDuplicated={onDuplicate}
+        />
+      ) : null}
       {category.id ? (
         <DeleteMenuCategoryForm
           categoryId={category.id}
@@ -7131,14 +7335,14 @@ function MenuCategoryForm({
         compact
         dense
       />
+      <TextField
+        label="Name"
+        name="name"
+        defaultValue={category?.name}
+        required
+        showCharacterCount={false}
+      />
       <FieldGrid>
-        <TextField
-          label="Name"
-          name="name"
-          defaultValue={category?.name}
-          required
-          showCharacterCount={false}
-        />
         <TextField
           label="Position in menu"
           name="sort_order"
@@ -7457,11 +7661,12 @@ function MenuItemForm({
           step="0.01"
           defaultValue={item?.price}
         />
-        <TextField
+        <SelectField
           label="Currency"
           name="currency"
           defaultValue={item?.currency ?? "EUR"}
-          showCharacterCount={false}
+          options={menuCurrencyOptions}
+          required
         />
         <TextField
           label="Position in category"
@@ -7493,6 +7698,7 @@ function MenuItemForm({
         defaultValue={item?.description}
         showCharacterCount={false}
       />
+      <MenuItemAddonsField defaultValue={item?.addons ?? []} />
       <div className="grid gap-3 sm:grid-cols-2">
         <CheckboxField
           label="Popular"
@@ -7506,6 +7712,90 @@ function MenuItemForm({
         pendingLabel={isEditing ? "Saving item..." : "Adding item..."}
       />
     </form>
+  )
+}
+
+function MenuItemAddonsField({
+  defaultValue,
+  name = "addons",
+}: {
+  defaultValue: MenuItemAddon[]
+  name?: string
+}) {
+  const [addons, setAddons] = useState(() =>
+    defaultValue.map((addon) => ({
+      title: addon.title ?? "",
+      description: addon.description ?? "",
+      cost: String(addon.cost ?? ""),
+    })),
+  )
+  const serialized = addons.map((addon) => ({
+    title: addon.title.trim(),
+    description: addon.description.trim() || null,
+    cost: addon.cost === "" ? 0 : Number(addon.cost),
+  }))
+
+  return (
+    <fieldset className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3">
+      <input type="hidden" name={name} value={JSON.stringify(serialized)} />
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <legend className="text-sm font-semibold text-zinc-900">Add-ons</legend>
+          <p className="mt-0.5 text-xs text-zinc-500">Optional extras customers can add to this item.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAddons((current) => [...current, { title: "", description: "", cost: "" }])}
+          className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
+        >
+          + Add option
+        </button>
+      </div>
+      {addons.length ? (
+        <div className="space-y-2">
+          {addons.map((addon, index) => (
+            <div key={index} className="grid gap-2 rounded-lg border border-zinc-200 bg-white p-2.5 sm:grid-cols-[1fr_1.35fr_7rem_auto] sm:items-end">
+              <TextField
+                label="Title"
+                name={`addon_title_${index}`}
+                value={addon.title}
+                required
+                showCharacterCount={false}
+                onChange={(title) => setAddons((current) => current.map((entry, entryIndex) => entryIndex === index ? { ...entry, title } : entry))}
+              />
+              <TextField
+                label="Description (optional)"
+                name={`addon_description_${index}`}
+                value={addon.description}
+                showCharacterCount={false}
+                onChange={(description) => setAddons((current) => current.map((entry, entryIndex) => entryIndex === index ? { ...entry, description } : entry))}
+              />
+              <TextField
+                label="Cost"
+                name={`addon_cost_${index}`}
+                type="number"
+                min={0}
+                step="0.01"
+                value={addon.cost}
+                required
+                showCharacterCount={false}
+                onChange={(cost) => setAddons((current) => current.map((entry, entryIndex) => entryIndex === index ? { ...entry, cost } : entry))}
+              />
+              <button
+                type="button"
+                aria-label={`Remove add-on ${index + 1}`}
+                onClick={() => setAddons((current) => current.filter((_, entryIndex) => entryIndex !== index))}
+                className="h-9 rounded-md border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-lg border border-dashed border-zinc-300 bg-white px-3 py-4 text-center text-xs text-zinc-500">No add-ons yet.</p>
+      )}
+    </fieldset>
   )
 }
 
@@ -7566,6 +7856,40 @@ function DeleteMenuItemForm({
         />
       )}
     </form>
+  )
+}
+
+function DuplicateMenuCategoryButton({
+  categoryId,
+  categoryName,
+  onDuplicated,
+}: {
+  categoryId: string
+  categoryName?: string | null
+  onDuplicated: () => void
+}) {
+  const [state, setState] = useState(initialState)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      aria-label={`Duplicate ${categoryName || "menu category"} and its items`}
+      title="Duplicate category and items"
+      onClick={() => startTransition(async () => {
+        const formData = new FormData()
+        formData.set("id", categoryId)
+        const result = await duplicateMenuCategory(initialState, formData)
+        setState(result)
+        dispatchActionToast(result)
+        if (result.ok) onDuplicated()
+      })}
+      className="absolute right-12 top-2 z-10 grid size-8 place-items-center rounded-full border border-white/70 bg-white/92 text-sm font-bold text-[#061829] shadow-md transition hover:scale-105 hover:bg-white disabled:opacity-60"
+    >
+      {pending ? <LoadingSpinner className="size-3" /> : "⧉"}
+      <span className="sr-only">{state.message}</span>
+    </button>
   )
 }
 
@@ -8798,10 +9122,14 @@ function MediaUploadField({
 }) {
   const [removed, setRemoved] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [sourceFiles, setSourceFiles] = useState<File[]>([])
   const [selectedPreviews, setSelectedPreviews] = useState<ImagePreview[]>([])
   const [uploadMessage, setUploadMessage] = useState("")
   const [uploadError, setUploadError] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const [cropZoom, setCropZoom] = useState(1)
+  const [cropX, setCropX] = useState(0)
+  const [cropY, setCropY] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const selectedPreviewsRef = useRef<ImagePreview[]>([])
   const hasSelectedPreviews = selectedPreviews.length > 0
@@ -8821,6 +9149,7 @@ function MediaUploadField({
     }
 
     setSelectedFiles([])
+    setSourceFiles([])
     setSelectedPreviews((current) => {
       revokeImagePreviews(current)
       return []
@@ -8835,6 +9164,25 @@ function MediaUploadField({
       revokeImagePreviews(current)
       return previews
     })
+  }
+
+  const applyCrop = async (zoom: number, x: number, y: number) => {
+    if (!sourceFiles.length || !fileInputRef.current) return
+    setIsProcessing(true)
+    setUploadError("")
+    setUploadMessage("Applying crop...")
+    try {
+      const resizedFiles = await resizeImageFiles(sourceFiles, spec, { zoom, x, y })
+      const previews = createImagePreviews(resizedFiles)
+      replaceFileInputFiles(fileInputRef.current, resizedFiles)
+      replaceSelectedMedia(resizedFiles, previews)
+      onPreviewChange?.(previews[0]?.url ?? "")
+      setUploadMessage(`Ready to upload at ${spec.width}px x ${spec.height}px.`)
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Unable to apply this crop.")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   return (
@@ -8915,6 +9263,37 @@ function MediaUploadField({
           </>
         ) : null}
       </div>
+      {selectedPreview ? (
+        <div className="grid gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2 sm:grid-cols-3">
+          {[
+            { label: "Zoom", value: cropZoom, min: 1, max: 3, step: 0.05, key: "zoom" },
+            { label: "Horizontal crop", value: cropX, min: -100, max: 100, step: 1, key: "x" },
+            { label: "Vertical crop", value: cropY, min: -100, max: 100, step: 1, key: "y" },
+          ].map((control) => (
+            <label key={control.key} className="space-y-1 text-[11px] font-semibold text-zinc-600">
+              <span>{control.label}</span>
+              <input
+                type="range"
+                min={control.min}
+                max={control.max}
+                step={control.step}
+                value={control.value}
+                onChange={(event) => {
+                  const value = Number(event.target.value)
+                  const zoom = control.key === "zoom" ? value : cropZoom
+                  const x = control.key === "x" ? value : cropX
+                  const y = control.key === "y" ? value : cropY
+                  setCropZoom(zoom)
+                  setCropX(x)
+                  setCropY(y)
+                  void applyCrop(zoom, x, y)
+                }}
+                className="block w-full accent-teal-700"
+              />
+            </label>
+          ))}
+        </div>
+      ) : null}
       <div className="mt-auto space-y-2">
         <input
           ref={fileInputRef}
@@ -8937,7 +9316,11 @@ function MediaUploadField({
             setIsProcessing(true)
 
             try {
-              const resizedFiles = await resizeImageFiles(files, spec)
+              setSourceFiles(files)
+              setCropZoom(1)
+              setCropX(0)
+              setCropY(0)
+              const resizedFiles = await resizeImageFiles(files, spec, { zoom: 1, x: 0, y: 0 })
               const previews = createImagePreviews(resizedFiles)
               replaceFileInputFiles(input, resizedFiles)
               replaceSelectedMedia(resizedFiles, previews)
@@ -9518,20 +9901,32 @@ function revokeImagePreviews(previews: ImagePreview[]) {
 }
 
 function mediaSizeHint(spec: PartnerMediaSpec) {
-  return `${spec.label} size: ${spec.width}px x ${spec.height}px`
+  const shape =
+    spec.label === "Menu category"
+      ? " · 2.38:1 landscape"
+      : spec.label === "Menu item"
+        ? " · 1:1 square"
+        : ""
+  return `${spec.label} size: ${spec.width}px × ${spec.height}px${shape}`
 }
 
-async function resizeImageFiles(files: File[], spec: PartnerMediaSpec) {
+type ImageCrop = { zoom: number; x: number; y: number }
+
+async function resizeImageFiles(
+  files: File[],
+  spec: PartnerMediaSpec,
+  crop: ImageCrop = { zoom: 1, x: 0, y: 0 },
+) {
   const resizedFiles: File[] = []
 
   for (const file of files) {
-    resizedFiles.push(await resizeImageFile(file, spec))
+    resizedFiles.push(await resizeImageFile(file, spec, crop))
   }
 
   return resizedFiles
 }
 
-async function resizeImageFile(file: File, spec: PartnerMediaSpec) {
+async function resizeImageFile(file: File, spec: PartnerMediaSpec, crop: ImageCrop) {
   if (!isSupportedImageFile(file)) {
     throw new Error(`"${file.name}" must be a PNG, JPEG, WebP, or SVG image.`)
   }
@@ -9544,7 +9939,7 @@ async function resizeImageFile(file: File, spec: PartnerMediaSpec) {
     throw new Error(`Unable to read the dimensions for "${file.name}".`)
   }
 
-  if (sourceWidth === spec.width && sourceHeight === spec.height) {
+  if (sourceWidth === spec.width && sourceHeight === spec.height && crop.zoom === 1 && crop.x === 0 && crop.y === 0) {
     return file
   }
 
@@ -9572,6 +9967,11 @@ async function resizeImageFile(file: File, spec: PartnerMediaSpec) {
     drawHeight = sourceWidth / targetRatio
     drawY = (sourceHeight - drawHeight) / 2
   }
+
+  drawWidth /= crop.zoom
+  drawHeight /= crop.zoom
+  drawX = ((sourceWidth - drawWidth) * (Math.max(-100, Math.min(100, crop.x)) + 100)) / 200
+  drawY = ((sourceHeight - drawHeight) * (Math.max(-100, Math.min(100, crop.y)) + 100)) / 200
 
   context.drawImage(
     image,
