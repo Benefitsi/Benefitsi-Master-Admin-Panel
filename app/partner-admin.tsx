@@ -99,12 +99,18 @@ function useToastNotification(state: PartnerActionState) {
   useEffect(() => {
     if (!state.message) return
 
-    window.dispatchEvent(
-      new CustomEvent(toastEventName, {
-        detail: { message: state.message, ok: state.ok },
-      }),
-    )
+    dispatchActionToast(state)
   }, [state])
+}
+
+function dispatchActionToast(state: PartnerActionState) {
+  if (!state.message) return
+
+  window.dispatchEvent(
+    new CustomEvent(toastEventName, {
+      detail: { message: state.message, ok: state.ok },
+    }),
+  )
 }
 
 function ToastViewport() {
@@ -6990,11 +6996,33 @@ function MenuCategoryForm({
   menuId: string
   onSaved?: (state: PartnerActionState) => void
 }) {
-  const [state, formAction] = useActionState(saveMenuCategory, initialState)
-  const formRef = useActionSuccess(state, onSaved)
+  const [state, setState] = useState(initialState)
+  const [isPending, startTransition] = useTransition()
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-3">
+    <form
+      className="space-y-3"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const formData = new FormData(event.currentTarget)
+
+        startTransition(async () => {
+          try {
+            const result = await saveMenuCategory(initialState, formData)
+            setState(result)
+            dispatchActionToast(result)
+            if (result.ok) onSaved?.(result)
+          } catch {
+            const result = {
+              ok: false,
+              message: "Unable to save the menu category.",
+            }
+            setState(result)
+            dispatchActionToast(result)
+          }
+        })
+      }}
+    >
       <input type="hidden" name="id" value={category?.id ?? ""} />
       <input type="hidden" name="menu_id" value={menuId} />
       <MediaUploadField
@@ -7024,10 +7052,11 @@ function MenuCategoryForm({
           defaultValue={category?.sort_order ?? defaultSortOrder}
         />
       </FieldGrid>
-      <ActionMessage state={state} />
+      <ActionMessage state={state} toast={false} />
       <SubmitButton
         label={category ? "Save category" : "Add category"}
         pendingLabel={category ? "Saving category..." : "Adding category..."}
+        pendingOverride={isPending}
       />
     </form>
   )
@@ -7044,27 +7073,47 @@ function DeleteMenuCategoryForm({
   iconOnly?: boolean
   onDeleted?: (state: PartnerActionState) => void
 }) {
-  const [state, formAction] = useActionState(deleteMenuCategory, initialState)
-  const formRef = useActionSuccess(state, onDeleted)
-  useToastNotification(state)
+  const [state, setState] = useState(initialState)
+  const [isPending, startTransition] = useTransition()
 
   return (
     <form
-      ref={formRef}
-      action={formAction}
       onSubmit={(event) => {
+        event.preventDefault()
         if (!window.confirm(`Delete ${categoryName || "this menu category"}? Its items will be moved to Other.`)) {
-          event.preventDefault()
+          return
         }
+
+        const formData = new FormData(event.currentTarget)
+        startTransition(async () => {
+          try {
+            const result = await deleteMenuCategory(initialState, formData)
+            setState(result)
+            dispatchActionToast(result)
+            if (result.ok) onDeleted?.(result)
+          } catch {
+            const result = {
+              ok: false,
+              message: "Unable to delete the menu category.",
+            }
+            setState(result)
+            dispatchActionToast(result)
+          }
+        })
       }}
     >
       <input type="hidden" name="id" value={categoryId} />
+      {!iconOnly ? <ActionMessage state={state} toast={false} /> : null}
       {iconOnly ? (
-        <IconDeleteSubmitButton label={`Delete ${categoryName || "menu category"}`} />
+        <IconDeleteSubmitButton
+          label={`Delete ${categoryName || "menu category"}`}
+          pendingOverride={isPending}
+        />
       ) : (
         <SubmitButton
           label="Delete"
           pendingLabel="Deleting category..."
+          pendingOverride={isPending}
           size="tiny"
           tone="danger"
         />
@@ -9657,8 +9706,14 @@ function CheckboxField({
   )
 }
 
-function ActionMessage({ state }: { state: PartnerActionState }) {
-  useToastNotification(state)
+function ActionMessage({
+  state,
+  toast = true,
+}: {
+  state: PartnerActionState
+  toast?: boolean
+}) {
+  useToastNotification(toast ? state : initialState)
 
   if (!state.message) {
     return null
@@ -9678,8 +9733,15 @@ function ActionMessage({ state }: { state: PartnerActionState }) {
   )
 }
 
-function IconDeleteSubmitButton({ label }: { label: string }) {
-  const { pending } = useFormStatus()
+function IconDeleteSubmitButton({
+  label,
+  pendingOverride = false,
+}: {
+  label: string
+  pendingOverride?: boolean
+}) {
+  const { pending: formPending } = useFormStatus()
+  const pending = formPending || pendingOverride
 
   return (
     <button
@@ -9704,6 +9766,7 @@ function SubmitButton({
   label,
   name,
   pendingLabel,
+  pendingOverride = false,
   size = "default",
   tone = "default",
   value,
@@ -9711,11 +9774,13 @@ function SubmitButton({
   label: string
   name?: string
   pendingLabel: string
+  pendingOverride?: boolean
   size?: "default" | "compact" | "tiny"
   tone?: "default" | "danger" | "muted" | "outline"
   value?: string
 }) {
-  const { data, pending } = useFormStatus()
+  const { data, pending: formPending } = useFormStatus()
+  const pending = formPending || pendingOverride
   const isActivePending =
     pending && (!name || value === undefined || data?.get(name) === value)
   const sizeClasses =
