@@ -1339,19 +1339,29 @@ export async function deleteMenuCategory(
     return { ok: false, message: "Menu category id is required." }
   }
 
-  const existingResult = await supabase
-    .from("menu_categories")
-    .select("image_url")
-    .eq("id", id)
-    .maybeSingle()
+  const [existingResult, itemMediaResult] = await Promise.all([
+    supabase
+      .from("menu_categories")
+      .select("image_url")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("menu_items")
+      .select("image_url")
+      .eq("category_id", id),
+  ])
 
   if (existingResult.error) {
     return { ok: false, message: existingResult.error.message }
   }
 
+  if (itemMediaResult.error) {
+    return { ok: false, message: itemMediaResult.error.message }
+  }
+
   const itemsResult = await supabase
     .from("menu_items")
-    .update({ category_id: null })
+    .delete()
     .eq("category_id", id)
 
   if (itemsResult.error) {
@@ -1367,15 +1377,19 @@ export async function deleteMenuCategory(
     return { ok: false, message: categoryResult.error.message }
   }
 
-  const imageUrl =
-    typeof existingResult.data?.image_url === "string"
-      ? existingResult.data.image_url
-      : ""
-  if (imageUrl) {
-    after(() => cleanupPublicMediaUrls(supabase, [imageUrl]))
+  const imageUrls = collectNonEmptyStrings([
+    existingResult.data?.image_url,
+    ...(itemMediaResult.data ?? []).map((item) => item.image_url),
+  ])
+  if (imageUrls.length) {
+    after(() => cleanupPublicMediaUrls(supabase, imageUrls))
   }
 
-  return { ok: true, message: "Menu category removed.", deletedId: id }
+  return {
+    ok: true,
+    message: "Menu category and its items removed.",
+    deletedId: id,
+  }
 }
 
 export async function saveMenuItem(
@@ -1503,11 +1517,11 @@ export async function deleteMenuItem(
       ? existingResult.data.image_url
       : ""
 
-  await cleanupPublicMediaUrls(supabase, imageUrl ? [imageUrl] : [])
+  if (imageUrl) {
+    after(() => cleanupPublicMediaUrls(supabase, [imageUrl]))
+  }
 
-  revalidatePath("/")
-
-  return { ok: true, message: "Menu item removed." }
+  return { ok: true, message: "Menu item removed.", deletedId: id }
 }
 
 export async function deleteDeal(

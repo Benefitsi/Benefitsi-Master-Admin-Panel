@@ -271,6 +271,10 @@ type PartnerWorkspaceProps = {
   partners: PartnerWithDeals[]
   cities: City[]
   owners: OwnerOption[]
+  initialMode?: "view" | "create"
+  initialPartnerId?: string
+  initialSettingsTab?: string
+  initialView?: "settings" | "microsite"
 }
 
 type InitialDealDraft = {
@@ -350,6 +354,25 @@ type PartnerSettingsTab =
   | "activity"
   | "danger"
 
+function isPartnerSettingsTab(value: string | undefined): value is PartnerSettingsTab {
+  return ["details", "rewards", "deals", "menu", "access", "activity", "danger"].includes(
+    value ?? "",
+  )
+}
+
+function rememberWorkspaceLocation(
+  updates: Record<string, string | null | undefined>,
+) {
+  const url = new URL(window.location.href)
+
+  for (const [name, value] of Object.entries(updates)) {
+    if (value) url.searchParams.set(name, value)
+    else url.searchParams.delete(name)
+  }
+
+  window.history.replaceState(window.history.state, "", url)
+}
+
 type CreatePartnerTab = "profile" | "operations" | "offers" | "menu" | "review"
 
 type CreatePartnerReviewSnapshot = {
@@ -415,15 +438,29 @@ export function PartnerWorkspace({
   partners,
   cities,
   owners,
+  initialMode = "view",
+  initialPartnerId = "",
+  initialSettingsTab,
+  initialView = "settings",
 }: PartnerWorkspaceProps) {
   const [query, setQuery] = useState("")
   const [mode, setMode] = useState<"view" | "create">(
-    partners.length ? "view" : "create",
+    partners.length && initialMode === "view" ? "view" : "create",
   )
-  const [selectedId, setSelectedId] = useState(partners[0]?.id ?? "")
+  const [selectedId, setSelectedId] = useState(
+    initialPartnerId || partners[0]?.id || "",
+  )
+  const [workspaceLocation, setWorkspaceLocation] = useState<{
+    tab: PartnerSettingsTab
+    view: "settings" | "microsite"
+  }>({
+    tab: isPartnerSettingsTab(initialSettingsTab) ? initialSettingsTab : "details",
+    view: initialView,
+  })
   const startCreatePartner = useCallback(() => {
     setSelectedId("")
     setMode("create")
+    rememberWorkspaceLocation({ mode: "create", partner: null, tab: null, view: null })
   }, [])
 
   const partnerCount = partners.length
@@ -496,6 +533,13 @@ export function PartnerWorkspace({
         onSelectPartner={(partnerId) => {
           setSelectedId(partnerId)
           setMode("view")
+          setWorkspaceLocation({ tab: "details", view: "settings" })
+          rememberWorkspaceLocation({
+            mode: "view",
+            partner: partnerId,
+            tab: "details",
+            view: "settings",
+          })
         }}
       />
 
@@ -538,6 +582,13 @@ export function PartnerWorkspace({
                   onSelect={() => {
                     setSelectedId(partner.id ?? "")
                     setMode("view")
+                    setWorkspaceLocation({ tab: "details", view: "settings" })
+                    rememberWorkspaceLocation({
+                      mode: "view",
+                      partner: partner.id,
+                      tab: "details",
+                      view: "settings",
+                    })
                   }}
                 />
               ))
@@ -564,6 +615,9 @@ export function PartnerWorkspace({
                 owners={owners}
                 onDeleted={startCreatePartner}
                 partner={selectedPartner}
+                initialSettingsTab={workspaceLocation.tab}
+                initialView={workspaceLocation.view}
+                onLocationChange={setWorkspaceLocation}
               />
           ) : (
             <EditorShell
@@ -703,11 +757,20 @@ function PartnerDetail({
   cities,
   owners,
   onDeleted,
+  initialSettingsTab,
+  initialView = "settings",
+  onLocationChange,
 }: {
   partner: PartnerWithDeals
   cities: City[]
   owners: OwnerOption[]
   onDeleted: () => void
+  initialSettingsTab?: string
+  initialView?: "settings" | "microsite"
+  onLocationChange?: (location: {
+    tab: PartnerSettingsTab
+    view: "settings" | "microsite"
+  }) => void
 }) {
   const partnerFormId = `partner-form-${partner.id ?? "partner"}`
   const partnerIdentity = partner.id ?? "partner"
@@ -722,7 +785,7 @@ function PartnerDetail({
     activeView: "settings" | "microsite"
   }>({
     partnerIdentity,
-    activeView: "settings",
+    activeView: initialView,
   })
   const activeView =
     viewState.partnerIdentity === partnerIdentity
@@ -731,7 +794,10 @@ function PartnerDetail({
   const [tabState, setTabState] = useState<{
     partnerIdentity: string
     tab: PartnerSettingsTab
-  }>({ partnerIdentity, tab: "details" })
+  }>({
+    partnerIdentity,
+    tab: isPartnerSettingsTab(initialSettingsTab) ? initialSettingsTab : "details",
+  })
   const requestedTab =
     tabState.partnerIdentity === partnerIdentity ? tabState.tab : "details"
   const settingsTab =
@@ -759,6 +825,12 @@ function PartnerDetail({
     setViewState({
       partnerIdentity,
       activeView: nextView,
+    })
+    onLocationChange?.({ tab: settingsTab, view: nextView })
+    rememberWorkspaceLocation({
+      mode: "view",
+      partner: partner.id,
+      view: nextView,
     })
   }
 
@@ -815,7 +887,16 @@ function PartnerDetail({
                   key={tab.id}
                   type="button"
                   onClick={() =>
-                    setTabState({ partnerIdentity, tab: tab.id })
+                    {
+                      setTabState({ partnerIdentity, tab: tab.id })
+                      onLocationChange?.({ tab: tab.id, view: "settings" })
+                      rememberWorkspaceLocation({
+                        mode: "view",
+                        partner: partner.id,
+                        tab: tab.id,
+                        view: "settings",
+                      })
+                    }
                   }
                   title={tab.label}
                   aria-current={settingsTab === tab.id ? "page" : undefined}
@@ -6397,14 +6478,26 @@ function MenuCard({
       current.filter((category) => category.id !== state.deletedId),
     )
     setLocalItems((current) =>
-      current.map((item) =>
-        item.category_id === state.deletedId
-          ? { ...item, category_id: null }
-          : item,
-      ),
+      current.filter((item) => item.category_id !== state.deletedId),
     )
     setCategoryOrderIds([])
     setCategoryEditor(null)
+  }, [])
+
+  const handleItemDeleted = useCallback((state: PartnerActionState) => {
+    if (!state.deletedId) return
+
+    setLocalItems((current) =>
+      current.filter((item) => item.id !== state.deletedId),
+    )
+    setLocalCategories((current) =>
+      current.map((category) => ({
+        ...category,
+        items: category.items.filter((item) => item.id !== state.deletedId),
+      })),
+    )
+    setItemOrderIds([])
+    setItemEditor(null)
   }, [])
   const nextCategorySortOrder = nextAvailablePosition(
     categoryCards.map((category) => category.sort_order),
@@ -6662,6 +6755,7 @@ function MenuCard({
                 >
                   <MenuItemCard
                     item={item}
+                    onDelete={handleItemDeleted}
                     onDuplicate={() => setItemEditor({ mode: "duplicate", item })}
                     onEdit={() => setItemEditor({ mode: "edit", item })}
                   />
@@ -6701,6 +6795,7 @@ function MenuCard({
         editor={itemEditor}
         menuId={menu.id ?? ""}
         onClose={() => setItemEditor(null)}
+        onDeleted={handleItemDeleted}
       />
     </div>
   )
@@ -7080,7 +7175,7 @@ function DeleteMenuCategoryForm({
     <form
       onSubmit={(event) => {
         event.preventDefault()
-        if (!window.confirm(`Delete ${categoryName || "this menu category"}? Its items will be moved to Other.`)) {
+        if (!window.confirm(`Delete ${categoryName || "this menu category"} and all of its items?`)) {
           return
         }
 
@@ -7124,10 +7219,12 @@ function DeleteMenuCategoryForm({
 
 function MenuItemCard({
   item,
+  onDelete,
   onDuplicate,
   onEdit,
 }: {
   item: MenuItem
+  onDelete: (state: PartnerActionState) => void
   onDuplicate: () => void
   onEdit: () => void
 }) {
@@ -7163,10 +7260,18 @@ function MenuItemCard({
         onClick={onDuplicate}
         aria-label={`Duplicate ${item.name || "menu item"}`}
         title="Duplicate item"
-        className="absolute right-2 top-2 z-10 grid size-8 place-items-center rounded-full border border-white/70 bg-white/92 text-sm font-bold text-[#061829] shadow-md backdrop-blur transition hover:scale-105 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="absolute right-12 top-2 z-10 grid size-8 place-items-center rounded-full border border-white/70 bg-white/92 text-sm font-bold text-[#061829] shadow-md backdrop-blur transition hover:scale-105 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
         ⧉
       </button>
+      {item.id ? (
+        <DeleteMenuItemForm
+          iconOnly
+          itemId={item.id}
+          itemName={item.name}
+          onDeleted={onDelete}
+        />
+      ) : null}
     </article>
   )
 }
@@ -7178,6 +7283,7 @@ function MenuItemEditorDialog({
   editor,
   menuId,
   onClose,
+  onDeleted,
 }: {
   categoryOptions: { value: string; label: string }[]
   defaultCategoryId: string
@@ -7185,6 +7291,7 @@ function MenuItemEditorDialog({
   editor: MenuItemEditorState | null
   menuId: string
   onClose: () => void
+  onDeleted: (state: PartnerActionState) => void
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -7252,7 +7359,11 @@ function MenuItemEditorDialog({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {editor.mode === "edit" && item?.id ? (
-              <DeleteMenuItemForm itemId={item.id} onDeleted={onClose} />
+              <DeleteMenuItemForm
+                itemId={item.id}
+                itemName={item.name}
+                onDeleted={onDeleted}
+              />
             ) : null}
             <button
               type="button"
@@ -7400,32 +7511,60 @@ function MenuItemForm({
 
 function DeleteMenuItemForm({
   itemId,
+  itemName,
+  iconOnly = false,
   onDeleted,
 }: {
   itemId: string
-  onDeleted?: () => void
+  itemName?: string | null
+  iconOnly?: boolean
+  onDeleted?: (state: PartnerActionState) => void
 }) {
-  const [state, formAction] = useActionState(deleteMenuItem, initialState)
-  const formRef = useActionSuccess(state, onDeleted)
+  const [state, setState] = useState(initialState)
+  const [isPending, startTransition] = useTransition()
 
   return (
     <form
-      ref={formRef}
-      action={formAction}
       onSubmit={(event) => {
-        if (!window.confirm("Delete this menu item?")) {
-          event.preventDefault()
+        event.preventDefault()
+        if (!window.confirm(`Delete ${itemName || "this menu item"}?`)) {
+          return
         }
+
+        const formData = new FormData(event.currentTarget)
+        startTransition(async () => {
+          try {
+            const result = await deleteMenuItem(initialState, formData)
+            setState(result)
+            dispatchActionToast(result)
+            if (result.ok) onDeleted?.(result)
+          } catch {
+            const result = {
+              ok: false,
+              message: "Unable to delete the menu item.",
+            }
+            setState(result)
+            dispatchActionToast(result)
+          }
+        })
       }}
     >
       <input type="hidden" name="id" value={itemId} />
-      <ActionMessage state={state} />
-      <SubmitButton
-        label="Delete"
-        pendingLabel="Deleting item..."
-        size="tiny"
-        tone="danger"
-      />
+      {!iconOnly ? <ActionMessage state={state} toast={false} /> : null}
+      {iconOnly ? (
+        <IconDeleteSubmitButton
+          label={`Delete ${itemName || "menu item"}`}
+          pendingOverride={isPending}
+        />
+      ) : (
+        <SubmitButton
+          label="Delete"
+          pendingLabel="Deleting item..."
+          pendingOverride={isPending}
+          size="tiny"
+          tone="danger"
+        />
+      )}
     </form>
   )
 }

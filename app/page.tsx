@@ -8,7 +8,11 @@ import { AdminShell } from "./admin-shell"
 
 export const dynamic = "force-dynamic"
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const config = getSupabaseConfig()
 
   if (!config.isConfigured) {
@@ -23,6 +27,16 @@ export default async function DashboardPage() {
   }
 
   const dashboard = await getDashboardData(supabase)
+  const query = await searchParams
+  const requestedPartnerId = singleQueryValue(query.partner)
+  const requestedMode = singleQueryValue(query.mode)
+  const requestedView = singleQueryValue(query.view)
+  const requestedTab = singleQueryValue(query.tab)
+  const initialPartnerId = dashboard.partners.some(
+    (partner) => partner.id === requestedPartnerId,
+  )
+    ? requestedPartnerId
+    : dashboard.partners[0]?.id ?? ""
   const adminName =
     adminSession.profile?.display_name ||
     adminSession.profile?.email ||
@@ -50,10 +64,18 @@ export default async function DashboardPage() {
           partners={dashboard.partners}
           cities={dashboard.cities}
           owners={dashboard.owners}
+          initialMode={requestedMode === "create" ? "create" : "view"}
+          initialPartnerId={initialPartnerId}
+          initialSettingsTab={requestedTab}
+          initialView={requestedView === "microsite" ? "microsite" : "settings"}
         />
       </div>
     </AdminShell>
   )
+}
+
+function singleQueryValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? ""
 }
 
 function SetupRequired() {
