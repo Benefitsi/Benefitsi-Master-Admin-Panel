@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
 import sharp from "sharp"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { requireAdmin } from "@/lib/admin"
@@ -40,6 +41,15 @@ export type PartnerActionState = {
   ok: boolean
   partnerId?: string
   created?: boolean
+  menuCategory?: {
+    id: string
+    menu_id: string | null
+    name: string | null
+    slug: string | null
+    image_url: string | null
+    sort_order: number | null
+  }
+  deletedId?: string
 }
 
 export type PartnerCoverUploadTarget =
@@ -1290,21 +1300,31 @@ export async function saveMenuCategory(
   }
 
   const result = id
-    ? await supabase.from("menu_categories").update(payload).eq("id", id)
-    : await supabase.from("menu_categories").insert(payload)
+    ? await supabase
+        .from("menu_categories")
+        .update(payload)
+        .eq("id", id)
+        .select("id,menu_id,name,slug,image_url,sort_order")
+        .single()
+    : await supabase
+        .from("menu_categories")
+        .insert(payload)
+        .select("id,menu_id,name,slug,image_url,sort_order")
+        .single()
 
   if (result.error) {
     await cleanupUploadedFiles(supabase, uploadedPaths)
     return { ok: false, message: result.error.message }
   }
 
-  await cleanupPublicMediaUrls(supabase, oldImageUrlsToCleanup)
-
-  revalidatePath("/")
+  if (oldImageUrlsToCleanup.length) {
+    after(() => cleanupPublicMediaUrls(supabase, oldImageUrlsToCleanup))
+  }
 
   return {
     ok: true,
     message: id ? "Menu category updated." : "Menu category added.",
+    menuCategory: result.data ?? undefined,
   }
 }
 
@@ -1351,11 +1371,11 @@ export async function deleteMenuCategory(
     typeof existingResult.data?.image_url === "string"
       ? existingResult.data.image_url
       : ""
-  await cleanupPublicMediaUrls(supabase, imageUrl ? [imageUrl] : [])
+  if (imageUrl) {
+    after(() => cleanupPublicMediaUrls(supabase, [imageUrl]))
+  }
 
-  revalidatePath("/")
-
-  return { ok: true, message: "Menu category removed." }
+  return { ok: true, message: "Menu category removed.", deletedId: id }
 }
 
 export async function saveMenuItem(

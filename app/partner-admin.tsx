@@ -87,9 +87,76 @@ const initialState: PartnerActionState = {
   message: "",
 }
 
+const toastEventName = "benefitsi:action-toast"
+
+type ActionToast = {
+  id: number
+  message: string
+  ok: boolean
+}
+
+function useToastNotification(state: PartnerActionState) {
+  useEffect(() => {
+    if (!state.message) return
+
+    window.dispatchEvent(
+      new CustomEvent(toastEventName, {
+        detail: { message: state.message, ok: state.ok },
+      }),
+    )
+  }, [state])
+}
+
+function ToastViewport() {
+  const [toast, setToast] = useState<ActionToast | null>(null)
+
+  useEffect(() => {
+    let timeoutId: number | undefined
+    const showToast = (event: Event) => {
+      const detail = (event as CustomEvent<Omit<ActionToast, "id">>).detail
+      window.clearTimeout(timeoutId)
+      setToast({ ...detail, id: Date.now() })
+      timeoutId = window.setTimeout(() => setToast(null), 3600)
+    }
+
+    window.addEventListener(toastEventName, showToast)
+    return () => {
+      window.clearTimeout(timeoutId)
+      window.removeEventListener(toastEventName, showToast)
+    }
+  }, [])
+
+  if (!toast) return null
+
+  return (
+    <div
+      key={toast.id}
+      role={toast.ok ? "status" : "alert"}
+      className={`fixed right-4 top-4 z-[100] flex max-w-sm items-start gap-3 rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl animate-in fade-in slide-in-from-top-2 ${
+        toast.ok
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-rose-200 bg-rose-50 text-rose-800"
+      }`}
+    >
+      <span aria-hidden="true" className="text-base leading-5">
+        {toast.ok ? "✓" : "!"}
+      </span>
+      <span className="leading-5">{toast.message}</span>
+      <button
+        type="button"
+        onClick={() => setToast(null)}
+        aria-label="Dismiss notification"
+        className="ml-2 text-lg leading-5 opacity-60 transition hover:opacity-100"
+      >
+        ×
+      </button>
+    </div>
+  )
+}
+
 function useActionSuccess(
   state: PartnerActionState,
-  onSuccess?: () => void,
+  onSuccess?: (state: PartnerActionState) => void,
 ) {
   const onSuccessRef = useRef(onSuccess)
   const formRef = useRef<HTMLFormElement>(null)
@@ -100,7 +167,7 @@ function useActionSuccess(
 
   useEffect(() => {
     if (state.ok) {
-      onSuccessRef.current?.()
+      onSuccessRef.current?.(state)
       const details = formRef.current?.closest("details")
       if (details?.open) details.open = false
     }
@@ -409,6 +476,7 @@ export function PartnerWorkspace({
 
   return (
     <section id="partners" className="partner-management-brand space-y-3">
+      <ToastViewport />
       <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-5">
         <LiveMetric label="Partners" value={partnerCount} />
         <LiveMetric label="Active partners" value={activePartners} />
@@ -6278,13 +6346,60 @@ function MenuCard({
   const [itemOrderIds, setItemOrderIds] = useState<string[]>([])
   const [draggedCategoryId, setDraggedCategoryId] = useState("")
   const [draggedItemId, setDraggedItemId] = useState("")
+  const [localCategories, setLocalCategories] = useState(menu.categories)
+  const [localItems, setLocalItems] = useState(menu.items)
+  const [previousMenu, setPreviousMenu] = useState(menu)
   const [reorderMessage, setReorderMessage] = useState("")
   const [isReordering, startReorderTransition] = useTransition()
   const categoryCards = applyLocalSortOrder(
-    sortMenuCategories(menu.categories),
+    sortMenuCategories(localCategories),
     categoryOrderIds,
   )
-  const itemCards = applyLocalSortOrder(sortMenuItems(menu.items), itemOrderIds)
+  const itemCards = applyLocalSortOrder(sortMenuItems(localItems), itemOrderIds)
+
+  if (menu !== previousMenu) {
+    setPreviousMenu(menu)
+    setLocalCategories(menu.categories)
+    setLocalItems(menu.items)
+  }
+
+  const handleCategorySaved = useCallback((state: PartnerActionState) => {
+    const savedCategory = state.menuCategory
+    if (!savedCategory) return
+
+    setLocalCategories((current) => {
+      const existing = current.find((category) => category.id === savedCategory.id)
+      const nextCategory: MenuCategory = {
+        ...savedCategory,
+        items: existing?.items ?? [],
+      }
+
+      return existing
+        ? current.map((category) =>
+            category.id === savedCategory.id ? nextCategory : category,
+          )
+        : [...current, nextCategory]
+    })
+    setCategoryOrderIds([])
+    setCategoryEditor(null)
+  }, [])
+
+  const handleCategoryDeleted = useCallback((state: PartnerActionState) => {
+    if (!state.deletedId) return
+
+    setLocalCategories((current) =>
+      current.filter((category) => category.id !== state.deletedId),
+    )
+    setLocalItems((current) =>
+      current.map((item) =>
+        item.category_id === state.deletedId
+          ? { ...item, category_id: null }
+          : item,
+      ),
+    )
+    setCategoryOrderIds([])
+    setCategoryEditor(null)
+  }, [])
   const nextCategorySortOrder = nextAvailablePosition(
     categoryCards.map((category) => category.sort_order),
   )
@@ -6401,11 +6516,11 @@ function MenuCard({
       <div className="mt-4 flex flex-wrap gap-2 text-sm text-zinc-600">
         <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 py-2">
           <span className="font-medium text-zinc-800">Categories:</span>
-          <span>{menu.categories.length}</span>
+          <span>{localCategories.length}</span>
         </span>
         <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 py-2">
           <span className="font-medium text-zinc-800">Items:</span>
-          <span>{menu.items.length}</span>
+          <span>{localItems.length}</span>
         </span>
         <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 py-2">
           <span className="font-medium text-zinc-800">Updated:</span>
@@ -6476,6 +6591,7 @@ function MenuCard({
               >
                 <MenuCategoryCard
                   category={category}
+                  onDelete={handleCategoryDeleted}
                   onEdit={() => setCategoryEditor({ mode: "edit", category })}
                 />
               </div>
@@ -6556,6 +6672,8 @@ function MenuCard({
         editor={categoryEditor}
         menuId={menu.id ?? ""}
         onClose={() => setCategoryEditor(null)}
+        onDeleted={handleCategoryDeleted}
+        onSaved={handleCategorySaved}
       />
       <MenuItemEditorDialog
         categoryOptions={categoryOptions}
@@ -6738,34 +6856,46 @@ function DeleteMenuForm({ menuId }: { menuId: string }) {
 
 function MenuCategoryCard({
   category,
+  onDelete,
   onEdit,
 }: {
   category: MenuCategory
+  onDelete: (state: PartnerActionState) => void
   onEdit: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onEdit}
-      className="group relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-zinc-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
-      title="Edit category"
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        alt={`${category.name || "Menu category"} picture`}
-        src={category.image_url || uploadPlaceholderSrc}
-        className={`absolute inset-0 size-full ${category.image_url ? "object-cover" : "object-contain p-7"}`}
-      />
-      <span className="absolute inset-0 bg-gradient-to-t from-[#061829]/95 via-[#061829]/15 to-transparent" />
-      <span className="absolute inset-x-0 bottom-0 block p-3 text-white">
-        <span className="block truncate text-sm font-bold">
-          {category.name || "Untitled category"}
+    <article className="group relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-zinc-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg">
+      <button
+        type="button"
+        onClick={onEdit}
+        className="absolute inset-0 size-full text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-300"
+        title="Edit category"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          alt={`${category.name || "Menu category"} picture`}
+          src={category.image_url || uploadPlaceholderSrc}
+          className={`absolute inset-0 size-full ${category.image_url ? "object-cover" : "object-contain p-7"}`}
+        />
+        <span className="absolute inset-0 bg-gradient-to-t from-[#061829]/95 via-[#061829]/15 to-transparent" />
+        <span className="absolute inset-x-0 bottom-0 block p-3 text-white">
+          <span className="block truncate text-sm font-bold">
+            {category.name || "Untitled category"}
+          </span>
+          <span className="mt-1 block text-[11px] font-semibold text-white/75">
+            {category.items.length} {category.items.length === 1 ? "item" : "items"}
+          </span>
         </span>
-        <span className="mt-1 block text-[11px] font-semibold text-white/75">
-          {category.items.length} {category.items.length === 1 ? "item" : "items"}
-        </span>
-      </span>
-    </button>
+      </button>
+      {category.id ? (
+        <DeleteMenuCategoryForm
+          categoryId={category.id}
+          categoryName={category.name}
+          iconOnly
+          onDeleted={onDelete}
+        />
+      ) : null}
+    </article>
   )
 }
 
@@ -6774,11 +6904,15 @@ function MenuCategoryEditorDialog({
   editor,
   menuId,
   onClose,
+  onDeleted,
+  onSaved,
 }: {
   defaultSortOrder: number
   editor: MenuCategoryEditorState | null
   menuId: string
   onClose: () => void
+  onDeleted: (state: PartnerActionState) => void
+  onSaved: (state: PartnerActionState) => void
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -6820,7 +6954,7 @@ function MenuCategoryEditorDialog({
           </h3>
           <div className="flex items-center gap-2">
             {category?.id ? (
-              <DeleteMenuCategoryForm categoryId={category.id} onDeleted={onClose} />
+              <DeleteMenuCategoryForm categoryId={category.id} onDeleted={onDeleted} />
             ) : null}
             <button
               type="button"
@@ -6837,7 +6971,7 @@ function MenuCategoryEditorDialog({
             category={category}
             defaultSortOrder={defaultSortOrder}
             menuId={menuId}
-            onSaved={onClose}
+            onSaved={onSaved}
           />
         </div>
       </section>
@@ -6854,7 +6988,7 @@ function MenuCategoryForm({
   category?: MenuCategory
   defaultSortOrder?: number
   menuId: string
-  onSaved?: () => void
+  onSaved?: (state: PartnerActionState) => void
 }) {
   const [state, formAction] = useActionState(saveMenuCategory, initialState)
   const formRef = useActionSuccess(state, onSaved)
@@ -6901,32 +7035,40 @@ function MenuCategoryForm({
 
 function DeleteMenuCategoryForm({
   categoryId,
+  categoryName,
+  iconOnly = false,
   onDeleted,
 }: {
   categoryId: string
-  onDeleted?: () => void
+  categoryName?: string | null
+  iconOnly?: boolean
+  onDeleted?: (state: PartnerActionState) => void
 }) {
   const [state, formAction] = useActionState(deleteMenuCategory, initialState)
   const formRef = useActionSuccess(state, onDeleted)
+  useToastNotification(state)
 
   return (
     <form
       ref={formRef}
       action={formAction}
       onSubmit={(event) => {
-        if (!window.confirm("Delete this menu category?")) {
+        if (!window.confirm(`Delete ${categoryName || "this menu category"}? Its items will be moved to Other.`)) {
           event.preventDefault()
         }
       }}
     >
       <input type="hidden" name="id" value={categoryId} />
-      <ActionMessage state={state} />
-      <SubmitButton
-        label="Delete"
-        pendingLabel="Deleting category..."
-        size="tiny"
-        tone="danger"
-      />
+      {iconOnly ? (
+        <IconDeleteSubmitButton label={`Delete ${categoryName || "menu category"}`} />
+      ) : (
+        <SubmitButton
+          label="Delete"
+          pendingLabel="Deleting category..."
+          size="tiny"
+          tone="danger"
+        />
+      )}
     </form>
   )
 }
@@ -9516,6 +9658,8 @@ function CheckboxField({
 }
 
 function ActionMessage({ state }: { state: PartnerActionState }) {
+  useToastNotification(state)
+
   if (!state.message) {
     return null
   }
@@ -9531,6 +9675,28 @@ function ActionMessage({ state }: { state: PartnerActionState }) {
     >
       {state.message}
     </p>
+  )
+}
+
+function IconDeleteSubmitButton({ label }: { label: string }) {
+  const { pending } = useFormStatus()
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-label={label}
+      title={label}
+      className="absolute right-2 top-2 z-10 grid size-8 place-items-center rounded-full border border-white/70 bg-white/92 text-rose-700 shadow-md backdrop-blur transition hover:scale-105 hover:bg-rose-50 disabled:cursor-wait disabled:text-zinc-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+    >
+      {pending ? (
+        <LoadingSpinner className="size-3.5" />
+      ) : (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" />
+        </svg>
+      )}
+    </button>
   )
 }
 
