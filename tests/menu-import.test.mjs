@@ -9,6 +9,7 @@ const {
   runMenuImportBatch,
   prepareMissingAddonsRetry,
   createAddonUpdatePlan,
+  applyMenuItemUpdatePlan,
 } = menuImport
 
 function jsonFile(name, value) {
@@ -252,33 +253,109 @@ test("schema compatibility warnings are preserved without failing a valid menu",
   assert.match(result.warnings[0], /add-on was skipped/)
 })
 
-test("add-on update plans match category and item names without changing other fields", async () => {
+test("existing item updates use normalized category and item names and preserve stored name casing", async () => {
   const prepared = await readMenuImportFiles([
     jsonFile("pizza-addons.json", menuDocument({
-      name: "Margherita",
+      name: "  MARＧHERITA  ",
       addons: [{ title: "33cm", cost: 2.5 }],
     })),
   ])
   const plan = createAddonUpdatePlan(
     prepared.menus,
-    [{ id: "category-1", name: "Main dishes", image_url: "manual-category.jpg" }],
+    [{ id: "category-1", name: "Main   dishes", image_url: "manual-category.jpg" }],
     [{
       id: "item-1",
       category_id: "category-1",
       name: "Margherita",
+      description: null,
       image_url: "manual-item.jpg",
       price: 99,
+      currency: "EUR",
+      tags: [],
+      allergens: [],
+      addons: [],
+      is_popular: false,
     }],
   )
 
   assert.deepEqual(plan.warnings, [])
   assert.deepEqual(plan.updates, [{
     itemId: "item-1",
-    addons: [{ title: "33cm", description: "", cost: 2.5 }],
+    values: {
+      description: null,
+      price: 9.5,
+      currency: "EUR",
+      image_url: null,
+      tags: [],
+      allergens: [],
+      is_popular: false,
+      addons: [{ title: "33cm", description: "", cost: 2.5 }],
+    },
+    changedFields: ["price", "image_url", "addons"],
+    addonChanges: { created: 1, updated: 0, removed: 0 },
     filename: "pizza-addons.json",
     category: "Main dishes",
-    item: "Margherita",
+    item: "MARＧHERITA",
   }])
-  assert.equal("image_url" in plan.updates[0], false)
-  assert.equal("price" in plan.updates[0], false)
+  assert.equal("name" in plan.updates[0].values, false)
+})
+
+test("an unchanged existing pizza saves all five newly imported add-ons", async () => {
+  const addons = Array.from({ length: 5 }, (_, index) => ({
+    title: `Add-on ${index + 1}`,
+    description: index % 2 ? `Choice ${index + 1}` : undefined,
+    cost: index === 0 ? 0 : index,
+  }))
+  const prepared = await readMenuImportFiles([
+    jsonFile("dilara-addons.json", menuDocument({
+      name: "Dilara Pizza",
+      description: "Tomato and cheese",
+      price: 12,
+      addons,
+    })),
+  ])
+  const plan = createAddonUpdatePlan(
+    prepared.menus,
+    [{ id: "category-1", name: "Main dishes" }],
+    [{
+      id: "item-1",
+      category_id: "category-1",
+      name: "Dilara Pizza",
+      description: "Tomato and cheese",
+      price: 12,
+      currency: "EUR",
+      image_url: null,
+      tags: [],
+      allergens: [],
+      is_popular: false,
+      addons: [],
+    }],
+  )
+  const saved = []
+  const supabase = {
+    from(table) {
+      assert.equal(table, "menu_items")
+      return {
+        update(values) {
+          return {
+            async eq(column, itemId) {
+              saved.push({ values, column, itemId })
+              return { error: null }
+            },
+          }
+        },
+      }
+    },
+  }
+
+  const result = await applyMenuItemUpdatePlan(supabase, plan)
+
+  assert.equal(result.successfulUpdates.length, 1)
+  assert.deepEqual(result.addonChanges, { created: 5, updated: 0, removed: 0 })
+  assert.equal(saved.length, 1)
+  assert.equal(saved[0].values.addons.length, 5)
+  assert.equal(saved[0].values.addons[0].cost, 0)
+  assert.equal(saved[0].values.addons[0].description, "")
+  assert.equal(saved[0].column, "id")
+  assert.equal(saved[0].itemId, "item-1")
 })

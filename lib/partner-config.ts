@@ -8,6 +8,8 @@ export type PartnerMediaSpec = {
   previewFit: "contain" | "cover"
 }
 
+export const DEFAULT_MENU_STATUS = "published"
+
 export const partnerMediaSpecs = {
   logo: {
     label: "Logo",

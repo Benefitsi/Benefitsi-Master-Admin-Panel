@@ -7,6 +7,7 @@ import sharp from "sharp"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { requireAdmin } from "@/lib/admin"
 import {
+  DEFAULT_MENU_STATUS,
   adminTextLimits,
   MAX_PARTNER_SOCIALS,
   isPartnerSocialPlatform,
@@ -40,6 +41,7 @@ const {
   validateMenuDocument,
   prepareMissingAddonsRetry,
   createAddonUpdatePlan,
+  applyMenuItemUpdatePlan,
 } = menuImport
 const { readMenuZipFiles } = menuZipImport
 
@@ -1381,16 +1383,15 @@ export async function saveMenuCategory(
   const uploadedPaths: UploadedStoragePath[] = []
   const oldImageUrlsToCleanup: string[] = []
   let imageUrl = removeImage ? null : existingImageUrl || null
+  const menuId = stringValue(formData, "menu_id")
 
   if (imageFile) {
     const mediaError = validateMediaFile(imageFile)
-    const menuId = stringValue(formData, "menu_id")
 
     if (mediaError) return { ok: false, message: mediaError }
     if (!menuId) {
       return { ok: false, message: "A menu category must be attached to a menu." }
     }
-
     try {
       const uploaded = await uploadPartnerFile(
         supabase,
@@ -1404,10 +1405,7 @@ export async function saveMenuCategory(
     } catch (error) {
       return {
         ok: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Unable to upload the menu category image.",
+        message: error instanceof Error ? error.message : "Unable to upload the menu category image.",
       }
     }
   } else if (removeImage && existingImageUrl) {
@@ -1539,10 +1537,10 @@ export async function saveMenuItem(
   const uploadedPaths: UploadedStoragePath[] = []
   const oldImageUrlsToCleanup: string[] = []
   let imageUrl = removeImage ? null : existingImageUrl || null
+  const menuId = stringValue(formData, "menu_id")
 
   if (imageFile) {
     const mediaError = validateMediaFile(imageFile)
-    const menuId = stringValue(formData, "menu_id")
 
     if (mediaError) {
       return { ok: false, message: mediaError }
@@ -1559,20 +1557,13 @@ export async function saveMenuItem(
         partnerMediaSpecs.menuItem,
         `menu-items/${menuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
       )
-
       imageUrl = uploaded.url
       uploadedPaths.push(uploaded)
-
-      if (existingImageUrl) {
-        oldImageUrlsToCleanup.push(existingImageUrl)
-      }
+      if (existingImageUrl) oldImageUrlsToCleanup.push(existingImageUrl)
     } catch (error) {
       return {
         ok: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Unable to upload the menu item image.",
+        message: error instanceof Error ? error.message : "Unable to upload the menu item image.",
       }
     }
   } else if (removeImage && existingImageUrl) {
@@ -1629,6 +1620,134 @@ export async function saveMenuItem(
     ok: true,
     message: id ? "Menu item updated." : "Menu item added.",
     menuItem: result.data ?? undefined,
+  }
+}
+
+export async function saveMenuCategoryImage(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+  const menuId = stringValue(formData, "menu_id")
+  const imageFile = fileValue(formData, "image_file")
+
+  if (!id || !menuId || !imageFile) {
+    return { ok: false, message: "A saved menu category and image are required." }
+  }
+  const mediaError = validateMediaFile(imageFile)
+  if (mediaError) return { ok: false, message: mediaError }
+
+  const existingResult = await supabase
+    .from("menu_categories")
+    .select("image_url")
+    .eq("id", id)
+    .eq("menu_id", menuId)
+    .maybeSingle()
+  if (existingResult.error || !existingResult.data) {
+    return { ok: false, message: existingResult.error?.message ?? "Menu category not found." }
+  }
+  const previousImageUrl = existingResult.data.image_url
+
+  let uploaded: (UploadedStoragePath & { url: string }) | null = null
+  try {
+    uploaded = await uploadPartnerFile(
+      supabase,
+      imageFile,
+      partnerMediaSpecs.menuCategory,
+      `menu-categories/${menuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
+    )
+    const result = await supabase
+      .from("menu_categories")
+      .update({ image_url: uploaded.url })
+      .eq("id", id)
+      .eq("menu_id", menuId)
+      .select("id,menu_id,name,slug,image_url,sort_order")
+      .single()
+    if (result.error) {
+      await cleanupUploadedFiles(supabase, [uploaded])
+      return { ok: false, message: result.error.message }
+    }
+    if (previousImageUrl) {
+      after(() => cleanupPublicMediaUrls(supabase, [previousImageUrl]))
+    }
+    revalidatePath("/")
+    revalidatePath("/menu-approvals")
+    return {
+      ok: true,
+      message: "Menu category image uploaded.",
+      menuCategory: result.data ?? undefined,
+    }
+  } catch (error) {
+    if (uploaded) await cleanupUploadedFiles(supabase, [uploaded])
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Unable to upload the menu category image.",
+    }
+  }
+}
+
+export async function saveMenuItemImage(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+  const menuId = stringValue(formData, "menu_id")
+  const imageFile = fileValue(formData, "image_file")
+
+  if (!id || !menuId || !imageFile) {
+    return { ok: false, message: "A saved menu item and image are required." }
+  }
+  const mediaError = validateMediaFile(imageFile)
+  if (mediaError) return { ok: false, message: mediaError }
+
+  const existingResult = await supabase
+    .from("menu_items")
+    .select("image_url")
+    .eq("id", id)
+    .eq("menu_id", menuId)
+    .maybeSingle()
+  if (existingResult.error || !existingResult.data) {
+    return { ok: false, message: existingResult.error?.message ?? "Menu item not found." }
+  }
+  const previousImageUrl = existingResult.data.image_url
+
+  let uploaded: (UploadedStoragePath & { url: string }) | null = null
+  try {
+    uploaded = await uploadPartnerFile(
+      supabase,
+      imageFile,
+      partnerMediaSpecs.menuItem,
+      `menu-items/${menuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
+    )
+    const result = await supabase
+      .from("menu_items")
+      .update({ image_url: uploaded.url, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("menu_id", menuId)
+      .select("id,menu_id,category_id,name,description,price,currency,image_url,tags,allergens,addons,is_popular,is_stamp_eligible,sort_order")
+      .single()
+    if (result.error) {
+      await cleanupUploadedFiles(supabase, [uploaded])
+      return { ok: false, message: result.error.message }
+    }
+    if (previousImageUrl) {
+      after(() => cleanupPublicMediaUrls(supabase, [previousImageUrl]))
+    }
+    revalidatePath("/")
+    revalidatePath("/menu-approvals")
+    return {
+      ok: true,
+      message: "Menu item image uploaded.",
+      menuItem: result.data ?? undefined,
+    }
+  } catch (error) {
+    if (uploaded) await cleanupUploadedFiles(supabase, [uploaded])
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Unable to upload the menu item image.",
+    }
   }
 }
 
@@ -1876,7 +1995,10 @@ async function updateImportedMenuAddons(
 ): Promise<PartnerActionState> {
   const [categoriesResult, itemsResult] = await Promise.all([
     supabase.from("menu_categories").select("id,name").eq("menu_id", menuId),
-    supabase.from("menu_items").select("id,category_id,name").eq("menu_id", menuId),
+    supabase
+      .from("menu_items")
+      .select("id,category_id,name,description,price,currency,image_url,tags,allergens,is_popular,addons")
+      .eq("menu_id", menuId),
   ])
   if (categoriesResult.error || itemsResult.error) {
     return {
@@ -1893,45 +2015,19 @@ async function updateImportedMenuAddons(
     categoriesResult.data ?? [],
     itemsResult.data ?? [],
   )
-  type AddonUpdate = (typeof plan.updates)[number]
-  const results: Array<{
-    update: AddonUpdate
-    result: { error: { message: string } | null }
-  }> = []
-
-  // Keep the request responsive without flooding the Supabase Data API with
-  // every item update at once. The operation is safe to retry because each
-  // update writes only the add-ons for its exact matched item.
-  const updateBatchSize = 6
-  for (let index = 0; index < plan.updates.length; index += updateBatchSize) {
-    const batch = plan.updates.slice(index, index + updateBatchSize)
-    results.push(
-      ...(await Promise.all(
-        batch.map(async (update: AddonUpdate) => ({
-          update,
-          result: await supabase
-            .from("menu_items")
-            .update({ addons: update.addons, updated_at: new Date().toISOString() })
-            .eq("id", update.itemId),
-        })),
-      )),
-    )
-  }
-  const failures = results
-    .filter(({ result }) => result.error)
-    .map(({ update, result }) =>
-      `${update.filename}: category "${update.category}" > item "${update.item}": ${result.error?.message ?? "add-ons could not be updated"}.`,
-    )
-  const updatedItems = results.length - failures.length
-  const updatedAddons = results
-    .filter(({ result }) => !result.error)
-    .map(({ update }) => ({ itemId: update.itemId, addons: update.addons }))
+  const applied = await applyMenuItemUpdatePlan(supabase, plan)
+  const updatedItems = applied.successfulUpdates.length
+  const updatedAddons = applied.successfulUpdates.map((update) => ({
+    itemId: update.itemId,
+    addons: update.values.addons,
+  }))
   const details = [
     ...prepared.errors,
     ...(prepared.warnings ?? []),
     ...plan.warnings,
-    ...failures,
+    ...applied.failures,
   ]
+  const addonSummary = `${applied.addonChanges.created} created, ${applied.addonChanges.updated} updated, ${applied.addonChanges.removed} removed`
 
   return {
     ok: updatedItems > 0,
@@ -1940,7 +2036,7 @@ async function updateImportedMenuAddons(
     updatedAddons,
     message: [
       updatedItems > 0
-        ? `Updated add-ons for ${updatedItems} existing menu item${updatedItems === 1 ? "" : "s"}. Manually uploaded images and all other item fields were preserved.`
+        ? `Updated ${updatedItems} existing menu item${updatedItems === 1 ? "" : "s"}. Add-ons: ${addonSummary}.`
         : "No existing menu items were updated. Check that the category and item names match the imported file.",
       ...details,
     ].join("\n"),
@@ -4580,7 +4676,7 @@ function parseMenuPayload(
     partner_id: partnerId,
     name: stringValue(formData, `${prefix}name`) || "Speisekarte",
     description: nullableStringValue(formData, `${prefix}description`),
-    status: stringValue(formData, `${prefix}status`) || "draft",
+    status: stringValue(formData, `${prefix}status`) || DEFAULT_MENU_STATUS,
   }
 }
 

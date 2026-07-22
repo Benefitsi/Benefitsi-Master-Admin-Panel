@@ -31,6 +31,7 @@ import type {
   Visit,
 } from "@/lib/admin-data"
 import {
+  DEFAULT_MENU_STATUS,
   adminTextLimits,
   MAX_PARTNER_SOCIALS,
   partnerMediaSpecs,
@@ -75,7 +76,9 @@ import {
   saveDeal,
   saveMenu,
   saveMenuCategory,
+  saveMenuCategoryImage,
   saveMenuItem,
+  saveMenuItemImage,
   savePartnerStaff,
   savePartner,
   saveRewardMilestone,
@@ -265,9 +268,9 @@ const inactivityUnitOptions = [
 ] as const
 
 const menuStatusOptions = [
-  { value: "draft", label: "Draft" },
-  { value: "review", label: "Needs review" },
   { value: "published", label: "Published" },
+  { value: "review", label: "Needs review" },
+  { value: "draft", label: "Draft" },
   { value: "archived", label: "Archived" },
 ] as const
 
@@ -2776,7 +2779,7 @@ function InitialMenuEditor({
             <SelectField
               label="Menu approval status"
               name="initial_menu_status"
-              defaultValue="draft"
+              defaultValue={DEFAULT_MENU_STATUS}
               options={menuStatusOptions}
               required
             />
@@ -6562,6 +6565,12 @@ function MenuCard({
   const [draggedItemId, setDraggedItemId] = useState("")
   const [localCategories, setLocalCategories] = useState(menu.categories)
   const [localItems, setLocalItems] = useState(menu.items)
+  const [uploadingCategoryImageIds, setUploadingCategoryImageIds] = useState<Set<string>>(
+    () => new Set(),
+  )
+  const [uploadingItemImageIds, setUploadingItemImageIds] = useState<Set<string>>(
+    () => new Set(),
+  )
   const [previousMenu, setPreviousMenu] = useState(menu)
   const [reorderMessage, setReorderMessage] = useState("")
   const [isReordering, startReorderTransition] = useTransition()
@@ -6577,7 +6586,7 @@ function MenuCard({
     setLocalItems(menu.items)
   }
 
-  const handleCategorySaved = useCallback((state: PartnerActionState) => {
+  const applySavedCategory = useCallback((state: PartnerActionState) => {
     const savedCategory = state.menuCategory
     if (!savedCategory) return
 
@@ -6594,9 +6603,34 @@ function MenuCard({
           )
         : [...current, nextCategory]
     })
+  }, [])
+  const handleCategorySaved = useCallback((state: PartnerActionState, imageFile?: File | null) => {
+    applySavedCategory(state)
     setCategoryOrderIds([])
     setCategoryEditor(null)
-  }, [])
+
+    const categoryId = state.menuCategory?.id
+    if (!imageFile || !categoryId || !menu.id) return
+
+    setUploadingCategoryImageIds((current) => new Set(current).add(categoryId))
+    const imageFormData = new FormData()
+    imageFormData.set("id", categoryId)
+    imageFormData.set("menu_id", menu.id)
+    imageFormData.set("image_file", imageFile)
+    void saveMenuCategoryImage(initialState, imageFormData)
+      .then((imageResult) => {
+        dispatchActionToast(imageResult)
+        if (imageResult.ok) applySavedCategory(imageResult)
+      }, () => dispatchActionToast({
+        ok: false,
+        message: "Unable to upload the menu category image.",
+      }))
+      .finally(() => setUploadingCategoryImageIds((current) => {
+        const next = new Set(current)
+        next.delete(categoryId)
+        return next
+      }))
+  }, [applySavedCategory, menu.id])
 
   const handleCategoryDeleted = useCallback((state: PartnerActionState) => {
     if (!state.deletedId) return
@@ -6626,7 +6660,7 @@ function MenuCard({
     setItemOrderIds([])
     setItemEditor(null)
   }, [])
-  const handleItemSaved = useCallback((state: PartnerActionState) => {
+  const applySavedItem = useCallback((state: PartnerActionState) => {
     const savedItem = state.menuItem
     if (!savedItem) return
 
@@ -6646,9 +6680,34 @@ function MenuCard({
           : category.items.filter((item) => item.id !== savedItem.id),
       })),
     )
+  }, [])
+  const handleItemSaved = useCallback((state: PartnerActionState, imageFile?: File | null) => {
+    applySavedItem(state)
     setItemOrderIds([])
     setItemEditor(null)
-  }, [])
+
+    const itemId = state.menuItem?.id
+    if (!imageFile || !itemId || !menu.id) return
+
+    setUploadingItemImageIds((current) => new Set(current).add(itemId))
+    const imageFormData = new FormData()
+    imageFormData.set("id", itemId)
+    imageFormData.set("menu_id", menu.id)
+    imageFormData.set("image_file", imageFile)
+    void saveMenuItemImage(initialState, imageFormData)
+      .then((imageResult) => {
+        dispatchActionToast(imageResult)
+        if (imageResult.ok) applySavedItem(imageResult)
+      }, () => dispatchActionToast({
+        ok: false,
+        message: "Unable to upload the menu item image.",
+      }))
+      .finally(() => setUploadingItemImageIds((current) => {
+        const next = new Set(current)
+        next.delete(itemId)
+        return next
+      }))
+  }, [applySavedItem, menu.id])
   const handleAddonsUpdated = useCallback(
     (updates: NonNullable<PartnerActionState["updatedAddons"]>) => {
       const addonsByItemId = new Map(
@@ -6776,6 +6835,12 @@ function MenuCard({
           <span className="font-medium text-zinc-800">Categories:</span>
           <span>{localCategories.length}</span>
         </span>
+        {uploadingCategoryImageIds.size + uploadingItemImageIds.size > 0 ? (
+          <span role="status" className="inline-flex items-center gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 font-semibold text-sky-800">
+            <LoadingSpinner className="size-3.5" />
+            Uploading {uploadingCategoryImageIds.size + uploadingItemImageIds.size} image{uploadingCategoryImageIds.size + uploadingItemImageIds.size === 1 ? "" : "s"} in the background…
+          </span>
+        ) : null}
         <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 py-2">
           <span className="font-medium text-zinc-800">Items:</span>
           <span>{localItems.length}</span>
@@ -6841,6 +6906,7 @@ function MenuCard({
               >
                 <MenuCategoryCard
                   category={category}
+                  imageUploading={Boolean(category.id && uploadingCategoryImageIds.has(category.id))}
                   onDelete={handleCategoryDeleted}
                   onDuplicate={() => window.location.reload()}
                   onEdit={() => setCategoryEditor({ mode: "edit", category })}
@@ -6907,6 +6973,7 @@ function MenuCard({
                 >
                   <MenuItemCard
                     item={item}
+                    imageUploading={Boolean(item.id && uploadingItemImageIds.has(item.id))}
                     onDelete={handleItemDeleted}
                     onDuplicate={() => setItemEditor({ mode: "duplicate", item })}
                     onEdit={() => setItemEditor({ mode: "edit", item })}
@@ -6963,6 +7030,15 @@ function MenuForm({
   onSaved?: () => void
   partnerId: string
 }) {
+  const [status, setStatus] = useState(menu?.status ?? DEFAULT_MENU_STATUS)
+  const initialMenuValues = {
+    name: (menu?.name ?? "Speisekarte").trim(),
+    description: (menu?.description ?? "").trim(),
+    status: menu?.status ?? DEFAULT_MENU_STATUS,
+  }
+  const savedMenuValuesRef = useRef(initialMenuValues)
+  const submittedMenuValuesRef = useRef(initialMenuValues)
+  const [hasMenuChanges, setHasMenuChanges] = useState(false)
   const nextMenuFileInputId = useRef(1)
   const selectedMenuFilesRef = useRef<File[]>([])
   const [menuFileSelections, setMenuFileSelections] = useState<
@@ -6986,7 +7062,11 @@ function MenuForm({
     saveMenuWithSelectedFiles,
     initialState,
   )
-  const formRef = useActionSuccess(state, onSaved)
+  const formRef = useActionSuccess(state, () => {
+    savedMenuValuesRef.current = submittedMenuValuesRef.current
+    setHasMenuChanges(false)
+    onSaved?.()
+  })
   const selectedMenuFiles = menuFileSelections.flatMap(
     (selection) => selection.files,
   )
@@ -7020,8 +7100,35 @@ function MenuForm({
     ])
   }
 
+  function currentMenuValues(form: HTMLFormElement) {
+    const values = new FormData(form)
+    return {
+      name: String(values.get("name") ?? "").trim(),
+      description: String(values.get("description") ?? "").trim(),
+      status: String(values.get("status") ?? ""),
+    }
+  }
+
+  function updateMenuDirtyState(form: HTMLFormElement) {
+    const current = currentMenuValues(form)
+    const saved = savedMenuValuesRef.current
+    setHasMenuChanges(
+      current.name !== saved.name ||
+      current.description !== saved.description ||
+      current.status !== saved.status,
+    )
+  }
+
   return (
-    <form ref={formRef} action={formAction} className="space-y-4">
+    <form
+      ref={formRef}
+      action={formAction}
+      className="space-y-4"
+      onChange={(event) => updateMenuDirtyState(event.currentTarget)}
+      onSubmitCapture={(event) => {
+        submittedMenuValuesRef.current = currentMenuValues(event.currentTarget)
+      }}
+    >
       <input type="hidden" name="id" value={menu?.id ?? ""} />
       <input type="hidden" name="partner_id" value={partnerId} />
       {state.importPreview?.ready ? (
@@ -7041,7 +7148,8 @@ function MenuForm({
         <SelectField
           label="Status"
           name="status"
-          defaultValue={menu?.status ?? "draft"}
+          value={status}
+          onChange={setStatus}
           options={withCurrentOption(menuStatusOptions, menu?.status)}
           required
         />
@@ -7116,6 +7224,7 @@ function MenuForm({
       <ImportPreview preview={state.importPreview} />
       <ActionMessage state={state} />
       <SubmitButton
+        disabled={Boolean(menu && !hasMenuChanges)}
         label={state.importPreview?.ready ? "Confirm ZIP import" : menu ? "Save menu" : "Add menu"}
         pendingLabel={state.importPreview?.ready ? "Importing ZIP..." : menu ? "Saving menu..." : "Adding menu..."}
       />
@@ -7475,11 +7584,13 @@ function downloadMenuTemplate(format: "csv" | "json") {
 
 function MenuCategoryCard({
   category,
+  imageUploading,
   onDelete,
   onDuplicate,
   onEdit,
 }: {
   category: MenuCategory
+  imageUploading?: boolean
   onDelete: (state: PartnerActionState) => void
   onDuplicate: () => void
   onEdit: () => void
@@ -7508,6 +7619,11 @@ function MenuCategoryCard({
           </span>
         </span>
       </button>
+      {imageUploading ? (
+        <span role="status" className="absolute left-2 top-2 z-20 inline-flex items-center gap-1.5 rounded-full bg-sky-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-lg">
+          <LoadingSpinner className="size-3" /> Uploading image…
+        </span>
+      ) : null}
       {category.id ? (
         <DuplicateMenuCategoryButton
           categoryId={category.id}
@@ -7540,7 +7656,7 @@ function MenuCategoryEditorDialog({
   menuId: string
   onClose: () => void
   onDeleted: (state: PartnerActionState) => void
-  onSaved: (state: PartnerActionState) => void
+  onSaved: (state: PartnerActionState, imageFile?: File | null) => void
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -7616,7 +7732,7 @@ function MenuCategoryForm({
   category?: MenuCategory
   defaultSortOrder?: number
   menuId: string
-  onSaved?: (state: PartnerActionState) => void
+  onSaved?: (state: PartnerActionState, imageFile?: File | null) => void
 }) {
   const [state, setState] = useState(initialState)
   const [isPending, startTransition] = useTransition()
@@ -7627,13 +7743,20 @@ function MenuCategoryForm({
       onSubmit={(event) => {
         event.preventDefault()
         const formData = new FormData(event.currentTarget)
+        const imageValue = formData.get("image_file")
+        const imageFile = imageValue instanceof File && imageValue.size > 0
+          ? imageValue
+          : null
+        if (imageFile) formData.delete("image_file")
 
         startTransition(async () => {
           try {
             const result = await saveMenuCategory(initialState, formData)
             setState(result)
             dispatchActionToast(result)
-            if (result.ok) onSaved?.(result)
+            if (result.ok) {
+              onSaved?.(result, imageFile)
+            }
           } catch {
             const result = {
               ok: false,
@@ -7746,11 +7869,13 @@ function DeleteMenuCategoryForm({
 
 function MenuItemCard({
   item,
+  imageUploading,
   onDelete,
   onDuplicate,
   onEdit,
 }: {
   item: MenuItem
+  imageUploading?: boolean
   onDelete: (state: PartnerActionState) => void
   onDuplicate: () => void
   onEdit: () => void
@@ -7782,6 +7907,11 @@ function MenuItemCard({
           </span>
         </span>
       </button>
+      {imageUploading ? (
+        <span role="status" className="absolute left-2 top-2 z-20 inline-flex items-center gap-1.5 rounded-full bg-sky-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-lg">
+          <LoadingSpinner className="size-3" /> Uploading image…
+        </span>
+      ) : null}
       <button
         type="button"
         onClick={onDuplicate}
@@ -7820,7 +7950,7 @@ function MenuItemEditorDialog({
   menuId: string
   onClose: () => void
   onDeleted: (state: PartnerActionState) => void
-  onSaved: (state: PartnerActionState) => void
+  onSaved: (state: PartnerActionState, imageFile?: File | null) => void
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -7938,16 +8068,42 @@ function MenuItemForm({
   item?: MenuItem
   intent?: "create" | "edit" | "duplicate"
   menuId: string
-  onSaved?: (state: PartnerActionState) => void
+  onSaved?: (state: PartnerActionState, imageFile?: File | null) => void
 }) {
-  const [state, formAction] = useActionState(saveMenuItem, initialState)
-  const formRef = useActionSuccess(state, onSaved)
+  const [state, setState] = useState(initialState)
+  const [isPending, startTransition] = useTransition()
   const isEditing = intent === "edit"
   const defaultName =
     intent === "duplicate" && item?.name ? `${item.name} (copy)` : item?.name
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-3">
+    <form
+      className="space-y-3"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const formData = new FormData(event.currentTarget)
+        const imageValue = formData.get("image_file")
+        const imageFile = imageValue instanceof File && imageValue.size > 0
+          ? imageValue
+          : null
+        if (imageFile) formData.delete("image_file")
+
+        startTransition(async () => {
+          try {
+            const result = await saveMenuItem(initialState, formData)
+            setState(result)
+            dispatchActionToast(result)
+            if (result.ok) {
+              onSaved?.(result, imageFile)
+            }
+          } catch {
+            const result = { ok: false, message: "Unable to save the menu item." }
+            setState(result)
+            dispatchActionToast(result)
+          }
+        })
+      }}
+    >
       <input type="hidden" name="id" value={isEditing ? item?.id ?? "" : ""} />
       <input type="hidden" name="menu_id" value={menuId} />
       {item?.is_stamp_eligible ? (
@@ -8035,6 +8191,7 @@ function MenuItemForm({
       <SubmitButton
         label={isEditing ? "Save item" : intent === "duplicate" ? "Duplicate item" : "Add item"}
         pendingLabel={isEditing ? "Saving item..." : "Adding item..."}
+        pendingOverride={isPending}
       />
     </form>
   )
@@ -10680,6 +10837,7 @@ function IconDeleteSubmitButton({
 }
 
 function SubmitButton({
+  disabled = false,
   label,
   name,
   pendingLabel,
@@ -10688,6 +10846,7 @@ function SubmitButton({
   tone = "default",
   value,
 }: {
+  disabled?: boolean
   label: string
   name?: string
   pendingLabel: string
@@ -10719,7 +10878,7 @@ function SubmitButton({
     <button
       type="submit"
       name={name}
-      disabled={pending}
+      disabled={disabled || pending}
       aria-busy={isActivePending}
       value={value}
       className={`${sizeClasses} inline-flex items-center justify-center gap-2 rounded-md font-semibold transition disabled:cursor-not-allowed ${toneClasses}`}
