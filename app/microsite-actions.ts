@@ -727,6 +727,12 @@ async function uploadMicrositeAssets(
     { slot: "footer_benefitsi_logo", field: "footer_benefitsi_logo_file" },
   ]
   const urls: UploadedMicrositeAssets = {}
+  const uploads: Array<{
+    file: File
+    pathSlot: string
+    slot?: AssetSlot
+    elementId?: string
+  }> = []
 
   for (const { slot, field } of slots) {
     const value = formData
@@ -737,42 +743,10 @@ async function uploadMicrositeAssets(
       continue
     }
 
-    if (!ALLOWED_MICROSITE_ASSET_TYPES.has(value.type)) {
-      return {
-        ok: false,
-        state: {
-          ok: false,
-          message: `${value.name}: Dieser Bildtyp wird nicht unterstützt.`,
-        },
-      }
-    }
-
-    if (value.size > MAX_MICROSITE_ASSET_BYTES) {
-      return {
-        ok: false,
-        state: {
-          ok: false,
-          message: `${value.name}: Das Bild darf maximal 10 MB groß sein.`,
-        },
-      }
-    }
-
-    const extension = fileExtension(value)
-    const path = `microsites/${partnerId}/${slot}-${randomUUID()}.${extension}`
-    const upload = await supabase.storage
-      .from(MICROSITE_ASSET_BUCKET)
-      .upload(path, value, { contentType: value.type, upsert: false })
-
-    if (upload.error) {
-      return { ok: false, state: { ok: false, message: upload.error.message } }
-    }
-
-    urls[slot] = supabase.storage
-      .from(MICROSITE_ASSET_BUCKET)
-      .getPublicUrl(path).data.publicUrl
+    const validation = validateMicrositeAssetFile(value)
+    if (validation) return validation
+    uploads.push({ file: value, pathSlot: slot, slot })
   }
-
-  const elementImages: Record<string, string> = {}
 
   for (const [field, value] of formData.entries()) {
     if (!field.startsWith("element_image_file__") || !isUploadFile(value)) {
@@ -787,18 +761,34 @@ async function uploadMicrositeAssets(
       continue
     }
 
-    const uploadResult = await uploadMicrositeAssetFile(
-      supabase,
-      value,
-      partnerId,
-      `element-${elementId.replace(/[^a-zA-Z0-9_-]/g, "-")}`,
-    )
+    const validation = validateMicrositeAssetFile(value)
+    if (validation) return validation
+    uploads.push({
+      elementId,
+      file: value,
+      pathSlot: `element-${elementId.replace(/[^a-zA-Z0-9_-]/g, "-")}`,
+    })
+  }
 
-    if (!uploadResult.ok) {
-      return uploadResult
-    }
+  const uploadResults = await Promise.all(
+    uploads.map(async (upload) => ({
+      ...upload,
+      result: await uploadMicrositeAssetFile(
+        supabase,
+        upload.file,
+        partnerId,
+        upload.pathSlot,
+      ),
+    })),
+  )
+  const failedUpload = uploadResults.find(({ result }) => !result.ok)
+  if (failedUpload && !failedUpload.result.ok) return failedUpload.result
 
-    elementImages[elementId] = uploadResult.url
+  const elementImages: Record<string, string> = {}
+  for (const upload of uploadResults) {
+    if (!upload.result.ok) continue
+    if (upload.slot) urls[upload.slot] = upload.result.url
+    if (upload.elementId) elementImages[upload.elementId] = upload.result.url
   }
 
   if (Object.keys(elementImages).length > 0) {
@@ -806,6 +796,30 @@ async function uploadMicrositeAssets(
   }
 
   return { ok: true, urls }
+}
+
+function validateMicrositeAssetFile(
+  value: File,
+): { ok: false; state: MicrositeActionState } | null {
+  if (!ALLOWED_MICROSITE_ASSET_TYPES.has(value.type)) {
+    return {
+      ok: false,
+      state: {
+        ok: false,
+        message: `${value.name}: Dieser Bildtyp wird nicht unterstützt.`,
+      },
+    }
+  }
+  if (value.size > MAX_MICROSITE_ASSET_BYTES) {
+    return {
+      ok: false,
+      state: {
+        ok: false,
+        message: `${value.name}: Das Bild darf maximal 10 MB groß sein.`,
+      },
+    }
+  }
+  return null
 }
 
 async function uploadMicrositeAssetFile(

@@ -112,6 +112,13 @@ function AdminShellContent({
               icon={<PartnerIcon className="size-5" />}
             />
             <AdminNavigationLink
+              href="/menu-approvals"
+              label="Menu approvals"
+              active={pathname.startsWith("/menu-approvals")}
+              collapsed={collapsed}
+              icon={<MenuApprovalIcon className="size-5" />}
+            />
+            <AdminNavigationLink
               href="/analytics"
               label="Business Control Center"
               active={pathname.startsWith("/analytics")}
@@ -504,6 +511,21 @@ function AnalyticsIcon(props: SVGProps<SVGSVGElement>) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  )
+}
+
+function MenuApprovalIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M6 3.5h9l3 3V20H6V3.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M9 10h6M9 14h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="m14 17 1.5 1.5L19 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }

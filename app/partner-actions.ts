@@ -30,6 +30,18 @@ import {
   isRewardType,
   normalizeBenefitCategory,
 } from "@/lib/reward-config"
+import * as menuImport from "@/lib/menu-import.js"
+import * as menuZipImport from "@/lib/menu-zip-import.js"
+
+const {
+  downloadRemoteImage,
+  readMenuImportFiles,
+  runMenuImportBatch,
+  validateMenuDocument,
+  prepareMissingAddonsRetry,
+  createAddonUpdatePlan,
+} = menuImport
+const { readMenuZipFiles } = menuZipImport
 
 const DURATION_BONUS_DEAL = "duration_bonus"
 const COMEBACK_INACTIVE_DEAL = "comeback_inactive"
@@ -49,9 +61,43 @@ export type PartnerActionState = {
     image_url: string | null
     sort_order: number | null
   }
+  menuItem?: {
+    id: string
+    menu_id: string | null
+    category_id: string | null
+    name: string | null
+    description: string | null
+    price: number | string | null
+    currency: string | null
+    image_url: string | null
+    tags: string[] | null
+    allergens: string[] | null
+    addons: ParsedMenuItemAddon[] | null
+    is_popular: boolean | null
+    is_stamp_eligible: boolean | null
+    sort_order: number | null
+  }
   deletedId?: string
   importedCategories?: number
   importedItems?: number
+  updatedAddons?: Array<{
+    itemId: string
+    addons: ParsedMenuItemAddon[]
+  }>
+  menuId?: string
+  issues?: boolean
+  importWarnings?: string[]
+  importPreview?: {
+    signature: string
+    categories: number
+    items: number
+    addons: number
+    imagesMatched: number
+    imagesMissing: number
+    errors: string[]
+    warnings: string[]
+    ready: boolean
+  }
 }
 
 export type PartnerCoverUploadTarget =
@@ -347,7 +393,7 @@ export async function savePartner(
       return { ok: false, message: socialSyncMessage }
     }
 
-    await cleanupPublicMediaUrls(supabase, [
+    const oldMediaUrls = [
       ...mediaValues.removedMediaUrls,
       ...(mediaValues.logoFile && mediaValues.existingLogoUrl
         ? [mediaValues.existingLogoUrl]
@@ -358,7 +404,10 @@ export async function savePartner(
       ...(mediaValues.discoverFile && mediaValues.existingDiscoverCardUrl
         ? [mediaValues.existingDiscoverCardUrl]
         : []),
-    ])
+    ]
+    if (oldMediaUrls.length) {
+      after(() => cleanupPublicMediaUrls(supabase, oldMediaUrls))
+    }
 
     const warnings: string[] = []
     const ownerWarning = await markOwnerAsPartner(supabase, payload.owner_id)
@@ -687,7 +736,9 @@ export async function deletePartner(
     }
   }
 
-  await cleanupPublicMediaUrls(supabase, cleanupResult.mediaUrls)
+  if (cleanupResult.mediaUrls.length) {
+    after(() => cleanupPublicMediaUrls(supabase, cleanupResult.mediaUrls))
+  }
 
   revalidatePath("/")
 
@@ -808,7 +859,7 @@ export async function saveDeal(
   ]
 
   if (urlsToCleanup.length > 0) {
-    await cleanupPublicMediaUrls(supabase, urlsToCleanup)
+    after(() => cleanupPublicMediaUrls(supabase, urlsToCleanup))
   }
 
   revalidatePath("/")
@@ -1066,27 +1117,106 @@ export async function saveMenu(
   const now = new Date().toISOString()
   const payload = parseMenuPayload(formData)
   const validationMessage = validateMenuPayload(payload)
+  const importFiles = id ? [] : fileValues(formData, "menu_file")
+  const expectedImportFileCount = id
+    ? 0
+    : integerValue(formData, "expected_menu_file_count") ?? 0
+  const confirmedImportSignature = stringValue(
+    formData,
+    "confirm_import_signature",
+  )
 
   if (validationMessage) {
     return { ok: false, message: validationMessage }
   }
 
+  if (expectedImportFileCount > 0 && importFiles.length === 0) {
+    return {
+      ok: false,
+      message:
+        "The selected menu files did not reach the server. No menu was created; select the files again and retry.",
+    }
+  }
+
+  if (importFiles.some(isZipImportFile)) {
+    const zipPrepared = await readMenuZipFiles(importFiles.filter(isZipImportFile))
+    if (zipPrepared.signature !== confirmedImportSignature) {
+      return zipImportPreviewState(zipPrepared)
+    }
+  }
+
+  let targetMenuId = id
+  let reusedExistingMenu = false
+
+  if (!targetMenuId) {
+    const existingMenuResult = await supabase
+      .from("menus")
+      .select("id")
+      .eq("partner_id", payload.partner_id)
+      .order("created_at", { ascending: true, nullsFirst: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existingMenuResult.error) {
+      return { ok: false, message: existingMenuResult.error.message }
+    }
+
+    targetMenuId = existingMenuResult.data?.id ?? ""
+    reusedExistingMenu = Boolean(targetMenuId)
+  }
+
   const mutationPayload = {
     ...payload,
     updated_at: now,
-    ...(id ? {} : { created_at: now }),
+    ...(targetMenuId ? {} : { created_at: now }),
   }
-  const result = id
-    ? await supabase.from("menus").update(mutationPayload).eq("id", id)
-    : await supabase.from("menus").insert(mutationPayload)
+  const result = targetMenuId
+    ? await supabase.from("menus").update(mutationPayload).eq("id", targetMenuId).select("id").single()
+    : await supabase.from("menus").insert(mutationPayload).select("id").single()
 
   if (result.error) {
     return { ok: false, message: result.error.message }
   }
 
-  revalidatePath("/")
+  const menuId = result.data.id
+  const createdMenu = !targetMenuId
 
-  return { ok: true, message: id ? "Menu updated." : "Menu added." }
+  if (importFiles.length) {
+    const importResult = await importMenuIntoMenu(
+      supabase,
+      menuId,
+      "append",
+      importFiles,
+      confirmedImportSignature,
+    )
+
+    if (!importResult.ok) {
+      if (createdMenu) {
+        await supabase.from("menus").delete().eq("id", menuId)
+      }
+      return {
+        ok: false,
+        message: `${createdMenu ? "The menu was not created" : "The existing menu was not populated"} because the import failed: ${importResult.message}`,
+      }
+    }
+
+    revalidatePath("/")
+    revalidatePath("/menu-approvals")
+    return {
+      ...importResult,
+      menuId,
+      message: `${createdMenu ? "Menu added" : "Menu updated"}. ${importResult.message}`,
+    }
+  }
+
+  revalidatePath("/")
+  revalidatePath("/menu-approvals")
+
+  return {
+    ok: true,
+    message: id || reusedExistingMenu ? "Menu updated." : "Menu added.",
+    menuId,
+  }
 }
 
 export async function reorderMenuCategories(
@@ -1174,6 +1304,7 @@ export async function approveMenu(
   }
 
   revalidatePath("/")
+  revalidatePath("/menu-approvals")
 
   return { ok: true, message: "Menu approved and published." }
 }
@@ -1225,13 +1356,13 @@ export async function deleteMenu(
     return { ok: false, message: menuResult.error.message }
   }
 
-  await cleanupPublicMediaUrls(
-    supabase,
-    collectNonEmptyStrings([
-      ...(itemMediaResult.data ?? []).map((row) => row.image_url),
-      ...(categoryMediaResult.data ?? []).map((row) => row.image_url),
-    ]),
-  )
+  const menuImageUrls = collectNonEmptyStrings([
+    ...(itemMediaResult.data ?? []).map((row) => row.image_url),
+    ...(categoryMediaResult.data ?? []).map((row) => row.image_url),
+  ])
+  if (menuImageUrls.length) {
+    after(() => cleanupPublicMediaUrls(supabase, menuImageUrls))
+  }
 
   revalidatePath("/")
 
@@ -1473,19 +1604,32 @@ export async function saveMenuItem(
     ...(id ? {} : { created_at: now }),
   }
   const result = id
-    ? await supabase.from("menu_items").update(mutationPayload).eq("id", id)
-    : await supabase.from("menu_items").insert(mutationPayload)
+    ? await supabase
+        .from("menu_items")
+        .update(mutationPayload)
+        .eq("id", id)
+        .select("id,menu_id,category_id,name,description,price,currency,image_url,tags,allergens,addons,is_popular,is_stamp_eligible,sort_order")
+        .single()
+    : await supabase
+        .from("menu_items")
+        .insert(mutationPayload)
+        .select("id,menu_id,category_id,name,description,price,currency,image_url,tags,allergens,addons,is_popular,is_stamp_eligible,sort_order")
+        .single()
 
   if (result.error) {
     await cleanupUploadedFiles(supabase, uploadedPaths)
     return { ok: false, message: result.error.message }
   }
 
-  await cleanupPublicMediaUrls(supabase, oldImageUrlsToCleanup)
+  if (oldImageUrlsToCleanup.length) {
+    after(() => cleanupPublicMediaUrls(supabase, oldImageUrlsToCleanup))
+  }
 
-  revalidatePath("/")
-
-  return { ok: true, message: id ? "Menu item updated." : "Menu item added." }
+  return {
+    ok: true,
+    message: id ? "Menu item updated." : "Menu item added.",
+    menuItem: result.data ?? undefined,
+  }
 }
 
 export async function deleteMenuItem(
@@ -1607,25 +1751,260 @@ export async function importMenuFile(
   const { supabase } = await requireAdmin()
   const menuId = stringValue(formData, "menu_id")
   const importMode = stringValue(formData, "import_mode")
-  const file = fileValue(formData, "menu_file")
+  const files = fileValues(formData, "menu_file")
+  const confirmedImportSignature = stringValue(
+    formData,
+    "confirm_import_signature",
+  )
 
   if (!menuId) return { ok: false, message: "A menu is required for import." }
-  if (!['append', 'replace'].includes(importMode)) {
-    return { ok: false, message: "Choose whether to append to or replace the existing menu." }
+  if (!['append', 'replace', 'update_addons'].includes(importMode)) {
+    return { ok: false, message: "Choose whether to append, replace, or update add-ons." }
   }
-  if (!file) return { ok: false, message: "Choose a JSON or CSV file." }
-  if (file.size > 2 * 1024 * 1024) return { ok: false, message: "Menu import files must be 2 MB or smaller." }
+  if (!files.length) return { ok: false, message: "Choose one or more ZIP, JSON, or CSV files." }
 
-  let imported: ImportedMenuCategory[]
-  try {
-    const text = await file.text()
-    imported = file.name.toLowerCase().endsWith(".json")
-      ? parseImportedMenuJson(text)
-      : parseImportedMenuCsv(text)
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : "Unable to read the menu file." }
+  return importMenuIntoMenu(
+    supabase,
+    menuId,
+    importMode,
+    files,
+    confirmedImportSignature,
+  )
+}
+
+async function importMenuIntoMenu(
+  supabase: SupabaseClient,
+  menuId: string,
+  importMode: string,
+  files: File[],
+  confirmedImportSignature = "",
+): Promise<PartnerActionState> {
+  const prepared = await prepareMenuImportFiles(files)
+  if (
+    prepared.zipPreview &&
+    prepared.zipPreview.signature !== confirmedImportSignature
+  ) {
+    return zipImportPreviewState(prepared.zipPreview)
+  }
+  if (importMode === "update_addons") {
+    return updateImportedMenuAddons(supabase, menuId, prepared)
+  }
+  const uploadedImageUrls = new Set<string>()
+  const imageCopyPromises = new Map<string, Promise<string>>()
+
+  const batch = await runMenuImportBatch(prepared, {
+    mode: importMode,
+    copyImage: async (url: string, context: ImportedImageContext) => {
+      const copyKey = `${context.kind}:${url}`
+      let copyPromise = imageCopyPromises.get(copyKey)
+      if (!copyPromise) {
+        const archiveAsset = prepared.imageAssets.get(url)
+        copyPromise = archiveAsset
+          ? copyImportedArchiveImage(supabase, menuId, archiveAsset, context)
+          : copyImportedMenuImage(supabase, menuId, url, context)
+        imageCopyPromises.set(copyKey, copyPromise)
+      }
+      const uploadedUrl = await copyPromise
+      uploadedImageUrls.add(uploadedUrl)
+      return uploadedUrl
+    },
+    saveMenu: async (
+      menu: { filename: string; categories: ImportedMenuCategory[] },
+      mode: string,
+    ) => {
+      const result = await saveImportedMenuCategories(
+        supabase,
+        menuId,
+        mode,
+        menu.categories,
+      )
+      if (!result.ok) {
+        const failedUploadUrls = menu.categories
+          .flatMap((category) => [
+            category.image_url,
+            ...category.items.map((item) => item.image_url),
+          ])
+          .filter((url): url is string => Boolean(url && uploadedImageUrls.has(url)))
+        await cleanupPublicMediaUrls(supabase, failedUploadUrls)
+        failedUploadUrls.forEach((url) => uploadedImageUrls.delete(url))
+        throw new Error(result.message)
+      }
+      return {
+        importedCategories: result.importedCategories ?? 0,
+        importedItems: result.importedItems ?? 0,
+        warnings: (result.importWarnings ?? []).map(
+          (warning) => `${menu.filename}: ${warning}`,
+        ),
+      }
+    },
+  })
+
+  const importedCategories = batch.successes.reduce(
+    (total: number, result: { importedCategories?: number }) =>
+      total + (result.importedCategories ?? 0),
+    0,
+  )
+  const importedItems = batch.successes.reduce(
+    (total: number, result: { importedItems?: number }) =>
+      total + (result.importedItems ?? 0),
+    0,
+  )
+  const details = [...batch.errors, ...batch.warnings]
+  const summary = batch.successes.length
+    ? `Imported ${batch.successes.length} menu file${batch.successes.length === 1 ? "" : "s"}: ${importedCategories} categories and ${importedItems} items.`
+    : "No menu files were imported."
+
+  revalidatePath("/")
+  revalidatePath("/menu-approvals")
+  return {
+    ok: batch.successes.length > 0,
+    issues: details.length > 0,
+    message: [summary, ...details].join("\n"),
+    importedCategories,
+    importedItems,
+  }
+}
+
+async function updateImportedMenuAddons(
+  supabase: SupabaseClient,
+  menuId: string,
+  prepared: {
+    menus: Array<{ filename: string; categories: ImportedMenuCategory[] }>
+    errors: string[]
+    warnings?: string[]
+  },
+): Promise<PartnerActionState> {
+  const [categoriesResult, itemsResult] = await Promise.all([
+    supabase.from("menu_categories").select("id,name").eq("menu_id", menuId),
+    supabase.from("menu_items").select("id,category_id,name").eq("menu_id", menuId),
+  ])
+  if (categoriesResult.error || itemsResult.error) {
+    return {
+      ok: false,
+      message:
+        categoriesResult.error?.message ||
+        itemsResult.error?.message ||
+        "Unable to load the existing menu items.",
+    }
   }
 
+  const plan = createAddonUpdatePlan(
+    prepared.menus,
+    categoriesResult.data ?? [],
+    itemsResult.data ?? [],
+  )
+  type AddonUpdate = (typeof plan.updates)[number]
+  const results: Array<{
+    update: AddonUpdate
+    result: { error: { message: string } | null }
+  }> = []
+
+  // Keep the request responsive without flooding the Supabase Data API with
+  // every item update at once. The operation is safe to retry because each
+  // update writes only the add-ons for its exact matched item.
+  const updateBatchSize = 6
+  for (let index = 0; index < plan.updates.length; index += updateBatchSize) {
+    const batch = plan.updates.slice(index, index + updateBatchSize)
+    results.push(
+      ...(await Promise.all(
+        batch.map(async (update: AddonUpdate) => ({
+          update,
+          result: await supabase
+            .from("menu_items")
+            .update({ addons: update.addons, updated_at: new Date().toISOString() })
+            .eq("id", update.itemId),
+        })),
+      )),
+    )
+  }
+  const failures = results
+    .filter(({ result }) => result.error)
+    .map(({ update, result }) =>
+      `${update.filename}: category "${update.category}" > item "${update.item}": ${result.error?.message ?? "add-ons could not be updated"}.`,
+    )
+  const updatedItems = results.length - failures.length
+  const updatedAddons = results
+    .filter(({ result }) => !result.error)
+    .map(({ update }) => ({ itemId: update.itemId, addons: update.addons }))
+  const details = [
+    ...prepared.errors,
+    ...(prepared.warnings ?? []),
+    ...plan.warnings,
+    ...failures,
+  ]
+
+  return {
+    ok: updatedItems > 0,
+    issues: details.length > 0,
+    importedItems: updatedItems,
+    updatedAddons,
+    message: [
+      updatedItems > 0
+        ? `Updated add-ons for ${updatedItems} existing menu item${updatedItems === 1 ? "" : "s"}. Manually uploaded images and all other item fields were preserved.`
+        : "No existing menu items were updated. Check that the category and item names match the imported file.",
+      ...details,
+    ].join("\n"),
+  }
+}
+
+async function prepareMenuImportFiles(files: File[]) {
+  const zipFiles = files.filter(isZipImportFile)
+  const jsonFiles = files.filter(
+    (file) => !isCsvImportFile(file) && !isZipImportFile(file),
+  )
+  const prepared = await readMenuImportFiles(jsonFiles)
+  const zipPrepared = zipFiles.length
+    ? await readMenuZipFiles(zipFiles)
+    : null
+
+  if (zipPrepared) {
+    prepared.menus.push(...zipPrepared.menus)
+    prepared.errors.push(...zipPrepared.errors)
+  }
+  const warnings = zipPrepared ? [...zipPrepared.warnings] : []
+  const imageAssets = zipPrepared?.imageAssets ?? new Map()
+
+  for (const file of files.filter(isCsvImportFile)) {
+    try {
+      const categories = parseImportedMenuCsv(await file.text())
+      if (!categories.length) throw new Error("file does not contain any categories")
+      prepared.menus.push(validateMenuDocument({ categories }, file.name))
+    } catch (error) {
+      prepared.errors.push(
+        `${file.name}: ${error instanceof Error ? error.message : "unable to read CSV"}`,
+      )
+    }
+  }
+
+  return {
+    ...prepared,
+    warnings,
+    imageAssets,
+    zipPreview: zipPrepared,
+  }
+}
+
+function zipImportPreviewState(prepared: {
+  signature: string
+  preview: Omit<NonNullable<PartnerActionState["importPreview"]>, "signature">
+}): PartnerActionState {
+  const preview = { signature: prepared.signature, ...prepared.preview }
+  return {
+    ok: false,
+    issues: preview.errors.length > 0 || preview.warnings.length > 0,
+    message: preview.ready
+      ? "ZIP preview is ready. Review the counts and messages, then confirm the import."
+      : "The ZIP cannot be imported. Review the validation errors below.",
+    importPreview: preview,
+  }
+}
+
+async function saveImportedMenuCategories(
+  supabase: SupabaseClient,
+  menuId: string,
+  importMode: string,
+  imported: ImportedMenuCategory[],
+): Promise<PartnerActionState> {
   if (!imported.length) return { ok: false, message: "The file does not contain any categories." }
   const itemCount = imported.reduce((total, category) => total + category.items.length, 0)
   if (imported.length > 200 || itemCount > 2000) {
@@ -1648,7 +2027,7 @@ export async function importMenuFile(
         name: item.name,
         description: item.description,
         price: item.price,
-        currency: "EUR",
+        currency: item.currency,
         image_url: item.image_url,
         tags: item.tags,
         allergens: item.allergens,
@@ -1680,35 +2059,45 @@ export async function importMenuFile(
     importMode === "replace"
       ? 1_000_000
       : nextAvailableSortOrder(categoryOrderResult.data?.map((row) => row.sort_order) ?? [])
-  const createdCategoryIds: string[] = []
+  const importToken = `${Date.now()}-${randomUUID()}`
+  const categoryRows = imported.map((category, categoryIndex) => ({
+    menu_id: menuId,
+    name: category.name.trim(),
+    slug: `${slugify(category.name)}-${importToken}-${categoryIndex}`,
+    image_url: category.image_url || null,
+    sort_order: firstCategoryOrder + categoryIndex,
+  }))
+  const invalidCategoryIndex = categoryRows.findIndex((category) => !category.name)
+  if (invalidCategoryIndex >= 0) {
+    return { ok: false, message: `Category ${invalidCategoryIndex + 1} needs a name.` }
+  }
 
-  for (const [categoryIndex, category] of imported.entries()) {
-    if (!category.name.trim()) return { ok: false, message: `Category ${categoryIndex + 1} needs a name.` }
-    const categoryInsert = await supabase
-      .from("menu_categories")
-      .insert({
-        menu_id: menuId,
-        name: category.name.trim(),
-        slug: `${slugify(category.name)}-${Date.now()}-${categoryIndex}`,
-        image_url: category.image_url || null,
-        sort_order: firstCategoryOrder + categoryIndex,
-      })
-      .select("id")
-      .single()
+  const categoryInsert = await supabase
+    .from("menu_categories")
+    .insert(categoryRows)
+    .select("id,slug")
+  if (categoryInsert.error) return { ok: false, message: categoryInsert.error.message }
 
-    if (categoryInsert.error) {
-      if (createdCategoryIds.length) await rollbackImportedMenu(supabase, createdCategoryIds)
-      return { ok: false, message: categoryInsert.error.message }
-    }
-    createdCategoryIds.push(categoryInsert.data.id)
+  const categoryIdsBySlug = new Map(
+    (categoryInsert.data ?? []).map((category) => [category.slug, category.id]),
+  )
+  const createdCategoryIds = categoryRows
+    .map((category) => categoryIdsBySlug.get(category.slug))
+    .filter((id): id is string => Boolean(id))
+  if (createdCategoryIds.length !== imported.length) {
+    if (createdCategoryIds.length) await rollbackImportedMenu(supabase, createdCategoryIds)
+    return { ok: false, message: "The imported categories could not be matched after saving." }
+  }
 
-    const items = category.items.map((item, itemIndex) => ({
+  let skippedAddons = 0
+  const items = imported.flatMap((category, categoryIndex) =>
+    category.items.map((item, itemIndex) => ({
       menu_id: menuId,
-      category_id: categoryInsert.data.id,
+      category_id: createdCategoryIds[categoryIndex],
       name: item.name.trim(),
-      description: item.description || null,
+      description: item.description,
       price: item.price,
-      currency: "EUR",
+      currency: item.currency,
       image_url: item.image_url || null,
       tags: item.tags,
       allergens: item.allergens,
@@ -1716,18 +2105,26 @@ export async function importMenuFile(
       is_popular: item.is_popular,
       is_stamp_eligible: false,
       sort_order: itemIndex,
-    }))
-    const invalidItem = items.findIndex((item) => !item.name)
-    if (invalidItem >= 0) {
-      await rollbackImportedMenu(supabase, createdCategoryIds)
-      return { ok: false, message: `An item in category "${category.name}" needs a name.` }
+    })),
+  )
+  const invalidItem = items.find((item) => !item.name)
+  if (invalidItem) {
+    await rollbackImportedMenu(supabase, createdCategoryIds)
+    return { ok: false, message: "Every imported menu item needs a name." }
+  }
+  if (items.length) {
+    let itemInsert = await supabase.from("menu_items").insert(items)
+    const addonsRetry = itemInsert.error
+      ? prepareMissingAddonsRetry(items, itemInsert.error.message)
+      : null
+
+    if (addonsRetry?.rows) {
+      skippedAddons += addonsRetry.skippedAddons ?? 0
+      itemInsert = await supabase.from("menu_items").insert(addonsRetry.rows)
     }
-    if (items.length) {
-      const itemInsert = await supabase.from("menu_items").insert(items)
-      if (itemInsert.error) {
-        await rollbackImportedMenu(supabase, createdCategoryIds)
-        return { ok: false, message: itemInsert.error.message }
-      }
+    if (itemInsert.error) {
+      await rollbackImportedMenu(supabase, createdCategoryIds)
+      return { ok: false, message: itemInsert.error.message }
     }
   }
 
@@ -1770,11 +2167,17 @@ export async function importMenuFile(
   }
 
   revalidatePath("/")
+  revalidatePath("/menu-approvals")
   return {
     ok: true,
     message: `${importMode === "replace" ? "Replaced the menu with" : "Appended"} ${imported.length} categories and ${itemCount} items.`,
     importedCategories: imported.length,
     importedItems: itemCount,
+    importWarnings: skippedAddons
+      ? [
+          `${skippedAddons} add-on${skippedAddons === 1 ? " was" : "s were"} skipped because this database has not applied the existing add_menu_item_addons migration. The menu items were imported successfully.`,
+        ]
+      : [],
   }
 }
 
@@ -1788,6 +2191,7 @@ type ImportedMenuItem = {
   name: string
   description: string | null
   price: number | null
+  currency: string
   image_url: string | null
   tags: string[]
   allergens: string[]
@@ -1799,6 +2203,15 @@ type ImportedMenuCategory = {
   name: string
   image_url: string | null
   items: ImportedMenuItem[]
+}
+
+type ImportedImageContext = {
+  filename: string
+  category: string
+  categoryIndex: number
+  item?: string
+  itemIndex?: number
+  kind: "category" | "item"
 }
 
 export async function deleteDeal(
@@ -2608,6 +3021,22 @@ async function createInitialMenu(
         ...imageUploads.uploadedPaths,
       ])
       return `starter menu items could not be added: ${itemResult.error.message}`
+    }
+  }
+
+  const importFiles = fileValues(formData, "initial_menu_file")
+  if (importFiles.length) {
+    const importResult = await importMenuIntoMenu(
+      supabase,
+      menuId,
+      "append",
+      importFiles,
+    )
+    if (!importResult.ok) {
+      return `starter menu import failed: ${importResult.message}`
+    }
+    if (importResult.issues) {
+      return `the starter menu was created with import issues: ${importResult.message}`
     }
   }
 
@@ -4444,35 +4873,76 @@ async function rollbackImportedMenu(
   await supabase.from("menu_categories").delete().in("id", categoryIds)
 }
 
-function parseImportedMenuJson(text: string): ImportedMenuCategory[] {
-  let value: unknown
-  try {
-    value = JSON.parse(text)
-  } catch {
-    throw new Error("The JSON file is not valid JSON.")
-  }
-  const categoryValues =
-    value && typeof value === "object" && !Array.isArray(value)
-      ? (value as Record<string, unknown>).categories
-      : value
-  if (!Array.isArray(categoryValues)) {
-    throw new Error('JSON must contain a "categories" array.')
-  }
+function isCsvImportFile(file: File) {
+  return file.type === "text/csv" || file.name.toLowerCase().endsWith(".csv")
+}
 
-  return categoryValues.map((entry, categoryIndex) => {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
-      throw new Error(`Category ${categoryIndex + 1} must be an object.`)
-    }
-    const record = entry as Record<string, unknown>
-    const rawItems = Array.isArray(record.items) ? record.items : []
-    return {
-      name: importedString(record.name),
-      image_url: importedNullableString(record.image_url),
-      items: rawItems.map((item, itemIndex) =>
-        normalizeImportedMenuItem(item, `Item ${itemIndex + 1} in category ${categoryIndex + 1}`),
-      ),
-    }
+function isZipImportFile(file: File) {
+  return (
+    file.type === "application/zip" ||
+    file.type === "application/x-zip-compressed" ||
+    file.name.toLowerCase().endsWith(".zip")
+  )
+}
+
+async function copyImportedArchiveImage(
+  supabase: SupabaseClient,
+  menuId: string,
+  asset: { bytes: Uint8Array; contentType: string; filename: string },
+  context: ImportedImageContext,
+) {
+  const copiedBytes = new Uint8Array(asset.bytes.byteLength)
+  copiedBytes.set(asset.bytes)
+  const file = new File([copiedBytes], asset.filename, {
+    type: asset.contentType,
+    lastModified: Date.now(),
   })
+  const mediaError = validateMediaFile(file)
+
+  if (mediaError) throw new Error(mediaError)
+
+  const folder = context.kind === "category" ? "menu-categories" : "menu-items"
+  const spec = context.kind === "category"
+    ? partnerMediaSpecs.menuCategory
+    : partnerMediaSpecs.menuItem
+  const uploaded = await uploadPartnerFile(
+    supabase,
+    file,
+    spec,
+    `${folder}/${menuId}/${Date.now()}-${randomUUID()}-${safeFileName(file.name)}`,
+  )
+
+  return uploaded.url
+}
+
+async function copyImportedMenuImage(
+  supabase: SupabaseClient,
+  menuId: string,
+  imageUrl: string,
+  context: ImportedImageContext,
+) {
+  const downloaded = await downloadRemoteImage(imageUrl)
+  const file = new File(
+    [new Uint8Array(downloaded.bytes)],
+    downloaded.filename,
+    { type: downloaded.contentType, lastModified: Date.now() },
+  )
+  const mediaError = validateMediaFile(file)
+
+  if (mediaError) throw new Error(mediaError)
+
+  const folder = context.kind === "category" ? "menu-categories" : "menu-items"
+  const spec = context.kind === "category"
+    ? partnerMediaSpecs.menuCategory
+    : partnerMediaSpecs.menuItem
+  const uploaded = await uploadPartnerFile(
+    supabase,
+    file,
+    spec,
+    `${folder}/${menuId}/${Date.now()}-${randomUUID()}-${safeFileName(file.name)}`,
+  )
+
+  return uploaded.url
 }
 
 function parseImportedMenuCsv(text: string): ImportedMenuCategory[] {
@@ -4503,6 +4973,7 @@ function parseImportedMenuCsv(text: string): ImportedMenuCategory[] {
         name: row.item_name,
         description: row.description || null,
         price: importedNumber(row.price),
+        currency: row.currency || "EUR",
         image_url: row.image_url || null,
         tags: splitImportedList(row.tags),
         allergens: splitImportedList(row.allergens),
@@ -4514,41 +4985,11 @@ function parseImportedMenuCsv(text: string): ImportedMenuCategory[] {
   return [...categories.values()]
 }
 
-function normalizeImportedMenuItem(value: unknown, label: string): ImportedMenuItem {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`${label} must be an object.`)
-  }
-  const record = value as Record<string, unknown>
-  return {
-    name: importedString(record.name),
-    description: importedNullableString(record.description),
-    price: importedNumber(record.price),
-    image_url: importedNullableString(record.image_url),
-    tags: importedStringList(record.tags),
-    allergens: importedStringList(record.allergens),
-    addons: parseMenuItemAddons(record.addons),
-    is_popular: record.is_popular === true,
-  }
-}
-
-function importedString(value: unknown) {
-  return typeof value === "string" ? value.trim() : ""
-}
-
-function importedNullableString(value: unknown) {
-  return importedString(value) || null
-}
-
 function importedNumber(value: unknown) {
   if (value === null || value === undefined || value === "") return null
   const number = typeof value === "number" ? value : Number(value)
   if (!Number.isFinite(number) || number < 0) throw new Error(`Invalid price value "${String(value)}".`)
   return number
-}
-
-function importedStringList(value: unknown) {
-  if (Array.isArray(value)) return value.map(importedString).filter(Boolean)
-  return typeof value === "string" ? splitImportedList(value) : []
 }
 
 function splitImportedList(value: string) {

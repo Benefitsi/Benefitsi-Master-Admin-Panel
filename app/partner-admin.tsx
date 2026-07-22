@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   useActionState,
   useCallback,
@@ -533,21 +534,6 @@ export function PartnerWorkspace({
         <LiveMetric label="Menu approvals required" value={pendingMenuReviews.length} />
       </div>
 
-      <PendingMenuReviewPanel
-        reviews={pendingMenuReviews}
-        onSelectPartner={(partnerId) => {
-          setSelectedId(partnerId)
-          setMode("view")
-          setWorkspaceLocation({ tab: "details", view: "settings" })
-          rememberWorkspaceLocation({
-            mode: "view",
-            partner: partnerId,
-            tab: "details",
-            view: "settings",
-          })
-        }}
-      />
-
       <div className="grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]">
         <aside className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
           <div className="border-b border-zinc-200 p-3">
@@ -649,7 +635,7 @@ function LiveMetric({ label, value }: { label: string; value: number }) {
   )
 }
 
-function PendingMenuReviewPanel({
+export function PendingMenuReviewPanel({
   reviews,
   onSelectPartner,
 }: {
@@ -694,6 +680,132 @@ function PendingMenuReviewPanel({
         </div>
       </div>
     </div>
+  )
+}
+
+export function MenuApprovalWorkspace({
+  partners,
+}: {
+  partners: PartnerWithDeals[]
+}) {
+  const reviews = partners.flatMap((partner) =>
+    partner.menus
+      .filter((menu) => menu.status === "review")
+      .map((menu) => ({ partner, menu })),
+  )
+
+  return (
+    <section className="space-y-4">
+      <ToastViewport />
+      <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-teal-700">Review queue</p>
+          <h2 className="mt-1 text-2xl font-bold tracking-tight text-zinc-950">Menu approvals</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600">
+            Preview every submitted menu here. Open its partner menu management page if changes are needed before approval.
+          </p>
+        </div>
+        <span className="inline-flex w-fit rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
+          {reviews.length} awaiting approval
+        </span>
+      </div>
+
+      {reviews.length ? (
+        <div className="space-y-4">
+          {reviews.map(({ partner, menu }) => (
+            <MenuApprovalCard
+              key={menu.id ?? `${partner.id}-${menu.name}`}
+              menu={menu}
+              partner={partner}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-zinc-300 bg-white p-10 text-center shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-900">All menus are reviewed</h3>
+          <p className="mt-1 text-sm text-zinc-500">New submissions will appear here when their status is set to Needs review.</p>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function MenuApprovalCard({
+  menu,
+  partner,
+}: {
+  menu: PartnerMenu
+  partner: PartnerWithDeals
+}) {
+  const [state, formAction] = useActionState(approveMenu, initialState)
+  useToastNotification(state)
+  const categories = sortMenuCategories(menu.categories)
+  const sortedItems = sortMenuItems(menu.items)
+  const uncategorizedItems = sortedItems.filter((item) => !item.category_id)
+
+  return (
+    <article className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+      <header className="flex flex-col gap-3 border-b border-zinc-200 bg-zinc-50/70 p-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">{partner.name || "Untitled partner"}</p>
+          <h3 className="mt-1 text-lg font-bold text-zinc-950">{menu.name || "Untitled menu"}</h3>
+          <p className="mt-1 text-sm text-zinc-600">{menu.description || "No description"}</p>
+          <p className="mt-2 text-xs text-zinc-500">
+            {categories.length} categories · {menu.items.length} items · Updated {formatDateTime(menu.updated_at)}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/?partner=${encodeURIComponent(partner.id ?? "")}&tab=menu&view=settings`}
+            className="inline-flex h-9 items-center rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
+          >
+            Edit in partner menu
+          </Link>
+          <form action={formAction}>
+            <input type="hidden" name="id" value={menu.id ?? ""} />
+            <SubmitButton label="Approve menu" pendingLabel="Approving..." size="compact" />
+          </form>
+        </div>
+      </header>
+
+      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+        {categories.map((category) => {
+          const items = sortedItems.filter((item) => item.category_id === category.id)
+          return (
+            <section key={category.id ?? category.name} className="rounded-lg border border-zinc-200 bg-white p-3">
+              <h4 className="font-semibold text-zinc-900">{category.name || "Untitled category"}</h4>
+              {items.length ? (
+                <ul className="mt-2 divide-y divide-zinc-100">
+                  {items.map((item) => (
+                    <li key={item.id ?? item.name} className="flex gap-3 py-2 text-sm">
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium text-zinc-800">{item.name || "Untitled item"}</span>
+                        {item.description ? <span className="mt-0.5 block text-xs text-zinc-500">{item.description}</span> : null}
+                      </span>
+                      <span className="shrink-0 font-semibold text-zinc-700">{formatPrice(item.price, item.currency)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="mt-2 text-xs text-zinc-500">No items in this category.</p>}
+            </section>
+          )
+        })}
+        {uncategorizedItems.length ? (
+          <section className="rounded-lg border border-zinc-200 bg-white p-3">
+            <h4 className="font-semibold text-zinc-900">Other items</h4>
+            <ul className="mt-2 divide-y divide-zinc-100">
+              {uncategorizedItems.map((item) => (
+                <li key={item.id ?? item.name} className="flex gap-3 py-2 text-sm">
+                  <span className="min-w-0 flex-1 font-medium text-zinc-800">{item.name || "Untitled item"}</span>
+                  <span className="shrink-0 font-semibold text-zinc-700">{formatPrice(item.price, item.currency)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </div>
+      <div className="px-4 pb-4"><ActionMessage state={state} /></div>
+    </article>
   )
 }
 
@@ -2673,6 +2785,27 @@ function InitialMenuEditor({
             label="Menu description"
             name="initial_menu_description"
           />
+
+          <div className="space-y-2 rounded-lg border border-zinc-200 bg-white p-3">
+            <label htmlFor="initial-menu-import" className="block text-sm font-semibold text-zinc-900">
+              Import menu <span className="font-normal text-zinc-500">(optional)</span>
+            </label>
+            <p className="text-xs leading-5 text-zinc-500">
+              Select one or more menu JSON files and an optional assets manifest together. CSV remains supported. The menu name and status above remain required.
+            </p>
+            <input
+              id="initial-menu-import"
+              type="file"
+              name="initial_menu_file"
+              multiple
+              accept=".json,.csv,application/json,text/csv"
+              className="block w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-[#061829] file:px-3 file:py-1.5 file:font-semibold file:text-white"
+            />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => downloadMenuTemplate("csv")} className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100">CSV template</button>
+              <button type="button" onClick={() => downloadMenuTemplate("json")} className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100">JSON template</button>
+            </div>
+          </div>
 
           <div className="space-y-3 border-t border-zinc-200 pt-4">
             <div className="flex items-center justify-between gap-3">
@@ -6387,9 +6520,7 @@ function MenuPanel({
         <MenuCard
           key={menu.id ?? `${menu.partner_id}-${menu.name}`}
           menu={menu}
-          partnerEmail={partner.email}
           partnerId={partnerId}
-          partnerName={partner.name}
         />
       ) : (
         <EmptyState>No menu configured yet.</EmptyState>
@@ -6415,16 +6546,11 @@ function MenuPanel({
 
 function MenuCard({
   menu,
-  partnerEmail,
   partnerId,
-  partnerName,
 }: {
   menu: PartnerMenu
-  partnerEmail?: string | null
   partnerId: string
-  partnerName?: string | null
 }) {
-  const [editingMenu, setEditingMenu] = useState(false)
   const [categoryEditor, setCategoryEditor] = useState<MenuCategoryEditorState | null>(null)
   const [itemEditor, setItemEditor] = useState<MenuItemEditorState | null>(null)
   const [selectedItemCategoryId, setSelectedItemCategoryId] = useState(
@@ -6500,6 +6626,50 @@ function MenuCard({
     setItemOrderIds([])
     setItemEditor(null)
   }, [])
+  const handleItemSaved = useCallback((state: PartnerActionState) => {
+    const savedItem = state.menuItem
+    if (!savedItem) return
+
+    setLocalItems((current) => {
+      const existing = current.some((item) => item.id === savedItem.id)
+      return existing
+        ? current.map((item) => item.id === savedItem.id ? savedItem : item)
+        : [...current, savedItem]
+    })
+    setLocalCategories((current) =>
+      current.map((category) => ({
+        ...category,
+        items: category.id === savedItem.category_id
+          ? category.items.some((item) => item.id === savedItem.id)
+            ? category.items.map((item) => item.id === savedItem.id ? savedItem : item)
+            : [...category.items, savedItem]
+          : category.items.filter((item) => item.id !== savedItem.id),
+      })),
+    )
+    setItemOrderIds([])
+    setItemEditor(null)
+  }, [])
+  const handleAddonsUpdated = useCallback(
+    (updates: NonNullable<PartnerActionState["updatedAddons"]>) => {
+      const addonsByItemId = new Map(
+        updates.map(({ itemId, addons }) => [itemId, addons]),
+      )
+      const applyAddons = (item: MenuItem): MenuItem => {
+        if (!item.id) return item
+        const addons = addonsByItemId.get(item.id)
+        return addons ? { ...item, addons } : item
+      }
+
+      setLocalItems((current) => current.map(applyAddons))
+      setLocalCategories((current) =>
+        current.map((category) => ({
+          ...category,
+          items: category.items.map(applyAddons),
+        })),
+      )
+    },
+    [],
+  )
   const nextCategorySortOrder = nextAvailablePosition(
     categoryCards.map((category) => category.sort_order),
   )
@@ -6592,27 +6762,15 @@ function MenuCard({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <section className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4">
         <div>
-          <h3 className="text-base font-semibold text-zinc-950">
-            {menu.name || "Untitled menu"}
-          </h3>
-          <p className="mt-1 text-sm text-zinc-600">
-            {menu.description || "No description"}
-          </p>
+          <h3 className="text-base font-semibold text-zinc-950">Menu details</h3>
+          <p className="mt-1 text-sm text-zinc-600">Update the menu name, description, or approval status here.</p>
         </div>
-        <Badge className="inline-flex min-w-[10.5rem] items-center justify-center whitespace-nowrap">
-          Menu status: {labelForValue(menuStatusOptions, menu.status)}
-        </Badge>
-      </div>
-      {menu.status === "review" ? (
-        <MenuApprovalNotice
-          menuId={menu.id}
-          menuName={menu.name}
-          partnerEmail={partnerEmail}
-          partnerName={partnerName}
-        />
-      ) : null}
+        <div className="mt-4">
+          <MenuForm menu={menu} partnerId={partnerId} />
+        </div>
+      </section>
       <div className="mt-4 flex flex-wrap gap-2 text-sm text-zinc-600">
         <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 py-2">
           <span className="font-medium text-zinc-800">Categories:</span>
@@ -6628,31 +6786,16 @@ function MenuCard({
         </span>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setEditingMenu((value) => !value)}
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
-        >
-          {editingMenu ? "Close editor" : "Edit menu"}
-        </button>
         {menu.id ? (
           <MenuImportDialog
             categoryCount={localCategories.length}
             itemCount={localItems.length}
             menuId={menu.id}
+            onAddonsUpdated={handleAddonsUpdated}
           />
         ) : null}
         {menu.id ? <DeleteMenuForm menuId={menu.id} /> : null}
       </div>
-      {editingMenu ? (
-        <div className="mt-4 border-t border-zinc-200 pt-4">
-          <MenuForm
-            menu={menu}
-            partnerId={partnerId}
-            onSaved={() => setEditingMenu(false)}
-          />
-        </div>
-      ) : null}
       {reorderMessage ? (
         <p
           className={`mt-4 rounded-md border px-3 py-2 text-sm ${
@@ -6805,92 +6948,8 @@ function MenuCard({
         menuId={menu.id ?? ""}
         onClose={() => setItemEditor(null)}
         onDeleted={handleItemDeleted}
+        onSaved={handleItemSaved}
       />
-    </div>
-  )
-}
-
-function MenuApprovalNotice({
-  menuId,
-  menuName,
-  partnerEmail,
-  partnerName,
-}: {
-  menuId?: string | null
-  menuName?: string | null
-  partnerEmail?: string | null
-  partnerName?: string | null
-}) {
-  const [state, formAction] = useActionState(approveMenu, initialState)
-  const [showFeedback, setShowFeedback] = useState(false)
-  const [feedback, setFeedback] = useState("")
-  const subject = `Menu feedback for ${partnerName || "your Benefitsi listing"}`
-  const body = [
-    `Hi ${partnerName || "there"},`,
-    "",
-    `We reviewed ${menuName || "your menu"} and need a few changes before approval:`,
-    "",
-    feedback || "[Add feedback here]",
-    "",
-    "Thanks,",
-    "Benefitsi Admin",
-  ].join("\n")
-  const mailtoHref = partnerEmail
-    ? `mailto:${partnerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    : ""
-
-  return (
-    <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-amber-900">
-            Menu requires approval
-          </p>
-          <p className="mt-1 text-sm leading-6 text-amber-900">
-            Approve this menu now, or request changes from the partner.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <form action={formAction}>
-            <input type="hidden" name="id" value={menuId ?? ""} />
-            <SubmitButton
-              label="Approve"
-              pendingLabel="Approving..."
-              size="compact"
-            />
-          </form>
-          <button
-            type="button"
-            onClick={() => setShowFeedback((value) => !value)}
-            className="h-9 rounded-md border border-amber-300 bg-white px-3 text-sm font-semibold text-amber-900 transition hover:bg-amber-100"
-          >
-            Provide feedback
-          </button>
-        </div>
-      </div>
-      <ActionMessage state={state} />
-      {showFeedback ? (
-        <div className="mt-3 space-y-3">
-          <textarea
-            value={feedback}
-            onChange={(event) => setFeedback(event.target.value)}
-            placeholder="Write requested menu changes here before emailing."
-            className="min-h-24 w-full rounded-md border border-amber-200 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
-          />
-          {partnerEmail ? (
-            <a
-              className="inline-flex h-9 items-center justify-center rounded-md bg-amber-700 px-3 text-sm font-semibold text-white transition hover:bg-amber-800"
-              href={mailtoHref}
-            >
-              Email feedback
-            </a>
-          ) : (
-            <span className="inline-flex rounded-md border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-900">
-              No partner email
-            </span>
-          )}
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -6904,13 +6963,74 @@ function MenuForm({
   onSaved?: () => void
   partnerId: string
 }) {
-  const [state, formAction] = useActionState(saveMenu, initialState)
+  const nextMenuFileInputId = useRef(1)
+  const selectedMenuFilesRef = useRef<File[]>([])
+  const [menuFileSelections, setMenuFileSelections] = useState<
+    Array<{ id: number; files: File[] }>
+  >([{ id: 0, files: [] }])
+  const saveMenuWithSelectedFiles = useCallback(
+    async (previousState: PartnerActionState, formData: FormData) => {
+      formData.delete("menu_file")
+      selectedMenuFilesRef.current.forEach((file) =>
+        formData.append("menu_file", file),
+      )
+      formData.set(
+        "expected_menu_file_count",
+        String(selectedMenuFilesRef.current.length),
+      )
+      return saveMenu(previousState, formData)
+    },
+    [],
+  )
+  const [state, formAction] = useActionState(
+    saveMenuWithSelectedFiles,
+    initialState,
+  )
   const formRef = useActionSuccess(state, onSaved)
+  const selectedMenuFiles = menuFileSelections.flatMap(
+    (selection) => selection.files,
+  )
+  const activeMenuFileInput = menuFileSelections.at(-1)
+
+  function retainNewMenuFileSelection(
+    inputId: number,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const files = Array.from(event.currentTarget.files ?? [])
+    if (!files.length) return
+
+    setMenuFileSelections((current) => {
+      const nextSelections = [
+        ...current.map((selection) =>
+        selection.id === inputId ? { ...selection, files } : selection,
+        ),
+        { id: nextMenuFileInputId.current++, files: [] },
+      ]
+      selectedMenuFilesRef.current = nextSelections.flatMap(
+        (selection) => selection.files,
+      )
+      return nextSelections
+    })
+  }
+
+  function clearNewMenuFiles() {
+    selectedMenuFilesRef.current = []
+    setMenuFileSelections([
+      { id: nextMenuFileInputId.current++, files: [] },
+    ])
+  }
 
   return (
     <form ref={formRef} action={formAction} className="space-y-4">
       <input type="hidden" name="id" value={menu?.id ?? ""} />
       <input type="hidden" name="partner_id" value={partnerId} />
+      {state.importPreview?.ready ? (
+        <input
+          type="hidden"
+          name="confirm_import_signature"
+          value={state.importPreview.signature}
+        />
+      ) : null}
       <FieldGrid>
         <TextField
           label="Menu name"
@@ -6931,10 +7051,73 @@ function MenuForm({
         name="description"
         defaultValue={menu?.description}
       />
+      {!menu ? (
+        <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+          <label htmlFor={`new-menu-import-${partnerId}-${activeMenuFileInput?.id ?? 0}`} className="block text-sm font-semibold text-zinc-900">
+            Import menu <span className="font-normal text-zinc-500">(optional)</span>
+          </label>
+          <p className="text-xs leading-5 text-zinc-500">
+            Select a ZIP or one or more menu JSON files with an optional assets manifest, or CSV. Name and status are still required.
+          </p>
+          {menuFileSelections.map((selection, index) => {
+            const isActiveInput = index === menuFileSelections.length - 1
+
+            return (
+              <input
+                key={selection.id}
+                id={`new-menu-import-${partnerId}-${selection.id}`}
+                type="file"
+                name="menu_file"
+                multiple
+                accept=".zip,.json,.csv,application/zip,application/x-zip-compressed,application/json,text/csv"
+                onChange={(event) =>
+                  retainNewMenuFileSelection(selection.id, event)
+                }
+                className={
+                  isActiveInput
+                    ? "block w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-[#061829] file:px-3 file:py-1.5 file:font-semibold file:text-white"
+                    : "hidden"
+                }
+              />
+            )
+          })}
+          {selectedMenuFiles.length ? (
+            <div className="rounded-lg border border-zinc-200 bg-white p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold text-zinc-800">
+                  {selectedMenuFiles.length} file{selectedMenuFiles.length === 1 ? "" : "s"} selected
+                </p>
+                <button
+                  type="button"
+                  onClick={clearNewMenuFiles}
+                  className="text-xs font-semibold text-rose-700 hover:text-rose-800"
+                >
+                  Clear files
+                </button>
+              </div>
+              <ul className="mt-2 max-h-24 space-y-1 overflow-y-auto text-xs text-zinc-600">
+                {selectedMenuFiles.map((file, index) => (
+                  <li key={`${file.name}:${file.size}:${file.lastModified}:${index}`} className="truncate">
+                    {file.name}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-zinc-500">
+                Choose Files again to add another JSON file. Earlier selections stay attached to Add menu.
+              </p>
+            </div>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => downloadMenuTemplate("csv")} className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100">CSV template</button>
+            <button type="button" onClick={() => downloadMenuTemplate("json")} className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100">JSON template</button>
+          </div>
+        </div>
+      ) : null}
+      <ImportPreview preview={state.importPreview} />
       <ActionMessage state={state} />
       <SubmitButton
-        label={menu ? "Save menu" : "Add menu"}
-        pendingLabel={menu ? "Saving menu..." : "Adding menu..."}
+        label={state.importPreview?.ready ? "Confirm ZIP import" : menu ? "Save menu" : "Add menu"}
+        pendingLabel={state.importPreview?.ready ? "Importing ZIP..." : menu ? "Saving menu..." : "Adding menu..."}
       />
     </form>
   )
@@ -6968,15 +7151,76 @@ function MenuImportDialog({
   categoryCount,
   itemCount,
   menuId,
+  onAddonsUpdated,
 }: {
   categoryCount: number
   itemCount: number
   menuId: string
+  onAddonsUpdated: (
+    updates: NonNullable<PartnerActionState["updatedAddons"]>,
+  ) => void
 }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [importMode, setImportMode] = useState<"append" | "replace" | "">("")
-  const [state, formAction] = useActionState(importMenuFile, initialState)
-  const formRef = useActionSuccess(state, () => window.location.reload())
+  const [importMode, setImportMode] = useState<"append" | "replace" | "update_addons" | "">("")
+  const nextFileInputId = useRef(1)
+  const selectedImportFilesRef = useRef<File[]>([])
+  const [fileSelections, setFileSelections] = useState<
+    Array<{ id: number; files: File[] }>
+  >([{ id: 0, files: [] }])
+  const importMenuWithSelectedFiles = useCallback(
+    async (previousState: PartnerActionState, formData: FormData) => {
+      formData.delete("menu_file")
+      selectedImportFilesRef.current.forEach((file) =>
+        formData.append("menu_file", file),
+      )
+      return importMenuFile(previousState, formData)
+    },
+    [],
+  )
+  const [state, formAction] = useActionState(
+    importMenuWithSelectedFiles,
+    initialState,
+  )
+  const formRef = useActionSuccess(state, (result) => {
+    if (result.updatedAddons?.length) {
+      onAddonsUpdated(result.updatedAddons)
+    }
+    if (!result.issues) {
+      setOpen(false)
+      if (!result.updatedAddons?.length) router.refresh()
+    }
+  })
+  const hasExistingContent = categoryCount > 0 || itemCount > 0
+  const selectedFiles = fileSelections.flatMap((selection) => selection.files)
+
+  function retainMenuFileSelection(
+    inputId: number,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const incomingFiles = Array.from(event.currentTarget.files ?? [])
+    if (!incomingFiles.length) return
+
+    setFileSelections((current) => {
+      const nextSelections = [
+        ...current.map((selection) =>
+          selection.id === inputId
+            ? { ...selection, files: incomingFiles }
+            : selection,
+        ),
+        { id: nextFileInputId.current++, files: [] },
+      ]
+      selectedImportFilesRef.current = nextSelections.flatMap(
+        (selection) => selection.files,
+      )
+      return nextSelections
+    })
+  }
+
+  function clearMenuFiles() {
+    selectedImportFilesRef.current = []
+    setFileSelections([{ id: nextFileInputId.current++, files: [] }])
+  }
 
   useEffect(() => {
     if (!open) return
@@ -6997,7 +7241,9 @@ function MenuImportDialog({
       <button
         type="button"
         onClick={() => {
-          setImportMode("")
+          setImportMode(hasExistingContent ? "" : "append")
+          selectedImportFilesRef.current = []
+          setFileSelections([{ id: nextFileInputId.current++, files: [] }])
           setOpen(true)
         }}
         className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
@@ -7021,7 +7267,7 @@ function MenuImportDialog({
             <header className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
               <div>
                 <h3 id="menu-import-dialog-title" className="text-lg font-bold text-zinc-950">Import menu</h3>
-                <p className="mt-0.5 text-xs text-zinc-500">Upload JSON or CSV categories and items.</p>
+                <p className="mt-0.5 text-xs text-zinc-500">Select a Knobi ZIP, or multiple menu JSON files and assets_manifest.json together. CSV remains supported.</p>
               </div>
               <button
                 type="button"
@@ -7048,12 +7294,26 @@ function MenuImportDialog({
               }}
             >
               <input type="hidden" name="menu_id" value={menuId} />
-              <p className="text-xs leading-5 text-zinc-600">
+              {state.importPreview?.ready ? (
+                <input
+                  type="hidden"
+                  name="confirm_import_signature"
+                  value={state.importPreview.signature}
+                />
+              ) : null}
+              {hasExistingContent ? <p className="text-xs leading-5 text-zinc-600">
                 This menu already has {categoryCount} categories and {itemCount} items. Choose how the imported content should be handled.
-              </p>
-              <fieldset className="space-y-2">
+              </p> : (
+                <>
+                  <input type="hidden" name="import_mode" value="append" />
+                  <p className="rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-xs leading-5 text-teal-900">
+                    This menu is empty. The imported categories and items will become its menu content.
+                  </p>
+                </>
+              )}
+              {hasExistingContent ? <fieldset className="space-y-2">
                 <legend className="text-sm font-semibold text-zinc-900">Import behavior</legend>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2 sm:grid-cols-3">
                   <label className={`cursor-pointer rounded-lg border p-3 transition ${importMode === "append" ? "border-teal-600 bg-teal-50 ring-2 ring-teal-100" : "border-zinc-200 bg-white hover:border-zinc-300"}`}>
                     <span className="flex items-start gap-2">
                       <input
@@ -7088,17 +7348,79 @@ function MenuImportDialog({
                       </span>
                     </span>
                   </label>
+                  <label className={`cursor-pointer rounded-lg border p-3 transition ${importMode === "update_addons" ? "border-sky-600 bg-sky-50 ring-2 ring-sky-100" : "border-zinc-200 bg-white hover:border-zinc-300"}`}>
+                    <span className="flex items-start gap-2">
+                      <input
+                        type="radio"
+                        name="import_mode"
+                        value="update_addons"
+                        checked={importMode === "update_addons"}
+                        onChange={() => setImportMode("update_addons")}
+                        required
+                        className="mt-0.5 size-4 accent-sky-700"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-zinc-900">Update add-ons</span>
+                        <span className="mt-1 block text-xs leading-5 text-zinc-500">Match existing categories and items by name and update only their add-ons. Images and other fields stay unchanged.</span>
+                      </span>
+                    </span>
+                  </label>
                 </div>
-              </fieldset>
-              <input
-                type="file"
-                name="menu_file"
-                accept=".json,.csv,application/json,text/csv"
-                required
-                className="block w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-[#061829] file:px-3 file:py-1.5 file:font-semibold file:text-white"
-              />
+              </fieldset> : null}
+              {fileSelections.map((selection, index) => {
+                const isActiveInput = index === fileSelections.length - 1
+
+                return (
+                  <input
+                    key={selection.id}
+                    type="file"
+                    name="menu_file"
+                    multiple
+                    accept=".zip,.json,.csv,application/zip,application/x-zip-compressed,application/json,text/csv"
+                    required={isActiveInput && selectedFiles.length === 0}
+                    onChange={(event) =>
+                      retainMenuFileSelection(selection.id, event)
+                    }
+                    className={
+                      isActiveInput
+                        ? "block w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-[#061829] file:px-3 file:py-1.5 file:font-semibold file:text-white"
+                        : "hidden"
+                    }
+                  />
+                )
+              })}
+              {selectedFiles.length ? (
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold text-zinc-800">
+                      {selectedFiles.length} file{selectedFiles.length === 1 ? "" : "s"} selected
+                    </p>
+                    <button
+                      type="button"
+                      onClick={clearMenuFiles}
+                      className="text-xs font-semibold text-rose-700 hover:text-rose-800"
+                    >
+                      Clear files
+                    </button>
+                  </div>
+                  <ul className="mt-2 max-h-24 space-y-1 overflow-y-auto text-xs text-zinc-600">
+                    {selectedFiles.map((file, index) => (
+                      <li key={`${file.name}:${file.size}:${file.lastModified}:${index}`} className="truncate">
+                        {file.name}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    Open the picker again to add more files; these selections will be retained.
+                  </p>
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-2">
-                <SubmitButton label="Import menu" pendingLabel="Importing menu..." size="compact" />
+                <SubmitButton
+                  label={state.importPreview?.ready ? "Confirm ZIP import" : "Import menu"}
+                  pendingLabel={state.importPreview?.ready ? "Importing ZIP..." : "Importing menu..."}
+                  size="compact"
+                />
                 <button type="button" onClick={() => downloadMenuTemplate("csv")} className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100">
                   CSV template
                 </button>
@@ -7106,6 +7428,7 @@ function MenuImportDialog({
                   JSON template
                 </button>
               </div>
+              <ImportPreview preview={state.importPreview} />
               <ActionMessage state={state} />
             </form>
           </section>
@@ -7488,6 +7811,7 @@ function MenuItemEditorDialog({
   menuId,
   onClose,
   onDeleted,
+  onSaved,
 }: {
   categoryOptions: { value: string; label: string }[]
   defaultCategoryId: string
@@ -7496,6 +7820,7 @@ function MenuItemEditorDialog({
   menuId: string
   onClose: () => void
   onDeleted: (state: PartnerActionState) => void
+  onSaved: (state: PartnerActionState) => void
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -7588,7 +7913,7 @@ function MenuItemEditorDialog({
             intent={editor.mode}
             item={item}
             menuId={menuId}
-            onSaved={onClose}
+            onSaved={onSaved}
           />
         </div>
       </section>
@@ -7613,7 +7938,7 @@ function MenuItemForm({
   item?: MenuItem
   intent?: "create" | "edit" | "duplicate"
   menuId: string
-  onSaved?: () => void
+  onSaved?: (state: PartnerActionState) => void
 }) {
   const [state, formAction] = useActionState(saveMenuItem, initialState)
   const formRef = useActionSuccess(state, onSaved)
@@ -10245,6 +10570,57 @@ function CheckboxField({
   )
 }
 
+function ImportPreview({
+  preview,
+}: {
+  preview?: PartnerActionState["importPreview"]
+}) {
+  if (!preview) return null
+
+  const counts = [
+    ["Categories", preview.categories],
+    ["Items", preview.items],
+    ["Add-ons", preview.addons],
+    ["Images matched", preview.imagesMatched],
+    ["Images missing", preview.imagesMissing],
+  ] as const
+
+  return (
+    <section className="space-y-3 rounded-lg border border-sky-200 bg-sky-50 p-3" aria-label="ZIP import preview">
+      <div>
+        <h4 className="text-sm font-semibold text-sky-950">ZIP import preview</h4>
+        <p className="mt-1 text-xs leading-5 text-sky-800">
+          Nothing has been saved yet. Review this preview before confirming.
+        </p>
+      </div>
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {counts.map(([label, value]) => (
+          <div key={label} className="rounded-md border border-sky-100 bg-white px-2 py-2">
+            <dt className="text-[11px] text-zinc-500">{label}</dt>
+            <dd className="mt-0.5 text-base font-bold text-zinc-900">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {preview.errors.length ? (
+        <div className="rounded-md border border-rose-200 bg-rose-50 p-2 text-xs text-rose-800">
+          <p className="font-semibold">Validation errors</p>
+          <ul className="mt-1 list-disc space-y-1 pl-4">
+            {preview.errors.map((error, index) => <li key={`${error}:${index}`}>{error}</li>)}
+          </ul>
+        </div>
+      ) : null}
+      {preview.warnings.length ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+          <p className="font-semibold">Warnings</p>
+          <ul className="mt-1 list-disc space-y-1 pl-4">
+            {preview.warnings.map((warning, index) => <li key={`${warning}:${index}`}>{warning}</li>)}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 function ActionMessage({
   state,
   toast = true,
@@ -10260,10 +10636,12 @@ function ActionMessage({
 
   return (
     <p
-      className={`rounded-md border px-3 py-2 text-sm ${
-        state.ok
-          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-          : "border-rose-200 bg-rose-50 text-rose-700"
+      className={`whitespace-pre-line rounded-md border px-3 py-2 text-sm ${
+        state.issues
+          ? "border-amber-200 bg-amber-50 text-amber-900"
+          : state.ok
+            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+            : "border-rose-200 bg-rose-50 text-rose-700"
       }`}
       aria-live="polite"
     >
