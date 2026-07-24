@@ -20,6 +20,7 @@ const translations = [
   ["Active partners", "Aktive Partner"],
   ["Featured partners", "Hervorgehobene Partner"],
   ["Menu approvals required", "Menüfreigaben erforderlich"],
+  ["Menu approvals", "Menüfreigaben"],
   ["Select a partner to edit.", "Wähle einen Partner zur Bearbeitung aus."],
   ["Add", "Hinzufügen"],
   ["Search partners", "Partner suchen"],
@@ -29,27 +30,31 @@ const translations = [
   ["Create the partner profile, assign its owner, upload media, and add any deals in one save.", "Erstelle das Partnerprofil, weise einen Inhaber zu und füge Medien sowie Deals in einem Schritt hinzu."],
   ["Add a partner to start managing deals.", "Füge einen Partner hinzu, um Deals zu verwalten."],
   ["No location or type", "Kein Standort oder Typ"],
+  ["Food & Drink", "Gastronomie"],
+  ["Services", "Dienstleistungen"],
+  ["Wellness", "Wellness"],
+  ["Activities", "Aktivitäten"],
   ["Deal recommended", "Deal empfohlen"],
   ["Inactive", "Inaktiv"],
   ["Business Control Center", "Business Control Center"],
   ["Overview", "Übersicht"],
   ["Acquisition & Marketing", "Akquisition & Marketing"],
   ["Product & Funnel", "Produkt & Funnel"],
-  ["Revenue & Profit", "Umsatz & Profit"],
+  ["Revenue & Profit", "Umsatz & Gewinn"],
   ["Data quality & Definitions", "Datenqualität & Definitionen"],
   ["Growth", "Wachstum"],
-  ["User journey", "Nutzerreise"],
+  ["User journey", "Nutzerverlauf"],
   ["Customer value", "Kundenwert"],
   ["Finance", "Finanzen"],
   ["Network", "Netzwerk"],
   ["Trust", "Vertrauen"],
-  ["The most important outcomes and guardrails for the current reporting period.", "Die wichtigsten Outcomes und Guardrails für den aktuellen Steuerungszeitraum."],
+  ["The most important outcomes and guardrails for the current reporting period.", "Die wichtigsten Ergebnisse und Leitplanken für den aktuellen Berichtszeitraum."],
   ["Channels, campaigns, attribution, and costs through value-generating activation.", "Kanäle, Kampagnen, Attribution und Kosten bis zur wertstiftenden Aktivierung."],
-  ["From signup through time-to-value and deal usage to confirmed redemption.", "Vom Signup über Time-to-Value und Deal-Nutzung bis zur bestätigten Redemption."],
-  ["Returning customers, cohorts, and realized customer value; forecasts remain clearly marked as provisional.", "Wiederkehr, Kohorten und realisierter Kundenwert; Prognosen bleiben klar als provisional markiert."],
-  ["Cash collections, period-adjusted revenue, contribution margin, and operating profit.", "Cash Collections, periodengerechter Umsatz, Deckungsbeitrag und Operating Profit."],
-  ["Partner activity, confirmed redemptions, returning customers, and concentration risks.", "Partneraktivität, bestätigte Redemptions, Wiederkehr und Konzentrationsrisiken."],
-  ["Source status, freshness, caveats, and versioned definitions behind every number.", "Quellenstatus, Aktualität, Caveats und versionierte Definitionen hinter jeder Zahl."],
+  ["From signup through time-to-value and deal usage to confirmed redemption.", "Von der Registrierung über die Zeit bis zum ersten Nutzen und die Deal-Nutzung bis zur bestätigten Einlösung."],
+  ["Returning customers, cohorts, and realized customer value; forecasts remain clearly marked as provisional.", "Wiederkehrende Kunden, Kohorten und realisierter Kundenwert; vorläufige Prognosen bleiben klar gekennzeichnet."],
+  ["Cash collections, period-adjusted revenue, contribution margin, and operating profit.", "Zahlungseingänge, periodengerechter Umsatz, Deckungsbeitrag und Betriebsergebnis."],
+  ["Partner activity, confirmed redemptions, returning customers, and concentration risks.", "Partneraktivität, bestätigte Einlösungen, wiederkehrende Kunden und Konzentrationsrisiken."],
+  ["Source status, freshness, caveats, and versioned definitions behind every number.", "Quellenstatus, Aktualität, Einschränkungen und versionierte Definitionen hinter jeder Kennzahl."],
   ["Filter business analytics", "Business Analytics filtern"],
   ["From", "Von"],
   ["To", "Bis"],
@@ -86,6 +91,7 @@ const translations = [
   ["Microsite builder", "Microsite-Builder"],
   ["Partner profile", "Partnerprofil"],
   ["Hours and loyalty rewards", "Öffnungszeiten und Treueprämien"],
+  ["Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields.", "Bearbeite Partnerdaten, Social-Media-Profile, Medien, Prämienstufen, Deals, Menü, Öffnungszeiten und die Supabase-Zuordnung."],
   ["Deals and offers", "Deals und Angebote"],
   ["Menu management", "Menüverwaltung"],
   ["Staff access", "Mitarbeiterzugriff"],
@@ -112,7 +118,7 @@ const translations = [
   ["Business information, contact details, location, branding, and media.", "Unternehmensdaten, Kontaktdaten, Standort, Marke und Medien."],
   ["Opening schedule, holiday closures, and stamp-card milestones.", "Öffnungszeiten, Feiertagsschließungen und Stempelkarten-Prämien."],
   ["Customer offers, eligibility rules, availability, and redemption settings.", "Kundenangebote, Teilnahmebedingungen, Verfügbarkeit und Einlöseeinstellungen."],
-  ["Menu details, categories, items, pricing, images, and display order.", "Menüdetails, Kategorien, Einträge, Preise, Bilder und Anzeigereihenfolge."],
+  ["Menu details, categories, items, pricing, images, and display order.", "Menüdetails, Kategorien, Artikel, Preise, Bilder und Anzeigereihenfolge."],
   ["Manage the staff members who can administer or scan for this partner.", "Mitarbeiter verwalten, die für diesen Partner administrieren oder scannen dürfen."],
   ["Review stamp-card progress, visits, applied benefits, and redemptions.", "Stempelkarten-Fortschritt, Besuche, Vorteile und Einlösungen prüfen."],
   ["Permanently remove this partner and its attached records.", "Diesen Partner und alle zugehörigen Datensätze dauerhaft löschen."],
@@ -128,11 +134,50 @@ const translations = [
   ["Click the image to upload or replace it.", "Klicke auf das Bild, um es hochzuladen oder zu ersetzen."],
   ["Restore", "Wiederherstellen"],
   ["Stamp-card milestones", "Stempelkarten-Prämien"],
+  ["Milestone", "Prämienstufe"],
+  ["Milestone Details", "Details der Prämienstufe"],
+  ["Milestone reward", "Stempelkarten-Prämie"],
+  ["Add milestone", "Prämienstufe hinzufügen"],
+  ["Save milestone", "Prämienstufe speichern"],
+  ["Adding milestone...", "Prämienstufe wird hinzugefügt ..."],
+  ["Saving milestone...", "Prämienstufe wird gespeichert ..."],
+  ["Manage stamp-card rewards separately from deals.", "Verwalte Stempelkarten-Prämien getrennt von Deals."],
   ["Deals", "Deals"],
   ["Menu", "Menü"],
   ["Required", "Erforderlich"],
   ["Required stamps", "Erforderliche Stempel"],
   ["Reward type", "Prämientyp"],
+  ["Item", "Artikel"],
+  ["Fixed amount", "Fester Betrag"],
+  ["Percent", "Prozent"],
+  ["Bonus stamp", "Bonusstempel"],
+  ["Bonus stamp count", "Anzahl der Bonusstempel"],
+  ["Discount value", "Rabattwert"],
+  ["Welcome reward", "Willkommensprämie"],
+  ["Duration Bonus", "Zeitbonus"],
+  ["Happy Hour deal", "Happy-Hour-Deal"],
+  ["Permanent fallback discount", "Dauerhafter Ersatzrabatt"],
+  ["Limited Deal Drop", "Limitierter Deal"],
+  ["Birthday reward", "Geburtstagsprämie"],
+  ["Free item deal", "Deal mit Gratisartikel"],
+  ["Selectable discount", "Auswählbarer Rabatt"],
+  ["Automatic bonus stamp", "Automatischer Bonusstempel"],
+  ["Streak reward", "Streak-Prämie"],
+  ["Challenge reward", "Challenge-Prämie"],
+  ["No direct reward", "Keine direkte Prämie"],
+  ["Fixed € discount", "Fester Euro-Rabatt"],
+  ["Percentage discount", "Prozentualer Rabatt"],
+  ["Free item", "Gratisartikel"],
+  ["User selects before visit", "Vom Nutzer vor dem Besuch auswählbar"],
+  ["User must choose this before the QR scan. Only one direct deal can be redeemed per visit.", "Der Nutzer muss dies vor dem QR-Scan auswählen. Pro Besuch kann nur ein direkter Deal eingelöst werden."],
+  ["Applies automatically during scan", "Wird beim Scan automatisch angewendet"],
+  ["No activation button. The system applies this automatically during scan if eligible.", "Keine Aktivierung erforderlich. Das System wendet den Vorteil beim Scan automatisch an, wenn die Voraussetzungen erfüllt sind."],
+  ["Applies only if no selected deal", "Gilt nur, wenn kein anderer Deal ausgewählt wurde"],
+  ["Applies automatically only if the user has not selected another direct deal.", "Wird nur dann automatisch angewendet, wenn der Nutzer keinen anderen direkten Deal ausgewählt hat."],
+  ["Free users", "Kostenlose Nutzer"],
+  ["Premium users", "Premium-Nutzer"],
+  ["Free + Premium", "Kostenlos + Premium"],
+  ["Free trial only", "Nur kostenlose Testphase"],
   ["Title", "Titel"],
   ["Reward item", "Prämienartikel"],
   ["Estimated savings", "Geschätzte Ersparnis"],
@@ -172,6 +217,7 @@ const translations = [
   ["Closed", "Geschlossen"],
   ["Apply to all open days", "Auf alle geöffneten Tage anwenden"],
   ["Applied", "Angewendet"],
+  ["Toggle closed days, adjust times, then save the weekly schedule once.", "Markiere Ruhetage, passe die Zeiten an und speichere anschließend den Wochenplan."],
   ["Holiday closures", "Feiertagsschließungen"],
   ["Date", "Datum"],
   ["Label", "Bezeichnung"],
@@ -201,32 +247,38 @@ const translations = [
   ["Archived", "Archiviert"],
   ["Menu status", "Menüstatus"],
   ["Updated", "Aktualisiert"],
+  ["Add menu", "Menü hinzufügen"],
+  ["Save menu", "Menü speichern"],
+  ["Adding menu...", "Menü wird hinzugefügt ..."],
+  ["Saving menu...", "Menü wird gespeichert ..."],
+  ["Delete menu", "Menü löschen"],
+  ["Deleting menu...", "Menü wird gelöscht ..."],
+  ["Each partner has one menu with sections and items.", "Jeder Partner hat ein Menü mit Kategorien und Artikeln."],
   ["Edit menu", "Menü bearbeiten"],
   ["Close editor", "Editor schließen"],
   ["Add category", "Kategorie hinzufügen"],
   ["Edit category", "Kategorie bearbeiten"],
   ["No menu categories configured yet.", "Noch keine Menükategorien konfiguriert."],
-  ["Items", "Einträge"],
-  ["Item", "Eintrag"],
+  ["Items", "Artikel"],
   ["Other", "Weitere"],
-  ["New item", "Neuer Eintrag"],
-  ["Add item", "Eintrag hinzufügen"],
-  ["Add menu item", "Menüeintrag hinzufügen"],
-  ["Edit item", "Eintrag bearbeiten"],
-  ["Edit menu item", "Menüeintrag bearbeiten"],
+  ["New item", "Neuer Artikel"],
+  ["Add item", "Artikel hinzufügen"],
+  ["Add menu item", "Menüartikel hinzufügen"],
+  ["Edit item", "Artikel bearbeiten"],
+  ["Edit menu item", "Menüartikel bearbeiten"],
   ["Duplicate", "Duplizieren"],
-  ["Duplicate item", "Eintrag duplizieren"],
-  ["Duplicate menu item", "Menüeintrag duplizieren"],
-  ["Review the copied details, then create the new item.", "Kopierte Angaben prüfen und anschließend den neuen Eintrag erstellen."],
-  ["Keep the menu focused by editing one item at a time.", "Für eine übersichtliche Bearbeitung jeweils nur einen Eintrag öffnen."],
+  ["Duplicate item", "Artikel duplizieren"],
+  ["Duplicate menu item", "Menüartikel duplizieren"],
+  ["Review the copied details, then create the new item.", "Prüfe die kopierten Angaben und erstelle anschließend den neuen Artikel."],
+  ["Keep the menu focused by editing one item at a time.", "Bearbeite jeweils nur einen Artikel, damit das Menü übersichtlich bleibt."],
   ["Delete", "Löschen"],
   ["Popular", "Beliebt"],
   ["No category", "Keine Kategorie"],
   ["No description", "Keine Beschreibung"],
-  ["No menu items configured yet.", "Noch keine Menüeinträge konfiguriert."],
-  ["No items in this category yet.", "Noch keine Einträge in dieser Kategorie."],
-  ["Menu item categories", "Menüeintragskategorien"],
-  ["Item name", "Name des Eintrags"],
+  ["No menu items configured yet.", "Noch keine Menüartikel angelegt."],
+  ["No items in this category yet.", "Noch keine Artikel in dieser Kategorie."],
+  ["Menu item categories", "Kategorien der Menüartikel"],
+  ["Item name", "Artikelname"],
   ["Category", "Kategorie"],
   ["Price", "Preis"],
   ["Currency", "Währung"],
@@ -234,13 +286,29 @@ const translations = [
   ["Position in menu", "Position im Menü"],
   ["Tags", "Tags"],
   ["Allergens", "Allergene"],
-  ["Menu item picture", "Bild des Menüeintrags"],
+  ["Menu item", "Menüartikel"],
+  ["Menu item picture", "Bild des Menüartikels"],
   ["Menu category picture", "Bild der Menükategorie"],
   ["Add menu category", "Menükategorie hinzufügen"],
   ["Edit menu category", "Menükategorie bearbeiten"],
-  ["Save item", "Eintrag speichern"],
-  ["Saving item...", "Eintrag wird gespeichert ..."],
-  ["Adding item...", "Eintrag wird hinzugefügt ..."],
+  ["Save category", "Kategorie speichern"],
+  ["Saving category...", "Kategorie wird gespeichert ..."],
+  ["Adding category...", "Kategorie wird hinzugefügt ..."],
+  ["Deleting category...", "Kategorie wird gelöscht ..."],
+  ["Save item", "Artikel speichern"],
+  ["Saving item...", "Artikel wird gespeichert ..."],
+  ["Adding item...", "Artikel wird hinzugefügt ..."],
+  ["Deleting item...", "Artikel wird gelöscht ..."],
+  ["Description (optional)", "Beschreibung (optional)"],
+  ["Cost", "Aufpreis"],
+  ["Add-ons", "Extras"],
+  ["Images matched", "Zugeordnete Bilder"],
+  ["Images missing", "Fehlende Bilder"],
+  ["Import menu", "Menü importieren"],
+  ["Importing menu...", "Menü wird importiert ..."],
+  ["Confirm ZIP import", "ZIP-Import bestätigen"],
+  ["Importing ZIP...", "ZIP wird importiert ..."],
+  ["ZIP import preview", "Vorschau des ZIP-Imports"],
   ["Separate tags with commas.", "Tags durch Kommas trennen."],
   ["Separate allergens with commas.", "Allergene durch Kommas trennen."],
   ["Smaller numbers appear first.", "Kleinere Zahlen erscheinen zuerst."],
@@ -306,7 +374,7 @@ const translations = [
   ["Untitled partner", "Partner ohne Titel"],
   ["Untitled menu", "Menü ohne Titel"],
   ["Untitled category", "Kategorie ohne Titel"],
-  ["Untitled item", "Eintrag ohne Titel"],
+  ["Untitled item", "Unbenannter Artikel"],
 ] as const
 
 const englishToGerman = new Map<string, string>(translations)
@@ -322,7 +390,7 @@ type AdminLanguageContextValue = {
 
 const AdminLanguageContext = createContext<AdminLanguageContextValue | null>(null)
 
-function translateValue(value: string, language: AdminLanguage) {
+export function translateValue(value: string, language: AdminLanguage) {
   const leading = value.match(/^\s*/)?.[0] ?? ""
   const trailing = value.match(/\s*$/)?.[0] ?? ""
   const core = value.slice(leading.length, value.length - trailing.length)
@@ -349,7 +417,34 @@ function translateValue(value: string, language: AdminLanguage) {
 
   const count = core.match(/^(\d+)\s+(item|items)$/i)
   if (count && language === "de") {
-    return `${leading}${count[1]} ${count[1] === "1" ? "Eintrag" : "Einträge"}${trailing}`
+    return `${leading}${count[1]} Artikel${trailing}`
+  }
+
+  const stampReward = core.match(/^(\d+)\s+stamps?\s*-\s*(.+)$/i)
+  if (stampReward && language === "de") {
+    const rewardType = englishToGerman.get(stampReward[2]) ?? stampReward[2]
+    return `${leading}${stampReward[1]} Stempel – ${rewardType}${trailing}`
+  }
+
+  const stampRewardPrefix = core.match(/^(\d+)\s+stamps?\s*-\s*$/i)
+  if (stampRewardPrefix && language === "de") {
+    return `${leading}${stampRewardPrefix[1]} Stempel –${trailing}`
+  }
+
+  if (/^stamps?\s*-\s*$/i.test(core) && language === "de") {
+    return `${leading}Stempel –${trailing}`
+  }
+
+  const stampCount = core.match(/^(\d+)\s+stamps?$/i)
+  if (stampCount && language === "de") {
+    return `${leading}${stampCount[1]} Stempel${trailing}`
+  }
+
+  const milestoneCount = core.match(/^(\d+)\s+milestones?$/i)
+  if (milestoneCount && language === "de") {
+    return `${leading}${milestoneCount[1]} ${
+      milestoneCount[1] === "1" ? "Prämienstufe" : "Prämienstufen"
+    }${trailing}`
   }
 
   const dealCount = core.match(/^(\d+)\s+(deal|deals)$/i)
@@ -365,6 +460,20 @@ function translateValue(value: string, language: AdminLanguage) {
   const characterCount = core.match(/^(\d+)\s*\/\s*(\d+)\s+characters$/i)
   if (characterCount && language === "de") {
     return `${leading}${characterCount[1]} / ${characterCount[2]} Zeichen${trailing}`
+  }
+
+  const openingTime = core.match(
+    /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) opening time$/,
+  )
+  if (openingTime && language === "de") {
+    return `${leading}Öffnungszeit am ${englishToGerman.get(openingTime[1])}${trailing}`
+  }
+
+  const closingTime = core.match(
+    /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) closing time$/,
+  )
+  if (closingTime && language === "de") {
+    return `${leading}Schließzeit am ${englishToGerman.get(closingTime[1])}${trailing}`
   }
 
   return value
