@@ -4,8 +4,9 @@ import { randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import sharp from "sharp"
-import type { SupabaseClient } from "@supabase/supabase-js"
+import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js"
 import { requireAdmin } from "@/lib/admin"
+import { getSupabaseConfig } from "@/lib/supabase/config"
 import {
   DEFAULT_MENU_STATUS,
   adminTextLimits,
@@ -223,6 +224,10 @@ type ParsedPartnerHoliday = {
   partner_id: string
   holiday_date: string
   label: string | null
+  is_closed: boolean
+  opens_at: string | null
+  closes_at: string | null
+  repeats_yearly: boolean
   created_at?: string
   updated_at?: string
 }
@@ -338,7 +343,16 @@ export async function savePartner(
   const uploadedPaths: UploadedStoragePath[] = []
 
   try {
-    const basePayload = parsePartnerPayload(formData, isUpdate)
+    const ownerResolution = await resolvePartnerOwner(formData)
+
+    if (!ownerResolution.ok) {
+      return { ok: false, message: ownerResolution.message }
+    }
+
+    const basePayload = {
+      ...parsePartnerPayload(formData, isUpdate),
+      owner_id: ownerResolution.ownerId,
+    }
     const media = await resolvePartnerMedia(
       supabase,
       mediaValues,
@@ -476,7 +490,7 @@ export async function savePartner(
       const holidayError = validatePartnerHolidays(holidays)
 
       if (holidayError) {
-        warnings.push(`Partner was created, but holiday closures were skipped: ${holidayError}`)
+        warnings.push(`Partner was created, but holiday hour exceptions were skipped: ${holidayError}`)
       } else if (holidays.length > 0) {
         const holidayResult = await supabase.from("partner_holidays").insert(
           holidays.map((holiday) => ({
@@ -488,7 +502,7 @@ export async function savePartner(
 
         if (holidayResult.error) {
           warnings.push(
-            `Partner was created, but holiday closures could not be added: ${holidayResult.error.message}`,
+            `Partner was created, but holiday hour exceptions could not be added: ${holidayResult.error.message}`,
           )
         }
       }
@@ -1101,13 +1115,13 @@ export async function saveWeeklyOpeningHours(
     revalidatePath("/")
     return {
       ok: false,
-      message: `Weekly hours saved, but holiday closures could not be updated: ${holidayMessage}`,
+      message: `Weekly hours saved, but holiday hour exceptions could not be updated: ${holidayMessage}`,
     }
   }
 
   revalidatePath("/")
 
-  return { ok: true, message: "Operating hours and holiday closures saved." }
+  return { ok: true, message: "Operating hours and holiday exceptions saved." }
 }
 
 export async function saveMenu(
@@ -2430,13 +2444,19 @@ function validatePartnerForm(
   const requiredFields = [
     ["name", "Partner name is required."],
     ["city_id", "Partner city is required."],
-    ["owner_id", "Partner owner is required."],
     ["type", "Partner type is required."],
     ["email", "Email is required."],
     ["address", "Address is required."],
     ["coordinates", "Coordinates are required."],
     ["description", "Description is required."],
   ]
+
+  if (
+    !stringValue(formData, "owner_id") &&
+    !normalizeEmail(stringValue(formData, "new_owner_email"))
+  ) {
+    return "Choose an existing partner owner or enter a new owner email."
+  }
 
   for (const [key, message] of requiredFields) {
     if (!stringValue(formData, key)) {
@@ -3137,6 +3157,144 @@ async function createInitialMenu(
   }
 
   return null
+}
+
+function normalizeEmail(value: string) {
+  const normalized = value.trim().toLowerCase()
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) ? normalized : ""
+}
+
+async function resolvePartnerOwner(
+  formData: FormData,
+): Promise<
+  | { ok: true; ownerId: string }
+  | { ok: false; message: string }
+> {
+  const existingOwnerId = stringValue(formData, "owner_id")
+  const requestedEmail = normalizeEmail(stringValue(formData, "new_owner_email"))
+
+  if (!requestedEmail) {
+    return existingOwnerId
+      ? { ok: true, ownerId: existingOwnerId }
+      : { ok: false, message: "Choose a partner owner or enter a valid new owner email." }
+  }
+
+  const config = getSupabaseConfig()
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!config.isConfigured || !serviceRoleKey) {
+    return {
+      ok: false,
+      message:
+        "New owner invitations require SUPABASE_SERVICE_ROLE_KEY on the server. No partner or account was created.",
+    }
+  }
+
+  const adminClient = createSupabaseClient(config.url, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+  const existingProfile = await findOwnerProfileByEmail(adminClient, requestedEmail)
+
+  if (existingProfile) {
+    await markOwnerAsPartner(adminClient, existingProfile)
+    return { ok: true, ownerId: existingProfile }
+  }
+
+  const existingAuthUserId = await findAuthUserIdByEmail(adminClient, requestedEmail)
+  let authUserId = existingAuthUserId
+
+  if (!authUserId) {
+    const invitation = await adminClient.auth.admin.inviteUserByEmail(
+      requestedEmail,
+      { data: { account_type: "partner", display_name: requestedEmail.split("@")[0] } },
+    )
+
+    if (invitation.error || !invitation.data.user) {
+      return {
+        ok: false,
+        message: `Unable to create the partner owner account: ${invitation.error?.message ?? "No user was returned."}`,
+      }
+    }
+
+    authUserId = invitation.data.user.id
+  }
+
+  const profileId = await ensureOwnerProfile(
+    adminClient,
+    authUserId,
+    requestedEmail,
+  )
+
+  if (!profileId) {
+    return {
+      ok: false,
+      message:
+        "The login account was created, but its partner profile could not be created. Check the users table schema before retrying.",
+    }
+  }
+
+  return { ok: true, ownerId: profileId }
+}
+
+async function findOwnerProfileByEmail(
+  supabase: SupabaseClient,
+  email: string,
+) {
+  for (const columns of ["id,uid", "id", "uid"]) {
+    const result = await supabase
+      .from("users")
+      .select(columns)
+      .ilike("email", email)
+      .limit(1)
+      .maybeSingle()
+
+    if (!result.error && result.data) {
+      const row = result.data as unknown as { id?: string | null; uid?: string | null }
+      return row.id || row.uid || null
+    }
+  }
+
+  return null
+}
+
+async function findAuthUserIdByEmail(
+  supabase: SupabaseClient,
+  email: string,
+) {
+  for (let page = 1; page <= 10; page += 1) {
+    const result = await supabase.auth.admin.listUsers({ page, perPage: 1000 })
+    if (result.error) return null
+
+    const match = result.data.users.find(
+      (user) => user.email?.trim().toLowerCase() === email,
+    )
+    if (match) return match.id
+    if (result.data.users.length < 1000) break
+  }
+
+  return null
+}
+
+async function ensureOwnerProfile(
+  supabase: SupabaseClient,
+  userId: string,
+  email: string,
+) {
+  const displayName = email.split("@")[0]
+  const attempts = [
+    { conflict: "id", payload: { id: userId, email, display_name: displayName, is_partner: true } },
+    { conflict: "uid", payload: { uid: userId, email, display_name: displayName, is_partner: true } },
+  ]
+
+  for (const attempt of attempts) {
+    const result = await supabase
+      .from("users")
+      .upsert(attempt.payload as never, { onConflict: attempt.conflict })
+
+    if (!result.error) return userId
+  }
+
+  return findOwnerProfileByEmail(supabase, email)
 }
 
 function parseInitialDeals(formData: FormData, partnerId: string): ParsedDeal[] {
@@ -3863,6 +4021,10 @@ function validateDealPayload(payload: ParsedDeal) {
     return "Item rewards require a reward item."
   }
 
+  if (payload.discount_type === "2for1" && !payload.reward_item) {
+    return "2-for-1 rewards require an item name."
+  }
+
   if (
     (payload.discount_type === "fixed" ||
       payload.discount_type === "percent") &&
@@ -4561,10 +4723,22 @@ function parsePartnerHolidays(
     }
 
     seenDates.add(holidayDate)
+    const isClosed = stringValue(formData, `holiday_${index}_kind`) !== "hours"
     holidays.push({
       partner_id: partnerId,
       holiday_date: holidayDate,
       label: nullableStringValue(formData, `holiday_${index}_label`),
+      is_closed: isClosed,
+      opens_at: isClosed
+        ? null
+        : nullableStringValue(formData, `holiday_${index}_opens_at`),
+      closes_at: isClosed
+        ? null
+        : nullableStringValue(formData, `holiday_${index}_closes_at`),
+      repeats_yearly: checkboxValue(
+        formData,
+        `holiday_${index}_repeats_yearly`,
+      ),
     })
   }
 
@@ -4576,11 +4750,20 @@ function parsePartnerHolidays(
 function validatePartnerHolidays(holidays: ParsedPartnerHoliday[]) {
   for (const holiday of holidays) {
     if (!holiday.partner_id) {
-      return "Holiday closures must be attached to a partner."
+      return "Holiday hour exceptions must be attached to a partner."
     }
 
     if (!normalizeHolidayDate(holiday.holiday_date)) {
       return "Choose a valid holiday date."
+    }
+
+    if (
+      !holiday.is_closed &&
+      (!holiday.opens_at ||
+        !holiday.closes_at ||
+        holiday.opens_at === holiday.closes_at)
+    ) {
+      return "Holiday replacement hours need different opening and closing times."
     }
 
     const labelValidation = validateTextLength(

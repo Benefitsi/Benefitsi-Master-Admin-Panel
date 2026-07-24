@@ -156,6 +156,10 @@ export type PartnerHoliday = {
   partner_id: string | null
   holiday_date: string | null
   label: string | null
+  is_closed?: boolean | null
+  opens_at?: string | null
+  closes_at?: string | null
+  repeats_yearly?: boolean | null
   created_at?: string | null
   updated_at?: string | null
 }

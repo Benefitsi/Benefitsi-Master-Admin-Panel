@@ -197,7 +197,7 @@ const partnerTypeOptions = [
 ]
 
 const categoryOptions = [
-  "Doner",
+  "Döner",
   "Pizza",
   "Shawarma",
   "Burger",
@@ -245,6 +245,7 @@ const openingWeekdayOptions = [
 const DURATION_BONUS_DEAL = "duration_bonus"
 const COMEBACK_INACTIVE_DEAL = "comeback_inactive"
 const COMEBACK_INACTIVE_MODE = "comeback_inactive"
+const CREATE_NEW_OWNER_VALUE = "__create_new_owner__"
 
 const dealUiTypeOptions = dealTypeOptions.flatMap((option) =>
   option.value === "comeback"
@@ -319,6 +320,20 @@ type SocialHandleDraft = {
   platform: string
   handle: string
 }
+
+type HolidayDraft = {
+  id: string
+  date: string
+  label: string
+  kind: "closed" | "hours"
+  opensAt: string
+  closesAt: string
+  repeatsYearly: boolean
+}
+
+type HolidayEditorState =
+  | { mode: "create" }
+  | { mode: "edit"; holiday: HolidayDraft }
 
 type InitialMilestoneDraft = {
   id: string
@@ -419,13 +434,21 @@ type MenuCategoryEditorState =
   | { mode: "create" }
   | { mode: "edit"; category: MenuCategory }
 
+type DealEditorState =
+  | { mode: "create" }
+  | { mode: "edit"; deal: Deal }
+
+type MilestoneEditorState =
+  | { mode: "create" }
+  | { mode: "edit"; milestone: PartnerRewardMilestone }
+
 const partnerSettingsTabCopy: Record<
   PartnerSettingsTab,
   { title: string; description: string }
 > = {
   details: { title: "Partner profile", description: "Business information, contact details, location, branding, and media." },
-  rewards: { title: "Hours and loyalty rewards", description: "Opening schedule, holiday closures, and stamp-card milestones." },
-  deals: { title: "Deals and offers", description: "Customer offers, eligibility rules, availability, and redemption settings." },
+  rewards: { title: "Operating hours", description: "Weekly opening schedule, date-specific hour changes, and yearly holiday exceptions." },
+  deals: { title: "Deals and rewards", description: "Customer offers, stamp milestones, eligibility rules, availability, and redemption settings." },
   menu: { title: "Menu management", description: "Menu details, categories, items, pricing, images, and display order." },
   access: { title: "Staff access", description: "Manage the staff members who can administer or scan for this partner." },
   activity: { title: "Customer activity", description: "Review stamp-card progress, visits, applied benefits, and redemptions." },
@@ -930,8 +953,8 @@ function PartnerDetail({
     hasRequiredFields?: boolean
   }> = [
     { id: "details", label: "Partner Profile", hasRequiredFields: true },
-    { id: "rewards", label: "Hours & Rewards", hasRequiredFields: true },
-    { id: "deals", label: "Deals & Offers", hasRequiredFields: true },
+    { id: "rewards", label: "Operating Hours", hasRequiredFields: true },
+    { id: "deals", label: "Deals & Rewards", hasRequiredFields: true },
     ...(partnerTypeSupportsMenu(partner.type)
       ? [{ id: "menu" as const, label: "Menu Management", hasRequiredFields: true }]
       : []),
@@ -1078,12 +1101,14 @@ function PartnerDetail({
               </div>
             ) : null}
             {settingsTab === "rewards" ? (
+              <OpeningHoursPanel partner={partner} embedded />
+            ) : null}
+            {settingsTab === "deals" ? (
               <div className="space-y-3">
-                <OpeningHoursPanel partner={partner} embedded />
+                <DealsPanel partner={partner} embedded />
                 <MilestonesPanel partner={partner} embedded />
               </div>
             ) : null}
-            {settingsTab === "deals" ? <DealsPanel partner={partner} embedded /> : null}
             {settingsTab === "menu" ? <MenuPanel partner={partner} embedded /> : null}
             {settingsTab === "access" ? (
               <PartnerStaffPanel partner={partner} users={owners} embedded />
@@ -1266,6 +1291,7 @@ function PartnerForm({
   const [reviewSnapshot, setReviewSnapshot] =
     useState<CreatePartnerReviewSnapshot | null>(null)
   const [confirmingSave, setConfirmingSave] = useState(false)
+  const [selectedOwnerId, setSelectedOwnerId] = useState(partner?.owner_id ?? "")
   const [validationMessage, setValidationMessage] = useState("")
   const [formVersion, setFormVersion] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
@@ -1281,16 +1307,19 @@ function PartnerForm({
     })),
     partner?.city_id,
   )
-  const ownerOptions = withCurrentOption(
-    owners.map((owner) => ({
+  const ownerOptions = [
+    ...withCurrentOption(
+      owners.map((owner) => ({
       value: owner.id ?? owner.uid ?? "",
       label:
         [owner.display_name, owner.email].filter(Boolean).join(" - ") ||
         owner.id ||
         "Unnamed owner",
-    })),
-    partner?.owner_id,
-  )
+      })),
+      partner?.owner_id,
+    ),
+    { value: CREATE_NEW_OWNER_VALUE, label: "Create new owner account…" },
+  ]
   const coordinateDefaultValue = formatPartnerCoordinates(partner)
   const menuSupported = partnerTypeSupportsMenu(selectedPartnerType)
   const createTabs: Array<{
@@ -1367,6 +1396,7 @@ function PartnerForm({
       setInitialMenuCategories([])
       setInitialMenuItems([])
       setCreateTab("profile")
+      setSelectedOwnerId("")
       setReviewSnapshot(null)
       setTemplateSource(null)
       setFormVersion((value) => value + 1)
@@ -1577,6 +1607,7 @@ function PartnerForm({
             name="name"
             defaultValue={partner?.name}
             required
+            showCharacterCount={false}
           />
           <SelectField
             label="Partner type"
@@ -1593,28 +1624,36 @@ function PartnerForm({
             options={cityOptions.length ? cityOptions : emptyCityOptions}
             required
           />
-          {owners.length ? (
-            <SelectField
-              label="Partner owner"
-              name="owner_id"
-              defaultValue={partner?.owner_id}
-              options={ownerOptions}
-              required
-            />
-          ) : (
+          <input
+            type="hidden"
+            name="owner_id"
+            value={selectedOwnerId === CREATE_NEW_OWNER_VALUE ? "" : selectedOwnerId}
+          />
+          <SelectField
+            label="Partner owner"
+            name="owner_selection"
+            value={selectedOwnerId}
+            options={ownerOptions}
+            onChange={setSelectedOwnerId}
+            required
+          />
+          {selectedOwnerId === CREATE_NEW_OWNER_VALUE ? (
             <TextField
-              label="Owner ID"
-              name="owner_id"
-              defaultValue={partner?.owner_id}
+              label="New owner email"
+              name="new_owner_email"
+              type="email"
+              hint="Saving creates the account, links it to this partner, and sends the owner an invitation."
               required
+              showCharacterCount={false}
             />
-          )}
+          ) : null}
           <TextField
             label="Email"
             name="email"
             type="email"
             defaultValue={partner?.email}
             required
+            showCharacterCount={false}
           />
         </FieldGrid>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -1638,8 +1677,11 @@ function PartnerForm({
         <MultiSelectField
           label="Categories"
           name="category"
-          defaultValues={partner?.category ?? templateSource?.category}
-          options={withCurrentOptions(categoryOptions, partner?.category ?? templateSource?.category)}
+          defaultValues={normalizePartnerCategories(partner?.category ?? templateSource?.category)}
+          options={withCurrentOptions(
+            categoryOptions,
+            normalizePartnerCategories(partner?.category ?? templateSource?.category),
+          )}
           required
         />
       </FormSection>
@@ -1654,12 +1696,14 @@ function PartnerForm({
             label="Phone"
             name="phone"
             defaultValue={partner?.phone ?? templateSource?.phone}
+            showCharacterCount={false}
           />
           <TextField
             label="Website"
             name="website"
             type="url"
             defaultValue={partner?.website ?? templateSource?.website}
+            showCharacterCount={false}
           />
           <TextField
             key={`coordinates-${partner?.id ?? "new"}-${coordinateDefaultValue}`}
@@ -1669,6 +1713,7 @@ function PartnerForm({
             placeholder="49.196197048340196, 8.115435101852437"
             hint="Copy the latitude and longitude from Google Maps and paste them here."
             required
+            showCharacterCount={false}
           />
         </FieldGrid>
         <TextAreaField
@@ -1677,10 +1722,10 @@ function PartnerForm({
           defaultValue={partner?.address}
           required
         />
-        <div className="border-t border-zinc-100 pt-4">
-          <div className="mb-4 space-y-1">
+        <div className="border-t border-zinc-100 pt-3">
+          <div className="mb-3 space-y-0.5">
             <p className="text-sm font-semibold text-zinc-900">Social media</p>
-            <p className="text-sm leading-6 text-zinc-600">
+            <p className="text-xs leading-5 text-zinc-500">
               Optional. Add up to {MAX_PARTNER_SOCIALS} social profiles. Enter a
               handle or full profile URL and the partner record will store the
               canonical link automatically.
@@ -2078,7 +2123,9 @@ function createPartnerReviewSnapshot(
     name: value("name") || "Untitled partner",
     type: selectedLabel("type") || "Type not selected",
     city: selectedLabel("city_id") || "City not selected",
-    owner: selectedLabel("owner_id") || "Owner not selected",
+    owner: value("new_owner_email")
+      ? `New account: ${value("new_owner_email")}`
+      : selectedLabel("owner_selection") || "Owner not selected",
     email: value("email") || "Email not added",
     phone: value("phone") || "Phone not added",
     website: value("website") || "Website not added",
@@ -2272,55 +2319,51 @@ function SocialHandlesSection({
   onUpdate: (id: string, values: Partial<SocialHandleDraft>) => void
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {rows.length ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {rows.map((row, index) => (
             <div
               key={row.id}
-              className="rounded-md border border-zinc-200 bg-zinc-50 p-3"
+              className="grid gap-2 rounded-lg border border-zinc-200 bg-zinc-50/70 p-2.5 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-end"
             >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-zinc-900">
-                  Handle {index + 1}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => onRemove(row.id)}
-                  className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
-                >
-                  Remove
-                </button>
-              </div>
-              <div className="mt-3 grid gap-4 md:grid-cols-2">
-                <SelectField
-                  label="Platform"
-                  name={`social_${index}_platform`}
-                  value={row.platform}
-                  options={partnerSocialPlatformOptions}
-                  onChange={(platform) => onUpdate(row.id, { platform })}
-                  required
-                />
-                <TextField
-                  label="Handle or profile URL"
-                  name={`social_${index}_handle`}
-                  value={row.handle}
-                  onChange={(handle) => onUpdate(row.id, { handle })}
-                  placeholder="@benefitsi or https://instagram.com/benefitsi"
-                  required
-                />
-              </div>
+              <SelectField
+                label="Platform"
+                name={`social_${index}_platform`}
+                value={row.platform}
+                options={partnerSocialPlatformOptions}
+                onChange={(platform) => onUpdate(row.id, { platform })}
+                required
+              />
+              <TextField
+                label="Handle or profile URL"
+                name={`social_${index}_handle`}
+                value={row.handle}
+                onChange={(handle) => onUpdate(row.id, { handle })}
+                placeholder="@benefitsi or profile URL"
+                required
+                showCharacterCount={false}
+              />
+              <button
+                type="button"
+                onClick={() => onRemove(row.id)}
+                className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+              >
+                Remove
+              </button>
             </div>
           ))}
         </div>
       ) : (
-        <EmptyState>No social handles added.</EmptyState>
+        <div className="rounded-lg border border-dashed border-zinc-300 px-3 py-3 text-center text-xs text-zinc-500">
+          No social profiles added.
+        </div>
       )}
       <button
         type="button"
         onClick={onAdd}
         disabled={rows.length >= MAX_PARTNER_SOCIALS}
-        className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:text-zinc-400"
+        className="h-9 rounded-md border border-teal-700 bg-white px-3 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:text-zinc-400"
       >
         Add social handle
       </button>
@@ -3225,53 +3268,10 @@ function DealsPanel({
   partner: PartnerWithDeals
   embedded?: boolean
 }) {
-  const [newDealDrafts, setNewDealDrafts] = useState<InitialDealDraft[]>([])
-  const [autoExpandedDealIds, setAutoExpandedDealIds] = useState<string[]>([])
-  const knownDealIdsRef = useRef<Set<string> | null>(null)
-  const knownDealPartnerIdRef = useRef("")
+  const [dealEditor, setDealEditor] = useState<DealEditorState | null>(null)
   const partnerId = partner.id ?? ""
-
-  useEffect(() => {
-    const currentIds = partner.deals
-      .map((deal) => deal.id)
-      .filter((id): id is string => Boolean(id))
-
-    if (knownDealPartnerIdRef.current !== partnerId) {
-      knownDealPartnerIdRef.current = partnerId
-      knownDealIdsRef.current = new Set(currentIds)
-      setAutoExpandedDealIds([])
-      setNewDealDrafts([])
-      return
-    }
-
-    const knownIds = knownDealIdsRef.current ?? new Set(currentIds)
-    const newIds = currentIds.filter((id) => !knownIds.has(id))
-
-    if (newIds.length) {
-      setAutoExpandedDealIds((current) =>
-        Array.from(new Set([...current, ...newIds])),
-      )
-    }
-
-    knownDealIdsRef.current = new Set(currentIds)
-  }, [partner.deals, partnerId])
-
-  const addDealDraft = () => {
-    setNewDealDrafts((current) => [
-      ...current,
-      {
-        id: crypto.randomUUID(),
-        active: true,
-        benefitCategory: "direct_selectable",
-        dealType: "discount",
-        discountType: "percent",
-        rewardSummary: "percentage off",
-        title: defaultDealDraftTitle(),
-      },
-    ])
-  }
-  const hasDealRows = partner.deals.length > 0 || newDealDrafts.length > 0
-  const dealCount = partner.deals.length + newDealDrafts.length
+  const hasDealRows = partner.deals.length > 0
+  const dealCount = partner.deals.length
   const dealStatus: SectionStatusValue = hasDealRows
     ? [
         { label: "Recommended", tone: "recommended" },
@@ -3295,45 +3295,9 @@ function DealsPanel({
           {partner.deals.map((deal, index) => (
             <DealCard
               key={deal.id ?? `${deal.partner_id}-${deal.type}`}
-              autoExpanded={Boolean(
-                deal.id && autoExpandedDealIds.includes(deal.id),
-              )}
               deal={deal}
               index={index}
-              onAutoExpandedDismiss={() =>
-                setAutoExpandedDealIds((current) =>
-                  current.filter((id) => id !== deal.id),
-                )
-              }
-              partnerId={partnerId}
-              visits={partner.visits}
-            />
-          ))}
-          {newDealDrafts.map((deal, index) => (
-            <NewDealCard
-              key={deal.id}
-              deal={deal}
-              index={partner.deals.length + index}
-              onAddAnother={addDealDraft}
-              onRemove={() =>
-                setNewDealDrafts((current) =>
-                  current.filter((draft) => draft.id !== deal.id),
-                )
-              }
-              onSaved={() =>
-                setNewDealDrafts((current) =>
-                  current.filter((draft) => draft.id !== deal.id),
-                )
-              }
-              onUpdate={(values) =>
-                setNewDealDrafts((current) =>
-                  current.map((draft) =>
-                    draft.id === deal.id ? { ...draft, ...values } : draft,
-                  ),
-                )
-              }
-              partnerId={partnerId}
-              visits={partner.visits}
+              onEdit={() => setDealEditor({ mode: "edit", deal })}
             />
           ))}
         </div>
@@ -3345,12 +3309,18 @@ function DealsPanel({
       {partnerId ? (
         <button
           type="button"
-          onClick={addDealDraft}
+          onClick={() => setDealEditor({ mode: "create" })}
           className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
         >
           Add deal
         </button>
       ) : null}
+      <DealEditorDialog
+        editor={dealEditor}
+        onClose={() => setDealEditor(null)}
+        partnerId={partnerId}
+        visits={partner.visits}
+      />
     </div>
   )
 
@@ -3588,39 +3558,34 @@ function NewDealCard({
 }
 
 function DealCard({
-  autoExpanded = false,
   deal,
   index,
-  onAutoExpandedDismiss,
-  partnerId,
-  visits,
+  onEdit,
 }: {
-  autoExpanded?: boolean
   deal: Deal
   index: number
-  onAutoExpandedDismiss?: () => void
-  partnerId: string
-  visits: Visit[]
+  onEdit: () => void
 }) {
-  const [manuallyExpanded, setManuallyExpanded] = useState(false)
-  const expanded = manuallyExpanded || autoExpanded
   const isLimitedDrop = deal.type === "limited_drop"
   const soldOut =
     isLimitedDrop &&
     isSoldOutDealDrop(deal.stock_total ?? null, deal.stock_remaining ?? null)
 
-  const toggleExpanded = () => {
-    if (expanded) {
-      setManuallyExpanded(false)
-      onAutoExpandedDismiss?.()
-      return
-    }
-
-    setManuallyExpanded(true)
-  }
-
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={(event) => {
+        if (!(event.target as HTMLElement).closest("button, form, a, input")) onEdit()
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault()
+          onEdit()
+        }
+      }}
+      className="cursor-pointer rounded-lg border border-zinc-200 bg-white p-3 shadow-xs transition hover:border-teal-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-200"
+    >
       <DealCardHeader
         active={deal.active ?? false}
         audienceLabel={dealAudienceLabel(deal)}
@@ -3636,20 +3601,12 @@ function DealCard({
         }
         dealType={dealUiTypeForDeal(deal)}
         typeLabel={dealCardTypeLabel(deal)}
-        expanded={expanded}
-        onToggle={toggleExpanded}
+        expanded={false}
+        onToggle={onEdit}
         title={`Deal ${index + 1}`}
         rewardSummary={formatDealRewardSummary(deal)}
         actions={
-          <>
-          <button
-            type="button"
-            onClick={toggleExpanded}
-            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
-          >
-            {expanded ? "Collapse" : "Edit"}
-          </button>
-          {deal.id ? (
+          deal.id ? (
             <DeleteDealForm
               dealId={deal.id}
               label="Remove"
@@ -3657,8 +3614,7 @@ function DealCard({
               size="tiny"
               tone="outline"
             />
-          ) : null}
-          </>
+          ) : null
         }
       />
 
@@ -3670,18 +3626,94 @@ function DealCard({
         </div>
       ) : null}
 
-      {expanded ? (
-        <div className="mt-3 border-t border-zinc-200 pt-3">
+    </div>
+  )
+}
+
+function DealEditorDialog({
+  editor,
+  onClose,
+  partnerId,
+  visits,
+}: {
+  editor: DealEditorState | null
+  onClose: () => void
+  partnerId: string
+  visits: Visit[]
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!editor) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [editor, onClose])
+
+  if (!editor || !partnerId) return null
+  const deal = editor.mode === "edit" ? editor.deal : undefined
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-[#061829]/65 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="deal-dialog-title"
+        className="flex max-h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-zinc-200 bg-white shadow-2xl sm:max-h-[90dvh] sm:rounded-2xl"
+      >
+        <header className="flex items-start justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+          <div>
+            <h3 id="deal-dialog-title" className="text-lg font-bold tracking-tight text-zinc-950">
+              {deal ? "Edit deal" : "Add deal"}
+            </h3>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              Configure the reward and confirm before saving.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {deal?.id ? (
+              <DeleteDealForm
+                dealId={deal.id}
+                label="Remove"
+                size="tiny"
+                onDeleted={onClose}
+              />
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="grid size-9 place-items-center rounded-full border border-zinc-300 bg-white text-lg text-zinc-600 hover:bg-zinc-100"
+            >
+              ×
+            </button>
+          </div>
+        </header>
+        <div className="overflow-y-auto p-3 sm:p-4">
           <DealForm
             deal={deal}
             partnerId={partnerId}
-            mode="edit"
+            mode={deal ? "edit" : "create"}
             visits={visits}
-            onCancel={toggleExpanded}
-            onSaved={toggleExpanded}
+            onCancel={onClose}
+            onSaved={onClose}
           />
         </div>
-      ) : null}
+      </section>
     </div>
   )
 }
@@ -3732,9 +3764,24 @@ function DealForm({
 }) {
   const [state, formAction] = useActionState(saveDeal, initialState)
   const formRef = useActionSuccess(state, onSaved)
+  const [confirmingSave, setConfirmingSave] = useState(false)
+  const confirmedSubmitRef = useRef(false)
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-4">
+    <form
+      ref={formRef}
+      action={formAction}
+      className="space-y-4"
+      onSubmit={(event) => {
+        if (confirmedSubmitRef.current) {
+          confirmedSubmitRef.current = false
+          return
+        }
+
+        event.preventDefault()
+        setConfirmingSave(true)
+      }}
+    >
       <input type="hidden" name="id" value={deal?.id ?? ""} />
       <input type="hidden" name="partner_id" value={partnerId} />
 
@@ -3765,6 +3812,18 @@ function DealForm({
         ) : null}
         {footerAction}
       </div>
+      <ConfirmDialog
+        open={confirmingSave}
+        title={mode === "create" ? "Add this deal?" : "Save changes to this deal?"}
+        description="Review the reward, item, eligibility, dates, and limits before confirming."
+        confirmLabel={mode === "create" ? "Add deal" : "Save deal"}
+        onCancel={() => setConfirmingSave(false)}
+        onConfirm={() => {
+          confirmedSubmitRef.current = true
+          setConfirmingSave(false)
+          formRef.current?.requestSubmit()
+        }}
+      />
     </form>
   )
 }
@@ -4289,7 +4348,9 @@ function getDealFormConfig({
   }
 
   if (normalizedDiscountType === "2for1") {
+    visibleFields.add("rewardItem")
     visibleFields.add("estimatedSavings")
+    requiredFields.add("rewardItem")
   }
 
   const normalizedBenefitCategory = normalizeBenefitCategory(
@@ -4510,8 +4571,11 @@ function buildDealValidationMessages({
       "Minimum spend is less than the discount amount — users may get more off than they spend."
   }
 
-  if (discountType === "item" && !rewardItem.trim()) {
-    messages.rewardItem = "Enter the free item name."
+  if ((discountType === "item" || discountType === "2for1") && !rewardItem.trim()) {
+    messages.rewardItem =
+      discountType === "2for1"
+        ? "Enter the item included in the 2-for-1 deal."
+        : "Enter the free item name."
   }
 
   if (discountType === "bonus_stamp" && !parsedBenefitCount) {
@@ -4587,7 +4651,7 @@ function formatDraftRewardSummary(
   }
 
   if (discountType === "2for1") {
-    return "2-for-1"
+    return rewardItem.trim() ? `2-for-1 ${rewardItem.trim()}` : "2-for-1"
   }
 
   return "No direct reward"
@@ -5181,7 +5245,7 @@ function DealFields({
             ) : null}
             {config.visibleFields.has("rewardItem") ? (
               <TextField
-                label="Free item name"
+                label={selectedDiscountType === "2for1" ? "Item name" : "Free item name"}
                 name={`${prefix}reward_item`}
                 placeholder="Free drink"
                 value={rewardItem}
@@ -5190,7 +5254,11 @@ function DealFields({
                   setRewardItem(value)
                   emitDraftTitle({ rewardItemText: value })
                 }}
-                hint="Example: Free drink."
+                hint={
+                  selectedDiscountType === "2for1"
+                    ? "Example: Burger, coffee, or main course."
+                    : "Example: Free drink."
+                }
                 required={
                   useBrowserValidation &&
                   config.requiredFields.has("rewardItem")
@@ -5625,7 +5693,7 @@ function MilestonesPanel({
   partner: PartnerWithDeals
   embedded?: boolean
 }) {
-  const [showNewMilestone, setShowNewMilestone] = useState(false)
+  const [milestoneEditor, setMilestoneEditor] = useState<MilestoneEditorState | null>(null)
   const partnerId = partner.id ?? ""
   const milestoneStatus: SectionStatus = partner.reward_milestones.length
     ? {
@@ -5637,22 +5705,13 @@ function MilestonesPanel({
 
   const content = (
     <div className="space-y-3">
-      {showNewMilestone && partnerId ? (
-        <DealFormShell title="Add milestone">
-          <MilestoneForm
-            partner={partner}
-            mode="create"
-            onSaved={() => setShowNewMilestone(false)}
-          />
-        </DealFormShell>
-      ) : null}
       {partner.reward_milestones.length ? (
         <div className="space-y-3">
           {partner.reward_milestones.map((milestone) => (
             <MilestoneCard
               key={milestone.id ?? `${milestone.partner_id}-${milestone.required_stamps}`}
               milestone={milestone}
-              partner={partner}
+              onEdit={() => setMilestoneEditor({ mode: "edit", milestone })}
             />
           ))}
         </div>
@@ -5662,12 +5721,17 @@ function MilestonesPanel({
       {partnerId ? (
         <button
           type="button"
-          onClick={() => setShowNewMilestone((value) => !value)}
+          onClick={() => setMilestoneEditor({ mode: "create" })}
           className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
         >
-          {showNewMilestone ? "Hide form" : "Add milestone"}
+          Add milestone
         </button>
       ) : null}
+      <MilestoneEditorDialog
+        editor={milestoneEditor}
+        onClose={() => setMilestoneEditor(null)}
+        partner={partner}
+      />
     </div>
   )
 
@@ -5698,22 +5762,28 @@ function MilestonesPanel({
 
 function MilestoneCard({
   milestone,
-  partner,
+  onEdit,
 }: {
   milestone: PartnerRewardMilestone
-  partner: PartnerWithDeals
+  onEdit: () => void
 }) {
-  const [editing, setEditing] = useState(false)
-
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-3">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={(event) => {
+        if (!(event.target as HTMLElement).closest("button, form, a, input")) onEdit()
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault()
+          onEdit()
+        }
+      }}
+      className="cursor-pointer rounded-lg border border-zinc-200 bg-white p-3 shadow-xs transition hover:border-teal-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-200"
+    >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          onClick={() => setEditing((value) => !value)}
-          className="min-w-0 text-left"
-          aria-expanded={editing}
-        >
+        <div className="min-w-0 text-left">
           <span className="block truncate text-sm font-semibold text-zinc-800">
             {milestone.title || milestone.reward_item || "Milestone reward"}
           </span>
@@ -5722,28 +5792,90 @@ function MilestoneCard({
             {" "}
             {labelForValue(rewardTypeOptions, milestone.reward_type)}
           </span>
-        </button>
+        </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setEditing((value) => !value)}
-            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
-          >
-            {editing ? "Collapse" : "Edit"}
-          </button>
           {milestone.id ? <DeleteMilestoneForm milestoneId={milestone.id} /> : null}
         </div>
       </div>
-      {editing ? (
-        <div className="mt-4 border-t border-zinc-200 pt-4">
+    </div>
+  )
+}
+
+function MilestoneEditorDialog({
+  editor,
+  onClose,
+  partner,
+}: {
+  editor: MilestoneEditorState | null
+  onClose: () => void
+  partner: PartnerWithDeals
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!editor) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [editor, onClose])
+
+  if (!editor || !partner.id) return null
+  const milestone = editor.mode === "edit" ? editor.milestone : undefined
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-[#061829]/65 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="milestone-dialog-title"
+        className="flex max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-zinc-200 bg-white shadow-2xl sm:max-h-[90dvh] sm:rounded-2xl"
+      >
+        <header className="flex items-start justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+          <div>
+            <h3 id="milestone-dialog-title" className="text-lg font-bold tracking-tight text-zinc-950">
+              {milestone ? "Edit stamp milestone" : "Add stamp milestone"}
+            </h3>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              Set the stamp target and the reward customers receive.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {milestone?.id ? (
+              <DeleteMilestoneForm milestoneId={milestone.id} onDeleted={onClose} />
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="grid size-9 place-items-center rounded-full border border-zinc-300 bg-white text-lg text-zinc-600 hover:bg-zinc-100"
+            >
+              ×
+            </button>
+          </div>
+        </header>
+        <div className="overflow-y-auto p-3 sm:p-4">
           <MilestoneForm
             milestone={milestone}
             partner={partner}
-            mode="edit"
-            onSaved={() => setEditing(false)}
+            mode={milestone ? "edit" : "create"}
+            onSaved={onClose}
           />
         </div>
-      ) : null}
+      </section>
     </div>
   )
 }
@@ -5767,7 +5899,7 @@ function MilestoneForm({
   const showsRewardItem = rewardType === "item"
   const showsDiscountValue = rewardType === "fixed" || rewardType === "percent"
   const showsBenefitCount = rewardType === "bonus_stamp"
-  const requiredSectionsOpen = mode === "create"
+  const requiredSectionsOpen = true
 
   return (
     <form ref={formRef} action={formAction} className="space-y-5">
@@ -6191,15 +6323,17 @@ function WeeklyHoursFields({
   const [bulkOpenTime, setBulkOpenTime] = useState("09:00")
   const [bulkCloseTime, setBulkCloseTime] = useState("18:00")
   const [bulkApplied, setBulkApplied] = useState(false)
-  const [holidayInput, setHolidayInput] = useState("")
-  const [holidayLabelInput, setHolidayLabelInput] = useState("")
-  const [holidayError, setHolidayError] = useState("")
-  const [holidayRows, setHolidayRows] = useState(() =>
+  const [holidayEditor, setHolidayEditor] = useState<HolidayEditorState | null>(null)
+  const [holidayRows, setHolidayRows] = useState<HolidayDraft[]>(() =>
     holidays
       .map((holiday) => ({
         date: normalizeHolidayDateInput(holiday.holiday_date),
         id: crypto.randomUUID(),
         label: holiday.label ?? "",
+        kind: holiday.is_closed === false ? "hours" as const : "closed" as const,
+        opensAt: formatTimeInput(holiday.opens_at),
+        closesAt: formatTimeInput(holiday.closes_at),
+        repeatsYearly: holiday.repeats_yearly ?? false,
       }))
       .filter((holiday) => holiday.date)
       .sort((first, second) => first.date.localeCompare(second.date)),
@@ -6255,32 +6389,13 @@ function WeeklyHoursFields({
     )
     setBulkApplied(true)
   }
-  const addHoliday = () => {
-    const normalizedHoliday = normalizeHolidayDateInput(holidayInput)
-
-    if (!normalizedHoliday) {
-      setHolidayError("Choose a valid holiday date.")
-      return
-    }
-
-    if (holidayRows.some((holiday) => holiday.date === normalizedHoliday)) {
-      setHolidayError("That holiday is already listed.")
-      return
-    }
-
+  const saveHolidayDraft = (holiday: HolidayDraft) => {
     setHolidayRows((current) =>
-      [
-        ...current,
-        {
-          date: normalizedHoliday,
-          id: crypto.randomUUID(),
-          label: holidayLabelInput.trim(),
-        },
-      ].sort((first, second) => first.date.localeCompare(second.date)),
+      [...current.filter((row) => row.id !== holiday.id), holiday].sort(
+        (first, second) => first.date.localeCompare(second.date),
+      ),
     )
-    setHolidayInput("")
-    setHolidayLabelInput("")
-    setHolidayError("")
+    setHolidayEditor(null)
   }
 
   useEffect(() => {
@@ -6294,8 +6409,8 @@ function WeeklyHoursFields({
   }, [bulkApplied])
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+    <div className="flex flex-col gap-4">
+      <div className="order-1 rounded-md border border-zinc-200 bg-zinc-50 p-3">
         <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
           <label className="space-y-2 text-sm">
             <span className="font-medium text-zinc-700">Open</span>
@@ -6329,108 +6444,109 @@ function WeeklyHoursFields({
           </button>
         </div>
       </div>
-      <section className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-        <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3">
-          <h4 className="text-sm font-semibold text-zinc-900">Holiday closures</h4>
-          <p className="mt-1 text-xs leading-5 text-zinc-500">
-            Add full-day closures and an optional short label for visitors.
-          </p>
-        </div>
-        <div className="p-3 sm:p-4">
-        <input type="hidden" name="holiday_count" value={holidayRows.length} />
-        <div className="grid gap-3 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(14rem,1.2fr)_auto] lg:items-start">
-          <label className="space-y-2 text-sm">
-            <span className="font-medium text-zinc-700">Date</span>
-            <input
-              type="date"
-              value={holidayInput}
-              onChange={(event) => {
-                setHolidayInput(event.target.value)
-                if (holidayError) {
-                  setHolidayError("")
-                }
-              }}
-              className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-            />
-          </label>
-          <label className="space-y-2 text-sm">
-            <span className="font-medium text-zinc-700">Holiday label</span>
-            <input
-              type="text"
-              value={holidayLabelInput}
-              maxLength={adminTextLimits.label}
-              onChange={(event) => setHolidayLabelInput(event.target.value)}
-              placeholder="Optional label"
-              className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-            />
-            <CharacterCountNote
-              current={holidayLabelInput.length}
-              limit={adminTextLimits.label}
-            />
-          </label>
+      <section className="order-3 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h4 className="text-sm font-semibold text-zinc-900">Holiday and date-specific hours</h4>
+            <p className="mt-1 text-xs leading-5 text-zinc-500">
+              Closures and replacement hours that override the weekly schedule.
+            </p>
+          </div>
           <button
             type="button"
-            onClick={addHoliday}
-            className="h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 lg:mt-7"
+            onClick={() => setHolidayEditor({ mode: "create" })}
+            className="h-9 shrink-0 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
           >
-            Add holiday
+            + Add exception
           </button>
         </div>
-        {holidayError ? (
-          <p className="mt-3 text-xs font-medium text-rose-700">
-            {holidayError}
-          </p>
-        ) : null}
-        {holidayRows.length ? (
-          <div className="mt-4 grid gap-3">
-            {holidayRows.map((holiday, index) => (
+        <div className="p-3 sm:p-4">
+          <input type="hidden" name="holiday_count" value={holidayRows.length} />
+          {holidayRows.map((holiday, index) => (
+            <div key={`holiday-fields-${holiday.id}`}>
+              <input type="hidden" name={`holiday_${index}_date`} value={holiday.date} />
+              <input type="hidden" name={`holiday_${index}_label`} value={holiday.label} />
+              <input type="hidden" name={`holiday_${index}_kind`} value={holiday.kind} />
+              <input type="hidden" name={`holiday_${index}_opens_at`} value={holiday.opensAt} />
+              <input type="hidden" name={`holiday_${index}_closes_at`} value={holiday.closesAt} />
+              {holiday.repeatsYearly ? (
+                <input type="hidden" name={`holiday_${index}_repeats_yearly`} value="on" />
+              ) : null}
+            </div>
+          ))}
+          {holidayRows.length ? (
+          <div className="grid gap-2 md:grid-cols-2">
+            {holidayRows.map((holiday) => (
               <div
                 key={holiday.id}
-                className="rounded-lg border border-zinc-200 bg-zinc-50/70 p-3"
+                role="button"
+                tabIndex={0}
+                onClick={(event) => {
+                  if (!(event.target as HTMLElement).closest("button")) {
+                    setHolidayEditor({ mode: "edit", holiday })
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    setHolidayEditor({ mode: "edit", holiday })
+                  }
+                }}
+                className="cursor-pointer rounded-lg border border-zinc-200 bg-white p-3 transition hover:border-teal-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-200"
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <input
-                      type="hidden"
-                      name={`holiday_${index}_date`}
-                      value={holiday.date}
-                    />
-                    <input
-                      type="hidden"
-                      name={`holiday_${index}_label`}
-                      value={holiday.label}
-                    />
-                    <p className="text-sm font-semibold text-zinc-900">
-                      {formatHolidayDateLabel(holiday.date)}
+                    <p className="truncate text-sm font-semibold text-zinc-900">
+                      {holiday.label || formatHolidayDateLabel(holiday.date)}
                     </p>
                     <p className="mt-1 text-xs text-zinc-500">
-                      {holiday.label || "Full-day closure"}
+                      {formatHolidayDateLabel(holiday.date)} · {holiday.kind === "hours" ? `${holiday.opensAt}–${holiday.closesAt}` : "Closed all day"}
                     </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
+                        {holiday.repeatsYearly ? "Repeats yearly" : "One time"}
+                      </span>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setHolidayRows((current) =>
-                        current.filter((row) => row.id !== holiday.id),
-                      )
-                    }
-                    className="h-9 shrink-0 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-700 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
-                  >
-                    Remove
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setHolidayRows((current) =>
+                          current.filter((row) => row.id !== holiday.id),
+                        )
+                      }
+                      aria-label={`Remove ${holiday.label || formatHolidayDateLabel(holiday.date)}`}
+                      className="h-8 shrink-0 rounded-md border border-zinc-300 bg-white px-2.5 text-xs font-semibold text-zinc-700 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+                    >
+                      Remove
+                    </button>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="mt-4 text-sm text-zinc-500">
-            No holiday closures added yet.
-          </p>
+          <div className="rounded-lg border border-dashed border-zinc-300 px-4 py-5 text-center text-sm text-zinc-500">
+            No exceptions yet. Your weekly schedule applies every day.
+          </div>
         )}
+        {holidayEditor ? (
+          <HolidayEditorDialog
+            editor={holidayEditor}
+            existingHolidays={holidayRows}
+            onClose={() => setHolidayEditor(null)}
+            onSave={saveHolidayDraft}
+          />
+        ) : null}
         </div>
       </section>
-      <div className="overflow-x-auto rounded-md border border-zinc-200 bg-white">
+      <div className="order-2 overflow-x-auto rounded-md border border-zinc-200 bg-white">
         <div className="min-w-[34rem] divide-y divide-zinc-100">
+          <div className="grid grid-cols-[8rem_7rem_1fr_1fr] items-center gap-3 bg-zinc-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+            <span>Day</span>
+            <span>Status</span>
+            <span>Opens</span>
+            <span>Closes</span>
+          </div>
           {openingWeekdayOptions.map((day) => {
             const hour = weeklyHours[day.value]
 
@@ -6488,6 +6604,211 @@ function WeeklyHoursFields({
           })}
         </div>
       </div>
+    </div>
+  )
+}
+
+function HolidayEditorDialog({
+  editor,
+  existingHolidays,
+  onClose,
+  onSave,
+}: {
+  editor: HolidayEditorState
+  existingHolidays: HolidayDraft[]
+  onClose: () => void
+  onSave: (holiday: HolidayDraft) => void
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const initialHoliday = editor.mode === "edit"
+    ? editor.holiday
+    : {
+        id: crypto.randomUUID(),
+        date: "",
+        label: "",
+        kind: "closed" as const,
+        opensAt: "09:00",
+        closesAt: "18:00",
+        repeatsYearly: false,
+      }
+  const [draft, setDraft] = useState<HolidayDraft>(initialHoliday)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [onClose])
+
+  const updateDraft = (update: Partial<HolidayDraft>) => {
+    setDraft((current) => ({ ...current, ...update }))
+    if (error) setError("")
+  }
+  const applyHoliday = () => {
+    const normalizedDate = normalizeHolidayDateInput(draft.date)
+
+    if (!normalizedDate) {
+      setError("Choose a valid date.")
+      return
+    }
+
+    if (
+      existingHolidays.some(
+        (holiday) => holiday.id !== draft.id && holiday.date === normalizedDate,
+      )
+    ) {
+      setError("That date already has an exception.")
+      return
+    }
+
+    if (
+      draft.kind === "hours" &&
+      (!draft.opensAt || !draft.closesAt || draft.opensAt === draft.closesAt)
+    ) {
+      setError("Choose different opening and closing times.")
+      return
+    }
+
+    onSave({
+      ...draft,
+      date: normalizedDate,
+      label: draft.label.trim(),
+      opensAt: draft.kind === "hours" ? draft.opensAt : "",
+      closesAt: draft.kind === "hours" ? draft.closesAt : "",
+    })
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-[#061829]/65 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="holiday-dialog-title"
+        className="flex max-h-[94dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border border-zinc-200 bg-white shadow-2xl sm:max-h-[88dvh] sm:rounded-2xl"
+      >
+        <header className="flex items-start justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+          <div>
+            <h3 id="holiday-dialog-title" className="text-lg font-bold tracking-tight text-zinc-950">
+              {editor.mode === "edit" ? "Edit hours exception" : "Add hours exception"}
+            </h3>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              Override the weekly schedule for one date or every year.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="grid size-9 place-items-center rounded-full border border-zinc-300 bg-white text-lg text-zinc-600 hover:bg-zinc-100"
+          >
+            ×
+          </button>
+        </header>
+        <div className="space-y-4 overflow-y-auto p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="space-y-1.5 text-sm">
+              <FieldLabel label="Date" required />
+              <input
+                type="date"
+                value={draft.date}
+                onChange={(event) => updateDraft({ date: event.target.value })}
+                className="h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              />
+            </label>
+            <SelectField
+              label="Change type"
+              name="holiday_editor_kind"
+              value={draft.kind}
+              options={[
+                { value: "closed", label: "Closed all day" },
+                { value: "hours", label: "Different opening hours" },
+              ]}
+              onChange={(value) => updateDraft({ kind: value === "hours" ? "hours" : "closed" })}
+              required
+            />
+          </div>
+          {draft.kind === "hours" ? (
+            <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+              <TextField
+                label="Open"
+                name="holiday_editor_opens"
+                type="time"
+                value={draft.opensAt}
+                onChange={(opensAt) => updateDraft({ opensAt })}
+                required
+                showCharacterCount={false}
+              />
+              <TextField
+                label="Close"
+                name="holiday_editor_closes"
+                type="time"
+                value={draft.closesAt}
+                onChange={(closesAt) => updateDraft({ closesAt })}
+                required
+                showCharacterCount={false}
+              />
+            </div>
+          ) : (
+            <div className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-800">
+              The partner will be shown as closed for the full day.
+            </div>
+          )}
+          <TextField
+            label="Label"
+            name="holiday_editor_label"
+            value={draft.label}
+            onChange={(label) => updateDraft({ label })}
+            placeholder="Christmas Day, private event…"
+            hint="Optional note shown with this exception."
+            showCharacterCount={false}
+          />
+          <CheckboxField
+            label="Repeat every year"
+            name="holiday_editor_repeats"
+            checked={draft.repeatsYearly}
+            onChange={(repeatsYearly) => updateDraft({ repeatsYearly })}
+            hint="Use the same month and day every year."
+          />
+          {error ? (
+            <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+              {error}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 pt-4">
+            <p className="text-xs text-zinc-500">Save operating hours afterward to publish this change.</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={applyHoliday}
+                className="h-9 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-800"
+              >
+                {editor.mode === "edit" ? "Apply changes" : "Add exception"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
@@ -8881,17 +9202,23 @@ function DeletePartnerForm({
 function DeleteDealForm({
   dealId,
   label = "Delete",
+  onDeleted,
   pendingLabel = "Deleting deal...",
   size = "compact",
   tone = "danger",
 }: {
   dealId: string
   label?: string
+  onDeleted?: () => void
   pendingLabel?: string
   size?: "compact" | "tiny"
   tone?: "danger" | "outline"
 }) {
   const [state, formAction] = useActionState(deleteDeal, initialState)
+
+  useEffect(() => {
+    if (state.ok) onDeleted?.()
+  }, [onDeleted, state.ok])
 
   return (
     <form
@@ -8914,11 +9241,21 @@ function DeleteDealForm({
   )
 }
 
-function DeleteMilestoneForm({ milestoneId }: { milestoneId: string }) {
+function DeleteMilestoneForm({
+  milestoneId,
+  onDeleted,
+}: {
+  milestoneId: string
+  onDeleted?: () => void
+}) {
   const [state, formAction] = useActionState(
     deleteRewardMilestone,
     initialState,
   )
+
+  useEffect(() => {
+    if (state.ok) onDeleted?.()
+  }, [onDeleted, state.ok])
 
   return (
     <form
@@ -10295,7 +10632,7 @@ function ImagePreview({
           onActivate()
         }
       }}
-      className={`relative overflow-hidden rounded-md border ${
+      className={`relative overflow-hidden ${spec.label === "Logo" ? "rounded-full" : "rounded-md"} border ${
         selected ? "border-teal-200 bg-white" : "border-zinc-200 bg-white"
       } ${onActivate ? "cursor-pointer outline-none transition hover:border-teal-400 hover:ring-2 hover:ring-teal-100 focus-visible:ring-2 focus-visible:ring-teal-300" : ""}`}
       style={{
@@ -10361,6 +10698,10 @@ function normalizeMediaUrls(urls?: string[] | null) {
   return (urls ?? [])
     .map((url) => url.trim())
     .filter((url) => url && !isUploadPlaceholderUrl(url))
+}
+
+function normalizePartnerCategories(categories?: string[] | null) {
+  return categories?.map((category) => category === "Doner" ? "Döner" : category) ?? []
 }
 
 function isUploadPlaceholderUrl(url: string) {
@@ -10970,14 +11311,14 @@ function LogoPreview({
     return (
       <div
         aria-hidden="true"
-        className="size-11 rounded-md border border-zinc-200 bg-cover bg-center"
+        className="size-11 rounded-full border border-zinc-200 bg-cover bg-center"
         style={{ backgroundImage: `url(${url})` }}
       />
     )
   }
 
   return (
-    <div className="grid size-11 place-items-center rounded-md bg-zinc-100 text-sm font-semibold text-zinc-500">
+    <div className="grid size-11 place-items-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-500">
       {(name?.trim()?.[0] ?? "B").toUpperCase()}
     </div>
   )
@@ -11773,6 +12114,7 @@ function formatHolidayDateLabel(value: string) {
         day: "2-digit",
         month: "short",
         year: "numeric",
+        timeZone: "UTC",
       })
 }
 
