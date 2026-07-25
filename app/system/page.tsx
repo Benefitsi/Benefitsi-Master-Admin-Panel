@@ -47,7 +47,7 @@ export default async function SystemPage() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <OverviewCard
           title="Benefitsi App"
-          description="Mobile Nutzer-App für Deals, Stempel, Rewards und Challenges."
+          description="Mobile Nutzer-App für Deals, Stempel, Prämien und Challenges."
           href={appUrl || undefined}
           status={appUrl ? "Verknüpft" : "App-Link folgt"}
           icon={
@@ -78,7 +78,7 @@ export default async function SystemPage() {
           external
         />
         <OverviewCard
-          title="Benefitsi Webseite"
+          title="Benefitsi-Webseite"
           description="Öffentliche Hauptseite und Partnergewinnung."
           href={websiteUrl}
           status="Öffentlich"
@@ -93,11 +93,11 @@ export default async function SystemPage() {
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           <Responsibility
             title="Benefitsi App"
-            text="Mobile App, Nutzerkonto, Deals, Stempel, Rewards und Scanning."
+            text="Mobile App, Nutzerkonto, Deals, Stempel, Prämien und Scanning."
           />
           <Responsibility
             title="Benefitsi Admin"
-            text="Partnerdaten, Builder, Draft, Preview, Publish und Partnerportal."
+            text="Partnerdaten, Builder, Entwurf, Vorschau, Veröffentlichung und Partnerportal."
           />
           <Responsibility
             title="Benefitsi Web"

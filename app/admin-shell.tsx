@@ -235,11 +235,11 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: number }) {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        aria-label="Benefitsi Systeme öffnen"
+        aria-label="Benefitsi-Systeme öffnen"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="benefitsi-system-switcher"
-        title="Benefitsi Systeme"
+        title="Benefitsi-Systeme"
         className={`grid size-10 place-items-center rounded-xl border bg-white text-[#061829] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff] ${
           open
             ? "border-[#118cff] bg-[#f3f8ff] shadow-[0_0_0_3px_rgba(17,140,255,.12)]"
@@ -253,12 +253,12 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: number }) {
         <section
           id="benefitsi-system-switcher"
           role="dialog"
-          aria-label="Benefitsi Systeme"
+          aria-label="Benefitsi-Systeme"
           className="absolute left-0 top-[calc(100%+0.75rem)] z-50 w-[min(23.5rem,calc(100vw-2rem))] rounded-2xl border border-zinc-200 bg-white p-4 shadow-[0_22px_60px_rgba(6,24,41,.16)] sm:left-auto sm:right-0"
         >
           <header>
             <h2 className="text-lg font-bold tracking-tight text-[#061829]">
-              Benefitsi Systeme
+              Benefitsi-Systeme
             </h2>
             <p className="mt-1 text-sm text-zinc-500">
               Schnell zwischen den Bereichen wechseln

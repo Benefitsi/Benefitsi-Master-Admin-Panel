@@ -22,9 +22,9 @@ const SECTION_META: Record<
 > = {
   overview: {
     title: "Übersicht",
-    eyebrow: "Business Health",
+    eyebrow: "Unternehmenszustand",
     description:
-      "Die wichtigsten Outcomes und Guardrails für den aktuellen Steuerungszeitraum.",
+      "Die wichtigsten Ergebnisse und Leitplanken für den aktuellen Berichtszeitraum.",
   },
   acquisition: {
     title: "Akquisition & Marketing",
@@ -34,33 +34,33 @@ const SECTION_META: Record<
   },
   product: {
     title: "Produkt & Funnel",
-    eyebrow: "Nutzerreise",
+    eyebrow: "Nutzerverlauf",
     description:
-      "Vom Signup über Time-to-Value und Deal-Nutzung bis zur bestätigten Redemption.",
+      "Von der Registrierung über die Zeit bis zum ersten Nutzen und die Deal-Nutzung bis zur bestätigten Einlösung.",
   },
   retention: {
-    title: "Retention & CLV",
+    title: "Kundenbindung & CLV",
     eyebrow: "Kundenwert",
     description:
-      "Wiederkehr, Kohorten und realisierter Kundenwert; Prognosen bleiben klar als provisional markiert.",
+      "Wiederkehrende Kunden, Kohorten und realisierter Kundenwert; vorläufige Prognosen bleiben klar gekennzeichnet.",
   },
   revenueProfit: {
-    title: "Umsatz & Profit",
+    title: "Umsatz & Gewinn",
     eyebrow: "Finanzen",
     description:
-      "Cash Collections, periodengerechter Umsatz, Deckungsbeitrag und Operating Profit.",
+      "Zahlungseingänge, periodengerechter Umsatz, Deckungsbeitrag und Betriebsergebnis.",
   },
   partners: {
     title: "Partner",
     eyebrow: "Netzwerk",
     description:
-      "Partneraktivität, bestätigte Redemptions, Wiederkehr und Konzentrationsrisiken.",
+      "Partneraktivität, bestätigte Einlösungen, wiederkehrende Kunden und Konzentrationsrisiken.",
   },
   dataQuality: {
     title: "Datenqualität & Definitionen",
     eyebrow: "Vertrauen",
     description:
-      "Quellenstatus, Aktualität, Caveats und versionierte Definitionen hinter jeder Zahl.",
+      "Quellenstatus, Aktualität, Einschränkungen und versionierte Definitionen hinter jeder Kennzahl.",
   },
 }
 
@@ -85,7 +85,7 @@ export function BusinessControlCenter({
       <StatusBanner payload={payload} />
 
       <nav
-        aria-label="Bereiche im Business Control Center"
+        aria-label="Bereiche der Unternehmenssteuerung"
         className="flex gap-2 overflow-x-auto rounded-2xl border border-[#061829]/10 bg-white p-2 shadow-[0_12px_36px_rgba(6,24,41,.04)]"
       >
         {sectionKeys.map((key) => (
@@ -183,7 +183,7 @@ function AnalyticsFilterBar({
     <form
       action="/analytics"
       method="get"
-      aria-label="Business Analytics filtern"
+      aria-label="Unternehmensanalyse filtern"
       className="rounded-2xl border border-[#061829]/10 bg-white p-4 shadow-[0_12px_36px_rgba(6,24,41,.04)]"
     >
       <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
@@ -667,9 +667,9 @@ function FreshnessTable({ sources }: { sources: AnalyticsFreshnessSource[] }) {
   return (
     <article className="overflow-hidden rounded-2xl border border-[#061829]/10 bg-white">
       <header className="border-b border-[#061829]/8 p-4">
-        <h3 className="font-black text-[#18354d]">Source Freshness</h3>
+        <h3 className="font-black text-[#18354d]">Quellenaktualität</h3>
         <p className="mt-1 text-xs text-[#6b7784]">
-          Erwartete Aktualität: operativ bis 5 Minuten, Cockpit stündlich, Ads und CLV täglich.
+          Erwartete Aktualität: operative Daten innerhalb von 5 Minuten, das Cockpit stündlich sowie Werbedaten und CLV täglich.
         </p>
       </header>
       {sources.length > 0 ? (
@@ -712,9 +712,9 @@ function DefinitionsTable({ definitions }: { definitions: AnalyticsMetricDefinit
   return (
     <article className="overflow-hidden rounded-2xl border border-[#061829]/10 bg-white">
       <header className="border-b border-[#061829]/8 p-4">
-        <h3 className="font-black text-[#18354d]">Metric Registry</h3>
+        <h3 className="font-black text-[#18354d]">Kennzahlenkatalog</h3>
         <p className="mt-1 text-xs text-[#6b7784]">
-          Verbindliche, versionierte Definitionen für Karten, Charts und Exporte.
+          Verbindliche, versionierte Definitionen für Karten, Diagramme und Exporte.
         </p>
       </header>
       {definitions.length > 0 ? (
@@ -724,8 +724,8 @@ function DefinitionsTable({ definitions }: { definitions: AnalyticsMetricDefinit
               <tr>
                 <th className="px-4 py-3 font-black">Kennzahl</th>
                 <th className="px-4 py-3 font-black">Formel</th>
-                <th className="px-4 py-3 font-black">Grain / Quelle</th>
-                <th className="px-4 py-3 font-black">Owner / SLA</th>
+                <th className="px-4 py-3 font-black">Granularität / Quelle</th>
+                <th className="px-4 py-3 font-black">Verantwortlich / SLA</th>
                 <th className="px-4 py-3 font-black">Version</th>
               </tr>
             </thead>
@@ -801,7 +801,7 @@ function QualityBadge({ quality }: { quality: AnalyticsDataQuality }) {
   const label: Record<AnalyticsDataQuality, string> = {
     verified: "Geprüft",
     estimated: "Geschätzt",
-    provisional: "Provisional",
+    provisional: "Vorläufig",
     partial: "Teilweise",
     unverified: "Ungeprüft",
     missing: "Fehlt",

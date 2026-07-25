@@ -42,7 +42,7 @@ export default async function AnalyticsPage({
     <AdminShell
       adminName={adminName}
       title="Business Control Center"
-      subtitle="Business, Produkt, Marketing und Profit in einer geprüften Sicht"
+      subtitle="Unternehmen, Produkt, Marketing und Gewinn in einer geprüften Ansicht"
     >
       {analytics.state === "ready" ||
       analytics.state === "empty" ||
