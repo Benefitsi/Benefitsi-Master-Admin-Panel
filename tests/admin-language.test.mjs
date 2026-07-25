@@ -9,6 +9,10 @@ test("uses natural German terms for reward types", () => {
   assert.equal(translateValue("Reward item", "de"), "Prämienartikel")
   assert.equal(translateValue("Fixed amount", "de"), "Fester Betrag")
   assert.equal(translateValue("Bonus stamp", "de"), "Bonusstempel")
+  assert.equal(
+    translateValue("Permanent fallback discount", "de"),
+    "Automatischer Basisrabatt",
+  )
 })
 
 test("uses menu-specific terminology consistently", () => {
@@ -22,8 +26,12 @@ test("uses menu-specific terminology consistently", () => {
 
 test("translates generated reward and schedule labels", () => {
   assert.equal(translateValue("5 stamps - Item", "de"), "5 Stempel – Artikel")
+  assert.equal(translateValue("5 Stempel – Artikel", "en"), "5 stamps - Item")
   assert.equal(translateValue("5 stamps - ", "de"), "5 Stempel – ")
+  assert.equal(translateValue("5 Stempel – ", "en"), "5 stamps - ")
   assert.equal(translateValue(" stamps -", "de"), " Stempel –")
+  assert.equal(translateValue("1 Stempel", "en"), "1 stamp")
+  assert.equal(translateValue("5 Stempel", "en"), "5 stamps")
   assert.equal(translateValue("2 milestones", "de"), "2 Prämienstufen")
   assert.equal(translateValue("2 Prämienstufen", "en"), "2 milestones")
   assert.equal(
@@ -105,4 +113,24 @@ test("translates complete admin workflows in both directions", () => {
     ),
     "Wird automatisch aus dem dauerhaften Partnerdatensatz erzeugt und kann nicht bearbeitet werden.",
   )
+})
+
+test("translates import, image editing, login, and empty-state copy", () => {
+  assert.equal(translateValue("Import behavior", "de"), "Importoptionen")
+  assert.equal(translateValue("Append", "de"), "Anhängen")
+  assert.equal(translateValue("Update add-ons", "de"), "Extras aktualisieren")
+  assert.equal(
+    translateValue("Horizontal crop", "de"),
+    "Horizontaler Bildausschnitt",
+  )
+  assert.equal(
+    translateValue("The current account is not an admin.", "de"),
+    "Das aktuelle Konto besitzt keine Admin-Berechtigung.",
+  )
+  assert.equal(
+    translateValue("No stamp-card milestones configured yet.", "de"),
+    "Noch keine Stempelkarten-Prämien eingerichtet.",
+  )
+  assert.equal(translateValue("User", "de"), "Nutzer")
+  assert.equal(translateValue("User ID", "de"), "Nutzer-ID")
 })

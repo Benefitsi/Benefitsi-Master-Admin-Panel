@@ -303,7 +303,7 @@ const translations = [
   ["Welcome reward", "Willkommensprämie"],
   ["Duration Bonus", "Zeitbonus"],
   ["Happy Hour deal", "Happy-Hour-Deal"],
-  ["Permanent fallback discount", "Dauerhafter Ersatzrabatt"],
+  ["Permanent fallback discount", "Automatischer Basisrabatt"],
   ["Limited Deal Drop", "Limitierter Deal"],
   ["Birthday reward", "Geburtstagsprämie"],
   ["Free item deal", "Deal mit Gratisartikel"],
@@ -500,9 +500,9 @@ const translations = [
   ["QR tokens", "QR-Token"],
   ["Discount", "Rabatt"],
   ["Savings", "Ersparnis"],
-  ["User", "Benutzer"],
+  ["User", "Nutzer"],
   ["Role", "Rolle"],
-  ["User ID", "Benutzer-ID"],
+  ["User ID", "Nutzer-ID"],
   ["Cancel", "Abbrechen"],
   ["Close", "Schließen"],
   ["Edit access", "Zugriff bearbeiten"],
@@ -568,12 +568,65 @@ const translations = [
   ["Untitled menu", "Menü ohne Titel"],
   ["Untitled category", "Kategorie ohne Titel"],
   ["Untitled item", "Unbenannter Artikel"],
+  ["The current account is not an admin.", "Das aktuelle Konto besitzt keine Admin-Berechtigung."],
+  ["The current account is not linked to a partner shop.", "Das aktuelle Konto ist keinem Partnerbetrieb zugeordnet."],
+  ["Enter your password", "Passwort eingeben"],
+  ["Partner Dashboard", "Partner-Dashboard"],
+  ["Import behavior", "Importoptionen"],
+  ["Append", "Anhängen"],
+  ["Keep the current menu and add the imported categories after it.", "Das vorhandene Menü beibehalten und die importierten Kategorien dahinter anhängen."],
+  ["Replace", "Ersetzen"],
+  ["Replace all current categories and items after the new import succeeds.", "Nach erfolgreichem Import alle vorhandenen Kategorien und Artikel ersetzen."],
+  ["Update add-ons", "Extras aktualisieren"],
+  ["Match existing categories and items by name and update only their add-ons. Images and other fields stay unchanged.", "Vorhandene Kategorien und Artikel anhand des Namens zuordnen und ausschließlich ihre Extras aktualisieren. Bilder und andere Felder bleiben unverändert."],
+  ["Free drink", "Gratisgetränk"],
+  ["No social handles added.", "Noch keine Social-Media-Profile hinzugefügt."],
+  ["No stamp-card milestones configured yet.", "Noch keine Stempelkarten-Prämien eingerichtet."],
+  ["No scanner or admin access configured yet.", "Noch kein Scanner- oder Administratorzugriff eingerichtet."],
+  ["No menu configured yet.", "Noch kein Menü eingerichtet."],
+  ["No items in this category.", "Keine Artikel in dieser Kategorie."],
+  ["Other items", "Weitere Artikel"],
+  ["No starter categories staged.", "Noch keine Startkategorien vorbereitet."],
+  ["No starter items staged.", "Noch keine Startartikel vorbereitet."],
+  ["CSV template", "CSV-Vorlage"],
+  ["JSON template", "JSON-Vorlage"],
+  ["Select a Knobi ZIP, or multiple menu JSON files and assets_manifest.json together. CSV remains supported.", "Wähle eine Knobi-ZIP-Datei oder mehrere Menü-JSON-Dateien gemeinsam mit der assets_manifest.json aus. CSV wird weiterhin unterstützt."],
+  ["All days", "Alle Tage"],
+  ["Weekdays", "Werktage"],
+  ["Weekend", "Wochenende"],
+  ["Clear", "Auswahl löschen"],
+  ["Horizontal crop", "Horizontaler Bildausschnitt"],
+  ["Vertical crop", "Vertikaler Bildausschnitt"],
+  ["Validation errors", "Validierungsfehler"],
+  ["Warnings", "Warnungen"],
+  ["Copy from existing partner", "Von vorhandenem Partner übernehmen"],
+  ["Select a partner…", "Partner auswählen …"],
+  ["Usual cadence", "Üblicher Besuchsrhythmus"],
+  ["Last visit", "Letzter Besuch"],
+  ["Visits", "Besuche"],
+  ["No stamp-card progress rows loaded for this partner.", "Für diesen Partner wurden keine Stempelkarten-Fortschritte geladen."],
+  ["No redemption visits loaded for this partner.", "Für diesen Partner wurden keine Einlösungen geladen."],
+  ["Square Post", "Quadratischer Beitrag"],
+  ["Story Banner", "Story-Banner"],
+  ["Landscape Banner", "Querformat-Banner"],
+  ["Bold Offer", "Markantes Angebot"],
+  ["Clean Story", "Klare Story"],
+  ["Photo Spotlight", "Foto im Fokus"],
+  ["Editorial Luxe", "Editorial Elegant"],
+  ["Midnight Glow", "Mitternachtsglanz"],
+  ["Food & drink", "Gastronomie"],
+  ["Salon & beauty", "Salon & Beauty"],
+  ["Wellness & care", "Wellness & Pflege"],
+  ["Entertainment", "Unterhaltung"],
+  ["Retail & services", "Einzelhandel & Dienstleistungen"],
 ] as const
 
 const englishToGerman = new Map<string, string>(translations)
-const germanToEnglish = new Map<string, string>(
-  translations.map(([english, german]) => [german, english]),
-)
+const germanToEnglish = new Map<string, string>()
+for (const [english, german] of translations) {
+  if (!germanToEnglish.has(german)) germanToEnglish.set(german, english)
+}
+germanToEnglish.set("Artikel", "Item")
 
 type AdminLanguageContextValue = {
   language: AdminLanguage
@@ -654,9 +707,32 @@ export function translateValue(value: string, language: AdminLanguage) {
     return `${leading}Stempel –${trailing}`
   }
 
+  const germanStampReward = core.match(
+    /^(\d+)\s+Stempel\s*[–-]\s*(.+)$/i,
+  )
+  if (germanStampReward && language === "en") {
+    const rewardType =
+      germanToEnglish.get(germanStampReward[2]) ?? germanStampReward[2]
+    return `${leading}${germanStampReward[1]} stamps - ${rewardType}${trailing}`
+  }
+
+  const germanStampRewardPrefix = core.match(
+    /^(\d+)\s+Stempel\s*[–-]\s*$/i,
+  )
+  if (germanStampRewardPrefix && language === "en") {
+    return `${leading}${germanStampRewardPrefix[1]} stamps -${trailing}`
+  }
+
   const stampCount = core.match(/^(\d+)\s+stamps?$/i)
   if (stampCount && language === "de") {
     return `${leading}${stampCount[1]} Stempel${trailing}`
+  }
+
+  const germanStampCount = core.match(/^(\d+)\s+Stempel$/i)
+  if (germanStampCount && language === "en") {
+    return `${leading}${germanStampCount[1]} ${
+      germanStampCount[1] === "1" ? "stamp" : "stamps"
+    }${trailing}`
   }
 
   const milestoneCount = core.match(/^(\d+)\s+milestones?$/i)
