@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
   useTransition,
+  type RefObject,
   type ReactNode,
 } from "react"
 import { useFormStatus } from "react-dom"
@@ -85,6 +86,13 @@ import {
   saveWeeklyOpeningHours,
   type PartnerActionState,
 } from "./partner-actions"
+import { researchPartner } from "./partner-enrichment-actions"
+import type {
+  GeminiProviderWarning,
+  PartnerEnrichmentOpeningHour,
+  PartnerEnrichmentResult,
+  PartnerEnrichmentSource,
+} from "@/lib/partner-enrichment"
 import { MicrositePanel } from "./microsite-panel"
 import { LoadingSpinner } from "@/components/loading-ui"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
@@ -312,7 +320,18 @@ type InitialMenuItemDraft = {
   imagePreviewUrl: string
   isPopular: boolean
   name: string
+  price: string
+  currency: string
+  tags: string
+  allergens: string
   sortOrder: string
+}
+
+type ResearchedPartnerMedia = {
+  logoUrl: string
+  featureUrl: string
+  discoverUrl: string
+  coverUrls: string[]
 }
 
 type SocialHandleDraft = {
@@ -1255,6 +1274,490 @@ function EditorShellTitle({
   )
 }
 
+const enrichmentFieldLabels: Record<string, string> = {
+  name: "Partner name",
+  type: "Partner type",
+  city: "Partner city",
+  email: "Public email",
+  description: "Description",
+  phone: "Phone",
+  website: "Website",
+  coordinates: "Coordinates",
+  address: "Address",
+}
+
+function PartnerResearchPanel({
+  cities,
+  formRef,
+  onApplySocials,
+  onApplyType,
+  onApplyImages,
+  onApplyMenu,
+}: {
+  cities: City[]
+  formRef: RefObject<HTMLFormElement | null>
+  onApplySocials: (socials: PartnerEnrichmentResult["socials"]) => void
+  onApplyType: (type: string) => void
+  onApplyImages: (images: PartnerEnrichmentResult["images"]) => void
+  onApplyMenu: (menu: NonNullable<PartnerEnrichmentResult["menu"]>) => void
+}) {
+  const [target, setTarget] = useState("")
+  const [result, setResult] = useState<PartnerEnrichmentResult | null>(null)
+  const [message, setMessage] = useState("")
+  const [providerWarning, setProviderWarning] = useState<GeminiProviderWarning | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [isResearching, startResearch] = useTransition()
+
+  const runResearch = () => {
+    const form = formRef.current
+    const name = formValue(form, "name")
+    const website = formValue(form, "website")
+    const address = formValue(form, "address")
+    const citySelect = form?.elements.namedItem("city_id")
+    const city = citySelect instanceof HTMLSelectElement
+      ? citySelect.selectedOptions[0]?.textContent?.trim() ?? ""
+      : ""
+
+    setMessage("")
+    setProviderWarning(null)
+    startResearch(async () => {
+      const response = await researchPartner({
+        target,
+        name,
+        website,
+        address,
+        city: city === "Select..." ? "" : city,
+        allowedCities: cities.map((item) => item.name ?? "").filter(Boolean),
+        allowedCategories: categoryOptions.map((item) => item.value),
+        allowedTypes: partnerTypeOptions.map((item) => item.value),
+      })
+
+      setMessage(response.message)
+      setProviderWarning(response.providerWarning ?? null)
+      if (!response.ok) return
+
+      setResult(response.result)
+      setSelected(defaultEnrichmentSelections(response.result))
+    })
+  }
+
+  const applySelected = () => {
+    if (!result || !formRef.current) return
+    const form = formRef.current
+    let applied = 0
+
+    for (const field of result.fields) {
+      if (!selected.has(`field:${field.key}`)) continue
+      if (field.key === "type") {
+        onApplyType(field.value)
+      } else if (field.key === "city") {
+        const cityId = cities.find(
+          (city) => city.name?.toLocaleLowerCase() === field.value.toLocaleLowerCase(),
+        )?.id
+        if (cityId) setNamedFormValue(form, "city_id", cityId)
+      } else {
+        setNamedFormValue(form, field.key, field.value)
+      }
+      applied += 1
+    }
+
+    for (const category of result.categories) {
+      if (!selected.has(`category:${category.value}`)) continue
+      const input = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="category"]'))
+        .find((candidate) => candidate.value === category.value)
+      if (input && !input.checked) input.click()
+      applied += 1
+    }
+
+    const socials = result.socials.filter((social) =>
+      selected.has(`social:${social.platform}`),
+    )
+    if (socials.length) {
+      onApplySocials(socials)
+      applied += socials.length
+    }
+
+    if (selected.has("opening-hours") && result.openingHours.length === 7) {
+      applyResearchedOpeningHours(form, result.openingHours)
+      applied += 1
+    }
+
+    const images = result.images.filter((image) =>
+      selected.has(`image:${image.role}:${image.url}`),
+    )
+    if (images.length) {
+      onApplyImages(images)
+      applied += images.length
+    }
+
+    if (result.menu && selected.has("menu")) {
+      onApplyMenu(result.menu)
+      applied += result.menu.categories.reduce(
+        (count, category) => count + category.items.length,
+        0,
+      )
+    }
+
+    setMessage(
+      applied
+        ? `Applied ${applied} reviewed suggestion${applied === 1 ? "" : "s"}. You can edit every value before creating the partner.`
+        : "Select at least one suggestion to apply.",
+    )
+  }
+
+  const toggleSelection = (key: string) => {
+    setSelected((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-cyan-50 shadow-sm">
+      <div className="border-b border-teal-100 px-4 py-4 sm:px-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="text-base font-semibold text-zinc-950">Research partner online</h4>
+              <span className="rounded-full border border-teal-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-teal-800">
+                Gemini + Google Search
+              </span>
+            </div>
+            <p className="mt-1 text-sm leading-6 text-zinc-600">
+              Find source-backed business details, then choose what to copy into this form. Nothing is saved or overwritten automatically.
+            </p>
+          </div>
+          {result ? (
+            <span className={`w-fit rounded-full border px-2.5 py-1 text-xs font-semibold ${confidenceClasses(result.matchConfidence)}`}>
+              {capitalize(result.matchConfidence)} match confidence
+            </span>
+          ) : null}
+        </div>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input
+            type="text"
+            value={target}
+            onChange={(event) => setTarget(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.preventDefault()
+            }}
+            placeholder="Website, Google Maps link, or shop name and location"
+            maxLength={500}
+            className="h-10 min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+          />
+          <button
+            type="button"
+            onClick={runResearch}
+            disabled={isResearching}
+            className="h-10 shrink-0 rounded-lg bg-teal-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+          >
+            {isResearching ? "Researching sources..." : result ? "Research again" : "Research partner"}
+          </button>
+        </div>
+        <p className="mt-2 text-xs leading-5 text-zinc-500">
+          Tip: a canonical website or Google Maps link gives the strongest identity match. Research can take about a minute.
+        </p>
+      </div>
+
+      {message ? (
+        <p
+          role="status"
+          aria-live="polite"
+          className={`mx-4 mt-3 rounded-lg border px-3 py-2 text-sm ${result ? "border-teal-200 bg-white text-zinc-700" : "border-amber-200 bg-amber-50 text-amber-900"}`}
+        >
+          {message}
+        </p>
+      ) : null}
+
+      {providerWarning ? (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="mx-4 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm"
+        >
+          <div className="flex items-start gap-2.5">
+            <span aria-hidden="true" className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-amber-200 text-xs font-black">!</span>
+            <div>
+              <p className="text-sm font-semibold">{providerWarning.title}</p>
+              <p className="mt-1 text-xs leading-5">{providerWarning.message}</p>
+              {providerWarning.kind === "quota" ? (
+                <p className="mt-1.5 text-xs font-semibold">
+                  Website-only results may still appear below, but they do not include full Google-wide verification.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {result ? (
+        <div className="space-y-4 p-4 sm:p-5">
+          <p className="text-sm leading-6 text-zinc-700">{result.summary}</p>
+
+          <div className="grid gap-2 lg:grid-cols-2">
+            {result.fields.map((field) => (
+              <EnrichmentSuggestion
+                key={field.key}
+                checked={selected.has(`field:${field.key}`)}
+                confidence={field.confidence}
+                label={enrichmentFieldLabels[field.key] ?? field.key}
+                note={field.note}
+                onToggle={() => toggleSelection(`field:${field.key}`)}
+                sourceIds={field.sourceIds}
+                sources={result.sources}
+                value={field.value}
+              />
+            ))}
+            {result.categories.map((category) => (
+              <EnrichmentSuggestion
+                key={`category-${category.value}`}
+                checked={selected.has(`category:${category.value}`)}
+                confidence={category.confidence}
+                label="Category"
+                onToggle={() => toggleSelection(`category:${category.value}`)}
+                sourceIds={category.sourceIds}
+                sources={result.sources}
+                value={category.value}
+              />
+            ))}
+            {result.socials.map((social) => (
+              <EnrichmentSuggestion
+                key={`social-${social.platform}`}
+                checked={selected.has(`social:${social.platform}`)}
+                confidence={social.confidence}
+                label={`${capitalize(social.platform)} profile`}
+                onToggle={() => toggleSelection(`social:${social.platform}`)}
+                sourceIds={social.sourceIds}
+                sources={result.sources}
+                value={social.handle}
+              />
+            ))}
+            {result.openingHours.length === 7 ? (
+              <EnrichmentSuggestion
+                checked={selected.has("opening-hours")}
+                confidence={lowestHoursConfidence(result.openingHours)}
+                label="Weekly opening hours"
+                onToggle={() => toggleSelection("opening-hours")}
+                sourceIds={[...new Set(result.openingHours.flatMap((hour) => hour.sourceIds))]}
+                sources={result.sources}
+                value={formatResearchedHours(result.openingHours)}
+              />
+            ) : null}
+            {result.images.map((item) => (
+              <label
+                key={`image-${item.role}-${item.url}`}
+                className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${selected.has(`image:${item.role}:${item.url}`) ? "border-teal-300 bg-white shadow-sm" : "border-zinc-200 bg-white/60"}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.has(`image:${item.role}:${item.url}`)}
+                  onChange={() => toggleSelection(`image:${item.role}:${item.url}`)}
+                  className="mt-0.5 size-4 shrink-0 rounded border-zinc-300 accent-teal-700"
+                />
+                <span
+                  role="img"
+                  aria-label={item.alt || `${item.role} candidate`}
+                  className="size-16 shrink-0 rounded-md border border-zinc-200 bg-zinc-50 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${JSON.stringify(item.url)})` }}
+                />
+                <span className="min-w-0">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold text-zinc-600">{capitalize(item.role)} image</span>
+                    <span className={`rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${confidenceClasses(item.confidence)}`}>{item.confidence}</span>
+                  </span>
+                  <span className="mt-1 block break-words text-xs leading-5 text-zinc-500">{item.alt || "Official image candidate"}</span>
+                </span>
+              </label>
+            ))}
+            {result.menu ? (
+              <label className={`cursor-pointer rounded-lg border p-3 transition ${selected.has("menu") ? "border-teal-300 bg-white shadow-sm" : "border-zinc-200 bg-white/60"}`}>
+                <span className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selected.has("menu")}
+                    onChange={() => toggleSelection("menu")}
+                    className="mt-0.5 size-4 shrink-0 rounded border-zinc-300 accent-teal-700"
+                  />
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-zinc-600">Official menu</span>
+                      <span className={`rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${confidenceClasses(result.menu.confidence)}`}>{result.menu.confidence}</span>
+                    </span>
+                    <span className="mt-1 block text-sm font-medium text-zinc-950">{result.menu.name}</span>
+                    <span className="mt-1 block text-xs leading-5 text-zinc-500">
+                      {result.menu.categories.length} categories · {result.menu.categories.reduce((count, category) => count + category.items.length, 0)} items · prices and images included where published
+                    </span>
+                  </span>
+                </span>
+              </label>
+            ) : null}
+          </div>
+
+          {result.warnings.length ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">Check before applying</p>
+              <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-5 text-amber-900">
+                {result.warnings.map((warning) => <li key={warning}>{warning}</li>)}
+              </ul>
+            </div>
+          ) : null}
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Sources reviewed</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {result.sources.map((source) => (
+                <a
+                  key={source.id}
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 transition hover:border-teal-300 hover:text-teal-800"
+                >
+                  <span className="shrink-0 text-zinc-400">{source.id}</span>
+                  <span className="truncate">{source.title}</span>
+                  <span className="shrink-0 text-[10px] uppercase text-zinc-400">{source.kind}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-teal-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-zinc-500">
+              Low-confidence suggestions start unchecked. Existing form values are only changed when you apply a selected item.
+            </p>
+            <button
+              type="button"
+              onClick={applySelected}
+              className="h-10 shrink-0 rounded-lg bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800"
+            >
+              Apply selected ({selected.size})
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+function EnrichmentSuggestion({
+  checked,
+  confidence,
+  label,
+  note,
+  onToggle,
+  sourceIds,
+  sources,
+  value,
+}: {
+  checked: boolean
+  confidence: "high" | "medium" | "low"
+  label: string
+  note?: string
+  onToggle: () => void
+  sourceIds: number[]
+  sources: PartnerEnrichmentSource[]
+  value: string
+}) {
+  const sourceTitles = sourceIds
+    .map((id) => sources.find((source) => source.id === id)?.title)
+    .filter(Boolean)
+    .join(", ")
+
+  return (
+    <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition ${checked ? "border-teal-300 bg-white shadow-sm" : "border-zinc-200 bg-white/60"}`}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+        className="mt-0.5 size-4 shrink-0 rounded border-zinc-300 accent-teal-700"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-zinc-600">{label}</span>
+          <span className={`rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${confidenceClasses(confidence)}`}>
+            {confidence}
+          </span>
+        </span>
+        <span className="mt-1 block break-words text-sm font-medium leading-5 text-zinc-950">{value}</span>
+        {note ? <span className="mt-1 block text-xs leading-5 text-zinc-500">{note}</span> : null}
+        {sourceTitles ? <span className="mt-1 block truncate text-[11px] text-zinc-400" title={sourceTitles}>Sources: {sourceTitles}</span> : null}
+      </span>
+    </label>
+  )
+}
+
+function defaultEnrichmentSelections(result: PartnerEnrichmentResult) {
+  const selected = new Set<string>()
+  for (const field of result.fields) if (field.confidence !== "low") selected.add(`field:${field.key}`)
+  for (const category of result.categories) if (category.confidence !== "low") selected.add(`category:${category.value}`)
+  for (const social of result.socials) if (social.confidence !== "low") selected.add(`social:${social.platform}`)
+  if (result.openingHours.length === 7 && lowestHoursConfidence(result.openingHours) !== "low") selected.add("opening-hours")
+  for (const image of result.images) if (image.confidence !== "low") selected.add(`image:${image.role}:${image.url}`)
+  if (result.menu && result.menu.confidence !== "low") selected.add("menu")
+  return selected
+}
+
+function formValue(form: HTMLFormElement | null, name: string) {
+  const field = form?.elements.namedItem(name)
+  return field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement
+    ? field.value.trim()
+    : ""
+}
+
+function setNamedFormValue(form: HTMLFormElement, name: string, value: string) {
+  const field = form.elements.namedItem(name)
+  if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) return
+  const prototype = field instanceof HTMLInputElement
+    ? HTMLInputElement.prototype
+    : field instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLSelectElement.prototype
+  Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(field, value)
+  field.dispatchEvent(new Event("input", { bubbles: true }))
+  field.dispatchEvent(new Event("change", { bubbles: true }))
+}
+
+function applyResearchedOpeningHours(form: HTMLFormElement, hours: PartnerEnrichmentOpeningHour[]) {
+  for (const hour of hours) {
+    const closed = form.elements.namedItem(`is_closed_${hour.weekday}`)
+    if (closed instanceof HTMLInputElement && closed.checked !== hour.isClosed) closed.click()
+  }
+  window.requestAnimationFrame(() => {
+    for (const hour of hours) {
+      if (hour.isClosed) continue
+      setNamedFormValue(form, `opens_at_${hour.weekday}`, hour.opensAt)
+      setNamedFormValue(form, `closes_at_${hour.weekday}`, hour.closesAt)
+    }
+  })
+}
+
+function lowestHoursConfidence(hours: PartnerEnrichmentOpeningHour[]) {
+  return hours.some((hour) => hour.confidence === "low")
+    ? "low" as const
+    : hours.some((hour) => hour.confidence === "medium")
+      ? "medium" as const
+      : "high" as const
+}
+
+function formatResearchedHours(hours: PartnerEnrichmentOpeningHour[]) {
+  const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+  return hours.map((hour) => `${dayNames[hour.weekday - 1]} ${hour.isClosed ? "closed" : `${hour.opensAt}–${hour.closesAt}`}`).join(" · ")
+}
+
+function confidenceClasses(confidence: "high" | "medium" | "low") {
+  return confidence === "high"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+    : confidence === "medium"
+      ? "border-amber-200 bg-amber-50 text-amber-800"
+      : "border-rose-200 bg-rose-50 text-rose-800"
+}
+
+function capitalize(value: string) {
+  return value ? `${value[0].toUpperCase()}${value.slice(1)}` : value
+}
+
 function PartnerForm({
   partner,
   cities,
@@ -1281,12 +1784,20 @@ function PartnerForm({
     InitialMilestoneDraft[]
   >(() => (mode === "create" ? [createInitialMilestoneDraft()] : []))
   const [initialMenuEnabled, setInitialMenuEnabled] = useState(false)
+  const [initialMenuName, setInitialMenuName] = useState("Speisekarte")
+  const [initialMenuDescription, setInitialMenuDescription] = useState("")
   const [initialMenuCategories, setInitialMenuCategories] = useState<
     InitialMenuCategoryDraft[]
   >([])
   const [initialMenuItems, setInitialMenuItems] = useState<
     InitialMenuItemDraft[]
   >([])
+  const [researchedMedia, setResearchedMedia] = useState<ResearchedPartnerMedia>({
+    logoUrl: "",
+    featureUrl: "",
+    discoverUrl: "",
+    coverUrls: [],
+  })
   const [createTab, setCreateTab] = useState<CreatePartnerTab>("profile")
   const [reviewSnapshot, setReviewSnapshot] =
     useState<CreatePartnerReviewSnapshot | null>(null)
@@ -1393,8 +1904,11 @@ function PartnerForm({
       setInitialDeals([])
       setInitialMilestones([createInitialMilestoneDraft()])
       setInitialMenuEnabled(false)
+      setInitialMenuName("Speisekarte")
+      setInitialMenuDescription("")
       setInitialMenuCategories([])
       setInitialMenuItems([])
+      setResearchedMedia({ logoUrl: "", featureUrl: "", discoverUrl: "", coverUrls: [] })
       setCreateTab("profile")
       setSelectedOwnerId("")
       setReviewSnapshot(null)
@@ -1600,6 +2114,74 @@ function PartnerForm({
         <CopyFromPartnerPanel partners={partners} onApply={applyTemplate} />
       ) : null}
 
+      {mode === "create" ? (
+        <PartnerResearchPanel
+          cities={cities}
+          formRef={formRef}
+          onApplySocials={(socials) =>
+            setSocialHandles((current) => {
+              const next = new Map(current.map((social) => [social.platform, social]))
+              for (const social of socials) {
+                next.set(social.platform, {
+                  id: crypto.randomUUID(),
+                  platform: social.platform,
+                  handle: social.handle,
+                })
+              }
+              return [...next.values()].slice(0, MAX_PARTNER_SOCIALS)
+            })
+          }
+          onApplyType={handlePartnerTypeChange}
+          onApplyImages={(images) => {
+            const logoUrl = images.find((image) => image.role === "logo")?.url ?? ""
+            const coverUrls = images
+              .filter((image) => image.role === "cover")
+              .map((image) => image.url)
+              .slice(0, maxCoverPhotos)
+            setResearchedMedia((current) => ({
+              logoUrl: logoUrl || current.logoUrl,
+              featureUrl: coverUrls[0] || current.featureUrl,
+              discoverUrl: coverUrls[1] || coverUrls[0] || current.discoverUrl,
+              coverUrls: coverUrls.length ? coverUrls : current.coverUrls,
+            }))
+          }}
+          onApplyMenu={(menu) => {
+            handlePartnerTypeChange("Food & Drink")
+            const categoryIds = new Map<string, string>()
+            const categories = menu.categories.map((category, index) => {
+              const id = crypto.randomUUID()
+              categoryIds.set(category.name, id)
+              return {
+                id,
+                imagePreviewUrl: category.imageUrl,
+                name: category.name,
+                sortOrder: String(index),
+              }
+            })
+            const items = menu.categories.flatMap((category) =>
+              category.items.map((item, index) => ({
+                id: crypto.randomUUID(),
+                categoryDraftId: categoryIds.get(category.name) ?? "",
+                description: item.description,
+                imagePreviewUrl: item.imageUrl,
+                isPopular: false,
+                name: item.name,
+                price: item.price === null ? "" : String(item.price),
+                currency: menu.currency || "EUR",
+                tags: item.tags.join(", "),
+                allergens: item.allergens.join(", "),
+                sortOrder: String(index),
+              })),
+            )
+            setInitialMenuName(menu.name || "Speisekarte")
+            setInitialMenuDescription(menu.description)
+            setInitialMenuCategories(categories)
+            setInitialMenuItems(items)
+            setInitialMenuEnabled(true)
+          }}
+        />
+      ) : null}
+
       <FormSection title="Profile" required={requiredSectionMarker}>
         <FieldGrid>
           <TextField
@@ -1787,7 +2369,7 @@ function PartnerForm({
             fileName="logo_file"
             existingName="existing_logo_url"
             removeName="remove_logo"
-            currentUrl={partner?.logo_url}
+            currentUrl={partner?.logo_url ?? researchedMedia.logoUrl}
             spec={partnerMediaSpecs.logo}
             compact
           />
@@ -1797,7 +2379,7 @@ function PartnerForm({
             fileName="feature_card_file"
             existingName="existing_feature_card_url"
             removeName="remove_feature_card"
-            currentUrl={partner?.feature_card_url}
+            currentUrl={partner?.feature_card_url ?? researchedMedia.featureUrl}
             spec={partnerMediaSpecs.feature}
             compact
           />
@@ -1807,14 +2389,14 @@ function PartnerForm({
             fileName="discover_card_file"
             existingName="existing_discover_card_image_url"
             removeName="remove_discover_card_image"
-            currentUrl={partner?.discover_card_image_url}
+            currentUrl={partner?.discover_card_image_url ?? researchedMedia.discoverUrl}
             spec={partnerMediaSpecs.discover}
             compact
           />
         </div>
         <CoverUploadField
-          key={`covers-${partner?.cover_urls?.join("|") ?? "new"}`}
-          covers={partner?.cover_urls}
+          key={`covers-${(partner?.cover_urls ?? researchedMedia.coverUrls).join("|") || "new"}`}
+          covers={partner?.cover_urls ?? researchedMedia.coverUrls}
         />
       </FormSection>
 
@@ -1926,8 +2508,12 @@ function PartnerForm({
             <FormSection title="Menu">
               <InitialMenuEditor
                 categories={initialMenuCategories}
+                description={initialMenuDescription}
                 enabled={initialMenuEnabled}
                 items={initialMenuItems}
+                name={initialMenuName}
+                onDescriptionChange={setInitialMenuDescription}
+                onNameChange={setInitialMenuName}
                 onAddCategory={() =>
                   setInitialMenuCategories((current) => {
                     const normalized = normalizeInitialCategoryPositions(current)
@@ -1962,6 +2548,10 @@ function PartnerForm({
                         imagePreviewUrl: "",
                         isPopular: false,
                         name: "",
+                        price: "",
+                        currency: "EUR",
+                        tags: "",
+                        allergens: "",
                         sortOrder: String(
                           nextAvailablePosition(
                             normalized
@@ -2692,8 +3282,10 @@ function InitialDealsEditor({
 
 function InitialMenuEditor({
   categories,
+  description,
   enabled,
   items,
+  name,
   onAddCategory,
   onAddItem,
   onRemoveCategory,
@@ -2701,12 +3293,16 @@ function InitialMenuEditor({
   onReorderCategories,
   onReorderItems,
   onSetEnabled,
+  onDescriptionChange,
+  onNameChange,
   onUpdateCategory,
   onUpdateItem,
 }: {
   categories: InitialMenuCategoryDraft[]
+  description: string
   enabled: boolean
   items: InitialMenuItemDraft[]
+  name: string
   onAddCategory: () => void
   onAddItem: () => void
   onRemoveCategory: (id: string) => void
@@ -2714,6 +3310,8 @@ function InitialMenuEditor({
   onReorderCategories: (orderedIds: string[]) => void
   onReorderItems: (orderedIds: string[]) => void
   onSetEnabled: (enabled: boolean) => void
+  onDescriptionChange: (description: string) => void
+  onNameChange: (name: string) => void
   onUpdateCategory: (
     id: string,
     values: Partial<InitialMenuCategoryDraft>,
@@ -2816,7 +3414,8 @@ function InitialMenuEditor({
             <TextField
               label="Menu name"
               name="initial_menu_name"
-              defaultValue="Speisekarte"
+              value={name}
+              onChange={onNameChange}
               required
             />
             <SelectField
@@ -2830,6 +3429,8 @@ function InitialMenuEditor({
           <TextAreaField
             label="Menu description"
             name="initial_menu_description"
+            value={description}
+            onChange={onDescriptionChange}
           />
 
           <div className="space-y-2 rounded-lg border border-zinc-200 bg-white p-3">
@@ -2972,6 +3573,7 @@ function InitialMenuEditor({
                           fileName={`initial_menu_category_${index}_image_file`}
                           existingName={`initial_menu_category_${index}_existing_image_url`}
                           removeName={`initial_menu_category_${index}_remove_image`}
+                          currentUrl={category.imagePreviewUrl}
                           spec={partnerMediaSpecs.menuCategory}
                           compact
                           dense
@@ -3157,12 +3759,15 @@ function InitialMenuEditor({
                             name={`initial_menu_item_${index}_price`}
                             type="number"
                             step="0.01"
+                            value={item.price}
+                            onChange={(price) => onUpdateItem(item.id, { price })}
                           />
                           <SelectField
                             label="Currency"
                             name={`initial_menu_item_${index}_currency`}
-                            defaultValue="EUR"
+                            value={item.currency}
                             options={menuCurrencyOptions}
+                            onChange={(currency) => onUpdateItem(item.id, { currency })}
                             required
                           />
                           <TextField
@@ -3179,11 +3784,15 @@ function InitialMenuEditor({
                           <TextField
                             label="Tags"
                             name={`initial_menu_item_${index}_tags`}
+                            value={item.tags}
+                            onChange={(tags) => onUpdateItem(item.id, { tags })}
                             hint="Separate tags with commas."
                           />
                           <TextField
                             label="Allergens"
                             name={`initial_menu_item_${index}_allergens`}
+                            value={item.allergens}
+                            onChange={(allergens) => onUpdateItem(item.id, { allergens })}
                             hint="Separate allergens with commas."
                           />
                         </FieldGrid>
@@ -3219,6 +3828,7 @@ function InitialMenuEditor({
                           fileName={`initial_menu_item_${index}_image_file`}
                           existingName={`initial_menu_item_${index}_existing_image_url`}
                           removeName={`initial_menu_item_${index}_remove_image`}
+                          currentUrl={item.imagePreviewUrl}
                           spec={partnerMediaSpecs.menuItem}
                           compact
                           inputId={imageInputId}

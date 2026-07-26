@@ -2679,7 +2679,7 @@ async function resolvePartnerMedia(
   slug: string,
 ) {
   const uploadTime = Date.now()
-  const [logoUpload, featureUpload, discoverUpload, ...coverUploads] =
+  const [logoUpload, featureUpload, discoverUpload, coverUploads, existingCoverUploads] =
     await Promise.all([
       mediaValues.logoFile
         ? uploadPartnerFile(
@@ -2688,7 +2688,13 @@ async function resolvePartnerMedia(
             partnerMediaSpecs.logo,
             `${partnerId}/logo-${uploadTime}-${safeFileName(mediaValues.logoFile.name)}`,
           )
-        : Promise.resolve(null),
+        : copyExternalPartnerImage(
+            supabase,
+            mediaValues.existingLogoUrl,
+            partnerMediaSpecs.logo,
+            `${partnerId}/logo-${uploadTime}-online`,
+            mediaValues.removedMediaUrls,
+          ),
       mediaValues.featureFile
         ? uploadPartnerFile(
             supabase,
@@ -2696,7 +2702,13 @@ async function resolvePartnerMedia(
             partnerMediaSpecs.feature,
             `${partnerId}/feature-${uploadTime}-${safeFileName(mediaValues.featureFile.name)}`,
           )
-        : Promise.resolve(null),
+        : copyExternalPartnerImage(
+            supabase,
+            mediaValues.existingFeatureCardUrl,
+            partnerMediaSpecs.feature,
+            `${partnerId}/feature-${uploadTime}-online`,
+            mediaValues.removedMediaUrls,
+          ),
       mediaValues.discoverFile
         ? uploadPartnerFile(
             supabase,
@@ -2704,21 +2716,36 @@ async function resolvePartnerMedia(
             partnerMediaSpecs.discover,
             `${partnerId}/discover-${uploadTime}-${safeFileName(mediaValues.discoverFile.name)}`,
           )
-        : Promise.resolve(null),
-      ...mediaValues.coverFiles.map((coverFile, index) =>
+        : copyExternalPartnerImage(
+            supabase,
+            mediaValues.existingDiscoverCardUrl,
+            partnerMediaSpecs.discover,
+            `${partnerId}/discover-${uploadTime}-online`,
+            mediaValues.removedMediaUrls,
+          ),
+      Promise.all(mediaValues.coverFiles.map((coverFile, index) =>
         uploadPartnerFile(
           supabase,
           coverFile,
           partnerMediaSpecs.cover,
           `${partnerId}/covers/${slug}-${uploadTime}-${index}-${safeFileName(coverFile.name)}`,
         ),
-      ),
+      )),
+      Promise.all(mediaValues.existingCoverUrls.map((url, index) =>
+        copyExternalPartnerImage(
+          supabase,
+          url,
+          partnerMediaSpecs.cover,
+          `${partnerId}/covers/${slug}-${uploadTime}-online-${index}`,
+        ),
+      )),
     ])
   const uploadedPaths: UploadedStoragePath[] = [
     logoUpload,
     featureUpload,
     discoverUpload,
     ...coverUploads,
+    ...existingCoverUploads,
   ].flatMap((upload) => (upload ? [upload] : []))
   const logoUrl =
     logoUpload?.url ??
@@ -2747,7 +2774,7 @@ async function resolvePartnerMedia(
     const index = Number(rawIndex)
     const url =
       kind === "existing"
-        ? mediaValues.existingCoverUrls[index]
+        ? existingCoverUploads[index]?.url ?? mediaValues.existingCoverUrls[index]
         : kind === "upload"
           ? coverUploads[index]?.url
           : undefined
@@ -2795,6 +2822,35 @@ async function uploadPartnerFile(
     path: data.path,
     url: publicUrl,
   }
+}
+
+async function copyExternalPartnerImage(
+  supabase: SupabaseClient,
+  imageUrl: string,
+  spec: PartnerMediaSpec,
+  path: string,
+  removedUrls: string[] = [],
+) {
+  if (!imageUrl || removedUrls.includes(imageUrl) || parsePublicStorageUrl(imageUrl)) {
+    return null
+  }
+
+  const downloaded = await downloadRemoteImage(imageUrl, {
+    maxBytes: MAX_PARTNER_MEDIA_BYTES,
+  })
+  const file = new File(
+    [new Uint8Array(downloaded.bytes)],
+    downloaded.filename,
+    { type: downloaded.contentType, lastModified: Date.now() },
+  )
+  const mediaError = validateMediaFile(file)
+  if (mediaError) throw new Error(mediaError)
+  return uploadPartnerFile(
+    supabase,
+    file,
+    spec,
+    `${path}-${safeFileName(file.name)}`,
+  )
 }
 
 async function preparePartnerUploadFile(
@@ -2851,6 +2907,29 @@ async function uploadInitialMenuItemImages(
   try {
     for (let index = 0; index < count; index += 1) {
       const file = fileValue(formData, `initial_menu_item_${index}_image_file`)
+
+      const existingUrl = stringValue(
+        formData,
+        `initial_menu_item_${index}_existing_image_url`,
+      )
+
+      if (!file && existingUrl) {
+        if (parsePublicStorageUrl(existingUrl)) {
+          imageUrlsByIndex.set(index, existingUrl)
+        } else {
+          const uploaded = await copyExternalPartnerImage(
+            supabase,
+            existingUrl,
+            partnerMediaSpecs.menuItem,
+            `menu-items/${menuId}/${Date.now()}-${index}-online`,
+          )
+          if (uploaded) {
+            imageUrlsByIndex.set(index, uploaded.url)
+            uploadedPaths.push(uploaded)
+          }
+        }
+        continue
+      }
 
       if (!file) {
         continue
@@ -2971,6 +3050,27 @@ async function uploadInitialMenuCategoryImages(
         formData,
         `initial_menu_category_${index}_image_file`,
       )
+      const existingUrl = stringValue(
+        formData,
+        `initial_menu_category_${index}_existing_image_url`,
+      )
+      if (!file && existingUrl) {
+        if (parsePublicStorageUrl(existingUrl)) {
+          imageUrlsByIndex.set(index, existingUrl)
+        } else {
+          const uploaded = await copyExternalPartnerImage(
+            supabase,
+            existingUrl,
+            partnerMediaSpecs.menuCategory,
+            `menu-categories/${menuId}/${Date.now()}-${index}-online`,
+          )
+          if (uploaded) {
+            imageUrlsByIndex.set(index, uploaded.url)
+            uploadedPaths.push(uploaded)
+          }
+        }
+        continue
+      }
       if (!file) continue
 
       const mediaError = validateMediaFile(file)

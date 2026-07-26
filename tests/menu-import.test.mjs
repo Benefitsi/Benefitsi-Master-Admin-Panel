@@ -5,6 +5,7 @@ import menuImport from "../lib/menu-import.js"
 const {
   copyMenuImages,
   assertPublicHttpUrl,
+  downloadRemoteHtml,
   readMenuImportFiles,
   runMenuImportBatch,
   prepareMissingAddonsRetry,
@@ -213,6 +214,11 @@ test("remote image downloads reject localhost and private IP targets", async () 
     ]),
     /private or unavailable address/,
   )
+})
+
+test("official website fallback rejects localhost and private network targets", async () => {
+  await assert.rejects(() => downloadRemoteHtml("http://localhost/menu"), /localhost/)
+  await assert.rejects(() => downloadRemoteHtml("http://127.0.0.1/menu"), /private IP/)
 })
 
 test("missing addons schema retries all items and reports skipped add-ons", () => {
