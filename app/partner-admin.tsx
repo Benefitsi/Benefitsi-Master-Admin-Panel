@@ -1286,6 +1286,60 @@ const enrichmentFieldLabels: Record<string, string> = {
   address: "Address",
 }
 
+const researchProgressSteps = [
+  "Checking the official website and relevant pages",
+  "Looking for a matching map and location record",
+  "Comparing names, addresses, and contact details",
+  "Verifying sources, images, hours, and menu data",
+  "Preparing reviewable suggestions",
+] as const
+
+function ResearchingIndicator() {
+  const [step, setStep] = useState(0)
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setStep((current) => Math.min(current + 1, researchProgressSteps.length - 1))
+    }, 2_200)
+    return () => window.clearInterval(interval)
+  }, [])
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Partner research in progress"
+      className="overflow-hidden rounded-xl border border-teal-200 bg-white shadow-sm"
+    >
+      <div className="relative flex items-center gap-4 px-4 py-4">
+        <div aria-hidden="true" className="relative grid size-12 shrink-0 place-items-center">
+          <span className="absolute inset-0 rounded-full border-2 border-teal-100 border-t-teal-600 animate-spin motion-reduce:animate-none" />
+          <span className="absolute inset-2 rounded-full border border-cyan-200 border-b-cyan-600 animate-spin motion-reduce:animate-none [animation-direction:reverse] [animation-duration:1.6s]" />
+          <span className="size-2 rounded-full bg-teal-600 animate-pulse motion-reduce:animate-none" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-zinc-950">Researching this partner</p>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-teal-700">Cross-checking sources</span>
+          </div>
+          <p key={step} className="mt-1 text-sm leading-5 text-zinc-600 animate-pulse motion-reduce:animate-none">
+            {researchProgressSteps[step]}
+          </p>
+          <div aria-hidden="true" className="mt-3 flex gap-1.5">
+            {researchProgressSteps.map((label, index) => (
+              <span
+                key={label}
+                className={`h-1.5 flex-1 rounded-full transition-colors duration-500 ${index <= step ? "bg-teal-600" : "bg-zinc-200"}`}
+              />
+            ))}
+          </div>
+        </div>
+        <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 origin-left bg-gradient-to-r from-transparent via-teal-500 to-transparent animate-pulse motion-reduce:animate-none" />
+      </div>
+    </div>
+  )
+}
+
 function PartnerResearchPanel({
   cities,
   formRef,
@@ -1320,6 +1374,8 @@ function PartnerResearchPanel({
 
     setMessage("")
     setProviderWarning(null)
+    setResult(null)
+    setSelected(new Set())
     startResearch(async () => {
       const response = await researchPartner({
         target,
@@ -1422,7 +1478,7 @@ function PartnerResearchPanel({
             <div className="flex flex-wrap items-center gap-2">
               <h4 className="text-base font-semibold text-zinc-950">Research partner online</h4>
               <span className="rounded-full border border-teal-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-teal-800">
-                Gemini + Google Search
+                Official web + maps + Gemini
               </span>
             </div>
             <p className="mt-1 text-sm leading-6 text-zinc-600">
@@ -1453,7 +1509,10 @@ function PartnerResearchPanel({
             disabled={isResearching}
             className="h-10 shrink-0 rounded-lg bg-teal-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
           >
-            {isResearching ? "Researching sources..." : result ? "Research again" : "Research partner"}
+            <span className="inline-flex items-center gap-2">
+              {isResearching ? <LoadingSpinner /> : null}
+              {isResearching ? "Researching sources..." : result ? "Research again" : "Research partner"}
+            </span>
           </button>
         </div>
         <p className="mt-2 text-xs leading-5 text-zinc-500">
@@ -1461,11 +1520,17 @@ function PartnerResearchPanel({
         </p>
       </div>
 
-      {message ? (
+      {isResearching ? (
+        <div className="px-4 py-3 sm:px-5">
+          <ResearchingIndicator />
+        </div>
+      ) : null}
+
+      {message && (!providerWarning || result) ? (
         <p
           role="status"
           aria-live="polite"
-          className={`mx-4 mt-3 rounded-lg border px-3 py-2 text-sm ${result ? "border-teal-200 bg-white text-zinc-700" : "border-amber-200 bg-amber-50 text-amber-900"}`}
+          className={`mx-4 mt-3 rounded-lg border px-3 py-2 text-sm sm:mx-5 ${result ? "border-teal-200 bg-white text-zinc-700" : "border-amber-200 bg-amber-50 text-amber-900"} ${!providerWarning && !result ? "mb-4 sm:mb-5" : ""}`}
         >
           {message}
         </p>
@@ -1475,7 +1540,7 @@ function PartnerResearchPanel({
         <div
           role="alert"
           aria-live="assertive"
-          className="mx-4 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm"
+          className={`mx-4 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm sm:mx-5 ${result ? "" : "mb-4 sm:mb-5"}`}
         >
           <div className="flex items-start gap-2.5">
             <span aria-hidden="true" className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-amber-200 text-xs font-black">!</span>
@@ -1484,7 +1549,7 @@ function PartnerResearchPanel({
               <p className="mt-1 text-xs leading-5">{providerWarning.message}</p>
               {providerWarning.kind === "quota" ? (
                 <p className="mt-1.5 text-xs font-semibold">
-                  Website-only results may still appear below, but they do not include full Google-wide verification.
+                  Free website/OpenStreetMap results may still appear below, but they do not include full Google-wide verification.
                 </p>
               ) : null}
             </div>

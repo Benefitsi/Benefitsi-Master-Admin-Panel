@@ -44,12 +44,20 @@ copied into Supabase Storage when the partner is created; external image URLs
 are not left as permanent hotlinks. Menu automation is intentionally limited to
 current official menu content and never invents missing prices or allergens.
 
+Without Gemini, a name/address search can also use the free OpenStreetMap
+Nominatim service for location, coordinates, address, classification, and any
+contact details recorded on the map feature. Requests are user-triggered,
+limited to one per second, cached for 24 hours per server instance, and clearly
+labelled as community-maintained data that requires admin verification. Website
+research follows at most three relevant same-domain contact, about, or menu
+links in addition to the supplied page.
+
 Configure a Gemini API key with active quota in `.env.local`:
 
 ```bash
 GEMINI_API_KEY=your-server-only-key
-# Optional; defaults to gemini-2.5-flash
-GEMINI_PARTNER_ENRICHMENT_MODEL=gemini-2.5-flash
+# Optional; defaults to Gemini 3.5 Flash and falls back to current Flash aliases
+GEMINI_PARTNER_ENRICHMENT_MODEL=gemini-3.5-flash
 ```
 
 Do not expose this key through a `NEXT_PUBLIC_` variable. Google Search

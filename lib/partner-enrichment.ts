@@ -5,9 +5,19 @@ import * as menuImport from "./menu-import.js"
 
 const { downloadRemoteHtml } = menuImport
 
-const GEMINI_MODEL = process.env.GEMINI_PARTNER_ENRICHMENT_MODEL ?? "gemini-2.5-flash"
+const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
+const GEMINI_MODEL_FALLBACKS = [DEFAULT_GEMINI_MODEL, "gemini-flash-latest", "gemini-flash-lite-latest"] as const
 const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta"
 const REQUEST_TIMEOUT_MS = 45_000
+const NOMINATIM_CACHE_TTL_MS = 24 * 60 * 60 * 1000
+const SEARCH_QUOTA_BACKOFF_MS = 10 * 60 * 1000
+const SEARCH_UNAVAILABLE_BACKOFF_MS = 60 * 1000
+const nominatimCache = new Map<string, { expiresAt: number; rows: NominatimRow[] }>()
+let nominatimQueue: Promise<void> = Promise.resolve()
+let lastNominatimRequestAt = 0
+let workingGeminiModel = ""
+let googleSearchBackoffUntil = 0
+let googleSearchBackoffKind: "quota" | "unavailable" = "quota"
 
 export type EnrichmentConfidence = "high" | "medium" | "low"
 
@@ -26,7 +36,7 @@ export type PartnerEnrichmentSource = {
   id: number
   title: string
   url: string
-  kind: "official" | "google" | "social" | "directory" | "other"
+  kind: "official" | "google" | "openstreetmap" | "social" | "directory" | "other"
 }
 
 export type PartnerEnrichmentFieldKey =
@@ -122,7 +132,7 @@ export type PartnerEnrichmentState =
   | { ok: false; message: string; providerWarning?: GeminiProviderWarning }
 
 export type GeminiProviderWarning = {
-  kind: "configuration" | "quota" | "rate_limit" | "output_tokens" | "unavailable"
+  kind: "configuration" | "quota" | "search_quota" | "search_unavailable" | "rate_limit" | "output_tokens" | "unavailable"
   title: string
   message: string
 }
@@ -154,6 +164,21 @@ type RawExtraction = {
   warnings?: unknown
 }
 
+type NominatimRow = {
+  osm_id?: number | string
+  osm_type?: string
+  lat?: string
+  lon?: string
+  display_name?: string
+  name?: string
+  type?: string
+  category?: string
+  addresstype?: string
+  address?: Record<string, string>
+  namedetails?: Record<string, string>
+  extratags?: Record<string, string>
+}
+
 export async function enrichPartnerWithGemini(
   rawInput: PartnerEnrichmentInput,
 ): Promise<PartnerEnrichmentState> {
@@ -168,50 +193,64 @@ export async function enrichPartnerWithGemini(
   const officialUrl = input.website || extractHttpUrl(input.target)
   const websiteFallback = officialUrl
     ? await enrichOfficialWebsite(officialUrl, input).catch((error) => {
-        console.warn("Official website extraction failed:", error)
+        if (!isExpectedLinkedPageBlock(error)) {
+          console.warn("Official website extraction unavailable:", error instanceof Error ? error.message : "unknown error")
+        }
         return null
       })
     : null
+  const openStreetMapFallback = await enrichFromOpenStreetMap(input).catch((error) => {
+    console.warn("OpenStreetMap partner lookup failed:", error)
+    return null
+  })
+  const freeFallback = mergeEnrichmentResults(websiteFallback, openStreetMapFallback)
   const apiKey = process.env.GEMINI_API_KEY?.trim()
 
   if (!apiKey) {
     const providerWarning: GeminiProviderWarning = {
       kind: "configuration",
       title: "Gemini is not configured",
-      message: "Google-wide AI research is paused because GEMINI_API_KEY is missing. Official website extraction can still be used.",
+      message: "Google-wide AI research is paused because GEMINI_API_KEY is missing. Free official-website and OpenStreetMap extraction can still be used.",
     }
-    return websiteFallback
+    return freeFallback
       ? {
           ok: true,
-          message: "Official website details were found. Gemini is not configured, so Google-wide research was skipped.",
-          result: websiteFallback,
+          message: "Free website and OpenStreetMap details were found. Gemini is not configured, so Google-wide research was skipped.",
+          result: freeFallback,
           providerWarning,
         }
       : { ok: false, message: providerWarning.message, providerWarning }
   }
 
+  let researchProviderWarning: GeminiProviderWarning | undefined
   try {
-    const research = await callGemini(apiKey, {
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: buildResearchPrompt(input) }],
-        },
-      ],
-      tools: [{ google_search: {} }, { url_context: {} }],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 12_000,
-      },
-    })
+    let research: GeminiResponse
+    const officialResearchUrl = input.website || extractHttpUrl(input.target)
+    if (officialResearchUrl && Date.now() < googleSearchBackoffUntil) {
+      researchProviderWarning = searchCapabilityWarning(googleSearchBackoffKind)
+      research = await callGemini(apiKey, buildResearchRequest(input, false))
+    } else {
+      try {
+        research = await callGemini(apiKey, buildResearchRequest(input, true), { retryTransient: false })
+      } catch (error) {
+        const warning = geminiProviderWarning(error)
+        if (warning?.kind !== "quota" && warning?.kind !== "rate_limit" && warning?.kind !== "unavailable") throw error
+        if (!officialResearchUrl) throw error
+        const searchWasLimited = warning.kind === "quota" || warning.kind === "rate_limit"
+        googleSearchBackoffKind = searchWasLimited ? "quota" : "unavailable"
+        googleSearchBackoffUntil = Date.now() + (searchWasLimited ? SEARCH_QUOTA_BACKOFF_MS : SEARCH_UNAVAILABLE_BACKOFF_MS)
+        researchProviderWarning = searchCapabilityWarning(googleSearchBackoffKind)
+        research = await callGemini(apiKey, buildResearchRequest(input, false))
+      }
+    }
 
     const researchText = responseText(research)
     const sources = collectSources(research, input.website || extractHttpUrl(input.target))
 
     if (!researchText) {
-      return websiteFallback
-        ? { ok: true, message: "Official website details were found; broader Gemini research returned no additional results.", result: websiteFallback }
-        : { ok: false, message: "Gemini could not find enough reliable information for this partner." }
+      return freeFallback
+        ? { ok: true, message: "Found reviewable details from free official-website and OpenStreetMap sources.", result: addSearchLimitationNote(freeFallback, researchProviderWarning) }
+        : { ok: false, message: "Gemini could not find enough reliable information for this partner.", providerWarning: researchProviderWarning }
     }
 
     const extraction = await callGemini(apiKey, {
@@ -235,12 +274,12 @@ export async function enrichPartnerWithGemini(
 
     const parsed = parseJsonObject(responseText(extraction))
     if (!parsed) {
-      return { ok: false, message: "Gemini returned research, but it could not be converted into partner fields." }
+      return { ok: false, message: "Gemini returned research, but it could not be converted into partner fields.", providerWarning: researchProviderWarning }
     }
 
-    const result = normalizeExtraction(parsed, sources, input)
+    const result = addSearchLimitationNote(normalizeExtraction(parsed, sources, input), researchProviderWarning)
     if (!result.fields.length && !result.categories.length && !result.socials.length) {
-      return { ok: false, message: "No source-backed partner details were found. Try adding a website or a more specific location." }
+      return { ok: false, message: "No source-backed partner details were found. Try adding a website or a more specific location.", providerWarning: researchProviderWarning }
     }
 
     return {
@@ -249,32 +288,96 @@ export async function enrichPartnerWithGemini(
       result,
     }
   } catch (error) {
-    const providerWarning = geminiProviderWarning(error)
-    if (websiteFallback) {
-      console.warn(
-        "Broader Gemini partner research was unavailable; using official website fallback:",
-        error instanceof Error ? error.message : "unknown error",
+    const providerWarning = researchProviderWarning ?? geminiProviderWarning(error)
+    const searchCapabilityOnly = isSearchCapabilityWarning(providerWarning)
+    if (freeFallback) {
+      if (!providerWarning) {
+        console.warn("Broader Gemini partner research failed unexpectedly; using free fallback sources.")
+      }
+      const fallbackResult = addSearchLimitationNote(
+        freeFallback,
+        searchCapabilityOnly ? providerWarning : undefined,
       )
       return {
         ok: true,
-        message: "Official website details were found. Broader Gemini/Google research is currently unavailable, so review the website-only suggestions carefully.",
-        providerWarning,
-        result: {
-          ...websiteFallback,
-          warnings: [
-            ...websiteFallback.warnings,
-            "Google-wide AI research was unavailable; these suggestions come only from the supplied official website.",
-          ],
-        },
+        message: "Found reviewable details from free official-website and OpenStreetMap sources.",
+        providerWarning: searchCapabilityOnly ? undefined : providerWarning,
+        result: providerWarning
+          ? fallbackResult
+          : {
+              ...fallbackResult,
+              warnings: [...fallbackResult.warnings, "Broader AI research was unavailable; these suggestions come only from free official-website and OpenStreetMap sources."],
+            },
       }
     }
-    console.error("Partner enrichment failed:", error)
+    if (!providerWarning) {
+      console.error("Partner enrichment failed:", error)
+    }
     return {
       ok: false,
       message: providerWarning?.message ?? (error instanceof Error ? error.message : "Partner research failed. Please try again."),
       providerWarning,
     }
   }
+}
+
+function searchCapabilityWarning(kind: "quota" | "unavailable"): GeminiProviderWarning {
+  return {
+    kind: kind === "quota" ? "search_quota" : "search_unavailable",
+    title: kind === "quota" ? "Google Search research limit reached" : "Google Search research is temporarily unavailable",
+    message: "Gemini is available, but Google Search grounding could not be used for this request. Research uses the supplied official website, URL context when available, and free OpenStreetMap data instead.",
+  }
+}
+
+function isSearchCapabilityWarning(warning: GeminiProviderWarning | undefined) {
+  return warning?.kind === "search_quota" || warning?.kind === "search_unavailable"
+}
+
+function addSearchLimitationNote(
+  result: PartnerEnrichmentResult,
+  warning: GeminiProviderWarning | undefined,
+) {
+  if (!isSearchCapabilityWarning(warning)) return result
+  return {
+    ...result,
+    warnings: [...new Set([
+      ...result.warnings,
+      "Google Search grounding was unavailable for this run; suggestions use official URL context and free sources.",
+    ])],
+  }
+}
+
+function buildResearchRequest(input: PartnerEnrichmentInput, includeGoogleSearch: boolean) {
+  const officialUrl = input.website || extractHttpUrl(input.target)
+  const tools = [
+    ...(includeGoogleSearch ? [{ google_search: {} }] : []),
+    ...(officialUrl ? [{ url_context: {} }] : []),
+  ]
+  return {
+    contents: [
+      {
+        role: "user",
+        parts: [{
+          text: includeGoogleSearch
+            ? buildResearchPrompt(input)
+            : buildOfficialUrlResearchPrompt(input, officialUrl),
+        }],
+      },
+    ],
+    ...(tools.length ? { tools } : {}),
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: includeGoogleSearch ? 12_000 : 3_000,
+    },
+  }
+}
+
+function buildOfficialUrlResearchPrompt(input: PartnerEnrichmentInput, officialUrl: string) {
+  return `Read only this exact official partner page using URL context: ${officialUrl}
+
+Partner identity: ${JSON.stringify({ name: input.name, address: input.address, city: input.city })}
+
+Return a short factual inventory of business details visibly published on that page: name, type, address, coordinates, phone, public email, canonical website, social links, opening hours, official image URLs, and menu text if present. Do not search the wider web or follow additional pages. Never invent missing values, and cite the supplied URL beside each fact.`
 }
 
 async function enrichOfficialWebsite(
@@ -284,7 +387,21 @@ async function enrichOfficialWebsite(
   const downloaded = await downloadRemoteHtml(websiteUrl, { maxBytes: 2 * 1024 * 1024 })
   const pageUrl = normalizeHttpUrl(downloaded.url)
   if (!pageUrl) return null
-  const html = downloaded.html as string
+  const pages = [{ html: downloaded.html as string, url: pageUrl }]
+  const blockedLinkedPages: string[] = []
+  for (const linkedUrl of officialCrawlLinks(downloaded.html as string, pageUrl)) {
+    try {
+      const linked = await downloadRemoteHtml(linkedUrl, { maxBytes: 2 * 1024 * 1024 })
+      pages.push({ html: linked.html as string, url: normalizeHttpUrl(linked.url) || linkedUrl })
+    } catch (error) {
+      if (isExpectedLinkedPageBlock(error)) {
+        blockedLinkedPages.push(linkedUrl)
+      } else {
+        console.warn("Optional official page could not be reviewed:", linkedUrl, error instanceof Error ? error.message : error)
+      }
+    }
+  }
+  const html = pages.map((page) => page.html).join("\n")
   const source: PartnerEnrichmentSource = {
     id: 1,
     title: readableHost(pageUrl),
@@ -326,7 +443,9 @@ async function enrichOfficialWebsite(
     if (type) addField("type", type, "Business classification matched from official structured data.")
   }
 
-  const socials = asStrings(business?.sameAs).flatMap((url) => {
+  const structuredSocials = arrayValue(business?.sameAs).filter((value): value is string => typeof value === "string")
+  const linkedSocials = [...html.matchAll(/<a\b[^>]*href=["'](https?:\/\/[^"']+)["']/gi)].map((match) => decodeHtml(match[1]))
+  const socials = [...structuredSocials, ...linkedSocials].flatMap((url) => {
     const normalized = normalizeHttpUrl(url)
     const platform = socialPlatformForUrl(normalized)
     return platform && normalized
@@ -354,10 +473,352 @@ async function enrichOfficialWebsite(
     openingHours: openingHours.length === 7 ? openingHours : [],
     images,
     menu,
-    warnings: menu ? [] : ["No complete machine-readable menu was found on the supplied page."],
+    warnings: [
+      `Reviewed ${pages.length} page${pages.length === 1 ? "" : "s"} on the supplied official website.`,
+      ...(blockedLinkedPages.length
+        ? [`${blockedLinkedPages.length} optional linked page${blockedLinkedPages.length === 1 ? " was" : "s were"} skipped because the website blocked automated access; the accessible official pages were still reviewed.`]
+        : []),
+      ...(menu ? [] : ["No complete machine-readable menu was found on the reviewed official pages."]),
+    ],
     sources: [source],
     researchedAt: new Date().toISOString(),
   }
+}
+
+function isExpectedLinkedPageBlock(error: unknown) {
+  const detail = error instanceof Error ? error.message : String(error ?? "")
+  return /HTTP\s+(?:401|403|429)\b/i.test(detail)
+}
+
+function officialCrawlLinks(html: string, pageUrl: string) {
+  const origin = new URL(pageUrl).origin
+  const candidates: Array<{ url: string; priority: number }> = []
+  for (const match of html.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const href = decodeHtml(match[1])
+    const label = decodeHtml(match[2].replace(/<[^>]+>/g, " "))
+    try {
+      const url = new URL(href, pageUrl)
+      if (url.origin !== origin || !["http:", "https:"].includes(url.protocol)) continue
+      url.hash = ""
+      const searchable = `${url.pathname} ${label}`.toLocaleLowerCase()
+      const priority = /speisekarte|menu|karte|products|produkte/.test(searchable)
+        ? 3
+        : /kontakt|contact|impressum/.test(searchable)
+          ? 2
+          : /about|uber-uns|ueber-uns|über-uns|wir-uber-uns/.test(searchable)
+            ? 1
+            : 0
+      if (priority) candidates.push({ url: url.toString(), priority })
+    } catch {
+      // Ignore malformed links from otherwise usable pages.
+    }
+  }
+  return dedupeBy(
+    candidates.sort((first, second) => second.priority - first.priority),
+    (candidate) => candidate.url,
+  ).slice(0, 3).map((candidate) => candidate.url)
+}
+
+async function enrichFromOpenStreetMap(
+  input: PartnerEnrichmentInput,
+): Promise<PartnerEnrichmentResult | null> {
+  const nonUrlTarget = /^https?:\/\//i.test(input.target) ? "" : input.target
+  const query = cleanText(
+    [input.name || nonUrlTarget, input.address, input.city].filter(Boolean).join(", "),
+    400,
+  )
+  if (!query || query.length < 3) return null
+
+  const rows = await queryNominatim(query)
+  const row = chooseNominatimRow(rows, input)
+  if (!row) return null
+
+  const latitude = Number(row.lat)
+  const longitude = Number(row.lon)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null
+  const sourceUrl = openStreetMapObjectUrl(row)
+  const source: PartnerEnrichmentSource = {
+    id: 1,
+    title: row.name || row.namedetails?.name || "OpenStreetMap listing",
+    url: sourceUrl,
+    kind: "openstreetmap",
+  }
+  const fields: PartnerEnrichmentField[] = []
+  const hasLocationClue = Boolean(input.address || input.city)
+  const osmConfidence: EnrichmentConfidence = nominatimNameMatches(row, input) && hasLocationClue
+    ? "medium"
+    : "low"
+  const addField = (key: PartnerEnrichmentFieldKey, value: string, note: string) => {
+    if (!value || fields.some((field) => field.key === key)) return
+    fields.push({ key, value, confidence: osmConfidence, sourceIds: [1], note })
+  }
+  const matchedName = cleanText(row.namedetails?.name || row.name, adminTextLimits.shortText)
+  addField("name", matchedName, "Community-maintained OpenStreetMap business listing.")
+  addField("coordinates", `${latitude}, ${longitude}`, "Coordinates from the OpenStreetMap feature.")
+  addField("address", cleanText(row.display_name, adminTextLimits.mediumText), "Formatted address from OpenStreetMap.")
+  const addressCity = row.address?.city || row.address?.town || row.address?.village || row.address?.municipality || ""
+  const allowedCity = findCaseInsensitive(input.allowedCities, addressCity)
+  if (allowedCity) addField("city", allowedCity, "City matched from OpenStreetMap address data.")
+
+  const extras = row.extratags ?? {}
+  addField("website", normalizeHttpUrl(extras.website || extras["contact:website"]), "Website recorded on the OpenStreetMap feature.")
+  addField("phone", cleanText(extras.phone || extras["contact:phone"], adminTextLimits.phone), "Phone number recorded on the OpenStreetMap feature.")
+  addField("email", cleanText(extras.email || extras["contact:email"], adminTextLimits.email), "Email recorded on the OpenStreetMap feature.")
+  if (isFoodMapFeature(row)) {
+    const partnerType = findCaseInsensitive(input.allowedTypes, "Food & Drink")
+    if (partnerType) addField("type", partnerType, "Business type matched from OpenStreetMap classification.")
+  }
+
+  const categories = openStreetMapCategories(row, input.allowedCategories, osmConfidence)
+  return {
+    summary: "Location and contact candidates found through the free OpenStreetMap Nominatim service. Verify community-maintained details against the business website.",
+    matchConfidence: osmConfidence,
+    fields,
+    categories,
+    socials: [],
+    openingHours: [],
+    images: [],
+    menu: null,
+    warnings: [
+      "OpenStreetMap is community-maintained; verify phone, website, address, and business status before applying.",
+      "© OpenStreetMap contributors; data is available under the Open Database License.",
+    ],
+    sources: [source],
+    researchedAt: new Date().toISOString(),
+  }
+}
+
+async function queryNominatim(query: string) {
+  const cacheKey = query.toLocaleLowerCase()
+  const cached = nominatimCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) return cached.rows
+
+  let resolveRows!: (rows: NominatimRow[]) => void
+  let rejectRows!: (error: unknown) => void
+  const result = new Promise<NominatimRow[]>((resolve, reject) => {
+    resolveRows = resolve
+    rejectRows = reject
+  })
+
+  nominatimQueue = nominatimQueue.then(async () => {
+    try {
+      const waitMs = Math.max(0, 1_050 - (Date.now() - lastNominatimRequestAt))
+      if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs))
+      const url = new URL("https://nominatim.openstreetmap.org/search")
+      url.searchParams.set("format", "jsonv2")
+      url.searchParams.set("limit", "5")
+      url.searchParams.set("addressdetails", "1")
+      url.searchParams.set("namedetails", "1")
+      url.searchParams.set("extratags", "1")
+      url.searchParams.set("q", query)
+      lastNominatimRequestAt = Date.now()
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+          "Accept-Language": "de,en;q=0.8",
+          "User-Agent": "Benefitsi-Admin-Partner-Research/1.0 (https://benefitsi.de)",
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(12_000),
+      })
+      if (!response.ok) throw new Error(`Nominatim lookup failed (${response.status}).`)
+      const payload = await response.json() as unknown
+      const rows = Array.isArray(payload)
+        ? payload.filter((item): item is NominatimRow => Boolean(item) && typeof item === "object")
+        : []
+      nominatimCache.set(cacheKey, { expiresAt: Date.now() + NOMINATIM_CACHE_TTL_MS, rows })
+      if (nominatimCache.size > 100) nominatimCache.delete(nominatimCache.keys().next().value ?? "")
+      resolveRows(rows)
+    } catch (error) {
+      rejectRows(error)
+    }
+  }).catch(() => undefined)
+
+  return result
+}
+
+function chooseNominatimRow(rows: NominatimRow[], input: PartnerEnrichmentInput) {
+  const sorted = [...rows].sort((first, second) =>
+    nominatimScore(second, input) - nominatimScore(first, input),
+  )
+  const candidate = sorted[0]
+  if (!candidate) return undefined
+  const hasExpectedName = Boolean(input.name || (!/^https?:\/\//i.test(input.target) && input.target))
+  const minimumScore = hasExpectedName ? 4 : input.address || input.city ? 2 : 4
+  return nominatimScore(candidate, input) >= minimumScore ? candidate : undefined
+}
+
+function nominatimScore(row: NominatimRow, input: PartnerEnrichmentInput) {
+  const expectedName = normalizeMatchText(input.name || (/^https?:\/\//i.test(input.target) ? "" : input.target))
+  const actualName = normalizeMatchText(row.namedetails?.name || row.name || "")
+  const display = normalizeMatchText(row.display_name || "")
+  let score = actualName && expectedName && actualName === expectedName ? 8 : 0
+  if (actualName && expectedName && (actualName.includes(expectedName) || expectedName.includes(actualName))) score += 4
+  if (input.city && display.includes(normalizeMatchText(input.city))) score += 3
+  if (input.address && display.includes(normalizeMatchText(input.address).split(" ")[0])) score += 2
+  if (["restaurant", "cafe", "fast_food", "shop", "company"].includes(row.type ?? "")) score += 1
+  return score
+}
+
+function nominatimNameMatches(row: NominatimRow, input: PartnerEnrichmentInput) {
+  const expectedName = input.name || (/^https?:\/\//i.test(input.target) ? "" : input.target)
+  const actualName = row.namedetails?.name || row.name || ""
+  return Boolean(expectedName && actualName && businessNamesMatch(expectedName, actualName))
+}
+
+function normalizeMatchText(value: string) {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+}
+
+function openStreetMapObjectUrl(row: NominatimRow) {
+  const type = row.osm_type === "node" || row.osm_type === "way" || row.osm_type === "relation"
+    ? row.osm_type
+    : "search"
+  return type === "search"
+    ? `https://www.openstreetmap.org/search?query=${encodeURIComponent(row.display_name || row.name || "business")}`
+    : `https://www.openstreetmap.org/${type}/${encodeURIComponent(String(row.osm_id ?? ""))}`
+}
+
+function isFoodMapFeature(row: NominatimRow) {
+  return [row.type, row.category, row.addresstype].some((value) =>
+    /restaurant|cafe|fast_food|food|bakery|bar|ice_cream/i.test(value ?? ""),
+  )
+}
+
+function openStreetMapCategories(
+  row: NominatimRow,
+  allowedCategories: string[],
+  confidence: EnrichmentConfidence,
+) {
+  const values = [row.type, row.extratags?.cuisine]
+    .filter(Boolean)
+    .join(";")
+    .split(/[;,]/)
+    .map((value) => value.trim())
+  const aliases: Record<string, string> = {
+    restaurant: "Restaurant", cafe: "Cafe", coffee_shop: "Cafe", fast_food: "Imbiss",
+    pizza: "Pizza", burger: "Burger", sushi: "Sushi", thai: "Thai", chinese: "Chinese",
+    indian: "Inder", greek: "Grieche", kebab: "Döner", doner: "Döner", shawarma: "Shawarma",
+    falafel: "Falafel", ice_cream: "Eis", butcher: "Metzgerei",
+  }
+  return dedupeBy(values.flatMap((value) => {
+    const mapped = aliases[value.toLocaleLowerCase().replace(/\s+/g, "_")]
+    const allowed = mapped ? findCaseInsensitive(allowedCategories, mapped) : ""
+    return allowed ? [{ value: allowed, confidence, sourceIds: [1] }] : []
+  }), (category) => category.value.toLocaleLowerCase())
+}
+
+function mergeEnrichmentResults(
+  primary: PartnerEnrichmentResult | null,
+  secondary: PartnerEnrichmentResult | null,
+): PartnerEnrichmentResult | null {
+  if (!primary) return secondary
+  if (!secondary) return primary
+  const offset = primary.sources.length
+  const rebase = (ids: number[]) => ids.map((id) => id + offset)
+  const rebasedFields = secondary.fields.map((field) => ({ ...field, sourceIds: rebase(field.sourceIds) }))
+  const rebasedCategories = secondary.categories.map((category) => ({ ...category, sourceIds: rebase(category.sourceIds) }))
+  const rebasedSocials = secondary.socials.map((social) => ({ ...social, sourceIds: rebase(social.sourceIds) }))
+  const rebasedHours = secondary.openingHours.map((hour) => ({ ...hour, sourceIds: rebase(hour.sourceIds) }))
+  const rebasedImages = secondary.images.map((image) => ({ ...image, sourceIds: rebase(image.sourceIds) }))
+  if (!enrichmentIdentitiesMatch(primary, secondary)) {
+    return {
+      ...primary,
+      warnings: [
+        ...primary.warnings,
+        "An OpenStreetMap candidate was found but not merged because its name or website did not match the official website closely enough.",
+      ],
+    }
+  }
+
+  const conflictWarnings: string[] = []
+  const corroboratedFields = primary.fields.map((field) => {
+    const other = rebasedFields.find((candidate) => candidate.key === field.key)
+    if (!other) return field
+    if (!fieldValuesAgree(field.key, field.value, other.value)) {
+      conflictWarnings.push(`${enrichmentFieldName(field.key)} differs between the official website and OpenStreetMap; the official website value was kept.`)
+      return field
+    }
+    return {
+      ...field,
+      confidence: "high" as const,
+      sourceIds: [...new Set([...field.sourceIds, ...other.sourceIds])],
+      note: `${field.note}${field.note ? " " : ""}Corroborated by an independent OpenStreetMap listing.`,
+    }
+  })
+  const secondaryOnlyFields = rebasedFields.filter((field) =>
+    !primary.fields.some((candidate) => candidate.key === field.key),
+  )
+  return {
+    ...primary,
+    summary: `${primary.summary} ${secondary.summary}`,
+    fields: [...corroboratedFields, ...secondaryOnlyFields],
+    categories: dedupeBy([...primary.categories, ...rebasedCategories], (category) => category.value.toLocaleLowerCase()),
+    socials: dedupeBy([...primary.socials, ...rebasedSocials], (social) => social.platform),
+    openingHours: primary.openingHours.length === 7 ? primary.openingHours : rebasedHours,
+    images: dedupeBy([...primary.images, ...rebasedImages], (image) => `${image.role}:${image.url}`),
+    menu: primary.menu ?? secondary.menu,
+    warnings: [...new Set([...primary.warnings, ...secondary.warnings, ...conflictWarnings])],
+    sources: [
+      ...primary.sources,
+      ...secondary.sources.map((source) => ({ ...source, id: source.id + offset })),
+    ],
+  }
+}
+
+function enrichmentIdentitiesMatch(
+  primary: PartnerEnrichmentResult,
+  secondary: PartnerEnrichmentResult,
+) {
+  const field = (result: PartnerEnrichmentResult, key: PartnerEnrichmentFieldKey) =>
+    result.fields.find((candidate) => candidate.key === key)?.value ?? ""
+  const primaryName = field(primary, "name")
+  const secondaryName = field(secondary, "name")
+  if (primaryName && secondaryName && !businessNamesMatch(primaryName, secondaryName)) return false
+  const primaryWebsite = field(primary, "website")
+  const secondaryWebsite = field(secondary, "website")
+  if (primaryWebsite && secondaryWebsite) {
+    const primaryHost = readableHost(primaryWebsite).toLocaleLowerCase()
+    const secondaryHost = readableHost(secondaryWebsite).toLocaleLowerCase()
+    if (primaryHost && secondaryHost && primaryHost !== secondaryHost) return false
+  }
+  return Boolean(primaryName && secondaryName || primaryWebsite && secondaryWebsite)
+}
+
+function fieldValuesAgree(
+  key: PartnerEnrichmentFieldKey,
+  first: string,
+  second: string,
+) {
+  if (key === "name") return businessNamesMatch(first, second)
+  if (key === "website") return readableHost(first).toLocaleLowerCase() === readableHost(second).toLocaleLowerCase()
+  if (key === "phone") return first.replace(/\D/g, "").slice(-8) === second.replace(/\D/g, "").slice(-8)
+  if (key === "coordinates") return coordinateDistanceMeters(first, second) <= 250
+  const normalizedFirst = normalizeMatchText(first)
+  const normalizedSecond = normalizeMatchText(second)
+  return normalizedFirst === normalizedSecond ||
+    Boolean(normalizedFirst && normalizedSecond && (normalizedFirst.includes(normalizedSecond) || normalizedSecond.includes(normalizedFirst)))
+}
+
+function coordinateDistanceMeters(first: string, second: string) {
+  const parse = (value: string) => value.split(",").map(Number)
+  const [lat1, lon1] = parse(first)
+  const [lat2, lon2] = parse(second)
+  if (![lat1, lon1, lat2, lon2].every(Number.isFinite)) return Number.POSITIVE_INFINITY
+  const radians = (degrees: number) => degrees * Math.PI / 180
+  const deltaLat = radians(lat2 - lat1)
+  const deltaLon = radians(lon2 - lon1)
+  const a = Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(radians(lat1)) * Math.cos(radians(lat2)) * Math.sin(deltaLon / 2) ** 2
+  return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function enrichmentFieldName(key: PartnerEnrichmentFieldKey) {
+  return ({
+    name: "Business name", type: "Business type", city: "City", email: "Email",
+    description: "Description", phone: "Phone", website: "Website",
+    coordinates: "Coordinates", address: "Address",
+  } satisfies Record<PartnerEnrichmentFieldKey, string>)[key]
 }
 
 function sanitizeInput(input: PartnerEnrichmentInput): PartnerEnrichmentInput {
@@ -417,33 +878,76 @@ Research report:
 ${researchText.slice(0, 24_000)}`
 }
 
-async function callGemini(apiKey: string, body: unknown): Promise<GeminiResponse> {
-  const response = await fetch(
-    `${GEMINI_API_ROOT}/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify(body),
-      cache: "no-store",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    },
-  )
-  const payload = (await response.json()) as GeminiResponse
+async function callGemini(
+  apiKey: string,
+  body: unknown,
+  options: { retryTransient?: boolean } = {},
+): Promise<GeminiResponse> {
+  let lastUnavailableDetail = ""
+  const candidates = geminiModelCandidates()
 
-  if (!response.ok) {
-    const detail = payload.error?.message?.replace(/\s+/g, " ").trim()
-    throw new Error(detail ? `Gemini research failed: ${detail}` : `Gemini research failed (${response.status}).`)
+  modelLoop: for (const model of candidates) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await fetch(
+        `${GEMINI_API_ROOT}/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: JSON.stringify(body),
+          cache: "no-store",
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        },
+      )
+      const payload = (await response.json()) as GeminiResponse
+
+      if (!response.ok) {
+        const detail = payload.error?.message?.replace(/\s+/g, " ").trim()
+        if (isUnavailableGeminiModel(response.status, detail) && model !== candidates.at(-1)) {
+          lastUnavailableDetail = detail || `HTTP ${response.status}`
+          if (workingGeminiModel === model) workingGeminiModel = ""
+          continue modelLoop
+        }
+        if ([500, 502, 503, 504].includes(response.status)) {
+          if (options.retryTransient !== false && attempt === 0) {
+            await new Promise((resolve) => setTimeout(resolve, 500))
+            continue
+          }
+          if (options.retryTransient !== false && model !== candidates.at(-1)) {
+            lastUnavailableDetail = detail || `HTTP ${response.status}`
+            if (workingGeminiModel === model) workingGeminiModel = ""
+            continue modelLoop
+          }
+        }
+        throw new Error(detail ? `Gemini research failed: ${detail}` : `Gemini research failed (${response.status}).`)
+      }
+
+      workingGeminiModel = model
+      const finishReason = payload.candidates?.[0]?.finishReason?.toUpperCase()
+      if (finishReason === "MAX_TOKENS") {
+        throw new Error("GEMINI_OUTPUT_TOKEN_LIMIT: Gemini reached its maximum output-token limit before completing the partner research response.")
+      }
+
+      return payload
+    }
   }
 
-  const finishReason = payload.candidates?.[0]?.finishReason?.toUpperCase()
-  if (finishReason === "MAX_TOKENS") {
-    throw new Error("GEMINI_OUTPUT_TOKEN_LIMIT: Gemini reached its maximum output-token limit before completing the partner research response.")
-  }
+  throw new Error(`Gemini research failed: no supported Flash model was available.${lastUnavailableDetail ? ` Last provider response: ${lastUnavailableDetail}` : ""}`)
+}
 
-  return payload
+function geminiModelCandidates() {
+  const configured = (process.env.GEMINI_PARTNER_ENRICHMENT_MODEL || DEFAULT_GEMINI_MODEL)
+    .split(",")
+    .map((model) => model.trim().replace(/^models\//, ""))
+    .filter(Boolean)
+  return [...new Set([workingGeminiModel, ...configured, ...GEMINI_MODEL_FALLBACKS].filter(Boolean))]
+}
+
+function isUnavailableGeminiModel(status: number, detail = "") {
+  if (status !== 400 && status !== 404) return false
+  return /(?:model).*(?:no longer available|not found|not available|not supported)|new users|use a newer model|latest features/i.test(detail)
 }
 
 function geminiProviderWarning(error: unknown): GeminiProviderWarning | undefined {
@@ -459,7 +963,7 @@ function geminiProviderWarning(error: unknown): GeminiProviderWarning | undefine
     return {
       kind: "quota",
       title: "Gemini credits or quota exhausted",
-      message: "Gemini has no remaining project credits or quota. Google-wide AI research and complex menu extraction are paused. Official website extraction will continue when a website URL is supplied. Restore Gemini billing or quota before relying on full automation.",
+      message: "Gemini has no remaining project credits or quota. Google-wide AI research and complex menu extraction are paused. Free official-website and OpenStreetMap extraction will continue. Restore Gemini billing or quota before relying on full automation.",
     }
   }
 
@@ -475,7 +979,7 @@ function geminiProviderWarning(error: unknown): GeminiProviderWarning | undefine
     return {
       kind: "rate_limit",
       title: "Gemini rate limit reached",
-      message: "Gemini is temporarily rate-limited. Wait briefly and try again. Official website extraction can still work when a website URL is supplied.",
+      message: "Gemini is temporarily rate-limited. Wait briefly and try again. Free official-website and OpenStreetMap extraction can still work.",
     }
   }
 
@@ -483,7 +987,7 @@ function geminiProviderWarning(error: unknown): GeminiProviderWarning | undefine
     return {
       kind: "unavailable",
       title: "Gemini is temporarily unavailable",
-      message: "Google-wide AI research could not be completed. Try again later or supply the official website URL to use direct website extraction.",
+      message: "Google-wide AI research could not be completed. Try again later; free official-website and OpenStreetMap extraction remain available.",
     }
   }
 
@@ -571,7 +1075,7 @@ function normalizeExtraction(
     return [{
       key,
       value: canonicalAllowedValue(key, value, input),
-      confidence: normalizeConfidence(item.confidence),
+      confidence: sourceBackedConfidence(item.confidence, sourceIds, sources),
       sourceIds,
       note: cleanText(item.note, 240),
     }]
@@ -581,7 +1085,7 @@ function normalizeExtraction(
     const value = findCaseInsensitive(input.allowedCategories, cleanText(item.value, 120))
     const sourceIds = normalizeSourceIds(item.sourceIds, validSourceIds)
     return value && sourceIds.length
-      ? [{ value, confidence: normalizeConfidence(item.confidence), sourceIds }]
+      ? [{ value, confidence: sourceBackedConfidence(item.confidence, sourceIds, sources), sourceIds }]
       : []
   })
 
@@ -590,7 +1094,7 @@ function normalizeExtraction(
     const handle = cleanText(item.handle, adminTextLimits.socialHandle)
     const sourceIds = normalizeSourceIds(item.sourceIds, validSourceIds)
     return partnerSocialPlatforms.includes(platform as (typeof partnerSocialPlatforms)[number]) && handle && sourceIds.length
-      ? [{ platform, handle, confidence: normalizeConfidence(item.confidence), sourceIds }]
+      ? [{ platform, handle, confidence: sourceBackedConfidence(item.confidence, sourceIds, sources), sourceIds }]
       : []
   }).slice(0, partnerSocialPlatforms.length)
 
@@ -604,7 +1108,7 @@ function normalizeExtraction(
     if (!Number.isInteger(weekday) || weekday < 1 || weekday > 7 || seenWeekdays.has(weekday) || !sourceIds.length) return []
     if (!isClosed && (!opensAt || !closesAt || opensAt === closesAt)) return []
     seenWeekdays.add(weekday)
-    return [{ weekday, isClosed, opensAt: isClosed ? "" : opensAt, closesAt: isClosed ? "" : closesAt, confidence: normalizeConfidence(item.confidence), sourceIds }]
+    return [{ weekday, isClosed, opensAt: isClosed ? "" : opensAt, closesAt: isClosed ? "" : closesAt, confidence: sourceBackedConfidence(item.confidence, sourceIds, sources), sourceIds }]
   })
 
   const images = asRecords(raw.images).flatMap((item) => {
@@ -616,23 +1120,36 @@ function normalizeExtraction(
       role,
       url,
       alt: cleanText(item.alt, 160),
-      confidence: normalizeConfidence(item.confidence),
+      confidence: sourceBackedConfidence(item.confidence, sourceIds, sources),
       sourceIds,
     } as PartnerEnrichmentImage]
   })
 
-  const menu = normalizeMenu(raw.menu, validSourceIds)
+  const menu = normalizeMenu(raw.menu, validSourceIds, sources)
+
+  const expectedName = input.name
+  const actualName = fields.find((field) => field.key === "name")?.value ?? ""
+  const identityMismatch = Boolean(expectedName && actualName && !businessNamesMatch(expectedName, actualName))
+  const warnings = asStrings(raw.warnings)
+    .map((warning) => cleanText(warning, 300))
+    .filter(Boolean)
+    .slice(0, 8)
+  if (identityMismatch) {
+    warnings.unshift(`The researched business name "${actualName}" does not closely match "${expectedName}". Suggestions were downgraded and start unchecked.`)
+  }
+  const downgrade = <T extends { confidence: EnrichmentConfidence }>(items: T[]) =>
+    identityMismatch ? items.map((item) => ({ ...item, confidence: "low" as const })) : items
 
   return {
     summary: cleanText(raw.summary, 600) || "Partner details found online for review.",
-    matchConfidence: normalizeConfidence(raw.matchConfidence),
-    fields: dedupeBy(fields, (field) => field.key),
-    categories: dedupeBy(categories, (category) => category.value.toLowerCase()),
-    socials: dedupeBy(socials, (social) => social.platform),
-    openingHours: openingHours.length === 7 ? openingHours.sort((a, b) => a.weekday - b.weekday) : [],
-    images: dedupeBy(images, (item) => `${item.role}:${item.url}`).slice(0, 8),
-    menu,
-    warnings: asStrings(raw.warnings).map((warning) => cleanText(warning, 300)).filter(Boolean).slice(0, 8),
+    matchConfidence: identityMismatch ? "low" : sourceBackedConfidence(raw.matchConfidence, sources.map((source) => source.id), sources),
+    fields: downgrade(dedupeBy(fields, (field) => field.key)),
+    categories: downgrade(dedupeBy(categories, (category) => category.value.toLowerCase())),
+    socials: downgrade(dedupeBy(socials, (social) => social.platform)),
+    openingHours: openingHours.length === 7 ? downgrade(openingHours.sort((a, b) => a.weekday - b.weekday)) : [],
+    images: downgrade(dedupeBy(images, (item) => `${item.role}:${item.url}`).slice(0, 8)),
+    menu: identityMismatch && menu ? { ...menu, confidence: "low" } : menu,
+    warnings,
     sources,
     researchedAt: new Date().toISOString(),
   }
@@ -778,6 +1295,7 @@ function parseJsonObject(value: string): RawExtraction | null {
 function normalizeMenu(
   value: unknown,
   validSourceIds: Set<number>,
+  sources?: PartnerEnrichmentSource[],
 ): PartnerEnrichmentMenu | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
   const raw = value as Record<string, unknown>
@@ -828,7 +1346,9 @@ function normalizeMenu(
     name,
     description: cleanText(raw.description, adminTextLimits.longText),
     currency: "EUR",
-    confidence: normalizeConfidence(raw.confidence),
+    confidence: sources
+      ? sourceBackedConfidence(raw.confidence, sourceIds, sources)
+      : normalizeConfidence(raw.confidence),
     sourceIds,
     categories,
   }
@@ -1085,6 +1605,40 @@ function classifySource(url: string, officialUrl: string): PartnerEnrichmentSour
 
 function normalizeConfidence(value: unknown): EnrichmentConfidence {
   return value === "high" || value === "medium" ? value : "low"
+}
+
+function sourceBackedConfidence(
+  requested: unknown,
+  sourceIds: number[],
+  sources: PartnerEnrichmentSource[],
+): EnrichmentConfidence {
+  const normalized = normalizeConfidence(requested)
+  if (normalized !== "high") return normalized
+  const supportingSources = sourceIds
+    .map((id) => sources.find((source) => source.id === id))
+    .filter((source): source is PartnerEnrichmentSource => Boolean(source))
+  const hasOfficialSource = supportingSources.some((source) =>
+    source.kind === "official" || source.kind === "social",
+  )
+  const independentHosts = new Set(
+    supportingSources.map((source) => readableHost(source.url).toLocaleLowerCase()),
+  )
+  return hasOfficialSource || independentHosts.size >= 2 ? "high" : "medium"
+}
+
+function businessNamesMatch(first: string, second: string) {
+  const ignored = new Set(["gmbh", "ug", "ag", "kg", "restaurant", "cafe", "shop", "store"])
+  const tokens = (value: string) => normalizeMatchText(value)
+    .split(" ")
+    .filter((token) => token.length > 1 && !ignored.has(token))
+  const firstTokens = tokens(first)
+  const secondTokens = tokens(second)
+  if (!firstTokens.length || !secondTokens.length) return false
+  const firstText = firstTokens.join(" ")
+  const secondText = secondTokens.join(" ")
+  if (firstText === secondText || firstText.includes(secondText) || secondText.includes(firstText)) return true
+  const overlap = firstTokens.filter((token) => secondTokens.includes(token)).length
+  return overlap / Math.min(firstTokens.length, secondTokens.length) >= 0.6
 }
 
 function normalizeSourceIds(value: unknown, valid: Set<number>) {
