@@ -20,6 +20,7 @@ export type PartnerPortalSession = {
   isAdmin: boolean
   isPartner: boolean
   partnerIds: string[]
+  ownedPartnerIds: string[]
 }
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
@@ -78,7 +79,11 @@ export async function getPartnerPortalSession(
       email: user.email ?? null,
     }),
   ])
-  const partnerIds = await getAccessiblePartnerIds(client, user.id, profile)
+  const { partnerIds, ownedPartnerIds } = await getAccessiblePartnerIds(
+    client,
+    user.id,
+    profile,
+  )
 
   return {
     user: {
@@ -87,8 +92,9 @@ export async function getPartnerPortalSession(
     },
     profile,
     isAdmin: Boolean(adminSession?.isAdmin),
-    isPartner: isPartnerProfile(profile),
+    isPartner: isPartnerProfile(profile) || ownedPartnerIds.length > 0,
     partnerIds,
+    ownedPartnerIds,
   }
 }
 
@@ -106,7 +112,14 @@ export function canAccessPartner(
     return false
   }
 
-  return session.isAdmin || session.partnerIds.includes(partnerId)
+  return session.isAdmin || session.ownedPartnerIds.includes(partnerId)
+}
+
+export function canManagePartner(
+  session: PartnerPortalSession,
+  partnerId: string | null | undefined,
+) {
+  return canAccessPartner(session, partnerId)
 }
 
 export function filterPartnersForPortal(
@@ -117,7 +130,7 @@ export function filterPartnersForPortal(
     return partners
   }
 
-  const allowedIds = new Set(session.partnerIds)
+  const allowedIds = new Set(session.ownedPartnerIds)
   return partners.filter((partner) => Boolean(partner.id && allowedIds.has(partner.id)))
 }
 
@@ -197,7 +210,7 @@ async function getAccessiblePartnerIds(
   )
 
   if (identities.length === 0) {
-    return []
+    return { partnerIds: [], ownedPartnerIds: [] }
   }
 
   const [ownersResult, staffResult] = await Promise.all([
@@ -208,6 +221,7 @@ async function getAccessiblePartnerIds(
       .in("user_id", identities),
   ])
   const partnerIds = new Set<string>()
+  const ownedPartnerIds = new Set<string>()
 
   if (ownersResult.error) {
     console.error(
@@ -218,6 +232,7 @@ async function getAccessiblePartnerIds(
     for (const row of ownersResult.data ?? []) {
       if (typeof row.id === "string" && row.id) {
         partnerIds.add(row.id)
+        ownedPartnerIds.add(row.id)
       }
     }
   }
@@ -239,7 +254,10 @@ async function getAccessiblePartnerIds(
     }
   }
 
-  return Array.from(partnerIds)
+  return {
+    partnerIds: Array.from(partnerIds),
+    ownedPartnerIds: Array.from(ownedPartnerIds),
+  }
 }
 
 function isSchemaError(message: string) {

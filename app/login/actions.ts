@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { getAdminProfileForIdentity, isAdminProfile } from "@/lib/admin"
+import { getPartnerPortalSession } from "@/lib/partner-portal"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 
@@ -26,7 +26,7 @@ export async function login(
   }
 
   const supabase = await createClient()
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
@@ -35,23 +35,20 @@ export async function login(
     return { message: "Invalid email or password." }
   }
 
-  const profile = data.user
-    ? await getAdminProfileForIdentity(supabase, {
-        id: data.user.id,
-        email: data.user.email ?? email,
-      })
-    : null
+  const portalSession = await getPartnerPortalSession(supabase)
 
-  if (!isAdminProfile(profile)) {
+  if (
+    !portalSession ||
+    (!portalSession.isAdmin && portalSession.ownedPartnerIds.length === 0)
+  ) {
     await supabase.auth.signOut()
 
     return {
-      message: profile
-        ? "This account is not authorized for the admin panel."
-        : "No admin profile was found for this account. Check that users.uid or users.email matches this login.",
+      message:
+        "This account is not authorized for the Benefitsi admin or partner panel.",
     }
   }
 
   revalidatePath("/", "layout")
-  redirect("/")
+  redirect(portalSession.isAdmin ? "/" : "/partner")
 }

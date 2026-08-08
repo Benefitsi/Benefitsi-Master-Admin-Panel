@@ -2,9 +2,9 @@
 
 import { useActionState } from "react"
 import { LoadingSpinner } from "@/components/loading-ui"
-import { partnerLogin, type PartnerLoginActionState } from "./actions"
+import { login, type LoginActionState } from "@/app/login/actions"
 
-const initialState: PartnerLoginActionState = {
+const initialState: LoginActionState = {
   message: "",
 }
 
@@ -13,7 +13,7 @@ type PartnerLoginFormProps = {
 }
 
 export function PartnerLoginForm({ isConfigured }: PartnerLoginFormProps) {
-  const [state, formAction, pending] = useActionState(partnerLogin, initialState)
+  const [state, formAction, pending] = useActionState(login, initialState)
   const disabled = pending || !isConfigured
 
   return (

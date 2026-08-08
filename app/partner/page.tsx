@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { signOutPartner } from "./actions"
+import { PartnerWorkspace } from "@/app/partner-admin"
 import { BrandLogo } from "@/components/brand-logo"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { getDashboardData } from "@/lib/admin-data"
@@ -25,10 +26,9 @@ export default async function PartnerDashboardPage() {
 
   if (
     !portalSession ||
-    (!portalSession.isAdmin &&
-      (!portalSession.isPartner || portalSession.partnerIds.length === 0))
+    (!portalSession.isAdmin && portalSession.ownedPartnerIds.length === 0)
   ) {
-    redirect("/partner/login")
+    redirect("/login")
   }
 
   const dashboard = await getDashboardData(supabase)
@@ -48,6 +48,14 @@ export default async function PartnerDashboardPage() {
             <p className="mt-2 text-xs font-medium text-[#526170]">Partner Dashboard</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {portalSession.isAdmin ? (
+              <Link
+                href="/"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-3 text-sm font-bold text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff]"
+              >
+                Admin panel
+              </Link>
+            ) : null}
             <p className="max-w-full truncate text-sm text-zinc-600">{userName}</p>
             <form action={signOutPartner}>
               <PendingSubmitButton
@@ -65,7 +73,7 @@ export default async function PartnerDashboardPage() {
             Your partner microsites
           </h1>
           <p className="mt-2 text-sm text-zinc-600">
-            Open a microsite builder below to update your live page content.
+            Update your partner profile, offers, menu, opening hours, and microsite. Only shops owned by your account are shown.
           </p>
         </section>
 
@@ -80,52 +88,22 @@ export default async function PartnerDashboardPage() {
           </section>
         ) : null}
 
-        <section className="mt-6 grid gap-4 md:grid-cols-2">
-          {partners.map((partner) => {
-            const builderIdentifier =
-              partner.slug || partner.subdomain || partner.id || "partner"
-            const previewIdentifier =
-              partner.slug || partner.subdomain || partner.id || "partner"
-
-            return (
-              <article
-                key={partner.id || builderIdentifier}
-                className="rounded-2xl border border-[#061829]/10 bg-white p-5"
-              >
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#118cff]">
-                  Partner
-                </p>
-                <h2 className="mt-1 text-lg font-semibold text-zinc-950">
-                  {partner.name || partner.short_name || "Unnamed partner"}
-                </h2>
-                <p className="mt-1 text-sm text-zinc-600">
-                  {partner.city_name || partner.address || "No location set"}
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link
-                    href={`/partner/microsite-builder/${encodeURIComponent(builderIdentifier)}`}
-                    className="rounded-xl bg-[linear-gradient(135deg,#17d4d7_0%,#118cff_100%)] px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-px active:translate-y-0 active:scale-[.98]"
-                  >
-                    Edit microsite
-                  </Link>
-                  <Link
-                    href={`/partner/microsite-preview/${encodeURIComponent(previewIdentifier)}`}
-                    target="_blank"
-                    className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
-                  >
-                    Open preview
-                  </Link>
-                </div>
-              </article>
-            )
-          })}
-        </section>
-
-        {partners.length === 0 ? (
+        {partners.length > 0 ? (
+          <section className="mt-6">
+            <PartnerWorkspace
+              partners={partners}
+              cities={dashboard.cities}
+              owners={[]}
+              initialMode="view"
+              initialPartnerId={partners[0]?.id ?? ""}
+              portalMode
+            />
+          </section>
+        ) : (
           <section className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             No partner shop is linked to this account yet.
           </section>
-        ) : null}
+        )}
       </div>
     </main>
   )

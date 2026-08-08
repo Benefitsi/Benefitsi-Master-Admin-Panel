@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { getAdminSession } from "@/lib/admin"
 import { getDashboardData } from "@/lib/admin-data"
+import { getPartnerPortalSession } from "@/lib/partner-portal"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { PartnerWorkspace } from "./partner-admin"
@@ -26,6 +27,8 @@ export default async function DashboardPage({
     redirect("/login")
   }
 
+  const portalSession = await getPartnerPortalSession(supabase)
+
   const dashboard = await getDashboardData(supabase)
   const query = await searchParams
   const requestedPartnerId = singleQueryValue(query.partner)
@@ -47,6 +50,7 @@ export default async function DashboardPage({
     <AdminShell
       adminName={adminName}
       micrositeCount={dashboard.partners.length}
+      canAccessPartnerPanel={Boolean(portalSession?.ownedPartnerIds.length)}
     >
       {dashboard.errors.length > 0 ? (
         <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

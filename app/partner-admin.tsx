@@ -293,6 +293,7 @@ type PartnerWorkspaceProps = {
   initialPartnerId?: string
   initialSettingsTab?: string
   initialView?: "settings" | "microsite"
+  portalMode?: boolean
 }
 
 type InitialDealDraft = {
@@ -493,10 +494,11 @@ export function PartnerWorkspace({
   initialPartnerId = "",
   initialSettingsTab,
   initialView = "settings",
+  portalMode = false,
 }: PartnerWorkspaceProps) {
   const [query, setQuery] = useState("")
   const [mode, setMode] = useState<"view" | "create">(
-    partners.length && initialMode === "view" ? "view" : "create",
+    partners.length && (portalMode || initialMode === "view") ? "view" : "create",
   )
   const [selectedId, setSelectedId] = useState(
     initialPartnerId || partners[0]?.id || "",
@@ -509,10 +511,11 @@ export function PartnerWorkspace({
     view: initialView,
   })
   const startCreatePartner = useCallback(() => {
+    if (portalMode) return
     setSelectedId("")
     setMode("create")
     rememberWorkspaceLocation({ mode: "create", partner: null, tab: null, view: null })
-  }, [])
+  }, [portalMode])
 
   const partnerCount = partners.length
   const activePartners = partners.filter(isPartnerActive).length
@@ -589,13 +592,14 @@ export function PartnerWorkspace({
                 </h2>
                 <p className="mt-0.5 text-xs text-zinc-500">Select a partner to edit.</p>
               </div>
-              <button
+              {!portalMode ? <button
                 type="button"
                 onClick={startCreatePartner}
                 className="h-9 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white transition hover:bg-teal-800"
               >
                 Add
               </button>
+              : null}
             </div>
             <input
               type="search"
@@ -654,6 +658,7 @@ export function PartnerWorkspace({
                 initialSettingsTab={workspaceLocation.tab}
                 initialView={workspaceLocation.view}
                 onLocationChange={setWorkspaceLocation}
+                portalMode={portalMode}
               />
           ) : (
             <EditorShell
@@ -922,6 +927,7 @@ function PartnerDetail({
   initialSettingsTab,
   initialView = "settings",
   onLocationChange,
+  portalMode = false,
 }: {
   partner: PartnerWithDeals
   cities: City[]
@@ -933,6 +939,7 @@ function PartnerDetail({
     tab: PartnerSettingsTab
     view: "settings" | "microsite"
   }) => void
+  portalMode?: boolean
 }) {
   const partnerFormId = `partner-form-${partner.id ?? "partner"}`
   const partnerIdentity = partner.id ?? "partner"
@@ -965,7 +972,12 @@ function PartnerDetail({
   const settingsTab =
     requestedTab === "menu" && !partnerTypeSupportsMenu(partner.type)
       ? "details"
-      : requestedTab
+      : portalMode &&
+          (requestedTab === "access" ||
+            requestedTab === "activity" ||
+            requestedTab === "danger")
+        ? "details"
+        : requestedTab
   const settingsTabs: Array<{
     id: PartnerSettingsTab
     label: string
@@ -977,9 +989,13 @@ function PartnerDetail({
     ...(partnerTypeSupportsMenu(partner.type)
       ? [{ id: "menu" as const, label: "Menu Management", hasRequiredFields: true }]
       : []),
-    { id: "access", label: "Staff Access", hasRequiredFields: true },
-    { id: "activity", label: "Customer Activity" },
-    { id: "danger", label: "Delete Partner" },
+    ...(portalMode
+      ? []
+      : [
+          { id: "access" as const, label: "Staff Access", hasRequiredFields: true },
+          { id: "activity" as const, label: "Customer Activity" },
+          { id: "danger" as const, label: "Delete Partner" },
+        ]),
   ]
   const activeTabCopy = partnerSettingsTabCopy[settingsTab]
 
@@ -1107,6 +1123,7 @@ function PartnerDetail({
                   owners={owners}
                   partner={partner}
                   mode="edit"
+                  portalMode={portalMode}
                 />
                 <div className="flex flex-wrap items-end justify-between gap-3 border-t border-zinc-200 pt-3">
                   <div className="max-w-xs flex-1">
@@ -1162,7 +1179,7 @@ function PartnerDetail({
                   </p>
                 </div>
                 <Link
-                  href={`/microsite-builder/${encodeURIComponent(builderIdentifier)}`}
+                  href={`${portalMode ? "/partner" : ""}/microsite-builder/${encodeURIComponent(builderIdentifier)}`}
                   className="inline-flex h-10 items-center justify-center rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
                 >
                   Open full-width builder
@@ -1172,6 +1189,7 @@ function PartnerDetail({
             <MicrositePanel
               key={`${partner.id ?? partner.name ?? "microsite"}-${partner.microsite?.draftVersion?.id ?? partner.microsite?.publishedVersion?.id ?? "new"}`}
               partner={partner}
+              previewBasePath={portalMode ? "/partner/microsite-preview" : undefined}
             />
           </div>
         )}
@@ -1830,6 +1848,7 @@ function PartnerForm({
   owners,
   mode,
   partners = [],
+  portalMode = false,
 }: {
   partner?: PartnerWithDeals
   cities: City[]
@@ -1837,6 +1856,7 @@ function PartnerForm({
   owners: OwnerOption[]
   mode: "create" | "edit"
   partners?: PartnerWithDeals[]
+  portalMode?: boolean
 }) {
   const [state, formAction] = useActionState(savePartner, initialState)
   const [templateSource, setTemplateSource] =
@@ -1894,7 +1914,7 @@ function PartnerForm({
       })),
       partner?.owner_id,
     ),
-    { value: CREATE_NEW_OWNER_VALUE, label: "Create new owner account…" },
+    { value: CREATE_NEW_OWNER_VALUE, label: "Add new user" },
   ]
   const coordinateDefaultValue = formatPartnerCoordinates(partner)
   const menuSupported = partnerTypeSupportsMenu(selectedPartnerType)
@@ -2050,6 +2070,27 @@ function PartnerForm({
           return
         }
 
+        if (mode === "create") {
+          const submitted = new FormData(form)
+          const ownerId = String(submitted.get("owner_id") ?? "").trim()
+          const ownerEmail = String(submitted.get("new_owner_email") ?? "").trim()
+          const ownerSelection = String(
+            submitted.get("owner_selection") ?? "",
+          ).trim()
+          const hasExistingOwner = Boolean(ownerId && ownerSelection !== CREATE_NEW_OWNER_VALUE)
+          const hasNewOwnerEmail = Boolean(ownerEmail)
+
+          if (hasExistingOwner === hasNewOwnerEmail) {
+            event.preventDefault()
+            pendingSubmitterRef.current = null
+            setCreateTab("profile")
+            setValidationMessage(
+              "Choose an existing partner owner or enter a new owner email, but not both.",
+            )
+            return
+          }
+        }
+
         if (mode === "create" && new FormData(form).getAll("category").length === 0) {
           event.preventDefault()
           pendingSubmitterRef.current = null
@@ -2081,12 +2122,17 @@ function PartnerForm({
     >
       <input type="hidden" name="id" value={partner?.id ?? ""} />
       <input type="hidden" name="existing_slug" value={partner?.slug ?? ""} />
-      <input
-        type="hidden"
-        name="existing_subdomain"
-        value={partner?.subdomain ?? ""}
-      />
-      <input type="hidden" name="existing_pin" value={partner?.pin ?? ""} />
+  <input
+    type="hidden"
+    name="existing_subdomain"
+    value={partner?.subdomain ?? ""}
+  />
+  <input
+    type="hidden"
+    name="existing_partner_email"
+    value={partner?.email ?? ""}
+  />
+  <input type="hidden" name="existing_pin" value={partner?.pin ?? ""} />
       <input type="hidden" name="existing_loves" value={partner?.loves ?? 0} />
       <input
         type="hidden"
@@ -2271,37 +2317,32 @@ function PartnerForm({
             options={cityOptions.length ? cityOptions : emptyCityOptions}
             required
           />
-          <input
-            type="hidden"
-            name="owner_id"
-            value={selectedOwnerId === CREATE_NEW_OWNER_VALUE ? "" : selectedOwnerId}
-          />
-          <SelectField
-            label="Partner owner"
-            name="owner_selection"
-            value={selectedOwnerId}
-            options={ownerOptions}
-            onChange={setSelectedOwnerId}
-            required
-          />
-          {selectedOwnerId === CREATE_NEW_OWNER_VALUE ? (
-            <TextField
-              label="New owner email"
-              name="new_owner_email"
-              type="email"
-              hint="Saving creates the account, links it to this partner, and sends the owner an invitation."
-              required
-              showCharacterCount={false}
-            />
+          {!portalMode ? (
+            <>
+              <input
+                type="hidden"
+                name="owner_id"
+                value={selectedOwnerId === CREATE_NEW_OWNER_VALUE ? "" : selectedOwnerId}
+              />
+              <SelectField
+                label="Partner owner"
+                name="owner_selection"
+                value={selectedOwnerId}
+                options={ownerOptions}
+                onChange={setSelectedOwnerId}
+                hint="Choose an existing user, or choose Add new user to enter an email address."
+              />
+              {selectedOwnerId === CREATE_NEW_OWNER_VALUE ? (
+                <TextField
+                  label="New user email"
+                  name="new_owner_email"
+                  type="email"
+                  hint="Saving creates the partner account, links it to this shop, and sends an invitation."
+                  showCharacterCount={false}
+                />
+              ) : null}
+            </>
           ) : null}
-          <TextField
-            label="Email"
-            name="email"
-            type="email"
-            defaultValue={partner?.email}
-            required
-            showCharacterCount={false}
-          />
         </FieldGrid>
         <div className="grid gap-3 sm:grid-cols-2">
           <CheckboxField
@@ -2462,6 +2503,7 @@ function PartnerForm({
         <CoverUploadField
           key={`covers-${(partner?.cover_urls ?? researchedMedia.coverUrls).join("|") || "new"}`}
           covers={partner?.cover_urls ?? researchedMedia.coverUrls}
+          partnerId={partner?.id}
         />
       </FormSection>
 
@@ -4127,7 +4169,13 @@ function dealAudienceValueLabel(audience = "both") {
   if (audience === "free") return "Free"
   if (audience === "both") return "Free + Premium"
 
-  return labelForValue(audienceOptions, audience) || "Free + Premium"
+  return "Free + Premium"
+}
+
+function normalizeAudienceForEditor(audience?: string | null) {
+  return audienceOptions.some((option) => option.value === audience)
+    ? audience!
+    : DEFAULT_AUDIENCE
 }
 
 function draftDealBenefitCategory(
@@ -4553,7 +4601,7 @@ const dealFieldHelp = {
   benefitCategory:
     "Controls how the benefit is applied: user-selected, automatic background, or fallback if no deal is selected.",
   audience:
-    "Who can use this benefit: free users, premium users, both, or free trial only.",
+    "Who can use this benefit: free users, premium users, or both.",
   activationRequired:
     "Whether the user must select this deal before scanning. This is automatically set by benefit category.",
   discountValue:
@@ -5412,7 +5460,7 @@ function DealFields({
     deal?.stock_remaining !== null && deal?.stock_remaining !== undefined,
   )
   const [selectedAudience, setSelectedAudience] = useState(
-    deal?.audience ?? DEFAULT_AUDIENCE,
+    normalizeAudienceForEditor(deal?.audience),
   )
   const [active, setActive] = useState(defaultActive)
   const [discountValue, setDiscountValue] = useState(
@@ -5793,7 +5841,7 @@ function DealFields({
             label="Audience"
             name={`${prefix}audience`}
             value={selectedAudience}
-            options={withCurrentOption(audienceOptions, deal?.audience)}
+            options={audienceOptions}
             onChange={(audience) => {
               setSelectedAudience(audience)
               onDraftMetaChange?.({ audience })
@@ -6326,7 +6374,7 @@ function DealDropPreviewCard({
   const stockState = formatDealDropStockState(stockTotal, stockRemaining, soldOut)
   const countdownState = formatCountdownState(endsAt)
   const expiryInfo = formatPreviewExpiryInfo(endsAt, expiryDays)
-  const audienceLabel = labelForValue(audienceOptions, audience) || "Audience not set"
+  const audienceLabel = dealAudienceValueLabel(audience)
   const accessLabel = formatPreviewAccessLabel(audience, trialEligible)
 
   return (
@@ -8416,7 +8464,8 @@ function MenuImportDialog({
                   </p>
                 </>
               )}
-              {hasExistingContent ? <fieldset className="space-y-2">
+              {hasExistingContent ? (
+                <fieldset className="space-y-2">
                 <legend className="text-sm font-semibold text-zinc-900">Import behavior</legend>
                 <div className="grid gap-2 sm:grid-cols-3">
                   <label className={`cursor-pointer rounded-lg border p-3 transition ${importMode === "append" ? "border-teal-600 bg-teal-50 ring-2 ring-teal-100" : "border-zinc-200 bg-white hover:border-zinc-300"}`}>
@@ -8471,7 +8520,8 @@ function MenuImportDialog({
                     </span>
                   </label>
                 </div>
-              </fieldset> : null}
+                </fieldset>
+              ) : null}
               {fileSelections.map((selection, index) => {
                 const isActiveInput = index === fileSelections.length - 1
 
@@ -10855,7 +10905,13 @@ function MediaUploadField({
   )
 }
 
-function CoverUploadField({ covers }: { covers?: string[] | null }) {
+function CoverUploadField({
+  covers,
+  partnerId,
+}: {
+  covers?: string[] | null
+  partnerId?: string
+}) {
   const savedCovers = normalizeMediaUrls(covers)
   const [removedUrls, setRemovedUrls] = useState<string[]>([])
   const [selectedCovers, setSelectedCovers] = useState<
@@ -10947,7 +11003,12 @@ function CoverUploadField({ covers }: { covers?: string[] | null }) {
   }
 
   const uploadCover = async (file: File) => {
-    const target = await createPartnerCoverUpload(file.name, file.type, file.size)
+    const target = await createPartnerCoverUpload(
+      file.name,
+      file.type,
+      file.size,
+      partnerId,
+    )
 
     if (!target.ok) throw new Error(target.message)
 
@@ -12703,7 +12764,7 @@ function formatSavingsPreview(discountType: string, value: number | null) {
 }
 
 function formatPreviewAccessLabel(audience: string, trialEligible: boolean) {
-  const audienceLabel = labelForValue(audienceOptions, audience) || "Audience not set"
+  const audienceLabel = dealAudienceValueLabel(audience)
 
   if (!trialEligible) {
     return audienceLabel

@@ -51,12 +51,9 @@ export const audienceOptions = [
   { value: "free", label: "Free users" },
   { value: "premium", label: "Premium users" },
   { value: "both", label: "Free + Premium" },
-  { value: "free_trial_only", label: "Free trial only" },
 ] as const
 
-export const milestoneAudienceOptions = audienceOptions.filter(
-  (option) => option.value !== "free_trial_only",
-)
+export const milestoneAudienceOptions = audienceOptions
 
 export const rewardTypeOptions = [
   { value: "item", label: "Item" },

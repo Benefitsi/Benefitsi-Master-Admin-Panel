@@ -23,6 +23,7 @@ type AdminShellProps = {
   title?: string
   subtitle?: string
   micrositeCount?: number
+  canAccessPartnerPanel?: boolean
   children: ReactNode
 }
 
@@ -39,6 +40,7 @@ function AdminShellContent({
   title = "Partnerverwaltung",
   subtitle = "Alle Partner und ihre Informationen",
   micrositeCount,
+  canAccessPartnerPanel = false,
   children,
 }: AdminShellProps) {
   const [collapsed, setCollapsed] = useState(true)
@@ -140,6 +142,14 @@ function AdminShellContent({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <AdminLanguageControl className="self-start sm:self-auto" />
               <SystemSwitcher micrositeCount={micrositeCount} />
+              {canAccessPartnerPanel ? (
+                <Link
+                  href="/partner"
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-3 text-sm font-bold text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff]"
+                >
+                  Partner panel
+                </Link>
+              ) : null}
               <p className="max-w-full truncate text-sm font-medium text-[#526170]">
                 {adminName}
               </p>

@@ -6,7 +6,13 @@ import { after } from "next/server"
 import sharp from "sharp"
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js"
 import { requireAdmin } from "@/lib/admin"
+import {
+  canManagePartner,
+  getPartnerPortalSession,
+  type PartnerPortalSession,
+} from "@/lib/partner-portal"
 import { getSupabaseConfig } from "@/lib/supabase/config"
+import { createClient as createServerClient } from "@/lib/supabase/server"
 import {
   DEFAULT_MENU_STATUS,
   adminTextLimits,
@@ -285,12 +291,166 @@ const PARTNER_MEDIA_BUCKET =
 const UPLOAD_PLACEHOLDER_PATH = "/upload-image.jpg"
 const openingWeekdays = [1, 2, 3, 4, 5, 6, 7] as const
 
+type PartnerActionAccess =
+  | {
+      ok: true
+      supabase: SupabaseClient
+      portalSession: PartnerPortalSession
+      partnerId: string
+      menuId?: string
+    }
+  | { ok: false; message: string }
+
+async function getAdminActionAccess() {
+  const { supabase } = await requireAdmin()
+  return { ok: true as const, supabase }
+}
+
+async function authorizePartnerMutation(
+  partnerId: string | null | undefined,
+): Promise<PartnerActionAccess> {
+  const supabase = await createServerClient()
+  const portalSession = await getPartnerPortalSession(supabase)
+
+  if (!portalSession) {
+    return { ok: false, message: "Your session has expired. Please sign in again." }
+  }
+
+  if (!partnerId) {
+    return { ok: false, message: "A partner is required for this change." }
+  }
+
+  if (!canManagePartner(portalSession, partnerId)) {
+    return { ok: false, message: "You can only change partner shops that you own." }
+  }
+
+  return { ok: true, supabase, portalSession, partnerId }
+}
+
+async function authorizePartnerRowMutation(
+  table: string,
+  id: string | null | undefined,
+  directPartnerId?: string | null,
+): Promise<PartnerActionAccess> {
+  const suppliedPartnerId = directPartnerId?.trim() || ""
+  const supabase = await createServerClient()
+  const portalSession = await getPartnerPortalSession(supabase)
+
+  if (!portalSession) {
+    return { ok: false, message: "Your session has expired. Please sign in again." }
+  }
+
+  let partnerId = suppliedPartnerId
+
+  if (id) {
+    const existing = await supabase
+      .from(table)
+      .select("partner_id")
+      .eq("id", id)
+      .maybeSingle()
+
+    if (existing.error) {
+      return { ok: false, message: existing.error.message }
+    }
+
+    if (!existing.data || typeof existing.data.partner_id !== "string") {
+      return { ok: false, message: "The requested partner record was not found." }
+    }
+
+    partnerId = existing.data.partner_id
+  }
+
+  if (!partnerId) {
+    return { ok: false, message: "A partner is required for this change." }
+  }
+
+  if (!canManagePartner(portalSession, partnerId)) {
+    return { ok: false, message: "You can only change partner shops that you own." }
+  }
+
+  return { ok: true, supabase, portalSession, partnerId }
+}
+
+async function authorizeMenuMutation(
+  table: string | null,
+  id: string | null | undefined,
+  menuId: string | null | undefined,
+  directPartnerId?: string | null,
+): Promise<PartnerActionAccess> {
+  const supabase = await createServerClient()
+  const portalSession = await getPartnerPortalSession(supabase)
+
+  if (!portalSession) {
+    return { ok: false, message: "Your session has expired. Please sign in again." }
+  }
+
+  let resolvedMenuId = menuId?.trim() || ""
+
+  if (id && table) {
+    const existing = await supabase
+      .from(table)
+      .select("menu_id")
+      .eq("id", id)
+      .maybeSingle()
+
+    if (existing.error) {
+      return { ok: false, message: existing.error.message }
+    }
+
+    if (!existing.data || typeof existing.data.menu_id !== "string") {
+      return { ok: false, message: "The requested menu record was not found." }
+    }
+
+    resolvedMenuId = existing.data.menu_id
+  }
+
+  if (!resolvedMenuId) {
+    return { ok: false, message: "A menu is required for this change." }
+  }
+
+  const menu = await supabase
+    .from("menus")
+    .select("partner_id")
+    .eq("id", resolvedMenuId)
+    .maybeSingle()
+
+  if (menu.error) {
+    return { ok: false, message: menu.error.message }
+  }
+
+  const partnerId =
+    typeof menu.data?.partner_id === "string"
+      ? menu.data.partner_id
+      : directPartnerId?.trim() || ""
+
+  if (!partnerId || !canManagePartner(portalSession, partnerId)) {
+    return { ok: false, message: "You can only change menus belonging to shops that you own." }
+  }
+
+  return {
+    ok: true,
+    supabase,
+    portalSession,
+    partnerId,
+    menuId: resolvedMenuId,
+  }
+}
+
 export async function createPartnerCoverUpload(
   fileName: string,
   contentType: string,
   size: number,
+  partnerId?: string,
 ): Promise<PartnerCoverUploadTarget> {
-  const { supabase } = await requireAdmin()
+  const access = partnerId
+    ? await authorizePartnerMutation(partnerId)
+    : await getAdminActionAccess()
+
+  if (!access.ok) {
+    return { ok: false, message: access.message }
+  }
+
+  const { supabase } = access
 
   if (!ALLOWED_PARTNER_MEDIA_TYPES.has(contentType)) {
     return { ok: false, message: "Cover photos must be PNG, JPEG, WebP, or SVG images." }
@@ -329,10 +489,42 @@ export async function savePartner(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
+  const supabase = await createServerClient()
+  const portalSession = await getPartnerPortalSession(supabase)
   const id = stringValue(formData, "id")
   const isUpdate = Boolean(id)
   const partnerId = isUpdate ? id : createUuidV4()
+
+  if (!portalSession) {
+    return { ok: false, message: "Your session has expired. Please sign in again." }
+  }
+
+  let existingPartner: { owner_id?: string | null; is_featured?: boolean | null } | null = null
+
+  if (isUpdate) {
+    const existingResult = await supabase
+      .from("partners")
+      .select("owner_id,is_featured")
+      .eq("id", id)
+      .maybeSingle()
+
+    if (existingResult.error) {
+      return { ok: false, message: existingResult.error.message }
+    }
+
+    if (!existingResult.data) {
+      return { ok: false, message: "The partner shop no longer exists." }
+    }
+
+    existingPartner = existingResult.data
+
+    if (!canManagePartner(portalSession, id)) {
+      return { ok: false, message: "You can only edit partner shops that you own." }
+    }
+  } else if (!portalSession.isAdmin) {
+    return { ok: false, message: "Only admins can create a new partner shop." }
+  }
+
   const mediaValues = collectPartnerMedia(formData)
   const validationError = validatePartnerForm(formData, mediaValues)
 
@@ -343,7 +535,14 @@ export async function savePartner(
   const uploadedPaths: UploadedStoragePath[] = []
 
   try {
-    const ownerResolution = await resolvePartnerOwner(formData)
+    const ownerResolution = portalSession.isAdmin
+      ? await resolvePartnerOwner(formData)
+      : existingPartner?.owner_id
+        ? { ok: true as const, ownerId: existingPartner.owner_id }
+        : {
+            ok: false as const,
+            message: "This partner has no owner. Ask an admin to repair the owner link.",
+          }
 
     if (!ownerResolution.ok) {
       return { ok: false, message: ownerResolution.message }
@@ -352,6 +551,9 @@ export async function savePartner(
     const basePayload = {
       ...parsePartnerPayload(formData, isUpdate),
       owner_id: ownerResolution.ownerId,
+      ...(portalSession.isAdmin
+        ? {}
+        : { is_featured: existingPartner?.is_featured ?? false }),
     }
     const media = await resolvePartnerMedia(
       supabase,
@@ -426,7 +628,9 @@ export async function savePartner(
     }
 
     const warnings: string[] = []
-    const ownerWarning = await markOwnerAsPartner(supabase, payload.owner_id)
+    const ownerWarning = portalSession.isAdmin
+      ? await markOwnerAsPartner(supabase, payload.owner_id)
+      : null
 
     if (ownerWarning) {
       warnings.push(ownerWarning)
@@ -765,13 +969,20 @@ export async function saveDeal(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
+  const access = await authorizePartnerRowMutation(
+    "deals",
+    id,
+    stringValue(formData, "partner_id"),
+  )
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
   const now = new Date().toISOString()
   let payload: ParsedDeal
 
   try {
     payload = parseDealPayload(formData, "", stringValue(formData, "partner_id"))
+    payload.partner_id = access.partnerId
   } catch (error) {
     return {
       ok: false,
@@ -890,10 +1101,17 @@ export async function saveRewardMilestone(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
+  const access = await authorizePartnerRowMutation(
+    "partner_reward_milestones",
+    id,
+    stringValue(formData, "partner_id"),
+  )
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
   const now = new Date().toISOString()
   const payload = parseMilestonePayload(formData)
+  payload.partner_id = access.partnerId
   const validationMessage = validateMilestonePayload(payload)
 
   if (validationMessage) {
@@ -928,12 +1146,22 @@ export async function deleteRewardMilestone(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
 
   if (!id) {
     return { ok: false, message: "Milestone id is required." }
   }
+
+  const access = await authorizePartnerRowMutation(
+    "partner_reward_milestones",
+    id,
+  )
+
+  if (!access.ok) {
+    return { ok: false, message: access.message }
+  }
+
+  const { supabase } = access
 
   const result = await supabase
     .from("partner_reward_milestones")
@@ -1061,12 +1289,15 @@ export async function saveWeeklyOpeningHours(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const partnerId = stringValue(formData, "partner_id")
 
   if (!partnerId) {
     return { ok: false, message: "Opening hours must be attached to a partner." }
   }
+
+  const access = await authorizePartnerMutation(partnerId)
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
 
   const rows = parseWeeklyOpeningHourRows(formData, partnerId)
   const invalidRow = invalidWeeklyOpeningHourRow(rows)
@@ -1128,10 +1359,20 @@ export async function saveMenu(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
+  const access = await authorizePartnerRowMutation(
+    "menus",
+    id,
+    stringValue(formData, "partner_id"),
+  )
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
   const now = new Date().toISOString()
   const payload = parseMenuPayload(formData)
+  payload.partner_id = access.partnerId
+  if (!access.portalSession.isAdmin && payload.status === "published") {
+    payload.status = "review"
+  }
   const validationMessage = validateMenuPayload(payload)
   const importFiles = id ? [] : fileValues(formData, "menu_file")
   const expectedImportFileCount = id
@@ -1239,12 +1480,14 @@ export async function reorderMenuCategories(
   menuId: string,
   orderedIds: string[],
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
-  const ids = uniqueOrderedIds(orderedIds)
-
   if (!menuId) {
     return { ok: false, message: "Menu id is required." }
   }
+
+  const access = await authorizeMenuMutation(null, null, menuId)
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
+  const ids = uniqueOrderedIds(orderedIds)
 
   if (!ids.length) {
     return { ok: false, message: "Choose at least one category to reorder." }
@@ -1271,12 +1514,14 @@ export async function reorderMenuItems(
   menuId: string,
   orderedIds: string[],
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
-  const ids = uniqueOrderedIds(orderedIds)
-
   if (!menuId) {
     return { ok: false, message: "Menu id is required." }
   }
+
+  const access = await authorizeMenuMutation(null, null, menuId)
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
+  const ids = uniqueOrderedIds(orderedIds)
 
   if (!ids.length) {
     return { ok: false, message: "Choose at least one item to reorder." }
@@ -1329,12 +1574,19 @@ export async function deleteMenu(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
 
   if (!id) {
     return { ok: false, message: "Menu id is required." }
   }
+
+  const access = await authorizePartnerRowMutation("menus", id)
+
+  if (!access.ok) {
+    return { ok: false, message: access.message }
+  }
+
+  const { supabase } = access
 
   const [itemMediaResult, categoryMediaResult] = await Promise.all([
     supabase.from("menu_items").select("image_url").eq("menu_id", id),
@@ -1389,21 +1641,23 @@ export async function saveMenuCategory(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
+  const menuId = stringValue(formData, "menu_id")
+  const access = await authorizeMenuMutation("menu_categories", id, menuId)
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
+  const resolvedMenuId = access.menuId ?? menuId
   const imageFile = fileValue(formData, "image_file")
   const existingImageUrl = stringValue(formData, "existing_image_url")
   const removeImage = checkboxValue(formData, "remove_image")
   const uploadedPaths: UploadedStoragePath[] = []
   const oldImageUrlsToCleanup: string[] = []
   let imageUrl = removeImage ? null : existingImageUrl || null
-  const menuId = stringValue(formData, "menu_id")
-
   if (imageFile) {
     const mediaError = validateMediaFile(imageFile)
 
     if (mediaError) return { ok: false, message: mediaError }
-    if (!menuId) {
+    if (!resolvedMenuId) {
       return { ok: false, message: "A menu category must be attached to a menu." }
     }
     try {
@@ -1411,7 +1665,7 @@ export async function saveMenuCategory(
         supabase,
         imageFile,
         partnerMediaSpecs.menuCategory,
-        `menu-categories/${menuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
+        `menu-categories/${resolvedMenuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
       )
       imageUrl = uploaded.url
       uploadedPaths.push(uploaded)
@@ -1427,6 +1681,7 @@ export async function saveMenuCategory(
   }
 
   const payload = parseMenuCategoryPayload(formData, imageUrl)
+  payload.menu_id = resolvedMenuId
   const validationMessage = validateMenuCategoryPayload(payload)
 
   if (validationMessage) {
@@ -1478,8 +1733,11 @@ export async function deleteMenuCategory(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
+
+  const access = await authorizeMenuMutation("menu_categories", id, null)
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
 
   if (!id) {
     return { ok: false, message: "Menu category id is required." }
@@ -1542,8 +1800,12 @@ export async function saveMenuItem(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
+  const menuId = stringValue(formData, "menu_id")
+  const access = await authorizeMenuMutation("menu_items", id, menuId)
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
+  const resolvedMenuId = access.menuId ?? menuId
   const now = new Date().toISOString()
   const imageFile = fileValue(formData, "image_file")
   const existingImageUrl = stringValue(formData, "existing_image_url")
@@ -1551,8 +1813,6 @@ export async function saveMenuItem(
   const uploadedPaths: UploadedStoragePath[] = []
   const oldImageUrlsToCleanup: string[] = []
   let imageUrl = removeImage ? null : existingImageUrl || null
-  const menuId = stringValue(formData, "menu_id")
-
   if (imageFile) {
     const mediaError = validateMediaFile(imageFile)
 
@@ -1560,7 +1820,7 @@ export async function saveMenuItem(
       return { ok: false, message: mediaError }
     }
 
-    if (!menuId) {
+    if (!resolvedMenuId) {
       return { ok: false, message: "A menu item must be attached to a menu." }
     }
 
@@ -1569,7 +1829,7 @@ export async function saveMenuItem(
         supabase,
         imageFile,
         partnerMediaSpecs.menuItem,
-        `menu-items/${menuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
+        `menu-items/${resolvedMenuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
       )
       imageUrl = uploaded.url
       uploadedPaths.push(uploaded)
@@ -1585,6 +1845,7 @@ export async function saveMenuItem(
   }
 
   const payload = parseMenuItemPayload(formData, imageUrl)
+  payload.menu_id = resolvedMenuId
   const validationMessage = validateMenuItemPayload(payload)
 
   if (validationMessage) {
@@ -1641,12 +1902,15 @@ export async function saveMenuCategoryImage(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
   const menuId = stringValue(formData, "menu_id")
+  const access = await authorizeMenuMutation("menu_categories", id, menuId)
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
+  const resolvedMenuId = access.menuId ?? menuId
   const imageFile = fileValue(formData, "image_file")
 
-  if (!id || !menuId || !imageFile) {
+  if (!id || !resolvedMenuId || !imageFile) {
     return { ok: false, message: "A saved menu category and image are required." }
   }
   const mediaError = validateMediaFile(imageFile)
@@ -1656,7 +1920,7 @@ export async function saveMenuCategoryImage(
     .from("menu_categories")
     .select("image_url")
     .eq("id", id)
-    .eq("menu_id", menuId)
+    .eq("menu_id", resolvedMenuId)
     .maybeSingle()
   if (existingResult.error || !existingResult.data) {
     return { ok: false, message: existingResult.error?.message ?? "Menu category not found." }
@@ -1669,13 +1933,13 @@ export async function saveMenuCategoryImage(
       supabase,
       imageFile,
       partnerMediaSpecs.menuCategory,
-      `menu-categories/${menuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
+      `menu-categories/${resolvedMenuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
     )
     const result = await supabase
       .from("menu_categories")
       .update({ image_url: uploaded.url })
       .eq("id", id)
-      .eq("menu_id", menuId)
+      .eq("menu_id", resolvedMenuId)
       .select("id,menu_id,name,slug,image_url,sort_order")
       .single()
     if (result.error) {
@@ -1705,12 +1969,15 @@ export async function saveMenuItemImage(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
   const menuId = stringValue(formData, "menu_id")
+  const access = await authorizeMenuMutation("menu_items", id, menuId)
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
+  const resolvedMenuId = access.menuId ?? menuId
   const imageFile = fileValue(formData, "image_file")
 
-  if (!id || !menuId || !imageFile) {
+  if (!id || !resolvedMenuId || !imageFile) {
     return { ok: false, message: "A saved menu item and image are required." }
   }
   const mediaError = validateMediaFile(imageFile)
@@ -1720,7 +1987,7 @@ export async function saveMenuItemImage(
     .from("menu_items")
     .select("image_url")
     .eq("id", id)
-    .eq("menu_id", menuId)
+    .eq("menu_id", resolvedMenuId)
     .maybeSingle()
   if (existingResult.error || !existingResult.data) {
     return { ok: false, message: existingResult.error?.message ?? "Menu item not found." }
@@ -1733,13 +2000,13 @@ export async function saveMenuItemImage(
       supabase,
       imageFile,
       partnerMediaSpecs.menuItem,
-      `menu-items/${menuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
+      `menu-items/${resolvedMenuId}/${Date.now()}-${safeFileName(imageFile.name)}`,
     )
     const result = await supabase
       .from("menu_items")
       .update({ image_url: uploaded.url, updated_at: new Date().toISOString() })
       .eq("id", id)
-      .eq("menu_id", menuId)
+      .eq("menu_id", resolvedMenuId)
       .select("id,menu_id,category_id,name,description,price,currency,image_url,tags,allergens,addons,is_popular,is_stamp_eligible,sort_order")
       .single()
     if (result.error) {
@@ -1769,12 +2036,19 @@ export async function deleteMenuItem(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
 
   if (!id) {
     return { ok: false, message: "Menu item id is required." }
   }
+
+  const access = await authorizeMenuMutation("menu_items", id, null)
+
+  if (!access.ok) {
+    return { ok: false, message: access.message }
+  }
+
+  const { supabase } = access
 
   const existingResult = await supabase
     .from("menu_items")
@@ -1808,8 +2082,11 @@ export async function duplicateMenuCategory(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
+
+  const access = await authorizeMenuMutation("menu_categories", id, null)
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
 
   if (!id) return { ok: false, message: "Menu category id is required." }
 
@@ -1881,8 +2158,10 @@ export async function importMenuFile(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const menuId = stringValue(formData, "menu_id")
+  const access = await authorizeMenuMutation(null, null, menuId)
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
   const importMode = stringValue(formData, "import_mode")
   const files = fileValues(formData, "menu_file")
   const confirmedImportSignature = stringValue(
@@ -2328,8 +2607,11 @@ export async function deleteDeal(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
+
+  const access = await authorizePartnerRowMutation("deals", id)
+  if (!access.ok) return { ok: false, message: access.message }
+  const { supabase } = access
 
   if (!id) {
     return { ok: false, message: "Deal id is required." }
@@ -2445,17 +2727,22 @@ function validatePartnerForm(
     ["name", "Partner name is required."],
     ["city_id", "Partner city is required."],
     ["type", "Partner type is required."],
-    ["email", "Email is required."],
     ["address", "Address is required."],
     ["coordinates", "Coordinates are required."],
     ["description", "Description is required."],
   ]
 
-  if (
-    !stringValue(formData, "owner_id") &&
-    !normalizeEmail(stringValue(formData, "new_owner_email"))
-  ) {
-    return "Choose an existing partner owner or enter a new owner email."
+  const ownerId = stringValue(formData, "owner_id")
+  const requestedOwnerEmail = normalizeEmail(
+    stringValue(formData, "new_owner_email"),
+  )
+
+  if (isCreate && Boolean(ownerId) === Boolean(requestedOwnerEmail)) {
+    return "Choose exactly one partner owner: an existing user or a new owner email."
+  }
+
+  if (isCreate && stringValue(formData, "new_owner_email") && !requestedOwnerEmail) {
+    return "Enter a valid new owner email address."
   }
 
   for (const [key, message] of requiredFields) {
@@ -2492,6 +2779,11 @@ function validatePartnerForm(
 
   if (partnerTextValidation) {
     return partnerTextValidation
+  }
+
+  const partnerEmail = stringValue(formData, "email")
+  if (partnerEmail && !/^\S+@\S+\.\S+$/.test(partnerEmail)) {
+    return "Partner contact email must be a valid email address."
   }
 
   const socialValidation = validatePartnerSocials(parsePartnerSocials(formData))
@@ -2666,7 +2958,9 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     website: stringValue(formData, "website"),
     coordinates: coordinates ? JSON.stringify(coordinates) : null,
     is_active: active,
-    email: stringValue(formData, "email"),
+    email:
+      nullableStringValue(formData, "email") ??
+      (isUpdate ? nullableStringValue(formData, "existing_partner_email") : null),
     updated_at: now,
     ...(isUpdate ? {} : { created_at: now }),
   }
@@ -3266,6 +3560,7 @@ function normalizeEmail(value: string) {
 
 async function resolvePartnerOwner(
   formData: FormData,
+  fallbackOwnerId?: string | null,
 ): Promise<
   | { ok: true; ownerId: string }
   | { ok: false; message: string }
@@ -3273,9 +3568,16 @@ async function resolvePartnerOwner(
   const existingOwnerId = stringValue(formData, "owner_id")
   const requestedEmail = normalizeEmail(stringValue(formData, "new_owner_email"))
 
+  if (existingOwnerId && requestedEmail) {
+    return {
+      ok: false,
+      message: "Choose an existing partner owner or enter a new owner email, not both.",
+    }
+  }
+
   if (!requestedEmail) {
-    return existingOwnerId
-      ? { ok: true, ownerId: existingOwnerId }
+    return existingOwnerId || fallbackOwnerId
+      ? { ok: true, ownerId: existingOwnerId || fallbackOwnerId! }
       : { ok: false, message: "Choose a partner owner or enter a valid new owner email." }
   }
 

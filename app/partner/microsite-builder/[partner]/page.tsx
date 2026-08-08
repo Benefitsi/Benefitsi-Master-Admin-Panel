@@ -31,10 +31,9 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
 
   if (
     !portalSession ||
-    (!portalSession.isAdmin &&
-      (!portalSession.isPartner || portalSession.partnerIds.length === 0))
+    (!portalSession.isAdmin && portalSession.ownedPartnerIds.length === 0)
   ) {
-    redirect("/partner/login")
+    redirect("/login")
   }
 
   const { partner: identifier } = await params
