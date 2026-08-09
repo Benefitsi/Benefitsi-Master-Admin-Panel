@@ -20,7 +20,7 @@ export default async function LoginPage() {
       redirect("/")
     }
 
-    if (portalSession?.ownedPartnerIds.length) {
+    if (portalSession?.partnerIds.length) {
       redirect("/partner")
     }
   }
@@ -87,7 +87,7 @@ async function NonAdminSessionNotice() {
   if (
     !portalSession ||
     portalSession.isAdmin ||
-    portalSession.ownedPartnerIds.length > 0
+    portalSession.partnerIds.length > 0
   ) {
     return null
   }

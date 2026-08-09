@@ -6,7 +6,7 @@ import {
   createMicrositeMetadata,
   createMicrositeStructuredData,
 } from "@/lib/microsite-seo"
-import { createClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/service"
 
 export const dynamic = "force-dynamic"
 
@@ -16,7 +16,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   const microsite = await getPublishedMicrositePage(supabase, slug)
 
   if (!microsite) {
@@ -39,7 +39,7 @@ export default async function PublishedPartnerMicrositePage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   const microsite = await getPublishedMicrositePage(supabase, slug)
 
   if (!microsite) {

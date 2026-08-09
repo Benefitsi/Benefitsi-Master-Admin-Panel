@@ -50,7 +50,7 @@ export default async function DashboardPage({
     <AdminShell
       adminName={adminName}
       micrositeCount={dashboard.partners.length}
-      canAccessPartnerPanel={Boolean(portalSession?.ownedPartnerIds.length)}
+      canAccessPartnerPanel={Boolean(portalSession?.partnerIds.length)}
     >
       {dashboard.errors.length > 0 ? (
         <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

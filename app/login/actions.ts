@@ -39,7 +39,7 @@ export async function login(
 
   if (
     !portalSession ||
-    (!portalSession.isAdmin && portalSession.ownedPartnerIds.length === 0)
+    (!portalSession.isAdmin && portalSession.partnerIds.length === 0)
   ) {
     await supabase.auth.signOut()
 

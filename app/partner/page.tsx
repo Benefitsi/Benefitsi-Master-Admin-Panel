@@ -4,8 +4,9 @@ import { signOutPartner } from "./actions"
 import { PartnerWorkspace } from "@/app/partner-admin"
 import { BrandLogo } from "@/components/brand-logo"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
-import { getDashboardData } from "@/lib/admin-data"
+import { getDashboardData, type PartnerWithDeals } from "@/lib/admin-data"
 import {
+  filterPartnersForManagement,
   filterPartnersForPortal,
   getPartnerPortalSession,
 } from "@/lib/partner-portal"
@@ -26,13 +27,23 @@ export default async function PartnerDashboardPage() {
 
   if (
     !portalSession ||
-    (!portalSession.isAdmin && portalSession.ownedPartnerIds.length === 0)
+    (!portalSession.isAdmin && portalSession.partnerIds.length === 0)
   ) {
     redirect("/login")
   }
 
   const dashboard = await getDashboardData(supabase)
   const partners = filterPartnersForPortal(dashboard.partners, portalSession)
+  const managedPartners = filterPartnersForManagement(
+    dashboard.partners,
+    portalSession,
+  )
+  const managedPartnerIds = new Set(
+    managedPartners.map((partner) => partner.id).filter(Boolean),
+  )
+  const micrositeOnlyPartners = partners.filter(
+    (partner) => !partner.id || !managedPartnerIds.has(partner.id),
+  )
   const userName =
     portalSession.profile?.display_name ||
     portalSession.profile?.email ||
@@ -73,7 +84,7 @@ export default async function PartnerDashboardPage() {
             Your partner microsites
           </h1>
           <p className="mt-2 text-sm text-zinc-600">
-            Update your partner profile, offers, menu, opening hours, and microsite. Only shops owned by your account are shown.
+            Open the microsite editor for shops linked to your account. Owners can also manage their partner profile, offers, menu, and opening hours.
           </p>
         </section>
 
@@ -88,24 +99,77 @@ export default async function PartnerDashboardPage() {
           </section>
         ) : null}
 
-        {partners.length > 0 ? (
+        {managedPartners.length > 0 ? (
           <section className="mt-6">
             <PartnerWorkspace
-              partners={partners}
+              partners={managedPartners}
               cities={dashboard.cities}
               owners={[]}
               initialMode="view"
-              initialPartnerId={partners[0]?.id ?? ""}
+              initialPartnerId={managedPartners[0]?.id ?? ""}
               portalMode
             />
           </section>
-        ) : (
+        ) : null}
+
+        {micrositeOnlyPartners.length > 0 ? (
+          <MicrositeEditorCards partners={micrositeOnlyPartners} />
+        ) : null}
+
+        {partners.length === 0 ? (
           <section className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             No partner shop is linked to this account yet.
           </section>
-        )}
+        ) : null}
       </div>
     </main>
+  )
+}
+
+function MicrositeEditorCards({ partners }: { partners: PartnerWithDeals[] }) {
+  return (
+    <section className="mt-6 grid gap-4 md:grid-cols-2">
+      {partners.map((partner) => {
+        const identifier =
+          partner.microsite?.slug ||
+          partner.slug ||
+          partner.subdomain ||
+          partner.id ||
+          "partner"
+
+        return (
+          <article
+            key={partner.id || identifier}
+            className="rounded-2xl border border-[#061829]/10 bg-white p-5"
+          >
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#118cff]">
+              Partner
+            </p>
+            <h2 className="mt-1 text-lg font-semibold text-zinc-950">
+              {partner.name || partner.short_name || "Unnamed partner"}
+            </h2>
+            <p className="mt-1 text-sm text-zinc-600">
+              {partner.city_name || partner.address || "No location set"}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href={`/partner/microsite-builder/${encodeURIComponent(identifier)}`}
+                className="rounded-xl bg-[linear-gradient(135deg,#17d4d7_0%,#118cff_100%)] px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-px active:translate-y-0 active:scale-[.98]"
+              >
+                Edit microsite
+              </Link>
+              <Link
+                href={`/partner/microsite-preview/${encodeURIComponent(identifier)}`}
+                target="_blank"
+                className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
+              >
+                Open preview
+              </Link>
+            </div>
+          </article>
+        )
+      })}
+    </section>
   )
 }
 

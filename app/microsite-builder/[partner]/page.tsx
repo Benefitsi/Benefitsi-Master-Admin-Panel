@@ -42,7 +42,7 @@ export default async function MicrositeBuilderPage({ params }: PageProps) {
   }
 
   const previewIdentifier =
-    partner.slug || partner.subdomain || partner.id || identifier
+    partner.microsite?.slug || partner.slug || partner.subdomain || partner.id || identifier
 
   return (
     <AdminLanguageProvider>

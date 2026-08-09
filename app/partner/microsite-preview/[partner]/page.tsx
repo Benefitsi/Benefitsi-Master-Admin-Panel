@@ -44,7 +44,7 @@ export default async function PartnerMicrositePreviewPage({
 
   if (
     !portalSession ||
-    (!portalSession.isAdmin && portalSession.ownedPartnerIds.length === 0)
+    (!portalSession.isAdmin && portalSession.partnerIds.length === 0)
   ) {
     redirect("/login")
   }
@@ -86,6 +86,7 @@ function findPreviewPartner(partners: PartnerWithDeals[], identifier: string) {
         partner.id,
         partner.slug,
         partner.subdomain,
+        partner.microsite?.slug,
         partner.short_name,
         partner.name,
       ]

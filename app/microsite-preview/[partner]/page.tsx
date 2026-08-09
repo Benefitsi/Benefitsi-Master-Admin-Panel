@@ -61,6 +61,7 @@ function findPreviewPartner(partners: PartnerWithDeals[], identifier: string) {
         partner.id,
         partner.slug,
         partner.subdomain,
+        partner.microsite?.slug,
         partner.short_name,
         partner.name,
       ]

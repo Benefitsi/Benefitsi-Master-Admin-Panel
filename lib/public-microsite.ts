@@ -27,7 +27,9 @@ export async function getPublishedMicrositePage(
 ): Promise<PublishedMicrositePage | null> {
   const micrositeResult = await supabase
     .from("microsites")
-    .select("*")
+    .select(
+      "id,partner_id,slug,subdomain,canonical_url,published_version_id,created_at,updated_at",
+    )
     .eq("slug", slug)
     .not("published_version_id", "is", null)
     .maybeSingle()
@@ -36,10 +38,10 @@ export async function getPublishedMicrositePage(
     return null
   }
 
-  const microsite = micrositeResult.data as Omit<
-    PartnerMicrosite,
-    "draftVersion" | "publishedVersion"
-  >
+  const microsite = {
+    ...micrositeResult.data,
+    status: "published",
+  } as Omit<PartnerMicrosite, "draftVersion" | "publishedVersion">
   const [
     partnerResult,
     versionResult,
@@ -47,49 +49,44 @@ export async function getPublishedMicrositePage(
     milestonesResult,
     hoursResult,
     menusResult,
-    menuCategoriesResult,
-    menuItemsResult,
   ] = await Promise.all([
       supabase
         .from("partners")
-        .select("*")
+        .select(
+          "id,name,slug,subdomain,short_name,description,category,type,logo_url,feature_card_url,discover_card_image_url,cover_urls,address,phone,website,is_active,coordinates,email",
+        )
         .eq("id", microsite.partner_id)
         .maybeSingle(),
       supabase
         .from("microsite_versions")
-        .select("*")
+        .select("id,microsite_id,version_number,config,status,created_at")
         .eq("id", microsite.published_version_id)
+        .eq("microsite_id", microsite.id)
         .eq("status", "published")
         .maybeSingle(),
       supabase
         .from("deals")
-        .select("*")
+        .select("id,partner_id,active,reward_item,customer_description,terms")
         .eq("partner_id", microsite.partner_id)
         .eq("active", true),
       supabase
         .from("partner_reward_milestones")
-        .select("*")
+        .select(
+          "id,partner_id,required_stamps,title,reward_item,customer_description,active",
+        )
         .eq("partner_id", microsite.partner_id)
         .eq("active", true),
       supabase
         .from("partner_opening_hours")
-        .select("*")
+        .select("id,partner_id,weekday,opens_at,closes_at,label,is_closed,sort_order")
         .eq("partner_id", microsite.partner_id)
         .order("sort_order", { ascending: true, nullsFirst: false }),
       supabase
         .from("menus")
-        .select("*")
+        .select("id,partner_id,name,description,status,created_at,updated_at")
         .eq("partner_id", microsite.partner_id)
         .eq("status", "published")
         .order("created_at"),
-      supabase
-        .from("menu_categories")
-        .select("*")
-        .order("sort_order", { ascending: true, nullsFirst: false }),
-      supabase
-        .from("menu_items")
-        .select("*")
-        .order("sort_order", { ascending: true, nullsFirst: false }),
     ])
 
   if (
@@ -101,8 +98,47 @@ export async function getPublishedMicrositePage(
     return null
   }
 
-  const partner = partnerResult.data as Partner
-  const version = versionResult.data as MicrositeVersion
+  const menus = (menusResult.data ?? []) as PartnerMenu[]
+  const menuIds = menus.map((menu) => menu.id).filter((id): id is string => Boolean(id))
+  const [menuCategoriesResult, menuItemsResult] = await Promise.all([
+    menuIds.length > 0
+      ? supabase
+          .from("menu_categories")
+          .select("id,menu_id,name,slug,image_url,sort_order")
+          .in("menu_id", menuIds)
+          .order("sort_order", { ascending: true, nullsFirst: false })
+      : Promise.resolve({ data: [], error: null }),
+    menuIds.length > 0
+      ? supabase
+          .from("menu_items")
+          .select(
+            "id,menu_id,category_id,name,description,price,currency,image_url,tags,allergens,addons,is_popular,is_stamp_eligible,sort_order,created_at,updated_at",
+          )
+          .in("menu_id", menuIds)
+          .order("sort_order", { ascending: true, nullsFirst: false })
+      : Promise.resolve({ data: [], error: null }),
+  ])
+
+  if (menuCategoriesResult.error || menuItemsResult.error) {
+    return null
+  }
+
+  const partner: Partner = {
+    ...(partnerResult.data as Partner),
+    owner_id: null,
+    city_id: null,
+    status: "published",
+    is_featured: null,
+    stamp_target: null,
+    loves: null,
+    pin: null,
+    created_at: null,
+    updated_at: null,
+  }
+  const version: MicrositeVersion = {
+    ...(versionResult.data as MicrositeVersion),
+    created_by: null,
+  }
   const annotatedPartner: PartnerWithDeals = {
     ...partner,
     deals: (dealsResult.data ?? []) as Deal[],
@@ -113,7 +149,7 @@ export async function getPublishedMicrositePage(
     staff: [],
     opening_hours: (hoursResult.data ?? []) as PartnerOpeningHour[],
     menus: annotateMenus(
-      ((menusResult.data ?? []) as PartnerMenu[]).map((menu) => ({
+      menus.map((menu) => ({
         ...menu,
         categories: [],
         items: [],
@@ -133,10 +169,220 @@ export async function getPublishedMicrositePage(
     owner_email: null,
   }
 
+  const config = sanitizeMicrositeConfig(
+    resolveMicrositeConfig(version.config, annotatedPartner),
+  )
+
   return {
-    partner: annotatedPartner,
-    config: resolveMicrositeConfig(version.config, annotatedPartner),
+    partner: sanitizePartnerForPublicMicrosite(annotatedPartner, config),
+    config,
   }
+}
+
+function sanitizePartnerForPublicMicrosite(
+  partner: PartnerWithDeals,
+  config: MicrositeConfig,
+): PartnerWithDeals {
+  return {
+    ...partner,
+    owner_id: null,
+    owner_email: null,
+    deals: partner.deals.map((deal) => ({
+      ...deal,
+      metadata: null,
+      staff_instructions: null,
+    })),
+    reward_milestones: partner.reward_milestones.map((milestone) => ({
+      ...milestone,
+      staff_instructions: null,
+    })),
+    staff: [],
+    stamp_progress: [],
+    visits: [],
+    fraud_events: [],
+    microsite: partner.microsite
+      ? {
+          ...partner.microsite,
+          draftVersion: null,
+          publishedVersion: partner.microsite.publishedVersion
+            ? {
+                ...partner.microsite.publishedVersion,
+                created_by: null,
+                config,
+              }
+            : null,
+        }
+      : null,
+  }
+}
+
+function sanitizeMicrositeConfig(config: MicrositeConfig): MicrositeConfig {
+  return {
+    ...config,
+    assets: { library: [] },
+    builder: {
+      mobileQaDone: false,
+      desktopQaDone: false,
+      assetReviewDone: false,
+      partnerDataReviewDone: false,
+      seoReviewDone: false,
+      publishReviewDone: false,
+      lastQaAt: "",
+      versionNote: "",
+    },
+    printables: {
+      ...config.printables,
+      headline: "",
+      subheadline: "",
+      cta: "",
+      note: "",
+    },
+    elementText: sanitizePublicElementText(config.elementText),
+  }
+}
+
+const PUBLIC_ELEMENT_TEXT_KEYS = new Set([
+  "branding.logo",
+  "branding.partnerBadgeUrl",
+  "contact.logo",
+  "content.aboutHeadline",
+  "branding.partnerName",
+  "content.aboutHeroImageUrl",
+  "content.aboutIngredientImageUrl",
+  "content.aboutLabel",
+  "content.aboutLocationImageUrl",
+  "content.aboutPrepImageUrl",
+  "content.aboutSignature",
+  "content.aboutSlogan",
+  "content.aboutText",
+  "content.aboutTextSecond",
+  "content.aboutThanks",
+  "content.appButtonLabel",
+  "content.appDownloadUrl",
+  "content.appHeadline",
+  "content.appKicker",
+  "content.appKicker.icon",
+  "content.appPhoneScreenshotUrl",
+  "content.appQrCodeUrl",
+  "content.appQrLabel",
+  "content.appQrText",
+  "content.appText",
+  "content.appVisual.0",
+  "content.appVisual.1",
+  "content.appVisual.2",
+  "content.contactHeadline",
+  "content.contactLabel",
+  "content.contactLocationIcon",
+  "content.contactMap",
+  "content.contactOpening",
+  "content.contactSlogan",
+  "content.contactSocialText",
+  "content.faqHeadline",
+  "content.faqLabel",
+  "content.faqText",
+  "content.footerText",
+  "content.menuDescription",
+  "content.menuHeadline",
+  "content.menuLabel",
+  "deals.description",
+  "deals.benefit.0.icon",
+  "deals.benefit.0.text",
+  "deals.benefit.0.title",
+  "deals.benefit.1.icon",
+  "deals.benefit.1.text",
+  "deals.benefit.1.title",
+  "deals.headline",
+  "deals.illustrationUrl",
+  "deals.label",
+  "deals.slogan",
+  "deals.topDealButtonLabel",
+  "deals.topDealDescription",
+  "deals.topDealHeadline",
+  "deals.topDealImageUrl",
+  "deals.topDealLabel",
+  "footer.benefitsiLogo",
+  "hero.backgroundImageUrl",
+  "hero.badgeText",
+  "hero.headline",
+  "hero.locationIcon",
+  "hero.openingIcon",
+  "hero.slogan",
+  "navigation.group",
+  "stamps.description",
+  "stamps.headline",
+  "stamps.label",
+  "stamps.slogan",
+  "stamps.welcomeBonus.icon",
+  "stamps.welcomeBonus.text",
+  "stamps.welcomeBonus.title",
+])
+
+const PUBLIC_ELEMENT_TEXT_PATTERNS = [
+  /^navigation\.[a-z0-9-]+$/,
+  /^social\.(instagram|facebook|tiktok|youtube|whatsapp|website|google|linkedin)\.(enabled|iconUrl|label|url)$/,
+  /^hero\.services\.\d+\.(label|icon)$/,
+  /^deals\.topDealBullets\.\d+(\.icon)?$/,
+  /^stamps\.(number|reward)\.\d+\.(label|image|icon)$/,
+  /^content\.aboutValue\.[0-3](\.icon)?$/,
+  /^content\.appBenefit\.[0-2](\.icon)?$/,
+  /^content\.contact\.(address|phone|opening)(\.icon)?$/,
+  /^content\.faq\.[0-5]\.(question|answer)$/,
+  /^footer\.trust\.[0-2]\.(label|icon)$/,
+]
+
+function sanitizePublicElementText(elementText: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(elementText).filter(([key, value]) => {
+      if (
+        !PUBLIC_ELEMENT_TEXT_KEYS.has(key) &&
+        !PUBLIC_ELEMENT_TEXT_PATTERNS.some((pattern) => pattern.test(key))
+      ) {
+        return false
+      }
+
+      if (isSocialVisibilityKey(key)) {
+        return value === "true" || value === "false"
+      }
+
+      if (isPublicLinkKey(key)) {
+        return isSafePublicLink(value)
+      }
+
+      if (isPublicAssetKey(key)) {
+        return isSafePublicAsset(value)
+      }
+
+      return true
+    }),
+  )
+}
+
+function isPublicLinkKey(key: string) {
+  return key === "content.appDownloadUrl" || key === "content.contactMap" || key.endsWith(".url")
+}
+
+function isPublicAssetKey(key: string) {
+  return (
+    key.endsWith("Url") ||
+    key.endsWith(".iconUrl") ||
+    key === "branding.logo" ||
+    key === "contact.logo" ||
+    key === "content.contactLocationIcon" ||
+    key === "content.appKicker.icon" ||
+    key === "footer.benefitsiLogo"
+  )
+}
+
+function isSocialVisibilityKey(key: string) {
+  return key.startsWith("social.") && key.endsWith(".enabled")
+}
+
+function isSafePublicLink(value: string) {
+  return /^(https?:\/\/|mailto:|tel:|\/|#)/i.test(value.trim())
+}
+
+function isSafePublicAsset(value: string) {
+  return /^(https?:\/\/|\/)/i.test(value.trim())
 }
 
 function annotateMenus(

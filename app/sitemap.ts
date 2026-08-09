@@ -1,13 +1,32 @@
 import type { MetadataRoute } from "next"
-import { createClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/service"
+
+export const dynamic = "force-dynamic"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://benefitsi.de"
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
+  const versionsResult = await supabase
+    .from("microsite_versions")
+    .select("id")
+    .eq("status", "published")
+
+  if (versionsResult.error) {
+    return []
+  }
+
+  const versionIds = (versionsResult.data ?? [])
+    .map((version) => version.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0)
+
+  if (versionIds.length === 0) {
+    return []
+  }
+
   const result = await supabase
     .from("microsites")
     .select("slug,updated_at")
-    .not("published_version_id", "is", null)
+    .in("published_version_id", versionIds)
 
   if (result.error) {
     return []

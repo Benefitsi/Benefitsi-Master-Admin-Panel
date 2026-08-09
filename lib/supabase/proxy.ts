@@ -32,10 +32,15 @@ export async function updateSession(request: NextRequest) {
 
   const user = data?.claims
   const pathname = request.nextUrl.pathname
-  const isPublicAuthRoute =
-    pathname.startsWith("/login") || pathname.startsWith("/partner/login")
+  const isPublicRoute =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/partner/login") ||
+    pathname === "/p" ||
+    pathname.startsWith("/p/") ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml"
 
-  if (!user && !isPublicAuthRoute) {
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)

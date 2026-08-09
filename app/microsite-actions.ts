@@ -695,6 +695,7 @@ type AssetSlot =
   | "contact_location_icon"
   | "reward_5_image"
   | "reward_10_image"
+  | "app_phone_screenshot"
   | "app_qr_code"
   | "footer_benefitsi_logo"
 
@@ -723,6 +724,7 @@ async function uploadMicrositeAssets(
     { slot: "contact_location_icon", field: "contact_location_icon_file" },
     { slot: "reward_5_image", field: "reward_5_image_file" },
     { slot: "reward_10_image", field: "reward_10_image_file" },
+    { slot: "app_phone_screenshot", field: "app_phone_screenshot_file" },
     { slot: "app_qr_code", field: "app_qr_code_file" },
     { slot: "footer_benefitsi_logo", field: "footer_benefitsi_logo_file" },
   ]
@@ -917,6 +919,9 @@ function applyUploadedAssets(
         urls.reward_5_image || config.elementText["stamps.reward.5.image"],
       "stamps.reward.10.image":
         urls.reward_10_image || config.elementText["stamps.reward.10.image"],
+      "content.appPhoneScreenshotUrl":
+        urls.app_phone_screenshot ||
+        config.elementText["content.appPhoneScreenshotUrl"],
       "content.appQrCodeUrl":
         urls.app_qr_code || config.elementText["content.appQrCodeUrl"],
       "footer.benefitsiLogo":
@@ -948,6 +953,7 @@ function mergeUploadedAssetsIntoLibrary(
     assetLibraryEntry(urls.contact_location_icon, "Kontakt Standort Icon Upload", "content.contactLocationIcon", now),
     assetLibraryEntry(urls.reward_5_image, "Reward 5 Upload", "stamps.reward.5.image", now),
     assetLibraryEntry(urls.reward_10_image, "Reward 10 Upload", "stamps.reward.10.image", now),
+    assetLibraryEntry(urls.app_phone_screenshot, "iPhone App-Screenshot Upload", "content.appPhoneScreenshotUrl", now),
     assetLibraryEntry(urls.app_qr_code, "App QR-Code Upload", "content.appQrCodeUrl", now),
     assetLibraryEntry(urls.footer_benefitsi_logo, "Footer Logo Upload", "footer.benefitsiLogo", now),
     ...Object.entries(urls.elementImages ?? {}).map(([slot, url]) =>

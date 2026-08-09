@@ -92,7 +92,7 @@ export async function getPartnerPortalSession(
     },
     profile,
     isAdmin: Boolean(adminSession?.isAdmin),
-    isPartner: isPartnerProfile(profile) || ownedPartnerIds.length > 0,
+    isPartner: isPartnerProfile(profile) || partnerIds.length > 0,
     partnerIds,
     ownedPartnerIds,
   }
@@ -112,14 +112,18 @@ export function canAccessPartner(
     return false
   }
 
-  return session.isAdmin || session.ownedPartnerIds.includes(partnerId)
+  return session.isAdmin || session.partnerIds.includes(partnerId)
 }
 
 export function canManagePartner(
   session: PartnerPortalSession,
   partnerId: string | null | undefined,
 ) {
-  return canAccessPartner(session, partnerId)
+  if (!partnerId) {
+    return false
+  }
+
+  return session.isAdmin || session.ownedPartnerIds.includes(partnerId)
 }
 
 export function filterPartnersForPortal(
@@ -130,8 +134,20 @@ export function filterPartnersForPortal(
     return partners
   }
 
-  const allowedIds = new Set(session.ownedPartnerIds)
+  const allowedIds = new Set(session.partnerIds)
   return partners.filter((partner) => Boolean(partner.id && allowedIds.has(partner.id)))
+}
+
+export function filterPartnersForManagement(
+  partners: PartnerWithDeals[],
+  session: PartnerPortalSession,
+) {
+  if (session.isAdmin) {
+    return partners
+  }
+
+  const managedIds = new Set(session.ownedPartnerIds)
+  return partners.filter((partner) => Boolean(partner.id && managedIds.has(partner.id)))
 }
 
 async function getPartnerProfileForIdentity(

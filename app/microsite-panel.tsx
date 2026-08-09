@@ -696,7 +696,8 @@ export function MicrositePanel({
     micrositeTemplatePresets.find((template) => template.id === config.template) ??
     micrositeTemplatePresets[0]
   const recommendedTemplateId = defaultMicrositeTemplateForPartner(partner)
-  const previewIdentifier = partner.slug || partner.subdomain || partner.id || "partner"
+  const previewIdentifier =
+    partner.microsite?.slug || partner.slug || partner.subdomain || partner.id || "partner"
   const previewStorageKey = `benefitsi:microsite-preview:${partner.id || partner.slug || "partner"}`
   const previewHref = `${previewBasePath}/${encodeURIComponent(previewIdentifier)}?source=builder`
   const publishBlocked = readinessReport.status === "blocked"

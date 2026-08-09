@@ -31,7 +31,7 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
 
   if (
     !portalSession ||
-    (!portalSession.isAdmin && portalSession.ownedPartnerIds.length === 0)
+    (!portalSession.isAdmin && portalSession.partnerIds.length === 0)
   ) {
     redirect("/login")
   }
@@ -52,7 +52,7 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
   }
 
   const previewIdentifier =
-    partner.slug || partner.subdomain || partner.id || identifier
+    partner.microsite?.slug || partner.slug || partner.subdomain || partner.id || identifier
 
   return (
     <AdminLanguageProvider>

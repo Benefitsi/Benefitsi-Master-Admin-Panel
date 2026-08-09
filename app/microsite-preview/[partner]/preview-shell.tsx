@@ -78,13 +78,13 @@ export function MicrositePreviewShell({
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <a
             className="min-w-0 rounded-md border border-zinc-200 bg-white px-3 py-2 text-center text-zinc-700 transition hover:bg-zinc-50"
-            href={`${previewBasePath}/${encodeURIComponent(partner.slug || partner.id || "partner")}`}
+            href={`${previewBasePath}/${encodeURIComponent(partner.microsite?.slug || partner.slug || partner.id || "partner")}`}
           >
             Gespeicherten Entwurf öffnen
           </a>
           <a
             className="min-w-0 rounded-md border border-zinc-200 bg-white px-3 py-2 text-center text-zinc-700 transition hover:bg-zinc-50"
-            href={`${previewBasePath}/${encodeURIComponent(partner.slug || partner.id || "partner")}?viewport=mobile${useBuilderDraft ? "&source=builder" : ""}`}
+            href={`${previewBasePath}/${encodeURIComponent(partner.microsite?.slug || partner.slug || partner.id || "partner")}?viewport=mobile${useBuilderDraft ? "&source=builder" : ""}`}
           >
             Mobile
           </a>

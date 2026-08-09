@@ -114,8 +114,7 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
     partner.subdomain ||
     partner.id ||
     "partner"
-  const previewIdentifier =
-    partner.slug || partner.subdomain || partner.id || identifier
+  const previewIdentifier = identifier
   const liveHref =
     partner.microsite?.canonical_url ||
     (partner.microsite?.publishedVersion
