@@ -40,16 +40,16 @@ export default async function SystemPage() {
   return (
     <AdminShell
       adminName={adminName}
-      title="Systemübersicht"
-      subtitle="Die zentralen Benefitsi-Oberflächen an einem Ort"
+      title="System overview"
+      subtitle="The central Benefitsi interfaces in one place"
       micrositeCount={dashboard.partners.length}
     >
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <OverviewCard
           title="Benefitsi App"
-          description="Mobile Nutzer-App für Deals, Stempel, Rewards und Challenges."
+          description="Mobile user app for deals, stamps, rewards, and challenges."
           href={appUrl || undefined}
-          status={appUrl ? "Verknüpft" : "App-Link folgt"}
+          status={appUrl ? "Linked" : "App link coming soon"}
           icon={
             <Image
               src="/Benefitsi_Icon_FullColor_RGB_512.png"
@@ -62,26 +62,26 @@ export default async function SystemPage() {
         />
         <OverviewCard
           title="Microsites"
-          description="Builder, Entwürfe, Vorschauen und veröffentlichte Partnerseiten."
+          description="Builder, drafts, previews, and published partner pages."
           href="/microsites"
           status={`${dashboard.partners.length} Partner`}
           accent="blue"
           icon={<BrowserIcon className="size-7" />}
         />
         <OverviewCard
-          title="Städteseiten"
-          description="Städte, lokale Guides, Kategorien und regionale Inhalte."
+          title="City pages"
+          description="Cities, local guides, categories, and regional content."
           href={cityUrl}
-          status="Öffentlich"
+          status="Public"
           accent="cyan"
           icon={<MapIcon className="size-7" />}
           external
         />
         <OverviewCard
-          title="Benefitsi Webseite"
-          description="Öffentliche Hauptseite und Partnergewinnung."
+          title="Benefitsi website"
+          description="Public main site and partner acquisition."
           href={websiteUrl}
-          status="Öffentlich"
+          status="Public"
           accent="blue"
           icon={<GlobeIcon className="size-7" />}
           external
@@ -89,19 +89,19 @@ export default async function SystemPage() {
       </section>
 
       <section className="rounded-2xl border border-[#061829]/10 bg-white p-5 shadow-[0_18px_48px_rgba(6,24,41,.05)]">
-        <h2 className="text-base font-bold text-[#061829]">Systemzuständigkeit</h2>
+        <h2 className="text-base font-bold text-[#061829]">System ownership</h2>
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           <Responsibility
             title="Benefitsi App"
-            text="Mobile App, Nutzerkonto, Deals, Stempel, Rewards und Scanning."
+            text="Mobile app, user account, deals, stamps, rewards, and scanning."
           />
           <Responsibility
             title="Benefitsi Admin"
-            text="Partnerdaten, Builder, Draft, Preview, Publish und Partnerportal."
+            text="Partner data, builder, draft, preview, publishing, and partner portal."
           />
           <Responsibility
             title="Benefitsi Web"
-            text="Hauptwebseite, Partnergewinnung, Städte- und SEO-Seiten."
+            text="Main website, partner acquisition, city pages, and SEO pages."
           />
         </div>
       </section>
@@ -110,7 +110,7 @@ export default async function SystemPage() {
         href="/"
         className="inline-flex min-h-11 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50"
       >
-        Zur Partnerverwaltung
+        Back to partner management
       </Link>
     </AdminShell>
   )

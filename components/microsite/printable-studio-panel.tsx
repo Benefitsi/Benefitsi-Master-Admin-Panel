@@ -25,9 +25,9 @@ const printableFormats: Array<{
 }> = [
   { id: "flyer-a5", label: "A5 Flyer", size: "148 x 210 mm", aspectRatio: "148 / 210", width: 1480, height: 2100 },
   { id: "poster-a4", label: "A4 Poster", size: "210 x 297 mm", aspectRatio: "210 / 297", width: 2100, height: 2970 },
-  { id: "square-post", label: "Square Post", size: "1080 x 1080 px", aspectRatio: "1 / 1", width: 1080, height: 1080 },
-  { id: "story-banner", label: "Story Banner", size: "1080 x 1920 px", aspectRatio: "1080 / 1920", width: 1080, height: 1920 },
-  { id: "landscape-banner", label: "Landscape Banner", size: "1200 x 628 px", aspectRatio: "1200 / 628", width: 1200, height: 628 },
+  { id: "square-post", label: "Quadratischer Beitrag", size: "1080 x 1080 px", aspectRatio: "1 / 1", width: 1080, height: 1080 },
+  { id: "story-banner", label: "Story-Banner", size: "1080 x 1920 px", aspectRatio: "1080 / 1920", width: 1080, height: 1920 },
+  { id: "landscape-banner", label: "Querformat-Banner", size: "1200 x 628 px", aspectRatio: "1200 / 628", width: 1200, height: 628 },
 ]
 
 const printableTemplates: Array<{
@@ -37,28 +37,28 @@ const printableTemplates: Array<{
 }> = [
   {
     id: "bold-offer",
-    label: "Bold Offer",
-    description: "Large offer-led flyer layout with a clear CTA and strong hero image.",
+    label: "Markantes Angebot",
+    description: "Großzügiges, angebotsorientiertes Flyer-Layout mit klarem CTA und starkem Startbild.",
   },
   {
     id: "clean-story",
-    label: "Clean Story",
-    description: "Airy editorial layout with premium spacing for calm and trusted brands.",
+    label: "Klare Story",
+    description: "Luftiges Editorial-Layout mit hochwertigen Abständen für ruhige, vertrauenswürdige Marken.",
   },
   {
     id: "photo-spotlight",
-    label: "Photo Spotlight",
-    description: "Image-first composition with the message anchored in the lower third.",
+    label: "Foto im Fokus",
+    description: "Bildbetonte Komposition mit der Botschaft im unteren Drittel.",
   },
   {
     id: "editorial-luxe",
-    label: "Editorial Luxe",
-    description: "Boutique studio composition with a framed center story and luxury tone.",
+    label: "Editorial Elegant",
+    description: "Boutique-Komposition mit gerahmter Hauptbotschaft und luxuriöser Anmutung.",
   },
   {
     id: "midnight-glow",
-    label: "Midnight Glow",
-    description: "High-contrast event poster with neon energy and a dramatic headline stack.",
+    label: "Mitternachtsglanz",
+    description: "Kontrastreiches Eventplakat mit Neon-Energie und dramatischer Überschriften-Hierarchie.",
   },
 ]
 
@@ -77,8 +77,8 @@ function inferPrintableProfile(partner: PartnerWithDeals) {
 
   if (/(doner|d[oö]ner|pizza|restaurant|cafe|coffee|burger|food|bar)/.test(signals)) {
     return {
-      label: "Food & drink",
-      note: "Lead with appetite, pace, and one clear reason to walk in now.",
+      label: "Gastronomie",
+      note: "Wecke Appetit und nenne einen klaren Grund, jetzt vorbeizukommen.",
       recommendedFormat: "flyer-a5" as PrintableFormatId,
       recommendedTemplate: "photo-spotlight" as PrintableTemplateId,
     }
@@ -86,8 +86,8 @@ function inferPrintableProfile(partner: PartnerWithDeals) {
 
   if (/(hair|salon|barber|beauty|nail)/.test(signals)) {
     return {
-      label: "Salon & beauty",
-      note: "Use premium spacing, polished typography, and service-led framing.",
+      label: "Salon & Beauty",
+      note: "Nutze hochwertige Abstände, ausgearbeitete Typografie und stelle die Leistungen in den Mittelpunkt.",
       recommendedFormat: "square-post" as PrintableFormatId,
       recommendedTemplate: "editorial-luxe" as PrintableTemplateId,
     }
@@ -95,8 +95,8 @@ function inferPrintableProfile(partner: PartnerWithDeals) {
 
   if (/(massage|spa|wellness|therapy|yoga|fitness)/.test(signals)) {
     return {
-      label: "Wellness & care",
-      note: "Keep the message calm, breathable, and easy to scan from a distance.",
+      label: "Wellness & Pflege",
+      note: "Halte die Botschaft ruhig, luftig und auch aus der Entfernung leicht erfassbar.",
       recommendedFormat: "story-banner" as PrintableFormatId,
       recommendedTemplate: "clean-story" as PrintableTemplateId,
     }
@@ -104,16 +104,16 @@ function inferPrintableProfile(partner: PartnerWithDeals) {
 
   if (/(cinema|movie|event|club|music)/.test(signals)) {
     return {
-      label: "Entertainment",
-      note: "Use dramatic contrast and a poster-like hierarchy that feels event-driven.",
+      label: "Unterhaltung",
+      note: "Nutze dramatische Kontraste und eine plakatartige, eventorientierte Hierarchie.",
       recommendedFormat: "poster-a4" as PrintableFormatId,
       recommendedTemplate: "midnight-glow" as PrintableTemplateId,
     }
   }
 
   return {
-    label: "Retail & services",
-    note: "Balance offer clarity with a polished local-brand presentation.",
+    label: "Einzelhandel & Dienstleistungen",
+    note: "Verbinde ein klares Angebot mit einem hochwertigen lokalen Markenauftritt.",
     recommendedFormat: "landscape-banner" as PrintableFormatId,
     recommendedTemplate: "bold-offer" as PrintableTemplateId,
   }
@@ -262,10 +262,10 @@ export function PrintableStudioPanel({
         <div className="min-w-0 space-y-4">
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-zinc-500">
-              Recommended direction
+              {tr("Empfohlene Ausrichtung")}
             </p>
-            <p className="mt-2 text-sm font-black text-zinc-950">{printableProfile.label}</p>
-            <p className="mt-1 text-xs leading-5 text-zinc-600">{printableProfile.note}</p>
+            <p className="mt-2 text-sm font-black text-zinc-950">{tr(printableProfile.label)}</p>
+            <p className="mt-1 text-xs leading-5 text-zinc-600">{tr(printableProfile.note)}</p>
           </div>
 
           <div>
@@ -285,10 +285,10 @@ export function PrintableStudioPanel({
                   }`}
                 >
                   <span className="flex items-center justify-between gap-2 text-sm font-black text-zinc-950">
-                    <span>{format.label}</span>
+                    <span>{tr(format.label)}</span>
                     {format.id === printableProfile.recommendedFormat ? (
                       <span className="rounded-full bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-teal-700">
-                        Best fit
+                        {tr("Beste Wahl")}
                       </span>
                     ) : null}
                   </span>
@@ -320,7 +320,7 @@ export function PrintableStudioPanel({
                     <div className={`overflow-hidden rounded-lg border p-2 ${cardTheme.selectorFrameClass}`}>
                       <div className="flex items-center justify-between gap-2">
                         <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] ${cardTheme.selectorBadgeClass}`}>
-                          {cardTheme.selectorLabel}
+                          {tr(cardTheme.selectorLabel)}
                         </span>
                         <span className={`size-5 rounded-full ${cardTheme.selectorOrbClass}`} />
                       </div>
@@ -331,18 +331,18 @@ export function PrintableStudioPanel({
                       </div>
                     </div>
                     <span className="mt-2.5 flex flex-wrap items-center gap-2 text-sm font-black text-zinc-950">
-                      <span>{template.label}</span>
+                      <span>{tr(template.label)}</span>
                       {template.id === printableProfile.recommendedTemplate ? (
                         <span className="rounded-full bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-teal-700">
-                          Best fit
+                          {tr("Beste Wahl")}
                         </span>
                       ) : null}
                     </span>
                     <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
-                      {cardTheme.layoutLabel}
+                      {tr(cardTheme.layoutLabel)}
                     </span>
                     <span className="mt-1 block text-[11px] leading-5 text-zinc-500">
-                      {template.description}
+                      {tr(template.description)}
                     </span>
                   </button>
                 )
@@ -441,11 +441,11 @@ export function PrintableStudioPanel({
             </div>
           </div>
           <p className="mt-3 text-xs leading-5 text-zinc-500">
-            {activeFormat.id === "flyer-a5" || activeFormat.id === "poster-a4"
-              ? "Ideal for counter flyers, posters, and printable handouts."
+            {tr(activeFormat.id === "flyer-a5" || activeFormat.id === "poster-a4"
+              ? "Ideal für Theken-Flyer, Plakate und gedruckte Handzettel."
               : activeFormat.id === "story-banner"
-                ? "Ideal for mobile stories and vertical lobby screens."
-                : "Ideal for social posts, partner banners, and promo tiles."}
+                ? "Ideal für mobile Storys und vertikale Displays."
+                : "Ideal für Social-Media-Beiträge, Partnerbanner und Aktionskacheln.")}
           </p>
         </div>
       </div>
@@ -491,7 +491,7 @@ function printableTheme(template: PrintableTemplateId) {
   if (template === "clean-story") {
     return {
       layout: "clean-story" as const,
-      layoutLabel: "Editorial split",
+      layoutLabel: "Geteiltes Editorial",
       selectorLabel: "Serene",
       selectorFrameClass: "border-emerald-200 bg-[#edf7f1]",
       selectorBadgeClass: "bg-white text-emerald-700",
@@ -527,8 +527,8 @@ function printableTheme(template: PrintableTemplateId) {
   if (template === "photo-spotlight") {
     return {
       layout: "photo-spotlight" as const,
-      layoutLabel: "Bottom spotlight",
-      selectorLabel: "Image-led",
+      layoutLabel: "Fokus im unteren Bereich",
+      selectorLabel: "Bildbetont",
       selectorFrameClass: "border-zinc-300 bg-[#111827]",
       selectorBadgeClass: "bg-white/12 text-white",
       selectorOrbClass: "bg-white/30",
@@ -563,7 +563,7 @@ function printableTheme(template: PrintableTemplateId) {
   if (template === "editorial-luxe") {
     return {
       layout: "editorial-luxe" as const,
-      layoutLabel: "Framed editorial",
+      layoutLabel: "Gerahmtes Editorial",
       selectorLabel: "Luxe",
       selectorFrameClass: "border-amber-300 bg-[#17131c]",
       selectorBadgeClass: "bg-white/10 text-amber-100",
@@ -599,7 +599,7 @@ function printableTheme(template: PrintableTemplateId) {
   if (template === "midnight-glow") {
     return {
       layout: "midnight-glow" as const,
-      layoutLabel: "Neon poster",
+      layoutLabel: "Neon-Plakat",
       selectorLabel: "Event",
       selectorFrameClass: "border-cyan-300 bg-[#07111f]",
       selectorBadgeClass: "bg-white/10 text-cyan-100",
@@ -634,7 +634,7 @@ function printableTheme(template: PrintableTemplateId) {
 
   return {
     layout: "bold-offer" as const,
-    layoutLabel: "Offer stack",
+    layoutLabel: "Angebots-Hierarchie",
     selectorLabel: "Promo",
     selectorFrameClass: "border-amber-200 bg-[#fffbeb]",
     selectorBadgeClass: "bg-white text-amber-700",

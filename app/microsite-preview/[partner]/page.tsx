@@ -20,7 +20,7 @@ export default async function MicrositePreviewPage({
   searchParams,
 }: {
   params: Promise<{ partner: string }>
-  searchParams: Promise<{ viewport?: string; source?: string }>
+  searchParams: Promise<{ viewport?: string; source?: string; mode?: string }>
 }) {
   const [{ partner: rawIdentifier }, query] = await Promise.all([
     params,
@@ -48,6 +48,7 @@ export default async function MicrositePreviewPage({
       previewStorageKey={micrositePreviewStorageKey(partner)}
       useBuilderDraft={query.source === "builder"}
       isMobile={query.viewport === "mobile"}
+      previewMode={query.mode === "dark" ? "dark" : query.mode === "light" ? "light" : undefined}
     />
   )
 }
