@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 112993)
+Total output lines: 13285
+
 "use client"
 
 import Link from "next/link"
@@ -94,6 +97,7 @@ import type {
   PartnerEnrichmentSource,
 } from "@/lib/partner-enrichment"
 import { MicrositePanel } from "./microsite-panel"
+import { useAdminLanguage } from "./admin-language"
 import { LoadingSpinner } from "@/components/loading-ui"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
 
@@ -258,7 +262,7 @@ const CREATE_NEW_OWNER_VALUE = "__create_new_owner__"
 const dealUiTypeOptions = dealTypeOptions.flatMap((option) =>
   option.value === "comeback"
     ? [
-        { value: DURATION_BONUS_DEAL, label: "Duration Bonus" },
+        { value: DURATION_BONUS_DEAL, label: "Time-based bonus" },
         { value: COMEBACK_INACTIVE_DEAL, label: "Comeback Deal" },
       ]
     : [option],
@@ -3776,13 +3780,13 @@ function InitialMenuEditor({
                               title="Change menu item image"
                             >
                               <ThumbnailPreview
-                                alt={`${item.name || `Item ${index + 1}`} preview`}
+                                alt={`${item.name || `Artikel ${index + 1}`} Vorschau`}
                                 src={item.imagePreviewUrl}
                               />
                             </span>
                             <span className="min-w-0">
                               <span className="block truncate text-sm font-semibold text-zinc-800">
-                                {item.name || `Item ${index + 1}`}
+                                {item.name || `Artikel ${index + 1}`}
                               </span>
                               <span className="mt-1 block text-xs text-zinc-500">
                                 {categoryLabel} - Position{" "}
@@ -5520,1597 +5524,7 @@ function DealFields({
   const [happyHourStart, setHappyHourStart] = useState(
     formatTextInputValue(deal?.happy_hour_start),
   )
-  const [happyHourEnd, setHappyHourEnd] = useState(
-    formatTextInputValue(deal?.happy_hour_end),
-  )
-  const [startsAt, setStartsAt] = useState(
-    formatDateTimeInput(deal?.starts_at ?? deal?.valid_from),
-  )
-  const [endsAt, setEndsAt] = useState(
-    formatDateTimeInput(deal?.ends_at ?? deal?.valid_until),
-  )
-  const [validFrom, setValidFrom] = useState(
-    formatDateTimeInput(deal?.valid_from),
-  )
-  const [validUntil, setValidUntil] = useState(
-    formatDateTimeInput(deal?.valid_until),
-  )
-  const [minSpend, setMinSpend] = useState(
-    formatTextInputValue(deal?.min_spend),
-  )
-  const [expiryDays, setExpiryDays] = useState(
-    formatTextInputValue(deal?.expiry_days),
-  )
-  const [allowFreeTrial, setAllowFreeTrial] = useState(
-    deal?.allow_free_trial ?? false,
-  )
-  const config = getDealFormConfig({
-    type: selectedDealType,
-    discountType: selectedDiscountType,
-    benefitCategory: selectedBenefitCategory,
-  })
-  const selectedBackendDealType = backendDealTypeForUi(selectedDealType)
-  const selectedDealTypeLabel =
-    labelForValue(dealUiTypeOptions, selectedDealType) || "Deal"
-  const benefitCategory = config.autoValues.benefitCategory
-  const activationRequired = config.autoValues.activationRequired
-  const isLimitedDrop = selectedBackendDealType === "limited_drop"
-  const isWelcomeDeal = selectedBackendDealType === "welcome"
-  const isHappyHour = selectedBackendDealType === "happy_hour"
-  const showsAllowFreeTrial =
-    isLimitedDrop && selectedDiscountType === "2for1"
-  const dealDropSoldOut =
-    isLimitedDrop &&
-    isSoldOutDealDrop(
-      parseOptionalNumberInput(dealDropStockTotal),
-      parseOptionalNumberInput(dealDropStockRemaining),
-    )
-  const validationMessages = buildDealValidationMessages({
-    type: selectedDealType,
-    discountType: selectedDiscountType,
-    discountValue,
-    minSpend,
-    rewardItem,
-    benefitCount,
-    challengeName,
-    durationValue,
-    endsAt,
-    happyHourStart,
-    happyHourEnd,
-    inactivityValue,
-    maxVisitCount,
-    minVisitCount,
-    triggerValue,
-  })
-  const hasRewardDetails =
-    config.visibleFields.has("challengeName") ||
-    config.visibleFields.has("discountValue") ||
-    config.visibleFields.has("rewardItem") ||
-    config.visibleFields.has("benefitCount") ||
-    config.visibleFields.has("estimatedSavings") ||
-    config.visibleFields.has("happyHour") ||
-    config.visibleFields.has("happyHourWeekdays") ||
-    config.visibleFields.has("durationConfig") ||
-    config.visibleFields.has("triggerValue") ||
-    config.visibleFields.has("expiryDays") ||
-    config.visibleFields.has("limitedWindow")
-  const rewardDetailsRequired =
-    config.requiredFields.has("challengeName") ||
-    config.requiredFields.has("discountValue") ||
-    config.requiredFields.has("rewardItem") ||
-    config.requiredFields.has("benefitCount") ||
-    config.requiredFields.has("happyHour") ||
-    config.requiredFields.has("durationConfig") ||
-    config.requiredFields.has("triggerValue")
-  const emitDraftTitle = ({
-    type = selectedDealType,
-    discountType = selectedDiscountType,
-    discountValueText = discountValue,
-    rewardItemText = rewardItem,
-    benefitCountText = benefitCount,
-  }: {
-    type?: string
-    discountType?: string
-    discountValueText?: string
-    rewardItemText?: string
-    benefitCountText?: string
-  } = {}) => {
-    const nextRewardSummary = formatDraftRewardSummary(
-      discountType,
-      parseOptionalNumberInput(discountValueText),
-      rewardItemText,
-      parseOptionalNumberInput(benefitCountText),
-    )
-
-    onDraftMetaChange?.({ rewardSummary: nextRewardSummary })
-    onDraftTitleChange?.(
-      formatDealDisplayName({
-        type,
-        discountType,
-        discountValue: parseOptionalNumberInput(discountValueText),
-        rewardItem: rewardItemText,
-        benefitCount: parseOptionalNumberInput(benefitCountText),
-      }),
-    )
-  }
-
-  const applyConfigSideEffects = (nextConfig: DealFormConfig) => {
-    if (!nextConfig.visibleFields.has("challengeName")) {
-      setChallengeName("")
-    }
-
-    if (!nextConfig.visibleFields.has("discountValue")) {
-      setDiscountValue("")
-    }
-
-    if (!nextConfig.visibleFields.has("rewardItem")) {
-      setRewardItem("")
-    } else if (!rewardItemDirty && !rewardItem && deal?.reward_item) {
-      setRewardItem(deal.reward_item)
-    }
-
-    if (!nextConfig.visibleFields.has("benefitCount")) {
-      setBenefitCount("")
-    } else if (!benefitCount) {
-      setBenefitCount("1")
-    }
-
-    if (!nextConfig.visibleFields.has("estimatedSavings")) {
-      setEstimatedSavings("")
-    }
-
-    if (!nextConfig.visibleFields.has("happyHour")) {
-      setHappyHourStart("")
-      setHappyHourEnd("")
-    }
-
-    if (!nextConfig.visibleFields.has("durationConfig")) {
-      setDurationValue("")
-      setDurationUnit("hours")
-    }
-
-    if (!nextConfig.visibleFields.has("comebackCandidates")) {
-      setInactivityValue("")
-      setInactivityUnit("weeks")
-      setMinVisitCount("")
-      setMaxVisitCount("")
-    }
-
-    if (!nextConfig.visibleFields.has("triggerValue")) {
-      setTriggerValue("")
-    }
-
-    if (!nextConfig.visibleFields.has("limitedWindow")) {
-      setStartsAt("")
-      setEndsAt("")
-    }
-
-    if (!nextConfig.visibleFields.has("expiryDays")) {
-      setExpiryDays("")
-    }
-  }
-
-  const handleDealTypeChange = (value: string) => {
-    const nextDiscountType = defaultDiscountTypeForDealType(
-      value,
-      selectedDiscountType,
-    )
-    const nextConfig = getDealFormConfig({
-      type: value,
-      discountType: nextDiscountType,
-      benefitCategory: selectedBenefitCategory,
-    })
-
-    setSelectedDealType(value)
-    setSelectedDiscountType(nextDiscountType)
-    setSelectedBenefitCategory(nextConfig.autoValues.benefitCategory)
-    applyConfigSideEffects(nextConfig)
-    onDraftTypeChange?.(value)
-    onDraftMetaChange?.({
-      benefitCategory: nextConfig.autoValues.benefitCategory,
-      dealType: value,
-      discountType: nextDiscountType,
-    })
-    emitDraftTitle({ type: value, discountType: nextDiscountType })
-  }
-
-  const handleDiscountTypeChange = (value: string) => {
-    const nextDiscountType = normalizeDiscountTypeForUi(
-      selectedDealType,
-      value,
-    )
-    const nextConfig = getDealFormConfig({
-      type: selectedDealType,
-      discountType: nextDiscountType,
-      benefitCategory: selectedBenefitCategory,
-    })
-
-    setSelectedDiscountType(nextDiscountType)
-    setSelectedBenefitCategory(nextConfig.autoValues.benefitCategory)
-    applyConfigSideEffects(nextConfig)
-    onDraftMetaChange?.({
-      benefitCategory: nextConfig.autoValues.benefitCategory,
-      discountType: nextDiscountType,
-    })
-    emitDraftTitle({ discountType: nextDiscountType })
-  }
-
-  return (
-    <div className="space-y-4">
-      <input
-        type="hidden"
-        name={`${prefix}metadata`}
-        value={formatMetadataInput(deal?.metadata)}
-      />
-      <input
-        type="hidden"
-        name={`${prefix}type`}
-        value={selectedBackendDealType}
-      />
-      <input
-        type="hidden"
-        name={`${prefix}selection_expires_minutes`}
-        value={DEFAULT_SELECTION_EXPIRES_MINUTES}
-      />
-      <input
-        type="hidden"
-        name={`${prefix}reward_track_target`}
-        value={deal?.reward_track_target ?? DEFAULT_REWARD_TRACK_TARGET}
-      />
-      <input
-        type="hidden"
-        name={`${prefix}priority`}
-        value={deal?.priority ?? ""}
-      />
-      {deal?.id ? (
-        <>
-          <input
-            type="hidden"
-            name={`${prefix}original_customer_description`}
-            value={deal.customer_description ?? ""}
-          />
-          <input
-            type="hidden"
-            name={`${prefix}original_staff_instructions`}
-            value={deal.staff_instructions ?? ""}
-          />
-          <input
-            type="hidden"
-            name={`${prefix}original_terms`}
-            value={deal.terms ?? ""}
-          />
-          <input
-            type="hidden"
-            name={`${prefix}original_reward_item`}
-            value={deal.reward_item ?? ""}
-          />
-          <input
-            type="hidden"
-            name={`${prefix}customer_description_dirty`}
-            value={customerDescriptionDirty ? "true" : "false"}
-          />
-          <input
-            type="hidden"
-            name={`${prefix}staff_instructions_dirty`}
-            value={staffInstructionsDirty ? "true" : "false"}
-          />
-          <input
-            type="hidden"
-            name={`${prefix}terms_dirty`}
-            value={termsDirty ? "true" : "false"}
-          />
-          <input
-            type="hidden"
-            name={`${prefix}reward_item_dirty`}
-            value={rewardItemDirty ? "true" : "false"}
-          />
-        </>
-      ) : null}
-      <FormSection
-        title="Basics"
-        compact
-        required="subtle"
-      >
-        <FieldGrid compact>
-          <SelectField
-            label="Deal type"
-            name={`${prefix}deal_concept`}
-            value={selectedDealType}
-            options={withCurrentOption(
-              dealUiTypeOptions,
-              deal ? dealUiTypeForDeal(deal) : selectedDealType,
-            )}
-            onChange={handleDealTypeChange}
-            required={useBrowserValidation}
-          />
-          <SelectField
-            label="Reward/effect type"
-            name={`${prefix}discount_type`}
-            value={selectedDiscountType}
-            options={withCurrentOption(
-              config.discountOptions,
-              normalizeDiscountTypeForUi(
-                selectedBackendDealType,
-                deal?.discount_type,
-              ),
-            )}
-            onChange={handleDiscountTypeChange}
-            required={useBrowserValidation}
-          />
-          <SelectField
-            label="Audience"
-            name={`${prefix}audience`}
-            value={selectedAudience}
-            options={audienceOptions}
-            onChange={(audience) => {
-              setSelectedAudience(audience)
-              onDraftMetaChange?.({ audience })
-            }}
-            required
-          />
-          <CheckboxField
-            label="Active"
-            name={`${prefix}active`}
-            checked={active}
-            onChange={(checked) => {
-              setActive(checked)
-              onDraftActiveChange?.(checked)
-            }}
-          />
-        </FieldGrid>
-        <DealTypeDescription
-          explanation={config.explanation}
-          typeLabel={selectedDealTypeLabel}
-        />
-        {dealDropSoldOut ? (
-          <WarningNote>
-            This Deal Drop is sold out and users cannot redeem it.
-          </WarningNote>
-        ) : null}
-        <input
-          type="hidden"
-          name={`${prefix}benefit_category`}
-          value={benefitCategory}
-        />
-        <input
-          type="hidden"
-          name={`${prefix}activation_required`}
-          value={activationRequired ? "true" : "false"}
-        />
-      </FormSection>
-
-      {hasRewardDetails ? (
-        <FormSection
-          title="Reward details"
-          compact
-          required={rewardDetailsRequired ? "subtle" : undefined}
-        >
-          <FieldGrid compact>
-            {config.visibleFields.has("challengeName") ? (
-              <TextField
-                label="Challenge name"
-                name={`${prefix}challenge_name`}
-                placeholder="3 visits this week"
-                value={challengeName}
-                onChange={(value) => {
-                  setChallengeName(value)
-                  onDraftTitleChange?.(
-                    value.trim() ||
-                      formatDealDisplayName({
-                        type: selectedDealType,
-                        discountType: selectedDiscountType,
-                        discountValue: parseOptionalNumberInput(discountValue),
-                        rewardItem,
-                        benefitCount: parseOptionalNumberInput(benefitCount),
-                      }),
-                  )
-                }}
-                hint={dealFieldHelp.challengeName}
-                required={
-                  useBrowserValidation &&
-                  config.requiredFields.has("challengeName")
-                }
-                warning={validationMessages.challengeName}
-              />
-            ) : null}
-            {config.visibleFields.has("durationConfig") ? (
-              <>
-                <TextField
-                  label="Duration value"
-                  name={`${prefix}duration_value`}
-                  type="number"
-                  min={1}
-                  value={durationValue}
-                  onChange={setDurationValue}
-                  hint={dealFieldHelp.durationValue}
-                  required={
-                    useBrowserValidation &&
-                    config.requiredFields.has("durationConfig")
-                  }
-                  warning={validationMessages.durationValue}
-                />
-                <SelectField
-                  label="Duration unit"
-                  name={`${prefix}duration_unit`}
-                  value={durationUnit}
-                  options={durationUnitOptions}
-                  onChange={setDurationUnit}
-                  required={
-                    useBrowserValidation &&
-                    config.requiredFields.has("durationConfig")
-                  }
-                />
-              </>
-            ) : null}
-            {config.visibleFields.has("discountValue") ? (
-              <TextField
-                label={config.valueLabels.discountValueLabel}
-                name={`${prefix}discount_value`}
-                type="number"
-                step="any"
-                min={0.01}
-                max={selectedDiscountType === "percent" ? 100 : undefined}
-                placeholder={config.valueLabels.discountValuePlaceholder}
-                prefixText={config.valueLabels.discountValuePrefix}
-                suffixText={config.valueLabels.discountValueSuffix}
-                value={discountValue}
-                onChange={(value) => {
-                  setDiscountValue(value)
-                  emitDraftTitle({ discountValueText: value })
-                }}
-                hint={config.valueLabels.discountValueHint}
-                required={
-                  useBrowserValidation &&
-                  config.requiredFields.has("discountValue")
-                }
-                warning={validationMessages.discountValue}
-              />
-            ) : null}
-            {config.visibleFields.has("rewardItem") ? (
-              <TextField
-                label={selectedDiscountType === "2for1" ? "Item name" : "Free item name"}
-                name={`${prefix}reward_item`}
-                placeholder="Free drink"
-                value={rewardItem}
-                onChange={(value) => {
-                  setRewardItemDirty(true)
-                  setRewardItem(value)
-                  emitDraftTitle({ rewardItemText: value })
-                }}
-                hint={
-                  selectedDiscountType === "2for1"
-                    ? "Example: Burger, coffee, or main course."
-                    : "Example: Free drink."
-                }
-                required={
-                  useBrowserValidation &&
-                  config.requiredFields.has("rewardItem")
-                }
-                warning={validationMessages.rewardItem}
-              />
-            ) : null}
-            {config.visibleFields.has("benefitCount") ? (
-              <TextField
-                label="Number of bonus stamps"
-                name={`${prefix}benefit_count`}
-                type="number"
-                min={1}
-                placeholder="1"
-                value={benefitCount}
-                onChange={(value) => {
-                  setBenefitCount(value)
-                  emitDraftTitle({ benefitCountText: value })
-                }}
-                hint="Example: 1 adds one extra stamp."
-                required={
-                  useBrowserValidation &&
-                  config.requiredFields.has("benefitCount")
-                }
-                warning={validationMessages.benefitCount}
-              />
-            ) : null}
-            {config.visibleFields.has("estimatedSavings") ? (
-              <TextField
-                label="Estimated savings (€)"
-                name={`${prefix}estimated_savings`}
-                type="number"
-                step="any"
-                min={0}
-                value={estimatedSavings}
-                onChange={setEstimatedSavings}
-                hint="Used for savings stats and animations."
-                recommended={isLimitedDrop}
-              />
-            ) : null}
-            {config.visibleFields.has("happyHour") ? (
-              <>
-                <TextField
-                  label="Happy hour start"
-                  name={`${prefix}happy_hour_start`}
-                  type="time"
-                  value={happyHourStart}
-                  onChange={setHappyHourStart}
-                  hint="Daily start time."
-                  required={
-                    useBrowserValidation &&
-                    config.requiredFields.has("happyHour")
-                  }
-                  warning={validationMessages.happyHourStart}
-                />
-                <TextField
-                  label="Happy hour end"
-                  name={`${prefix}happy_hour_end`}
-                  type="time"
-                  value={happyHourEnd}
-                  onChange={setHappyHourEnd}
-                  hint="Daily end time."
-                  required={
-                    useBrowserValidation &&
-                    config.requiredFields.has("happyHour")
-                  }
-                  warning={validationMessages.happyHourEnd}
-                />
-                <WeekdayChipField
-                  label="Happy Hour weekdays"
-                  name={`${prefix}valid_weekdays`}
-                  defaultValues={deal?.valid_weekdays}
-                  hint={dealFieldHelp.happyHourWeekdays}
-                />
-              </>
-            ) : null}
-            {config.visibleFields.has("triggerValue") ? (
-              <TextField
-                label="Trigger value"
-                name={`${prefix}trigger_value`}
-                type="number"
-                min={1}
-                value={triggerValue}
-                onChange={setTriggerValue}
-                hint="Example: 3 for a 3-day streak."
-                required={
-                  useBrowserValidation &&
-                  config.requiredFields.has("triggerValue")
-                }
-                warning={validationMessages.triggerValue}
-              />
-            ) : null}
-            {config.visibleFields.has("expiryDays") ? (
-              <TextField
-                label="Expiry days"
-                name={`${prefix}expiry_days`}
-                type="number"
-                min={0}
-                value={expiryDays}
-                onChange={setExpiryDays}
-                hint="Optional expiry after reward is earned."
-              />
-            ) : null}
-            {config.visibleFields.has("limitedWindow") ? (
-              <>
-                <TextField
-                  label="Valid from"
-                  name={`${prefix}starts_at`}
-                  type="datetime-local"
-                  value={startsAt}
-                  onChange={setStartsAt}
-                  hint={dealFieldHelp.validWindow}
-                />
-                <TextField
-                  label="Valid until"
-                  name={`${prefix}ends_at`}
-                  type="datetime-local"
-                  value={endsAt}
-                  onChange={setEndsAt}
-                  hint={dealFieldHelp.validWindow}
-                  warning={validationMessages.endsAt}
-                />
-              </>
-            ) : null}
-            {showsAllowFreeTrial ? (
-              <CheckboxField
-                label="Allow free user trial"
-                name={`${prefix}allow_free_trial`}
-                checked={allowFreeTrial}
-                onChange={setAllowFreeTrial}
-                hint="Free users can redeem this once using their global 2-for-1 trial."
-              />
-            ) : null}
-          </FieldGrid>
-        </FormSection>
-      ) : null}
-
-      {config.visibleFields.has("comebackCandidates") ? (
-        <ComebackCandidatesSection
-          prefix={prefix}
-          visits={visits}
-          inactivityValue={inactivityValue}
-          inactivityUnit={inactivityUnit}
-          minVisitCount={minVisitCount}
-          maxVisitCount={maxVisitCount}
-          onInactivityValueChange={setInactivityValue}
-          onInactivityUnitChange={setInactivityUnit}
-          onMinVisitCountChange={setMinVisitCount}
-          onMaxVisitCountChange={setMaxVisitCount}
-          required={
-            useBrowserValidation &&
-            config.requiredFields.has("comebackCandidates")
-          }
-          validationMessages={validationMessages}
-        />
-      ) : null}
-
-      {isLimitedDrop ? (
-        <FormSection title="Deal Drop inventory" compact required="subtle">
-          <FieldGrid compact>
-            <TextField
-              label="Stock total"
-              name={`${prefix}stock_total`}
-              type="number"
-              min={0}
-              value={dealDropStockTotal}
-              onChange={(value) => {
-                setDealDropStockTotal(value)
-                if (!stockRemainingEdited) setDealDropStockRemaining(value)
-              }}
-              required={useBrowserValidation}
-            />
-            <TextField
-              label="Stock remaining"
-              name={`${prefix}stock_remaining`}
-              type="number"
-              min={0}
-              value={dealDropStockRemaining}
-              onChange={(value) => {
-                setDealDropStockRemaining(value)
-                setStockRemainingEdited(true)
-              }}
-              required={useBrowserValidation}
-            />
-          </FieldGrid>
-          {dealDropSoldOut ? (
-            <p className="text-xs font-semibold text-amber-700">
-              This Deal Drop is currently sold out.
-            </p>
-          ) : null}
-        </FormSection>
-      ) : null}
-
-      <FormSection title="Customer and staff copy" compact>
-        <TextAreaField
-          label="Customer description"
-          name={`${prefix}customer_description`}
-          value={customerDescription}
-          onChange={(value) => {
-            setCustomerDescription(value)
-            setCustomerDescriptionDirty(true)
-          }}
-          showCharacterCount={false}
-        />
-        <TextAreaField
-          label="Staff instructions"
-          name={`${prefix}staff_instructions`}
-          value={staffInstructions}
-          onChange={(value) => {
-            setStaffInstructions(value)
-            setStaffInstructionsDirty(true)
-          }}
-          showCharacterCount={false}
-        />
-        <TextAreaField
-          label="Terms"
-          name={`${prefix}terms`}
-          value={terms}
-          onChange={(value) => {
-            setTerms(value)
-            setTermsDirty(true)
-          }}
-          showCharacterCount={false}
-        />
-      </FormSection>
-
-      {isLimitedDrop ? (
-        <FormSection title="Deal Drop card image" compact>
-          <p className="text-xs leading-5 text-zinc-500">
-            Upload a highlight image for the deal card (710×400px).
-          </p>
-          <MediaUploadField
-            key={`deal-drop-image-${deal?.id ?? "new"}`}
-            label="Deal Drop card image (710×400)"
-            fileName={`${prefix}deal_drop_image_file`}
-            existingName={`${prefix}existing_deal_drop_image_url`}
-            removeName={`${prefix}remove_deal_drop_image`}
-            currentUrl={
-              metadataString(metadataObject(deal?.metadata), "card_image_url") || undefined
-            }
-            spec={partnerMediaSpecs.dealDrop}
-          />
-        </FormSection>
-      ) : null}
-
-      {isLimitedDrop ? (
-        <DealDropPreviewCard
-          audience={selectedAudience}
-          discountType={selectedDiscountType}
-          discountValue={parseOptionalNumberInput(discountValue)}
-          endsAt={endsAt}
-          estimatedSavings={parseOptionalNumberInput(estimatedSavings)}
-          expiryDays={parseOptionalNumberInput(expiryDays)}
-          rewardItem={rewardItem}
-          rewardText={customerDescription}
-          soldOut={dealDropSoldOut}
-          stockRemaining={parseOptionalNumberInput(dealDropStockRemaining)}
-          stockTotal={parseOptionalNumberInput(dealDropStockTotal)}
-          trialEligible={allowFreeTrial}
-        />
-      ) : null}
-
-      <AdvancedSettingsSection>
-        <FieldGrid compact>
-          {!isLimitedDrop ? (
-            <>
-              <TextField
-                label="Valid from"
-                name={`${prefix}valid_from`}
-                type="datetime-local"
-                value={validFrom}
-                onChange={setValidFrom}
-                hint={dealFieldHelp.validWindow}
-              />
-              <TextField
-                label="Valid until"
-                name={`${prefix}valid_until`}
-                type="datetime-local"
-                value={validUntil}
-                onChange={setValidUntil}
-                hint={dealFieldHelp.validWindow}
-              />
-            </>
-          ) : null}
-          {!isWelcomeDeal ? (
-            <>
-              <TextField
-                label="Max redemptions global"
-                name={`${prefix}max_redemptions_global`}
-                type="number"
-                min={0}
-                defaultValue={deal?.max_redemptions_global}
-                hint={dealFieldHelp.maxRedemptionsGlobal}
-              />
-              <TextField
-                label="Max redemptions per user"
-                name={`${prefix}max_redemptions_per_user`}
-                type="number"
-                min={0}
-                defaultValue={deal?.max_redemptions_per_user}
-                hint={dealFieldHelp.maxRedemptionsPerUser}
-              />
-              <TextField
-                label="Cooldown hours"
-                name={`${prefix}cooldown_hours`}
-                type="number"
-                min={0}
-                defaultValue={deal?.cooldown_hours}
-                hint={dealFieldHelp.cooldownHours}
-              />
-            </>
-          ) : null}
-          <TextField
-            label="Minimum spend"
-            name={`${prefix}min_spend`}
-            type="number"
-            step="any"
-            min={0}
-            value={minSpend}
-            onChange={setMinSpend}
-            hint={dealFieldHelp.minSpend}
-            warning={validationMessages.minSpend}
-          />
-          <TextField
-            label="Max discount amount"
-            name={`${prefix}max_discount_amount`}
-            type="number"
-            step="any"
-            min={0}
-            defaultValue={deal?.max_discount_amount}
-            hint={dealFieldHelp.maxDiscountAmount}
-          />
-          <TextField
-            label="Timezone"
-            name={`${prefix}timezone`}
-            defaultValue={deal?.timezone ?? DEFAULT_TIMEZONE}
-            hint={dealFieldHelp.timezone}
-          />
-          {isLimitedDrop ? (
-            <WeekdayChipField
-              label="Valid weekdays"
-              name={`${prefix}valid_weekdays`}
-              defaultValues={deal?.valid_weekdays}
-              hint={dealFieldHelp.weekdays}
-            />
-          ) : !isHappyHour ? (
-            <MultiSelectField
-              label="Weekdays"
-              name={`${prefix}weekdays`}
-              defaultValues={deal?.weekdays}
-              options={withCurrentOptions(weekdayOptions, deal?.weekdays)}
-              hint={dealFieldHelp.weekdays}
-            />
-          ) : null}
-        </FieldGrid>
-      </AdvancedSettingsSection>
-    </div>
-  )
-}
-
-function DealDropPreviewCard({
-  audience,
-  discountType,
-  discountValue,
-  endsAt,
-  estimatedSavings,
-  expiryDays,
-  rewardItem,
-  rewardText,
-  soldOut,
-  stockRemaining,
-  stockTotal,
-  trialEligible,
-}: {
-  audience: string
-  discountType: string
-  discountValue: number | null
-  endsAt: string
-  estimatedSavings: number | null
-  expiryDays: number | null
-  rewardItem: string
-  rewardText: string
-  soldOut: boolean
-  stockRemaining: number | null
-  stockTotal: number | null
-  trialEligible: boolean
-}) {
-  const rewardTitle = formatDealDropRewardTitle(discountType, discountValue, rewardItem)
-  const description = rewardText.trim() || formatDealDropRewardText(discountType)
-  const stockState = formatDealDropStockState(stockTotal, stockRemaining, soldOut)
-  const countdownState = formatCountdownState(endsAt)
-  const expiryInfo = formatPreviewExpiryInfo(endsAt, expiryDays)
-  const audienceLabel = dealAudienceValueLabel(audience)
-  const accessLabel = formatPreviewAccessLabel(audience, trialEligible)
-
-  return (
-    <FormSection title="Live preview" defaultOpen={false} compact>
-      <div className="max-w-md rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
-        {soldOut ? (
-          <div className="mb-3">
-            <WarningNote>
-              This Deal Drop is sold out and users cannot redeem it.
-            </WarningNote>
-          </div>
-        ) : null}
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge>Deal Drop</Badge>
-          <Badge>{accessLabel ?? audienceLabel}</Badge>
-        </div>
-        <h4 className="mt-3 text-lg font-semibold tracking-normal text-zinc-950">
-          {rewardTitle}
-        </h4>
-        <p className="mt-1 text-sm leading-6 text-zinc-600">{description}</p>
-        <div className="mt-4 grid gap-2 text-sm text-zinc-700 sm:grid-cols-2">
-          <Info label="Stock" value={stockState} />
-          <Info label="Countdown" value={countdownState} />
-          <Info
-            label="Estimated savings"
-            value={formatSavingsPreview(discountType, estimatedSavings)}
-          />
-          <Info label="Expiry" value={expiryInfo} />
-        </div>
-      </div>
-    </FormSection>
-  )
-}
-
-function MilestonesPanel({
-  partner,
-  embedded = false,
-}: {
-  partner: PartnerWithDeals
-  embedded?: boolean
-}) {
-  const [milestoneEditor, setMilestoneEditor] = useState<MilestoneEditorState | null>(null)
-  const partnerId = partner.id ?? ""
-  const milestoneStatus: SectionStatus = partner.reward_milestones.length
-    ? {
-        label: `${partner.reward_milestones.length} milestone${
-          partner.reward_milestones.length === 1 ? "" : "s"
-        }`,
-      }
-    : { label: "Required", tone: "required-subtle" }
-
-  const content = (
-    <div className="space-y-3">
-      {partner.reward_milestones.length ? (
-        <div className="space-y-3">
-          {partner.reward_milestones.map((milestone) => (
-            <MilestoneCard
-              key={milestone.id ?? `${milestone.partner_id}-${milestone.required_stamps}`}
-              milestone={milestone}
-              onEdit={() => setMilestoneEditor({ mode: "edit", milestone })}
-            />
-          ))}
-        </div>
-      ) : (
-        <EmptyState>No stamp-card milestones configured yet.</EmptyState>
-      )}
-      {partnerId ? (
-        <button
-          type="button"
-          onClick={() => setMilestoneEditor({ mode: "create" })}
-          className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
-        >
-          Add milestone
-        </button>
-      ) : null}
-      <MilestoneEditorDialog
-        editor={milestoneEditor}
-        onClose={() => setMilestoneEditor(null)}
-        partner={partner}
-      />
-    </div>
-  )
-
-  if (embedded) {
-    return (
-      <FormSection
-        title="Stamp-card milestones"
-        defaultOpen={partner.reward_milestones.length === 0}
-        status={milestoneStatus}
-      >
-        {content}
-      </FormSection>
-    )
-  }
-
-  return (
-    <EditorShell
-      title="Stamp-card milestones"
-      description="Manage stamp-card rewards separately from deals."
-      collapsible
-      defaultOpen={false}
-      status={milestoneStatus}
-    >
-      {content}
-    </EditorShell>
-  )
-}
-
-function MilestoneCard({
-  milestone,
-  onEdit,
-}: {
-  milestone: PartnerRewardMilestone
-  onEdit: () => void
-}) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={(event) => {
-        if (!(event.target as HTMLElement).closest("button, form, a, input")) onEdit()
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault()
-          onEdit()
-        }
-      }}
-      className="cursor-pointer rounded-lg border border-zinc-200 bg-white p-3 shadow-xs transition hover:border-teal-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-200"
-    >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 text-left">
-          <span className="block truncate text-sm font-semibold text-zinc-800">
-            {milestone.title || milestone.reward_item || "Milestone reward"}
-          </span>
-          <span className="mt-1 block text-xs text-zinc-500">
-            {formatOptionalNumber(milestone.required_stamps)} stamps -
-            {" "}
-            {labelForValue(rewardTypeOptions, milestone.reward_type)}
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {milestone.id ? <DeleteMilestoneForm milestoneId={milestone.id} /> : null}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function MilestoneEditorDialog({
-  editor,
-  onClose,
-  partner,
-}: {
-  editor: MilestoneEditorState | null
-  onClose: () => void
-  partner: PartnerWithDeals
-}) {
-  const dialogRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!editor) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose()
-    }
-    document.addEventListener("keydown", closeOnEscape)
-    return () => {
-      document.body.style.overflow = previousOverflow
-      document.removeEventListener("keydown", closeOnEscape)
-    }
-  }, [editor, onClose])
-
-  if (!editor || !partner.id) return null
-  const milestone = editor.mode === "edit" ? editor.milestone : undefined
-
-  return (
-    <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-[#061829]/65 p-0 backdrop-blur-sm sm:items-center sm:p-5"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-    >
-      <section
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="milestone-dialog-title"
-        className="flex max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-zinc-200 bg-white shadow-2xl sm:max-h-[90dvh] sm:rounded-2xl"
-      >
-        <header className="flex items-start justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
-          <div>
-            <h3 id="milestone-dialog-title" className="text-lg font-bold tracking-tight text-zinc-950">
-              {milestone ? "Edit stamp milestone" : "Add stamp milestone"}
-            </h3>
-            <p className="mt-0.5 text-xs text-zinc-500">
-              Set the stamp target and the reward customers receive.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {milestone?.id ? (
-              <DeleteMilestoneForm milestoneId={milestone.id} onDeleted={onClose} />
-            ) : null}
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="grid size-9 place-items-center rounded-full border border-zinc-300 bg-white text-lg text-zinc-600 hover:bg-zinc-100"
-            >
-              ×
-            </button>
-          </div>
-        </header>
-        <div className="overflow-y-auto p-3 sm:p-4">
-          <MilestoneForm
-            milestone={milestone}
-            partner={partner}
-            mode={milestone ? "edit" : "create"}
-            onSaved={onClose}
-          />
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function MilestoneForm({
-  milestone,
-  onSaved,
-  partner,
-  mode,
-}: {
-  milestone?: PartnerRewardMilestone
-  onSaved?: () => void
-  partner: PartnerWithDeals
-  mode: "create" | "edit"
-}) {
-  const [state, formAction] = useActionState(saveRewardMilestone, initialState)
-  const formRef = useActionSuccess(state, onSaved)
-  const [rewardType, setRewardType] = useState(
-    milestone?.reward_type ?? "item",
-  )
-  const showsRewardItem = rewardType === "item"
-  const showsDiscountValue = rewardType === "fixed" || rewardType === "percent"
-  const showsBenefitCount = rewardType === "bonus_stamp"
-  const requiredSectionsOpen = true
-
-  return (
-    <form ref={formRef} action={formAction} className="space-y-5">
-      <input type="hidden" name="id" value={milestone?.id ?? ""} />
-      <input type="hidden" name="partner_id" value={partner.id ?? ""} />
-      <input
-        type="hidden"
-        name="reward_track_target"
-        value={milestone?.reward_track_target ?? DEFAULT_REWARD_TRACK_TARGET}
-      />
-      <FormSection
-        title="Milestone Details"
-        defaultOpen={requiredSectionsOpen}
-        required
-      >
-        <FieldGrid>
-          <TextField
-            label="Required stamps"
-            name="required_stamps"
-            type="number"
-            defaultValue={milestone?.required_stamps}
-            min={1}
-            max={MAX_STAMP_CARD_STAMPS}
-            hint={`Must be between 1 and ${MAX_STAMP_CARD_STAMPS}.`}
-            required
-          />
-          <SelectField
-            label="Reward type"
-            name="reward_type"
-            value={rewardType}
-            options={withCurrentOption(rewardTypeOptions, milestone?.reward_type)}
-            onChange={setRewardType}
-            required
-          />
-          <input type="hidden" name="discount_type" value={rewardType} />
-          <TextField
-            label="Title"
-            name="title"
-            defaultValue={milestone?.title}
-          />
-          {showsRewardItem ? (
-            <TextField
-              label="Reward item"
-              name="reward_item"
-              defaultValue={milestone?.reward_item}
-              required
-            />
-          ) : null}
-          {showsDiscountValue ? (
-            <TextField
-              label="Discount value"
-              name="discount_value"
-              type="number"
-              step="any"
-              defaultValue={milestone?.discount_value}
-              required
-            />
-          ) : null}
-          {showsBenefitCount ? (
-            <TextField
-              label="Bonus stamp count"
-              name="discount_value"
-              type="number"
-              defaultValue={milestone?.discount_value ?? 1}
-            />
-          ) : null}
-          <TextField
-            label="Estimated savings"
-            name="estimated_savings"
-            type="number"
-            step="any"
-            defaultValue={milestone?.estimated_savings}
-          />
-          <SelectField
-            label="Audience"
-            name="audience"
-            defaultValue={milestone?.audience ?? DEFAULT_AUDIENCE}
-            options={withCurrentOption(
-              milestoneAudienceOptions,
-              milestone?.audience,
-            )}
-            required
-          />
-        </FieldGrid>
-        <CheckboxField
-          label="Active"
-          name="active"
-          defaultChecked={milestone?.active ?? true}
-        />
-      </FormSection>
-      <FormSection title="Copy and Instructions" defaultOpen={false}>
-        <InfoNote>
-          If customer description, staff instructions, or terms are left blank,
-          a generic version will be entered automatically.
-        </InfoNote>
-        <FieldGrid>
-          <TextAreaField
-            label="Customer description"
-            name="customer_description"
-            defaultValue={milestone?.customer_description}
-          />
-          <TextAreaField
-            label="Staff instructions"
-            name="staff_instructions"
-            defaultValue={milestone?.staff_instructions}
-            hint="Scanner/order staff need this to know what to give."
-          />
-          <TextAreaField
-            label="Terms"
-            name="terms"
-            defaultValue={milestone?.terms}
-          />
-        </FieldGrid>
-      </FormSection>
-      <ActionMessage state={state} />
-      <SubmitButton
-        label={mode === "create" ? "Add milestone" : "Save milestone"}
-        pendingLabel={
-          mode === "create" ? "Adding milestone..." : "Saving milestone..."
-        }
-      />
-    </form>
-  )
-}
-
-function PartnerStaffPanel({
-  embedded = false,
-  partner,
-  users,
-}: {
-  embedded?: boolean
-  partner: PartnerWithDeals
-  users: OwnerOption[]
-}) {
-  const [showNewStaff, setShowNewStaff] = useState(partner.staff.length === 0)
-
-  const content = (
-      <div className="space-y-4">
-        <div className="flex flex-col gap-3 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal-100 text-sm font-bold text-teal-800">
-              {partner.staff.length}
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-zinc-950">
-                Authorized staff
-              </p>
-              <p className="mt-0.5 text-xs leading-5 text-zinc-500">
-                Give selected users scanner or administrative access.
-              </p>
-            </div>
-          </div>
-          {partner.id && !showNewStaff ? (
-            <button
-              type="button"
-              onClick={() => setShowNewStaff(true)}
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-teal-700 px-3.5 text-sm font-semibold text-white transition hover:bg-teal-800"
-            >
-              <span aria-hidden="true" className="text-base leading-none">+</span>
-              Add staff access
-            </button>
-          ) : null}
-        </div>
-        {showNewStaff ? (
-          <div className="rounded-lg border border-teal-200 bg-teal-50/60 p-3 sm:p-4">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <h4 className="text-sm font-semibold text-zinc-950">Add staff access</h4>
-                <p className="mt-1 text-xs text-zinc-600">Choose a user and assign the appropriate role.</p>
-              </div>
-              {partner.staff.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setShowNewStaff(false)}
-                  className="h-8 rounded-md border border-zinc-300 bg-white px-2.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
-                >
-                  Cancel
-                </button>
-              ) : null}
-            </div>
-            <PartnerStaffForm
-              partner={partner}
-              users={users}
-              mode="create"
-              onSaved={() => setShowNewStaff(false)}
-            />
-          </div>
-        ) : null}
-        {partner.staff.length ? (
-          <div className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white">
-            {partner.staff.map((staff) => (
-              <PartnerStaffCard
-                key={staff.id ?? `${staff.partner_id}-${staff.user_id}`}
-                partner={partner}
-                staff={staff}
-                users={users}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyState>No scanner or admin access configured yet.</EmptyState>
-        )}
-      </div>
-  )
-
-  if (embedded) {
-    return content
-  }
-
-  return (
-    <EditorShell
-      title="Partner staff and scanners"
-      description="Authorize partner users as scanners or admins for this partner."
-      collapsible
-      defaultOpen={false}
-    >
-      {content}
-    </EditorShell>
-  )
-}
-
-function PartnerStaffCard({
-  partner,
-  staff,
-  users,
-}: {
-  partner: PartnerWithDeals
-  staff: PartnerStaff
-  users: OwnerOption[]
-}) {
-  const [editing, setEditing] = useState(false)
-  const staffName =
-    staff.user_name || staff.user_email || staff.user_id || "Staff user"
-
-  return (
-    <div className="p-3 sm:p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-zinc-100 text-xs font-bold uppercase text-zinc-700">
-            {staffName.slice(0, 2)}
-          </span>
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-zinc-950">
-              {staffName}
-            </h3>
-            <span className="mt-1 inline-flex rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-600">
-              {labelForValue(partnerStaffRoleOptions, staff.role)}
-            </span>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2 sm:justify-end">
-          <button
-            type="button"
-            onClick={() => setEditing((value) => !value)}
-            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
-          >
-            {editing ? "Close" : "Edit access"}
-          </button>
-          {staff.id ? <DeletePartnerStaffForm staffId={staff.id} /> : null}
-        </div>
-      </div>
-      {editing ? (
-        <div className="mt-4 border-t border-zinc-200 bg-zinc-50/70 px-3 pb-3 pt-4 sm:px-4 sm:pb-4">
-          <PartnerStaffForm
-            partner={partner}
-            staff={staff}
-            users={users}
-            mode="edit"
-            onSaved={() => setEditing(false)}
-          />
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function PartnerStaffForm({
-  onSaved,
-  partner,
-  staff,
-  users,
-  mode,
-}: {
-  onSaved?: () => void
-  partner: PartnerWithDeals
-  staff?: PartnerStaff
-  users: OwnerOption[]
-  mode: "create" | "edit"
-}) {
-  const [state, formAction] = useActionState(savePartnerStaff, initialState)
-  const formRef = useActionSuccess(state, onSaved)
-  const userOptions = users.map((user) => ({
-    value: user.id ?? user.uid ?? "",
-    label:
-      [user.display_name, user.email].filter(Boolean).join(" - ") ||
-      user.id ||
-      user.uid ||
-      "Unnamed user",
-  }))
-
-  return (
-    <form ref={formRef} action={formAction} className="space-y-5">
-      <input type="hidden" name="id" value={staff?.id ?? ""} />
-      <input type="hidden" name="partner_id" value={partner.id ?? ""} />
-      <FieldGrid>
-        {userOptions.length ? (
-          <SelectField
-            label="User"
-            name="user_id"
-            defaultValue={staff?.user_id}
-            options={withCurrentOption(userOptions, staff?.user_id)}
-            required
-          />
-        ) : (
-          <TextField
-            label="User ID"
-            name="user_id"
-            defaultValue={staff?.user_id}
-            required
-          />
-        )}
-        <SelectField
-          label="Role"
-          name="role"
-          defaultValue={staff?.role ?? "scanner"}
-          options={withCurrentOption(partnerStaffRoleOptions, staff?.role)}
-          required
-        />
-      </FieldGrid>
-      <ActionMessage state={state} />
-      <SubmitButton
-        label={mode === "create" ? "Add staff access" : "Save staff access"}
-        pendingLabel={mode === "create" ? "Adding access..." : "Saving access..."}
-      />
-    </form>
-  )
-}
-
-function OpeningHoursPanel({
-  partner,
-  embedded = false,
-}: {
-  partner: PartnerWithDeals
-  embedded?: boolean
-}) {
-  const partnerId = partner.id ?? ""
-  const hoursByWeekday = new Map(
-    partner.opening_hours.map((hour) => [hour.weekday, hour] as const),
-  )
-
-  const content = (
-    <div className="space-y-4">
-      <InfoNote>
-        Toggle closed days, adjust times, then save the weekly schedule once.
-      </InfoNote>
-      {partnerId ? (
-        <WeeklyOpeningHoursForm
-          holidays={partner.holidays}
-          hoursByWeekday={hoursByWeekday}
-          partnerId={partnerId}
-        />
-      ) : null}
-    </div>
-  )
-
-  if (embedded) {
-    return (
-      <FormSection title="Operating hours" required="subtle">
-        {content}
-      </FormSection>
-    )
-  }
-
-  return (
-    <EditorShell
-      title="Operating hours"
-      description="Set the full weekly schedule in one pass."
-      collapsible
-      defaultOpen={false}
-    >
-      {content}
-    </EditorShell>
-  )
-}
-
-function WeeklyOpeningHoursForm({
-  holidays,
-  hoursByWeekday,
-  partnerId,
-}: {
-  holidays: PartnerHoliday[]
-  hoursByWeekday: Map<number | null, PartnerOpeningHour>
-  partnerId: string
-}) {
-  const [state, formAction] = useActionState(
-    saveWeeklyOpeningHours,
-    initialState,
-  )
-  const formRef = useActionSuccess(state)
-
-  return (
-    <form ref={formRef} action={formAction} className="space-y-4">
-      <input type="hidden" name="partner_id" value={partnerId} />
-      <WeeklyHoursFields holidays={holidays} hoursByWeekday={hoursByWeekday} />
-      <ActionMessage state={state} />
-      <SubmitButton
-        label="Save operating hours"
-        pendingLabel="Saving operating hours..."
-      />
-    </form>
-  )
-}
-
-function WeeklyHoursFields({
-  holidays = [],
-  hoursByWeekday = new Map(),
-}: {
-  holidays?: PartnerHoliday[]
-  hoursByWeekday?: Map<number | null, PartnerOpeningHour>
-}) {
-  const [bulkOpenTime, setBulkOpenTime] = useState("09:00")
-  const [bulkCloseTime, setBulkCloseTime] = useState("18:00")
-  const [bulkApplied, setBulkApplied] = useState(false)
-  const [holidayEditor, setHolidayEditor] = useState<HolidayEditorState | null>(null)
-  const [holidayRows, setHolidayRows] = useState<HolidayDraft[]>(() =>
-    holidays
-      .map((holiday) => ({
-        date: normalizeHolidayDateInput(holiday.holiday_date),
-        id: crypto.randomUUID(),
-        label: holiday.label ?? "",
-        kind: holiday.is_closed === false ? "hours" as const : "closed" as const,
-        opensAt: formatTimeInput(holiday.opens_at),
-        closesAt: formatTimeInput(holiday.closes_at),
-        repeatsYearly: holiday.repeats_yearly ?? false,
-      }))
-      .filter((holiday) => holiday.date)
-      .sort((first, second) => first.date.localeCompare(second.date)),
-  )
-  const [weeklyHours, setWeeklyHours] = useState(() =>
-    Object.fromEntries(
-      openingWeekdayOptions.map((day) => {
-        const hour = hoursByWeekday.get(Number(day.value))
-        const isClosed = hour?.is_closed ?? false
-
-        return [
-          day.value,
-          {
-            closesAt: isClosed
-              ? ""
-              : formatTimeInput(hour?.closes_at) || "18:00",
-            isClosed,
-            label: hour?.label ?? "",
-            opensAt: isClosed
-              ? ""
-              : formatTimeInput(hour?.opens_at) || "09:00",
-          },
-        ]
-      }),
-    ),
-  )
-  const updateWeeklyHour = (
-    weekday: string,
-    update: Partial<(typeof weeklyHours)[string]>,
-  ) => {
-    setWeeklyHours((current) => ({
-      ...current,
-      [weekday]: {
-        ...current[weekday],
-        ...update,
-      },
-    }))
-  }
-  const applyBulkTime = () => {
-    setWeeklyHours((current) =>
-      Object.fromEntries(
-        Object.entries(current).map(([weekday, hour]) => [
-          weekday,
-          hour.isClosed
-            ? hour
-            : {
-                ...hour,
-                closesAt: bulkCloseTime,
-                opensAt: bulkOpenTime,
-              },
-        ]),
-      ),
-    )
-    setBulkApplied(true)
+  const [happyHourEnd, setHappyH…12993 tokens truncated…ed(true)
   }
   const saveHolidayDraft = (holiday: HolidayDraft) => {
     setHolidayRows((current) =>
@@ -8278,12 +6692,17 @@ function MenuForm({
 
 function DeleteMenuForm({ menuId }: { menuId: string }) {
   const [state, formAction] = useActionState(deleteMenu, initialState)
+  const { language } = useAdminLanguage()
 
   return (
     <form
       action={formAction}
       onSubmit={(event) => {
-        if (!window.confirm("Delete this menu and its categories/items?")) {
+        const message =
+          language === "de"
+            ? "Dieses Menü einschließlich aller Kategorien und Artikel löschen?"
+            : "Delete this menu and its categories/items?"
+        if (!window.confirm(message)) {
           event.preventDefault()
         }
       }}
@@ -8313,6 +6732,7 @@ function MenuImportDialog({
     updates: NonNullable<PartnerActionState["updatedAddons"]>,
   ) => void
 }) {
+  const { language } = useAdminLanguage()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [importMode, setImportMode] = useState<"append" | "replace" | "update_addons" | "">("")
@@ -8439,7 +6859,9 @@ function MenuImportDialog({
                 if (
                   importMode === "replace" &&
                   !window.confirm(
-                    `Replace the current menu? This will remove ${categoryCount} categories and ${itemCount} items after the new file is imported successfully.`,
+                    language === "de"
+                      ? `Aktuelles Menü ersetzen? Nach erfolgreichem Import werden ${categoryCount} Kategorien und ${itemCount} Artikel entfernt.`
+                      : `Replace the current menu? This will remove ${categoryCount} categories and ${itemCount} items after the new file is imported successfully.`,
                   )
                 ) {
                   event.preventDefault()
@@ -8866,12 +7288,18 @@ function DeleteMenuCategoryForm({
 }) {
   const [state, setState] = useState(initialState)
   const [isPending, startTransition] = useTransition()
+  const { language } = useAdminLanguage()
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault()
-        if (!window.confirm(`Delete ${categoryName || "this menu category"} and all of its items?`)) {
+        const name = categoryName || (language === "de" ? "diese Menükategorie" : "this menu category")
+        const message =
+          language === "de"
+            ? `${name} einschließlich aller Artikel löschen?`
+            : `Delete ${name} and all of its items?`
+        if (!window.confirm(message)) {
           return
         }
 
@@ -9340,12 +7768,16 @@ function DeleteMenuItemForm({
 }) {
   const [state, setState] = useState(initialState)
   const [isPending, startTransition] = useTransition()
+  const { language } = useAdminLanguage()
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault()
-        if (!window.confirm(`Delete ${itemName || "this menu item"}?`)) {
+        const name = itemName || (language === "de" ? "Diesen Menüartikel" : "this menu item")
+        const message =
+          language === "de" ? `${name} löschen?` : `Delete ${name}?`
+        if (!window.confirm(message)) {
           return
         }
 
@@ -9523,7 +7955,7 @@ function RedemptionHistoryPanel({
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <h3 className="text-base font-semibold text-zinc-950">
-                          Visit {shortId(visit.id)}
+                          {`Visit ${shortId(visit.id)}`}
                         </h3>
                         <p className="mt-1 text-sm text-zinc-600">
                           {visit.user_name ||
@@ -9603,9 +8035,9 @@ function RedemptionHistoryPanel({
                               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                                 <Info
                                   label="Category"
-                                  value={
-                                    benefit.benefit_category || "Not set"
-                                  }
+                                  value={formatBenefitCategory(
+                                    benefit.benefit_category,
+                                  )}
                                 />
                                 <Info
                                   label="Discount"
@@ -9630,7 +8062,9 @@ function RedemptionHistoryPanel({
                                 />
                                 <Info
                                   label="Source"
-                                  value={benefit.source_type || "Not set"}
+                                  value={formatBenefitSource(
+                                    benefit.source_type,
+                                  )}
                                 />
                               </div>
                             </div>
@@ -9876,6 +8310,7 @@ function DeletePartnerForm({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const confirmedSubmitRef = useRef(false)
+  const { language } = useAdminLanguage()
 
   useEffect(() => {
     if (!state.ok) {
@@ -9910,7 +8345,11 @@ function DeletePartnerForm({
       <ConfirmDialog
         open={confirmingDelete}
         title="Delete partner?"
-        description={`This will permanently delete ${partner.name || "this partner"} and all attached deals.`}
+        description={
+          language === "de"
+            ? `${partner.name || "Dieser Partner"} und alle zugehörigen Deals werden dauerhaft gelöscht.`
+            : `This will permanently delete ${partner.name || "this partner"} and all attached deals.`
+        }
         confirmLabel="Delete partner"
         tone="danger"
         onCancel={() => setConfirmingDelete(false)}
@@ -9940,6 +8379,7 @@ function DeleteDealForm({
   tone?: "danger" | "outline"
 }) {
   const [state, formAction] = useActionState(deleteDeal, initialState)
+  const { language } = useAdminLanguage()
 
   useEffect(() => {
     if (state.ok) onDeleted?.()
@@ -9949,7 +8389,11 @@ function DeleteDealForm({
     <form
       action={formAction}
       onSubmit={(event) => {
-        if (!window.confirm("Delete this deal?")) {
+        if (
+          !window.confirm(
+            language === "de" ? "Diesen Deal löschen?" : "Delete this deal?",
+          )
+        ) {
           event.preventDefault()
         }
       }}
@@ -9977,6 +8421,7 @@ function DeleteMilestoneForm({
     deleteRewardMilestone,
     initialState,
   )
+  const { language } = useAdminLanguage()
 
   useEffect(() => {
     if (state.ok) onDeleted?.()
@@ -9986,7 +8431,13 @@ function DeleteMilestoneForm({
     <form
       action={formAction}
       onSubmit={(event) => {
-        if (!window.confirm("Delete this milestone?")) {
+        if (
+          !window.confirm(
+            language === "de"
+              ? "Diese Prämienstufe löschen?"
+              : "Delete this milestone?",
+          )
+        ) {
           event.preventDefault()
         }
       }}
@@ -10005,12 +8456,19 @@ function DeleteMilestoneForm({
 
 function DeletePartnerStaffForm({ staffId }: { staffId: string }) {
   const [state, formAction] = useActionState(deletePartnerStaff, initialState)
+  const { language } = useAdminLanguage()
 
   return (
     <form
       action={formAction}
       onSubmit={(event) => {
-        if (!window.confirm("Remove this staff access?")) {
+        if (
+          !window.confirm(
+            language === "de"
+              ? "Diesen Mitarbeiterzugriff entfernen?"
+              : "Remove this staff access?",
+          )
+        ) {
           event.preventDefault()
         }
       }}
@@ -10462,8 +8920,11 @@ function MultiSelectField({
   const [selectedValues, setSelectedValues] = useState(defaultValues ?? [])
   const [open, setOpen] = useState(false)
   const detailsRef = useRef<HTMLDetailsElement>(null)
+  const labelsByValue = new Map(options.map((option) => [option.value, option.label]))
   const selectedLabels = selectedValues.length
-    ? selectedValues.join(", ")
+    ? selectedValues
+        .map((value) => labelsByValue.get(value) ?? value)
+        .join(", ")
     : "Select..."
 
   useEffect(() => {
@@ -12126,11 +10587,13 @@ function ResultLimitNote({
   visibleCount: number
 }) {
   const hiddenCount = Math.max(totalCount - visibleCount, 0)
+  const message = hiddenCount
+    ? `Showing ${visibleCount} of ${totalCount} ${itemLabel}; ${hiddenCount} more are loaded but hidden here.`
+    : `Showing ${visibleCount} of ${totalCount} ${itemLabel}.`
 
   return (
     <p className="text-xs font-medium text-zinc-500">
-      Showing {visibleCount} of {totalCount} {itemLabel}
-      {hiddenCount ? `; ${hiddenCount} more are loaded but hidden here.` : "."}
+      {message}
     </p>
   )
 }
@@ -13106,7 +11569,59 @@ function formatRewardValue(
     return label || "Not set"
   }
 
+  if (discountType === "percent") {
+    return `${discountValue}% off`
+  }
+
+  if (discountType === "fixed") {
+    return `€${discountValue} off`
+  }
+
+  if (discountType === "bonus_stamp") {
+    return `+${discountValue} bonus ${discountValue === 1 ? "stamp" : "stamps"}`
+  }
+
   return `${label || "Value"} ${discountValue}`
+}
+
+function formatBenefitCategory(value?: string | null) {
+  const labels: Record<string, string> = {
+    direct_selectable: "Selectable deal",
+    automatic_background: "Automatic benefit",
+    automatic_fallback: "Fallback benefit",
+    base_stamp: "Base stamp",
+  }
+
+  return formatTechnicalLabel(value, labels)
+}
+
+function formatBenefitSource(value?: string | null) {
+  const labels: Record<string, string> = {
+    base_stamp: "Base stamp",
+    selected_direct_deal: "Selected direct deal source",
+    fallback_deal: "Fallback deal",
+    reward_milestone: "Reward milestone",
+  }
+
+  return formatTechnicalLabel(value, labels)
+}
+
+function formatTechnicalLabel(
+  value: string | null | undefined,
+  labels: Record<string, string>,
+) {
+  if (!value) {
+    return "Not set"
+  }
+
+  return (
+    labels[value] ??
+    value
+      .split("_")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ")
+  )
 }
 
 function formatDateTime(value?: string | null) {

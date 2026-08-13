@@ -229,7 +229,7 @@ function canonicalUrlFor(partner: PartnerWithDeals, slug: string) {
     return explicit
   }
 
-  return `${siteOrigin()}/p/${encodeURIComponent(slug)}`
+  return `${siteOrigin()}/partner/${encodeURIComponent(slug)}`
 }
 
 function siteOrigin() {

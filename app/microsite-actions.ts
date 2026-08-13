@@ -180,7 +180,7 @@ export async function saveMicrositeVersion(
   revalidatePath(`/microsite-preview/${previewSlug}`)
 
   if (intent === "publish") {
-    revalidatePath(`/p/${previewSlug}`)
+    revalidatePath(`/partner/${previewSlug}`)
   }
 
   return {

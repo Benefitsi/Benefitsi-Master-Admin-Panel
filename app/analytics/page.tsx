@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "Business Control Center",
-  description: "Geprüfte Business-, Produkt-, Marketing- und Finanzkennzahlen.",
+  description: "Verified business, product, marketing, and finance metrics.",
 }
 
 export default async function AnalyticsPage({
@@ -42,7 +42,7 @@ export default async function AnalyticsPage({
     <AdminShell
       adminName={adminName}
       title="Business Control Center"
-      subtitle="Business, Produkt, Marketing und Profit in einer geprüften Sicht"
+      subtitle="Business, product, marketing, and profit in one verified view"
     >
       {analytics.state === "ready" ||
       analytics.state === "empty" ||
@@ -68,11 +68,11 @@ function AnalyticsConfigurationRequired() {
             Benefitsi Admin
           </p>
           <h1 className="mt-3 text-2xl font-black tracking-[-0.035em]">
-            Supabase-Konfiguration erforderlich
+            Supabase configuration required
           </h1>
           <p className="mt-3 text-sm leading-7 text-[#526170]">
-            Das Business Control Center lädt keine Daten, solange URL und
-            Publishable Key für diese Umgebung fehlen.
+            The Business Control Center cannot load data until the URL and
+            publishable key are configured for this environment.
           </p>
         </div>
       </section>

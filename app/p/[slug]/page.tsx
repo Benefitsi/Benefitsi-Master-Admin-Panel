@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation"
+import { notFound, permanentRedirect } from "next/navigation"
 import type { Metadata } from "next"
 import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
+import { canonicalPartnerSlug } from "@/lib/partner-paths"
 import { getPublishedMicrositePage } from "@/lib/public-microsite"
 import {
   createMicrositeMetadata,
@@ -41,6 +42,15 @@ export default async function PublishedPartnerMicrositePage({
   const { slug } = await params
   const supabase = createServiceRoleClient()
   const microsite = await getPublishedMicrositePage(supabase, slug)
+
+  if (!microsite) {
+    const webBaseUrl = (
+      process.env.NEXT_PUBLIC_BENEFITSI_WEB_URL?.trim() || "https://benefitsi.de"
+    ).replace(/\/+$/, "")
+    permanentRedirect(
+      `${webBaseUrl}/partner/${encodeURIComponent(canonicalPartnerSlug(slug))}`,
+    )
+  }
 
   if (!microsite) {
     notFound()

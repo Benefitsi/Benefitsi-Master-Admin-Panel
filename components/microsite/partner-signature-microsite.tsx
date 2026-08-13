@@ -2,7 +2,10 @@
 "use client"
 
 import { useMemo, useState, type CSSProperties, type ReactElement } from "react"
-import type { PartnerWithDeals } from "@/lib/admin-data"
+import type {
+  PartnerRewardMilestone,
+  PartnerWithDeals,
+} from "@/lib/admin-data"
 import type { MicrositeConfig, MicrositeElementStyle } from "@/lib/microsites"
 import {
   defaultMicrositeFaqItems,
@@ -21,6 +24,35 @@ type SignatureCard = {
   title: string
   text: string
   icon: string
+}
+
+type SignatureTheme = {
+  shell: string
+  heroSection: string
+  heroImageClass: string
+  heroOverlay: string
+  eyebrow: string
+  heroTitle: string
+  heroSlogan: string
+  heroCard: string
+  panel: string
+  mediaPanel: string
+  softCard: string
+  callout: string
+  sectionEyebrow: string
+  badge: string
+  bulletIcon: string
+  metaCard: string
+  footer: string
+  contactRow: string
+  ctaButton: string
+  secondaryButton: string
+  navLink: string
+  socialPill: string
+  header: string
+  mobileMenu: string
+  mobilePanel: string
+  mobileLink: string
 }
 
 const socialPlatforms = [
@@ -45,12 +77,20 @@ export function PartnerSignatureMicrosite({
   config: MicrositeConfig
 }) {
   const profile = signatureProfileForTemplate(config.template)
-  const theme = themeForTemplate(config.template)
+  const theme = themeForTemplate(
+    config.template,
+    config.appearance?.mode ?? "light",
+  )
   const heroImage = config.hero.backgroundImageUrl || partner.feature_card_url || "/upload-image.jpg"
   const cards = useMemo(() => signatureCardsForPartner(partner, config, profile), [partner, config, profile])
-  const callToActionHref =
+  const stampTarget = signatureStampTarget(partner)
+  const partnerVisitHref =
     preferredContactUrl(partner) ||
     (partner.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(partner.address)}` : "#kontakt")
+  const primaryActionHref = signaturePrimaryActionHref(
+    config.hero.primaryButtonLabel,
+    partnerVisitHref,
+  )
 
   return (
     <article
@@ -62,7 +102,12 @@ export function PartnerSignatureMicrosite({
         } as CSSProperties
       }
     >
-      <SignatureHeader partner={partner} config={config} theme={theme} />
+      <SignatureHeader
+        partner={partner}
+        config={config}
+        theme={theme}
+        hasStampCard={stampTarget > 0}
+      />
 
       <section className={`relative overflow-hidden px-4 pb-10 pt-6 @min-[640px]:px-7 @min-[1024px]:px-10 @min-[1024px]:pb-14 @min-[1024px]:pt-8 ${theme.heroSection}`}>
         <div className="absolute inset-0">
@@ -87,14 +132,14 @@ export function PartnerSignatureMicrosite({
             </p>
             <h1
               {...editable("hero.headline", "text", "Startbereich Überschrift")}
-              className={`mt-5 max-w-[14ch] text-[clamp(2.15rem,12vw,5.4rem)] font-black leading-[0.98] tracking-normal break-words ${theme.heroTitle}`}
+              className={`mt-5 max-w-[14ch] text-[clamp(2.15rem,11cqw,5.4rem)] font-black leading-[0.98] tracking-normal break-words ${theme.heroTitle}`}
               style={textStyleFor(config, "hero.headline")}
             >
               {config.hero.headline}
             </h1>
             <p
               {...editable("hero.slogan", "text", "Startbereich Slogan")}
-              className={`mt-4 max-w-2xl text-[clamp(1.05rem,2.3vw,1.5rem)] leading-relaxed break-words ${theme.heroSlogan}`}
+              className={`mt-4 max-w-2xl text-[clamp(1.05rem,2.3cqw,1.5rem)] leading-relaxed break-words ${theme.heroSlogan}`}
               style={textStyleFor(config, "hero.slogan")}
             >
               {config.hero.slogan}
@@ -103,7 +148,7 @@ export function PartnerSignatureMicrosite({
             <div className="mt-6 flex min-w-0 flex-wrap gap-3">
               <HeroAction
                 id="hero.primaryButtonLabel"
-                href={callToActionHref}
+                href={primaryActionHref}
                 label={config.hero.primaryButtonLabel}
                 primary
                 config={config}
@@ -190,7 +235,7 @@ export function PartnerSignatureMicrosite({
             </p>
             <h2
               {...editable("deals.topDealHeadline", "text", "Top-Deal Überschrift")}
-              className="mt-3 text-[clamp(1.7rem,9vw,3rem)] font-black leading-[1.04] tracking-normal break-words"
+              className="mt-3 text-[clamp(1.7rem,8cqw,3rem)] font-black leading-[1.04] tracking-normal break-words"
               style={textStyleFor(config, "deals.topDealHeadline")}
             >
               {config.deals.topDealHeadline}
@@ -232,6 +277,13 @@ export function PartnerSignatureMicrosite({
         </div>
       </section>
 
+      <SignatureStampSection
+        partner={partner}
+        config={config}
+        theme={theme}
+        stampTarget={stampTarget}
+      />
+
       <section id="speisekarte" className="scroll-mt-24 px-4 py-8 @min-[640px]:px-7 @min-[1024px]:px-10">
         <div className="mx-auto min-w-0 max-w-6xl">
           <div className="flex flex-col gap-4 @min-[1024px]:flex-row @min-[1024px]:items-end @min-[1024px]:justify-between">
@@ -245,7 +297,7 @@ export function PartnerSignatureMicrosite({
               </p>
               <h2
                 {...editable("content.menuHeadline", "text", "Speisekarte Überschrift")}
-                className="mt-3 text-[clamp(1.7rem,9vw,3rem)] font-black leading-[1.04] tracking-normal break-words"
+                className="mt-3 text-[clamp(1.7rem,8cqw,3rem)] font-black leading-[1.04] tracking-normal break-words"
                 style={textStyleFor(config, "content.menuHeadline")}
               >
                 {config.content.menuHeadline}
@@ -286,7 +338,7 @@ export function PartnerSignatureMicrosite({
             </p>
             <h2
               {...editable("content.aboutHeadline", "text", "Über uns Überschrift")}
-              className="mt-3 text-[clamp(1.7rem,9vw,3rem)] font-black leading-[1.04] tracking-normal break-words"
+              className="mt-3 text-[clamp(1.7rem,8cqw,3rem)] font-black leading-[1.04] tracking-normal break-words"
               style={textStyleFor(config, "content.aboutHeadline")}
             >
               {config.content.aboutHeadline}
@@ -369,7 +421,7 @@ export function PartnerSignatureMicrosite({
             </p>
             <h2
               {...editable("content.contactHeadline", "text", "Kontakt Überschrift")}
-              className="mt-3 text-[clamp(1.7rem,9vw,3rem)] font-black leading-[1.04] tracking-normal break-words"
+              className="mt-3 text-[clamp(1.7rem,8cqw,3rem)] font-black leading-[1.04] tracking-normal break-words"
               style={textStyleFor(config, "content.contactHeadline")}
             >
               {config.content.contactHeadline}
@@ -447,7 +499,7 @@ export function PartnerSignatureMicrosite({
           </p>
           <h2
             {...editable("content.faqHeadline", "text", "FAQ Überschrift")}
-            className="mt-3 text-[clamp(1.7rem,9vw,3rem)] font-black leading-[1.04] tracking-normal break-words"
+            className="mt-3 text-[clamp(1.7rem,8cqw,3rem)] font-black leading-[1.04] tracking-normal break-words"
             style={textStyleFor(config, "content.faqHeadline")}
           >
             {textValue(config, "content.faqHeadline", "Hilfreiche Antworten vor dem Besuch.")}
@@ -457,7 +509,7 @@ export function PartnerSignatureMicrosite({
             className="mt-4 max-w-2xl text-sm leading-7 break-words opacity-80"
             style={textStyleFor(config, "content.faqText")}
           >
-            {textValue(config, "content.faqText", "Use this section to answer the questions guests ask most often before booking or visiting.")}
+            {textValue(config, "content.faqText", "Hier findest du Antworten auf häufige Fragen vor deinem Besuch oder deiner Buchung.")}
           </p>
 
           <div className="mt-6 grid gap-3">
@@ -477,6 +529,15 @@ export function PartnerSignatureMicrosite({
       <footer className="px-4 pb-8 pt-4 @min-[640px]:px-7 @min-[1024px]:px-10">
         <div className={`mx-auto flex min-w-0 max-w-6xl flex-col gap-4 rounded-[1.25rem] px-4 py-5 @min-[640px]:flex-row @min-[640px]:items-center @min-[640px]:justify-between @min-[640px]:rounded-[1.5rem] @min-[640px]:px-5 ${theme.footer}`}>
           <div className="min-w-0">
+            <img
+              src={
+                config.appearance?.mode === "dark"
+                  ? "/benefitsi-logo-on-dark.svg"
+                  : "/benefitsi-logo-on-light.svg"
+              }
+              alt="Benefitsi"
+              className="mb-3 h-auto w-24 object-contain"
+            />
             <p className="text-sm font-black tracking-normal break-words">
               {partner.name || config.hero.headline}
             </p>
@@ -489,7 +550,7 @@ export function PartnerSignatureMicrosite({
             </p>
           </div>
           <a
-            href={callToActionHref}
+            href={partnerVisitHref}
             className={`inline-flex w-full min-w-0 items-center justify-center rounded-full px-5 py-3 text-center text-sm font-black transition @min-[640px]:w-auto ${theme.ctaButton}`}
           >
             Partner besuchen
@@ -504,10 +565,12 @@ function SignatureHeader({
   partner,
   config,
   theme,
+  hasStampCard,
 }: {
   partner: PartnerWithDeals
   config: MicrositeConfig
   theme: ReturnType<typeof themeForTemplate>
+  hasStampCard: boolean
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -550,7 +613,7 @@ function SignatureHeader({
           className="hidden min-w-0 items-center gap-2 @min-[1180px]:flex"
           style={navigationGroupStyleFor(config)}
         >
-          {config.navigation.links.map((link) => (
+          {signatureNavigationLinks(config, hasStampCard).map((link) => (
             <a
               key={link.anchor}
               {...editable(`navigation.${link.anchor}`, "text", `Navigation ${link.label}`)}
@@ -566,6 +629,9 @@ function SignatureHeader({
         <button
           type="button"
           onClick={() => setMenuOpen((current) => !current)}
+          aria-label={menuOpen ? "Navigation schließen" : "Navigation öffnen"}
+          aria-expanded={menuOpen}
+          aria-controls="signature-mobile-navigation"
           className={`grid size-10 shrink-0 place-items-center rounded-full shadow-sm @min-[1180px]:hidden ${theme.mobileMenu}`}
         >
           <Glyph name="menu" className="size-5" />
@@ -573,9 +639,12 @@ function SignatureHeader({
       </div>
 
       {menuOpen ? (
-        <div className={`px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.08)] @min-[640px]:px-5 @min-[1180px]:hidden ${theme.mobilePanel}`}>
+        <div
+          id="signature-mobile-navigation"
+          className={`px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.08)] @min-[640px]:px-5 @min-[1180px]:hidden ${theme.mobilePanel}`}
+        >
           <div className="grid gap-2">
-            {config.navigation.links.map((link) => (
+            {signatureNavigationLinks(config, hasStampCard).map((link) => (
               <a
                 key={link.anchor}
                 href={`#${link.anchor}`}
@@ -589,6 +658,149 @@ function SignatureHeader({
         </div>
       ) : null}
     </header>
+  )
+}
+
+function SignatureStampSection({
+  partner,
+  config,
+  theme,
+  stampTarget,
+}: {
+  partner: PartnerWithDeals
+  config: MicrositeConfig
+  theme: ReturnType<typeof themeForTemplate>
+  stampTarget: number
+}) {
+  if (stampTarget <= 0) {
+    return null
+  }
+
+  const milestones = partner.reward_milestones
+    .filter(
+      (milestone) =>
+        milestone.active !== false &&
+        typeof milestone.required_stamps === "number" &&
+        milestone.required_stamps > 0,
+    )
+    .sort(
+      (left, right) =>
+        (left.required_stamps ?? 0) - (right.required_stamps ?? 0),
+    )
+  const visibleStampCount = Math.min(stampTarget, 30)
+  const appUrl = appDownloadUrlForPartner(partner)
+
+  return (
+    <section
+      id="stempelkarte"
+      className="scroll-mt-24 px-4 py-8 @min-[640px]:px-7 @min-[1024px]:px-10"
+    >
+      <div
+        className={`mx-auto min-w-0 max-w-6xl rounded-[1.25rem] p-4 @min-[640px]:rounded-[1.8rem] @min-[640px]:p-6 @min-[1024px]:p-8 ${theme.panel}`}
+      >
+        <div className="grid min-w-0 gap-6 @min-[900px]:grid-cols-[minmax(0,.72fr)_minmax(0,1.28fr)] @min-[900px]:items-start">
+          <div className="min-w-0">
+            <p
+              {...editable("stamps.label", "text", "Stempelkarte Label")}
+              className={`text-xs font-black uppercase leading-5 tracking-[0.08em] @min-[640px]:tracking-[0.14em] ${theme.sectionEyebrow}`}
+              style={textStyleFor(config, "stamps.label")}
+            >
+              {config.stamps.label}
+            </p>
+            <h2
+              {...editable("stamps.headline", "text", "Stempelkarte Überschrift")}
+              className="mt-3 text-[clamp(1.7rem,8cqw,3rem)] font-black leading-[1.04] tracking-normal break-words"
+              style={textStyleFor(config, "stamps.headline")}
+            >
+              {config.stamps.headline}
+            </h2>
+            <p
+              {...editable("stamps.slogan", "text", "Stempelkarte Slogan")}
+              className="mt-4 text-sm leading-7 break-words opacity-80"
+              style={textStyleFor(config, "stamps.slogan")}
+            >
+              {config.stamps.slogan}
+            </p>
+            <a
+              href={appUrl}
+              className={`mt-5 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-center text-sm font-black transition @min-[640px]:w-auto ${theme.ctaButton}`}
+            >
+              Stempelkarte in der App öffnen
+            </a>
+          </div>
+
+          <div className="min-w-0">
+            <ol
+              aria-label={`Stempelkarte mit ${stampTarget} Stempeln`}
+              className="grid grid-cols-5 gap-2 @min-[640px]:grid-cols-10"
+            >
+              {Array.from({ length: visibleStampCount }, (_, index) => {
+                const stamp = index + 1
+                const isReward = milestones.some(
+                  (milestone) => milestone.required_stamps === stamp,
+                )
+
+                return (
+                  <li
+                    key={stamp}
+                    aria-label={
+                      isReward
+                        ? `${stamp}. Stempel: Belohnung`
+                        : `${stamp}. Stempel`
+                    }
+                    className={`grid aspect-square min-w-0 place-items-center rounded-full text-xs font-black ring-1 ring-inset ${
+                      isReward || stamp === stampTarget
+                        ? theme.bulletIcon
+                        : theme.softCard
+                    }`}
+                  >
+                    {isReward ? (
+                      <Glyph name="gift" className="size-4" />
+                    ) : (
+                      stamp
+                    )}
+                  </li>
+                )
+              })}
+            </ol>
+
+            {stampTarget > visibleStampCount ? (
+              <p className="mt-3 text-xs leading-5 opacity-70">
+                Die Karte umfasst insgesamt {stampTarget} Stempel.
+              </p>
+            ) : null}
+
+            {milestones.length > 0 ? (
+              <div className="mt-5 grid gap-3 @min-[640px]:grid-cols-2">
+                {milestones.map((milestone, index) => (
+                  <div
+                    key={milestone.id || `${milestone.required_stamps}-${index}`}
+                    className={`flex min-w-0 items-center gap-3 rounded-[1.15rem] p-3 ${theme.softCard}`}
+                  >
+                    <span
+                      className={`grid size-11 shrink-0 place-items-center rounded-2xl ${theme.badge}`}
+                    >
+                      <Glyph
+                        name={rewardIconForMilestone(milestone)}
+                        className="size-5"
+                      />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase tracking-[0.1em] opacity-65">
+                        {milestone.required_stamps} Stempel
+                      </p>
+                      <p className="mt-1 text-sm font-black leading-5 break-words">
+                        {rewardLabelForMilestone(milestone)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -624,7 +836,7 @@ function SignatureAppSection({
     <section id="app" className="scroll-mt-24 px-4 py-8 @min-[640px]:px-7 @min-[1024px]:px-10">
       <div className={`mx-auto min-w-0 max-w-6xl overflow-hidden rounded-[1.25rem] p-4 @min-[640px]:rounded-[1.8rem] @min-[640px]:p-5 @min-[1024px]:p-7 ${theme.panel}`}>
         <div className="grid min-w-0 gap-6 @min-[1024px]:grid-cols-[minmax(180px,.48fr)_minmax(0,1fr)_minmax(190px,.52fr)] @min-[1024px]:items-center">
-          <div className="relative isolate mx-auto w-[min(62vw,210px)] rounded-[2.45rem] bg-[#101114] p-2 shadow-[0_24px_54px_rgba(0,0,0,.22)]">
+          <div className="relative isolate mx-auto w-[min(62cqw,210px)] rounded-[2.45rem] bg-[#101114] p-2 shadow-[0_24px_54px_rgba(0,0,0,.22)]">
             <div className="pointer-events-none absolute left-1/2 top-2 z-20 h-5 w-20 -translate-x-1/2 rounded-b-2xl bg-[#101114]" />
             <div
               className="relative isolate aspect-[720/1600] overflow-hidden rounded-[1.95rem] bg-[#101114]"
@@ -658,7 +870,7 @@ function SignatureAppSection({
             </div>
             <h2
               {...editable("content.appHeadline", "text", "App-Banner Überschrift")}
-              className="mt-4 text-[clamp(1.7rem,8vw,3rem)] font-black leading-[1.04] tracking-normal break-words"
+              className="mt-4 text-[clamp(1.7rem,8cqw,3rem)] font-black leading-[1.04] tracking-normal break-words"
               style={textStyleFor(config, "content.appHeadline")}
             >
               {config.content.appHeadline}
@@ -1045,7 +1257,7 @@ function signatureCardsForPartner(
     id: `service-${index}`,
     title: item.label,
       text:
-        partner.category?.[index] ||
+        localizedPartnerCategory(partner.category?.[index]) ||
         partner.description ||
         (profile === "cinema"
         ? "Für wiederkehrende Besuche und starke Event-Momente gestaltet."
@@ -1056,6 +1268,104 @@ function signatureCardsForPartner(
   }))
 
   return [...menuCards, ...dealCards, ...serviceCards].slice(0, 6)
+}
+
+export function signaturePrimaryActionHref(label: string, partnerVisitHref: string) {
+  const normalizedLabel = label.trim().toLocaleLowerCase("de-DE")
+
+  if (/(vorteil|deal|angebot|belohn)/.test(normalizedLabel)) {
+    return "#deals"
+  }
+
+  if (/(speise|menü|menu|karte)/.test(normalizedLabel)) {
+    return "#speisekarte"
+  }
+
+  if (/(kontakt|termin|buch|reserv)/.test(normalizedLabel)) {
+    return partnerVisitHref || "#kontakt"
+  }
+
+  return "#deals"
+}
+
+export function localizedPartnerCategory(value?: string) {
+  if (!value) return ""
+
+  const normalized = value.trim().toLocaleLowerCase("de-DE")
+  const labels: Record<string, string> = {
+    doner: "Döner",
+    "doner kebab": "Döner",
+    kebab: "Döner & Kebab",
+    "food & drink": "Gastronomie",
+    restaurant: "Restaurant",
+    beauty: "Beauty",
+    wellness: "Wellness",
+    cinema: "Kino",
+    entertainment: "Unterhaltung",
+  }
+
+  return labels[normalized] || value
+}
+
+export function signatureStampTarget(partner: PartnerWithDeals) {
+  return Math.max(
+    partner.stamp_target ?? 0,
+    ...partner.reward_milestones
+      .filter((milestone) => milestone.active !== false)
+      .map((milestone) => milestone.required_stamps ?? 0),
+  )
+}
+
+function signatureNavigationLinks(
+  config: MicrositeConfig,
+  hasStampCard: boolean,
+) {
+  return config.navigation.links.filter(
+    (link) => link.anchor !== "stempelkarte" || hasStampCard,
+  )
+}
+
+function rewardLabelForMilestone(milestone: PartnerRewardMilestone) {
+  const explicit =
+    milestone.title ||
+    milestone.reward_item ||
+    milestone.customer_description
+
+  if (explicit) {
+    return explicit
+  }
+
+  if (
+    milestone.reward_type === "discount" &&
+    typeof milestone.discount_value === "number"
+  ) {
+    return milestone.discount_type === "fixed"
+      ? `${milestone.discount_value.toLocaleString("de-DE")} € Rabatt`
+      : `${milestone.discount_value.toLocaleString("de-DE")} % Rabatt`
+  }
+
+  if (
+    milestone.reward_type === "bonus_stamp" &&
+    typeof milestone.discount_value === "number"
+  ) {
+    return `+${milestone.discount_value.toLocaleString("de-DE")} Bonusstempel`
+  }
+
+  return "Belohnung"
+}
+
+function rewardIconForMilestone(milestone: PartnerRewardMilestone) {
+  const label = rewardLabelForMilestone(milestone).toLocaleLowerCase("de-DE")
+
+  if (/(rabatt|%|€|euro)/.test(label)) {
+    return "percent"
+  }
+
+  if (/(bonusstempel|bonus stamp|stempelbonus)/.test(label)) {
+    return "star"
+  }
+
+  return "gift"
 }
 
 function signatureProfileForTemplate(template: MicrositeConfig["template"]): SignatureProfile {
@@ -1088,8 +1398,16 @@ function socialVisible(
   return Boolean(partnerSocialUrl(partner, platform))
 }
 
-function themeForTemplate(template: MicrositeConfig["template"]) {
-  if (template === "atelier-noir") {
+export function themeForTemplate(
+  template: MicrositeConfig["template"],
+  mode: MicrositeConfig["appearance"]["mode"] = "light",
+): SignatureTheme {
+  const isDark = mode === "dark"
+
+  if (
+    isDark &&
+    (template === "atelier-noir" || template === "salon-editorial")
+  ) {
     return {
       shell: "bg-[radial-gradient(circle_at_78%_0%,rgba(244,114,182,.16),transparent_30%),radial-gradient(circle_at_10%_10%,rgba(251,191,36,.12),transparent_28%),linear-gradient(135deg,#120e13_0%,#1a1118_48%,#0d0b10_100%)] text-[#fffaf4] shadow-none",
       heroSection: "bg-transparent",
@@ -1120,7 +1438,7 @@ function themeForTemplate(template: MicrositeConfig["template"]) {
     }
   }
 
-  if (template === "festival-neon") {
+  if (isDark && template === "festival-neon") {
     return {
       shell: "bg-[radial-gradient(circle_at_15%_0%,rgba(34,211,238,.22),transparent_30%),radial-gradient(circle_at_88%_8%,rgba(236,72,153,.2),transparent_30%),linear-gradient(135deg,#05081a_0%,#09112a_48%,#060617_100%)] text-white shadow-none",
       heroSection: "bg-transparent",
@@ -1151,7 +1469,10 @@ function themeForTemplate(template: MicrositeConfig["template"]) {
     }
   }
 
-  if (template === "salon-editorial") {
+  if (
+    template === "salon-editorial" ||
+    (!isDark && template === "atelier-noir")
+  ) {
     return {
       shell: "bg-[radial-gradient(circle_at_90%_0%,rgba(251,113,133,.2),transparent_32%),radial-gradient(circle_at_5%_8%,rgba(180,83,9,.12),transparent_30%),#f7f0ea] text-[#221b18] shadow-[0_30px_90px_rgba(60,37,22,.12)]",
       heroSection: "bg-transparent",
@@ -1182,7 +1503,7 @@ function themeForTemplate(template: MicrositeConfig["template"]) {
     }
   }
 
-  if (template === "wellness-serene") {
+  if (!isDark && template === "wellness-serene") {
     return {
       shell: "bg-[radial-gradient(circle_at_90%_0%,rgba(147,197,253,.2),transparent_32%),radial-gradient(circle_at_8%_0%,rgba(15,118,110,.13),transparent_30%),#eef6f2] text-[#102824] shadow-[0_30px_90px_rgba(10,44,40,.12)]",
       heroSection: "bg-transparent",
@@ -1210,6 +1531,101 @@ function themeForTemplate(template: MicrositeConfig["template"]) {
       mobileMenu: "bg-white/75 text-[#0f2522] ring-1 ring-inset ring-white/70",
       mobilePanel: "bg-[#eef6f2]/95",
       mobileLink: "bg-white/80 text-[#0f2522]",
+    }
+  }
+
+  if (isDark && template === "wellness-serene") {
+    return {
+      ...themeForTemplate("festival-neon", "dark"),
+      shell: "bg-[radial-gradient(circle_at_88%_0%,rgba(45,212,191,.16),transparent_32%),radial-gradient(circle_at_8%_0%,rgba(147,197,253,.12),transparent_30%),linear-gradient(135deg,#081714_0%,#0d211d_50%,#071310_100%)] text-[#f0fdfa] shadow-none",
+      heroImageClass: "opacity-20 saturate-[.85] @min-[1024px]:opacity-34",
+      heroOverlay: "bg-[linear-gradient(90deg,rgba(8,23,20,.99)_0%,rgba(8,23,20,.94)_38%,rgba(8,23,20,.5)_70%,rgba(8,23,20,.16)_100%)]",
+      eyebrow: "bg-teal-200 text-[#08211d] ring-1 ring-inset ring-white/[.16]",
+      heroTitle: "text-[#f0fdfa]",
+      heroSlogan: "text-[#ccfbf1]",
+      heroCard: "bg-[#102b25] text-[#f0fdfa] shadow-none ring-1 ring-inset ring-teal-100/[.14]",
+      panel: "bg-[#0d241f] text-[#f0fdfa] shadow-none ring-1 ring-inset ring-teal-100/[.13]",
+      mediaPanel: "bg-[#15332d] shadow-none ring-1 ring-inset ring-teal-100/[.12]",
+      softCard: "bg-[#14312b] text-[#f0fdfa] shadow-none ring-1 ring-inset ring-teal-100/[.10]",
+      callout: "bg-[#99f6e4] text-[#08211d] shadow-none",
+      sectionEyebrow: "text-teal-200",
+      badge: "bg-teal-200/[.12] text-teal-100",
+      bulletIcon: "bg-teal-200 text-[#08211d]",
+      metaCard: "bg-[#14312b] shadow-none ring-1 ring-inset ring-teal-100/[.10]",
+      footer: "bg-[#0d241f] shadow-none ring-1 ring-inset ring-teal-100/[.13]",
+      contactRow: "bg-[#14312b] shadow-none ring-1 ring-inset ring-teal-100/[.10]",
+      ctaButton: "bg-teal-200 text-[#08211d] hover:bg-teal-100",
+      secondaryButton: "bg-white/[.07] text-[#f0fdfa] ring-1 ring-inset ring-teal-100/[.12] hover:bg-white/[.11]",
+      navLink: "bg-white/[.07] text-teal-50 hover:bg-white/[.11]",
+      socialPill: "bg-white/[.07] text-teal-50 hover:bg-white/[.11]",
+      header: "bg-[#081714]/90 text-[#f0fdfa] shadow-[0_1px_0_rgba(153,246,228,.13)]",
+      mobileMenu: "bg-white/[.07] text-teal-50 ring-1 ring-inset ring-teal-100/[.12]",
+      mobilePanel: "bg-[#081714]/95",
+      mobileLink: "bg-white/[.07] text-teal-50",
+    }
+  }
+
+  if (!isDark) {
+    const lightBase = themeForTemplate("salon-editorial", "light")
+
+    if (template === "festival-neon") {
+      return {
+        ...lightBase,
+        shell: "bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,.17),transparent_30%),radial-gradient(circle_at_88%_4%,rgba(244,114,182,.13),transparent_30%),#f4f8fb] text-[#102033] shadow-[0_30px_90px_rgba(14,52,79,.11)]",
+        heroImageClass: "opacity-34 saturate-[1.12] @min-[1024px]:opacity-48",
+        heroOverlay: "bg-[linear-gradient(90deg,rgba(244,248,251,.98)_0%,rgba(244,248,251,.9)_38%,rgba(244,248,251,.42)_70%,rgba(244,248,251,.12)_100%)]",
+        eyebrow: "bg-[#0e7490] text-white ring-1 ring-inset ring-white/20",
+        heroTitle: "text-[#102033]",
+        heroSlogan: "text-[#38516a]",
+        heroCard: "bg-white/76 text-[#102033] shadow-[0_24px_70px_rgba(14,52,79,.12)] ring-1 ring-inset ring-white/75",
+        panel: "bg-white/72 text-[#102033] shadow-[0_20px_58px_rgba(14,52,79,.08)] ring-1 ring-inset ring-white/75",
+        mediaPanel: "bg-[#d9e9ef] shadow-[0_18px_50px_rgba(14,52,79,.1)] ring-1 ring-inset ring-white/65",
+        softCard: "bg-[#e8f2f6]/90 text-[#102033] shadow-[0_12px_32px_rgba(14,52,79,.06)] ring-1 ring-inset ring-white/65",
+        callout: "bg-[#102033] text-white shadow-[0_16px_42px_rgba(16,32,51,.16)]",
+        sectionEyebrow: "text-[#0e7490]",
+        badge: "bg-cyan-100 text-[#0e7490]",
+        bulletIcon: "bg-[#0e7490] text-white",
+        metaCard: "bg-white/72 shadow-[0_12px_30px_rgba(14,52,79,.07)] ring-1 ring-inset ring-white/72",
+        footer: "bg-white/72 shadow-[0_16px_44px_rgba(14,52,79,.08)] ring-1 ring-inset ring-white/72",
+        contactRow: "bg-white/62 shadow-sm ring-1 ring-inset ring-white/68",
+        ctaButton: "bg-[#102033] text-white hover:bg-[#1b3854]",
+        secondaryButton: "bg-white/82 text-[#102033] ring-1 ring-inset ring-[#102033]/8 hover:bg-white",
+        navLink: "bg-white/76 text-[#102033] hover:bg-white",
+        socialPill: "bg-white/76 text-[#102033] hover:bg-white",
+        header: "bg-[#f4f8fb]/88 text-[#102033] shadow-[0_1px_0_rgba(255,255,255,.72)]",
+        mobileMenu: "bg-white/78 text-[#102033] ring-1 ring-inset ring-white/72",
+        mobilePanel: "bg-[#f4f8fb]/96",
+        mobileLink: "bg-white/84 text-[#102033]",
+      }
+    }
+
+    return {
+      ...lightBase,
+      shell: "bg-[radial-gradient(circle_at_82%_0%,rgba(225,29,72,.13),transparent_30%),radial-gradient(circle_at_8%_4%,rgba(250,204,21,.1),transparent_28%),#f7f5f2] text-[#211c1b] shadow-[0_30px_90px_rgba(47,30,28,.11)]",
+      heroImageClass: "opacity-36 saturate-[.96] @min-[1024px]:opacity-52",
+      heroOverlay: "bg-[linear-gradient(90deg,rgba(247,245,242,.98)_0%,rgba(247,245,242,.9)_38%,rgba(247,245,242,.4)_70%,rgba(247,245,242,.12)_100%)]",
+      eyebrow: "bg-[#9f1239] text-white ring-1 ring-inset ring-white/20",
+      heroTitle: "text-[#211c1b]",
+      heroSlogan: "text-[#584845]",
+      heroCard: "bg-white/76 text-[#211c1b] shadow-[0_24px_70px_rgba(47,30,28,.12)] ring-1 ring-inset ring-white/75",
+      panel: "bg-white/72 text-[#211c1b] shadow-[0_20px_58px_rgba(47,30,28,.08)] ring-1 ring-inset ring-white/74",
+      mediaPanel: "bg-[#e4d8d3] shadow-[0_18px_50px_rgba(47,30,28,.1)] ring-1 ring-inset ring-white/64",
+      softCard: "bg-[#f0e8e4]/90 text-[#211c1b] shadow-[0_12px_32px_rgba(47,30,28,.06)] ring-1 ring-inset ring-white/64",
+      callout: "bg-[#211c1b] text-white shadow-[0_16px_42px_rgba(33,28,27,.16)]",
+      sectionEyebrow: "text-[#9f1239]",
+      badge: "bg-rose-100 text-[#9f1239]",
+      bulletIcon: "bg-[#9f1239] text-white",
+      metaCard: "bg-white/72 shadow-[0_12px_30px_rgba(47,30,28,.07)] ring-1 ring-inset ring-white/72",
+      footer: "bg-white/72 shadow-[0_16px_44px_rgba(47,30,28,.08)] ring-1 ring-inset ring-white/72",
+      contactRow: "bg-white/62 shadow-sm ring-1 ring-inset ring-white/68",
+      ctaButton: "bg-[#211c1b] text-white hover:bg-[#3a302e]",
+      secondaryButton: "bg-white/82 text-[#211c1b] ring-1 ring-inset ring-[#211c1b]/8 hover:bg-white",
+      navLink: "bg-white/76 text-[#211c1b] hover:bg-white",
+      socialPill: "bg-white/76 text-[#211c1b] hover:bg-white",
+      header: "bg-[#f7f5f2]/88 text-[#211c1b] shadow-[0_1px_0_rgba(255,255,255,.72)]",
+      mobileMenu: "bg-white/78 text-[#211c1b] ring-1 ring-inset ring-white/72",
+      mobilePanel: "bg-[#f7f5f2]/96",
+      mobileLink: "bg-white/84 text-[#211c1b]",
     }
   }
 
