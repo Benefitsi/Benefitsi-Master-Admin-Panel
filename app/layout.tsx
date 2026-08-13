@@ -25,6 +25,16 @@ export const metadata: Metadata = {
     template: "%s | Benefitsi Admin",
   },
   description: "Manage Benefitsi partners, deals, rewards, and menus.",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
 };
 
 export default function RootLayout({

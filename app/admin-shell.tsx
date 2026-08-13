@@ -36,8 +36,8 @@ export function AdminShell(props: AdminShellProps) {
 
 function AdminShellContent({
   adminName,
-  title = "Partnerverwaltung",
-  subtitle = "Alle Partner und ihre Informationen",
+  title = "Partner management",
+  subtitle = "All partners and their information",
   micrositeCount,
   children,
 }: AdminShellProps) {
@@ -119,6 +119,41 @@ function AdminShellContent({
               icon={<MenuApprovalIcon className="size-5" />}
             />
             <AdminNavigationLink
+              href="/city-pages"
+              label="Städteseiten"
+              active={pathname.startsWith("/city-pages")}
+              collapsed={collapsed}
+              icon={<CityPagesIcon className="size-5" />}
+            />
+            <AdminNavigationLink
+              href="/city-operations"
+              label="Städte-Review"
+              active={pathname.startsWith("/city-operations")}
+              collapsed={collapsed}
+              icon={<CityOperationsIcon className="size-5" />}
+            />
+            <AdminNavigationLink
+              href="/editorial"
+              label="Editorial & Magazin"
+              active={pathname.startsWith("/editorial")}
+              collapsed={collapsed}
+              icon={<EditorialIcon className="size-5" />}
+            />
+            <AdminNavigationLink
+              href="/bookings"
+              label="Booking Control"
+              active={pathname.startsWith("/bookings")}
+              collapsed={collapsed}
+              icon={<BookingIcon className="size-5" />}
+            />
+            <AdminNavigationLink
+              href="/automation"
+              label="Automation Control"
+              active={pathname.startsWith("/automation")}
+              collapsed={collapsed}
+              icon={<AutomationIcon className="size-5" />}
+            />
+            <AdminNavigationLink
               href="/analytics"
               label="Business Control Center"
               active={pathname.startsWith("/analytics")}
@@ -198,9 +233,6 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: number }) {
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const appUrl = process.env.NEXT_PUBLIC_BENEFITSI_APP_URL?.trim() || ""
-  const cityUrl =
-    process.env.NEXT_PUBLIC_BENEFITSI_CITY_URL?.trim() ||
-    "https://benefitsi.de/stadt/annweiler"
   const websiteUrl =
     process.env.NEXT_PUBLIC_BENEFITSI_WEB_URL?.trim() || "https://benefitsi.de"
 
@@ -235,7 +267,7 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: number }) {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        aria-label="Benefitsi-Systeme öffnen"
+        aria-label="Open Benefitsi systems"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="benefitsi-system-switcher"
@@ -315,11 +347,11 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: number }) {
             />
 
             <SystemCard
-              href={cityUrl}
-              external
+              href="/city-pages"
               icon={<MapIcon className="size-10 text-[#17bfc5]" />}
               title="Städteseiten"
-              description="Städte, Guides & lokale Inhalte"
+              description="Städte, Inhalte & Status"
+              onNavigate={() => setOpen(false)}
             />
 
             <SystemCard
@@ -515,6 +547,69 @@ function AnalyticsIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+function CityOperationsIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="m4 7 5-2 6 2 5-2v13l-5 2-6-2-5 2V7Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9 5v13m6-11v13m-3-9.5 1.3 1.3 2.7-3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function CityPagesIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M4 20V9l5-4 4 3 3-2 4 3v11M8 20v-5h4v5m4-8h.01M16 16h.01"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function BookingIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5V9a2 2 0 0 0 0 4v3.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5V13a2 2 0 0 0 0-4V7.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M13 8.5v7M9.5 12h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function AutomationIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M8 4h8l1 3 3 1v8l-3 1-1 3H8l-1-3-3-1V8l3-1 1-3Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M12 2v2m0 16v2M2 12h2m16 0h2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function MenuApprovalIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
@@ -526,6 +621,21 @@ function MenuApprovalIcon(props: SVGProps<SVGSVGElement>) {
       />
       <path d="M9 10h6M9 14h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       <path d="m14 17 1.5 1.5L19 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function EditorialIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M5 4.5h10.5A3.5 3.5 0 0 1 19 8v11.5H8.5A3.5 3.5 0 0 1 5 16V4.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M8.5 8h6.5M8.5 12h6.5M8.5 16h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M5 4.5v12A3.5 3.5 0 0 0 8.5 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
 }

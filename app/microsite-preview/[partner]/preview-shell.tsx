@@ -14,6 +14,7 @@ export function MicrositePreviewShell({
   previewStorageKey,
   useBuilderDraft,
   isMobile,
+  previewMode,
   previewBasePath = "/microsite-preview",
 }: {
   partner: PartnerWithDeals
@@ -21,10 +22,25 @@ export function MicrositePreviewShell({
   previewStorageKey: string
   useBuilderDraft: boolean
   isMobile: boolean
+  previewMode?: "light" | "dark"
   previewBasePath?: string
 }) {
   const [config, setConfig] = useState(initialConfig)
-  const displayedConfig = useBuilderDraft ? config : initialConfig
+  const displayedConfig = useMemo(
+    () => withPreviewMode(useBuilderDraft ? config : initialConfig, previewMode),
+    [config, initialConfig, previewMode, useBuilderDraft],
+  )
+  const previewIdentifier = encodeURIComponent(partner.slug || partner.id || "partner")
+  const modeQuery = previewMode ? `?mode=${previewMode}` : ""
+  const mobileParams = new URLSearchParams({ viewport: "mobile" })
+
+  if (useBuilderDraft) {
+    mobileParams.set("source", "builder")
+  }
+
+  if (previewMode) {
+    mobileParams.set("mode", previewMode)
+  }
 
   useEffect(() => {
     if (!useBuilderDraft) {
@@ -65,7 +81,7 @@ export function MicrositePreviewShell({
     return partner.microsite?.draftVersion
       ? "Gespeicherter Entwurf"
       : partner.microsite?.publishedVersion
-        ? "Published Version"
+        ? "Veröffentlichte Version"
         : "Partnerdaten-Fallback"
   }, [partner.microsite?.draftVersion, partner.microsite?.publishedVersion, useBuilderDraft])
 
@@ -78,13 +94,13 @@ export function MicrositePreviewShell({
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <a
             className="min-w-0 rounded-md border border-zinc-200 bg-white px-3 py-2 text-center text-zinc-700 transition hover:bg-zinc-50"
-            href={`${previewBasePath}/${encodeURIComponent(partner.slug || partner.id || "partner")}`}
+            href={`${previewBasePath}/${previewIdentifier}${modeQuery}`}
           >
             Gespeicherten Entwurf öffnen
           </a>
           <a
             className="min-w-0 rounded-md border border-zinc-200 bg-white px-3 py-2 text-center text-zinc-700 transition hover:bg-zinc-50"
-            href={`${previewBasePath}/${encodeURIComponent(partner.slug || partner.id || "partner")}?viewport=mobile${useBuilderDraft ? "&source=builder" : ""}`}
+            href={`${previewBasePath}/${previewIdentifier}?${mobileParams.toString()}`}
           >
             Mobile
           </a>
@@ -95,4 +111,18 @@ export function MicrositePreviewShell({
       </div>
     </main>
   )
+}
+
+function withPreviewMode(config: MicrositeConfig, mode?: "light" | "dark") {
+  if (!mode || config.appearance?.mode === mode) {
+    return config
+  }
+
+  return {
+    ...config,
+    appearance: {
+      ...(config.appearance ?? { mode: "light" }),
+      mode,
+    },
+  }
 }

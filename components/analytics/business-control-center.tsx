@@ -26,6 +26,12 @@ const SECTION_META: Record<
     description:
       "Die wichtigsten Ergebnisse und Leitplanken für den aktuellen Berichtszeitraum.",
   },
+  engagement: {
+    title: "Engagement & NES",
+    eyebrow: "Kundenbindung",
+    description:
+      "Versionierter Nutzer-Engagement-Score im Shadow Mode, Lifecycle-Verteilung, Partner-Affinität und Stadtaktivität – ohne automatische Ansprache.",
+  },
   acquisition: {
     title: "Akquisition & Marketing",
     eyebrow: "Wachstum",
@@ -36,7 +42,7 @@ const SECTION_META: Record<
     title: "Produkt & Funnel",
     eyebrow: "Nutzerverlauf",
     description:
-      "Von der Registrierung über die Zeit bis zum ersten Nutzen und die Deal-Nutzung bis zur bestätigten Einlösung.",
+      "Messbetrieb und beobachtete Stadt-, Buchungs- und App-Übergänge sowie der Weg von der Registrierung bis zum serverbestätigten ersten Nutzen.",
   },
   retention: {
     title: "Kundenbindung & CLV",

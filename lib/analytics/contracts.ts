@@ -6,6 +6,7 @@ export const ANALYTICS_ENVIRONMENTS = [
 
 export const ANALYTICS_SECTION_KEYS = [
   "overview",
+  "engagement",
   "acquisition",
   "product",
   "retention",
@@ -86,6 +87,7 @@ export type AnalyticsMetricUnit =
   | "percentage_points"
   | "currency_eur"
   | "ratio"
+  | "score"
   | "days"
   | "hours"
   | "minutes"

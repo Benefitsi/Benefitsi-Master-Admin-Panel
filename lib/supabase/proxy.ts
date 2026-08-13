@@ -32,10 +32,18 @@ export async function updateSession(request: NextRequest) {
 
   const user = data?.claims
   const pathname = request.nextUrl.pathname
-  const isPublicAuthRoute =
-    pathname.startsWith("/login") || pathname.startsWith("/partner/login")
+  const isPublicRoute =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/partner/login") ||
+    // Automation endpoints authenticate themselves with CRON_SECRET. Keeping
+    // them outside the browser-session gate lets Vercel/local cron reach the
+    // route; the route-level timingSafeEqual check remains mandatory.
+    pathname.startsWith("/api/automation/") ||
+    pathname.startsWith("/p/") ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml"
 
-  if (!user && !isPublicAuthRoute) {
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)

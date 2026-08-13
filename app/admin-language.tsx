@@ -46,6 +46,8 @@ const translations = [
   ["Inactive", "Inaktiv"],
   ["Business Control Center", "Unternehmenssteuerung"],
   ["Business, product, marketing, and profit in one verified view", "Unternehmen, Produkt, Marketing und Gewinn in einer geprüften Ansicht"],
+  ["Supabase configuration required", "Supabase-Konfiguration erforderlich"],
+  ["The Business Control Center cannot load data until the URL and publishable key are configured for this environment.", "Das Business Control Center kann keine Daten laden, bis URL und veröffentlichbarer Schlüssel für diese Umgebung konfiguriert sind."],
   ["Overview", "Übersicht"],
   ["Acquisition & Marketing", "Akquisition & Marketing"],
   ["Product & Funnel", "Produkt & Funnel"],
@@ -59,6 +61,40 @@ const translations = [
   ["Trust", "Vertrauen"],
   ["Business Health", "Unternehmenszustand"],
   ["Retention & CLV", "Kundenbindung & CLV"],
+  ["Engagement & NES", "Engagement & NES"],
+  ["Customer retention", "Kundenbindung"],
+  ["Versioned user engagement score in shadow mode, lifecycle distribution, partner affinity, and city activity — without automated outreach.", "Versionierter Nutzer-Engagement-Score im Shadow Mode, Lifecycle-Verteilung, Partner-Affinität und Stadtaktivität – ohne automatische Ansprache."],
+  ["Scored users", "Bewertete Nutzer"],
+  ["Average NES", "Durchschnittlicher NES"],
+  ["Loyal & regular", "Loyal & regelmäßig"],
+  ["At risk & inactive", "Risiko & inaktiv"],
+  ["NES trend", "NES-Entwicklung"],
+  ["Engagement distribution", "Engagement-Verteilung"],
+  ["Partner affinity", "Partner-Affinität"],
+  ["City activity", "Stadtaktivität"],
+  ["New", "Neu"],
+  ["Loyal", "Loyal"],
+  ["Regular", "Regelmäßig"],
+  ["At risk", "Abwanderungsrisiko"],
+  ["Scored users in the current NES shadow snapshot and applied partner/city filter.", "Nutzer im aktuellen NES-Shadow-Snapshot und angewendeten Partner-/Stadtfilter."],
+  ["Average of the versioned global engagement score from 0 to 100.", "Durchschnitt des versionierten globalen Engagement-Scores von 0 bis 100."],
+  ["Share of users in the loyal or regular shadow segments.", "Anteil der Nutzer in den Shadow-Segmenten loyal oder regelmäßig."],
+  ["Share of users in the at-risk or inactive shadow segments.", "Anteil der Nutzer in den Shadow-Segmenten Abwanderungsrisiko oder inaktiv."],
+  ["Daily shadow-mode average; the series grows without invented backfill.", "Täglicher Durchschnitt im Shadow Mode; die Reihe wächst ohne erfundenen Backfill."],
+  ["Lifecycle segments of the current versioned shadow snapshot.", "Lifecycle-Segmente des aktuellen versionierten Shadow-Snapshots."],
+  ["Confirmed usage events in the selected period by partner city.", "Bestätigte Nutzungsereignisse im gewählten Zeitraum nach Partnerstadt."],
+  ["Active users", "Aktive Nutzer"],
+  ["Users", "Nutzer"],
+  ["Share", "Anteil"],
+  ["Visits", "Besuche"],
+  ["Active partners", "Aktive Partner"],
+  ["Cohort", "Kohorte"],
+  ["Average affinity", "Ø Affinität"],
+  ["Strong", "Stark"],
+  ["NES V1 runs exclusively in shadow mode and does not trigger communication or entitlements.", "NES V1 läuft ausschließlich im Shadow Mode und löst keine Kommunikation oder Berechtigung aus."],
+  ["The small data set is not yet sufficient for validated score calibration.", "Der kleine Datenbestand reicht noch nicht für eine validierte Score-Kalibrierung."],
+  ["Only aggregated partner cohorts with at least 10 users; no person-level lists.", "Nur aggregierte Partnerkohorten mit mindestens 10 Nutzern; keine Personenlisten."],
+  ["Partner affinity is only displayed in aggregate for 10 or more users per partner.", "Partner-Affinität wird erst ab 10 Nutzern pro Partner aggregiert ausgegeben."],
   ["Verified", "Geprüft"],
   ["Estimated", "Geschätzt"],
   ["Provisional", "Vorläufig"],
@@ -219,6 +255,13 @@ const translations = [
   ["Starter Menu", "Startmenü"],
   ["Review and create", "Prüfen und erstellen"],
   ["Review & Create", "Prüfen & Erstellen"],
+  ["Enter the partner's identity, ownership, contact details, and location.", "Erfasse Identität, Inhaber, Kontaktdaten und Standort des Partners."],
+  ["Configure opening hours, holiday closures, branding, and cover images.", "Lege Öffnungszeiten, Feiertagsschließungen, Branding und Titelbilder fest."],
+  ["Set up stamp-card milestones and optional customer deals.", "Richte Stempelkarten-Prämien und optionale Kundendeals ein."],
+  ["Create the initial menu, categories, items, prices, and images.", "Erstelle das erste Menü mit Kategorien, Artikeln, Preisen und Bildern."],
+  ["Review required sections, then create the partner and all staged content.", "Prüfe alle Pflichtbereiche und erstelle anschließend den Partner samt vorbereiteten Inhalten."],
+  ["Please complete all required partner fields before saving.", "Bitte fülle vor dem Speichern alle Pflichtfelder des Partners aus."],
+  ["Please select at least one category in Business Profile before creating the partner.", "Bitte wähle vor dem Erstellen des Partners unter „Unternehmensprofil“ mindestens eine Kategorie aus."],
   ["Add partner steps", "Schritte zum Hinzufügen eines Partners"],
   ["Adding partner...", "Partner wird hinzugefügt ..."],
   ["Save partner", "Partner speichern"],
@@ -262,6 +305,7 @@ const translations = [
   ["Deleting deal...", "Deal wird gelöscht ..."],
   ["Deal type", "Deal-Typ"],
   ["Reward/effect type", "Prämien-/Effekttyp"],
+  ["Basics", "Grundlagen"],
   ["Setup", "Einrichtung"],
   ["Auto-set", "Automatisch gesetzt"],
   ["Discount percentage", "Rabatt in Prozent"],
@@ -295,25 +339,41 @@ const translations = [
   ["Required stamps", "Erforderliche Stempel"],
   ["Reward type", "Prämientyp"],
   ["Item", "Artikel"],
+  ["Doner", "Döner"],
+  ["Doner kebab", "Döner"],
+  ["Burgers", "Burger"],
+  ["Chinese", "Chinesisch"],
+  ["Snack bar", "Imbiss"],
+  ["Butcher shop", "Metzgerei"],
+  ["Soups", "Suppen"],
+  ["Café", "Café"],
+  ["Bowls", "Bowls"],
+  ["Asian", "Asiatisch"],
+  ["Ice cream", "Eis"],
+  ["Indian", "Indisch"],
+  ["Greek", "Griechisch"],
   ["Fixed amount", "Fester Betrag"],
   ["Percent", "Prozent"],
   ["Bonus stamp", "Bonusstempel"],
   ["Bonus stamp count", "Anzahl der Bonusstempel"],
   ["Discount value", "Rabattwert"],
   ["Welcome reward", "Willkommensprämie"],
-  ["Duration Bonus", "Zeitbonus"],
+  ["Time-based bonus", "Zeitbonus"],
   ["Happy Hour deal", "Happy-Hour-Deal"],
   ["Permanent fallback discount", "Automatischer Basisrabatt"],
-  ["Limited Deal Drop", "Limitierter Deal"],
+  ["Limited deal drop", "Limitierter Deal Drop"],
   ["Birthday reward", "Geburtstagsprämie"],
   ["Free item deal", "Deal mit Gratisartikel"],
   ["Selectable discount", "Auswählbarer Rabatt"],
   ["Automatic bonus stamp", "Automatischer Bonusstempel"],
   ["Streak reward", "Streak-Prämie"],
   ["Challenge reward", "Challenge-Prämie"],
+  ["Comeback Deal", "Comeback-Deal"],
   ["No direct reward", "Keine direkte Prämie"],
   ["Fixed € discount", "Fester Euro-Rabatt"],
   ["Percentage discount", "Prozentualer Rabatt"],
+  ["percentage off", "prozentualer Rabatt"],
+  ["fixed € off", "fester Euro-Rabatt"],
   ["Free item", "Gratisartikel"],
   ["User selects before visit", "Vom Nutzer vor dem Besuch auswählbar"],
   ["User must choose this before the QR scan. Only one direct deal can be redeemed per visit.", "Der Nutzer muss dies vor dem QR-Scan auswählen. Pro Besuch kann nur ein direkter Deal eingelöst werden."],
@@ -327,6 +387,9 @@ const translations = [
   ["Free trial only", "Nur kostenlose Testphase"],
   ["Title", "Titel"],
   ["Reward item", "Prämienartikel"],
+  ["Free reward item", "Gratis-Prämienartikel"],
+  ["Free dessert", "Gratisdessert"],
+  ["Reward preview", "Prämienvorschau"],
   ["Estimated savings", "Geschätzte Ersparnis"],
   ["Audience", "Zielgruppe"],
   ["Customer description", "Kundenbeschreibung"],
@@ -489,6 +552,12 @@ const translations = [
   ["Lifetime", "Gesamt"],
   ["Redemption history", "Einlösungsverlauf"],
   ["Applied benefits", "Angewendete Vorteile"],
+  ["Base stamp", "Basisstempel"],
+  ["Selectable deal", "Auswählbarer Deal"],
+  ["Automatic benefit", "Automatischer Vorteil"],
+  ["Fallback benefit", "Fallback-Vorteil"],
+  ["Selected direct deal source", "Ausgewählter direkter Deal"],
+  ["Reward milestone", "Prämienstufe"],
   ["Stamp delta", "Stempeländerung"],
   ["Scanned by", "Gescannt von"],
   ["Selected direct deal", "Ausgewählter direkter Deal"],
@@ -568,7 +637,7 @@ const translations = [
   ["Untitled menu", "Menü ohne Titel"],
   ["Untitled category", "Kategorie ohne Titel"],
   ["Untitled item", "Unbenannter Artikel"],
-  ["The current account is not an admin.", "Das aktuelle Konto besitzt keine Admin-Berechtigung."],
+  ["The current account is not an admin.", "Das aktuelle Konto besitzt keine Administratorrechte."],
   ["The current account is not linked to a partner shop.", "Das aktuelle Konto ist keinem Partnerbetrieb zugeordnet."],
   ["Enter your password", "Passwort eingeben"],
   ["Partner Dashboard", "Partner-Dashboard"],
@@ -619,6 +688,166 @@ const translations = [
   ["Wellness & care", "Wellness & Pflege"],
   ["Entertainment", "Unterhaltung"],
   ["Retail & services", "Einzelhandel & Dienstleistungen"],
+  ["Add another", "Weiteres hinzufügen"],
+  ["Add another milestone", "Weitere Prämienstufe hinzufügen"],
+  ["Allow free user trial", "Kostenlose Testphase erlauben"],
+  ["Approve menu", "Menü freigeben"],
+  ["At least one deal is recommended, but the partner can be created without deals.", "Mindestens ein Deal wird empfohlen, der Partner kann jedoch auch ohne Deals erstellt werden."],
+  ["At least one deal is recommended, but this partner can exist without deals.", "Mindestens ein Deal wird empfohlen, dieser Partner kann jedoch auch ohne Deals bestehen."],
+  ["At least one milestone is required before a partner can be created.", "Vor dem Erstellen eines Partners ist mindestens eine Prämienstufe erforderlich."],
+  ["Business snapshot", "Unternehmensüberblick"],
+  ["Challenge name", "Name der Challenge"],
+  ["Change menu item image", "Bild des Menüartikels ändern"],
+  ["Choose a user and assign the appropriate role.", "Wähle einen Nutzer aus und weise ihm die passende Rolle zu."],
+  ["Choose Files again to add another JSON file. Earlier selections stay attached to Add menu.", "Wähle erneut Dateien aus, um eine weitere JSON-Datei hinzuzufügen. Bereits ausgewählte Dateien bleiben dem neuen Menü zugeordnet."],
+  ["Clear files", "Dateiauswahl leeren"],
+  ["Close menu import", "Menüimport schließen"],
+  ["Comeback candidates", "Comeback-Kandidaten"],
+  ["Configure inactive-user filters and preview matching loaded users. The saved deal stores the filter config, not explicit user IDs.", "Konfiguriere Filter für inaktive Nutzer und prüfe die passenden geladenen Nutzer. Der gespeicherte Deal enthält die Filterkonfiguration, keine einzelnen Nutzer-IDs."],
+  ["Configure selectable, automatic, and fallback benefits for the Supabase redemption flow.", "Konfiguriere auswählbare, automatische und ersatzweise angewendete Vorteile für den Supabase-Einlösungsprozess."],
+  ["Copy and Instructions", "Texte und Hinweise"],
+  ["Customer copy and staff instructions", "Kundentexte und Mitarbeiterhinweise"],
+  ["Create starter menu", "Startmenü erstellen"],
+  ["Deal Drop card image", "Kartenbild des Deal Drops"],
+  ["Deal Drop card image (710×400)", "Kartenbild des Deal Drops (710 × 400)"],
+  ["Deal Drop inventory", "Deal-Drop-Kontingent"],
+  ["Delete partner?", "Partner löschen?"],
+  ["Deleting milestone...", "Prämienstufe wird gelöscht ..."],
+  ["Deleting partner...", "Partner wird gelöscht ..."],
+  ["Dismiss notification", "Benachrichtigung schließen"],
+  ["Duration unit", "Zeiteinheit"],
+  ["Duration value", "Dauer"],
+  ["Edit in partner menu", "Im Partnermenü bearbeiten"],
+  ["Edit the microsite here, or open the full-width builder for more space.", "Bearbeite die Microsite hier oder öffne den Builder in voller Breite, um mehr Platz zu haben."],
+  ["Estimated savings (€)", "Geschätzte Ersparnis (€)"],
+  ["Example:", "Beispiel:"],
+  ["Expiry days", "Gültigkeit in Tagen"],
+  ["Free item name", "Name des Gratisartikels"],
+  ["Happy hour end", "Ende der Happy Hour"],
+  ["Happy hour start", "Beginn der Happy Hour"],
+  ["Happy Hour weekdays", "Wochentage der Happy Hour"],
+  ["Every day", "Täglich"],
+  ["Mon-Fri", "Mo–Fr"],
+  ["Sat-Sun", "Sa–So"],
+  ["Mon", "Mo"],
+  ["Tue", "Di"],
+  ["Wed", "Mi"],
+  ["Thu", "Do"],
+  ["Fri", "Fr"],
+  ["Sat", "Sa"],
+  ["Sun", "So"],
+  ["If customer description, staff instructions, or terms are left blank, a generic version will be entered automatically.", "Wenn Kundenbeschreibung, Mitarbeiterhinweise oder Bedingungen leer bleiben, wird automatisch ein allgemeiner Text eingetragen."],
+  ["Inactive for at least", "Inaktiv seit mindestens"],
+  ["Inactivity unit", "Einheit der Inaktivität"],
+  ["Launch inventory", "Startkontingent"],
+  ["Live preview", "Live-Vorschau"],
+  ["Maximum visits", "Maximale Besuche"],
+  ["Minimum visits", "Minimale Besuche"],
+  ["More setup details", "Weitere Einstellungen"],
+  ["Move cover photo earlier", "Titelbild nach vorne verschieben"],
+  ["Move cover photo later", "Titelbild nach hinten verschieben"],
+  ["No add-ons yet.", "Noch keine Extras hinzugefügt."],
+  ["No applied benefit rows loaded for this visit.", "Für diesen Besuch wurden keine angewendeten Vorteile geladen."],
+  ["No categories selected", "Keine Kategorien ausgewählt"],
+  ["No deals staged.", "Noch keine Deals vorbereitet."],
+  ["No matching users for the current filters.", "Keine Nutzer entsprechen den aktuellen Filtern."],
+  ["Nothing has been saved yet. Review this preview before confirming.", "Es wurde noch nichts gespeichert. Prüfe diese Vorschau vor der Bestätigung."],
+  ["Number of bonus stamps", "Anzahl der Bonusstempel"],
+  ["Open full-width builder", "Builder in voller Breite öffnen"],
+  ["Open the picker again to add more files; these selections will be retained.", "Öffne die Dateiauswahl erneut, um weitere Dateien hinzuzufügen; die bisherige Auswahl bleibt erhalten."],
+  ["Open this tab again to refresh the partner summary.", "Öffne diesen Bereich erneut, um die Partnerübersicht zu aktualisieren."],
+  ["Optional extras customers can add to this item.", "Optionale Extras, die Kunden zu diesem Artikel hinzufügen können."],
+  ["Partner launch brief", "Übersicht zum Partnerstart"],
+  ["Pre-fill this form from an existing partner&apos;s profile. You can edit anything afterwards.", "Fülle dieses Formular mit dem Profil eines vorhandenen Partners vor. Anschließend kannst du alle Angaben bearbeiten."],
+  ["Pre-fill this form from an existing partner's profile. You can edit anything afterwards.", "Fülle dieses Formular mit dem Profil eines vorhandenen Partners vor. Anschließend kannst du alle Angaben bearbeiten."],
+  ["Active on launch", "Beim Start aktiv"],
+  ["Saved as inactive", "Wird inaktiv gespeichert"],
+  ["complete", "vollständig"],
+  ["Type not selected", "Partnertyp nicht ausgewählt"],
+  ["City not selected", "Stadt nicht ausgewählt"],
+  ["Owner not selected", "Inhaber nicht ausgewählt"],
+  ["Email not added", "E-Mail nicht angegeben"],
+  ["Phone not added", "Telefon nicht angegeben"],
+  ["Website not added", "Webseite nicht angegeben"],
+  ["Address not added", "Adresse nicht angegeben"],
+  ["Set", "Eingerichtet"],
+  ["Incomplete", "Unvollständig"],
+  ["Ready to create. All required partner details are complete.", "Bereit zum Erstellen. Alle erforderlichen Partnerdaten sind vollständig."],
+  ["Preparing cover images…", "Titelbilder werden vorbereitet …"],
+  ["Preparing image…", "Bild wird vorbereitet …"],
+  ["Removing access...", "Zugriff wird entfernt ..."],
+  ["Removing deal...", "Deal wird entfernt ..."],
+  ["Restore cover", "Titelbild wiederherstellen"],
+  ["Reward details", "Prämiendetails"],
+  ["Saving order...", "Reihenfolge wird gespeichert ..."],
+  ["Select a ZIP or one or more menu JSON files with an optional assets manifest, or CSV. Name and status are still required.", "Wähle eine ZIP-Datei, eine oder mehrere Menü-JSON-Dateien mit optionalem Asset-Manifest oder eine CSV-Datei aus. Name und Status bleiben Pflichtfelder."],
+  ["Select one or more menu JSON files and an optional assets manifest together. CSV remains supported. The menu name and status above remain required.", "Wähle eine oder mehrere Menü-JSON-Dateien gemeinsam mit einem optionalen Asset-Manifest aus. CSV wird weiterhin unterstützt. Menüname und Status oben bleiben Pflichtfelder."],
+  ["Set the full weekly schedule in one pass.", "Lege den vollständigen Wochenplan in einem Schritt fest."],
+  ["Stock remaining", "Verbleibendes Kontingent"],
+  ["Stock total", "Gesamtkontingent"],
+  ["This admin now supports one menu per partner. It is showing the first menu loaded for this partner.", "Die Administration unterstützt derzeit ein Menü pro Partner. Angezeigt wird das erste für diesen Partner geladene Menü."],
+  ["This Deal Drop is currently sold out.", "Dieser Deal Drop ist aktuell ausverkauft."],
+  ["This Deal Drop is sold out and users cannot redeem it.", "Dieser Deal Drop ist ausverkauft und kann von Nutzern nicht eingelöst werden."],
+  ["This menu is empty. The imported categories and items will become its menu content.", "Dieses Menü ist leer. Die importierten Kategorien und Artikel werden als Menüinhalt übernommen."],
+  ["Trigger value", "Auslösewert"],
+  ["Enter an amount greater than 0.", "Gib einen Betrag größer als 0 ein."],
+  ["Minimum spend is less than the discount amount — users may get more off than they spend.", "Der Mindestbestellwert liegt unter dem Rabattbetrag – Nutzer könnten dadurch mehr Rabatt erhalten, als sie ausgeben."],
+  ["Enter the free item name.", "Gib den Namen des Gratisartikels ein."],
+  ["Enter at least 1 bonus stamp.", "Gib mindestens einen Bonusstempel ein."],
+  ["Enter a start time.", "Gib eine Startzeit ein."],
+  ["Enter an end time.", "Gib eine Endzeit ein."],
+  ["Enter a trigger value greater than 0.", "Gib einen Auslösewert größer als 0 ein."],
+  ["Enter a challenge name.", "Gib einen Namen für die Challenge ein."],
+  ["Enter a duration greater than 0.", "Gib eine Dauer größer als 0 ein."],
+  ["Enter an inactivity period greater than 0.", "Gib einen Inaktivitätszeitraum größer als 0 ein."],
+  ["Maximum visits must be at least minimum visits.", "Die maximale Besuchsanzahl muss mindestens der minimalen Besuchsanzahl entsprechen."],
+  ["Limited Deal Drops must have an end time.", "Limitierte Deal Drops benötigen einen Endzeitpunkt."],
+  ["Item rewards require a reward item.", "Prämien des Typs „Prämienartikel“ benötigen einen Artikel."],
+  ["Item milestones require a reward item.", "Prämienstufen des Typs „Prämienartikel“ benötigen einen Artikel."],
+  ["Fixed and percent milestones require a discount value.", "Prämienstufen mit festem oder prozentualem Rabatt benötigen einen Rabattwert."],
+  ["Upload a highlight image for the deal card (710×400px).", "Lade ein Highlight-Bild für die Deal-Karte hoch (710 × 400 px)."],
+  ["Uploading image…", "Bild wird hochgeladen …"],
+  ["Visits can contain multiple applied benefits; the server decides the full reward bundle.", "Ein Besuch kann mehrere angewendete Vorteile enthalten; der Server bestimmt das vollständige Prämienpaket."],
+  ["Will copy: type, city, description, categories, phone, website, social handles, and milestones. Name, email, address, and owner will not be copied.", "Übernommen werden Typ, Stadt, Beschreibung, Kategorien, Telefon, Webseite, Social-Media-Profile und Prämienstufen. Name, E-Mail-Adresse, Anschrift und Inhaber werden nicht übernommen."],
+  ["+ Add option", "+ Option hinzufügen"],
+  ["(optional)", "(optional)"],
+  ["in the background…", "im Hintergrund …"],
+  ["categories ·", "Kategorien ·"],
+  ["categories and", "Kategorien und"],
+  ["cover photos saved", "Titelbilder gespeichert"],
+  ["cover photos, 10 MB each.", "Titelbildern mit jeweils höchstens 10 MB."],
+  ["items · Updated", "Artikel · Aktualisiert"],
+  ["items. Choose how the imported content should be handled.", "Artikel. Lege fest, wie die importierten Inhalte verarbeitet werden sollen."],
+  ["Optional. Add up to", "Optional. Füge bis zu"],
+  ["social profiles. Enter a handle or full profile URL and the partner record will store the canonical link automatically.", "Social-Media-Profile hinzu. Gib einen Benutzernamen oder die vollständige Profil-URL ein; im Partnerdatensatz wird automatisch der kanonische Link gespeichert."],
+  ["This menu already has", "Dieses Menü enthält bereits"],
+  [". Images are resized automatically before upload. Max", ". Bilder werden vor dem Hochladen automatisch angepasst. Maximal"],
+  ["· Max 10 MB", "· Max. 10 MB"],
+  ["- Position", "– Position"],
+  ["Add your Supabase publishable key to `.env.local` to enable sign in.", "Füge deinen öffentlichen Supabase-Schlüssel in `.env.local` ein, um die Anmeldung zu aktivieren."],
+  ["Admin Panel", "Admin-Bereich"],
+  ["Auto photo audit", "Automatische Bildprüfung"],
+  ["Create `.env.local` from `.env.example`, then add your Supabase publishable key.", "Erstelle `.env.local` aus `.env.example` und füge anschließend deinen öffentlichen Supabase-Schlüssel ein."],
+  ["Edit microsite", "Microsite bearbeiten"],
+  ["Edit your microsite content without affecting other partners.", "Bearbeite die Inhalte deiner Microsite, ohne andere Partner zu beeinflussen."],
+  ["Loading admin workspace", "Admin-Bereich wird geladen"],
+  ["Loading sign in", "Anmeldung wird geladen"],
+  ["need attention. Replace blurry or undersized photos before publishing or printing.", "benötigen Aufmerksamkeit. Ersetze unscharfe oder zu kleine Bilder vor der Veröffentlichung oder dem Druck."],
+  ["No partner shop is linked to this account yet.", "Diesem Konto ist noch kein Partnerbetrieb zugeordnet."],
+  ["No location set", "Kein Standort hinterlegt"],
+  ["Unnamed partner", "Unbenannter Partner"],
+  ["Open a microsite builder below to update your live page content.", "Öffne unten einen Microsite-Builder, um die Inhalte deiner Live-Seite zu aktualisieren."],
+  ["Only your assigned partner shop is accessible", "Du kannst ausschließlich auf den dir zugeordneten Partnerbetrieb zugreifen."],
+  ["Partner Microsites", "Partner-Microsites"],
+  ["Partner location", "Partnerbetrieb"],
+  ["Partner self-service", "Partner-Selbstverwaltung"],
+  ["Partner sign in", "Partner-Anmeldung"],
+  ["Sign out of this account", "Von diesem Konto abmelden"],
+  ["Signing out...", "Abmeldung läuft ..."],
+  ["Supabase returned warnings", "Supabase hat Warnungen zurückgegeben"],
+  ["Supabase env setup required", "Supabase-Umgebung muss eingerichtet werden"],
+  ["Use your linked Supabase account to access your microsite dashboard.", "Melde dich mit deinem verknüpften Supabase-Konto an, um auf dein Microsite-Dashboard zuzugreifen."],
+  ["Your partner microsites", "Deine Partner-Microsites"],
 ] as const
 
 const englishToGerman = new Map<string, string>(translations)
@@ -627,6 +856,77 @@ for (const [english, german] of translations) {
   if (!germanToEnglish.has(german)) germanToEnglish.set(german, english)
 }
 germanToEnglish.set("Artikel", "Item")
+germanToEnglish.set("Döner", "Doner kebab")
+
+const englishDealSummaryWeekdays = new Map([
+  ["Every day", "Täglich"],
+  ["Mon-Fri", "Mo–Fr"],
+  ["Sat-Sun", "Sa–So"],
+  ["Mon", "Mo"],
+  ["Tue", "Di"],
+  ["Wed", "Mi"],
+  ["Thu", "Do"],
+  ["Fri", "Fr"],
+  ["Sat", "Sa"],
+  ["Sun", "So"],
+])
+
+const germanDealSummaryWeekdays = new Map(
+  [...englishDealSummaryWeekdays].map(([english, german]) => [german, english]),
+)
+
+const partnerCategoryLabels = new Set([
+  "Doner",
+  "Doner kebab",
+  "Döner",
+  "Pizza",
+  "Shawarma",
+  "Burger",
+  "Burgers",
+  "Chinese",
+  "Chinesisch",
+  "Snack bar",
+  "Imbiss",
+  "Butcher shop",
+  "Metzgerei",
+  "Soups",
+  "Suppen",
+  "Suppe",
+  "Cafe",
+  "Café",
+  "Grill",
+  "Falafel",
+  "Bowl",
+  "Bowls",
+  "Thai",
+  "Sushi",
+  "Restaurant",
+  "Asia",
+  "Asian",
+  "Asiatisch",
+  "Eis",
+  "Ice cream",
+  "Inder",
+  "Indian",
+  "Indisch",
+  "Grieche",
+  "Greek",
+  "Griechisch",
+])
+
+function translateDealSummarySuffix(
+  value: string,
+  language: AdminLanguage,
+) {
+  const weekdayMap =
+    language === "de" ? englishDealSummaryWeekdays : germanDealSummaryWeekdays
+
+  return value
+    .split(/(\s+-\s+|\s+–\s+|,\s*)/)
+    .map((part) => weekdayMap.get(part) ?? part)
+    .join("")
+    .replaceAll(language === "de" ? " - " : " – ", language === "de" ? " – " : " - ")
+}
 
 type AdminLanguageContextValue = {
   language: AdminLanguage
@@ -650,9 +950,138 @@ export function translateValue(value: string, language: AdminLanguage) {
     if (translatedLabel) return `${leading}${translatedLabel}:${trailing}`
   }
 
+  const categoryList = core.split(/,\s*/)
+  if (
+    categoryList.length > 1 &&
+    categoryList.every((category) => partnerCategoryLabels.has(category))
+  ) {
+    const translatedCategories = categoryList.map(
+      (category) => dictionary.get(category) ?? category,
+    )
+    return `${leading}${translatedCategories.join(", ")}${trailing}`
+  }
+
+  const requiredCreateTab = core.match(
+    /^Please complete the required fields in (.+) before creating the partner\.$/,
+  )
+  if (requiredCreateTab && language === "de") {
+    const tab =
+      englishToGerman.get(requiredCreateTab[1]) ?? requiredCreateTab[1]
+    return `${leading}Bitte fülle vor dem Erstellen des Partners alle Pflichtfelder unter „${tab}“ aus.${trailing}`
+  }
+
+  const percentageOff = core.match(/^(\d+(?:[.,]\d+)?)%\s+off(.*)$/i)
+  if (percentageOff && language === "de") {
+    return `${leading}${percentageOff[1].replace(".", ",")} % Rabatt${translateDealSummarySuffix(percentageOff[2], language)}${trailing}`
+  }
+
+  const germanPercentageOff = core.match(
+    /^(\d+(?:[.,]\d+)?)\s*%\s+Rabatt(.*)$/i,
+  )
+  if (germanPercentageOff && language === "en") {
+    return `${leading}${germanPercentageOff[1].replace(",", ".")}% off${translateDealSummarySuffix(germanPercentageOff[2], language)}${trailing}`
+  }
+
+  const fixedAmountOff = core.match(/^€\s*(\d+(?:[.,]\d+)?)\s+off(.*)$/i)
+  if (fixedAmountOff && language === "de") {
+    return `${leading}${fixedAmountOff[1].replace(".", ",")} € Rabatt${translateDealSummarySuffix(fixedAmountOff[2], language)}${trailing}`
+  }
+
+  const germanFixedAmountOff = core.match(
+    /^(\d+(?:[.,]\d+)?)\s*€\s+Rabatt(.*)$/i,
+  )
+  if (germanFixedAmountOff && language === "en") {
+    return `${leading}€${germanFixedAmountOff[1].replace(",", ".")} off${translateDealSummarySuffix(germanFixedAmountOff[2], language)}${trailing}`
+  }
+
+  const bonusStampSummary = core.match(/^\+(\d+)\s+bonus\s+stamps?$/i)
+  if (bonusStampSummary && language === "de") {
+    return `${leading}+${bonusStampSummary[1]} Bonusstempel${trailing}`
+  }
+
+  const germanBonusStampSummary = core.match(
+    /^\+(\d+)\s+Bonusstempel$/i,
+  )
+  if (germanBonusStampSummary && language === "en") {
+    return `${leading}+${germanBonusStampSummary[1]} bonus ${
+      germanBonusStampSummary[1] === "1" ? "stamp" : "stamps"
+    }${trailing}`
+  }
+
+  const numericRangeHint = core.match(
+    /^Must be between (\d+(?:[.,]\d+)?) and (\d+(?:[.,]\d+)?)\.$/i,
+  )
+  if (numericRangeHint && language === "de") {
+    return `${leading}Der Wert muss zwischen ${numericRangeHint[1].replace(".", ",")} und ${numericRangeHint[2].replace(".", ",")} liegen.${trailing}`
+  }
+
+  const germanNumericRangeHint = core.match(
+    /^Der Wert muss zwischen (\d+(?:[.,]\d+)?) und (\d+(?:[.,]\d+)?) liegen\.$/i,
+  )
+  if (germanNumericRangeHint && language === "en") {
+    return `${leading}Must be between ${germanNumericRangeHint[1].replace(",", ".")} and ${germanNumericRangeHint[2].replace(",", ".")}.${trailing}`
+  }
+
+  const duplicateCategory = core.match(/^Duplicate\s+(.+)\s+and its items$/i)
+  if (duplicateCategory && language === "de") {
+    return `${leading}${duplicateCategory[1]} einschließlich Artikel duplizieren${trailing}`
+  }
+
+  const germanDuplicateCategory = core.match(
+    /^(.+)\s+einschließlich Artikel duplizieren$/i,
+  )
+  if (germanDuplicateCategory && language === "en") {
+    return `${leading}Duplicate ${germanDuplicateCategory[1]} and its items${trailing}`
+  }
+
   const duplicateLabel = core.match(/^Duplicate\s+(.+)$/i)
   if (duplicateLabel && language === "de") {
     return `${leading}Duplizieren: ${duplicateLabel[1]}${trailing}`
+  }
+
+  const germanDuplicateLabel = core.match(/^Duplizieren:\s+(.+)$/i)
+  if (germanDuplicateLabel && language === "en") {
+    return `${leading}Duplicate ${germanDuplicateLabel[1]}${trailing}`
+  }
+
+  const pictureLabel = core.match(/^(.+)\s+picture$/i)
+  if (pictureLabel && language === "de") {
+    return `${leading}Bild von ${pictureLabel[1]}${trailing}`
+  }
+
+  const germanPictureLabel = core.match(/^Bild von\s+(.+)$/i)
+  if (germanPictureLabel && language === "en") {
+    return `${leading}${germanPictureLabel[1]} picture${trailing}`
+  }
+
+  const deleteLabel = core.match(/^Delete\s+(.+)$/i)
+  if (deleteLabel && language === "de") {
+    return `${leading}${deleteLabel[1]} löschen${trailing}`
+  }
+
+  const germanDeleteLabel = core.match(/^(.+)\s+löschen$/i)
+  if (germanDeleteLabel && language === "en") {
+    return `${leading}Delete ${germanDeleteLabel[1]}${trailing}`
+  }
+
+  const euroAmount = core.match(/^(\d+)\.(\d{2})\s+EUR$/i)
+  if (euroAmount && language === "de") {
+    return `${leading}${euroAmount[1]},${euroAmount[2]} €${trailing}`
+  }
+
+  const germanEuroAmount = core.match(/^(\d+),(\d{2})\s+€$/i)
+  if (germanEuroAmount && language === "en") {
+    return `${leading}${germanEuroAmount[1]}.${germanEuroAmount[2]} EUR${trailing}`
+  }
+
+  const decimalNumber = core.match(/^(-?\d+)\.(\d+)$/)
+  if (decimalNumber && language === "de") {
+    return `${leading}${decimalNumber[1]},${decimalNumber[2]}${trailing}`
+  }
+
+  const germanDecimalNumber = core.match(/^(-?\d+),(\d+)$/)
+  if (germanDecimalNumber && language === "en") {
+    return `${leading}${germanDecimalNumber[1]}.${germanDecimalNumber[2]}${trailing}`
   }
 
   const menuStatus = core.match(/^Menu status:\s*(.+)$/)
@@ -754,6 +1183,37 @@ export function translateValue(value: string, language: AdminLanguage) {
   const dealCount = core.match(/^(\d+)\s+(deal|deals)$/i)
   if (dealCount && language === "de") {
     return `${leading}${dealCount[1]} ${dealCount[1] === "1" ? "Deal" : "Deals"}${trailing}`
+  }
+
+  const imageCount = core.match(/^(\d+)\s+images?$/i)
+  if (imageCount && language === "de") {
+    return `${leading}${imageCount[1]} ${
+      imageCount[1] === "1" ? "Bild" : "Bilder"
+    }${trailing}`
+  }
+
+  const configuredCount = core.match(/^(\d+)\s+set$/i)
+  if (configuredCount && language === "de") {
+    return `${leading}${configuredCount[1]} eingerichtet${trailing}`
+  }
+
+  const openDays = core.match(/^(\d+)\s*\/\s*(\d+)\s+days open$/i)
+  if (openDays && language === "de") {
+    return `${leading}${openDays[1]} von ${openDays[2]} Tagen geöffnet${trailing}`
+  }
+
+  const requiredFields = core.match(
+    /^(\d+)\s+of\s+(\d+)\s+required fields are complete\. Review the marked tabs before creating\.$/i,
+  )
+  if (requiredFields && language === "de") {
+    return `${leading}${requiredFields[1]} von ${requiredFields[2]} Pflichtfeldern sind vollständig. Prüfe vor dem Erstellen die markierten Bereiche.${trailing}`
+  }
+
+  const weeklyVisits = core.match(/^(\d+)\s+visits?\s+this week$/i)
+  if (weeklyVisits && language === "de") {
+    return `${leading}${weeklyVisits[1]} ${
+      weeklyVisits[1] === "1" ? "Besuch" : "Besuche"
+    } diese Woche${trailing}`
   }
 
   const reviewCount = core.match(/^(\d+)\s+menu\s+(review|reviews)$/i)
@@ -883,7 +1343,49 @@ export function translateValue(value: string, language: AdminLanguage) {
     return `${leading}Schließzeit am ${englishToGerman.get(closingTime[1])}${trailing}`
   }
 
+  const germanOpeningTime = core.match(
+    /^Öffnungszeit am (Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)$/,
+  )
+  if (germanOpeningTime && language === "en") {
+    return `${leading}${germanToEnglish.get(germanOpeningTime[1])} opening time${trailing}`
+  }
+
+  const germanClosingTime = core.match(
+    /^Schließzeit am (Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)$/,
+  )
+  if (germanClosingTime && language === "en") {
+    return `${leading}${germanToEnglish.get(germanClosingTime[1])} closing time${trailing}`
+  }
+
+  const germanDate = core.match(
+    /^(\d{1,2})\.\s+(Jan\.|Feb\.|März|Apr\.|Mai|Juni|Juli|Aug\.|Sept\.|Okt\.|Nov\.|Dez\.)\s+(\d{4})$/,
+  )
+  if (germanDate && language === "en") {
+    const months: Record<string, string> = {
+      "Jan.": "Jan",
+      "Feb.": "Feb",
+      März: "Mar",
+      "Apr.": "Apr",
+      Mai: "May",
+      Juni: "Jun",
+      Juli: "Jul",
+      "Aug.": "Aug",
+      "Sept.": "Sep",
+      "Okt.": "Oct",
+      "Nov.": "Nov",
+      "Dez.": "Dec",
+    }
+    return `${leading}${Number(germanDate[1])} ${months[germanDate[2]]} ${germanDate[3]}${trailing}`
+  }
+
   return value
+}
+
+export function isTranslationVariant(value: string, original: string) {
+  return (
+    value === translateValue(original, "en") ||
+    value === translateValue(original, "de")
+  )
 }
 
 export function AdminLanguageProvider({ children }: { children: ReactNode }) {
@@ -925,7 +1427,7 @@ export function AdminLanguageProvider({ children }: { children: ReactNode }) {
       const originals = textOriginalsRef.current
       const stored = originals.get(node)
 
-      if (!stored || current !== translateValue(stored, languageRef.current)) {
+      if (!stored || !isTranslationVariant(current, stored)) {
         originals.set(node, current)
       }
 
@@ -937,7 +1439,7 @@ export function AdminLanguageProvider({ children }: { children: ReactNode }) {
     const translateElement = (element: Element) => {
       if (element.closest('[data-admin-i18n-ignore="true"]')) return
 
-      const names = ["aria-label", "placeholder", "title"]
+      const names = ["alt", "aria-label", "placeholder", "title"]
       let originals = attributeOriginalsRef.current.get(element)
       if (!originals) {
         originals = new Map()
@@ -948,7 +1450,7 @@ export function AdminLanguageProvider({ children }: { children: ReactNode }) {
         const current = element.getAttribute(name)
         if (current === null) return
         const stored = originals?.get(name)
-        if (!stored || current !== translateValue(stored, languageRef.current)) {
+        if (!stored || !isTranslationVariant(current, stored)) {
           originals?.set(name, current)
         }
         const original = originals?.get(name) ?? current

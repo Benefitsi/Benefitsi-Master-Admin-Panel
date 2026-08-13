@@ -6,6 +6,7 @@ import { getPartnerPortalSession } from "@/lib/partner-portal"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { BrandLogo } from "@/components/brand-logo"
+import { AdminLanguageControl, AdminLanguageProvider } from "@/app/admin-language"
 
 export const dynamic = "force-dynamic"
 
@@ -26,7 +27,11 @@ export default async function PartnerLoginPage() {
   }
 
   return (
+    <AdminLanguageProvider>
     <main className="min-h-screen bg-[#f7f6f1] text-[#061829]">
+      <div className="fixed right-4 top-4 z-20">
+        <AdminLanguageControl />
+      </div>
       <div className="grid min-h-screen lg:grid-cols-[1fr_460px]">
         <section className="hidden bg-[#061829] p-10 text-white lg:flex lg:flex-col lg:justify-between">
           <div>
@@ -77,6 +82,7 @@ export default async function PartnerLoginPage() {
         </section>
       </div>
     </main>
+    </AdminLanguageProvider>
   )
 }
 

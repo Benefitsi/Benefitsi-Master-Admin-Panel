@@ -110,6 +110,77 @@ test("normalizes a source payload into the PII-free dashboard DTO", () => {
   assert.equal("email" in payload, false)
   assert.equal(payload.freshness.sources[0].expectedWithinMinutes, 5)
   assert.equal(formatAnalyticsValue(0, "count"), "0")
+  assert.equal(formatAnalyticsValue(17.4, "score"), "17,4 / 100")
+})
+
+test("normalizes the NES shadow section without accepting person-level fields", () => {
+  const payload = normalizeBusinessAnalyticsPayload(
+    {
+      schemaVersion: "1",
+      generatedAt: "2026-07-29T20:30:00.000Z",
+      status: "partial",
+      user_id: "must-not-cross-the-dashboard-contract",
+      sections: {
+        engagement: {
+          kpis: [
+            {
+              key: "nes_average_score",
+              label: "Durchschnittlicher NES",
+              value: 42.5,
+              unit: "count",
+              definition: "Versionierter Score von 0 bis 100.",
+              source: "analytics.nes_user_scores",
+              quality: "provisional",
+              availability: "provisional",
+              sensitivity: "business",
+            },
+          ],
+          tables: [
+            {
+              key: "nes_segment_distribution",
+              title: "Engagement-Verteilung",
+              columns: [
+                { key: "users", label: "Nutzer", unit: "count" },
+                { key: "share", label: "Anteil", unit: "percent" },
+              ],
+              rows: [
+                {
+                  id: "active",
+                  label: "Aktiv",
+                  values: { users: 3, share: 60 },
+                  quality: "provisional",
+                  email: "must-not-leak@example.com",
+                },
+              ],
+              source: "analytics.nes_user_scores",
+              quality: "provisional",
+              sensitivity: "business",
+            },
+          ],
+          caveats: ["Shadow Mode: keine automatische Ansprache."],
+        },
+      },
+      filterOptions: {
+        cities: [{ id: "city-1", label: "Annweiler" }],
+      },
+    },
+    filters,
+  )
+
+  assert.equal(payload.sections.engagement.kpis[0].value, 42.5)
+  assert.equal(payload.sections.engagement.tables[0].rows[0].label, "Aktiv")
+  assert.deepEqual(payload.sections.engagement.tables[0].rows[0].values, {
+    users: 3,
+    share: 60,
+  })
+  assert.equal("user_id" in payload, false)
+  assert.equal(
+    "email" in payload.sections.engagement.tables[0].rows[0],
+    false,
+  )
+  assert.deepEqual(payload.filterOptions.cities, [
+    { id: "city-1", label: "Annweiler" },
+  ])
 })
 
 test("redacts every finance-sensitive surface for business-only readers", () => {

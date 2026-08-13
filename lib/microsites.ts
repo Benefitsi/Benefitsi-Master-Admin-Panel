@@ -24,6 +24,9 @@ export type MicrositeAsset = {
 export type MicrositeConfig = {
   template: MicrositeTemplateId
   language: MicrositeLanguage
+  appearance: {
+    mode: "light" | "dark"
+  }
   branding: {
     accent: string
     accentSecondary: string
@@ -202,6 +205,9 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
   return {
     template: defaultTemplate,
     language: "de",
+    appearance: {
+      mode: "light",
+    },
     branding: {
       accent: "#f59e0b",
       accentSecondary: "#16c4cc",
@@ -304,6 +310,7 @@ export function resolveMicrositeConfig(
   }
 
   const branding = isRecord(config.branding) ? config.branding : {}
+  const appearance = isRecord(config.appearance) ? config.appearance : {}
   const hero = isRecord(config.hero) ? config.hero : {}
   const deals = isRecord(config.deals) ? config.deals : {}
   const stamps = isRecord(config.stamps) ? config.stamps : {}
@@ -321,6 +328,10 @@ export function resolveMicrositeConfig(
     ...fallback,
     template: sanitizeTemplateId(config.template, fallback.template),
     language: sanitizeMicrositeLanguage(config.language, fallback.language),
+    appearance: {
+      ...fallback.appearance,
+      mode: appearance.mode === "dark" ? "dark" : "light",
+    },
     branding: {
       ...fallback.branding,
       accent: safeColor(branding.accent, fallback.branding.accent),

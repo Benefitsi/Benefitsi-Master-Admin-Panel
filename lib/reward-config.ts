@@ -1,10 +1,10 @@
 export const dealTypeOptions = [
   { value: "two_for_one", label: "2-for-1" },
   { value: "welcome", label: "Welcome reward" },
-  { value: "comeback", label: "Duration Bonus" },
+  { value: "comeback", label: "Time-based bonus" },
   { value: "happy_hour", label: "Happy Hour deal" },
   { value: "permanent_discount", label: "Permanent fallback discount" },
-  { value: "limited_drop", label: "Limited Deal Drop" },
+  { value: "limited_drop", label: "Limited deal drop" },
   { value: "birthday", label: "Birthday reward" },
   { value: "free_item", label: "Free item deal" },
   { value: "discount", label: "Selectable discount" },
@@ -59,7 +59,7 @@ export const milestoneAudienceOptions = audienceOptions.filter(
 )
 
 export const rewardTypeOptions = [
-  { value: "item", label: "Item" },
+  { value: "item", label: "Reward item" },
   { value: "fixed", label: "Fixed amount" },
   { value: "percent", label: "Percent" },
   { value: "2for1", label: "2-for-1" },

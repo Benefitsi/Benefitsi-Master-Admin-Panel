@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 102168)
+Total output lines: 12207
+
 "use client"
 
 import Link from "next/link"
@@ -86,6 +89,7 @@ import {
   type PartnerActionState,
 } from "./partner-actions"
 import { MicrositePanel } from "./microsite-panel"
+import { useAdminLanguage } from "./admin-language"
 import { LoadingSpinner } from "@/components/loading-ui"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
 
@@ -197,26 +201,26 @@ const partnerTypeOptions = [
 ]
 
 const categoryOptions = [
-  "Doner",
-  "Pizza",
-  "Shawarma",
-  "Burger",
-  "Chinese",
-  "Imbiss",
-  "Metzgerei",
-  "Suppe",
-  "Cafe",
-  "Grill",
-  "Falafel",
-  "Bowl",
-  "Thai",
-  "Sushi",
-  "Restaurant",
-  "Asia",
-  "Eis",
-  "Inder",
-  "Grieche",
-].map((category) => ({ value: category, label: category }))
+  { value: "Doner", label: "Doner kebab" },
+  { value: "Pizza", label: "Pizza" },
+  { value: "Shawarma", label: "Shawarma" },
+  { value: "Burger", label: "Burgers" },
+  { value: "Chinese", label: "Chinese" },
+  { value: "Imbiss", label: "Snack bar" },
+  { value: "Metzgerei", label: "Butcher shop" },
+  { value: "Suppe", label: "Soups" },
+  { value: "Cafe", label: "Café" },
+  { value: "Grill", label: "Grill" },
+  { value: "Falafel", label: "Falafel" },
+  { value: "Bowl", label: "Bowls" },
+  { value: "Thai", label: "Thai" },
+  { value: "Sushi", label: "Sushi" },
+  { value: "Restaurant", label: "Restaurant" },
+  { value: "Asia", label: "Asian" },
+  { value: "Eis", label: "Ice cream" },
+  { value: "Inder", label: "Indian" },
+  { value: "Grieche", label: "Greek" },
+]
 
 const emptyCityOptions = [
   {
@@ -249,7 +253,7 @@ const COMEBACK_INACTIVE_MODE = "comeback_inactive"
 const dealUiTypeOptions = dealTypeOptions.flatMap((option) =>
   option.value === "comeback"
     ? [
-        { value: DURATION_BONUS_DEAL, label: "Duration Bonus" },
+        { value: DURATION_BONUS_DEAL, label: "Time-based bonus" },
         { value: COMEBACK_INACTIVE_DEAL, label: "Comeback Deal" },
       ]
     : [option],
@@ -3024,13 +3028,13 @@ function InitialMenuEditor({
                               title="Change menu item image"
                             >
                               <ThumbnailPreview
-                                alt={`${item.name || `Item ${index + 1}`} preview`}
+                                alt={`${item.name || `Artikel ${index + 1}`} Vorschau`}
                                 src={item.imagePreviewUrl}
                               />
                             </span>
                             <span className="min-w-0">
                               <span className="block truncate text-sm font-semibold text-zinc-800">
-                                {item.name || `Item ${index + 1}`}
+                                {item.name || `Artikel ${index + 1}`}
                               </span>
                               <span className="mt-1 block text-xs text-zinc-500">
                                 {categoryLabel} - Position{" "}
@@ -5707,257 +5711,7 @@ function MilestoneCard({
 
   return (
     <div className="rounded-lg border border-zinc-200 bg-white p-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          onClick={() => setEditing((value) => !value)}
-          className="min-w-0 text-left"
-          aria-expanded={editing}
-        >
-          <span className="block truncate text-sm font-semibold text-zinc-800">
-            {milestone.title || milestone.reward_item || "Milestone reward"}
-          </span>
-          <span className="mt-1 block text-xs text-zinc-500">
-            {formatOptionalNumber(milestone.required_stamps)} stamps -
-            {" "}
-            {labelForValue(rewardTypeOptions, milestone.reward_type)}
-          </span>
-        </button>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setEditing((value) => !value)}
-            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
-          >
-            {editing ? "Collapse" : "Edit"}
-          </button>
-          {milestone.id ? <DeleteMilestoneForm milestoneId={milestone.id} /> : null}
-        </div>
-      </div>
-      {editing ? (
-        <div className="mt-4 border-t border-zinc-200 pt-4">
-          <MilestoneForm
-            milestone={milestone}
-            partner={partner}
-            mode="edit"
-            onSaved={() => setEditing(false)}
-          />
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function MilestoneForm({
-  milestone,
-  onSaved,
-  partner,
-  mode,
-}: {
-  milestone?: PartnerRewardMilestone
-  onSaved?: () => void
-  partner: PartnerWithDeals
-  mode: "create" | "edit"
-}) {
-  const [state, formAction] = useActionState(saveRewardMilestone, initialState)
-  const formRef = useActionSuccess(state, onSaved)
-  const [rewardType, setRewardType] = useState(
-    milestone?.reward_type ?? "item",
-  )
-  const showsRewardItem = rewardType === "item"
-  const showsDiscountValue = rewardType === "fixed" || rewardType === "percent"
-  const showsBenefitCount = rewardType === "bonus_stamp"
-  const requiredSectionsOpen = mode === "create"
-
-  return (
-    <form ref={formRef} action={formAction} className="space-y-5">
-      <input type="hidden" name="id" value={milestone?.id ?? ""} />
-      <input type="hidden" name="partner_id" value={partner.id ?? ""} />
-      <input
-        type="hidden"
-        name="reward_track_target"
-        value={milestone?.reward_track_target ?? DEFAULT_REWARD_TRACK_TARGET}
-      />
-      <FormSection
-        title="Milestone Details"
-        defaultOpen={requiredSectionsOpen}
-        required
-      >
-        <FieldGrid>
-          <TextField
-            label="Required stamps"
-            name="required_stamps"
-            type="number"
-            defaultValue={milestone?.required_stamps}
-            min={1}
-            max={MAX_STAMP_CARD_STAMPS}
-            hint={`Must be between 1 and ${MAX_STAMP_CARD_STAMPS}.`}
-            required
-          />
-          <SelectField
-            label="Reward type"
-            name="reward_type"
-            value={rewardType}
-            options={withCurrentOption(rewardTypeOptions, milestone?.reward_type)}
-            onChange={setRewardType}
-            required
-          />
-          <input type="hidden" name="discount_type" value={rewardType} />
-          <TextField
-            label="Title"
-            name="title"
-            defaultValue={milestone?.title}
-          />
-          {showsRewardItem ? (
-            <TextField
-              label="Reward item"
-              name="reward_item"
-              defaultValue={milestone?.reward_item}
-              required
-            />
-          ) : null}
-          {showsDiscountValue ? (
-            <TextField
-              label="Discount value"
-              name="discount_value"
-              type="number"
-              step="any"
-              defaultValue={milestone?.discount_value}
-              required
-            />
-          ) : null}
-          {showsBenefitCount ? (
-            <TextField
-              label="Bonus stamp count"
-              name="discount_value"
-              type="number"
-              defaultValue={milestone?.discount_value ?? 1}
-            />
-          ) : null}
-          <TextField
-            label="Estimated savings"
-            name="estimated_savings"
-            type="number"
-            step="any"
-            defaultValue={milestone?.estimated_savings}
-          />
-          <SelectField
-            label="Audience"
-            name="audience"
-            defaultValue={milestone?.audience ?? DEFAULT_AUDIENCE}
-            options={withCurrentOption(
-              milestoneAudienceOptions,
-              milestone?.audience,
-            )}
-            required
-          />
-        </FieldGrid>
-        <CheckboxField
-          label="Active"
-          name="active"
-          defaultChecked={milestone?.active ?? true}
-        />
-      </FormSection>
-      <FormSection title="Copy and Instructions" defaultOpen={false}>
-        <InfoNote>
-          If customer description, staff instructions, or terms are left blank,
-          a generic version will be entered automatically.
-        </InfoNote>
-        <FieldGrid>
-          <TextAreaField
-            label="Customer description"
-            name="customer_description"
-            defaultValue={milestone?.customer_description}
-          />
-          <TextAreaField
-            label="Staff instructions"
-            name="staff_instructions"
-            defaultValue={milestone?.staff_instructions}
-            hint="Scanner/order staff need this to know what to give."
-          />
-          <TextAreaField
-            label="Terms"
-            name="terms"
-            defaultValue={milestone?.terms}
-          />
-        </FieldGrid>
-      </FormSection>
-      <ActionMessage state={state} />
-      <SubmitButton
-        label={mode === "create" ? "Add milestone" : "Save milestone"}
-        pendingLabel={
-          mode === "create" ? "Adding milestone..." : "Saving milestone..."
-        }
-      />
-    </form>
-  )
-}
-
-function PartnerStaffPanel({
-  embedded = false,
-  partner,
-  users,
-}: {
-  embedded?: boolean
-  partner: PartnerWithDeals
-  users: OwnerOption[]
-}) {
-  const [showNewStaff, setShowNewStaff] = useState(partner.staff.length === 0)
-
-  const content = (
-      <div className="space-y-4">
-        <div className="flex flex-col gap-3 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal-100 text-sm font-bold text-teal-800">
-              {partner.staff.length}
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-zinc-950">
-                Authorized staff
-              </p>
-              <p className="mt-0.5 text-xs leading-5 text-zinc-500">
-                Give selected users scanner or administrative access.
-              </p>
-            </div>
-          </div>
-          {partner.id && !showNewStaff ? (
-            <button
-              type="button"
-              onClick={() => setShowNewStaff(true)}
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-teal-700 px-3.5 text-sm font-semibold text-white transition hover:bg-teal-800"
-            >
-              <span aria-hidden="true" className="text-base leading-none">+</span>
-              Add staff access
-            </button>
-          ) : null}
-        </div>
-        {showNewStaff ? (
-          <div className="rounded-lg border border-teal-200 bg-teal-50/60 p-3 sm:p-4">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <h4 className="text-sm font-semibold text-zinc-950">Add staff access</h4>
-                <p className="mt-1 text-xs text-zinc-600">Choose a user and assign the appropriate role.</p>
-              </div>
-              {partner.staff.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setShowNewStaff(false)}
-                  className="h-8 rounded-md border border-zinc-300 bg-white px-2.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
-                >
-                  Cancel
-                </button>
-              ) : null}
-            </div>
-            <PartnerStaffForm
-              partner={partner}
-              users={users}
-              mode="create"
-              onSaved={() => setShowNewStaff(false)}
-            />
-          </div>
-        ) : null}
-        {partner.staff.length ? (
-          <div className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white">
+      <div className="flex flex-col gap-2 sm:fle…2168 tokens truncated…          <div className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white">
             {partner.staff.map((staff) => (
               <PartnerStaffCard
                 key={staff.id ?? `${staff.partner_id}-${staff.user_id}`}
@@ -7234,12 +6988,17 @@ function MenuForm({
 
 function DeleteMenuForm({ menuId }: { menuId: string }) {
   const [state, formAction] = useActionState(deleteMenu, initialState)
+  const { language } = useAdminLanguage()
 
   return (
     <form
       action={formAction}
       onSubmit={(event) => {
-        if (!window.confirm("Delete this menu and its categories/items?")) {
+        const message =
+          language === "de"
+            ? "Dieses Menü einschließlich aller Kategorien und Artikel löschen?"
+            : "Delete this menu and its categories/items?"
+        if (!window.confirm(message)) {
           event.preventDefault()
         }
       }}
@@ -7269,6 +7028,7 @@ function MenuImportDialog({
     updates: NonNullable<PartnerActionState["updatedAddons"]>,
   ) => void
 }) {
+  const { language } = useAdminLanguage()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [importMode, setImportMode] = useState<"append" | "replace" | "update_addons" | "">("")
@@ -7395,7 +7155,9 @@ function MenuImportDialog({
                 if (
                   importMode === "replace" &&
                   !window.confirm(
-                    `Replace the current menu? This will remove ${categoryCount} categories and ${itemCount} items after the new file is imported successfully.`,
+                    language === "de"
+                      ? `Aktuelles Menü ersetzen? Nach erfolgreichem Import werden ${categoryCount} Kategorien und ${itemCount} Artikel entfernt.`
+                      : `Replace the current menu? This will remove ${categoryCount} categories and ${itemCount} items after the new file is imported successfully.`,
                   )
                 ) {
                   event.preventDefault()
@@ -7820,12 +7582,18 @@ function DeleteMenuCategoryForm({
 }) {
   const [state, setState] = useState(initialState)
   const [isPending, startTransition] = useTransition()
+  const { language } = useAdminLanguage()
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault()
-        if (!window.confirm(`Delete ${categoryName || "this menu category"} and all of its items?`)) {
+        const name = categoryName || (language === "de" ? "diese Menükategorie" : "this menu category")
+        const message =
+          language === "de"
+            ? `${name} einschließlich aller Artikel löschen?`
+            : `Delete ${name} and all of its items?`
+        if (!window.confirm(message)) {
           return
         }
 
@@ -8294,12 +8062,16 @@ function DeleteMenuItemForm({
 }) {
   const [state, setState] = useState(initialState)
   const [isPending, startTransition] = useTransition()
+  const { language } = useAdminLanguage()
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault()
-        if (!window.confirm(`Delete ${itemName || "this menu item"}?`)) {
+        const name = itemName || (language === "de" ? "Diesen Menüartikel" : "this menu item")
+        const message =
+          language === "de" ? `${name} löschen?` : `Delete ${name}?`
+        if (!window.confirm(message)) {
           return
         }
 
@@ -8477,7 +8249,7 @@ function RedemptionHistoryPanel({
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <h3 className="text-base font-semibold text-zinc-950">
-                          Visit {shortId(visit.id)}
+                          {`Visit ${shortId(visit.id)}`}
                         </h3>
                         <p className="mt-1 text-sm text-zinc-600">
                           {visit.user_name ||
@@ -8557,9 +8329,9 @@ function RedemptionHistoryPanel({
                               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                                 <Info
                                   label="Category"
-                                  value={
-                                    benefit.benefit_category || "Not set"
-                                  }
+                                  value={formatBenefitCategory(
+                                    benefit.benefit_category,
+                                  )}
                                 />
                                 <Info
                                   label="Discount"
@@ -8584,7 +8356,9 @@ function RedemptionHistoryPanel({
                                 />
                                 <Info
                                   label="Source"
-                                  value={benefit.source_type || "Not set"}
+                                  value={formatBenefitSource(
+                                    benefit.source_type,
+                                  )}
                                 />
                               </div>
                             </div>
@@ -8830,6 +8604,7 @@ function DeletePartnerForm({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const confirmedSubmitRef = useRef(false)
+  const { language } = useAdminLanguage()
 
   useEffect(() => {
     if (!state.ok) {
@@ -8864,7 +8639,11 @@ function DeletePartnerForm({
       <ConfirmDialog
         open={confirmingDelete}
         title="Delete partner?"
-        description={`This will permanently delete ${partner.name || "this partner"} and all attached deals.`}
+        description={
+          language === "de"
+            ? `${partner.name || "Dieser Partner"} und alle zugehörigen Deals werden dauerhaft gelöscht.`
+            : `This will permanently delete ${partner.name || "this partner"} and all attached deals.`
+        }
         confirmLabel="Delete partner"
         tone="danger"
         onCancel={() => setConfirmingDelete(false)}
@@ -8892,12 +8671,17 @@ function DeleteDealForm({
   tone?: "danger" | "outline"
 }) {
   const [state, formAction] = useActionState(deleteDeal, initialState)
+  const { language } = useAdminLanguage()
 
   return (
     <form
       action={formAction}
       onSubmit={(event) => {
-        if (!window.confirm("Delete this deal?")) {
+        if (
+          !window.confirm(
+            language === "de" ? "Diesen Deal löschen?" : "Delete this deal?",
+          )
+        ) {
           event.preventDefault()
         }
       }}
@@ -8919,12 +8703,19 @@ function DeleteMilestoneForm({ milestoneId }: { milestoneId: string }) {
     deleteRewardMilestone,
     initialState,
   )
+  const { language } = useAdminLanguage()
 
   return (
     <form
       action={formAction}
       onSubmit={(event) => {
-        if (!window.confirm("Delete this milestone?")) {
+        if (
+          !window.confirm(
+            language === "de"
+              ? "Diese Prämienstufe löschen?"
+              : "Delete this milestone?",
+          )
+        ) {
           event.preventDefault()
         }
       }}
@@ -8943,12 +8734,19 @@ function DeleteMilestoneForm({ milestoneId }: { milestoneId: string }) {
 
 function DeletePartnerStaffForm({ staffId }: { staffId: string }) {
   const [state, formAction] = useActionState(deletePartnerStaff, initialState)
+  const { language } = useAdminLanguage()
 
   return (
     <form
       action={formAction}
       onSubmit={(event) => {
-        if (!window.confirm("Remove this staff access?")) {
+        if (
+          !window.confirm(
+            language === "de"
+              ? "Diesen Mitarbeiterzugriff entfernen?"
+              : "Remove this staff access?",
+          )
+        ) {
           event.preventDefault()
         }
       }}
@@ -9400,8 +9198,11 @@ function MultiSelectField({
   const [selectedValues, setSelectedValues] = useState(defaultValues ?? [])
   const [open, setOpen] = useState(false)
   const detailsRef = useRef<HTMLDetailsElement>(null)
+  const labelsByValue = new Map(options.map((option) => [option.value, option.label]))
   const selectedLabels = selectedValues.length
-    ? selectedValues.join(", ")
+    ? selectedValues
+        .map((value) => labelsByValue.get(value) ?? value)
+        .join(", ")
     : "Select..."
 
   useEffect(() => {
@@ -11049,11 +10850,13 @@ function ResultLimitNote({
   visibleCount: number
 }) {
   const hiddenCount = Math.max(totalCount - visibleCount, 0)
+  const message = hiddenCount
+    ? `Showing ${visibleCount} of ${totalCount} ${itemLabel}; ${hiddenCount} more are loaded but hidden here.`
+    : `Showing ${visibleCount} of ${totalCount} ${itemLabel}.`
 
   return (
     <p className="text-xs font-medium text-zinc-500">
-      Showing {visibleCount} of {totalCount} {itemLabel}
-      {hiddenCount ? `; ${hiddenCount} more are loaded but hidden here.` : "."}
+      {message}
     </p>
   )
 }
@@ -12028,7 +11831,59 @@ function formatRewardValue(
     return label || "Not set"
   }
 
+  if (discountType === "percent") {
+    return `${discountValue}% off`
+  }
+
+  if (discountType === "fixed") {
+    return `€${discountValue} off`
+  }
+
+  if (discountType === "bonus_stamp") {
+    return `+${discountValue} bonus ${discountValue === 1 ? "stamp" : "stamps"}`
+  }
+
   return `${label || "Value"} ${discountValue}`
+}
+
+function formatBenefitCategory(value?: string | null) {
+  const labels: Record<string, string> = {
+    direct_selectable: "Selectable deal",
+    automatic_background: "Automatic benefit",
+    automatic_fallback: "Fallback benefit",
+    base_stamp: "Base stamp",
+  }
+
+  return formatTechnicalLabel(value, labels)
+}
+
+function formatBenefitSource(value?: string | null) {
+  const labels: Record<string, string> = {
+    base_stamp: "Base stamp",
+    selected_direct_deal: "Selected direct deal source",
+    fallback_deal: "Fallback deal",
+    reward_milestone: "Reward milestone",
+  }
+
+  return formatTechnicalLabel(value, labels)
+}
+
+function formatTechnicalLabel(
+  value: string | null | undefined,
+  labels: Record<string, string>,
+) {
+  if (!value) {
+    return "Not set"
+  }
+
+  return (
+    labels[value] ??
+    value
+      .split("_")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ")
+  )
 }
 
 function formatDateTime(value?: string | null) {

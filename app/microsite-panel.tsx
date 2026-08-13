@@ -137,11 +137,15 @@ const builderTranslations: Record<string, string> = {
   "Veröffentlichen": "Publish",
   "Live-Publish ist gesperrt, bis alle Pflichtchecks erledigt sind. Entwurf und Prüfung bleiben möglich.":
     "Live publish is locked until all required checks are complete. Draft and review actions are still available.",
+  "Die Live-Veröffentlichung ist gesperrt, bis alle Pflichtprüfungen erledigt sind. Entwurf und Prüfung bleiben möglich.":
+    "Live publishing is locked until all required checks are complete. Draft and review actions are still available.",
   "Editor": "Editor",
   "Live-Vorschau": "Live preview",
   "Preview herauszoomen": "Zoom out preview",
+  "Vorschau verkleinern": "Zoom out preview",
   "Zoom zurücksetzen": "Reset zoom",
   "Preview reinzoomen": "Zoom in preview",
+  "Vorschau vergrößern": "Zoom in preview",
   "Mobil": "Mobile",
   "Bereitschaft": "Readiness",
   "Live-Bereitschaft": "Live readiness",
@@ -192,17 +196,19 @@ const builderTranslations: Record<string, string> = {
   "E-Mail": "Email",
   "Einträge": "entries",
   "Menüs": "menus",
-  "Belohnungen": "Rewards",
+  "Prämien": "Rewards",
   "Microsite-Bilder": "Microsite images",
   "Start/Deals/Über uns separat": "Hero/deals/about are managed separately",
   "SEO": "SEO",
   "Title/Description separat": "Title/description managed separately",
+  "SEO-Titel und -Beschreibung separat": "SEO title/description managed separately",
   "Partnerprofil": "Partner profile",
   "Partnerprofil / Medien": "Partner profile / Media",
   "Menüs & Artikel": "Menus & items",
   "Fehlt": "Missing",
   "Asset-Bibliothek": "Asset library",
   "Asset-Status & Austauschbarkeit": "Asset status & reusability",
+  "Medienstatus & Austauschbarkeit": "Asset status & reusability",
   "Partnerlogo": "Partner logo",
   "Feature-Karte": "Feature card",
   "Startbild": "Hero image",
@@ -213,6 +219,7 @@ const builderTranslations: Record<string, string> = {
   "fehlt": "missing",
   "Gespeicherte Asset-Library": "Saved asset library",
   "Versionierung & Rückgängig": "Versioning & rollback",
+  "Versionierung & Wiederherstellung": "Versioning & rollback",
   "Entwurf": "Draft",
   "Live": "Live",
   "Live-Version als Entwurf laden": "Load live version into draft",
@@ -236,6 +243,7 @@ const builderTranslations: Record<string, string> = {
   "Social-Vorschau-Bild URL": "Social preview image URL",
   "Öffentliche Seite auf noindex setzen": "Set public page to noindex",
   "Finale Checks": "Final checks",
+  "Abschlussprüfung": "Final checks",
   "Partnerdaten geprüft": "Partner data reviewed",
   "Assets/Fallbacks geprüft": "Assets/fallbacks reviewed",
   "Desktopprüfung abgeschlossen": "Desktop QA complete",
@@ -272,6 +280,7 @@ const builderTranslations: Record<string, string> = {
   "Icongröße": "Icon size",
   "Bildgröße": "Image scale",
   "Zurück auf Auto": "Reset to auto",
+  "Automatisch zurücksetzen": "Reset to auto",
   "Elementfarbe auswählen": "Choose element color",
   "Elementfarbe Hex": "Element color hex",
   "Farbe": "Color",
@@ -293,6 +302,9 @@ const builderTranslations: Record<string, string> = {
   "Print-Vorschau öffnen": "Open print preview",
   "Jetzt drucken": "Print now",
   "Desktop": "Desktop",
+  "Helle Ansicht": "Light mode",
+  "Dunkle Ansicht": "Dark mode",
+  "Darstellungsmodus": "Appearance mode",
   "Auto": "Auto",
   "Button-Abstand": "Button spacing",
   "Links/Rechts Position": "Left/right position",
@@ -335,8 +347,81 @@ const builderTranslations: Record<string, string> = {
   "Adresse Icon": "Address icon",
   "Telefon Icon": "Phone icon",
   "Benefitsi Footer Logo": "Benefitsi footer logo",
-  "Reward 5": "Reward 5",
-  "Reward 10": "Reward 10",
+  "Prämie nach 5 Stempeln": "5-stamp reward",
+  "Prämie nach 10 Stempeln": "10-stamp reward",
+  "Vorlagenschrift": "Template font",
+  "Automatische Bildprüfung": "Automated image audit",
+  "Bildauflösung zu niedrig": "Low resolution",
+  "Seitenverhältnis prüfen": "Check aspect ratio",
+  "Bild wird geprüft": "Checking image",
+  "Bild nicht verfügbar": "Image unavailable",
+  "Bildqualität gut": "Good image quality",
+  "Bildgröße wird ausgelesen…": "Reading image size...",
+  "Das Bild konnte nicht geladen werden. Bitte erneut hochladen oder ersetzen.":
+    "The image could not be loaded. Re-upload or replace it.",
+  "Ersetze unscharfe oder zu kleine Bilder vor der Veröffentlichung oder dem Druck.":
+    "Replace blurry or undersized photos before publishing or printing.",
+  "Empfohlene Ausrichtung": "Recommended direction",
+  "Beste Wahl": "Best fit",
+  "Gastronomie": "Food & drink",
+  "Salon & Beauty": "Salon & beauty",
+  "Wellness & Pflege": "Wellness & care",
+  "Unterhaltung": "Entertainment",
+  "Einzelhandel & Dienstleistungen": "Retail & services",
+  "Regional essen": "Local dining",
+  "Minimalistische Gastronomie": "Minimal food",
+  "Beauty-Studio": "Beauty studio",
+  "Beauty Noir": "Beauty noir",
+  "Emotional, angebotsorientiert und auf Conversions ausgerichtet.":
+    "Emotional, offer-led, and conversion-focused.",
+  "Warm, regional und erzählerisch.": "Warm, regional, and story-led.",
+  "Reduziert, schnell und mit wenig Bildmaterial.": "Reduced, fast, and image-light.",
+  "Editorial, hochwertig und serviceorientiert.": "Editorial, premium, and service-led.",
+  "Dunkel, luxuriös und modebewusst.": "Dark, luxe, and fashion-forward.",
+  "Ruhig, regenerierend und luftig.": "Calm, restorative, and breathable.",
+  "Elektrisierend, markant und energiegeladen.": "Electric, bold, and high-energy.",
+  "Kontrastreich, eventorientiert und dramatisch.":
+    "High-contrast, event-forward, and dramatic.",
+  "Quadratischer Beitrag": "Square post",
+  "Story-Banner": "Story banner",
+  "Querformat-Banner": "Landscape banner",
+  "Markantes Angebot": "Bold offer",
+  "Klare Story": "Clean story",
+  "Foto im Fokus": "Photo spotlight",
+  "Editorial Elegant": "Editorial luxe",
+  "Mitternachtsglanz": "Midnight glow",
+  "Großzügiges, angebotsorientiertes Flyer-Layout mit klarem CTA und starkem Startbild.":
+    "Large offer-led flyer layout with a clear CTA and strong hero image.",
+  "Luftiges Editorial-Layout mit hochwertigen Abständen für ruhige, vertrauenswürdige Marken.":
+    "Airy editorial layout with premium spacing for calm and trusted brands.",
+  "Bildbetonte Komposition mit der Botschaft im unteren Drittel.":
+    "Image-first composition with the message anchored in the lower third.",
+  "Boutique-Komposition mit gerahmter Hauptbotschaft und luxuriöser Anmutung.":
+    "Boutique studio composition with a framed center story and luxury tone.",
+  "Kontrastreiches Eventplakat mit Neon-Energie und dramatischer Überschriften-Hierarchie.":
+    "High-contrast event poster with neon energy and a dramatic headline stack.",
+  "Wecke Appetit und nenne einen klaren Grund, jetzt vorbeizukommen.":
+    "Lead with appetite and one clear reason to walk in now.",
+  "Nutze hochwertige Abstände, ausgearbeitete Typografie und stelle die Leistungen in den Mittelpunkt.":
+    "Use premium spacing, polished typography, and service-led framing.",
+  "Halte die Botschaft ruhig, luftig und auch aus der Entfernung leicht erfassbar.":
+    "Keep the message calm, breathable, and easy to scan from a distance.",
+  "Nutze dramatische Kontraste und eine plakatartige, eventorientierte Hierarchie.":
+    "Use dramatic contrast and a poster-like, event-driven hierarchy.",
+  "Verbinde ein klares Angebot mit einem hochwertigen lokalen Markenauftritt.":
+    "Balance offer clarity with a polished local-brand presentation.",
+  "Geteiltes Editorial": "Editorial split",
+  "Bildbetont": "Image-led",
+  "Fokus im unteren Bereich": "Bottom spotlight",
+  "Gerahmtes Editorial": "Framed editorial",
+  "Neon-Plakat": "Neon poster",
+  "Angebots-Hierarchie": "Offer stack",
+  "Ideal für Theken-Flyer, Plakate und gedruckte Handzettel.":
+    "Ideal for counter flyers, posters, and printable handouts.",
+  "Ideal für mobile Storys und vertikale Displays.":
+    "Ideal for mobile stories and vertical displays.",
+  "Ideal für Social-Media-Beiträge, Partnerbanner und Aktionskacheln.":
+    "Ideal for social posts, partner banners, and promo tiles.",
   "QR-Code": "QR code",
   "FAQ Frage": "FAQ question",
   "FAQ Antwort": "FAQ answer",
@@ -619,6 +704,34 @@ function translateBuilderText(locale: BuilderLocale, text: string): string {
     return `${stampRewardImageMatch[1]}-stamp reward image`
   }
 
+  const minimumUploadMatch = repairedText.match(
+    /^Mindestens (\d+) x (\d+) px hochladen\.$/,
+  )
+  if (minimumUploadMatch) {
+    return `Upload at least ${minimumUploadMatch[1]} x ${minimumUploadMatch[2]}px.`
+  }
+
+  const minimumResolutionMatch = repairedText.match(
+    /^Mindestens (\d+) x (\d+) px verwenden\. Aktuell: (\d+) x (\d+) px\.$/,
+  )
+  if (minimumResolutionMatch) {
+    return `Use at least ${minimumResolutionMatch[1]} x ${minimumResolutionMatch[2]}px. Current: ${minimumResolutionMatch[3]} x ${minimumResolutionMatch[4]}px.`
+  }
+
+  const awkwardCropMatch = repairedText.match(
+    /^Der Bildausschnitt könnte unpassend wirken\. Aktuell: (\d+) x (\d+) px\.$/,
+  )
+  if (awkwardCropMatch) {
+    return `The crop may feel awkward. Current: ${awkwardCropMatch[1]} x ${awkwardCropMatch[2]}px.`
+  }
+
+  const assetAttentionMatch = repairedText.match(
+    /^(\d+) Assets? benötigen Aufmerksamkeit\.$/,
+  )
+  if (assetAttentionMatch) {
+    return `${assetAttentionMatch[1]} asset${assetAttentionMatch[1] === "1" ? "" : "s"} need attention.`
+  }
+
   const appBenefitIconMatch = repairedText.match(/^App Vorteil (\d+) Icon$/)
   if (appBenefitIconMatch) {
     return `App benefit ${appBenefitIconMatch[1]} icon`
@@ -630,6 +743,7 @@ function translateBuilderText(locale: BuilderLocale, text: string): string {
     .replace(/(\d+)\s+EintrÃ¤ge\b/g, "$1 entries")
     .replace(/(\d+)\s+MenÃ¼s\b/g, "$1 menus")
     .replace(/(\d+)\s+Belohnungen\b/g, "$1 rewards")
+    .replace(/(\d+)\s+Prämien\b/g, "$1 rewards")
     .replace(/^([A-Za-z]+) Button$/, "$1 button")
     .replace(/^([A-Za-z]+) Label$/, "$1 label")
     .replace(/^([A-Za-z]+) Logo\/Icon$/, "$1 logo/icon")
@@ -698,7 +812,7 @@ export function MicrositePanel({
   const recommendedTemplateId = defaultMicrositeTemplateForPartner(partner)
   const previewIdentifier = partner.slug || partner.subdomain || partner.id || "partner"
   const previewStorageKey = `benefitsi:microsite-preview:${partner.id || partner.slug || "partner"}`
-  const previewHref = `${previewBasePath}/${encodeURIComponent(previewIdentifier)}?source=builder`
+  const previewHref = `${previewBasePath}/${encodeURIComponent(previewIdentifier)}?source=builder&mode=${config.appearance?.mode ?? "light"}`
   const publishBlocked = readinessReport.status === "blocked"
   const publishBlockers = readinessReport.items.filter(
     (item) => item.severity === "required" && !item.ok,
@@ -800,7 +914,7 @@ export function MicrositePanel({
             type="button"
             onClick={() => adjustPreviewZoom(-0.1)}
             className="grid size-8 place-items-center rounded text-sm font-black text-zinc-700 transition hover:bg-zinc-100"
-            aria-label={tr("Preview herauszoomen")}
+            aria-label={tr("Vorschau verkleinern")}
           >
             -
           </button>
@@ -816,7 +930,7 @@ export function MicrositePanel({
             type="button"
             onClick={() => adjustPreviewZoom(0.1)}
             className="grid size-8 place-items-center rounded text-sm font-black text-zinc-700 transition hover:bg-zinc-100"
-            aria-label={tr("Preview reinzoomen")}
+            aria-label={tr("Vorschau vergrößern")}
           >
             +
           </button>
@@ -832,6 +946,35 @@ export function MicrositePanel({
               }`}
             >
               {item === "desktop" ? tr("Desktop") : tr("Mobil")}
+            </button>
+          ))}
+        </div>
+        <div
+          className="inline-flex rounded-md border border-zinc-200 bg-white p-1"
+          role="group"
+          aria-label={tr("Darstellungsmodus")}
+        >
+          {(["light", "dark"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() =>
+                setConfig((current) => ({
+                  ...current,
+                  appearance: {
+                    ...(current.appearance ?? { mode: "light" }),
+                    mode,
+                  },
+                }))
+              }
+              aria-pressed={(config.appearance?.mode ?? "light") === mode}
+              className={`rounded px-3 py-1.5 text-xs font-semibold ${
+                (config.appearance?.mode ?? "light") === mode
+                  ? "bg-zinc-950 text-white"
+                  : "text-zinc-600"
+              }`}
+            >
+              {mode === "light" ? tr("Helle Ansicht") : tr("Dunkle Ansicht")}
             </button>
           ))}
         </div>
@@ -1622,7 +1765,7 @@ export function MicrositePanel({
             </button>
             {publishBlocked ? (
               <p className="rounded-md bg-rose-50 px-3 py-2 text-xs font-semibold leading-5 text-rose-700">
-                {tr("Live-Publish ist gesperrt, bis alle Pflichtchecks erledigt sind. Entwurf und Prüfung bleiben möglich.")}
+                {tr("Die Live-Veröffentlichung ist gesperrt, bis alle Pflichtprüfungen erledigt sind. Entwurf und Prüfung bleiben möglich.")}
               </p>
             ) : null}
             {state.message ? (
@@ -1655,7 +1798,7 @@ export function MicrositePanel({
                   type="button"
                   onClick={() => adjustPreviewZoom(-0.1)}
                   className="grid size-8 place-items-center rounded text-sm font-black text-zinc-700 transition hover:bg-zinc-100"
-                  aria-label={tr("Preview herauszoomen")}
+                  aria-label={tr("Vorschau verkleinern")}
                 >
                   −
                 </button>
@@ -1671,7 +1814,7 @@ export function MicrositePanel({
                   type="button"
                   onClick={() => adjustPreviewZoom(0.1)}
                   className="grid size-8 place-items-center rounded text-sm font-black text-zinc-700 transition hover:bg-zinc-100"
-                  aria-label={tr("Preview reinzoomen")}
+                  aria-label={tr("Vorschau vergrößern")}
                 >
                   +
                 </button>
@@ -1777,7 +1920,7 @@ const socialPlatformOptions = [
 ] as const
 
 const fontFamilyOptions = [
-  { value: "", label: "Template-Schrift" },
+  { value: "", label: "Vorlagenschrift" },
   { value: "Arial, sans-serif", label: "Arial" },
   { value: "Georgia, serif", label: "Georgia" },
   { value: "Inter, sans-serif", label: "Inter" },
@@ -1931,8 +2074,8 @@ function BuilderSectionsPanel({
 function templatePreviewMeta(templateId: MicrositeTemplatePreset["id"]) {
   if (templateId === "restaurant-local") {
     return {
-      category: "Local dining",
-      mood: "Warm, regional, and story-led.",
+      category: "Regional essen",
+      mood: "Warm, regional und erzählerisch.",
       frame: "border-amber-200 bg-[#fff7ed]",
       badge: "bg-white text-amber-700",
       hero: "bg-[linear-gradient(135deg,#fed7aa_0%,#fdba74_48%,#0ea5e9_100%)]",
@@ -1946,8 +2089,8 @@ function templatePreviewMeta(templateId: MicrositeTemplatePreset["id"]) {
 
   if (templateId === "restaurant-clean") {
     return {
-      category: "Minimal food",
-      mood: "Reduced, fast, and image-light.",
+      category: "Minimalistische Gastronomie",
+      mood: "Reduziert, schnell und mit wenig Bildmaterial.",
       frame: "border-zinc-200 bg-zinc-50",
       badge: "bg-white text-zinc-700",
       hero: "bg-[linear-gradient(135deg,#111827_0%,#334155_58%,#14b8a6_100%)]",
@@ -1961,8 +2104,8 @@ function templatePreviewMeta(templateId: MicrositeTemplatePreset["id"]) {
 
   if (templateId === "salon-editorial") {
     return {
-      category: "Beauty studio",
-      mood: "Editorial, premium, and service-led.",
+      category: "Beauty-Studio",
+      mood: "Editorial, hochwertig und serviceorientiert.",
       frame: "border-rose-200 bg-[#fff1f2]",
       badge: "bg-white text-rose-700",
       hero: "bg-[linear-gradient(135deg,#fbcfe8_0%,#fda4af_52%,#b45309_100%)]",
@@ -1976,8 +2119,8 @@ function templatePreviewMeta(templateId: MicrositeTemplatePreset["id"]) {
 
   if (templateId === "atelier-noir") {
     return {
-      category: "Beauty noir",
-      mood: "Dark, luxe, and fashion-forward.",
+      category: "Beauty Noir",
+      mood: "Dunkel, luxuriös und modebewusst.",
       frame: "border-amber-300 bg-[#17131c]",
       badge: "bg-white/10 text-amber-100",
       hero: "bg-[linear-gradient(135deg,#18111b_0%,#3b1f2e_46%,#f59e0b_100%)]",
@@ -1992,7 +2135,7 @@ function templatePreviewMeta(templateId: MicrositeTemplatePreset["id"]) {
   if (templateId === "wellness-serene") {
     return {
       category: "Wellness",
-      mood: "Calm, restorative, and breathable.",
+      mood: "Ruhig, regenerierend und luftig.",
       frame: "border-emerald-200 bg-[#ecfdf5]",
       badge: "bg-white text-emerald-700",
       hero: "bg-[linear-gradient(135deg,#d1fae5_0%,#a7f3d0_50%,#93c5fd_100%)]",
@@ -2007,7 +2150,7 @@ function templatePreviewMeta(templateId: MicrositeTemplatePreset["id"]) {
   if (templateId === "festival-neon") {
     return {
       category: "Nightlife",
-      mood: "Electric, bold, and high-energy.",
+      mood: "Elektrisierend, markant und energiegeladen.",
       frame: "border-cyan-300 bg-[#07111f]",
       badge: "bg-white/10 text-cyan-100",
       hero: "bg-[linear-gradient(135deg,#07111f_0%,#2563eb_38%,#22d3ee_62%,#f43f5e_100%)]",
@@ -2021,8 +2164,8 @@ function templatePreviewMeta(templateId: MicrositeTemplatePreset["id"]) {
 
   if (templateId === "cinema-spotlight") {
     return {
-      category: "Entertainment",
-      mood: "High-contrast, event-forward, and dramatic.",
+      category: "Unterhaltung",
+      mood: "Kontrastreich, eventorientiert und dramatisch.",
       frame: "border-fuchsia-300 bg-[#18181b]",
       badge: "bg-white/10 text-fuchsia-100",
       hero: "bg-[linear-gradient(135deg,#111827_0%,#7e22ce_48%,#e11d48_100%)]",
@@ -2036,7 +2179,7 @@ function templatePreviewMeta(templateId: MicrositeTemplatePreset["id"]) {
 
   return {
     category: "Restaurant",
-    mood: "Emotional, offer-led, and conversion-focused.",
+    mood: "Emotional, angebotsorientiert und auf Conversions ausgerichtet.",
     frame: "border-amber-200 bg-[#fffbeb]",
     badge: "bg-white text-amber-700",
     hero: "bg-[linear-gradient(135deg,#f59e0b_0%,#f97316_46%,#16c4cc_100%)]",
@@ -2078,7 +2221,7 @@ function TemplateSystemPanel({
               <div className={`overflow-hidden rounded-xl border p-2.5 ${preview.frame}`}>
                 <div className="flex items-start justify-between gap-3">
                   <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${preview.badge}`}>
-                    {preview.category}
+                    {tr(preview.category)}
                   </span>
                   <span className={`size-6 rounded-full ${preview.orb}`} />
                 </div>
@@ -2103,7 +2246,7 @@ function TemplateSystemPanel({
                 ) : null}
               </span>
               <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
-                {preview.mood}
+                {tr(preview.mood)}
               </span>
               <span className="mt-1 block text-[11px] leading-5 text-zinc-500">
                 {tr(template.description)}
@@ -2133,9 +2276,9 @@ function DataSourcePanel({ partner }: { partner: PartnerWithDeals }) {
     ["Social Media", `${socialCount} Einträge`, "Partnerprofil"],
     ["Öffnungszeiten", `${partner.opening_hours.length} Einträge`, "Öffnungszeiten"],
     ["Speisekarte", `${partner.menus.length} Menüs`, "Menüs & Artikel"],
-    ["Belohnungen", `${partner.reward_milestones.length} Belohnungen`, "Stempelkarte"],
+    ["Prämien", `${partner.reward_milestones.length} Prämien`, "Stempelkarte"],
     ["Microsite-Bilder", "Start/Deals/Über uns separat", "Microsite"],
-    ["SEO", "Title/Description separat", "Microsite"],
+    ["SEO", "SEO-Titel und -Beschreibung separat", "Microsite"],
   ]
 
   return (
@@ -2241,24 +2384,24 @@ function evaluateAssetQuality(
   if (!target.value) {
     return {
       tone: "missing" as const,
-      label: "Missing",
-      detail: `Upload at least ${target.minWidth} x ${target.minHeight}px.`,
+      label: "Fehlt",
+      detail: `Mindestens ${target.minWidth} x ${target.minHeight} px hochladen.`,
     }
   }
 
   if (!snapshot || snapshot.status === "loading") {
     return {
       tone: "loading" as const,
-      label: "Checking",
-      detail: "Reading image size...",
+      label: "Bild wird geprüft",
+      detail: "Bildgröße wird ausgelesen…",
     }
   }
 
   if (snapshot.status === "error" || !snapshot.width || !snapshot.height) {
     return {
       tone: "error" as const,
-      label: "Broken",
-      detail: "The image could not be loaded. Re-upload or replace it.",
+      label: "Bild nicht verfügbar",
+      detail: "Das Bild konnte nicht geladen werden. Bitte erneut hochladen oder ersetzen.",
     }
   }
 
@@ -2277,22 +2420,22 @@ function evaluateAssetQuality(
   if (resolutionTooSmall) {
     return {
       tone: "warn" as const,
-      label: "Low-res",
-      detail: `Use at least ${target.minWidth} x ${target.minHeight}px. Current: ${snapshot.width} x ${snapshot.height}px.`,
+      label: "Bildauflösung zu niedrig",
+      detail: `Mindestens ${target.minWidth} x ${target.minHeight} px verwenden. Aktuell: ${snapshot.width} x ${snapshot.height} px.`,
     }
   }
 
   if (aspectMismatch) {
     return {
       tone: "warn" as const,
-      label: "Aspect",
-      detail: `The crop may feel awkward. Current: ${snapshot.width} x ${snapshot.height}px.`,
+      label: "Seitenverhältnis prüfen",
+      detail: `Der Bildausschnitt könnte unpassend wirken. Aktuell: ${snapshot.width} x ${snapshot.height} px.`,
     }
   }
 
   return {
     tone: "good" as const,
-    label: "Good",
+    label: "Bildqualität gut",
     detail: `${snapshot.width} x ${snapshot.height}px`,
   }
 }
@@ -2316,8 +2459,8 @@ function AssetReadinessPanel({
     { label: "Über uns 1", value: config.elementText["content.aboutHeroImageUrl"] || "", source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     { label: "Über uns 2", value: config.elementText["content.aboutIngredientImageUrl"] || "", source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     { label: "iPhone Screenshot", value: config.elementText["content.appPhoneScreenshotUrl"] || "/partner-details-page.jpg", source: "Microsite", slot: "content.appPhoneScreenshotUrl", minWidth: 720, minHeight: 1400, preferredAspect: 9 / 20, aspectTolerance: 0.12 },
-    { label: "Reward 5", value: config.elementText["stamps.reward.5.image"] || "", source: "Microsite", slot: "stamps.reward.5.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
-    { label: "Reward 10", value: config.elementText["stamps.reward.10.image"] || "", source: "Microsite", slot: "stamps.reward.10.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
+    { label: "Prämie nach 5 Stempeln", value: config.elementText["stamps.reward.5.image"] || "", source: "Microsite", slot: "stamps.reward.5.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
+    { label: "Prämie nach 10 Stempeln", value: config.elementText["stamps.reward.10.image"] || "", source: "Microsite", slot: "stamps.reward.10.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
     { label: "QR-Code", value: config.elementText["content.appQrCodeUrl"] || "", source: "Microsite", slot: "content.appQrCodeUrl", minWidth: 600, minHeight: 600, preferredAspect: 1, aspectTolerance: 0.12 },
   ]
   const assetSnapshots = useAssetQualitySnapshots(rows.map((row) => row.value))
@@ -2330,13 +2473,14 @@ function AssetReadinessPanel({
     <ConfigSection title="Asset-Bibliothek">
       <details className="rounded-xl border border-zinc-200 bg-white p-3">
         <summary className="cursor-pointer text-sm font-black text-zinc-950">
-          {tr("Asset-Status & Austauschbarkeit")}
+          {tr("Medienstatus & Austauschbarkeit")}
         </summary>
         {qualityIssues.length ? (
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-            <p className="font-black">Auto photo audit</p>
+            <p className="font-black">{tr("Automatische Bildprüfung")}</p>
             <p className="mt-1">
-              {qualityIssues.length} asset{qualityIssues.length === 1 ? "" : "s"} need attention. Replace blurry or undersized photos before publishing or printing.
+              {tr(`${qualityIssues.length} Asset${qualityIssues.length === 1 ? "" : "s"} benötigen Aufmerksamkeit.`)}{" "}
+              {tr("Ersetze unscharfe oder zu kleine Bilder vor der Veröffentlichung oder dem Druck.")}
             </p>
           </div>
         ) : null}
@@ -2378,10 +2522,10 @@ function AssetReadinessPanel({
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] ${qualityToneClass}`}
                     >
-                      {quality.label}
+                      {tr(quality.label)}
                     </span>
                     <p className="min-w-0 flex-1 text-[11px] leading-4 text-zinc-500">
-                      {quality.detail}
+                      {tr(quality.detail)}
                     </p>
                   </div>
                   <p className="mt-1 truncate text-[11px] text-zinc-500">
@@ -2436,7 +2580,7 @@ function VersionRollbackPanel({
   const draftConfig = partner.microsite?.draftVersion?.config
 
   return (
-    <ConfigSection title="Versionierung & Rückgängig">
+    <ConfigSection title="Versionierung & Wiederherstellung">
       <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-3 text-xs">
         <div className="grid grid-cols-2 gap-2">
           <ReadinessMetric
@@ -2597,7 +2741,7 @@ function BuilderChecklistPanel({
   ] as const
 
   return (
-    <ConfigSection title="Finale Checks">
+    <ConfigSection title="Abschlussprüfung">
       <div className="space-y-2 rounded-xl border border-zinc-200 bg-white p-3">
         {rows.map(([key, label]) => (
           <label key={key} className="flex items-center gap-2 text-xs font-bold text-zinc-800">
@@ -3035,7 +3179,7 @@ function SelectedElementPanel({
               >
                 {fontFamilyOptions.map((option) => (
                   <option key={option.label} value={option.value}>
-                    {option.label}
+                    {tr(option.label)}
                   </option>
                 ))}
               </select>
@@ -3210,7 +3354,7 @@ function RangeField({
         onClick={() => onChange(undefined)}
         className="text-[11px] font-semibold text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
       >
-        {tr("Zurück auf Auto")}
+        {tr("Automatisch zurücksetzen")}
       </button>
     </label>
   )
@@ -4453,19 +4597,24 @@ function MicrositeLanguagePicker({
             {tr("Aktualisiert Navigation, Standardtexte und SEO-Grundcopy.")}
           </p>
         </div>
-        <div className="inline-flex shrink-0 rounded-md border border-zinc-300 bg-white p-1">
+        <div
+          className="inline-flex shrink-0 rounded-md border border-zinc-300 bg-white p-1"
+          role="group"
+          aria-label={tr("Microsite-Sprache")}
+        >
           {(["de", "en"] as const).map((option) => (
             <button
               key={option}
               type="button"
               onClick={() => onChange(option)}
+              aria-pressed={language === option}
               className={`rounded px-3 py-1.5 text-xs font-bold uppercase transition ${
                 language === option
                   ? "bg-teal-700 text-white"
                   : "text-zinc-600 hover:bg-zinc-100"
               }`}
             >
-              {option}
+              {option.toUpperCase()}
             </button>
           ))}
         </div>
@@ -4737,6 +4886,11 @@ function englishMicrositeCopyForPartner(
       : "Local flavor, loyal guests and one microsite for more repeat visits.",
   }
 }
+
+// Reserved for the future all-or-nothing public microsite localization flow.
+// Keeping the helpers referenced prevents them from being mistaken for active UI.
+void MicrositeLanguagePicker
+void applyMicrositeLanguage
 
 function updateSeo(
   setter: Dispatch<SetStateAction<MicrositeConfig>>,
