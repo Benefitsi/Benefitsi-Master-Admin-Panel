@@ -257,6 +257,8 @@ const PUBLIC_ELEMENT_TEXT_KEYS = new Set([
   "content.aboutText",
   "content.aboutTextSecond",
   "content.aboutThanks",
+  "content.quoteText",
+  "content.quoteAttribution",
   "content.appButtonLabel",
   "content.appDownloadUrl",
   "content.appHeadline",
@@ -320,13 +322,14 @@ const PUBLIC_ELEMENT_TEXT_KEYS = new Set([
 const PUBLIC_ELEMENT_TEXT_PATTERNS = [
   /^navigation\.[a-z0-9-]+$/,
   /^social\.(instagram|facebook|tiktok|youtube|whatsapp|website|google|linkedin)\.(enabled|iconUrl|label|url)$/,
-  /^hero\.services\.\d+\.(label|icon)$/,
+  /^hero\.services\.\d+\.(label|icon|description)$/,
   /^deals\.topDealBullets\.\d+(\.icon)?$/,
   /^stamps\.(number|reward)\.\d+\.(label|image|icon)$/,
   /^content\.aboutValue\.[0-3](\.icon)?$/,
   /^content\.appBenefit\.[0-2](\.icon)?$/,
   /^content\.contact\.(address|phone|opening)(\.icon)?$/,
   /^content\.faq\.[0-5]\.(question|answer)$/,
+  /^content\.menuItem\.[a-z0-9_-]+\.(imageUrl|showImage)$/,
   /^footer\.trust\.[0-2]\.(label|icon)$/,
 ]
 
@@ -340,7 +343,7 @@ function sanitizePublicElementText(elementText: Record<string, string>) {
         return false
       }
 
-      if (isSocialVisibilityKey(key)) {
+      if (isVisibilityKey(key)) {
         return value === "true" || value === "false"
       }
 
@@ -373,8 +376,11 @@ function isPublicAssetKey(key: string) {
   )
 }
 
-function isSocialVisibilityKey(key: string) {
-  return key.startsWith("social.") && key.endsWith(".enabled")
+function isVisibilityKey(key: string) {
+  return (
+    (key.startsWith("social.") && key.endsWith(".enabled")) ||
+    (key.startsWith("content.menuItem.") && key.endsWith(".showImage"))
+  )
 }
 
 function isSafePublicLink(value: string) {

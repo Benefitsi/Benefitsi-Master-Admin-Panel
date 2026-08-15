@@ -51,12 +51,8 @@ export function MicrositePreviewShell({
 
     let cancelled = false
 
-    queueMicrotask(() => {
-      if (cancelled) {
-        return
-      }
-
-      const storedConfig = window.localStorage.getItem(previewStorageKey)
+    const applyStoredConfig = (storedConfig: string | null) => {
+      if (cancelled) return
 
       if (!storedConfig) {
         setConfig(initialConfig)
@@ -68,10 +64,21 @@ export function MicrositePreviewShell({
       } catch {
         setConfig(initialConfig)
       }
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === previewStorageKey) applyStoredConfig(event.newValue)
+    }
+
+    queueMicrotask(() => {
+      applyStoredConfig(window.localStorage.getItem(previewStorageKey))
     })
+
+    window.addEventListener("storage", handleStorage)
 
     return () => {
       cancelled = true
+      window.removeEventListener("storage", handleStorage)
     }
   }, [initialConfig, partner, previewStorageKey, useBuilderDraft])
 

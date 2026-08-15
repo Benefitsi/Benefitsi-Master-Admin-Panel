@@ -28,8 +28,10 @@ export type MicrositeConfig = {
     mode: "light" | "dark"
   }
   branding: {
+    paletteMode: "auto" | "manual"
     accent: string
     accentSecondary: string
+    accentTertiary: string
     logoUrl: string
     partnerBadgeUrl: string
   }
@@ -72,6 +74,8 @@ export type MicrositeConfig = {
     aboutLabel: string
     aboutHeadline: string
     aboutText: string
+    quoteText: string
+    quoteAttribution: string
     contactLabel: string
     contactHeadline: string
     appHeadline: string
@@ -209,8 +213,10 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       mode: "light",
     },
     branding: {
+      paletteMode: "auto",
       accent: "#f59e0b",
-      accentSecondary: "#16c4cc",
+      accentSecondary: "#172554",
+      accentTertiary: "#16c4cc",
       logoUrl: partner.logo_url || "",
       partnerBadgeUrl: "",
     },
@@ -260,6 +266,8 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       aboutLabel: "Über uns",
       aboutHeadline: `${partner.short_name || name} auf einen Blick`,
       aboutText: defaults.aboutText,
+      quoteText: `Was uns wichtig ist: Jeder Besuch bei ${partner.short_name || name} soll sich persönlich, unkompliziert und besonders anfühlen.`,
+      quoteAttribution: partner.short_name || name,
       contactLabel: "Kontakt",
       contactHeadline: defaults.contactHeadline,
       appHeadline: defaults.appHeadline,
@@ -334,10 +342,15 @@ export function resolveMicrositeConfig(
     },
     branding: {
       ...fallback.branding,
+      paletteMode: branding.paletteMode === "manual" ? "manual" : "auto",
       accent: safeColor(branding.accent, fallback.branding.accent),
       accentSecondary: safeColor(
         branding.accentSecondary,
         fallback.branding.accentSecondary,
+      ),
+      accentTertiary: safeColor(
+        branding.accentTertiary,
+        fallback.branding.accentTertiary,
       ),
       // Partner profile media is the source of truth for the partner logo.
       // This prevents old microsite drafts/localStorage from freezing outdated logos.
@@ -424,6 +437,11 @@ export function resolveMicrositeConfig(
         fallback.content.aboutHeadline,
       ),
       aboutText: safeString(content.aboutText, fallback.content.aboutText),
+      quoteText: safeString(content.quoteText, fallback.content.quoteText),
+      quoteAttribution: safeString(
+        content.quoteAttribution,
+        fallback.content.quoteAttribution,
+      ),
       contactLabel: safeString(
         content.contactLabel,
         fallback.content.contactLabel,

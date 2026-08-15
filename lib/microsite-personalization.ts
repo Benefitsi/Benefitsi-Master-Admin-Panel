@@ -1,14 +1,6 @@
 import type { PartnerWithDeals } from "./admin-data"
 
-export type MicrositeTemplateId =
-  | "restaurant-premium"
-  | "restaurant-local"
-  | "restaurant-clean"
-  | "salon-editorial"
-  | "atelier-noir"
-  | "wellness-serene"
-  | "cinema-spotlight"
-  | "festival-neon"
+export type MicrositeTemplateId = "restaurant-premium"
 
 export type PrintableFormatId =
   | "flyer-a5"
@@ -130,20 +122,7 @@ export function inferMicrositePartnerProfile(
 }
 
 export function defaultMicrositeTemplateForPartner(partner: PartnerSeed): MicrositeTemplateId {
-  const profile = inferMicrositePartnerProfile(partner)
-
-  if (profile === "salon") {
-    return "salon-editorial"
-  }
-
-  if (profile === "wellness") {
-    return "wellness-serene"
-  }
-
-  if (profile === "cinema") {
-    return "cinema-spotlight"
-  }
-
+  void partner
   return "restaurant-premium"
 }
 
@@ -361,16 +340,7 @@ export function sanitizePrintableTemplateId(
 }
 
 function isTemplateId(value: unknown): value is MicrositeTemplateId {
-  return [
-    "restaurant-premium",
-    "restaurant-local",
-    "restaurant-clean",
-    "salon-editorial",
-    "atelier-noir",
-    "wellness-serene",
-    "cinema-spotlight",
-    "festival-neon",
-  ].includes(String(value))
+  return value === "restaurant-premium"
 }
 
 function isPrintableFormatId(value: unknown): value is PrintableFormatId {

@@ -22,6 +22,7 @@ export type MicrositeActionState = {
 const MICROSITE_ASSET_BUCKET =
   process.env.SUPABASE_PARTNER_MEDIA_BUCKET ?? "partner-assets"
 const MAX_MICROSITE_ASSET_BYTES = 10 * 1024 * 1024
+const MAX_MICROSITE_UPLOAD_BYTES = 20 * 1024 * 1024
 const ALLOWED_MICROSITE_ASSET_TYPES = new Set([
   "image/png",
   "image/jpeg",
@@ -30,6 +31,54 @@ const ALLOWED_MICROSITE_ASSET_TYPES = new Set([
 ])
 
 export async function saveMicrositeVersion(
+  previousState: MicrositeActionState,
+  formData: FormData,
+): Promise<MicrositeActionState> {
+  const partnerId = stringValue(formData, "partner_id")
+  const intent = stringValue(formData, "intent") || "draft"
+  const uploadSummary = summarizeUploads(formData)
+  const startedAt = Date.now()
+
+  console.info("[microsite:save] started", {
+    partnerId,
+    intent,
+    uploadCount: uploadSummary.count,
+    uploadBytes: uploadSummary.bytes,
+  })
+
+  try {
+    const result = await persistMicrositeVersion(previousState, formData)
+
+    console.info("[microsite:save] completed", {
+      partnerId,
+      intent,
+      ok: result.ok,
+      durationMs: Date.now() - startedAt,
+    })
+
+    return result
+  } catch (error) {
+    const errorId = randomUUID().slice(0, 8)
+
+    console.error("[microsite:save] failed", {
+      errorId,
+      partnerId,
+      intent,
+      uploadCount: uploadSummary.count,
+      uploadBytes: uploadSummary.bytes,
+      durationMs: Date.now() - startedAt,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
+    return {
+      ok: false,
+      message: `Speichern fehlgeschlagen. Bitte erneut versuchen. Fehlercode: ${errorId}`,
+    }
+  }
+}
+
+async function persistMicrositeVersion(
   _previousState: MicrositeActionState,
   formData: FormData,
 ): Promise<MicrositeActionState> {
@@ -115,13 +164,12 @@ export async function saveMicrositeVersion(
   }
 
   const microsite = micrositeResult.microsite
-  const nextVersion = await nextVersionNumber(supabase, microsite.id)
+  let nextVersion = await nextVersionNumber(supabase, microsite.id)
 
   if (!nextVersion.ok) {
     return nextVersion.state
   }
 
-  const versionId = randomUUID()
   const status =
     intent === "publish"
       ? "published"
@@ -130,16 +178,43 @@ export async function saveMicrositeVersion(
         : intent === "approve"
           ? "approved"
           : "draft"
-  const insertResult = await supabase.from("microsite_versions").insert({
-    id: versionId,
-    microsite_id: microsite.id,
-    version_number: nextVersion.number,
-    config,
-    status,
-  })
+  let versionId = ""
+  let insertError: { code?: string; message: string } | null = null
 
-  if (insertResult.error) {
-    return { ok: false, message: insertResult.error.message }
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    versionId = randomUUID()
+    const insertResult = await supabase.from("microsite_versions").insert({
+      id: versionId,
+      microsite_id: microsite.id,
+      version_number: nextVersion.number,
+      config,
+      status,
+    })
+
+    insertError = insertResult.error
+
+    if (!insertError) break
+    if (insertError.code !== "23505") {
+      return { ok: false, message: insertError.message }
+    }
+
+    console.warn("[microsite:save] version collision; retrying", {
+      partnerId,
+      micrositeId: microsite.id,
+      attempt: attempt + 1,
+    })
+
+    const refreshedVersion = await nextVersionNumber(supabase, microsite.id)
+    if (!refreshedVersion.ok) return refreshedVersion.state
+    nextVersion = refreshedVersion
+  }
+
+  if (insertError) {
+    return {
+      ok: false,
+      message:
+        "Die Microsite wurde gleichzeitig an anderer Stelle gespeichert. Bitte erneut versuchen.",
+    }
   }
 
   const micrositeUpdate =
@@ -176,11 +251,24 @@ export async function saveMicrositeVersion(
 
   const previewSlug = microsite.slug || partner.slug || partnerId
 
-  revalidatePath("/")
-  revalidatePath(`/microsite-preview/${previewSlug}`)
+  try {
+    revalidatePath("/")
+    revalidatePath(`/microsite-preview/${previewSlug}`)
+    revalidatePath(`/partner/microsite-preview/${previewSlug}`)
+    revalidatePath("/microsite-preview/[partner]", "page")
+    revalidatePath("/partner/microsite-preview/[partner]", "page")
 
-  if (intent === "publish") {
-    revalidatePath(`/partner/${previewSlug}`)
+    if (intent === "publish") {
+      revalidatePath(`/partner/${previewSlug}`)
+    }
+  } catch (error) {
+    // The database write has already succeeded. A cache invalidation failure
+    // must not make the editor report that the save itself failed.
+    console.warn("[microsite:save] cache revalidation failed", {
+      partnerId,
+      intent,
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 
   return {
@@ -414,9 +502,13 @@ function createConfigFromForm(formData: FormData, partner: Partner): MicrositeCo
     ...base,
     branding: {
       ...base.branding,
+      paletteMode:
+        stringValue(formData, "palette_mode") === "manual" ? "manual" : base.branding.paletteMode,
       accent: stringValue(formData, "accent") || base.branding.accent,
       accentSecondary:
         stringValue(formData, "accent_secondary") || base.branding.accentSecondary,
+      accentTertiary:
+        stringValue(formData, "accent_tertiary") || base.branding.accentTertiary,
       logoUrl: stringValue(formData, "logo_url") || base.branding.logoUrl,
       partnerBadgeUrl:
         stringValue(formData, "partner_badge_url") || base.branding.partnerBadgeUrl,
@@ -462,6 +554,9 @@ function createConfigFromForm(formData: FormData, partner: Partner): MicrositeCo
       aboutHeadline:
         stringValue(formData, "about_headline") || base.content.aboutHeadline,
       aboutText: stringValue(formData, "about_text") || base.content.aboutText,
+      quoteText: stringValue(formData, "quote_text") || base.content.quoteText,
+      quoteAttribution:
+        stringValue(formData, "quote_attribution") || base.content.quoteAttribution,
       contactHeadline:
         stringValue(formData, "contact_headline") ||
         base.content.contactHeadline,
@@ -772,6 +867,22 @@ async function uploadMicrositeAssets(
     })
   }
 
+  const totalUploadBytes = uploads.reduce(
+    (total, upload) => total + upload.file.size,
+    0,
+  )
+
+  if (totalUploadBytes > MAX_MICROSITE_UPLOAD_BYTES) {
+    return {
+      ok: false,
+      state: {
+        ok: false,
+        message:
+          "Die ausgewählten Bilder sind zusammen zu groß. Bitte weniger Bilder gleichzeitig speichern (maximal 20 MB).",
+      },
+    }
+  }
+
   const uploadResults = await Promise.all(
     uploads.map(async (upload) => ({
       ...upload,
@@ -881,6 +992,19 @@ function isUploadFile(value: FormDataEntryValue): value is File {
     typeof value.size === "number" &&
     value.size > 0
   )
+}
+
+function summarizeUploads(formData: FormData) {
+  let count = 0
+  let bytes = 0
+
+  for (const value of formData.values()) {
+    if (!isUploadFile(value)) continue
+    count += 1
+    bytes += value.size
+  }
+
+  return { count, bytes }
 }
 
 function applyUploadedAssets(
