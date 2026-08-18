@@ -136,6 +136,7 @@ export async function auditCityFreshness(admin: AdminClient, cityId: string, now
     const ttlDays = sourceTtl(row)
     const state = freshnessState({ lastVerifiedAt, ttlDays, now })
     addState(result, "service_fact", state)
+    result.serviceFacts.checked += 1
     result.serviceFacts[state.toLowerCase() as "current" | "due" | "stale" | "unknown"] += 1
     if (result.samples.length < 24) {
       result.samples.push({
