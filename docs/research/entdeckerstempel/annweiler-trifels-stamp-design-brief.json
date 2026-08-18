@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "status": "DRAFT_ONLY",
+  "place": "Reichsburg Trifels",
+  "city": "Annweiler am Trifels",
+  "collection": "Annweiler entdecken",
+  "edition": {
+    "type": "STANDARD",
+    "label": "Annweiler entdecken · 01",
+    "availabilityConstraint": null,
+    "randomDropChance": null,
+    "rarity": null,
+    "lootbox": false
+  },
+  "references": [
+    "trifels-city-visitor-page",
+    "trifels-burgenlandschaft-history",
+    "trifels-gdke-overview",
+    "trifels-wikimedia-category",
+    "trifels-wikimedia-file-arno-kohlem",
+    "trifels-wikimedia-town-view",
+    "trifels-wikimedia-aerial",
+    "trifels-annweiler-brochure"
+  ],
+  "signatureFeatures": [
+    "dominant main tower",
+    "compact castle on elevated rock ridge",
+    "sandstone/stone masonry",
+    "ring wall and subordinate tower/building masses",
+    "forested Trifelsland context"
+  ],
+  "viewpointComposition": "Use an approved oblique elevated view that keeps the main tower, lower complex and rock/forest relationship legible at collector-stamp size. Do not combine incompatible viewpoints.",
+  "shape": "Round traditional explorer seal with a clear outer border and a calm central illustration.",
+  "color": "Benefitsi blue as the primary ink with one restrained sandstone/gold accent only if it improves recognition.",
+  "typography": "Minimal, high-contrast uppercase or small-cap landmark name; secondary line 'Annweiler am Trifels'.",
+  "ornamentation": "Subtle local line ornament only; no unverified crest, coat of arms or operator logo.",
+  "texture": "Light uneven ink edge and fine print grain; clean and readable, never distressed or grungy.",
+  "mustInclude": [
+    "real Trifels silhouette from approved references",
+    "dominant main tower and lower complex relationship",
+    "elevated rock/forest setting",
+    "Reichsburg Trifels",
+    "Annweiler am Trifels"
+  ],
+  "mustNotInvent": [
+    "generic medieval castle architecture",
+    "extra towers, roofs, bridges or façades",
+    "unverified crest, logo or heraldic symbol",
+    "copy or tracing of one photograph"
+  ],
+  "backSideContent": [
+    "Reichsburg Trifels · Annweiler am Trifels",
+    "short source-grounded note about the castle on the Sonnenberg and its reconstructed current appearance",
+    "collection: Annweiler entdecken",
+    "stamp number and collection progress",
+    "edition: Standard"
+  ],
+  "requiredPromptConstraints": [
+    "Use the supplied/researched landmark references to preserve the real architectural silhouette and defining proportions.",
+    "Create an original illustrative interpretation, not a copy or tracing of any single photograph."
+  ],
+  "humanGate": "REFERENCES_APPROVED_REQUIRED_BEFORE_CANDIDATE_OR_FINAL_ARTWORK"
+}

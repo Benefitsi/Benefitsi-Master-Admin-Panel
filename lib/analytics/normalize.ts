@@ -22,6 +22,7 @@ import type {
 
 const SECTION_KEYS: AnalyticsSectionKey[] = [
   "overview",
+  "engagement",
   "acquisition",
   "product",
   "retention",
@@ -36,6 +37,7 @@ const METRIC_UNITS = new Set<AnalyticsMetricUnit>([
   "percentage_points",
   "currency_eur",
   "ratio",
+  "score",
   "days",
   "hours",
   "minutes",
@@ -85,7 +87,6 @@ export function createEmptyBusinessAnalyticsPayload(
 export function normalizeBusinessAnalyticsPayload(
   input: unknown,
   filters: BusinessAnalyticsFilters,
-  now = new Date(),
 ): BusinessAnalyticsPayloadV1 {
   const payload = unwrapPayload(input)
 
@@ -210,6 +211,8 @@ export function formatAnalyticsValue(
       return `${formatNumber(value, 1)} %`
     case "ratio":
       return `${formatNumber(value, 2)}×`
+    case "score":
+      return `${formatNumber(value, 1)} / 100`
     case "days":
       return `${formatNumber(value, 1)} Tage`
     case "hours":
@@ -555,6 +558,8 @@ function normalizeSectionKey(input: unknown): AnalyticsSectionKey | null {
   const value = safeString(input, 40)
   const aliases: Record<string, AnalyticsSectionKey> = {
     overview: "overview",
+    engagement: "engagement",
+    nes: "engagement",
     acquisition: "acquisition",
     acquisition_marketing: "acquisition",
     product: "product",

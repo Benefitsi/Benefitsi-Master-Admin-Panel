@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "landmarkName": "Reichsburg Trifels",
+  "cityName": "Annweiler am Trifels",
+  "primarySubject": "A reconstructed Reichsburg on the Sonnenberg above Annweiler, presented as a sandstone castle on a rock ridge.",
+  "definingSilhouette": "A compact elevated fortress silhouette with one visually dominant main tower and subordinate wall/tower/building masses following the rocky ridge.",
+  "dominantTowerArrangement": "Preserve the dominant main tower and the subordinate towers/structures exactly as seen in the approved viewpoint. Do not synthesize a generic castle tower count.",
+  "roofTypes": "View-dependent and reference-led. Preserve only rooflines visible in approved references; do not add stereotypical conical roofs or invented caps.",
+  "relativeBuildingHeights": "The main tower rises clearly above the lower ring-wall, gate and palas-related masses; the exact proportions follow the selected reference view.",
+  "architecturalMasses": "Ring wall, gate way, fountain tower, main tower and the base of the palas are the named structural masses. The current appearance includes later historicizing additions.",
+  "facadeFeatures": "Stone/sandstone masonry and the recognizable main-tower mass are essential. Preserve visible masonry rhythm without inventing windows, ornaments or crests.",
+  "terrainContext": "The castle sits on the Sonnenberg above Annweiler in a forested Pfälzerwald/Trifelsland setting and is associated with a rock ridge.",
+  "foregroundBackground": "Use a restrained rocky/wooded elevated context from an approved view. Annweiler and the wider landscape may support recognition but must not overpower the castle.",
+  "recognizableViewpoints": [
+    "elevated outward view showing the full castle silhouette",
+    "oblique side view that preserves the main tower and ridge relationship",
+    "closer architectural view for masonry and gate/tower verification"
+  ],
+  "facts": [
+    {
+      "key": "elevated_sonnenberg_setting",
+      "observation": "The castle is on the Sonnenberg above Annweiler.",
+      "confidence": "HIGH",
+      "sourceReferenceIds": ["trifels-city-visitor-page", "trifels-burgenlandschaft-history", "trifels-annweiler-brochure"],
+      "critical": true
+    },
+    {
+      "key": "sandstone_rock_ridge",
+      "observation": "The castle is presented as sandstone architecture on a rock ridge.",
+      "confidence": "HIGH",
+      "sourceReferenceIds": ["trifels-gdke-overview", "trifels-wikimedia-category", "trifels-wikimedia-aerial"],
+      "critical": true
+    },
+    {
+      "key": "named_structural_masses",
+      "observation": "The ring wall, gate way, fountain tower, main tower and palas base are part of the recognizable current complex.",
+      "confidence": "HIGH",
+      "sourceReferenceIds": ["trifels-burgenlandschaft-history"],
+      "critical": true
+    },
+    {
+      "key": "historicizing_current_appearance",
+      "observation": "The current appearance is the result of changing phases of construction, decline and reconstruction, including historicizing additions.",
+      "confidence": "HIGH",
+      "sourceReferenceIds": ["trifels-burgenlandschaft-history", "trifels-annweiler-brochure"],
+      "critical": true
+    },
+    {
+      "key": "view_specific_rooflines",
+      "observation": "Rooflines and smaller façade details must be read from the approved visual references rather than generalized from a medieval-castle prompt.",
+      "confidence": "LOW",
+      "sourceReferenceIds": ["trifels-wikimedia-category", "trifels-wikimedia-file-arno-kohlem", "trifels-wikimedia-town-view", "trifels-wikimedia-aerial"],
+      "critical": true
+    }
+  ],
+  "signatureFeatures": [
+    "dominant main tower rising above the compact complex",
+    "elevated castle-on-rock relationship above Annweiler",
+    "sandstone/stone masonry character",
+    "ring-wall, gate-way and subordinate tower masses",
+    "forested Pfälzerwald/Trifelsland context",
+    "current reconstructed and historicizing appearance rather than an untouched medieval ruin"
+  ],
+  "mustNotInvent": [
+    "additional towers or a different castle silhouette",
+    "generic pointed roofs or fantasy battlements not visible in approved references",
+    "invented windows, façades, bridges, banners, coats of arms or operator logos",
+    "a flat-ground castle without the elevated rock/forest relationship",
+    "a historically pure medieval appearance that hides the documented reconstruction history"
+  ],
+  "status": "NEEDS_REFERENCE_REVIEW"
+}

@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "landmarkName": "Reichsburg Trifels",
+  "cityName": "Annweiler am Trifels",
+  "collectionContext": "Annweiler entdecken",
+  "researchedAt": "2026-08-16",
+  "referenceReviewStatus": "PENDING_HUMAN_APPROVAL",
+  "finalArtworkStatus": "NOT_GENERATED",
+  "generationGate": "NEEDS_REFERENCE_REVIEW",
+  "benefitsiMediaContext": {
+    "url": "https://benefitsi.de/stadt/annweiler/entdecken/ort/annweiler-trifels",
+    "use": "place identity and internal context only",
+    "visualReferenceApproved": false,
+    "note": "No dedicated Benefitsi media asset with resolved provenance was promoted into this reference set yet. The public page is not treated as permission to copy its photography."
+  },
+  "references": [
+    {
+      "id": "trifels-city-visitor-page",
+      "sourceKind": "CITY_TOURISM",
+      "title": "Burg Trifels – Stadt Annweiler am Trifels",
+      "url": "https://www.annweiler.de/burg-trifels/",
+      "viewpoint": "official visitor context and available site imagery; exact artwork frame requires human review",
+      "checkedAt": "2026-08-16",
+      "licensePolicy": "research-only unless separate image rights are documented"
+    },
+    {
+      "id": "trifels-burgenlandschaft-history",
+      "sourceKind": "OFFICIAL_OPERATOR",
+      "title": "Geschichte – Burg Trifels / Burgenlandschaft Pfalz",
+      "url": "https://burgenlandschaft-pfalz.de/burg-trifels/geschichte",
+      "viewpoint": "operator description of ring wall, gate way, fountain tower, main tower, palas base and current historicizing additions",
+      "checkedAt": "2026-08-16",
+      "licensePolicy": "research-only; link and attribute factual use"
+    },
+    {
+      "id": "trifels-gdke-overview",
+      "sourceKind": "OFFICIAL_OPERATOR",
+      "title": "Burgen und Schlösser – Generaldirektion Kulturelles Erbe Rheinland-Pfalz",
+      "url": "https://gdke.rlp.de/kulturerbeonline/burgen-und-schloesser",
+      "viewpoint": "operator-level visual context: sandstone castle on a rock ridge above the region",
+      "checkedAt": "2026-08-16",
+      "licensePolicy": "research-only; do not reproduce page imagery without permission"
+    },
+    {
+      "id": "trifels-wikimedia-category",
+      "sourceKind": "WIKIMEDIA_OPEN_DATA",
+      "title": "Reichsburg Trifels – Wikimedia Commons category",
+      "url": "https://commons.wikimedia.org/wiki/Reichsburg_Trifels",
+      "viewpoint": "multiple views and angles for visual cross-checking",
+      "checkedAt": "2026-08-16",
+      "licensePolicy": "each file requires its own author, license and attribution review"
+    },
+    {
+      "id": "trifels-wikimedia-file-arno-kohlem",
+      "sourceKind": "WIKIMEDIA_OPEN_DATA",
+      "title": "File:Reichsburg Trifels.jpg – Wikimedia Commons",
+      "url": "https://commons.wikimedia.org/wiki/File:Reichsburg_Trifels.jpg",
+      "viewpoint": "single photographic view used only to verify silhouette against other references",
+      "author": "Arno Kohlem",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "checkedAt": "2026-08-16",
+      "licensePolicy": "not a tracing or direct composition source; attribution required for any actual reuse"
+    },
+    {
+      "id": "trifels-wikimedia-town-view",
+      "sourceKind": "WIKIMEDIA_OPEN_DATA",
+      "title": "File:Reichsburg Trifels 01.jpg – Wikimedia Commons",
+      "url": "https://commons.wikimedia.org/wiki/File:Reichsburg_Trifels_01.jpg",
+      "viewpoint": "longer view from Annweiler toward the castle for silhouette and elevation cross-check",
+      "author": "Llez",
+      "license": "CC BY-SA 3.0 / GFDL 1.2 as listed on the file page",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "checkedAt": "2026-08-16",
+      "licensePolicy": "research and visual verification only; any reuse requires the file-page attribution terms"
+    },
+    {
+      "id": "trifels-wikimedia-aerial",
+      "sourceKind": "WIKIMEDIA_OPEN_DATA",
+      "title": "File:Aerial image of Trifels Castle (view from the southeast).jpg – Wikimedia Commons",
+      "url": "https://commons.wikimedia.org/wiki/File:Aerial_image_of_Trifels_Castle_(view_from_the_southeast).jpg",
+      "viewpoint": "aerial southeast view for building-mass and ridge placement cross-check",
+      "author": "Carsten Steger",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "checkedAt": "2026-08-16",
+      "licensePolicy": "research and visual verification only; any reuse requires the file-page attribution terms"
+    },
+    {
+      "id": "trifels-annweiler-brochure",
+      "sourceKind": "CITY_TOURISM",
+      "title": "Stadtbroschüre Annweiler am Trifels",
+      "url": "https://www.annweiler.de/de/tourismus-freizeit/buero-fuer-tourismus/Stadtbroschuere_Annweiler_web.pdf",
+      "viewpoint": "additional city-published historical and landscape context",
+      "checkedAt": "2026-08-16",
+      "licensePolicy": "research-only unless separate reuse rights are documented"
+    }
+  ],
+  "copyrightRule": "References support form, architecture, silhouette, proportions and recognition. The final stamp must be an original illustration, not a copy or tracing of any single photograph.",
+  "openResearchActions": [
+    "Patrick/human reviewer confirms that the selected reference frames show Reichsburg Trifels.",
+    "Capture the approved viewing directions and exact reference IDs in the final brief.",
+    "Resolve a dedicated Benefitsi Media Library asset and rights metadata if Benefitsi-owned visual material is available."
+  ]
+}

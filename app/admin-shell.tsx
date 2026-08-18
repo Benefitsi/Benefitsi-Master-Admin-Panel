@@ -36,8 +36,8 @@ export function AdminShell(props: AdminShellProps) {
 
 function AdminShellContent({
   adminName,
-  title = "Partnerverwaltung",
-  subtitle = "Alle Partner und ihre Informationen",
+  title = "Partner management",
+  subtitle = "All partners and their information",
   micrositeCount,
   children,
 }: AdminShellProps) {
@@ -118,6 +118,14 @@ function AdminShellContent({
               collapsed={collapsed}
               icon={<MenuApprovalIcon className="size-5" />}
             />
+            <CityNavigationGroup pathname={pathname} collapsed={collapsed} />
+            <AdminNavigationLink
+              href="/bookings"
+              label="Booking Control"
+              active={pathname.startsWith("/bookings")}
+              collapsed={collapsed}
+              icon={<BookingIcon className="size-5" />}
+            />
             <AdminNavigationLink
               href="/analytics"
               label="Business Control Center"
@@ -189,7 +197,89 @@ function AdminNavigationLink({
       }`}
     >
       <span className="shrink-0" aria-hidden="true">{icon}</span>
-      <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
+      <span className={collapsed ? "lg:sr-only" : "truncate"}>{label}</span>
+    </Link>
+  )
+}
+
+type CityNavigationItem = {
+  href: string
+  label: string
+  active: boolean
+}
+
+function CityNavigationGroup({ pathname, collapsed }: { pathname: string; collapsed: boolean }) {
+  const citySlug = pathname.match(/^\/city-pages\/([^/]+)/)?.[1]
+  const cityBase = citySlug ? `/city-pages/${citySlug}` : "/city-pages"
+  const cityAreaActive = pathname === "/city-pages"
+    || pathname.startsWith("/city-pages/")
+    || pathname.startsWith("/media")
+    || pathname.startsWith("/city-operations")
+    || pathname.startsWith("/editorial")
+  const [open, setOpen] = useState(cityAreaActive)
+
+  const items: CityNavigationItem[] = citySlug
+    ? [
+        { href: cityBase, label: "City-Übersicht", active: pathname === cityBase },
+        { href: `${cityBase}/site/homepage`, label: "Homepage", active: pathname.startsWith(`${cityBase}/site/homepage`) },
+        { href: `${cityBase}/site/hubs?key=discovery`, label: "Hubs", active: pathname.startsWith(`${cityBase}/site/hubs`) },
+        { href: `${cityBase}/site/collections?key=sehenswuerdigkeiten`, label: "Collections", active: pathname.startsWith(`${cityBase}/site/collections`) },
+        { href: `${cityBase}/site/navigation`, label: "Navigation", active: pathname.startsWith(`${cityBase}/site/navigation`) },
+        { href: `${cityBase}/businesses`, label: "Businesses", active: pathname.startsWith(`${cityBase}/businesses`) },
+        { href: `${cityBase}/editorial`, label: "Editorial & Blog", active: pathname.startsWith(`${cityBase}/editorial`) },
+        { href: `${cityBase}/community`, label: "Community", active: pathname.startsWith(`${cityBase}/community`) },
+        { href: `${cityBase}/newsletter`, label: "Newsletter", active: pathname.startsWith(`${cityBase}/newsletter`) },
+        { href: "/automation", label: "Agent Control", active: pathname.startsWith("/automation") },
+        { href: `/media?city=${encodeURIComponent(citySlug)}`, label: "Media Library", active: pathname.startsWith("/media") },
+        { href: "/city-operations", label: "Review & Quellen", active: pathname.startsWith("/city-operations") },
+      ]
+    : [
+        { href: "/city-pages", label: "Alle Städte", active: pathname === "/city-pages" },
+        { href: "/media", label: "Media Library", active: pathname.startsWith("/media") },
+        { href: "/city-operations", label: "Review & Quellen", active: pathname.startsWith("/city-operations") },
+        { href: "/editorial", label: "Editorial & Blog", active: pathname.startsWith("/editorial") },
+        { href: "/automation", label: "Agent Control", active: pathname.startsWith("/automation") },
+      ]
+
+  return (
+    <div>
+      <div className="flex items-stretch gap-1">
+        <div className="min-w-0 flex-1">
+          <AdminNavigationLink
+            href="/city-pages"
+            label="Städteseiten"
+            active={cityAreaActive}
+            collapsed={collapsed}
+            icon={<CityPagesIcon className="size-5" />}
+          />
+        </div>
+        {!collapsed ? (
+          <button
+            type="button"
+            onClick={() => setOpen((current) => !current)}
+            aria-label={open ? "Städteseiten-Unterpunkte schließen" : "Städteseiten-Unterpunkte öffnen"}
+            aria-expanded={open}
+            className="grid min-h-11 w-9 shrink-0 place-items-center rounded-xl border border-transparent text-white/60 transition hover:border-white/10 hover:bg-white/8 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17d4d7]"
+          >
+            <ChevronIcon className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
+          </button>
+        ) : null}
+      </div>
+      <div className={`${open ? "" : "hidden"} ${collapsed ? "lg:hidden" : ""} ml-3 mt-1 space-y-0.5 border-l border-white/12 pl-3`}>
+        {items.map((item) => <AdminSubNavigationLink key={item.href} {...item} />)}
+      </div>
+    </div>
+  )
+}
+
+function AdminSubNavigationLink({ href, label, active }: CityNavigationItem) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`flex min-h-9 items-center rounded-lg px-3 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17d4d7] ${active ? "bg-[#118cff]/18 text-white" : "text-white/58 hover:bg-white/8 hover:text-white"}`}
+    >
+      <span className="truncate">{label}</span>
     </Link>
   )
 }
@@ -198,9 +288,6 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: number }) {
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const appUrl = process.env.NEXT_PUBLIC_BENEFITSI_APP_URL?.trim() || ""
-  const cityUrl =
-    process.env.NEXT_PUBLIC_BENEFITSI_CITY_URL?.trim() ||
-    "https://benefitsi.de/stadt/annweiler"
   const websiteUrl =
     process.env.NEXT_PUBLIC_BENEFITSI_WEB_URL?.trim() || "https://benefitsi.de"
 
@@ -235,7 +322,7 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: number }) {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        aria-label="Benefitsi-Systeme öffnen"
+        aria-label="Open Benefitsi systems"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="benefitsi-system-switcher"
@@ -315,11 +402,11 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: number }) {
             />
 
             <SystemCard
-              href={cityUrl}
-              external
+              href="/city-pages"
               icon={<MapIcon className="size-10 text-[#17bfc5]" />}
               title="Städteseiten"
-              description="Städte, Guides & lokale Inhalte"
+              description="Städte, Inhalte & Status"
+              onNavigate={() => setOpen(false)}
             />
 
             <SystemCard
@@ -481,6 +568,14 @@ function ArrowRightIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+function ChevronIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
+      <path d="m5 7.5 5 5 5-5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function PartnerIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
@@ -515,6 +610,64 @@ function AnalyticsIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+function CityOperationsIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="m4 7 5-2 6 2 5-2v13l-5 2-6-2-5 2V7Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9 5v13m6-11v13m-3-9.5 1.3 1.3 2.7-3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function CityPagesIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M4 20V9l5-4 4 3 3-2 4 3v11M8 20v-5h4v5m4-8h.01M16 16h.01"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function MediaIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <rect x="3.5" y="4" width="17" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="8.5" cy="9" r="1.4" stroke="currentColor" strokeWidth="1.5" />
+      <path d="m5.5 17 4.2-4.2 3.1 2.8 2.1-2.1 3.6 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function BookingIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5V9a2 2 0 0 0 0 4v3.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5V13a2 2 0 0 0 0-4V7.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M13 8.5v7M9.5 12h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function MenuApprovalIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
@@ -526,6 +679,21 @@ function MenuApprovalIcon(props: SVGProps<SVGSVGElement>) {
       />
       <path d="M9 10h6M9 14h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       <path d="m14 17 1.5 1.5L19 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function EditorialIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M5 4.5h10.5A3.5 3.5 0 0 1 19 8v11.5H8.5A3.5 3.5 0 0 1 5 16V4.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M8.5 8h6.5M8.5 12h6.5M8.5 16h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M5 4.5v12A3.5 3.5 0 0 0 8.5 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
 }

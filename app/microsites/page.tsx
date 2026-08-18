@@ -8,6 +8,10 @@ import { createClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
 
+const publicWebBaseUrl = (
+  process.env.NEXT_PUBLIC_BENEFITSI_WEB_URL?.trim() || "https://benefitsi.de"
+).replace(/\/+$/, "")
+
 export default async function MicrositesPage() {
   const config = getSupabaseConfig()
 
@@ -42,18 +46,18 @@ export default async function MicrositesPage() {
     <AdminShell
       adminName={adminName}
       title="Microsites"
-      subtitle="Builder, Entwürfe und veröffentlichte Partnerseiten"
+      subtitle="Builder, drafts, and published partner pages"
       micrositeCount={dashboard.partners.length}
     >
       <section className="grid gap-3 sm:grid-cols-3">
         <Metric label="Partner" value={dashboard.partners.length} />
         <Metric label="Live" value={liveCount} tone="green" />
-        <Metric label="Nur Entwurf" value={draftCount} tone="blue" />
+        <Metric label="Only draft" value={draftCount} tone="blue" />
       </section>
 
       {dashboard.errors.length > 0 ? (
         <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-semibold">Supabase-Warnungen</p>
+          <p className="font-semibold">Supabase returned warnings</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             {dashboard.errors.map((error) => (
               <li key={error}>{error}</li>
@@ -65,10 +69,10 @@ export default async function MicrositesPage() {
       <section className="overflow-hidden rounded-2xl border border-[#061829]/10 bg-white shadow-[0_18px_48px_rgba(6,24,41,.05)]">
         <header className="border-b border-[#061829]/10 px-4 py-4 sm:px-5">
           <h2 className="text-base font-bold text-[#061829]">
-            Partner-Microsites
+            Partner microsites
           </h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Öffne den Builder, prüfe den Entwurf oder rufe die Live-Seite auf.
+            Open the builder, review the draft, or visit the live page.
           </p>
         </header>
 
@@ -119,13 +123,13 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
   const liveHref =
     partner.microsite?.canonical_url ||
     (partner.microsite?.publishedVersion
-      ? `/p/${encodeURIComponent(identifier)}`
+      ? `${publicWebBaseUrl}/partner/${encodeURIComponent(identifier)}`
       : null)
   const state = partner.microsite?.publishedVersion
     ? "Live"
     : partner.microsite?.draftVersion
-      ? "Entwurf"
-      : "Nicht angelegt"
+      ? "Draft"
+      : "Not created"
 
   return (
     <article className="grid gap-4 px-4 py-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
@@ -136,7 +140,7 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate font-semibold text-[#061829]">
-              {partner.name || "Unbenannter Partner"}
+              {partner.name || "Unnamed partner"}
             </h3>
             <StatusBadge state={state} />
           </div>
@@ -158,7 +162,7 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
           target="_blank"
           className="inline-flex min-h-10 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50"
         >
-          Vorschau
+          Preview
         </Link>
         {liveHref ? (
           <a
@@ -167,7 +171,7 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
             rel="noreferrer"
             className="col-span-2 inline-flex min-h-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
           >
-            Live-Seite
+            Live page
           </a>
         ) : null}
       </div>
@@ -175,11 +179,11 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
   )
 }
 
-function StatusBadge({ state }: { state: "Live" | "Entwurf" | "Nicht angelegt" }) {
+function StatusBadge({ state }: { state: "Live" | "Draft" | "Not created" }) {
   const classes = {
     Live: "bg-emerald-100 text-emerald-800",
-    Entwurf: "bg-blue-100 text-blue-800",
-    "Nicht angelegt": "bg-zinc-100 text-zinc-600",
+    Draft: "bg-blue-100 text-blue-800",
+    "Not created": "bg-zinc-100 text-zinc-600",
   }[state]
 
   return (

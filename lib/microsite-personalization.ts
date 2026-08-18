@@ -65,28 +65,64 @@ export function inferMicrositePartnerProfile(
     .filter(Boolean)
     .join(" ")
     .toLowerCase()
+  const signals = new Set(
+    haystack.split(/[^a-zäöüß]+/).filter(Boolean),
+  )
+  const hasAnySignal = (...values: string[]) =>
+    values.some((value) => signals.has(value))
 
-  if (
-    /(salon|hair|barber|beauty|studio|friseur|kosmetik|nails?|lashes?|brow)/.test(
-      haystack,
-    )
-  ) {
+  if (hasAnySignal(
+    "salon",
+    "hair",
+    "barber",
+    "beauty",
+    "studio",
+    "friseur",
+    "kosmetik",
+    "nail",
+    "nails",
+    "lash",
+    "lashes",
+    "brow",
+    "brows",
+  )) {
     return "salon"
   }
 
-  if (
-    /(massage|spa|wellness|physio|therapy|therapie|relax|yoga|pilates)/.test(
-      haystack,
-    )
-  ) {
+  if (hasAnySignal(
+    "massage",
+    "spa",
+    "wellness",
+    "physio",
+    "physiotherapie",
+    "therapy",
+    "therapie",
+    "relax",
+    "relaxation",
+    "yoga",
+    "pilates",
+  )) {
     return "wellness"
   }
 
-  if (
-    /(cinema|kino|movie|film|ticket|bowling|escape|event|activity|activities)/.test(
-      haystack,
-    )
-  ) {
+  if (hasAnySignal(
+    "cinema",
+    "kino",
+    "movie",
+    "movies",
+    "film",
+    "films",
+    "ticket",
+    "tickets",
+    "bowling",
+    "escape",
+    "event",
+    "events",
+    "activity",
+    "activities",
+    "aktivität",
+    "aktivitäten",
+  )) {
     return "cinema"
   }
 
@@ -127,7 +163,7 @@ export function defaultMicrositeCopyForPartner(partner: PartnerSeed) {
       menuLabel: "Services",
       menuHeadline: "Beliebte Services auf einen Blick.",
       menuDescription:
-        "Treatments, Add-ons und Signature-Services können hier für schnelle Buchungsentscheidungen präsentiert werden.",
+        "Behandlungen, Zusatzleistungen und besondere Services können hier für schnelle Buchungsentscheidungen präsentiert werden.",
       contactHeadline: "Buche deinen nächsten Termin.",
       appHeadline: "Deine Vorteile und Wiederbesuche in einer App",
       appText:
@@ -155,7 +191,7 @@ export function defaultMicrositeCopyForPartner(partner: PartnerSeed) {
       menuLabel: "Treatments",
       menuHeadline: "Signature-Treatments und Mitglieds-Favoriten.",
       menuDescription:
-        "Massagen, Pakete, Wellness-Rituale und Premium-Add-ons lassen sich hier ruhig und hochwertig darstellen.",
+        "Massagen, Pakete, Wellness-Rituale und hochwertige Zusatzleistungen lassen sich hier ruhig und hochwertig darstellen.",
       contactHeadline: "Bereit zum Abschalten?",
       appHeadline: "Wellness-Angebote und Loyalty-Vorteile in deiner Tasche",
       appText:

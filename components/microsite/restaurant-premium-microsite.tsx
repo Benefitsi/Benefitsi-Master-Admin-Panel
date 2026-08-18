@@ -38,21 +38,33 @@ type SocialPlatform =
 const socialPlatforms: Array<{
   platform: SocialPlatform
   label: string
-  defaultVisible: boolean
 }> = [
-  { platform: "instagram", label: "Instagram", defaultVisible: true },
-  { platform: "facebook", label: "Facebook", defaultVisible: true },
-  { platform: "tiktok", label: "TikTok", defaultVisible: true },
-  { platform: "youtube", label: "YouTube", defaultVisible: false },
-  { platform: "whatsapp", label: "WhatsApp", defaultVisible: false },
-  { platform: "website", label: "Website", defaultVisible: false },
-  { platform: "google", label: "Google", defaultVisible: false },
-  { platform: "linkedin", label: "LinkedIn", defaultVisible: false },
+  { platform: "instagram", label: "Instagram" },
+  { platform: "facebook", label: "Facebook" },
+  { platform: "tiktok", label: "TikTok" },
+  { platform: "youtube", label: "YouTube" },
+  { platform: "whatsapp", label: "WhatsApp" },
+  { platform: "website", label: "Website" },
+  { platform: "google", label: "Google" },
+  { platform: "linkedin", label: "LinkedIn" },
 ]
 
 const BENEFITSI_ICON_SRC = "/Benefitsi_Icon_FullColor_RGB_512.png"
 const BENEFITSI_QR_PLACEHOLDER_SRC = "/benefitsi-app-qr-placeholder.png"
 const PARTNER_DETAIL_SCREEN_SRC = "/partner-details-page.jpg"
+
+function micrositeThemeVars(config: MicrositeConfig): CSSProperties {
+  const isDark = config.appearance?.mode === "dark"
+
+  return {
+    "--site-bg": isDark ? "#101216" : "#fffdf8",
+    "--site-surface": isDark ? "#181b21" : "#ffffff",
+    "--site-soft": isDark ? "#151a20" : "#f5fbff",
+    "--site-text": isDark ? "#f8fafc" : "#151515",
+    "--site-muted": isDark ? "#cbd5e1" : "#52525b",
+    "--site-border": isDark ? "rgba(255,255,255,.12)" : "rgba(228,228,231,.88)",
+  } as CSSProperties
+}
 
 function restaurantThemeForTemplate(template: MicrositeConfig["template"]) {
   if (template === "restaurant-local") {
@@ -120,15 +132,22 @@ export function RestaurantPremiumMicrosite({
 }) {
   const theme = restaurantThemeForTemplate(config.template)
   const style = {
+    ...micrositeThemeVars(config),
     "--site-accent": config.branding.accent,
     "--site-secondary": config.branding.accentSecondary,
   } as CSSProperties
+  const isDark = config.appearance?.mode === "dark"
 
   return (
     <article
       style={style}
-      className={`premium-microsite @container relative isolate w-full min-w-0 max-w-full overflow-hidden rounded-none [overflow-wrap:anywhere] @min-[480px]:rounded-[1.6rem] ${theme.shell}`}
+      className={`premium-microsite @container relative isolate w-full min-w-0 max-w-full overflow-hidden rounded-none [overflow-wrap:anywhere] @min-[480px]:rounded-[1.6rem] ${
+        isDark
+          ? "premium-microsite-dark bg-[var(--site-bg)] text-[var(--site-text)] shadow-[0_30px_90px_rgba(0,0,0,.32)]"
+          : theme.shell
+      }`}
     >
+      <MicrositeThemeCss />
       <PremiumMotionEffects />
       <SiteHeader partner={partner} config={config} theme={theme} />
       <HeroSection config={config} template={config.template} />
@@ -138,6 +157,59 @@ export function RestaurantPremiumMicrosite({
       <FaqSection config={config} />
       <FooterSection partner={partner} config={config} />
     </article>
+  )
+}
+
+function MicrositeThemeCss() {
+  return (
+    <style>{`
+      .premium-microsite-dark {
+        color-scheme: dark;
+      }
+
+      .premium-microsite-dark section,
+      .premium-microsite-dark footer {
+        background: var(--site-bg) !important;
+      }
+
+      .premium-microsite-dark [class*="bg-white"],
+      .premium-microsite-dark .premium-card,
+      .premium-microsite-dark details > div {
+        background-color: var(--site-surface) !important;
+      }
+
+      .premium-microsite-dark [class*="bg-zinc-50"],
+      .premium-microsite-dark [class*="bg-[#f8f6f1]"],
+      .premium-microsite-dark [class*="bg-[#fffdf8]"] {
+        background-color: var(--site-soft) !important;
+      }
+
+      .premium-microsite-dark [class*="text-zinc-950"],
+      .premium-microsite-dark [class*="text-zinc-900"],
+      .premium-microsite-dark [class*="text-zinc-800"] {
+        color: var(--site-text) !important;
+      }
+
+      .premium-microsite-dark [class*="text-zinc-700"],
+      .premium-microsite-dark [class*="text-zinc-600"],
+      .premium-microsite-dark [class*="text-zinc-500"],
+      .premium-microsite-dark [class*="text-zinc-400"] {
+        color: var(--site-muted) !important;
+      }
+
+      .premium-microsite-dark [class*="border-zinc"],
+      .premium-microsite-dark [class*="border-white/80"] {
+        border-color: var(--site-border) !important;
+      }
+
+      .premium-microsite-dark #ueber-uns > .absolute.inset-0 {
+        background: linear-gradient(90deg,#181b21 0%,#181b21 42%,rgba(24,27,33,.82) 58%,rgba(24,27,33,.2) 78%,rgba(24,27,33,0) 100%) !important;
+      }
+
+      .premium-microsite-dark iframe {
+        filter: saturate(.85) brightness(.78) contrast(1.05);
+      }
+    `}</style>
   )
 }
 
@@ -280,7 +352,7 @@ function SiteHeader({
         {menuOpen ? (
           <nav
             id="microsite-mobile-navigation"
-            className={`absolute right-0 top-[calc(100%+.65rem)] z-50 grid w-[min(88vw,330px)] gap-1 rounded-2xl border p-2 text-sm font-bold @min-[1180px]:hidden ${theme.mobilePanel}`}
+            className={`absolute right-0 top-[calc(100%+.65rem)] z-50 grid w-[min(88cqw,330px)] gap-1 rounded-2xl border p-2 text-sm font-bold @min-[1180px]:hidden ${theme.mobilePanel}`}
           >
             {navLinks.map((link) => (
               <NavigationLink
@@ -371,19 +443,19 @@ function HeroSection({
         <div className="premium-reveal relative mt-8 max-w-xl @min-[640px]:mt-10 @min-[768px]:mt-12 @min-[1024px]:mt-14">
           <h1
             {...editable("hero.headline", "text", "Startbereich Überschrift")}
-            className="whitespace-pre-line text-[clamp(2.65rem,6.4vw,5.15rem)] font-black leading-[.96] tracking-[-0.075em] text-zinc-950 [text-wrap:balance]"
+            className="whitespace-pre-line text-[clamp(2.65rem,6.4cqw,5.15rem)] font-black leading-[.96] tracking-[-0.075em] text-zinc-950 [text-wrap:balance]"
             style={textStyleFor(config, "hero.headline")}
           >
             {config.hero.headline}
           </h1>
           <p
             {...editable("hero.slogan", "text", "Startbereich Slogan")}
-            className="mt-5 text-[clamp(1.5rem,3.2vw,2.2rem)] italic leading-tight text-[var(--site-accent)]"
+            className="mt-5 text-[clamp(1.5rem,3.2cqw,2.2rem)] italic leading-tight text-[var(--site-accent)]"
             style={textStyleFor(config, "hero.slogan")}
           >
             {config.hero.slogan}
           </p>
-          <div className="mt-8 space-y-4 text-[clamp(1rem,1.8vw,1.12rem)]">
+          <div className="mt-8 space-y-4 text-[clamp(1rem,1.8cqw,1.12rem)]">
             <MetaLine
               id="hero.locationText"
               iconId="hero.locationIcon"
@@ -468,11 +540,13 @@ function DealsSection({
       textFallback: null,
       imageId: null,
       imageUrl: null,
+      iconName: "check",
       tone: "emerald" as const,
     },
     ...visibleRewardStamps.map((stamp) => {
       const isMainReward = stamp === stampCount
       const rewardLabel = rewardLabelForStamp(rewardMilestones, stamp, isMainReward)
+      const rewardLabelLower = rewardLabel.toLowerCase()
 
       return {
         id: `reward-${stamp}`,
@@ -488,13 +562,19 @@ function DealsSection({
           `stamps.reward.${stamp}.image`,
           rewardImageForStamp(partner, config, stamp, isMainReward),
         ),
+        iconName:
+          /bonusstempel|bonus stamp|stempelbonus/.test(rewardLabelLower)
+            ? "star"
+            : /rabatt|discount|%|€|euro/.test(rewardLabelLower)
+              ? "percent"
+              : "gift",
         tone: "amber" as const,
       }
     }),
   ]
 
   return (
-    <section id="deals" className={`${restaurantSectionClass(template, "deals")} px-5 pb-10 @min-[640px]:px-8 @min-[1024px]:px-10`}>
+    <section id="deals" className={`${restaurantSectionClass(template, "deals")} scroll-mt-24 px-5 pb-10 @min-[640px]:px-8 @min-[1024px]:px-10`}>
       <div className="mx-auto max-w-6xl space-y-5">
         <div className="premium-reveal grid gap-7 pb-2 pt-9 @min-[1024px]:grid-cols-[.92fr_1.08fr] @min-[1024px]:items-center">
           <div>
@@ -507,14 +587,14 @@ function DealsSection({
             </p>
             <h2
               {...editable("deals.headline", "text", "Deals Überschrift")}
-              className="mt-4 text-[clamp(2rem,4.8vw,3.3rem)] font-black leading-[1.04] tracking-[-0.06em]"
+              className="mt-4 text-[clamp(2rem,4.8cqw,3.3rem)] font-black leading-[1.04] tracking-[-0.06em]"
               style={textStyleFor(config, "deals.headline")}
             >
               {config.deals.headline}
             </h2>
             <p
               {...editable("deals.slogan", "text", "Deals Slogan")}
-              className="mt-4 text-[clamp(1.3rem,2.7vw,1.9rem)] italic text-[var(--site-accent)]"
+              className="mt-4 text-[clamp(1.3rem,2.7cqw,1.9rem)] italic text-[var(--site-accent)]"
               style={textStyleFor(config, "deals.slogan")}
             >
               {config.deals.slogan}
@@ -586,7 +666,7 @@ function DealsSection({
             </p>
             <h3
               {...editable("deals.topDealHeadline", "text", "Top Deal Überschrift")}
-              className="mt-4 max-w-md text-[clamp(2.2rem,5vw,3.5rem)] font-black leading-none tracking-[-0.06em]"
+              className="mt-4 max-w-md text-[clamp(2.2rem,5cqw,3.5rem)] font-black leading-none tracking-[-0.06em]"
               style={textStyleFor(config, "deals.topDealHeadline")}
             >
               {config.deals.topDealHeadline}
@@ -628,7 +708,7 @@ function DealsSection({
           </div>
         </div>
 
-        <div id="stempelkarte" className="premium-reveal rounded-[1.6rem] border border-white/80 bg-white/94 p-5 shadow-[0_24px_64px_rgba(15,23,42,.07)] @min-[640px]:p-7">
+        <div id="stempelkarte" className="premium-reveal scroll-mt-24 rounded-[1.6rem] border border-white/80 bg-white/94 p-5 shadow-[0_24px_64px_rgba(15,23,42,.07)] @min-[640px]:p-7">
           <div className="grid gap-8 @min-[1024px]:grid-cols-[250px_1fr]">
             <div>
               <p
@@ -740,11 +820,15 @@ function DealsSection({
                       />
                     ) : (
                       <ThemeIcon
-                        id="stamps.welcomeBonus.icon"
-                        name="check"
+                        id={card.id === "welcome" ? "stamps.welcomeBonus.icon" : `stamps.reward.${card.stamp}.icon`}
+                        name={card.iconName}
                         config={config}
-                        label="Willkommensbonus Icon"
-                        className="grid size-12 shrink-0 place-items-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-600 shadow-sm"
+                        label={card.id === "welcome" ? "Willkommensbonus Icon" : `${card.eyebrow} Icon`}
+                        className={`grid size-12 shrink-0 place-items-center rounded-xl border shadow-sm ${
+                          card.tone === "emerald"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                            : "border-amber-200 bg-amber-50 text-[var(--site-accent)]"
+                        }`}
                         iconClassName="text-xl leading-none"
                       />
                     )}
@@ -817,12 +901,12 @@ function AppDownloadBanner({
   return (
     <div
       id="app"
-      className="premium-reveal relative overflow-hidden rounded-[1.7rem] border border-white/80 bg-white/94 px-5 py-6 shadow-[0_26px_70px_rgba(15,23,42,.09)] @min-[760px]:px-7 @min-[1024px]:px-8"
+      className="premium-reveal relative scroll-mt-24 overflow-hidden rounded-[1.7rem] border border-white/80 bg-white/94 px-4 py-5 shadow-[0_26px_70px_rgba(15,23,42,.09)] @min-[520px]:px-5 @min-[520px]:py-6 @min-[760px]:px-7 @min-[1024px]:px-8"
     >
       <div className="pointer-events-none absolute -bottom-11 left-[-8%] h-16 w-[116%] rounded-[50%] border-b-[6px] border-b-transparent bg-white [border-image:linear-gradient(90deg,var(--site-secondary),#1186ee)_1]" />
 
-      <div className="relative grid gap-7 @min-[900px]:grid-cols-[minmax(210px,.72fr)_minmax(0,1.22fr)_minmax(260px,.78fr)] @min-[900px]:items-center">
-        <div className="self-end">
+      <div className="relative grid grid-cols-[96px_minmax(0,1fr)] items-start gap-4 @min-[520px]:grid-cols-[180px_minmax(0,1fr)] @min-[520px]:gap-6 @min-[900px]:grid-cols-[minmax(210px,.72fr)_minmax(0,1.22fr)_minmax(260px,.78fr)] @min-[900px]:items-center @min-[900px]:gap-7">
+        <div className="self-start @min-[900px]:self-end">
           <AppPhoneMockup partner={partner} config={config} />
         </div>
 
@@ -830,12 +914,12 @@ function AppDownloadBanner({
           <div className="flex items-center gap-3">
             <span
               {...editable("content.appKicker.icon", "image", "App-Banner Icon")}
-              className="grid size-11 place-items-center rounded-2xl bg-sky-50 shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_10px_22px_rgba(2,132,199,.12)]"
+              className="grid size-9 place-items-center rounded-xl bg-sky-50 shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_10px_22px_rgba(2,132,199,.12)] @min-[520px]:size-11 @min-[520px]:rounded-2xl"
             >
               <img
                 src={BENEFITSI_ICON_SRC}
                 alt=""
-                className="size-7 object-contain"
+                className="size-6 object-contain @min-[520px]:size-7"
                 style={imageStyleFor(config, "content.appKicker.icon")}
               />
             </span>
@@ -850,14 +934,14 @@ function AppDownloadBanner({
 
           <h2
             {...editable("content.appHeadline", "text", "App-Banner Überschrift")}
-            className="mt-4 text-[clamp(1.7rem,3vw,2.55rem)] font-black leading-tight tracking-[-0.055em] text-zinc-950"
+            className="mt-3 text-[clamp(1.35rem,6cqw,2.55rem)] font-black leading-tight tracking-[-0.055em] text-zinc-950 @min-[520px]:mt-4"
             style={textStyleFor(config, "content.appHeadline")}
           >
             {textValue(config, "content.appHeadline", config.content.appHeadline)}
           </h2>
           <p
             {...editable("content.appText", "text", "App-Banner Text")}
-            className="mt-3 max-w-[36rem] text-sm leading-7 text-zinc-600 @min-[760px]:text-base"
+            className="mt-2 max-w-[36rem] text-xs leading-5 text-zinc-600 @min-[520px]:mt-3 @min-[520px]:text-sm @min-[520px]:leading-7 @min-[760px]:text-base"
             style={textStyleFor(config, "content.appText")}
           >
             {textValue(
@@ -867,7 +951,7 @@ function AppDownloadBanner({
             )}
           </p>
 
-          <ul className="mt-4 grid gap-2 text-sm font-medium text-zinc-700">
+          <ul className="mt-4 hidden gap-2 text-sm font-medium text-zinc-700 @min-[520px]:grid">
             {[
               ["content.appBenefit.0", "Stempelstand jederzeit einsehbar"],
               ["content.appBenefit.1", "Belohnungen automatisch freischalten"],
@@ -892,12 +976,12 @@ function AppDownloadBanner({
             ))}
           </ul>
 
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-4 flex flex-wrap gap-2 @min-[520px]:mt-5 @min-[520px]:gap-3">
             <StoreBadge store="app-store" href={appUrl} />
             <StoreBadge store="google-play" href={appUrl} />
           </div>
 
-          <div className="mt-5 grid gap-2 @min-[520px]:grid-cols-3">
+          <div className="mt-5 hidden gap-2 @min-[760px]:grid @min-[760px]:grid-cols-3">
             <AppVisualPill
               id="content.appVisual.0"
               icon="benefitsi"
@@ -919,11 +1003,11 @@ function AppDownloadBanner({
           </div>
         </div>
 
-        <div className="grid gap-4 border-zinc-200 @min-[900px]:border-l @min-[900px]:pl-7">
-          <div className="grid justify-items-start gap-3 @min-[520px]:grid-cols-[auto_1fr] @min-[520px]:items-center @min-[900px]:grid-cols-1 @min-[900px]:justify-items-center">
+        <div className="col-span-2 grid grid-cols-[96px_minmax(0,1fr)] items-center gap-3 border-t border-zinc-200 pt-4 @min-[520px]:grid-cols-[128px_minmax(0,1fr)] @min-[900px]:col-span-1 @min-[900px]:grid-cols-1 @min-[900px]:gap-4 @min-[900px]:border-l @min-[900px]:border-t-0 @min-[900px]:pl-7 @min-[900px]:pt-0">
+          <div className="contents @min-[900px]:grid @min-[900px]:justify-items-center @min-[900px]:gap-3">
             <a
               href={appUrl}
-              className="aspect-square w-48 max-w-full rounded-[1.4rem] border border-zinc-200 bg-white p-3 shadow-[0_16px_36px_rgba(15,23,42,.08)] transition hover:-translate-y-0.5 @min-[1024px]:w-56"
+              className="aspect-square w-24 max-w-full rounded-xl border border-zinc-200 bg-white p-2 shadow-[0_16px_36px_rgba(15,23,42,.08)] transition hover:-translate-y-0.5 @min-[520px]:w-32 @min-[900px]:w-48 @min-[900px]:rounded-[1.4rem] @min-[900px]:p-3 @min-[1024px]:w-56"
               aria-label="Benefitsi App QR-Code öffnen"
             >
               <img
@@ -937,7 +1021,7 @@ function AppDownloadBanner({
             <div className="@min-[900px]:text-center">
               <p
                 {...editable("content.appQrLabel", "text", "QR-Code Hinweis")}
-                className="text-2xl italic leading-tight text-[var(--site-accent)] [font-family:'Brush_Script_MT','Segoe_Print',cursive]"
+                className="text-lg italic leading-tight text-[var(--site-accent)] [font-family:'Brush_Script_MT','Segoe_Print',cursive] @min-[520px]:text-xl @min-[900px]:text-2xl"
                 style={textStyleFor(config, "content.appQrLabel")}
               >
                 {textValue(config, "content.appQrLabel", "App öffnen & einchecken")}
@@ -954,7 +1038,7 @@ function AppDownloadBanner({
 
           <a
             href={appUrl}
-            className="inline-flex items-center justify-center rounded-xl bg-zinc-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-zinc-800"
+            className="col-span-2 inline-flex items-center justify-center rounded-xl bg-zinc-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-zinc-800 @min-[900px]:col-span-1"
           >
             <span
               {...editable("content.appButtonLabel", "text", "App-Schaltfläche")}
@@ -986,14 +1070,14 @@ function LocalRestaurantHero({ config }: { config: MicrositeConfig }) {
           </p>
           <h1
             {...editable("hero.headline", "text", "Startbereich Überschrift")}
-            className="mt-5 max-w-[14ch] text-[clamp(2.35rem,7vw,5rem)] font-black leading-[1.02] text-white [text-wrap:balance]"
+            className="mt-5 max-w-[14ch] text-[clamp(2.35rem,7cqw,5rem)] font-black leading-[1.02] text-white [text-wrap:balance]"
             style={textStyleFor(config, "hero.headline")}
           >
             {config.hero.headline}
           </h1>
           <p
             {...editable("hero.slogan", "text", "Startbereich Slogan")}
-            className="mt-4 max-w-xl text-[clamp(1.1rem,2.4vw,1.6rem)] leading-tight text-[#fed7aa]"
+            className="mt-4 max-w-xl text-[clamp(1.1rem,2.4cqw,1.6rem)] leading-tight text-[#fed7aa]"
             style={textStyleFor(config, "hero.slogan")}
           >
             {config.hero.slogan}
@@ -1048,14 +1132,14 @@ function CleanFoodHero({ config }: { config: MicrositeConfig }) {
           </p>
           <h1
             {...editable("hero.headline", "text", "Startbereich Überschrift")}
-            className="mt-5 max-w-[13ch] text-[clamp(2.5rem,7vw,5.25rem)] font-black leading-[.98] text-zinc-950 [text-wrap:balance]"
+            className="mt-5 max-w-[13ch] text-[clamp(2.5rem,7cqw,5.25rem)] font-black leading-[.98] text-zinc-950 [text-wrap:balance]"
             style={textStyleFor(config, "hero.headline")}
           >
             {config.hero.headline}
           </h1>
           <p
             {...editable("hero.slogan", "text", "Startbereich Slogan")}
-            className="mt-5 max-w-2xl text-[clamp(1.05rem,2vw,1.35rem)] leading-8 text-zinc-600"
+            className="mt-5 max-w-2xl text-[clamp(1.05rem,2cqw,1.35rem)] leading-8 text-zinc-600"
             style={textStyleFor(config, "hero.slogan")}
           >
             {config.hero.slogan}
@@ -1107,13 +1191,13 @@ function AppPhoneMockup({
   )
 
   return (
-    <div className="relative isolate mx-auto w-[min(72vw,250px)] rounded-[2.85rem] bg-[#111214] p-[9px] shadow-[0_34px_70px_rgba(15,23,42,.32),inset_0_0_0_1px_rgba(255,255,255,.08)] @min-[1024px]:w-[270px]">
-      <div className="absolute -left-1 top-24 h-14 w-1 rounded-l bg-zinc-800" />
-      <div className="absolute -left-1 top-44 h-10 w-1 rounded-l bg-zinc-800" />
-      <div className="absolute -right-1 top-32 h-20 w-1 rounded-r bg-zinc-800" />
-      <div className="pointer-events-none absolute left-1/2 top-[10px] z-20 h-6 w-24 -translate-x-1/2 rounded-b-2xl bg-[#111214]" />
+    <div className="relative isolate mx-auto w-24 rounded-[1.35rem] bg-[#111214] p-[4px] shadow-[0_20px_42px_rgba(15,23,42,.27),inset_0_0_0_1px_rgba(255,255,255,.08)] @min-[520px]:w-[180px] @min-[520px]:rounded-[2.25rem] @min-[520px]:p-[7px] @min-[900px]:w-[250px] @min-[900px]:rounded-[2.85rem] @min-[900px]:p-[9px] @min-[1024px]:w-[270px]">
+      <div className="absolute -left-1 top-24 hidden h-14 w-1 rounded-l bg-zinc-800 @min-[520px]:block" />
+      <div className="absolute -left-1 top-44 hidden h-10 w-1 rounded-l bg-zinc-800 @min-[520px]:block" />
+      <div className="absolute -right-1 top-32 hidden h-20 w-1 rounded-r bg-zinc-800 @min-[520px]:block" />
+      <div className="pointer-events-none absolute left-1/2 top-[4px] z-20 h-2.5 w-9 -translate-x-1/2 rounded-b-lg bg-[#111214] @min-[520px]:top-[8px] @min-[520px]:h-4 @min-[520px]:w-16 @min-[900px]:top-[10px] @min-[900px]:h-6 @min-[900px]:w-24 @min-[900px]:rounded-b-2xl" />
       <div
-        className="relative isolate aspect-[720/1600] overflow-hidden rounded-[2.25rem] bg-[#111214]"
+        className="relative isolate aspect-[720/1600] overflow-hidden rounded-[1.05rem] bg-[#111214] @min-[520px]:rounded-[1.8rem] @min-[900px]:rounded-[2.25rem]"
         style={{ clipPath: "inset(0 round 2.25rem)" }}
       >
         <img
@@ -1185,25 +1269,6 @@ function StoreBadge({
         </span>
       </span>
     </a>
-  )
-}
-
-function BenefitsiLockup({
-  compact = false,
-  className = "",
-}: {
-  compact?: boolean
-  className?: string
-}) {
-  return (
-    <span className={`inline-flex items-center gap-2 font-black text-zinc-950 ${className}`}>
-      <img
-        src={BENEFITSI_ICON_SRC}
-        alt=""
-        className={`${compact ? "size-5" : "size-8"} rounded-[0.55rem] object-contain`}
-      />
-      <span>benefitsi</span>
-    </span>
   )
 }
 
@@ -1315,7 +1380,7 @@ function MenuSection({
   const imageLessCount = items.filter((item) => !item.image_url).length
 
   return (
-    <section id="speisekarte" className={`${restaurantSectionClass(template, "menu")} px-5 py-12 @min-[640px]:px-8 @min-[1024px]:px-10`}>
+    <section id="speisekarte" className={`${restaurantSectionClass(template, "menu")} scroll-mt-24 px-5 py-12 @min-[640px]:px-8 @min-[1024px]:px-10`}>
       <div className="mx-auto max-w-6xl">
         <div className="premium-reveal flex flex-col gap-5 @min-[640px]:flex-row @min-[900px]:items-end @min-[900px]:justify-between">
           <div className="max-w-2xl">
@@ -1328,7 +1393,7 @@ function MenuSection({
             </p>
             <h2
               {...editable("content.menuHeadline", "text", "Speisekarte Überschrift")}
-              className="mt-3 text-[clamp(2rem,4vw,3rem)] font-black leading-tight tracking-[-0.055em]"
+              className="mt-3 text-[clamp(2rem,4cqw,3rem)] font-black leading-tight tracking-[-0.055em]"
               style={textStyleFor(config, "content.menuHeadline")}
             >
               {config.content.menuHeadline}
@@ -1488,7 +1553,7 @@ function AboutContactSection({
     <section className={`${restaurantSectionClass(template, "about")} px-5 py-8 @min-[640px]:px-8 @min-[1024px]:px-10`}>
       <div
         id="ueber-uns"
-        className="premium-reveal relative mx-auto max-w-6xl overflow-hidden rounded-[1.85rem] border border-white/80 bg-white shadow-[0_30px_85px_rgba(15,23,42,.10)]"
+        className="premium-reveal relative mx-auto max-w-6xl scroll-mt-24 overflow-hidden rounded-[1.85rem] border border-white/80 bg-white shadow-[0_30px_85px_rgba(15,23,42,.10)]"
       >
         <img
           {...editable("content.aboutHeroImageUrl", "image", "Über uns Hintergrundbild")}
@@ -1518,14 +1583,14 @@ function AboutContactSection({
             </p>
             <h2
               {...editable("content.aboutHeadline", "text", "Über uns Überschrift")}
-              className="mt-2.5 text-[clamp(2rem,3.2vw,2.95rem)] font-black leading-[1.04] tracking-[-0.06em] text-zinc-950"
+              className="mt-2.5 text-[clamp(2rem,3.2cqw,2.95rem)] font-black leading-[1.04] tracking-[-0.06em] text-zinc-950"
               style={textStyleFor(config, "content.aboutHeadline")}
             >
               {textValue(config, "content.aboutHeadline", aboutHeadlineFor(config))}
             </h2>
             <p
               {...editable("content.aboutSlogan", "text", "Über uns Slogan")}
-              className="mt-2.5 max-w-xl text-[clamp(1.05rem,1.75vw,1.28rem)] italic leading-tight text-[var(--site-accent)] [font-family:'Brush_Script_MT','Segoe_Print',cursive]"
+              className="mt-2.5 max-w-xl text-[clamp(1.05rem,1.75cqw,1.28rem)] italic leading-tight text-[var(--site-accent)] [font-family:'Brush_Script_MT','Segoe_Print',cursive]"
               style={textStyleFor(config, "content.aboutSlogan")}
             >
               {textValue(
@@ -1661,7 +1726,7 @@ function CompactContactSection({
           </p>
           <h2
             {...editable("content.contactHeadline", "text", "Kontakt Überschrift")}
-            className="mt-1.5 max-w-[12ch] text-[clamp(1.75rem,3vw,2.35rem)] font-black leading-[1.02] tracking-[-0.065em]"
+            className="mt-1.5 max-w-[12ch] text-[clamp(1.75rem,3cqw,2.35rem)] font-black leading-[1.02] tracking-[-0.065em]"
             style={textStyleFor(config, "content.contactHeadline")}
           >
             {textValue(config, "content.contactHeadline", contactHeadlineFor(config))}
@@ -1735,7 +1800,7 @@ function CompactContactSection({
           <div className="mt-3 flex flex-wrap items-center gap-3">
             {socialPlatforms
               .filter((item) =>
-                socialVisible(config, partner, item.platform, item.defaultVisible),
+                socialVisible(config, partner, item.platform),
               )
               .map((item) => (
                 <SocialBadge
@@ -1762,16 +1827,6 @@ function CompactContactSection({
           referrerPolicy="no-referrer-when-downgrade"
           allowFullScreen
         />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/20 to-transparent" />
-        <div className="absolute left-1/2 top-1/2 z-10 block -translate-x-1/2 -translate-y-full rounded-full bg-white/95 p-2 shadow-[0_16px_34px_rgba(0,0,0,.28)]">
-          <img
-            {...editable("content.contactLocationIcon", "image", "Standort-Icon")}
-            src={textValue(config, "content.contactLocationIcon", "/benefitsi-location-pin.png")}
-            alt=""
-            className="h-20 w-20"
-            style={imageStyleFor(config, "content.contactLocationIcon")}
-          />
-        </div>
       </div>
     </div>
   )
@@ -1794,7 +1849,7 @@ function FaqSection({ config }: { config: MicrositeConfig }) {
             </p>
             <h2
               {...editable("content.faqHeadline", "text", "FAQ Überschrift")}
-              className="mt-3 text-[clamp(2rem,3.4vw,3.1rem)] font-black leading-[1.03] tracking-[-0.065em] text-zinc-950"
+              className="mt-3 text-[clamp(2rem,3.4cqw,3.1rem)] font-black leading-[1.03] tracking-[-0.065em] text-zinc-950"
               style={textStyleFor(config, "content.faqHeadline")}
             >
               {textValue(config, "content.faqHeadline", "Häufige Fragen. Schnelle Antworten.")}
@@ -1920,7 +1975,7 @@ function FooterSection({
   const footerLogoUrl = textValue(config, "footer.benefitsiLogo", "")
 
   return (
-    <footer className="bg-[#fffdf8] px-5 pb-6 pt-0 text-sm text-zinc-600 @min-[640px]:px-8 @min-[1024px]:px-10">
+    <footer id="footer" className="scroll-mt-24 bg-[#fffdf8] px-5 pb-6 pt-0 text-sm text-zinc-600 @min-[640px]:px-8 @min-[1024px]:px-10">
       <div className="premium-reveal mx-auto grid max-w-6xl gap-6 border-t border-zinc-200/80 py-6 @min-[900px]:grid-cols-[1.55fr_.75fr_.75fr_.75fr]">
         <div>
           <div
@@ -1935,7 +1990,11 @@ function FooterSection({
                 style={imageStyleFor(config, "footer.benefitsiLogo")}
               />
             ) : (
-              <BenefitsiLockup className="text-[1.45rem]" />
+              <img
+                src={config.appearance?.mode === "dark" ? "/benefitsi-logo-on-dark.svg" : "/benefitsi-logo-on-light.svg"}
+                alt="Benefitsi"
+                className="h-9 w-auto max-w-[180px] object-contain"
+              />
             )}
           </div>
 
@@ -1953,46 +2012,56 @@ function FooterSection({
 
           <div className="mt-4 grid max-w-[360px] grid-cols-3 gap-3">
             <FooterTrustItem id="footer.trust.0" icon="shield" label="Sicher & geprüft" config={config} />
-            <FooterTrustItem id="footer.trust.1" icon="privacy" label="DSGVO konform" config={config} />
+            <FooterTrustItem id="footer.trust.1" icon="privacy" label="DSGVO-konform" config={config} />
             <FooterTrustItem id="footer.trust.2" icon="local" label="Lokale Partner" config={config} />
-          </div>
-
-          <div className="mt-3 flex items-center gap-3">
-            <span className="text-xl font-black text-[#4285f4]">G</span>
-            <span className="tracking-[.16em] text-[var(--site-accent)]">★★★★★</span>
-            <span className="font-bold text-zinc-800">4,8 / 5,0</span>
           </div>
         </div>
 
         <FooterLinkColumn
-          title="Für Nutzer"
-          links={["Vorteile entdecken", "So funktioniert’s", "App herunterladen", "Hilfe & FAQ"]}
+          title="Entdecken"
+          links={[
+            { label: "Deals & Vorteile", href: "#deals" },
+            { label: "Stempelkarte", href: "#stempelkarte" },
+            { label: "Speisekarte", href: "#speisekarte" },
+          ]}
         />
         <FooterLinkColumn
-          title="Für Partner"
-          links={["Partner werden", "Partner-Login", "Vorteile anbieten", "Erfolgsgeschichten"]}
+          title="Der Partner"
+          links={[
+            { label: "Über uns", href: "#ueber-uns" },
+            { label: "Kontakt & Route", href: "#kontakt" },
+          ]}
         />
         <FooterLinkColumn
-          title="Über Benefitsi"
-          links={["Über uns", "Karriere", "Presse", "Kontakt"]}
+          title="Benefitsi"
+          links={[
+            { label: "Benefitsi-App", href: "#app" },
+            { label: "Hilfe & FAQ", href: "#faq" },
+          ]}
         />
       </div>
     </footer>
   )
 }
 
-function FooterLinkColumn({ title, links }: { title: string; links: string[] }) {
+function FooterLinkColumn({
+  title,
+  links,
+}: {
+  title: string
+  links: Array<{ label: string; href: string }>
+}) {
   return (
     <div>
       <h3 className="text-sm font-black tracking-[-0.03em] text-zinc-950">{title}</h3>
       <ul className="mt-3 space-y-2.5">
         {links.map((link) => (
-          <li key={link}>
+          <li key={link.href}>
             <a
-              href={link === "Hilfe & FAQ" ? "#faq" : "#"}
+              href={link.href}
               className="text-sm text-zinc-500 transition hover:text-[var(--site-accent)]"
             >
-              {link}
+              {link.label}
             </a>
           </li>
         ))}
@@ -2161,10 +2230,13 @@ function HeroButton({
   primary?: boolean
   config: MicrositeConfig
 }) {
+  const href = primary ? "#deals" : "#speisekarte"
+
   return (
-    <button
+    <a
       {...editable(id, "text", "Startbereich Button")}
-      className={`premium-button rounded-xl px-7 py-4 text-sm font-semibold transition hover:-translate-y-0.5 ${
+      href={href}
+      className={`premium-button inline-flex items-center justify-center rounded-xl px-7 py-4 text-center text-sm font-semibold transition hover:-translate-y-0.5 ${
         primary
           ? "bg-[var(--site-accent)] text-white shadow-lg"
           : "border border-zinc-200 bg-white text-zinc-900"
@@ -2172,7 +2244,7 @@ function HeroButton({
       style={textStyleFor(config, id)}
     >
       {label}
-    </button>
+    </a>
   )
 }
 
@@ -2603,17 +2675,17 @@ function MenuCard({ item }: { item: MicrositeMenuItem }) {
   const imageFailed = Boolean(item.image_url && failedSrc === item.image_url)
 
   return (
-    <div className="premium-card premium-reveal flex min-w-0 flex-col gap-4 rounded-[1.15rem] border border-white/80 bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,.055)] @min-[420px]:flex-row">
+    <div className="premium-card premium-reveal flex min-w-0 flex-row items-start gap-3 rounded-[1.15rem] border border-white/80 bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,.055)] @min-[520px]:gap-4">
       {item.image_url && !imageFailed ? (
         <img
           src={item.image_url}
           alt=""
           onError={() => setFailedSrc(item.image_url)}
-          className="aspect-square w-full rounded-xl object-cover @min-[420px]:size-20 @min-[420px]:shrink-0"
+          className="size-20 shrink-0 rounded-xl object-cover @min-[760px]:size-24"
         />
       ) : (
         <span
-          className={`grid aspect-square w-full shrink-0 place-items-center rounded-xl @min-[420px]:size-20 ${
+          className={`grid size-20 shrink-0 place-items-center rounded-xl @min-[760px]:size-24 ${
             isDrink
               ? "bg-sky-50 text-sky-600"
               : "bg-orange-50 text-[var(--site-accent)]"
@@ -2654,18 +2726,27 @@ function MenuCard({ item }: { item: MicrositeMenuItem }) {
           </div>
         ) : null}
         {item.addons?.length ? (
-          <div className="mt-3 space-y-1.5 border-t border-zinc-100 pt-3">
-            <p className="text-[11px] font-bold uppercase tracking-[.08em] text-zinc-400">Add-ons</p>
-            {item.addons.map((addon, index) => (
-              <div key={`${addon.title}-${index}`} className="flex items-start justify-between gap-3 text-xs">
-                <span className="min-w-0 text-zinc-600">
-                  <span className="font-semibold text-zinc-700">{addon.title}</span>
-                  {addon.description ? <span className="block text-zinc-400">{addon.description}</span> : null}
-                </span>
-                <span className="shrink-0 font-semibold text-[var(--site-accent)]">+{formatPrice(addon.cost, item.currency)}</span>
-              </div>
-            ))}
-          </div>
+          <details className="group mt-3 border-t border-zinc-100 pt-3">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg py-1 text-xs font-bold text-zinc-600 outline-none transition hover:text-zinc-950 focus-visible:ring-2 focus-visible:ring-[var(--site-accent)] [&::-webkit-details-marker]:hidden">
+              <span>Extras anzeigen ({item.addons.length})</span>
+              <span aria-hidden="true" className="text-base leading-none transition group-open:rotate-45">+</span>
+            </summary>
+            <div className="mt-2 space-y-1.5">
+              {item.addons.map((addon, index) => (
+                <div key={`${addon.title}-${index}`} className="flex items-start justify-between gap-3 text-xs">
+                  <span className="min-w-0 text-zinc-600">
+                    <span className="font-semibold text-zinc-700">{addon.title}</span>
+                    {addon.description ? (
+                      <span className="block text-zinc-400">
+                        {formatAddonDescription(addon.description)}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="shrink-0 font-semibold text-[var(--site-accent)]">+{formatPrice(addon.cost, item.currency)}</span>
+                </div>
+              ))}
+            </div>
+          </details>
         ) : null}
       </div>
     </div>
@@ -2870,23 +2951,16 @@ function socialVisible(
   config: MicrositeConfig,
   partner: PartnerWithDeals,
   platform: SocialPlatform,
-  defaultVisible: boolean,
 ) {
-  const value = config.elementText[`social.${platform}.enabled`]
+  const enabled = config.elementText[`social.${platform}.enabled`]
+  const configuredUrl = config.elementText[`social.${platform}.url`]?.trim()
+  const resolvedUrl = configuredUrl || partnerSocialUrl(partner, platform)
 
-  if (value === "true") {
-    return true
-  }
-
-  if (value === "false") {
+  if (enabled === "false" || !resolvedUrl) {
     return false
   }
 
-  if (partnerSocialUrl(partner, platform)) {
-    return true
-  }
-
-  return defaultVisible
+  return true
 }
 
 function mapsQueryForPartner(partner: PartnerWithDeals, fallbackAddress: string) {
@@ -3015,6 +3089,14 @@ function rewardImageForStamp(
   const isDrinkReward = /getränk|drink|ayran|cola|wasser|saft|limonade/.test(
     rewardLabel,
   )
+  const isNonItemReward =
+    /bonusstempel|bonus stamp|stempelbonus|rabatt|discount|cashback|punkte|points|guthaben/.test(
+      rewardLabel,
+    )
+
+  if (isNonItemReward) {
+    return ""
+  }
 
   if (isDoenerReward) {
     const doenerItem = menuItems.find(
@@ -3059,7 +3141,7 @@ function rewardImageForStamp(
     return matchingItem.image_url
   }
 
-  return config.deals.topDealImageUrl || config.deals.illustrationUrl || config.hero.backgroundImageUrl
+  return ""
 }
 
 function rewardGridColumn(stamp: number, stampCount: number) {
@@ -3177,4 +3259,11 @@ function formatPrice(value: number | string, currency?: string | null) {
     style: "currency",
     currency: currency || "EUR",
   }).format(numeric)
+}
+
+function formatAddonDescription(value: string) {
+  return value
+    .replace(/^Size\s*\(Required\)$/i, "Größe (Pflichtauswahl)")
+    .replace(/^Size$/i, "Größe")
+    .replace(/\bRequired\b/gi, "Pflichtauswahl")
 }
