@@ -1244,7 +1244,7 @@ function signatureCardsForPartner(
     .map((deal, index) => ({
       id: deal.id || `deal-${index}`,
       title: deal.reward_item || deal.customer_description || `Angebot ${index + 1}`,
-      text: deal.terms || "Wird über Benefitsi beworben",
+      text: deal.terms || deal.customer_description || "Wird über Benefitsi beworben",
       icon: profile === "cinema" ? "star" : profile === "wellness" ? "leaf" : "spark",
     }))
   const menuCards = menuItems.slice(0, 4).map((item, index) => ({

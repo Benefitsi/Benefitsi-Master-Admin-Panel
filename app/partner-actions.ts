@@ -3727,7 +3727,7 @@ async function insertDeals(
   deals: Array<ParsedDeal & { created_at?: string; updated_at?: string }>,
 ) {
   return await mutateDealPayloadWithSchemaRetry(
-    deals.map((deal) => ({ ...deal })),
+    deals.map((deal) => withDefaultDealCopy({ ...deal })),
     (payload) => supabase.from("deals").insert(payload),
   )
 }
@@ -3737,8 +3737,9 @@ async function updateDeal(
   id: string,
   deal: ParsedDeal & { created_at?: string; updated_at?: string },
 ) {
-  return await mutateDealPayloadWithSchemaRetry({ ...deal }, (payload) =>
-    supabase.from("deals").update(payload).eq("id", id),
+  return await mutateDealPayloadWithSchemaRetry(
+    withDefaultDealCopy({ ...deal }),
+    (payload) => supabase.from("deals").update(payload).eq("id", id),
   )
 }
 
@@ -4575,6 +4576,98 @@ function validateDealPayload(payload: ParsedDeal) {
   return null
 }
 
+function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
+  const reward = describeDealReward(
+    payload.discount_type,
+    payload.discount_value,
+    payload.reward_item,
+    payload.benefit_count,
+  )
+  const timeWindow = dealTimeWindow(payload)
+
+  const customerDescription = (() => {
+    switch (payload.type) {
+      case "two_for_one":
+        return `Aktiviere den 2-für-1-Deal: Erhalte zwei ${payload.reward_item || "ausgewählte Produkte"} zum Preis von einem.`
+      case "free_item":
+        return `Aktiviere den Deal und erhalte ${reward} gratis.`
+      case "bonus_stamp":
+        return `Erhalte ${reward} nach einem qualifizierten Besuch automatisch.`
+      case "happy_hour":
+        return timeWindow
+          ? `Happy Hour: ${reward} von ${timeWindow}.`
+          : `Happy Hour: ${reward}.`
+      case "welcome":
+        return `Willkommensvorteil: Erhalte ${reward} bei deinem ersten qualifizierten Besuch.`
+      case "streak":
+        return `Nach ${payload.trigger_value ?? 3} qualifizierten Besuchen erhältst du ${reward}.`
+      case "challenge":
+        return `Schließe die Challenge ab und erhalte ${reward}.`
+      case "comeback":
+        return `Dein Comeback-Vorteil: Erhalte ${reward} bei einem berechtigten Besuch.`
+      case "limited_drop":
+        return `Deal Drop: Erhalte ${reward}, solange das Kontingent reicht.`
+      default:
+        return `Aktiviere den Deal und erhalte ${reward}.`
+    }
+  })()
+
+  const staffInstructions = (() => {
+    switch (payload.type) {
+      case "two_for_one":
+        return `1 ${payload.reward_item || "Produkt"} berechnen und ein gleichwertiges oder günstigeres zweites Produkt gratis ausgeben. Keine Stempel für diesen Deal.`
+      case "free_item":
+        return `Aktivierten Deal prüfen und ${reward} kostenlos zum aktuellen Bon hinzufügen.`
+      case "bonus_stamp":
+        return "Keine manuelle Kassenaktion. Bonusstempel nach bestätigtem Scan automatisch gutschreiben."
+      case "happy_hour":
+        return timeWindow
+          ? `Aktivierten Happy-Hour-Deal prüfen und ${reward} im Zeitraum ${timeWindow} anwenden.`
+          : `Aktivierten Happy-Hour-Deal prüfen und ${reward} anwenden.`
+      case "welcome":
+        return `Berechtigung im Scan prüfen und ${reward} einmalig auf den aktuellen Bon anwenden.`
+      case "streak":
+        return `Streak-Prämie im Kundenkonto prüfen und ${reward} nach der Einlösung kostenlos ausgeben.`
+      case "challenge":
+        return `Aktive Challenge und Berechtigung prüfen; ${reward} exakt einmal am aktuellen Bon anwenden.`
+      case "comeback":
+        return `Comeback-Berechtigung im Scan prüfen und ${reward} am aktuellen Bon anwenden.`
+      case "limited_drop":
+        return `Reservierte Deal-Drop-Auswahl prüfen und ${reward} entsprechend der Anzeige einlösen.`
+      default:
+        return `Aktivierten Deal und Berechtigung im Scan prüfen; ${reward} am aktuellen Bon anwenden.`
+    }
+  })()
+
+  const terms = (() => {
+    switch (payload.type) {
+      case "two_for_one":
+        return "Gilt für zwei gleiche oder gleichwertige Produkte. Keine Stempel für diesen Deal. Nicht mit anderen Deals kombinierbar."
+      case "free_item":
+        return "Nur zusammen mit dem angegebenen Hauptprodukt einlösbar. Nicht mit anderen Deals kombinierbar."
+      case "bonus_stamp":
+        return "Nur für qualifizierte Besuche. Nicht mit anderen Bonusstempeln kombinierbar."
+      case "happy_hour":
+        return timeWindow
+          ? `Nur von ${timeWindow} gültig. Nicht mit anderen Deals kombinierbar.`
+          : "Nur im konfigurierten Happy-Hour-Zeitraum gültig. Nicht mit anderen Deals kombinierbar."
+      case "welcome":
+        return "Einmal pro Nutzerkonto einlösbar. Nicht mit anderen Welcome-Deals kombinierbar."
+      case "limited_drop":
+        return "Nur solange das Kontingent reicht. Nicht mit anderen Deals kombinierbar."
+      default:
+        return "Einmal pro Besuch einlösbar, sofern nicht anders angegeben. Nicht mit anderen Deals kombinierbar."
+    }
+  })()
+
+  return {
+    ...payload,
+    customer_description: nonEmptyCopy(payload.customer_description, customerDescription),
+    staff_instructions: nonEmptyCopy(payload.staff_instructions, staffInstructions),
+    terms: nonEmptyCopy(payload.terms, terms),
+  }
+}
+
 function withDefaultMilestoneCopy(payload: ParsedMilestone): ParsedMilestone {
   const reward = describeDealReward(
     payload.reward_type,
@@ -4582,19 +4675,49 @@ function withDefaultMilestoneCopy(payload: ParsedMilestone): ParsedMilestone {
     payload.reward_item,
     payload.reward_type === "bonus_stamp" ? payload.discount_value : null,
   )
+  const requiredStamps = payload.required_stamps ?? "dem erforderlichen"
+  const staffInstructions = (() => {
+    switch (payload.reward_type) {
+      case "bonus_stamp":
+        return "Keine manuelle Kassenaktion. Bonusstempel nach Erreichen des Stempelziels automatisch gutschreiben."
+      case "item":
+        return `${reward} nach Prüfung des Stempelziels kostenlos ausgeben. Extras und Upgrades separat berechnen.`
+      case "percent":
+      case "fixed":
+        return `${reward} nach Prüfung des Stempelziels auf den berechtigten Bon anwenden.`
+      case "2for1":
+        return "Nach Prüfung des Stempelziels ein gleichwertiges oder günstigeres zweites Produkt gratis ausgeben."
+      default:
+        return `Stempelziel prüfen und ${reward} entsprechend der Anzeige einlösen.`
+    }
+  })()
 
   return {
     ...payload,
-    customer_description:
-      payload.customer_description ||
-      `Reach ${payload.required_stamps ?? "the required"} stamps to receive ${reward}.`,
-    staff_instructions:
-      payload.staff_instructions ||
-      `Verify the milestone reward in the app, then apply ${reward}.`,
-    terms:
-      payload.terms ||
-      "Subject to availability. Cannot be combined with other offers unless stated.",
+    customer_description: nonEmptyCopy(
+      payload.customer_description,
+      `Sammle ${requiredStamps} Stempel und erhalte ${reward}.`,
+    ),
+    staff_instructions: nonEmptyCopy(
+      payload.staff_instructions,
+      staffInstructions,
+    ),
+    terms: nonEmptyCopy(
+      payload.terms,
+      "Nach Erreichen des Stempelziels einlösbar. Nicht mit anderen Deals kombinierbar, sofern nicht anders angegeben.",
+    ),
   }
+}
+
+function nonEmptyCopy(value: string | null, fallback: string) {
+  return value?.trim() ? value : fallback
+}
+
+function dealTimeWindow(payload: ParsedDeal) {
+  const start = payload.happy_hour_start?.slice(0, 5)
+  const end = payload.happy_hour_end?.slice(0, 5)
+
+  return start && end ? `${start} bis ${end} Uhr` : null
 }
 
 function describeDealReward(
@@ -4604,28 +4727,28 @@ function describeDealReward(
   benefitCount: number | null,
 ) {
   if (discountType === "percent") {
-    return discountValue !== null ? `${discountValue}% off` : "a percentage discount"
+    return discountValue !== null ? `${discountValue} % Rabatt` : "einen prozentualen Rabatt"
   }
 
   if (discountType === "fixed") {
-    return discountValue !== null ? `€${discountValue} off` : "a fixed discount"
+    return discountValue !== null ? `${discountValue} € Rabatt` : "einen festen Rabatt"
   }
 
   if (discountType === "item") {
-    return rewardItem || "a free item"
+    return rewardItem || "einen Gratisartikel"
   }
 
   if (discountType === "bonus_stamp") {
     const count = benefitCount ?? 1
 
-    return `+${count} bonus ${count === 1 ? "stamp" : "stamps"}`
+    return `+${count} Bonusstempel`
   }
 
   if (discountType === "2for1") {
-    return "a 2-for-1 reward"
+    return "einen 2-für-1-Vorteil"
   }
 
-  return "the configured reward"
+  return "den konfigurierten Vorteil"
 }
 
 const automaticBenefitCategories = [
