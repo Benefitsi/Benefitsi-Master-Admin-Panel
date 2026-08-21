@@ -33,7 +33,7 @@ export function projectKnowledgeListRow(value: unknown): KnowledgeDocumentListIt
   const row = asRecord(value)
   if (!row || !isBenefitsiRow(row)) return null
 
-  const id = safeId(row.id)
+  const id = safeId(row.id ?? row.document_id)
   const relativePath = safeRelativePath(row.relative_path ?? row.relativePath)
   if (!id || !relativePath) return null
 
@@ -42,7 +42,7 @@ export function projectKnowledgeListRow(value: unknown): KnowledgeDocumentListIt
     relativePath,
     title: safeTitle(row.title, relativePath),
     sourceModifiedAt: safeIso(row.source_modified_at ?? row.sourceModifiedAt),
-    syncedAt: safeIso(row.synced_at ?? row.syncedAt ?? row.updated_at ?? row.updatedAt),
+    syncedAt: safeIso(row.synced_at ?? row.syncedAt ?? row.last_synced_at ?? row.lastSyncedAt ?? row.updated_at ?? row.updatedAt),
     isDeleted: row.is_deleted === true || row.isDeleted === true,
   }
 }
@@ -61,12 +61,22 @@ export function projectKnowledgeStatus(value: unknown): BenefitsiKnowledgeStatus
   const row = asRecord(Array.isArray(value) ? value[0] : value)
   if (!row || !isBenefitsiRow(row)) return null
 
+  const latestStatus = asRecord(row.latest_run ?? row.latestRun)?.status
+  const status = row.status ?? (
+    latestStatus === "succeeded"
+      ? "healthy"
+      : latestStatus === "running"
+        ? "syncing"
+        : latestStatus === "failed" || latestStatus === "aborted"
+          ? "failed"
+          : "unknown"
+  )
   return {
-    status: safeStatus(row.status),
+    status: safeStatus(status),
     lastSuccessfulSyncAt: safeIso(
       row.last_successful_sync_at ?? row.lastSuccessfulSyncAt,
     ),
-    documentCount: safeCount(row.document_count ?? row.documentCount),
+    documentCount: safeCount(row.document_count ?? row.documentCount ?? row.active_document_count ?? row.activeDocumentCount),
     lastErrorCode: safeErrorCode(row.last_error_code ?? row.lastErrorCode),
   }
 }
@@ -90,7 +100,7 @@ export function normalizeKnowledgeSearch(
     .filter((item): item is KnowledgeDocumentListItem => item !== null)
   const totalCount = safeCount(
     record?.total_count ?? record?.totalCount ?? record?.count,
-    items.length,
+    safeCount(rows[0] && asRecord(rows[0])?.total_count, offset + items.length),
   )
   const hasMore = typeof record?.has_more === "boolean"
     ? record.has_more
