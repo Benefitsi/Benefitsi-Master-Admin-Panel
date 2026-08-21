@@ -133,6 +133,13 @@ function AdminShellContent({
               collapsed={collapsed}
               icon={<AnalyticsIcon className="size-5" />}
             />
+            <AdminNavigationLink
+              href="/wissen"
+              label="Wissen"
+              active={pathname.startsWith("/wissen")}
+              collapsed={collapsed}
+              icon={<KnowledgeIcon className="size-5" />}
+            />
           </nav>
         </aside>
 
@@ -607,6 +614,21 @@ function AnalyticsIcon(props: SVGProps<SVGSVGElement>) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  )
+}
+
+function KnowledgeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M5 4.5h9.5A4.5 4.5 0 0 1 19 9v10.5H9.5A4.5 4.5 0 0 1 5 15V4.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M8.5 8.5h6M8.5 12h6M8.5 15.5h3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M5 4.5v10A4.5 4.5 0 0 0 9.5 19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
 }
