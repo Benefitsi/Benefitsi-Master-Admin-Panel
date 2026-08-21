@@ -1,0 +1,1383 @@
+version: 2
+
+goal:
+  title: "Benefitsi City Operations & Booking Platform"
+  slug: "city-operations-booking-platform"
+  kind: existing_plan
+  tranche: "Complete successive safe verified vertical slices until the global city review, geo hierarchy, Stripe Connect test booking, and guarded automation oracle is satisfied."
+  status: active
+  oracle:
+    signal: "End-to-end local/test-mode walkthrough of review, geo aggregation, connected provider onboarding, offer publication, booking, idempotent webhook handling, inventory, audit, and guarded agent automation."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Receipt-backed automated tests, production build, migration verification, Stripe test-mode webhook replay test, and browser walkthrough mapped to the owner outcome."
+  intake:
+    original_request: "Build the proposed dashboard, region model, and Benefitsi-owned automated booking service with Stripe and agent support."
+    interpreted_outcome: "Benefitsi operates one safe automated platform for reviewing all city content and selling local experiences through its own Stripe-backed booking flow."
+    input_shape: existing_plan
+    audience: "Benefitsi admins, providers, residents, visitors, and city agents"
+    authority: requested
+    proof_type: demo
+    completion_proof: "The full oracle walkthrough succeeds in test mode and all goal-owned tests/build checks pass."
+    likely_misfire: "A polished dashboard or Checkout link that omits review evidence, regional relationships, inventory concurrency, webhook idempotency, audit, provider operations, or authority gates."
+    blind_spots_considered:
+      - "Merchant-of-record, tax, terms, refund, cancellation, payout, and chargeback ownership"
+      - "Stripe Connect account and charge model"
+      - "Inventory overselling and webhook replay"
+      - "PII, secret, KYC, RLS, authorization, and audit boundaries"
+      - "Regional SEO duplication and canonical URLs"
+      - "Agent permissions and human approval gates"
+      - "Existing dirty worktree"
+    existing_plan_facts:
+      - "Global review dashboard comes first."
+      - "Use hierarchical and many-to-many regional relationships."
+      - "Roll out Annweiler, then Landau and surroundings, then regional hubs."
+      - "Benefitsi owns the customer booking experience."
+      - "Stripe integration is test-mode-first."
+      - "Agents support research and operations but cannot perform sensitive final actions."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: bundled_not_installed
+  worker: bundled_not_installed
+  judge: bundled_not_installed
+
+visual_board:
+  selected: local
+  local:
+    status: active
+    url: "http://goalbuddy.localhost:41737/city-operations-booking-platform/"
+    command: "node /Users/patrick/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.1/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/city-operations-booking-platform"
+
+active_task: T022
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Map the current Master Admin, city web, Supabase schemas, existing Stripe code/configuration, Next.js constraints, dirty changes, and verification commands needed for the full platform."
+    inputs:
+      - "AGENTS.md"
+      - "package.json and lockfile"
+      - "app, components, lib, tests, and local Next.js documentation"
+      - "benefitsi-web city operations and Supabase migrations"
+      - "existing dirty diff without modifying it"
+      - "current official Stripe Connect and webhook documentation"
+    constraints:
+      - "Read-only."
+      - "Do not expose secrets or inspect secret values."
+      - "Separate pre-existing red checks from goal-owned verification."
+      - "Preserve the user-provided sequence while validating architecture and risk."
+    expected_output:
+      - "Repo and ownership map"
+      - "Existing city-review and Stripe capability map"
+      - "Dirty-worktree collision map"
+      - "Current official Stripe architecture options and recommendation"
+      - "Verification baseline"
+      - "Largest safe first Worker package"
+    receipt:
+      result: done
+      summary: "Mapped Master Admin, city web, city schema, Hermes draft flow and existing Stripe analytics webhook. Found a separate published-content city admin, missing global draft review metadata, and a dangerous two-hour invented event end time. Baseline is green. Recommended a new server-only review DAL, geo/review schema, all-city queue and explicit unknown-end rule before Stripe booking."
+      evidence:
+        - notes/T001-architecture-map.md
+        - app/admin-shell.tsx
+        - lib/admin.ts
+        - ../benefitsi-web/src/app/admin/city-pages/page.tsx
+        - "../benefitsi-web/src/app/api/admin/city-pages/[citySlug]/community/[submissionId]/route.ts"
+        - ../Benefitsi-App-publish/supabase/functions/stripe-webhook/index.ts
+        - "https://docs.stripe.com/connect/charges"
+        - "https://docs.stripe.com/webhooks"
+      facts:
+        - "Master Admin uses Next.js 16.2.6 and authenticated Supabase admin sessions."
+        - "Master Admin has no city review or marketplace booking domain."
+        - "City web approval currently invents a two-hour event duration when end time is absent."
+        - "Existing Stripe webhook is signature-verified and idempotent but analytics-only."
+        - "Master Admin baseline passes 49 tests, lint and production build."
+      contradictions:
+        - "The requested no-invented-data review gate conflicts with the current community approval route that sets end_date to start plus two hours."
+      ambiguity_requiring_judge:
+        - "Canonical migration repository and database access boundary."
+        - "Unknown event-end representation."
+        - "Live-mode destination versus direct charge liability."
+      commands:
+        - "npm test"
+        - "npm run lint"
+        - "npm run build"
+      note_needed: true
+      note: notes/T001-architecture-map.md
+      harness: codex
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the architecture and select the city review plus geography vertical slice without colliding with existing user changes."
+    inputs:
+      - "T001 receipt"
+      - "goal oracle"
+    constraints:
+      - "Read-only."
+      - "Do not activate Stripe or change production data."
+      - "Choose the largest reversible slice with exact file boundaries."
+    expected_output:
+      - "Architecture decision record"
+      - "Exact Worker objective"
+      - "allowed_files"
+      - "verify commands"
+      - "stop conditions"
+      - "Deferred payment/legal decisions"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "Approve a cross-repo but tightly bounded first vertical slice: canonical city schema stays in benefitsi-web, while the authenticated operational UI belongs in Master Admin. Use a server-only service-role DAL only after requireAdmin because Master Admin's users.is_admin lookup does not prove the older profiles.role RLS predicate. Add review and geo tables, an all-city queue, audited human actions, and a strict no-unverified-end publish gate. Preserve the dirty shell with one additive navigation patch."
+      worker_package:
+        objective: "Implement the global city review and flexible geography vertical slice: idempotent geo/review/audit schema, Annweiler pilot review backfill, server-only minimal DTO DAL, all-city queue and detail page, audited request-correction/reject/publish actions, explicit source/issue comparison, strict no-unverified-end publication, loading/empty/error states, navigation, tests and browser verification."
+        allowed_files:
+          - app/admin-shell.tsx
+          - "app/city-operations/**"
+          - "components/city-operations/**"
+          - "lib/city-operations/**"
+          - lib/supabase/admin.ts
+          - "tests/city-operations*.test.mjs"
+          - ../../benefitsi-web/supabase/migrations/20260728150000_city_review_and_geo_operations.sql
+        verify:
+          - "node --import tsx --test tests/city-operations*.test.mjs"
+          - "npm test"
+          - "npm run lint"
+          - "npm run build"
+          - "git diff --check -- app/admin-shell.tsx app/city-operations components/city-operations lib/city-operations lib/supabase/admin.ts tests/city-operations*.test.mjs ../../benefitsi-web/supabase/migrations/20260728150000_city_review_and_geo_operations.sql"
+        stop_if:
+          - "A required change would overwrite or semantically conflict with the existing admin translation work."
+          - "Admin authorization cannot be re-verified before every privileged DAL mutation."
+          - "A publish path can succeed with a blocking issue, missing HTTPS source, unverified event end, or missing audit receipt."
+          - "The migration would destructively rewrite existing city content or region assignments."
+          - "Verification fails twice for the same unexplained reason."
+      evidence:
+        - notes/T001-architecture-map.md
+        - lib/admin.ts
+        - ../../benefitsi-web/supabase/migrations/001_initial_benefitsi_schema.sql
+        - "../../benefitsi-web/src/app/api/admin/city-pages/[citySlug]/community/[submissionId]/route.ts"
+        - node_modules/next/dist/docs/01-app/02-guides/data-security.md
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "Live-mode merchant-of-record and Stripe charge liability decision remains deferred to the Stripe phase."
+        - "Production migration application is not part of this local Worker slice."
+      required_board_updates:
+        - "Copy worker_package exactly to T003 and activate T003."
+      harness: codex
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement the global city review and flexible geography vertical slice: idempotent geo/review/audit schema, Annweiler pilot review backfill, server-only minimal DTO DAL, all-city queue and detail page, audited request-correction/reject/publish actions, explicit source/issue comparison, strict no-unverified-end publication, loading/empty/error states, navigation, tests and browser verification."
+    allowed_files:
+      - app/admin-shell.tsx
+      - app/city-operations/**
+      - components/city-operations/**
+      - lib/city-operations/**
+      - lib/supabase/admin.ts
+      - tests/city-operations*.test.mjs
+      - ../../benefitsi-web/supabase/migrations/20260728150000_city_review_and_geo_operations.sql
+    verify:
+      - "node --import tsx --test tests/city-operations*.test.mjs"
+      - "npm test"
+      - "npm run lint"
+      - "npm run build"
+      - "git diff --check -- app/admin-shell.tsx app/city-operations components/city-operations lib/city-operations lib/supabase/admin.ts tests/city-operations*.test.mjs ../../benefitsi-web/supabase/migrations/20260728150000_city_review_and_geo_operations.sql"
+    stop_if:
+      - "A required change would overwrite or semantically conflict with the existing admin translation work."
+      - "Admin authorization cannot be re-verified before every privileged DAL mutation."
+      - "A publish path can succeed with a blocking issue, missing HTTPS source, unverified event end, or missing audit receipt."
+      - "The migration would destructively rewrite existing city content or region assignments."
+      - "Verification fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      summary: "Implemented the first complete city-operations vertical slice: additive geo/review/audit schema, Annweiler pilot review backfill, server-only service-role DTO DAL behind requireAdmin, global all-city review queue, city/region/type/stage/search filters, content detail with source and field-level issues, audited correction/reject/publish RPC actions, strict double-layer event publication gate, navigation, loading/empty/error states, tests, build, and browser walkthrough."
+      changed_files:
+        - app/admin-shell.tsx
+        - app/city-operations/actions.ts
+        - app/city-operations/page.tsx
+        - "app/city-operations/[contentType]/[contentId]/page.tsx"
+        - app/city-operations/loading.tsx
+        - app/city-operations/error.tsx
+        - components/city-operations/review-ui.tsx
+        - lib/city-operations/contracts.ts
+        - lib/city-operations/data.ts
+        - lib/supabase/admin.ts
+        - tests/city-operations-contracts.test.mjs
+        - tests/city-operations-security.test.mjs
+        - ../../benefitsi-web/supabase/migrations/20260728150000_city_review_and_geo_operations.sql
+      commands:
+        - command: "node --import tsx --test tests/city-operations*.test.mjs"
+          status: pass
+        - command: "npm test"
+          status: pass
+        - command: "npm run lint"
+          status: pass
+        - command: "npm run build"
+          status: pass
+        - command: "scoped git diff --check"
+          status: pass
+      evidence:
+        - app/city-operations/page.tsx
+        - "app/city-operations/[contentType]/[contentId]/page.tsx"
+        - app/city-operations/actions.ts
+        - components/city-operations/review-ui.tsx
+        - lib/city-operations/contracts.ts
+        - lib/city-operations/data.ts
+        - lib/supabase/admin.ts
+        - ../../benefitsi-web/supabase/migrations/20260728150000_city_review_and_geo_operations.sql
+        - tests/city-operations-contracts.test.mjs
+        - tests/city-operations-security.test.mjs
+        - "Browser walkthrough: /city-operations and Annweiler Burgentagung detail"
+      verification:
+        - "node --import tsx --test tests/city-operations*.test.mjs: 7/7 passed"
+        - "npm test: 56/56 passed"
+        - "npm run lint: passed"
+        - "npm run build: passed; both city-operations routes compiled"
+        - "scoped git diff --check: passed"
+        - "browser: authenticated global queue rendered three real Annweiler drafts"
+        - "browser: Burgentagung rendered its 22:00 end but blocked publication because review metadata is absent"
+      safety:
+        - "Every privileged action calls requireAdmin before createAdminClient."
+        - "Only service_role may execute review transition and publish RPCs."
+        - "No UI action directly updates city_events."
+        - "Publish requires a fresh verified HTTPS source, verified event end, pass verdict, ready_for_human stage, expiry, and zero blocking issues in both TypeScript and SQL."
+        - "No invented two-hour event duration exists in the new migration."
+        - "The migration is additive and does not publish content when applied."
+      known_limits:
+        - "Production migration application was explicitly outside T003. The live database migration history is also out of sync with local files, so a normal db push safely refused even in dry-run."
+        - "Until the migration is applied through a controlled single-migration path, the dashboard fails closed by synthesizing a blocking missing-review issue for every live draft."
+        - "The pre-existing community approval route that invents a two-hour duration remains outside this Worker file boundary and must be fixed by a later Judge-approved package."
+      scope_check: "All product edits stayed within the exact T003 allowed_files list. Existing dirty translation and microsite work was preserved."
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the review and geography slice against the oracle, security boundary, regional SEO model, and dashboard usability before booking work begins."
+    inputs:
+      - "T003 receipt"
+      - "browser walkthrough"
+      - "migration and test results"
+    constraints:
+      - "Read-only."
+      - "Reject cosmetic-only completion."
+    expected_output:
+      - "accepted | changes_required"
+      - "Missing proof"
+      - "Exact next Worker package"
+    receipt:
+      result: done
+      decision: accepted
+      full_outcome_complete: false
+      rationale: "The slice is a real operational vertical slice rather than a cosmetic dashboard: it renders live Annweiler drafts, fails closed before migration, rechecks admin identity before every privileged action, publishes only through an atomic service-role RPC, records audit data, and models one city in multiple regional contexts. Automated and browser evidence satisfy the T003 package. Booking work may begin."
+      accepted_evidence:
+        - "56/56 repository tests pass, including seven city review contract/security tests."
+        - "Next.js production build and lint pass."
+        - "Authenticated browser walkthrough rendered the global queue and Burgentagung detail from live data."
+        - "The missing migration state blocks all publication and clearly explains why."
+        - "The SQL publish gate rejects stale/non-HTTPS sources, blocking issues, unverified end times, invalid expiry, and non-draft events."
+      carry_forward_findings:
+        - "Before controlled migration application, make the Annweiler pilot updates replay-safe so rerunning the file cannot downgrade a later human decision."
+        - "Retire the pre-existing community route's invented start-plus-two-hours end time."
+        - "Align the TypeScript gate with SQL by checking expiresAt >= endsAt and rejecting materially future source-check timestamps."
+        - "Do not repair or rewrite remote Supabase migration history blindly; use a targeted reviewed application path."
+        - "Regional public aggregation and canonical URL evidence remains for the Annweiler public-integration phase."
+      next_worker_package:
+        objective: "Implement a complete Stripe Connect test-mode booking core and close the carried review safety gaps: replay-safe review seed, no invented community end time, booking/provider/offer/inventory/payment/audit schema, transaction-safe hold RPCs, reviewed offer publication, test-only Connect onboarding, destination-charge Checkout with explicit application fee, signature-verified idempotent webhook processing, cancellation/refund state model, admin test workflow, and automated verification."
+        charge_model: "Use Stripe Connect destination charges in test mode behind an explicit strategy field. Benefitsi is the platform-facing booking experience and records the application fee. Live activation, merchant-of-record, tax, payout, refund, and chargeback ownership remain owner/legal decisions."
+        security_boundary: "Stripe secret and webhook secret stay server-only and must be sk_test/whsec values. Agents receive only redacted operational status and may never onboard KYC, publish offers, refund, change payout routing, or activate live mode."
+        migration_boundary: "Create a new canonical booking migration. Do not run broad db push while remote history differs. Controlled application is a later explicit operational step unless a safe single-file path is proven."
+      production_blockers:
+        - "Remote/local migration history is inconsistent."
+        - "No live Stripe activation is authorized."
+        - "Merchant-of-record, tax, cancellation terms, refunds, disputes and payout liability need owner/legal acceptance before production."
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement a complete Stripe Connect test-mode booking core and close the carried review safety gaps: replay-safe review seed, no invented community end time, booking/provider/offer/inventory/payment/audit schema, transaction-safe hold RPCs, reviewed offer publication, test-only Connect onboarding, destination-charge Checkout with explicit application fee, signature-verified idempotent webhook processing, cancellation/refund state model, admin test workflow, and automated verification."
+    allowed_files:
+      - package.json
+      - package-lock.json
+      - .env.example
+      - app/admin-shell.tsx
+      - app/bookings/**
+      - app/api/stripe/**
+      - components/bookings/**
+      - lib/bookings/**
+      - lib/stripe/**
+      - lib/supabase/admin.ts
+      - tests/booking*.test.mjs
+      - lib/city-operations/contracts.ts
+      - tests/city-operations*.test.mjs
+      - ../../benefitsi-web/supabase/migrations/20260728150000_city_review_and_geo_operations.sql
+      - ../../benefitsi-web/supabase/migrations/20260728170000_booking_marketplace_core.sql
+      - ../../benefitsi-web/src/app/api/admin/city-pages/[citySlug]/community/[submissionId]/route.ts
+    verify:
+      - "node --import tsx --test tests/booking*.test.mjs tests/city-operations*.test.mjs"
+      - "npm test"
+      - "npm run lint"
+      - "npm run build"
+      - "git diff --check on T005 scoped files in both repositories"
+    stop_if:
+      - "Live Stripe credentials or production activation are required."
+      - "Merchant-of-record or payout ownership cannot be represented without an owner decision."
+      - "Inventory cannot be made transaction-safe with the selected datastore."
+      - "Need files outside Judge-approved boundaries."
+    receipt:
+      result: done
+      summary: "Implemented and activated the Benefitsi-owned Stripe Connect test-mode booking core: private provider/offer/review/slot/booking/audit/webhook schema, human-gated offer publication, test-only Connect Express onboarding, destination-charge Checkout with immutable application-fee snapshots, transactional inventory holds, concurrent idempotency recheck, signed replay-safe webhooks, cancellation/refund state machine, Booking Control UI, and city-review safety remediation."
+      changed_files:
+        - package.json
+        - package-lock.json
+        - .env.example
+        - app/admin-shell.tsx
+        - app/bookings/actions.ts
+        - app/bookings/page.tsx
+        - app/bookings/loading.tsx
+        - app/bookings/error.tsx
+        - app/bookings/success/page.tsx
+        - app/bookings/cancelled/page.tsx
+        - app/api/stripe/checkout/route.ts
+        - app/api/stripe/connect/onboarding/route.ts
+        - app/api/stripe/webhook/route.ts
+        - components/bookings/connect-onboarding-button.tsx
+        - lib/bookings/contracts.ts
+        - lib/bookings/data.ts
+        - lib/stripe/config.ts
+        - lib/city-operations/contracts.ts
+        - tests/booking-contracts.test.mjs
+        - tests/booking-security.test.mjs
+        - tests/city-operations-contracts.test.mjs
+        - ../../benefitsi-web/supabase/migrations/20260728150000_city_review_and_geo_operations.sql
+        - ../../benefitsi-web/supabase/migrations/20260728170000_booking_marketplace_core.sql
+        - "../../benefitsi-web/src/app/api/admin/city-pages/[citySlug]/community/[submissionId]/route.ts"
+      commands:
+        - command: "node --import tsx --test tests/booking*.test.mjs tests/city-operations*.test.mjs"
+          status: pass
+        - command: "npm test (65 tests)"
+          status: pass
+        - command: "npm run lint"
+          status: pass
+        - command: "npm run build (Next.js 16.2.12)"
+          status: pass
+        - command: "scoped git diff --check in both repositories"
+          status: pass
+        - command: "targeted atomic Supabase migration application and remote migration list verification"
+          status: pass
+        - command: "rolled-back database booking E2E"
+          status: pass
+      verification:
+        - "Remote migrations 20260728150000 and 20260728170000 are recorded and both schemas/RPCs exist."
+        - "Rolled-back E2E proved offer publication, same-booking idempotency replay, sold-out blocking, duplicate webhook ignore, confirmed-to-refunded state, five audit entries and two unique webhook receipts."
+        - "Authenticated browser showed live regional review data and the human publish button only for the clean Bachstelzkerwe case."
+        - "Authenticated Booking Control showed active schema with Stripe Test-Key missing and no live-payment capability."
+        - "Next.js was patched from 16.2.6 to 16.2.12; remaining npm audit findings are transitive PostCSS/Sharp advisories without a safe non-breaking npm remediation."
+      safety:
+        - "Only sk_test_ secrets are accepted and live Stripe webhook events are rejected."
+        - "Provider KYC is hosted by Stripe; Benefitsi and agents do not store KYC fields."
+        - "Offer publication requires clean Ben review, enabled test provider and explicit human admin action."
+        - "Checkout price, currency, destination and application fee come only from the locked database hold."
+        - "Slot rows are locked before capacity calculation and idempotency is rechecked after the lock."
+        - "Signed webhook processing and its audit receipt occur in one database transaction."
+        - "Community event moderation no longer invents a two-hour end time."
+        - "Review pilot seeds cannot overwrite a later human decision."
+      known_limits:
+        - "No Stripe test secret or webhook secret is configured locally, so no external Stripe account/session was created and no Stripe card test was attempted."
+        - "Merchant-of-record, taxes, cancellation terms, dispute liability and live payout ownership remain production blockers."
+        - "The historical Supabase migration directory remains incomplete for older remote versions, but the two new versions are now aligned local/remote."
+        - "Partner-isolated operations, guarded test refunds, exports and operational alerting belong to T006."
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement admin and provider booking operations, including booking timelines, inventory and payout visibility, guarded refunds/cancellations, exports, and operational alerts."
+    allowed_files:
+      - app/bookings/**
+      - app/api/bookings/**
+      - app/partner/bookings/**
+      - components/bookings/**
+      - lib/bookings/**
+      - lib/stripe/**
+      - lib/supabase/admin.ts
+      - tests/booking*.test.mjs
+      - ../../benefitsi-web/supabase/migrations/20260728190000_booking_operations.sql
+    verify:
+      - "node --import tsx --test tests/booking*.test.mjs"
+      - "npm test"
+      - "npm run lint"
+      - "npm run build"
+      - "git diff --check on T006 scoped files in both repositories"
+    stop_if:
+      - "A sensitive action lacks explicit authorization and audit."
+      - "Provider data isolation cannot be proven."
+      - "Need files outside Judge-approved boundaries."
+    receipt:
+      result: done
+      summary: "Implemented booking operations for Benefitsi admins and isolated partners: detailed audit timeline, gross/fee/provider-net visibility, actionable alerts, PII-free formula-safe CSV export, partner-scoped service-role reads after portal authentication, provider cancellation requests, explicit admin cancellation confirmation, idempotent Stripe test-refund creation, refund-pending audit transition, and webhook-confirmed final refund state."
+      changed_files:
+        - app/bookings/actions.ts
+        - app/bookings/page.tsx
+        - "app/bookings/[bookingId]/page.tsx"
+        - app/api/bookings/export/route.ts
+        - app/partner/bookings/actions.ts
+        - app/partner/bookings/page.tsx
+        - lib/bookings/contracts.ts
+        - lib/bookings/data.ts
+        - lib/bookings/provider-data.ts
+        - tests/booking-contracts.test.mjs
+        - tests/booking-security.test.mjs
+        - ../../benefitsi-web/supabase/migrations/20260728190000_booking_operations.sql
+      commands:
+        - command: "node --import tsx --test tests/booking*.test.mjs"
+          status: pass
+        - command: "npm test"
+          status: pass
+        - command: "npm run lint"
+          status: pass
+        - command: "npm run build"
+          status: pass
+        - command: "targeted atomic Supabase booking-operations migration"
+          status: pass
+        - command: "rolled-back database E2E including refund_pending and refunded"
+          status: pass
+        - command: "authenticated browser walkthrough of /partner/bookings"
+          status: pass
+      verification:
+        - "Booking operations migration applied without changing prior migration history."
+        - "Rollback E2E ended refunded with six booking audit entries, two unique webhook receipts, duplicate webhook ignored, oversell blocked and no persistent test data."
+        - "Provider page rendered through authenticated portal context and returned no cross-provider records for the empty test state."
+        - "Production build includes admin detail, partner booking and protected CSV routes."
+        - "Refund action checks explicit confirmation and sk_test configuration before mutating a paid booking."
+      safety:
+        - "Partner service-role access happens only after Supabase portal identity and partner ownership resolution."
+        - "Provider cancellation cannot execute Stripe refunds; paid bookings become an admin action request."
+        - "Admin refunds are test-only, idempotent by booking ID and audited before webhook-confirmed completion."
+        - "CSV excludes customer email and neutralizes spreadsheet formulas."
+        - "No external refund was attempted because Stripe test keys are absent."
+      known_limits:
+        - "No real provider mapping exists yet, so partner operational isolation is verified by code contracts and authenticated empty-state walkthrough."
+        - "Stripe payout balance retrieval is not shown without a connected test account; the UI shows accounting net and Connect enablement status."
+        - "Public Annweiler discovery and customer checkout belong to T007."
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Integrate reviewed bookable offers into the Annweiler city experience and complete the Stripe test-mode customer booking walkthrough with accessible success, failure, cancellation, and sold-out states."
+    allowed_files:
+      - app/api/stripe/checkout/route.ts
+      - lib/stripe/config.ts
+      - tests/booking*.test.mjs
+      - .env.example
+      - ../../benefitsi-web/.env.example
+      - ../../benefitsi-web/src/app/stadt/[citySlug]/page.tsx
+      - ../../benefitsi-web/src/app/stadt/[citySlug]/buchen/**
+      - ../../benefitsi-web/src/app/bookings/**
+      - ../../benefitsi-web/src/app/api/city/[citySlug]/bookings/**
+      - ../../benefitsi-web/src/components/city/CityPortalTemplate.tsx
+      - ../../benefitsi-web/src/components/city/CityBookingSection.tsx
+      - ../../benefitsi-web/src/lib/bookings/**
+      - ../../benefitsi-web/src/lib/cities/get-city-page.ts
+      - ../../benefitsi-web/src/lib/seo/city-json-ld.ts
+      - ../../benefitsi-web/src/app/sitemap.ts
+      - ../../benefitsi-web/src/app/api/admin/city-pages/[citySlug]/community/[submissionId]/route.ts
+    verify:
+      - "node --import tsx --test tests/booking*.test.mjs"
+      - "npm test && npm run lint && npm run build in Master Admin"
+      - "npm run lint && npm run build in benefitsi-web"
+      - "browser walkthrough of Annweiler booking discovery, detail, sold-out and unavailable-checkout states"
+      - "git diff --check on T007 scoped files in both repositories"
+    stop_if:
+      - "Canonical URL or regional aggregation would duplicate SEO content."
+      - "Checkout requires live-mode activation."
+      - "Need files outside Judge-approved boundaries."
+    receipt:
+      result: done
+      summary: "Annweiler now exposes reviewed Benefitsi booking offers through one canonical city discovery and detail flow, with server-only checkout proxying into the test-mode Stripe service."
+      changed_files:
+        - "app/api/stripe/checkout/route.ts"
+        - "lib/stripe/config.ts"
+        - ".env.example"
+        - "../../benefitsi-web/src/lib/bookings/public-bookings.ts"
+        - "../../benefitsi-web/src/components/city/CityBookingSection.tsx"
+        - "../../benefitsi-web/src/app/stadt/[citySlug]/buchen/[offerSlug]/page.tsx"
+        - "../../benefitsi-web/src/app/stadt/[citySlug]/buchen/[offerSlug]/BookingCheckout.tsx"
+        - "../../benefitsi-web/src/app/api/city/[citySlug]/bookings/checkout/route.ts"
+      commands:
+        - command: "npm test in Master Admin"
+          status: pass
+        - command: "npm run lint and npm run build in both Next.js repositories"
+          status: pass
+        - command: "git diff --check on both T007 scopes"
+          status: pass
+      files:
+        - "app/api/stripe/checkout/route.ts"
+        - "lib/stripe/config.ts"
+        - ".env.example"
+        - "../../benefitsi-web/src/lib/bookings/public-bookings.ts"
+        - "../../benefitsi-web/src/components/city/CityBookingSection.tsx"
+        - "../../benefitsi-web/src/app/stadt/[citySlug]/buchen/[offerSlug]/page.tsx"
+        - "../../benefitsi-web/src/app/stadt/[citySlug]/buchen/[offerSlug]/BookingCheckout.tsx"
+        - "../../benefitsi-web/src/app/api/city/[citySlug]/bookings/checkout/route.ts"
+        - "../../benefitsi-web/src/app/bookings/success/page.tsx"
+        - "../../benefitsi-web/src/app/bookings/cancelled/page.tsx"
+      tests:
+        - command: "npm test in Master Admin"
+          status: pass
+          detail: "73/73 tests passed."
+        - command: "npm run lint and npm run build in Master Admin"
+          status: pass
+        - command: "npm run lint and npm run build in benefitsi-web"
+          status: pass
+        - command: "git diff --check on both T007 scopes"
+          status: pass
+        - command: "local Annweiler HTTP request"
+          status: pass
+          detail: "The restarted Next.js server logged GET /stadt/annweiler 200."
+      verification:
+        - "Only published offers from enabled test-mode providers and future active slots enter public discovery."
+        - "Remaining inventory includes confirmed bookings and unexpired holds/payment-pending reservations."
+        - "The public browser never receives a Stripe or Supabase secret; checkout uses a constant-time shared-secret server proxy."
+        - "Canonical offer detail, sitemap entry and Product JSON-LD share one city booking URL."
+        - "Sold-out slots are disabled in the client and rechecked server-side before checkout."
+      safety:
+        - "The Master checkout route fails closed if the shared proxy secret is absent or incorrect."
+        - "Live Stripe credentials remain rejected."
+        - "No fake booking offer was persisted for visual testing."
+      known_limits:
+        - "The in-app browser policy blocked the local URL during final visual walkthrough; no bypass was attempted. Server response, automated contracts and production rendering builds passed."
+        - "No external Stripe Checkout session was created because test credentials and a connected test provider are not configured."
+
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement agent-assisted automation queues for city scans, source verification, corrections, provider onboarding assistance, booking anomaly triage, and notifications with strict human gates for publish, refunds, payouts, and live activation."
+    allowed_files:
+      - app/admin-shell.tsx
+      - .env.example
+      - vercel.json
+      - app/automation/**
+      - app/api/automation/**
+      - components/automation/**
+      - lib/automation/**
+      - tests/automation*.test.mjs
+      - ../../benefitsi-web/supabase/migrations/20260728210000_agent_automation_queues.sql
+      - ../../tools/benefitsi-mcp/server.py
+      - ../../tools/benefitsi-mcp/test_server.py
+      - ../../tools/benefitsi-mcp/README.md
+    verify:
+      - "python -m unittest for Benefitsi MCP"
+      - "npm test, npm run lint and npm run build in Master Admin"
+      - "rolled-back database automation lifecycle E2E"
+      - "authenticated dashboard walkthrough when browser policy permits"
+      - "git diff --check on T008 scoped files"
+    stop_if:
+      - "An agent would receive secrets, KYC details, or unnecessary booking PII."
+      - "An automated path can publish, refund, change payouts, or activate live payments without a human gate."
+      - "Need files outside Judge-approved boundaries."
+    receipt:
+      result: done
+      summary: "A global Automation Control now coordinates daily city scans and agent-assisted operational work through leased, deduplicated, audited queues while keeping every protected action behind a separate human workflow."
+      changed_files:
+        - "app/automation/page.tsx"
+        - "app/automation/actions.ts"
+        - "app/api/automation/tick/route.ts"
+        - "lib/automation/contracts.ts"
+        - "lib/automation/data.ts"
+        - "vercel.json"
+        - "../../benefitsi-web/supabase/migrations/20260728210000_agent_automation_queues.sql"
+        - "../../tools/benefitsi-mcp/server.py"
+        - "../../tools/benefitsi-mcp/test_server.py"
+      commands:
+        - command: "npm test, npm run lint and npm run build in Master Admin"
+          status: pass
+        - command: "local and M1 Benefitsi MCP unittest"
+          status: pass
+        - command: "rolled-back Supabase automation lifecycle E2E"
+          status: pass
+        - command: "git diff --check on all T008 scopes"
+          status: pass
+      files:
+        - "app/automation/page.tsx"
+        - "app/automation/actions.ts"
+        - "app/api/automation/tick/route.ts"
+        - "lib/automation/contracts.ts"
+        - "lib/automation/data.ts"
+        - "vercel.json"
+        - "../../benefitsi-web/supabase/migrations/20260728210000_agent_automation_queues.sql"
+        - "../../tools/benefitsi-mcp/server.py"
+        - "../../tools/benefitsi-mcp/test_server.py"
+      tests:
+        - command: "npm test in Master Admin"
+          status: pass
+          detail: "79/79 tests passed."
+        - command: "npm run lint and npm run build in Master Admin"
+          status: pass
+        - command: "local and M1 Benefitsi MCP unittest"
+          status: pass
+          detail: "23/23 tests passed in both environments."
+        - command: "rolled-back Supabase automation lifecycle E2E"
+          status: pass
+          detail: "Deduplication, single claim, human gate, five-entry audit, bounded retry and rollback verified."
+        - command: "git diff --check on Master Admin, benefitsi-web migration and MCP"
+          status: pass
+      verification:
+        - "Migration 20260728210000 is recorded and three daily city-scan jobs are queued."
+        - "MCP code was synchronized to /Users/patrick/.hermes/projects/benefitsi/mcp on the M1 without touching credentials."
+        - "City profiles can claim only city-content work for their configured city; Ben can coordinate cross-domain work."
+        - "Daily Vercel cron scheduling is defined for 04:10 UTC and the endpoint fails closed without a 32-character CRON_SECRET."
+        - "Admin review confirms or rejects an agent recommendation but explicitly does not execute publish, refund, payout, provider activation or live activation."
+      safety:
+        - "Agent results reject secrets, KYC fields, contact fields and email-like values."
+        - "Database claims use SKIP LOCKED, expiring leases, bounded attempts and partial-index deduplication."
+        - "Booking, provider and correction triggers enqueue only PII-free operational references."
+        - "No live payment action and no customer notification was executed."
+      known_limits:
+        - "CRON_SECRET must be configured in the deployed Vercel project before the daily schedule can authenticate."
+        - "The queue infrastructure is live, but Hermes needs an ongoing runner/session schedule to continuously poll and execute queued work."
+        - "Vercel Hobby cron runs at most daily and may execute within an hourly window."
+
+  - id: T009
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Perform security, privacy, accessibility, payment-state, inventory-concurrency, webhook-replay, regional SEO, and automation-boundary audit across the complete platform."
+    inputs:
+      - "All Worker receipts"
+      - "Automated tests and build"
+      - "Stripe test-mode evidence"
+      - "Browser walkthrough"
+    constraints:
+      - "Read-only."
+      - "Treat live activation as a separate owner-approved action."
+    expected_output:
+      - "accepted | changes_required"
+      - "Risk register"
+      - "Required remediation tasks"
+      - "Production-readiness blockers"
+    receipt:
+      result: done
+      decision: changes_required
+      findings:
+        - severity: high
+          code: "web_next_security_update"
+          finding: "benefitsi-web uses Next.js 16.2.10; the current production dependency audit reports direct App Router, Server Action, middleware and image optimization advisories with 16.2.12 as the nonbreaking remediation."
+          remediation: "Upgrade next and eslint-config-next in benefitsi-web to 16.2.12, then repeat tests, lint, build and dependency audit."
+        - severity: high
+          code: "next_transitive_upstream"
+          finding: "Both Next.js applications still inherit PostCSS and Sharp advisories. npm audit offers only an invalid/breaking Next downgrade for Master Admin and does not provide a safe transitive-only remediation."
+          remediation: "Track upstream Next releases containing patched PostCSS and Sharp; do not run npm audit fix --force."
+        - severity: medium
+          code: "payment_production_governance"
+          finding: "Live Stripe activation still lacks an owner-approved merchant-of-record, tax, dispute, refund, payout and support policy."
+          remediation: "Keep technical live-key rejection until legal and operational ownership is explicitly approved."
+        - severity: medium
+          code: "visual_walkthrough_policy_blocked"
+          finding: "Final local visual walkthrough was blocked by the in-app browser URL policy, while server response, automated contracts and production builds passed."
+          remediation: "Perform owner-visible staging walkthrough before production launch."
+        - severity: medium
+          code: "automation_runtime_configuration"
+          finding: "The scheduled route requires production CRON_SECRET and Hermes requires a continuous polling schedule before work executes unattended."
+          remediation: "Configure deployment secret and M1 runner after staging acceptance."
+      accepted_controls:
+        - "Private booking and automation tables use RLS and service-only grants."
+        - "Stripe remains test-only and signed webhook replay is idempotent."
+        - "Inventory holds are row locked and oversell-tested."
+        - "Agents receive no payment secrets, KYC fields or customer contact data."
+        - "Publish, refund, payout and live activation remain separate human operations."
+        - "Regional SEO keeps one canonical city/offer URL while regions aggregate membership."
+
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Remediate the direct benefitsi-web Next.js security findings without disturbing the city, booking or automation implementation."
+    allowed_files:
+      - ../../benefitsi-web/package.json
+      - ../../benefitsi-web/package-lock.json
+    verify:
+      - "npm audit --omit=dev in benefitsi-web"
+      - "npm run lint and npm run build in benefitsi-web"
+      - "git diff --check on package files"
+    stop_if:
+      - "Upgrade requires a major version or breaks the production build."
+      - "Only npm audit fix --force can proceed."
+    receipt:
+      result: done
+      summary: "benefitsi-web now uses Next.js and eslint-config-next 16.2.12, removing the direct App Router, Server Action, middleware and image-optimization findings reported against 16.2.10."
+      changed_files:
+        - "../../benefitsi-web/package.json"
+        - "../../benefitsi-web/package-lock.json"
+      commands:
+        - command: "npm run lint in benefitsi-web"
+          status: pass
+        - command: "npm run build in benefitsi-web"
+          status: pass
+        - command: "npm audit comparison confirms direct Next.js advisories removed"
+          status: pass
+        - command: "git diff --check on package files"
+          status: pass
+      files:
+        - "../../benefitsi-web/package.json"
+        - "../../benefitsi-web/package-lock.json"
+      tests:
+        - command: "npm run lint in benefitsi-web"
+          status: pass
+        - command: "npm run build in benefitsi-web"
+          status: pass
+        - command: "npm audit --omit=dev in benefitsi-web"
+          status: pass
+          detail: "Direct Next.js findings are gone; the expected three high transitive PostCSS/Sharp advisories remain with only a breaking Next 9 downgrade offered and are recorded as a known limit."
+        - command: "git diff --check on package files"
+          status: pass
+      safety:
+        - "No npm audit fix --force or breaking downgrade was used."
+      known_limits:
+        - "Patched PostCSS/Sharp transitives require an upstream Next.js dependency update."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the complete implementation satisfies the original owner outcome and the end-to-end oracle."
+    inputs:
+      - "All done task receipts"
+      - "Latest verification"
+      - "Current dirty diff"
+      - "End-to-end demo evidence"
+    constraints:
+      - "Read-only."
+      - "Reject completion while required Worker work remains queued or active."
+      - "Reject completion if only test scaffolding or UI shells exist."
+      - "Do not require live charges or payouts for test-mode completion."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Missing evidence"
+      - "Next task if not complete"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      satisfied_oracle:
+        - "Global all-city Annweiler review queue exposes sources, issues, audit history, correction and human publish gates."
+        - "Annweiler belongs to Annweiler & Trifelsland, Südliche Weinstraße and Südpfalz without duplicate canonical content."
+        - "Provider, offer, slot, booking, fee, cancellation, refund-state and webhook schemas are deployed in Stripe test-only mode."
+        - "Rolled-back database E2E proves reviewed offer publication, immutable application fee, row-locked oversell prevention and exactly-once webhook effects."
+        - "Admin and provider booking operations, public Annweiler discovery, checkout proxy, success/cancel and sold-out contracts build successfully."
+        - "Audited agent queues, M1 MCP integration, city isolation, leases, retries and human gates are deployed and verified."
+      missing_evidence:
+        - "No Stripe test secret, webhook secret or connected test provider is configured, so no external Stripe Account Link, Checkout Session, test card payment or signed Stripe webhook has been demonstrated."
+        - "The in-app browser policy blocked the final owner-visible local UI walkthrough."
+      next_task: T011
+
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Complete the external Stripe test-mode provider onboarding and customer booking walkthrough, capture signed webhook and UI evidence, and keep every live-mode path disabled."
+    allowed_files:
+      - ".env.local (secret values remain local and must never be printed or committed)"
+      - "No source changes unless a test-mode defect is discovered and separately scoped."
+    verify:
+      - "Stripe test account link opens for one connected test provider."
+      - "Stripe Checkout Session accepts a standard test card."
+      - "Signed checkout.session.completed webhook confirms exactly one booking."
+      - "Repeated webhook delivery is ignored."
+      - "Admin and provider views show the same confirmed booking and fee."
+      - "Public sold-out state prevents another checkout when capacity is exhausted."
+    stop_if:
+      - "STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET or a connected test provider is missing."
+      - "Any credential is live-mode."
+      - "The walkthrough would create a real charge or payout."
+    receipt:
+      result: blocked
+      blocked_reason: "The external Stripe walkthrough cannot create a connected test provider until the legally correct Benefitsi UG can complete parent-platform Connect verification. The owner explicitly rejected using the advertising agency, a personal entity, invented data, or another workaround."
+      status: running_external_connect_walkthrough
+      progress:
+        - "Stripe CLI 1.44.0 was installed from the official Homebrew tap."
+        - "Master Admin .env.local was initially checked without printing values: Stripe test secret, webhook secret and booking proxy secret were absent."
+        - "No pre-existing sk_test credential was found in the Benefitsi workspace."
+        - "The owner resumed the goal with an authenticated Stripe Dashboard test account."
+        - "The original Stripe CLI pairing code was opened in the authenticated test account and explicitly granted."
+        - "A validated local bootstrap now completes CLI pairing, rejects live keys, creates a private cross-app proxy secret, starts one test webhook listener, captures its signing secret without printing it, and writes both ignored env files with mode 600."
+        - "Master Admin on port 3011 and city web on port 3004 are available for the post-grant restart and walkthrough."
+        - "The first external API call proved the original Test-Modus account had not enrolled in Connect."
+        - "Stripe created its recommended isolated Benefitsi UG Sandbox; its Connect business model is now configured as Marktplatz, matching destination charges."
+        - "A fresh CLI pairing for the Connect sandbox was explicitly granted by the owner."
+        - "The sandbox switch bootstrap is syntax-validated and will verify the exact expected account ID, reject live mode, replace the old listener only after successful pairing, rotate private local values, and emit redacted status only."
+        - "The owner granted Connect-sandbox CLI access; the expected sandbox account ID was verified, private local values were rotated, and the signed listener was replaced successfully."
+        - "Master Admin and city web were restarted against the confirmed Connect sandbox."
+      safety:
+        - "No credential value, pairing secret or customer data was printed, committed or sent to an agent."
+        - "No live-mode account, charge, payout or webhook was created."
+
+  - id: T012
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Activate the profile-isolated Ben automation runner on the M1 so queued Benefitsi jobs are claimed and triaged unattended with the existing MCP authority boundaries."
+    allowed_files:
+      - "../../tools/hermes-city-profiles/ben/**"
+      - "M1 /Users/patrick/.hermes/projects/benefitsi/automation/**"
+      - "M1 /Users/patrick/Library/LaunchAgents/ai.benefitsi.hermes-ben-worker.plist"
+    verify:
+      - "Exactly one isolated macOS LaunchAgent invokes Hermes with profile ben."
+      - "Nova gateway remains running and no Ben messaging gateway is installed."
+      - "A manual LaunchAgent run records a local execution log."
+      - "Prompt forbids publish, refund, payout, live activation, secrets, KYC and customer PII."
+    stop_if:
+      - "Hermes cannot isolate the job to profile ben."
+      - "Installation requires system/root service changes."
+      - "A cron prompt would bypass MCP human gates."
+    receipt:
+      result: done
+      summary: "Ben now runs as an isolated hourly macOS LaunchAgent on the M1, invokes only the ben profile in one-shot mode, drains up to five Benefitsi queue jobs through the guarded MCP, and does not start a competing messaging gateway."
+      changed_files:
+        - "../../tools/hermes-city-profiles/ben/benefitsi-automation-worker.sh"
+        - "../../tools/hermes-city-profiles/ben/ai.benefitsi.hermes-ben-worker.plist"
+        - "M1 /Users/patrick/.hermes/projects/benefitsi/automation/benefitsi-automation-worker.sh"
+        - "M1 /Users/patrick/Library/LaunchAgents/ai.benefitsi.hermes-ben-worker.plist"
+      commands:
+        - command: "plutil -lint and bash -n"
+          status: pass
+        - command: "launchctl bootstrap and kickstart in gui/501"
+          status: pass
+        - command: "manual Ben one-shot MCP queue execution"
+          status: pass
+        - command: "anonymized Supabase automation status check"
+          status: pass
+      verification:
+        - "LaunchAgent ai.benefitsi.hermes-ben-worker completed with exit code 0 and runs every 3600 seconds."
+        - "The first verified scheduled run processed two jobs; a manual profile-isolated smoke run processed one."
+        - "All three bootstrap city jobs now have status agent_completed and the queue is empty."
+        - "Nova gateway remains supervised by launchd; no Ben messaging gateway or built-in Ben cron remains installed."
+      safety:
+        - "The runner prompt mandates MCP tools, approved sources, PII-free results and a maximum of five jobs per invocation."
+        - "Publish, refund, payout, provider/live activation and third-party messaging are explicitly forbidden."
+        - "The initial Ben gateway experiment was removed after detecting shared messaging-token contention; Nova was confirmed healthy before the isolated runner was installed."
+      known_limits:
+        - "Hourly one-shot runs consume inference usage even when the queue is empty; frequency should be revisited after real workload data."
+
+  - id: T013
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: high
+    objective: "Migrate the new-provider Stripe Connect onboarding path from legacy Express Accounts v1 to Accounts v2 Recipient onboarding so the newly created Benefitsi Connect sandbox can create and onboard test providers without changing the destination-charge checkout model."
+    allowed_files:
+      - "app/api/stripe/connect/onboarding/route.ts"
+      - "app/api/stripe/connect/status/route.ts"
+      - "lib/stripe/connect.ts"
+      - "tests/booking-security.test.mjs"
+      - "tests/booking-contracts.test.mjs"
+    verify:
+      - "The platform creates an Accounts v2 recipient with Stripe-hosted Express-dashboard requirement collection."
+      - "The recipient requests stripe_balance.stripe_transfers and remains test-only."
+      - "Refresh and return URLs authenticate the admin, regenerate links safely, and synchronize capability state."
+      - "Destination-charge Checkout continues to use the resulting acct_ ID and immutable Benefitsi application fee."
+      - "Booking tests, lint, production build and scoped diff check pass."
+      - "The real Connect sandbox opens a provider Account Link after the fix."
+    stop_if:
+      - "Any path requires live-mode activation or platform-managed KYC."
+      - "Accounts v2 would require changing the validated destination-charge fee model."
+      - "A source edit falls outside the exact allowed files."
+    receipt:
+      result: blocked
+      blocked_reason: "The Accounts v2 source migration is implemented and its local verification is green, but Stripe will not enable recipient account creation until the legally correct Benefitsi UG completes parent-platform Connect onboarding."
+      trigger: "The external T011 walkthrough twice returned Stripe's 'sign up for Connect' error from legacy stripe.accounts.create even after the new sandbox was configured as Marktplatz. Stripe's current documentation and SDK recommend Accounts v2 for new Connect platforms."
+      progress:
+        - "Implemented Accounts v2 recipient creation with Express Dashboard access, application fee/loss responsibility, DE identity prefill and stripe_balance.stripe_transfers capability."
+        - "Implemented single-use Accounts v2 Account Links with authenticated refresh and return routes plus capability synchronization into the existing provider gate."
+        - "17/17 booking tests, lint, production build and scoped diff check passed."
+        - "The real sandbox request now reaches Accounts v2 and proves that the remaining prerequisite is Stripe's parent-platform Connect onboarding, not an application defect."
+        - "The owner confirmed that Benefitsi UG is not yet incorporated and explicitly does not want the existing advertising agency used for Stripe verification."
+      blocker: "Stripe requires the Benefitsi parent account to complete Connect platform onboarding and acknowledge marketplace/Merchant-of-Record responsibilities before any sandbox can create recipient accounts. That step can require business verification and acceptance of Stripe terms, so the owner must complete it directly."
+      owner_decision: "Defer Stripe Connect platform verification until Benefitsi UG legally exists; do not use the advertising agency, a personal entity, invented company data, or another workaround."
+      evidence:
+        - "Master Admin runtime log from POST /api/stripe/connect/onboarding"
+        - "Stripe Dashboard Benefitsi UG Sandbox configured as Marktplatz"
+        - "Stripe Node SDK 22.3.2 exposes stripe.v2.core.accounts and stripe.v2.core.accountLinks"
+        - "https://docs.stripe.com/connect/accounts"
+        - "https://docs.stripe.com/api/v2/core/accounts/create"
+        - "https://docs.stripe.com/api/v2/core/account-links/create"
+        - "Runtime: Accounts v2 is not enabled for parent merchant; Stripe directed to settings/connect/platform-setup."
+
+  - id: T014
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Run and document the strongest truthful pre-incorporation booking oracle: internal database simulation, admin/provider/public UI walkthrough, capacity and idempotency proof, with external Stripe Connect evidence explicitly excluded."
+    inputs:
+      - "T005-T008 implementation receipts"
+      - "T011 and T013 legal blocker receipts"
+      - "Current Master Admin and benefitsi-web runtimes"
+      - "Existing booking and city-operations test suites"
+    constraints:
+      - "Do not create a connected account, charge, payout, refund, KYC record, or live-mode Stripe object."
+      - "Do not describe simulated or database-backed proof as an external Stripe end-to-end test."
+      - "Do not print, rotate, or expose secret values."
+      - "Preserve unrelated user changes."
+    expected_output:
+      - "Fresh automated verification receipts"
+      - "Owner-visible admin, provider, and public Annweiler walkthrough evidence"
+      - "Explicit list of what is proven now versus deferred until UG incorporation"
+      - "Any bounded defect task discovered by the walkthrough"
+    receipt:
+      result: done
+      summary: "Completed the strongest truthful pre-incorporation oracle: fresh 79/79 Master Admin tests, both production builds, city-web lint, authenticated City Review, Booking Control and provider booking walkthroughs, plus public Annweiler verification. The system fails closed with one not-started test provider, zero active offers, zero bookings and no public checkout."
+      commands:
+        - command: "Master Admin npm test"
+          status: pass
+        - command: "Master Admin npm run build"
+          status: pass
+        - command: "benefitsi-web npm run lint"
+          status: pass
+        - command: "benefitsi-web npm run build"
+          status: pass
+        - command: "Authenticated browser walkthrough of /city-operations, /bookings and /partner/bookings"
+          status: pass
+        - command: "Public browser walkthrough of /stadt/annweiler"
+          status: pass
+      verification:
+        - "City Review shows three Annweiler items with region filters, two blocking items and one ready-for-review item."
+        - "Booking Control explicitly shows test-only mode, one provider with Connect not_started, payments locked, zero active offers and zero confirmed volume."
+        - "Provider Booking Operations shows only the mapped Benefitsi Annweiler test provider and zero bookings."
+        - "Public Annweiler shows no checkout or invented offer; it states that bookable experiences are in preparation."
+        - "External Stripe Account Link, card payment and signed Stripe webhook remain explicitly unproven until UG incorporation."
+      discovered_defect: "The public empty booking section still uses the generic claim 'echte Restplätze und sichere Zahlung über Benefitsi' even when no active offer exists and Stripe Connect is unavailable."
+      spawned_tasks:
+        - T015
+
+  - id: T015
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Make the Annweiler booking section truthful before Stripe activation: show pre-launch wording when there are no active offers, and reserve live-capacity/payment claims for a rendered active offer."
+    allowed_files:
+      - "../../benefitsi-web/src/components/city/**"
+      - "../../benefitsi-web/src/app/stadt/[citySlug]/page.tsx"
+      - "../../benefitsi-web/tests/**"
+    verify:
+      - "A no-offer city page does not claim live capacity, secure payment, or direct provider delivery."
+      - "A city page with an active offer retains the customer-facing booking value proposition."
+      - "benefitsi-web lint passes."
+      - "benefitsi-web production build passes."
+      - "Browser walkthrough of /stadt/annweiler shows the truthful pre-launch state."
+    stop_if:
+      - "The booking section is outside allowed_files."
+      - "The change would hide an actually active offer."
+      - "Verification fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      summary: "The public city booking section now branches on actual active offers. Annweiler's empty state no longer promises live capacity, secure payment or direct provider delivery; those claims remain available only when at least one active offer is rendered."
+      changed_files:
+        - "../../benefitsi-web/src/components/city/CityBookingSection.tsx"
+      commands:
+        - command: "benefitsi-web npm run lint"
+          status: pass
+        - command: "benefitsi-web npm run build"
+          status: pass
+        - command: "git diff --check -- src/components/city/CityBookingSection.tsx"
+          status: pass
+        - command: "Browser reload of /stadt/annweiler"
+          status: pass
+      verification:
+        - "No-offer heading is 'Buchbare Erlebnisse kommen bald.'"
+        - "No-offer labels are 'Geprüfte Angebote' and 'Start nach Freigabe'."
+        - "No-offer explanatory copy states that provider, dates and booking flow must be fully checked before publication."
+        - "The active-offer branch retains the existing live-capacity and secure-payment value proposition."
+      safety:
+        - "No booking, provider, Stripe, customer or production data was changed."
+
+  - id: T016
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Recover the interrupted goal state, verify the truthful Annweiler pre-launch booking copy and board health, synchronize the completed checkpoint to Notion, and identify the next safe non-Stripe slice."
+    inputs:
+      - "T014 and T015 receipts"
+      - "Current GoalBuddy state"
+      - "Public Annweiler city page"
+      - "Benefitsi OS Notion pages"
+    constraints:
+      - "Do not activate Stripe Connect or use an incorrect legal entity."
+      - "Do not weaken the external Stripe evidence requirement."
+      - "Do not modify product implementation unless a separate bounded Worker task is activated."
+    expected_output:
+      - "Valid GoalBuddy board"
+      - "Fresh Annweiler copy verification"
+      - "Notion checkpoint synchronized"
+      - "Next safe task selected or exact remaining legal dependency recorded"
+    receipt:
+      result: done
+      summary: "Recovered the interrupted board, revalidated the Annweiler pre-launch booking state after restarting the local city server, synchronized the checkpoint to Notion, and identified the next safe defect: the admin still exposes an actionable Connect onboarding button despite the deliberate UG gate."
+      commands:
+        - command: "GoalBuddy state checker"
+          status: pass
+        - command: "Browser verification of restarted /stadt/annweiler"
+          status: pass
+        - command: "Notion reread, update and verification"
+          status: pass
+      evidence:
+        - "Annweiler heading: Buchbare Erlebnisse kommen bald."
+        - "Annweiler labels: Geprüfte Angebote; Start nach Freigabe."
+        - "Notion 11 Microsite, Städteseite & Benefitsi-Webseite"
+        - "Notion Offene Entscheidungen & nächste Schritte"
+      spawned_tasks:
+        - T017
+
+  - id: T017
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Add a fail-closed Stripe Connect platform-readiness gate so admin UI and onboarding APIs remain disabled until Benefitsi explicitly enables Connect after UG verification."
+    allowed_files:
+      - "app/bookings/page.tsx"
+      - "app/api/stripe/connect/onboarding/route.ts"
+      - "app/api/stripe/connect/status/route.ts"
+      - "components/bookings/connect-onboarding-button.tsx"
+      - "lib/stripe/config.ts"
+      - "tests/booking-security.test.mjs"
+      - "tests/booking-contracts.test.mjs"
+    verify:
+      - "Connect readiness defaults to false unless an explicit non-secret environment flag is true."
+      - "The admin shows the legal/pre-launch reason and no actionable onboarding control while disabled."
+      - "POST onboarding and refresh-link creation fail closed while disabled."
+      - "Existing test-only and live-key protections remain intact."
+      - "Booking tests, lint, production build and scoped diff check pass."
+      - "Browser walkthrough of /bookings shows the disabled UG gate."
+    stop_if:
+      - "The gate requires storing legal or KYC data in the application."
+      - "The change would enable Connect or live mode."
+      - "A required edit falls outside allowed_files."
+      - "Verification fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      summary: "Added a fail-closed Connect platform-readiness gate. Connect stays disabled unless BENEFITSI_STRIPE_CONNECT_PLATFORM_READY is explicitly true; the admin explains the UG dependency instead of exposing an actionable onboarding button, and both onboarding and callback/status APIs reject access before service-role or Stripe work."
+      changed_files:
+        - "app/bookings/page.tsx"
+        - "app/api/stripe/connect/onboarding/route.ts"
+        - "app/api/stripe/connect/status/route.ts"
+        - "components/bookings/connect-onboarding-button.tsx"
+        - "lib/stripe/config.ts"
+        - "tests/booking-security.test.mjs"
+      commands:
+        - command: "node --import tsx --test tests/booking*.test.mjs"
+          status: pass
+        - command: "npm run lint"
+          status: pass
+        - command: "npm run build"
+          status: pass
+        - command: "scoped git diff --check"
+          status: pass
+        - command: "Authenticated browser walkthrough of /bookings"
+          status: pass
+      verification:
+        - "17/17 booking tests passed."
+        - "Booking Control shows Connect wartet auf UG."
+        - "The legal/pre-launch explanation names the Benefitsi UG and rejects the advertising-agency workaround."
+        - "Provider card shows Connect-Onboarding gesperrt with no actionable onboarding button."
+        - "Readiness defaults to false; the later operator must explicitly set BENEFITSI_STRIPE_CONNECT_PLATFORM_READY=true after legal verification."
+      safety:
+        - "No Stripe API object, connected account, KYC record, charge, payout, refund or live-mode state was created."
+        - "The existing sk_test and live-key rejection protections remain intact."
+
+  - id: T018
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Turn the public Annweiler page into a useful, current city portal vertical slice: dynamic local weather and forecast, embedded Annweiler map, search moved into top navigation, populated food content, researched attractions, weekly market and practical city information, plus a directly adjacent community action selector and submission form. Build the additions as reusable city-template components and data contracts."
+    allowed_files:
+      - "../../benefitsi-web/src/app/stadt/**"
+      - "../../benefitsi-web/src/components/city/**"
+      - "../../benefitsi-web/src/lib/city/**"
+      - "../../benefitsi-web/src/lib/cities/**"
+      - "../../benefitsi-web/src/config/**"
+      - "../../benefitsi-web/src/data/**"
+      - "../../benefitsi-web/tests/**"
+      - "../../benefitsi-web/next.config.*"
+      - "../../benefitsi-web/package.json"
+      - "../../benefitsi-web/package-lock.json"
+    verify:
+      - "Current Annweiler weather and at least five forecast days render from a no-secret weather source with a graceful fallback."
+      - "An embedded Annweiler map remains on the city page and includes source attribution."
+      - "The hero has no submission-style input; city search is in the top navigation."
+      - "Food and drink renders meaningful Annweiler content without invented partners."
+      - "Attractions and weekly market details are substantive and traceable to current authoritative sources."
+      - "Event, meeting, place and correction actions sit directly next to the active submission form."
+      - "Reusable city data contracts avoid hard-coding the complete experience into the route."
+      - "Lint, production build, scoped diff check and desktop/mobile browser walkthrough pass."
+    stop_if:
+      - "A fact cannot be supported by a current credible source."
+      - "A weather or map integration requires a paid account or secret."
+      - "The implementation would publish invented businesses, events or opening hours."
+      - "A required edit falls outside allowed_files."
+      - "Verification fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      summary: "Implemented and verified the reusable Annweiler city-portal slice: live no-key weather and six-day forecast, embedded OpenStreetMap, navigation search, researched sights, recurring market, practical city information, a truthful food section, image fallbacks, and directly adjacent community actions plus form."
+      changed_files:
+        - "../../benefitsi-web/src/app/stadt/[citySlug]/page.tsx"
+        - "../../benefitsi-web/src/components/city/CityPortalTemplate.tsx"
+        - "../../benefitsi-web/src/components/city/CityWeatherMapSection.tsx"
+        - "../../benefitsi-web/src/config/city-portal-profiles.ts"
+        - "../../benefitsi-web/src/data/city-pages.ts"
+        - "../../benefitsi-web/src/lib/cities/city-portal-data.ts"
+        - "../../benefitsi-web/src/lib/cities/city-weather.ts"
+      commands:
+        - command: "benefitsi-web npm run lint"
+          status: pass
+        - command: "benefitsi-web npm run build"
+          status: pass
+        - command: "scoped git diff --check"
+          status: pass
+        - command: "Desktop and mobile in-app browser walkthrough"
+          status: pass
+        - command: "Navigation search interaction and DOM contract verification"
+          status: pass
+        - command: "Notion reread, targeted update and verification"
+          status: pass
+      verification:
+        - "Open-Meteo renders current conditions and six forecast rows and revalidates every 30 minutes without an API key."
+        - "WMO rain shower codes render as rain rather than snow."
+        - "OpenStreetMap iframe loads Annweiler with attribution and a large-map link."
+        - "The navigation search for Museum returns exactly one place and scrolls to discovery."
+        - "Weekly market shows Friday 08:00-12:00 at Rathausplatz with the official holiday exception."
+        - "Community DOM order is event, meetup, correction, then the active form; clubs follow afterward."
+        - "The food section stays useful without inventing restaurants and will render approved partners automatically."
+        - "Notion page 11 records implemented and remaining city-portal work."
+      evidence:
+        - "http://localhost:3000/stadt/annweiler"
+        - "https://open-meteo.com/en/docs"
+        - "https://www.vg-annweiler.de/externe-datenquellen/deskline/816327b1-bba9-4ef1-915f-e8c63484877a%3A30/wochenmarkt-in-annweiler-am-trifels/"
+        - "https://burgenlandschaft-pfalz.de/burg-trifels"
+        - "https://www.annweiler.de/museum-unterm-trifels/"
+        - "https://www.annweiler.de/markwardanlage/"
+        - "https://www.annweiler.de/wp-content/uploads/2025/05/Stadtrundgang.pdf"
+      safety:
+        - "No restaurant, opening hour, event, payment, provider or production state was invented or activated."
+        - "The weather and map integrations require no stored secret."
+
+  - id: T019
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Rebuild Annweiler as a premium multipage city portal based on fresh image-to-code references: editorial homepage with current content directly after the hero, compact navigation weather flyout, populated live gastronomy directory, dedicated discovery/events/city-knowledge pages, a modern fully visible map, and a concise adjacent community contribution system."
+    allowed_files:
+      - "../../benefitsi-web/src/app/stadt/**"
+      - "../../benefitsi-web/src/components/city/**"
+      - "../../benefitsi-web/src/lib/cities/**"
+      - "../../benefitsi-web/src/config/**"
+      - "../../benefitsi-web/src/data/**"
+      - "../../benefitsi-web/package.json"
+      - "../../benefitsi-web/package-lock.json"
+    verify:
+      - "The homepage is a compact editorial overview rather than the previous one-page content dump."
+      - "Current events and focus content appear immediately after the hero."
+      - "Weather is a small top-navigation indicator with an accessible multi-day flyout."
+      - "Essen & Trinken is a dedicated page populated from traceable local data without invented business facts."
+      - "Discovery, events and city knowledge have dedicated routes and clear internal navigation."
+      - "The map is modern, completely visible, attributed and gracefully falls back."
+      - "Community actions remain directly adjacent and the existing submission workflow still works."
+      - "Lint, production build, scoped diff check and desktop/mobile browser walkthrough pass."
+    stop_if:
+      - "A business, opening hour, event or source-backed city fact would need to be invented."
+      - "A required integration needs a paid account or private key."
+      - "A required edit falls outside allowed_files."
+      - "Verification fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      summary: "Rebuilt Annweiler as a premium multipage city portal with an editorial homepage, current content directly after the hero, compact weather navigation, real gastronomy directory, dedicated discovery/events/city-knowledge routes, a modern complete map and adjacent moderated community actions."
+      changed_files:
+        - "../../benefitsi-web/src/app/stadt/[citySlug]/page.tsx"
+        - "../../benefitsi-web/src/app/stadt/[citySlug]/entdecken/page.tsx"
+        - "../../benefitsi-web/src/app/stadt/[citySlug]/essen-trinken/page.tsx"
+        - "../../benefitsi-web/src/app/stadt/[citySlug]/stadtwissen/page.tsx"
+        - "../../benefitsi-web/src/app/stadt/[citySlug]/veranstaltungen/page.tsx"
+        - "../../benefitsi-web/src/components/city/CityCommunitySection.tsx"
+        - "../../benefitsi-web/src/components/city/CityMap.tsx"
+        - "../../benefitsi-web/src/components/city/CityNewsletterCompact.tsx"
+        - "../../benefitsi-web/src/components/city/CityPortalChrome.tsx"
+        - "../../benefitsi-web/src/components/city/CityPortalTemplate.tsx"
+        - "../../benefitsi-web/src/lib/cities/city-directory.ts"
+        - "../../benefitsi-web/package.json"
+        - "../../benefitsi-web/package-lock.json"
+      commands:
+        - command: "benefitsi-web npm run lint"
+          status: pass
+        - command: "benefitsi-web npm run build"
+          status: pass
+        - command: "benefitsi-web git diff --check"
+          status: pass
+        - command: "Desktop and mobile in-app browser walkthrough"
+          status: pass
+        - command: "Notion targeted project-status update"
+          status: pass
+      verification:
+        - "The homepage is a concise editorial overview with the current event/focus section directly after the hero."
+        - "Weather occupies only a small navigation control and exposes a five-day icon forecast on hover or keyboard focus."
+        - "The gastronomy page currently renders 29 traceable OpenStreetMap/Overpass records and excludes a known non-business artifact."
+        - "Events, food, discovery and city knowledge are separate navigable pages."
+        - "Leaflet with attributed raster tiles renders the entire map without the previous gray WebGL surface."
+        - "Community actions remain adjacent and continue through the moderated existing API workflow."
+        - "Mobile views have no horizontal overflow and the full primary navigation remains visible."
+      evidence:
+        - "http://localhost:3000/stadt/annweiler"
+        - "http://localhost:3000/stadt/annweiler/essen-trinken"
+        - "http://localhost:3000/stadt/annweiler/entdecken"
+        - "http://localhost:3000/stadt/annweiler/veranstaltungen"
+        - "http://localhost:3000/stadt/annweiler/stadtwissen"
+
+  - id: T020
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Select the next highest-value safe vertical slice after the Annweiler multipage portal, excluding truthful Stripe Connect activation until the Benefitsi UG can be verified."
+    allowed_files:
+      - "docs/goals/city-operations-booking-platform/**"
+    verify:
+      - "The next slice maps to an unmet owner outcome and has a bounded write scope."
+      - "Stripe legal-entity verification remains explicitly outside the slice."
+      - "The board preserves one active task and passes the GoalBuddy checker."
+    stop_if:
+      - "The next slice requires owner prioritization between materially different outcomes."
+      - "The work requires Benefitsi UG legal-entity data or production payment authority."
+    receipt:
+      result: done
+      summary: "The owner selected strict image-to-code fidelity for the Annweiler homepage as the next bounded safe slice."
+      verification:
+        - "The slice directly addresses the owner's visual quality and conversion concern."
+        - "Scope is limited to city portal presentation, verified current content and existing interaction workflows."
+        - "Stripe activation and legal-entity verification remain outside the slice."
+
+  - id: T021
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Rebuild the Annweiler homepage faithfully from fresh section-specific image-to-code references instead of a simplified coded reinterpretation."
+    allowed_files:
+      - "../../benefitsi-web/src/components/city/**"
+      - "../../benefitsi-web/src/data/city-pages.ts"
+    verify:
+      - "Fresh standalone references exist for hero, current content, discovery/food, map/community and newsletter/footer."
+      - "The coded homepage preserves the references' serif typography, diagonal hero, editorial grids, image ratios, hairline dividers and ivory/forest rhythm."
+      - "The map fills its complete frame without an empty gray remainder."
+      - "Desktop and mobile visual walkthroughs match the reference hierarchy without horizontal overflow."
+      - "Lint, production build and diff check pass."
+    stop_if:
+      - "The implementation would require invented city facts or unlicensed partner claims."
+      - "Existing community or newsletter workflows would be removed."
+      - "Verification fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      summary: "Implemented a faithful image-to-code Annweiler homepage with five fresh section references, editorial serif typography, diagonal hero geometry, event and discovery grids, food band, complete map, flat community actions, newsletter and structured footer."
+      changed_files:
+        - "../../benefitsi-web/src/components/city/CityPortal.module.css"
+        - "../../benefitsi-web/src/components/city/CityPortalTemplate.tsx"
+        - "../../benefitsi-web/src/components/city/CityPortalChrome.tsx"
+        - "../../benefitsi-web/src/components/city/CityCommunitySection.tsx"
+        - "../../benefitsi-web/src/components/city/CityNewsletterCompact.tsx"
+        - "../../benefitsi-web/src/components/city/CityMap.tsx"
+        - "../../benefitsi-web/src/data/city-pages.ts"
+      commands:
+        - command: "benefitsi-web npm run lint"
+          status: pass
+        - command: "benefitsi-web npm run build"
+          status: pass
+        - command: "benefitsi-web git diff --check"
+          status: pass
+        - command: "1440x900 desktop visual walkthrough"
+          status: pass
+        - command: "390x844 mobile visual walkthrough"
+          status: pass
+        - command: "Browser console log inspection"
+          status: pass
+      verification:
+        - "The hero headline is exactly two lines on desktop and the ivory field cuts diagonally into the Trifels photograph."
+        - "Current content uses the generated reference's market story plus two fine-lined event rows."
+        - "Discovery uses a large vertical image and staggered story images instead of equal generic cards."
+        - "The food preview uses a real existing partner food asset and displays the live directory count."
+        - "The Leaflet map expands through its complete editorial frame."
+        - "Community actions are flat columns inside the forest band and retain the moderated submission form."
+        - "No fresh browser errors were recorded."
+      evidence:
+        - "http://localhost:3000/stadt/annweiler"
+        - "https://www.annweiler.de/museum-unterm-trifels/"
+
+  - id: T022
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: high
+    objective: "Select the next highest-value safe city-platform slice after the image-faithful Annweiler homepage, excluding Stripe Connect activation until the Benefitsi UG can be truthfully verified."
+    allowed_files:
+      - "docs/goals/city-operations-booking-platform/**"
+    verify:
+      - "The next slice maps to an unmet owner outcome and has a bounded write scope."
+      - "Stripe legal-entity verification remains explicitly outside the slice."
+      - "The board preserves one active task and passes the GoalBuddy checker."
+    stop_if:
+      - "The next slice requires owner prioritization between materially different outcomes."
+      - "The work requires Benefitsi UG legal-entity data or production payment authority."
+    receipt: null
+
+checks:
+  dirty_fingerprint: "Master Admin branch codex/admin-german-translations has pre-existing modified and untracked files; preserve and re-check before every Worker slice."
+  last_verification:
+    result: pass_with_external_evidence_pending
+    task: T021
+    commands:
+      - "Five section-specific image-to-code references generated and deeply inspected."
+      - "Image-faithful Annweiler homepage implemented."
+      - "npm run lint passed."
+      - "npm run build passed."
+      - "git diff --check passed."
+      - "1440x900 desktop and 390x844 mobile browser walkthrough passed."
+      - "Browser console inspection passed without fresh errors."
+    external_blocker: "Stripe Connect end-to-end remains intentionally blocked until the Benefitsi UG exists and can be verified with truthful legal entity data."

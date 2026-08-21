@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/admin"
+import { isPendingCityMemorySlot } from "@/lib/city-memory/config"
 import {
   isMediaSourceType,
   isMediaStatus,
@@ -44,7 +45,33 @@ export async function PATCH(
   if ("sourceUrl" in body) update.source_url = validHttpUrl(body.sourceUrl)
   if ("licenseUrl" in body) update.license_url = validHttpUrl(body.licenseUrl)
   if (isMediaSourceType(body.sourceType)) update.source_type = body.sourceType
-  if (isMediaStatus(body.status)) update.status = body.status
+  const requestedStatus = isMediaStatus(body.status) ? body.status : null
+  if (requestedStatus && ["REVIEW", "PUBLISHED"].includes(requestedStatus)) {
+    if (!existingResult.data.city_id) {
+      return NextResponse.json({ error: "memory_guard_lookup_failed" }, { status: 500 })
+    }
+    const [cityResult, assignmentResult] = await Promise.all([
+      admin.from("cities").select("slug").eq("id", existingResult.data.city_id).maybeSingle(),
+      admin
+        .from("city_media_assignments")
+        .select("entity_key")
+        .eq("media_asset_id", assetId)
+        .eq("entity_type", "COLLECTION")
+        .eq("role", "CARD")
+        .not("entity_key", "is", null),
+    ])
+    if (cityResult.error || assignmentResult.error || !cityResult.data) {
+      return NextResponse.json({ error: "memory_guard_lookup_failed" }, { status: 500 })
+    }
+    const citySlug = cityResult.data.slug
+    const isPending = (assignmentResult.data ?? []).some((assignment) =>
+      typeof assignment.entity_key === "string" && isPendingCityMemorySlot(citySlug, assignment.entity_key),
+    )
+    if (isPending) {
+      return NextResponse.json({ error: "pending_place_relation" }, { status: 409 })
+    }
+  }
+  if (requestedStatus) update.status = requestedStatus
 
   const result = await admin.from("city_media_assets").update(update).eq("id", assetId).select("*").single()
   if (result.error || !result.data) return NextResponse.json({ error: "asset_update_failed" }, { status: 500 })

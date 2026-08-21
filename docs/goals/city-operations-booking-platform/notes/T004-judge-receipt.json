@@ -1,0 +1,31 @@
+{
+  "result": "done",
+  "decision": "accepted",
+  "full_outcome_complete": false,
+  "rationale": "The slice is a real operational vertical slice rather than a cosmetic dashboard: it renders live Annweiler drafts, fails closed before migration, rechecks admin identity before every privileged action, publishes only through an atomic service-role RPC, records audit data, and models one city in multiple regional contexts. Automated and browser evidence satisfy the T003 package. Booking work may begin.",
+  "accepted_evidence": [
+    "56/56 repository tests pass, including seven city review contract/security tests.",
+    "Next.js production build and lint pass.",
+    "Authenticated browser walkthrough rendered the global queue and Burgentagung detail from live data.",
+    "The missing migration state blocks all publication and clearly explains why.",
+    "The SQL publish gate rejects stale/non-HTTPS sources, blocking issues, unverified end times, invalid expiry, and non-draft events."
+  ],
+  "carry_forward_findings": [
+    "Before controlled migration application, make the Annweiler pilot updates replay-safe so rerunning the file cannot downgrade a later human decision.",
+    "Retire the pre-existing community route's invented start-plus-two-hours end time.",
+    "Align the TypeScript gate with SQL by checking expiresAt >= endsAt and rejecting materially future source-check timestamps.",
+    "Do not repair or rewrite remote Supabase migration history blindly; use a targeted reviewed application path.",
+    "Regional public aggregation and canonical URL evidence remains for the Annweiler public-integration phase."
+  ],
+  "next_worker_package": {
+    "objective": "Implement a complete Stripe Connect test-mode booking core and close the carried review safety gaps: replay-safe review seed, no invented community end time, booking/provider/offer/inventory/payment/audit schema, transaction-safe hold RPCs, reviewed offer publication, test-only Connect onboarding, destination-charge Checkout with explicit application fee, signature-verified idempotent webhook processing, cancellation/refund state model, admin test workflow, and automated verification.",
+    "charge_model": "Use Stripe Connect destination charges in test mode behind an explicit strategy field. Benefitsi is the platform-facing booking experience and records the application fee. Live activation, merchant-of-record, tax, payout, refund, and chargeback ownership remain owner/legal decisions.",
+    "security_boundary": "Stripe secret and webhook secret stay server-only and must be sk_test/whsec values. Agents receive only redacted operational status and may never onboard KYC, publish offers, refund, change payout routing, or activate live mode.",
+    "migration_boundary": "Create a new canonical booking migration. Do not run broad db push while remote history differs. Controlled application is a later explicit operational step unless a safe single-file path is proven."
+  },
+  "production_blockers": [
+    "Remote/local migration history is inconsistent.",
+    "No live Stripe activation is authorized.",
+    "Merchant-of-record, tax, cancellation terms, refunds, disputes and payout liability need owner/legal acceptance before production."
+  ]
+}

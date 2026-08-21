@@ -573,6 +573,7 @@ function apiError(error?: string) {
   return ({
     invalid_assignment: "Entity, Stadt und Rolle prüfen.",
     asset_city_mismatch: "Das Asset gehört zu einer anderen Stadt.",
+    pending_place_relation: "Dieser Memory-Slot bleibt bis zur echten Place-Relation unveröffentlicht.",
     assignment_save_failed: "Die Zuweisung konnte nicht gespeichert werden.",
     assignment_update_failed: "Die Zuweisung konnte nicht aktualisiert werden.",
     assignment_delete_failed: "Die Zuweisung konnte nicht entfernt werden.",

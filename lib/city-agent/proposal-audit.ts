@@ -4,9 +4,14 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import {
   type CityAgentChangeType,
   type CityAgentDecisionClass,
+  type CityAgentQualityScore,
   type CityAgentSourceRow,
 } from "./contracts"
 import { duplicateRiskForProposal, qualityDetails, scoreProposalQuality } from "./quality"
+import {
+  loadCitySeoDirectory,
+  resolveCitySeoOpportunity,
+} from "./seo-url-resolver"
 
 type Row = Record<string, unknown>
 type AdminClient = ReturnType<typeof createAdminClient>
@@ -98,10 +103,10 @@ export async function auditCityAgentProposals(options: { cityId?: string; now?: 
   const now = options.now ?? new Date()
   let cityId = options.cityId
   if (!cityId) {
-    const city = await admin.from("cities").select("id").eq("slug", "annweiler").maybeSingle()
-    cityId = text(city.data?.id) ?? undefined
+    const city = await admin.from("cities").select("id").order("created_at", { ascending: true }).limit(1)
+    cityId = text(rows(city.data)[0]?.id) ?? undefined
   }
-  if (!cityId) throw new Error("Annweiler konnte für den Proposal-Audit nicht aufgelöst werden.")
+  if (!cityId) throw new Error("Keine City konnte für den Proposal-Audit aufgelöst werden.")
 
   const [proposalsResult, sourcesResult] = await Promise.all([
     admin.from("city_agent_proposals").select("id,city_id,run_id,source_id,snapshot_id,content_type,content_id,operation,status,risk_level,confidence,field_diff,proposed_payload,evidence,created_at").eq("city_id", cityId).order("created_at", { ascending: true }).limit(1000),
@@ -111,7 +116,14 @@ export async function auditCityAgentProposals(options: { cityId?: string; now?: 
   if (sourcesResult.error) throw new Error(`Proposal-Audit konnte Quellen nicht laden: ${sourcesResult.error.message}`)
 
   const sources = new Map(rows(sourcesResult.data).map((row) => [text(row.id) ?? "", sourceFromRow(row)]))
-  const proposalRows = rows(proposalsResult.data)
+  // Only the live review queue is mutable input for this audit. Historical
+  // superseded/rejected/approved proposals are evidence, not fresh work, and
+  // must never be reclassified or used to create duplicate pressure for the
+  // current queue.
+  const proposalRows = rows(proposalsResult.data).filter((row) =>
+    ["needs_human", "agent_draft"].includes(text(row.status) ?? ""),
+  )
+  const seoDirectory = await loadCitySeoDirectory(admin, cityId)
   const snapshotIds = proposalRows.map((row) => text(row.snapshot_id)).filter((value): value is string => Boolean(value))
   const snapshotsResult = snapshotIds.length > 0
     ? await admin.from("city_agent_source_snapshots").select("id,source_id,change_type,extracted_payload").in("id", snapshotIds).limit(1000)
@@ -120,6 +132,7 @@ export async function auditCityAgentProposals(options: { cityId?: string; now?: 
   const seenTitles: string[] = []
   const seenTitleSources: string[] = []
   const seenSourceUrls = new Map<string, string>()
+  const seenSeoEntityKeys = new Set<string>()
   const classCounts: Record<string, number> = {}
   const seoCounts: Record<string, number> = {}
   const scored: CityAgentProposalAuditSummary["topTen"] = []
@@ -149,6 +162,18 @@ export async function auditCityAgentProposals(options: { cityId?: string; now?: 
         : "SEMANTIC_CHANGE") as CityAgentChangeType
     const canonicalizationResolved = Object.keys(fieldDiff).length === 0
       || Object.keys(fieldDiff).every((key) => key === "contentHash")
+    const seoResolution = resolveCitySeoOpportunity({
+      directory: seoDirectory,
+      contentType: text(proposal.content_type),
+      contentId: text(proposal.content_id),
+      title,
+      sourceSlug: source?.slug ?? "",
+      sourceTrustTier: source?.trust_tier,
+      existingEntityKeys: seenSeoEntityKeys,
+    })
+    const resolvedExistingUrl = ["IMPROVE_EXISTING", "MERGE_DUPLICATE"].includes(seoResolution.action)
+      ? seoResolution.canonicalUrl
+      : null
     const baseScore = scoreProposalQuality({
       source: source ?? {
         url: sourceUrl ?? "",
@@ -164,12 +189,15 @@ export async function auditCityAgentProposals(options: { cityId?: string; now?: 
       fieldDiff,
       proposedPayload: payload,
       evidenceCount: array(proposal.evidence).length,
-      existingUrl: text(payload.targetUrl) ?? (text(proposal.content_id) || text(proposal.operation) === "update" || text(proposal.operation) === "verify" ? sourceUrl : null),
+      existingUrl: resolvedExistingUrl ?? text(payload.targetUrl) ?? (text(proposal.content_id) || text(proposal.operation) === "update" || text(proposal.operation) === "verify" ? sourceUrl : null),
       duplicateRisk: Math.max(duplicateRisk, sourceUrlDuplicate ? 0.95 : 0),
       now,
     })
-    const decisionClass = classifyProposal({
+    const baseDecisionClass = classifyProposal({
       initial,
+      // A resolver match is not itself a reason to hide an SEO improvement
+      // behind ALREADY_IN_SYSTEM. The proposal still needs editorial review;
+      // content_id is persisted as the canonical target below.
       contentId: text(proposal.content_id),
       canonicalizationResolved,
       duplicateRisk,
@@ -178,17 +206,31 @@ export async function auditCityAgentProposals(options: { cityId?: string; now?: 
       sourceUrlDuplicate,
       operation: text(proposal.operation) ?? "verify",
     })
+    const decisionClass = seoResolution.action === "MERGE_DUPLICATE"
+      ? "DUPLICATE" as const
+      : baseDecisionClass
     const existingUrl = baseScore.existingUrl
     const lowValueWatch = decisionClass === "VALID_LOW_VALUE" && (!baseScore.queryIntent || baseScore.priority < 60)
-    const seoDecision = lowValueWatch ? "WATCH" : seoDecisionFor(decisionClass, existingUrl)
-    const score = { ...baseScore, decisionClass, seoDecision, targetUrl: existingUrl }
+    const seoDecision: CityAgentQualityScore["seoDecision"] = lowValueWatch
+      ? "WATCH"
+      : seoResolution.action === "MERGE_DUPLICATE"
+        ? "REJECT"
+        : seoResolution.action === "CREATE_NEW"
+          ? "CREATE_NEW"
+          : seoResolution.action === "HUMAN_REVIEW"
+            ? "PURSUE_NOW"
+            : seoDecisionFor(decisionClass, existingUrl)
+    const score = { ...baseScore, decisionClass, seoDecision, targetUrl: seoResolution.canonicalUrl ?? existingUrl }
+    const canonicalContentId = seoResolution.entityType === "hub" ? null : seoResolution.entityId
     const noActionReason = lowValueWatch
       ? "WATCH – lokaler oder zeitlicher Nutzwert ist zu niedrig bzw. es fehlt ein belastbarer Suchintent; nicht als aktive Review-Aufgabe priorisieren."
-      : ["DUPLICATE", "INITIAL_BASELINE_NOISE", "FALSE_POSITIVE", "ALREADY_IN_SYSTEM", "RESOLVED_BY_CANONICALIZATION"].includes(decisionClass)
-        ? decisionClass === "INITIAL_BASELINE_NOISE"
-          ? "Erstbeobachtung ohne nachgewiesene neue Information gegenüber dem bestehenden City-Katalog."
-          : `${decisionClass} – keine neue automatische Review-Aufgabe erzeugen.`
-        : null
+      : seoResolution.action === "MERGE_DUPLICATE"
+        ? `MERGE_DUPLICATE – auf die bestehende kanonische Entity ${seoResolution.canonicalUrl ?? ""} zusammenführen; keine zweite öffentliche Seite erzeugen.`
+        : ["DUPLICATE", "INITIAL_BASELINE_NOISE", "FALSE_POSITIVE", "ALREADY_IN_SYSTEM", "RESOLVED_BY_CANONICALIZATION"].includes(decisionClass)
+          ? decisionClass === "INITIAL_BASELINE_NOISE"
+            ? "Erstbeobachtung ohne nachgewiesene neue Information gegenüber dem bestehenden City-Katalog."
+            : `${decisionClass} – keine neue automatische Review-Aufgabe erzeugen.`
+          : null
     const currentStatus = text(proposal.status) ?? "needs_human"
     const nextStatus = noActionReason && ["needs_human", "agent_draft"].includes(currentStatus)
       ? "superseded"
@@ -207,7 +249,13 @@ export async function auditCityAgentProposals(options: { cityId?: string; now?: 
       priority_score: score.priority,
       no_action_reason: noActionReason,
       status: nextStatus ?? currentStatus,
-      proposed_payload: { ...payload, quality: qualityDetails(score) },
+      ...(canonicalContentId && !text(proposal.content_id) ? { content_id: canonicalContentId } : {}),
+      proposed_payload: {
+        ...payload,
+        targetUrl: seoResolution.canonicalUrl ?? payload.targetUrl ?? null,
+        seoResolution,
+        quality: qualityDetails(score),
+      },
       updated_at: now.toISOString(),
     }).eq("id", id)
     if (update.error) throw new Error(`Proposal ${id} konnte nicht klassifiziert werden: ${update.error.message}`)
@@ -222,6 +270,7 @@ export async function auditCityAgentProposals(options: { cityId?: string; now?: 
         decisionClass,
         seoDecision,
         quality: qualityDetails(score),
+        seoResolution,
         noActionReason,
         protected_action_executed: false,
       },
@@ -236,6 +285,11 @@ export async function auditCityAgentProposals(options: { cityId?: string; now?: 
       seenTitleSources.push(sourceId)
     }
     if (sourceUrl) seenSourceUrls.set(sourceUrl, sourceId)
+    if (seoResolution.entityType === "hub" && seoResolution.entityId) {
+      seenSeoEntityKeys.add(`hub:${seoResolution.entityId}`)
+    } else if (canonicalContentId) {
+      seenSeoEntityKeys.add(`${seoResolution.entityType}:${canonicalContentId}`)
+    }
     scored.push({ id, title, priority: score.priority, decision: seoDecision, targetUrl: score.targetUrl, reason: noActionReason ?? score.proposedAction ?? "Review nach Qualitätswert priorisieren." })
   }
 

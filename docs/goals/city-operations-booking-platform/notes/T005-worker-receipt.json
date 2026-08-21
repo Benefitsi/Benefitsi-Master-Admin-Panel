@@ -1,0 +1,83 @@
+{
+  "result": "done",
+  "summary": "Implemented and activated the Benefitsi-owned Stripe Connect test-mode booking core: private provider/offer/review/slot/booking/audit/webhook schema, human-gated offer publication, test-only Connect Express onboarding, destination-charge Checkout with immutable application-fee snapshots, transactional inventory holds, concurrent idempotency recheck, signed replay-safe webhooks, cancellation/refund state machine, Booking Control UI, and city-review safety remediation.",
+  "changed_files": [
+    "package.json",
+    "package-lock.json",
+    ".env.example",
+    "app/admin-shell.tsx",
+    "app/bookings/actions.ts",
+    "app/bookings/page.tsx",
+    "app/bookings/loading.tsx",
+    "app/bookings/error.tsx",
+    "app/bookings/success/page.tsx",
+    "app/bookings/cancelled/page.tsx",
+    "app/api/stripe/checkout/route.ts",
+    "app/api/stripe/connect/onboarding/route.ts",
+    "app/api/stripe/webhook/route.ts",
+    "components/bookings/connect-onboarding-button.tsx",
+    "lib/bookings/contracts.ts",
+    "lib/bookings/data.ts",
+    "lib/stripe/config.ts",
+    "lib/city-operations/contracts.ts",
+    "tests/booking-contracts.test.mjs",
+    "tests/booking-security.test.mjs",
+    "tests/city-operations-contracts.test.mjs",
+    "../../benefitsi-web/supabase/migrations/20260728150000_city_review_and_geo_operations.sql",
+    "../../benefitsi-web/supabase/migrations/20260728170000_booking_marketplace_core.sql",
+    "../../benefitsi-web/src/app/api/admin/city-pages/[citySlug]/community/[submissionId]/route.ts"
+  ],
+  "commands": [
+    {
+      "command": "node --import tsx --test tests/booking*.test.mjs tests/city-operations*.test.mjs",
+      "status": "pass"
+    },
+    {
+      "command": "npm test (65 tests)",
+      "status": "pass"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass"
+    },
+    {
+      "command": "npm run build (Next.js 16.2.12)",
+      "status": "pass"
+    },
+    {
+      "command": "scoped git diff --check in both repositories",
+      "status": "pass"
+    },
+    {
+      "command": "targeted atomic Supabase migration application and remote migration list verification",
+      "status": "pass"
+    },
+    {
+      "command": "rolled-back database booking E2E",
+      "status": "pass"
+    }
+  ],
+  "verification": [
+    "Remote migrations 20260728150000 and 20260728170000 are recorded and both schemas/RPCs exist.",
+    "Rolled-back E2E proved offer publication, same-booking idempotency replay, sold-out blocking, duplicate webhook ignore, confirmed-to-refunded state, five audit entries and two unique webhook receipts.",
+    "Authenticated browser showed live regional review data and the human publish button only for the clean Bachstelzkerwe case.",
+    "Authenticated Booking Control showed active schema with Stripe Test-Key missing and no live-payment capability.",
+    "Next.js was patched from 16.2.6 to 16.2.12; remaining npm audit findings are transitive PostCSS/Sharp advisories without a safe non-breaking npm remediation."
+  ],
+  "safety": [
+    "Only sk_test_ secrets are accepted and live Stripe webhook events are rejected.",
+    "Provider KYC is hosted by Stripe; Benefitsi and agents do not store KYC fields.",
+    "Offer publication requires clean Ben review, enabled test provider and explicit human admin action.",
+    "Checkout price, currency, destination and application fee come only from the locked database hold.",
+    "Slot rows are locked before capacity calculation and idempotency is rechecked after the lock.",
+    "Signed webhook processing and its audit receipt occur in one database transaction.",
+    "Community event moderation no longer invents a two-hour end time.",
+    "Review pilot seeds cannot overwrite a later human decision."
+  ],
+  "known_limits": [
+    "No Stripe test secret or webhook secret is configured locally, so no external Stripe account/session was created and no Stripe card test was attempted.",
+    "Merchant-of-record, taxes, cancellation terms, dispute liability and live payout ownership remain production blockers.",
+    "The historical Supabase migration directory remains incomplete for older remote versions, but the two new versions are now aligned local/remote.",
+    "Partner-isolated operations, guarded test refunds, exports and operational alerting belong to T006."
+  ]
+}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/admin"
+import { isPendingCityMemorySlot } from "@/lib/city-memory/config"
 import {
   isMediaEntityType,
   isMediaRole,
@@ -29,11 +30,20 @@ export async function POST(
   const admin = createAdminClient()
   const [assetResult, cityResult] = await Promise.all([
     admin.from("city_media_assets").select("*").eq("id", assetId).maybeSingle(),
-    admin.from("cities").select("id").eq("id", cityId).maybeSingle(),
+    admin.from("cities").select("id,slug").eq("id", cityId).maybeSingle(),
   ])
   if (assetResult.error || !assetResult.data) return NextResponse.json({ error: "asset_not_found" }, { status: 404 })
   if (cityResult.error || !cityResult.data) return NextResponse.json({ error: "city_not_found" }, { status: 404 })
   if (assetResult.data.city_id && assetResult.data.city_id !== cityId) return NextResponse.json({ error: "asset_city_mismatch" }, { status: 409 })
+  if (
+    entityType === "COLLECTION" &&
+    role === "CARD" &&
+    entityKey &&
+    isPendingCityMemorySlot(cityResult.data.slug, entityKey) &&
+    ["REVIEW", "PUBLISHED"].includes(String(assetResult.data.status))
+  ) {
+    return NextResponse.json({ error: "pending_place_relation" }, { status: 409 })
+  }
 
   const lookup = admin
     .from("city_media_assignments")

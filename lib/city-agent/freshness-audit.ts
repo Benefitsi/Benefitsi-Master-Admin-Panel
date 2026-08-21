@@ -3,6 +3,7 @@ import "server-only"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { freshnessState, type FreshnessState } from "./freshness"
 import { auditCityBusinesses, type CityBusinessAudit } from "./business-audit"
+import { evaluateEventRecurrence } from "./event-seo-audit"
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -17,6 +18,14 @@ export type CityAgentFreshnessAudit = {
   byEntity: Record<string, { checked: number; current: number; due: number; stale: number; unknown: number }>
   samples: Array<{ entityType: string; entityId: string; title: string; state: FreshnessState; lastVerifiedAt: string | null; ttlDays: number }>
   serviceFacts: { checked: number; current: number; due: number; stale: number; unknown: number }
+  eventRecurrence: {
+    checked: number
+    scheduledEvents: number
+    activeRecurringEvents: number
+    invalidScheduleEvents: number
+    expiredScheduleEvents: number
+    unknownEndTimeEvents: number
+  }
   businessAudit?: Pick<CityBusinessAudit, "scopeCounts" | "dataGaps" | "records">
 }
 
@@ -74,14 +83,15 @@ async function readRows(admin: AdminClient, table: string, select: string, cityI
 }
 
 export async function auditCityFreshness(admin: AdminClient, cityId: string, now = new Date(), existingBusinessAudit?: CityBusinessAudit): Promise<CityAgentFreshnessAudit> {
-  const [places, events, routes, serviceSources] = await Promise.all([
+  const [places, events, routes, serviceSources, eventSchedules] = await Promise.all([
     // These tables intentionally do not share every freshness column. Keep
     // the resolver schema-aware instead of making one broad select fail
     // closed to an empty audit for all entity types.
     readRows(admin, "city_places", "id,name,last_verified_at,data_freshness,updated_at", cityId, 10),
-    readRows(admin, "city_events", "id,title,last_verified_at,freshness_ttl_days,updated_at", cityId),
+    readRows(admin, "city_events", "id,title,start_date,end_date,last_verified_at,freshness_ttl_days,updated_at", cityId),
     readRows(admin, "city_routes", "id,title,last_verified_at,freshness_ttl_days,updated_at", cityId, 3),
     readRows(admin, "city_agent_sources", "id,slug,content_scope,parser_config,last_success_at,last_checked_at,health,active,enabled", cityId),
+    readRows(admin, "city_event_schedules", "event_id,status,frequency,interval_count,weekdays,month_day,start_time,end_time,starts_on,ends_on,timezone,expires_at", cityId),
   ])
   const businessAudit = existingBusinessAudit ?? await auditCityBusinesses(admin, cityId, now)
   const result: CityAgentFreshnessAudit = {
@@ -93,6 +103,14 @@ export async function auditCityFreshness(admin: AdminClient, cityId: string, now
     byEntity: {},
     samples: [],
     serviceFacts: { checked: 0, current: 0, due: 0, stale: 0, unknown: 0 },
+    eventRecurrence: {
+      checked: events.length,
+      scheduledEvents: 0,
+      activeRecurringEvents: 0,
+      invalidScheduleEvents: 0,
+      expiredScheduleEvents: 0,
+      unknownEndTimeEvents: 0,
+    },
     businessAudit: {
       scopeCounts: businessAudit.scopeCounts,
       dataGaps: businessAudit.dataGaps,
@@ -111,8 +129,26 @@ export async function auditCityFreshness(admin: AdminClient, cityId: string, now
     ["route", routes],
     ["business", businesses],
   ]
+  const schedulesByEvent = new Map<string, FreshnessRow[]>()
+  for (const schedule of eventSchedules) {
+    const eventId = text(schedule.event_id)
+    if (!eventId) continue
+    schedulesByEvent.set(eventId, [...(schedulesByEvent.get(eventId) ?? []), schedule])
+  }
   for (const [entityType, rows] of groups) {
     for (const row of rows) {
+      if (entityType === "event") {
+        const recurrence = evaluateEventRecurrence({
+          event: row as Parameters<typeof evaluateEventRecurrence>[0]["event"],
+          schedules: (schedulesByEvent.get(text(row.id) ?? "") ?? []) as Parameters<typeof evaluateEventRecurrence>[0]["schedules"],
+          now,
+        })
+        if (recurrence.hasSchedule) result.eventRecurrence.scheduledEvents += 1
+        if (recurrence.activeScheduleCount > 0) result.eventRecurrence.activeRecurringEvents += 1
+        if (recurrence.invalidScheduleCount > 0) result.eventRecurrence.invalidScheduleEvents += 1
+        if (recurrence.expiredScheduleCount > 0) result.eventRecurrence.expiredScheduleEvents += 1
+        if (recurrence.unknownEndTime) result.eventRecurrence.unknownEndTimeEvents += 1
+      }
       const lastVerifiedAt = text(row.last_verified_at)
       const ttlDays = ttlFor(row, entityType)
       const state = freshnessState({ lastVerifiedAt, ttlDays, now })

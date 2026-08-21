@@ -88,7 +88,7 @@ test("worker authentication and health simulations are present", async () => {
 test("freshness audit uses the actual per-entity table columns", async () => {
   const code = await readFile(root("lib/city-agent/freshness-audit.ts"), "utf8");
   assert.match(code, /city_places.*id,name,last_verified_at,data_freshness/);
-  assert.match(code, /city_events.*id,title,last_verified_at,freshness_ttl_days/);
+  assert.match(code, /city_events.*id,title,.*last_verified_at,freshness_ttl_days/);
   assert.match(code, /city_routes.*id,title,last_verified_at,freshness_ttl_days/);
   assert.match(code, /auditCityBusinesses/);
   assert.match(code, /instead of making one broad select fail/);

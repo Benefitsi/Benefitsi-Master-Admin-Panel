@@ -224,6 +224,7 @@ function CityNavigationGroup({ pathname, collapsed }: { pathname: string; collap
         { href: `${cityBase}/site/homepage`, label: "Homepage", active: pathname.startsWith(`${cityBase}/site/homepage`) },
         { href: `${cityBase}/site/hubs?key=discovery`, label: "Hubs", active: pathname.startsWith(`${cityBase}/site/hubs`) },
         { href: `${cityBase}/site/collections?key=sehenswuerdigkeiten`, label: "Collections", active: pathname.startsWith(`${cityBase}/site/collections`) },
+        { href: `${cityBase}/memory-stamps`, label: "Memory Stamps", active: pathname.startsWith(`${cityBase}/memory-stamps`) },
         { href: `${cityBase}/site/navigation`, label: "Navigation", active: pathname.startsWith(`${cityBase}/site/navigation`) },
         { href: `${cityBase}/businesses`, label: "Businesses", active: pathname.startsWith(`${cityBase}/businesses`) },
         { href: `${cityBase}/editorial`, label: "Editorial & Blog", active: pathname.startsWith(`${cityBase}/editorial`) },

@@ -1,0 +1,77 @@
+{
+  "result": "done",
+  "summary": "Implemented the first complete city-operations vertical slice: additive geo/review/audit schema, Annweiler pilot review backfill, server-only service-role DTO DAL behind requireAdmin, global all-city review queue, city/region/type/stage/search filters, content detail with source and field-level issues, audited correction/reject/publish RPC actions, strict double-layer event publication gate, navigation, loading/empty/error states, tests, build, and browser walkthrough.",
+  "changed_files": [
+    "app/admin-shell.tsx",
+    "app/city-operations/actions.ts",
+    "app/city-operations/page.tsx",
+    "app/city-operations/[contentType]/[contentId]/page.tsx",
+    "app/city-operations/loading.tsx",
+    "app/city-operations/error.tsx",
+    "components/city-operations/review-ui.tsx",
+    "lib/city-operations/contracts.ts",
+    "lib/city-operations/data.ts",
+    "lib/supabase/admin.ts",
+    "tests/city-operations-contracts.test.mjs",
+    "tests/city-operations-security.test.mjs",
+    "../../benefitsi-web/supabase/migrations/20260728150000_city_review_and_geo_operations.sql"
+  ],
+  "commands": [
+    {
+      "command": "node --import tsx --test tests/city-operations*.test.mjs",
+      "status": "pass"
+    },
+    {
+      "command": "npm test",
+      "status": "pass"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass"
+    },
+    {
+      "command": "npm run build",
+      "status": "pass"
+    },
+    {
+      "command": "scoped git diff --check",
+      "status": "pass"
+    }
+  ],
+  "evidence": [
+    "app/city-operations/page.tsx",
+    "app/city-operations/[contentType]/[contentId]/page.tsx",
+    "app/city-operations/actions.ts",
+    "components/city-operations/review-ui.tsx",
+    "lib/city-operations/contracts.ts",
+    "lib/city-operations/data.ts",
+    "lib/supabase/admin.ts",
+    "../../benefitsi-web/supabase/migrations/20260728150000_city_review_and_geo_operations.sql",
+    "tests/city-operations-contracts.test.mjs",
+    "tests/city-operations-security.test.mjs",
+    "Browser walkthrough: /city-operations and Annweiler Burgentagung detail"
+  ],
+  "verification": [
+    "node --import tsx --test tests/city-operations*.test.mjs: 7/7 passed",
+    "npm test: 56/56 passed",
+    "npm run lint: passed",
+    "npm run build: passed; both city-operations routes compiled",
+    "scoped git diff --check: passed",
+    "browser: authenticated global queue rendered three real Annweiler drafts",
+    "browser: Burgentagung rendered its 22:00 end but blocked publication because review metadata is absent"
+  ],
+  "safety": [
+    "Every privileged action calls requireAdmin before createAdminClient.",
+    "Only service_role may execute review transition and publish RPCs.",
+    "No UI action directly updates city_events.",
+    "Publish requires a fresh verified HTTPS source, verified event end, pass verdict, ready_for_human stage, expiry, and zero blocking issues in both TypeScript and SQL.",
+    "No invented two-hour event duration exists in the new migration.",
+    "The migration is additive and does not publish content when applied."
+  ],
+  "known_limits": [
+    "Production migration application was explicitly outside T003. The live database migration history is also out of sync with local files, so a normal db push safely refused even in dry-run.",
+    "Until the migration is applied through a controlled single-migration path, the dashboard fails closed by synthesizing a blocking missing-review issue for every live draft.",
+    "The pre-existing community approval route that invents a two-hour duration remains outside this Worker file boundary and must be fixed by a later Judge-approved package."
+  ],
+  "scope_check": "All product edits stayed within the exact T003 allowed_files list. Existing dirty translation and microsite work was preserved."
+}

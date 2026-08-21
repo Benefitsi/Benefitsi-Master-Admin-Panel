@@ -19,6 +19,11 @@ import { auditCityFreshness, type CityAgentFreshnessAudit } from "./freshness-au
 import { auditCityBusinesses, type CityBusinessAudit } from "./business-audit"
 import { auditCityEventSeo, type CityAgentEventSeoAudit } from "./event-seo-audit"
 import {
+  loadCitySeoDirectory,
+  resolveCitySeoOpportunity,
+  type CitySeoResolution,
+} from "./seo-url-resolver"
+import {
   createSourceResearchProvider,
   diffSourceFacts,
   nextSourceCheckAt,
@@ -215,7 +220,7 @@ async function failJob(
   })
 }
 
-function proposalPayload(facts: CityAgentSourceFacts) {
+function proposalPayload(facts: CityAgentSourceFacts): Record<string, unknown> {
   return {
     title: facts.title,
     headings: facts.headings,
@@ -297,6 +302,12 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
   }
 
   const citySlug = safeText(cityResult.data.slug, 120)
+  let seoDirectoryPromise: ReturnType<typeof loadCitySeoDirectory> | null = null
+  const seenSeoEntityKeys = new Set<string>()
+  const getSeoDirectory = () => {
+    seoDirectoryPromise ??= loadCitySeoDirectory(supabase, cityId)
+    return seoDirectoryPromise
+  }
   const controlResult = await supabase
     .from("city_agent_city_controls")
     .select("city_id,city_profile,operating_mode,timezone,auto_publish_enabled,last_full_check_at,next_full_check_at,paused_reason")
@@ -605,24 +616,54 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
       if (changed && Object.keys(fieldDiff).length > 0 && snapshot?.id) {
         const operation = "update"
         const deduplicationKey = `${cityId}:${source.id}:${facts.contentHash}`
+        const contentType = sourceContentType(source)
         const proposalPayloadValue = proposalPayload(facts)
-        const score = scoreProposalQuality({
+        let seoResolution: CitySeoResolution | null = null
+        let resolvedContentId: string | null = null
+        let resolvedExistingUrl: string | null = null
+        if (["city_place", "city_event", "city_route", "city_guide"].includes(contentType)) {
+          seoResolution = resolveCitySeoOpportunity({
+            directory: await getSeoDirectory(),
+            contentType,
+            contentId: null,
+            title: facts.title,
+            sourceSlug: source.slug,
+            sourceTrustTier: source.trust_tier,
+            existingEntityKeys: seenSeoEntityKeys,
+          })
+          resolvedContentId = seoResolution.entityType === "hub" ? null : seoResolution.entityId
+          resolvedExistingUrl = ["IMPROVE_EXISTING", "MERGE_DUPLICATE"].includes(seoResolution.action)
+            ? seoResolution.canonicalUrl
+            : null
+          if (seoResolution.canonicalUrl) proposalPayloadValue.targetUrl = seoResolution.canonicalUrl
+          proposalPayloadValue.seoResolution = seoResolution
+          if (resolvedContentId) proposalPayloadValue.contentId = resolvedContentId
+        }
+        const baseScore = scoreProposalQuality({
           source,
           operation,
-          contentType: sourceContentType(source),
+          contentType,
           changeType,
           fieldDiff,
           proposedPayload: proposalPayloadValue,
           evidenceCount: 1,
+          existingUrl: resolvedExistingUrl,
           now,
         })
+        const score = {
+          ...baseScore,
+          decisionClass: seoResolution?.action === "MERGE_DUPLICATE" ? "DUPLICATE" as const : baseScore.decisionClass,
+          seoDecision: seoResolution?.action === "MERGE_DUPLICATE" ? "REJECT" as const : baseScore.seoDecision,
+          targetUrl: seoResolution?.canonicalUrl ?? baseScore.targetUrl,
+        }
         const proposalResult = await supabase.from("city_agent_proposals").upsert(
           {
             city_id: cityId,
             run_id: runId,
             source_id: source.id,
             snapshot_id: snapshot.id,
-            content_type: sourceContentType(source),
+            content_type: contentType,
+            content_id: resolvedContentId,
             operation,
             status: "needs_human",
             risk_level: riskForTrustTier(trustTierForSource(source)),
@@ -640,7 +681,11 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
             duplicate_risk_score: score.duplicateRisk,
             quality_score: score.score,
             priority_score: score.priority,
-            no_action_reason: score.seoDecision === "WATCH" ? "Suchintent oder bestehende URL muss vor einer Aktion bestätigt werden." : null,
+            no_action_reason: seoResolution?.action === "MERGE_DUPLICATE"
+              ? `MERGE_DUPLICATE – auf ${seoResolution.canonicalUrl ?? "die bestehende kanonische Entity"} zusammenführen; keine zweite öffentliche Seite erzeugen.`
+              : score.seoDecision === "WATCH"
+                ? "Suchintent oder bestehende URL muss vor einer Aktion bestätigt werden."
+                : null,
           },
           { onConflict: "city_id,deduplication_key", ignoreDuplicates: true },
         )
@@ -652,7 +697,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
             proposalId,
             sourceSlug: source.slug,
             trustLevel: source.trust_level,
-            contentType: sourceContentType(source),
+            contentType,
             operation,
             confidence: score.confidence,
             risk: riskForTrustTier(trustTierForSource(source)),
@@ -661,6 +706,11 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
             evidence: [{ url: facts.finalUrl, snapshotId: snapshot.id, retrievedAt: facts.retrievedAt, excerpt: facts.textPreview.slice(0, 500) }],
             quality: qualityDetails(score),
           })
+        }
+        if (seoResolution?.entityType === "hub" && seoResolution.entityId) {
+          seenSeoEntityKeys.add(`hub:${seoResolution.entityId}`)
+        } else if (resolvedContentId && seoResolution) {
+          seenSeoEntityKeys.add(`${seoResolution.entityType}:${resolvedContentId}`)
         }
         proposalCount += 1
         await addAudit(supabase, runId, "proposal_created", { sourceId: source.id, operation, deduplicationKey }, agentProfile)
@@ -760,6 +810,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
         stale: freshnessAudit.stale,
         unknown: freshnessAudit.unknown,
         byEntity: freshnessAudit.byEntity,
+        eventRecurrence: freshnessAudit.eventRecurrence,
         business: businessSummary(businessAudit),
         protected_action_executed: false,
       }, agentProfile)
@@ -790,6 +841,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
         missingCanonical: eventSeoAudit.missingCanonical,
         thin: eventSeoAudit.thin,
         duplicateTitles: eventSeoAudit.duplicateTitles,
+        recurrence: eventSeoAudit.recurrence,
         protected_action_executed: false,
       }, agentProfile)
     } catch (error) {
@@ -857,7 +909,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
 
   const status = errors.length ? (snapshotCount || eventSeoAudit?.checked || businessAudit?.checked || freshnessAudit?.checked ? "partial" : "failed") : "succeeded"
   const finishedAt = new Date().toISOString()
-  await supabase.from("city_agent_runs").update({ status, source_count: dueSources.length, snapshot_count: snapshotCount, proposal_count: proposalCount, stale_count: staleCount, error_code: errors.length ? "source_errors" : null, error_summary: errors.length ? errors.join(" | ").slice(0, 2_000) : null, metadata: { autoPublishedCount, reviewCandidateCount: reviewCandidates.length, findingCount, operatingMode, moduleKey: moduleKey ?? null, shadow: isShadow, changeCounts, sourceWarnings: sourceWarnings.slice(0, 20), business: businessSummary(businessAudit), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, current: eventSeoAudit.current, stale: eventSeoAudit.stale, expired: eventSeoAudit.expired, missingCanonical: eventSeoAudit.missingCanonical, thin: eventSeoAudit.thin, duplicateTitles: eventSeoAudit.duplicateTitles } : null, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown, byEntity: freshnessAudit.byEntity, serviceFacts: freshnessAudit.serviceFacts } : null }, finished_at: finishedAt, updated_at: finishedAt }).eq("id", runId)
+  await supabase.from("city_agent_runs").update({ status, source_count: dueSources.length, snapshot_count: snapshotCount, proposal_count: proposalCount, stale_count: staleCount, error_code: errors.length ? "source_errors" : null, error_summary: errors.length ? errors.join(" | ").slice(0, 2_000) : null, metadata: { autoPublishedCount, reviewCandidateCount: reviewCandidates.length, findingCount, operatingMode, moduleKey: moduleKey ?? null, shadow: isShadow, changeCounts, sourceWarnings: sourceWarnings.slice(0, 20), business: businessSummary(businessAudit), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, current: eventSeoAudit.current, stale: eventSeoAudit.stale, expired: eventSeoAudit.expired, missingCanonical: eventSeoAudit.missingCanonical, thin: eventSeoAudit.thin, duplicateTitles: eventSeoAudit.duplicateTitles, recurrence: eventSeoAudit.recurrence } : null, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown, byEntity: freshnessAudit.byEntity, eventRecurrence: freshnessAudit.eventRecurrence, serviceFacts: freshnessAudit.serviceFacts } : null }, finished_at: finishedAt, updated_at: finishedAt }).eq("id", runId)
   if (moduleKey) {
     await supabase.from("city_agent_schedules").update({
       last_run_id: runId,
@@ -888,7 +940,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
       content_changed: changeCounts.CONTENT_CHANGED ?? 0,
       unchanged: (changeCounts.NO_CHANGE ?? 0) + (changeCounts.UNCHANGED ?? 0),
       source_recovered: changeCounts.SOURCE_RECOVERED ?? 0,
-      summary: { counts, changeCounts, sourceWarnings: sourceWarnings.slice(0, 20), sourceCount: dueSources.length, proposalCount, findingCount, operatingMode, shadow: isShadow, business: businessSummary(businessAudit), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, current: eventSeoAudit.current, stale: eventSeoAudit.stale, expired: eventSeoAudit.expired, missingCanonical: eventSeoAudit.missingCanonical, thin: eventSeoAudit.thin, duplicateTitles: eventSeoAudit.duplicateTitles } : null, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown, byEntity: freshnessAudit.byEntity, serviceFacts: freshnessAudit.serviceFacts, samples: freshnessAudit.samples } : null },
+      summary: { counts, changeCounts, sourceWarnings: sourceWarnings.slice(0, 20), sourceCount: dueSources.length, proposalCount, findingCount, operatingMode, shadow: isShadow, business: businessSummary(businessAudit), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, current: eventSeoAudit.current, stale: eventSeoAudit.stale, expired: eventSeoAudit.expired, missingCanonical: eventSeoAudit.missingCanonical, thin: eventSeoAudit.thin, duplicateTitles: eventSeoAudit.duplicateTitles, recurrence: eventSeoAudit.recurrence } : null, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown, byEntity: freshnessAudit.byEntity, eventRecurrence: freshnessAudit.eventRecurrence, serviceFacts: freshnessAudit.serviceFacts, samples: freshnessAudit.samples } : null },
       updated_at: finishedAt,
     }).eq("id", baselineId)
     await addAudit(supabase, runId, "baseline_completed", { baselineId, counts, protected_action_executed: false }, agentProfile)

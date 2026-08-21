@@ -127,6 +127,12 @@ export default async function CityPageDetail({
             Media Library
           </Link>
           <Link
+            href={`/city-pages/${city.slug}/memory-stamps`}
+            className={secondaryButton}
+          >
+            Memory Stamps
+          </Link>
+          <Link
             href={`/automation?city=${encodeURIComponent(city.id)}`}
             className={primaryButton}
           >
@@ -394,9 +400,10 @@ export default async function CityPageDetail({
             <div className="mt-4 grid gap-2">
               <Link href={`/city-pages/${city.slug}/site/homepage`} className={wideLink}>Homepage <span>Öffnen</span></Link>
               <Link href={`/city-pages/${city.slug}/site/hubs?key=discovery`} className={wideLink}>Hubs <span>6 Bereiche</span></Link>
-              <Link href={`/city-pages/${city.slug}/site/collections?key=sehenswuerdigkeiten`} className={wideLink}>Collections <span>Öffnen</span></Link>
-              <Link href={`/city-pages/${city.slug}/site/navigation`} className={wideLink}>Navigation <span>Desktop + Mobile</span></Link>
-              <Link href={`/city-pages/${city.slug}/businesses`} className={wideLink}>Businesses <span>{partnerCount}</span></Link>
+                  <Link href={`/city-pages/${city.slug}/site/collections?key=sehenswuerdigkeiten`} className={wideLink}>Collections <span>Öffnen</span></Link>
+                  <Link href={`/city-pages/${city.slug}/site/navigation`} className={wideLink}>Navigation <span>Desktop + Mobile</span></Link>
+                  <Link href={`/city-pages/${city.slug}/memory-stamps`} className={wideLink}>Memory Stamps <span>10 Slots</span></Link>
+                  <Link href={`/city-pages/${city.slug}/businesses`} className={wideLink}>Businesses <span>{partnerCount}</span></Link>
               <Link href={`/city-pages/${city.slug}/editorial`} className={wideLink}>Editorial <span>Öffnen</span></Link>
             </div>
           </section>

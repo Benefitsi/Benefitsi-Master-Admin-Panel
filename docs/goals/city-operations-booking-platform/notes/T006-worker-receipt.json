@@ -1,0 +1,67 @@
+{
+  "result": "done",
+  "summary": "Implemented booking operations for Benefitsi admins and isolated partners: detailed audit timeline, gross/fee/provider-net visibility, actionable alerts, PII-free formula-safe CSV export, partner-scoped service-role reads after portal authentication, provider cancellation requests, explicit admin cancellation confirmation, idempotent Stripe test-refund creation, refund-pending audit transition, and webhook-confirmed final refund state.",
+  "changed_files": [
+    "app/bookings/actions.ts",
+    "app/bookings/page.tsx",
+    "app/bookings/[bookingId]/page.tsx",
+    "app/api/bookings/export/route.ts",
+    "app/partner/bookings/actions.ts",
+    "app/partner/bookings/page.tsx",
+    "lib/bookings/contracts.ts",
+    "lib/bookings/data.ts",
+    "lib/bookings/provider-data.ts",
+    "tests/booking-contracts.test.mjs",
+    "tests/booking-security.test.mjs",
+    "../../benefitsi-web/supabase/migrations/20260728190000_booking_operations.sql"
+  ],
+  "commands": [
+    {
+      "command": "node --import tsx --test tests/booking*.test.mjs",
+      "status": "pass"
+    },
+    {
+      "command": "npm test",
+      "status": "pass"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass"
+    },
+    {
+      "command": "npm run build",
+      "status": "pass"
+    },
+    {
+      "command": "targeted atomic Supabase booking-operations migration",
+      "status": "pass"
+    },
+    {
+      "command": "rolled-back database E2E including refund_pending and refunded",
+      "status": "pass"
+    },
+    {
+      "command": "authenticated browser walkthrough of /partner/bookings",
+      "status": "pass"
+    }
+  ],
+  "verification": [
+    "Booking operations migration applied without changing prior migration history.",
+    "Rollback E2E ended refunded with six booking audit entries, two unique webhook receipts, duplicate webhook ignored, oversell blocked and no persistent test data.",
+    "Provider page rendered through authenticated portal context and returned no cross-provider records for the empty test state.",
+    "Production build includes admin detail, partner booking and protected CSV routes.",
+    "Refund action checks explicit confirmation and sk_test configuration before mutating a paid booking."
+  ],
+  "safety": [
+    "Partner service-role access happens only after Supabase portal identity and partner ownership resolution.",
+    "Provider cancellation cannot execute Stripe refunds; paid bookings become an admin action request.",
+    "Admin refunds are test-only, idempotent by booking ID and audited before webhook-confirmed completion.",
+    "CSV excludes customer email and neutralizes spreadsheet formulas.",
+    "No external refund was attempted because Stripe test keys are absent."
+  ],
+  "known_limits": [
+    "No real provider mapping exists yet, so partner operational isolation is verified by code contracts and authenticated empty-state walkthrough.",
+    "Stripe payout balance retrieval is not shown without a connected test account; the UI shows accounting net and Connect enablement status.",
+    "Public Annweiler discovery and customer checkout belong to T007."
+  ]
+}
