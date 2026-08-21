@@ -24,3 +24,28 @@ test("logo palette builds three distinct professional roles from sampled colors"
 test("unavailable browser logo extraction returns the professional fallback", async () => {
   assert.deepEqual(await extractThemePalette(""), DEFAULT_PARTNER_PALETTE)
 })
+
+test("black and white logos use the Benefitsi blue fallback", () => {
+  const pixels = [
+    ...Array.from({ length: 180 }, () => ({ r: 255, g: 255, b: 255 })),
+    ...Array.from({ length: 140 }, () => ({ r: 10, g: 10, b: 10 })),
+    ...Array.from({ length: 40 }, () => ({ r: 132, g: 132, b: 132 })),
+  ]
+
+  assert.deepEqual(buildThemePalette(pixels), DEFAULT_PARTNER_PALETTE)
+  assert.equal(DEFAULT_PARTNER_PALETTE.primary, "#118cff")
+})
+
+test("logo extraction favors the dominant brand color over rare saturated pixels", () => {
+  const pixels = [
+    ...Array.from({ length: 260 }, () => ({ r: 22, g: 132, b: 238 })),
+    ...Array.from({ length: 18 }, () => ({ r: 246, g: 35, b: 173 })),
+    ...Array.from({ length: 12 }, () => ({ r: 250, g: 205, b: 40 })),
+  ]
+  const palette = buildThemePalette(pixels)
+  const red = Number.parseInt(palette.primary.slice(1, 3), 16)
+  const blue = Number.parseInt(palette.primary.slice(5, 7), 16)
+
+  assert.ok(blue > red)
+  assert.notEqual(palette.source, "fallback")
+})

@@ -253,6 +253,9 @@ async function persistMicrositeVersion(
 
   try {
     revalidatePath("/")
+    revalidatePath("/partner")
+    revalidatePath(`/microsite-builder/${previewSlug}`)
+    revalidatePath(`/partner/microsite-builder/${previewSlug}`)
     revalidatePath(`/microsite-preview/${previewSlug}`)
     revalidatePath(`/partner/microsite-preview/${previewSlug}`)
     revalidatePath("/microsite-preview/[partner]", "page")
@@ -791,11 +794,15 @@ type AssetSlot =
   | "reward_5_image"
   | "reward_10_image"
   | "app_phone_screenshot"
-  | "app_qr_code"
   | "footer_benefitsi_logo"
 
 type UploadedMicrositeAssets = Partial<Record<AssetSlot, string>> & {
   elementImages?: Record<string, string>
+  libraryAsset?: {
+    url: string
+    label: string
+    target: string
+  }
 }
 
 async function uploadMicrositeAssets(
@@ -820,7 +827,6 @@ async function uploadMicrositeAssets(
     { slot: "reward_5_image", field: "reward_5_image_file" },
     { slot: "reward_10_image", field: "reward_10_image_file" },
     { slot: "app_phone_screenshot", field: "app_phone_screenshot_file" },
-    { slot: "app_qr_code", field: "app_qr_code_file" },
     { slot: "footer_benefitsi_logo", field: "footer_benefitsi_logo_file" },
   ]
   const urls: UploadedMicrositeAssets = {}
@@ -829,6 +835,8 @@ async function uploadMicrositeAssets(
     pathSlot: string
     slot?: AssetSlot
     elementId?: string
+    libraryTarget?: string
+    libraryLabel?: string
   }> = []
 
   for (const { slot, field } of slots) {
@@ -867,6 +875,28 @@ async function uploadMicrositeAssets(
     })
   }
 
+  const libraryFile = formData.getAll("asset_library_file").find(isUploadFile)
+  if (libraryFile) {
+    const validation = validateMicrositeAssetFile(libraryFile)
+    if (validation) return validation
+    const libraryTarget = stringValue(formData, "asset_library_target")
+    if (!isSupportedAssetLibraryTarget(libraryTarget)) {
+      return {
+        ok: false,
+        state: {
+          ok: false,
+          message: "Bitte eine gültige Bildposition für den Asset-Upload auswählen.",
+        },
+      }
+    }
+    uploads.push({
+      file: libraryFile,
+      pathSlot: "library",
+      libraryTarget,
+      libraryLabel: libraryFile.name,
+    })
+  }
+
   const totalUploadBytes = uploads.reduce(
     (total, upload) => total + upload.file.size,
     0,
@@ -902,6 +932,13 @@ async function uploadMicrositeAssets(
     if (!upload.result.ok) continue
     if (upload.slot) urls[upload.slot] = upload.result.url
     if (upload.elementId) elementImages[upload.elementId] = upload.result.url
+    if (upload.libraryTarget) {
+      urls.libraryAsset = {
+        url: upload.result.url,
+        label: upload.libraryLabel || "Asset Upload",
+        target: upload.libraryTarget,
+      }
+    }
   }
 
   if (Object.keys(elementImages).length > 0) {
@@ -909,6 +946,24 @@ async function uploadMicrositeAssets(
   }
 
   return { ok: true, urls }
+}
+
+function isSupportedAssetLibraryTarget(target: string) {
+  return (
+    [
+      "hero.backgroundImageUrl",
+      "deals.topDealImageUrl",
+      "content.aboutHeroImageUrl",
+      "content.aboutIngredientImageUrl",
+      "content.aboutLocationImageUrl",
+      "content.aboutPrepImageUrl",
+      "content.appPhoneScreenshotUrl",
+      "footer.benefitsiLogo",
+    ].includes(target) ||
+    /^stamps\.reward\.\d+\.image$/.test(target) ||
+    /^content\.menuItem\.[a-z0-9_-]+\.imageUrl$/i.test(target) ||
+    /^social\.(instagram|facebook|tiktok|youtube|whatsapp|website|google|linkedin)\.iconUrl$/i.test(target)
+  )
 }
 
 function validateMicrositeAssetFile(
@@ -1011,7 +1066,7 @@ function applyUploadedAssets(
   config: MicrositeConfig,
   urls: UploadedMicrositeAssets,
 ) {
-  return {
+  const nextConfig: MicrositeConfig = {
     ...config,
     branding: {
       ...config.branding,
@@ -1046,8 +1101,6 @@ function applyUploadedAssets(
       "content.appPhoneScreenshotUrl":
         urls.app_phone_screenshot ||
         config.elementText["content.appPhoneScreenshotUrl"],
-      "content.appQrCodeUrl":
-        urls.app_qr_code || config.elementText["content.appQrCodeUrl"],
       "footer.benefitsiLogo":
         urls.footer_benefitsi_logo || config.elementText["footer.benefitsiLogo"],
       ...(urls.elementImages ?? {}),
@@ -1056,6 +1109,43 @@ function applyUploadedAssets(
       ...config.assets,
       library: mergeUploadedAssetsIntoLibrary(config, urls),
     },
+  }
+
+  return urls.libraryAsset
+    ? applyUploadedLibraryAsset(
+        nextConfig,
+        urls.libraryAsset.target,
+        urls.libraryAsset.url,
+      )
+    : nextConfig
+}
+
+function applyUploadedLibraryAsset(
+  config: MicrositeConfig,
+  target: string,
+  url: string,
+): MicrositeConfig {
+  switch (target) {
+    case "hero.backgroundImageUrl":
+      return { ...config, hero: { ...config.hero, backgroundImageUrl: url } }
+    case "deals.topDealImageUrl":
+      return { ...config, deals: { ...config.deals, topDealImageUrl: url } }
+    default:
+      if (
+        target.startsWith("content.") ||
+        target.startsWith("stamps.") ||
+        target.startsWith("social.") ||
+        target.startsWith("footer.")
+      ) {
+        return {
+          ...config,
+          elementText: {
+            ...config.elementText,
+            [target]: url,
+          },
+        }
+      }
+      return config
   }
 }
 
@@ -1078,8 +1168,13 @@ function mergeUploadedAssetsIntoLibrary(
     assetLibraryEntry(urls.reward_5_image, "Reward 5 Upload", "stamps.reward.5.image", now),
     assetLibraryEntry(urls.reward_10_image, "Reward 10 Upload", "stamps.reward.10.image", now),
     assetLibraryEntry(urls.app_phone_screenshot, "iPhone App-Screenshot Upload", "content.appPhoneScreenshotUrl", now),
-    assetLibraryEntry(urls.app_qr_code, "App QR-Code Upload", "content.appQrCodeUrl", now),
     assetLibraryEntry(urls.footer_benefitsi_logo, "Footer Logo Upload", "footer.benefitsiLogo", now),
+    assetLibraryEntry(
+      urls.libraryAsset?.url,
+      urls.libraryAsset?.label || "Asset Upload",
+      "general",
+      now,
+    ),
     ...Object.entries(urls.elementImages ?? {}).map(([slot, url]) =>
       assetLibraryEntry(url, `Element Upload ${slot}`, slot, now),
     ),

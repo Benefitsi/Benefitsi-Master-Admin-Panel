@@ -15,8 +15,8 @@ export const micrositeTemplatePresets: MicrositeTemplatePreset[] = [
     name: "Standard",
     description:
       "Responsive Partnerseite mit logo-basierter 3-Farben-Identität, Benefits, Loyalty und lokaler Story.",
-    accent: "#f97316",
-    accentSecondary: "#172554",
+    accent: "#118cff",
+    accentSecondary: "#061829",
   },
 ]
 

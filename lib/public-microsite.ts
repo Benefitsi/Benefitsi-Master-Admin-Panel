@@ -7,6 +7,7 @@ import type {
   Partner,
   PartnerOpeningHour,
   PartnerRewardMilestone,
+  PartnerSocial,
   PartnerWithDeals,
 } from "./admin-data"
 import {
@@ -47,6 +48,7 @@ export async function getPublishedMicrositePage(
     versionResult,
     dealsResult,
     milestonesResult,
+    socialsResult,
     hoursResult,
     menusResult,
   ] = await Promise.all([
@@ -76,6 +78,11 @@ export async function getPublishedMicrositePage(
         )
         .eq("partner_id", microsite.partner_id)
         .eq("active", true),
+      supabase
+        .from("partner_socials")
+        .select("id,partner_id,platform,url,handle,sort_order")
+        .eq("partner_id", microsite.partner_id)
+        .order("sort_order", { ascending: true, nullsFirst: false }),
       supabase
         .from("partner_opening_hours")
         .select("id,partner_id,weekday,opens_at,closes_at,label,is_closed,sort_order")
@@ -143,7 +150,7 @@ export async function getPublishedMicrositePage(
     ...partner,
     deals: (dealsResult.data ?? []) as Deal[],
     holidays: [],
-    socials: [],
+    socials: (socialsResult.data ?? []) as PartnerSocial[],
     reward_milestones:
       (milestonesResult.data ?? []) as PartnerRewardMilestone[],
     staff: [],
@@ -265,7 +272,6 @@ const PUBLIC_ELEMENT_TEXT_KEYS = new Set([
   "content.appKicker",
   "content.appKicker.icon",
   "content.appPhoneScreenshotUrl",
-  "content.appQrCodeUrl",
   "content.appQrLabel",
   "content.appQrText",
   "content.appText",
@@ -279,11 +285,19 @@ const PUBLIC_ELEMENT_TEXT_KEYS = new Set([
   "content.contactOpening",
   "content.contactSlogan",
   "content.contactSocialText",
+  "content.ecosystemHeadline",
+  "content.ecosystemKicker",
+  "content.ecosystemText",
   "content.faqHeadline",
   "content.faqLabel",
   "content.faqText",
   "content.footerText",
+  "content.socialFeed.enabled",
+  "content.socialFeed.platform",
+  "content.socialFeedHeadline",
+  "content.socialFeedKicker",
   "content.menuDescription",
+  "content.menuFeaturedItemKey",
   "content.menuHeadline",
   "content.menuLabel",
   "deals.description",
@@ -329,6 +343,7 @@ const PUBLIC_ELEMENT_TEXT_PATTERNS = [
   /^content\.appBenefit\.[0-2](\.icon)?$/,
   /^content\.contact\.(address|phone|opening)(\.icon)?$/,
   /^content\.faq\.[0-5]\.(question|answer)$/,
+  /^content\.socialFeed\.(instagram|tiktok)\.[0-5]\.url$/,
   /^content\.menuItem\.[a-z0-9_-]+\.(imageUrl|showImage)$/,
   /^footer\.trust\.[0-2]\.(label|icon)$/,
 ]
@@ -379,6 +394,7 @@ function isPublicAssetKey(key: string) {
 function isVisibilityKey(key: string) {
   return (
     (key.startsWith("social.") && key.endsWith(".enabled")) ||
+    key === "content.socialFeed.enabled" ||
     (key.startsWith("content.menuItem.") && key.endsWith(".showImage"))
   )
 }

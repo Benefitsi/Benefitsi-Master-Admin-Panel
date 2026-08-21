@@ -35,9 +35,9 @@ test("microsites expose one three-color default template with editable quote cop
 
   assert.equal(config.template, "restaurant-premium")
   assert.equal(config.branding.paletteMode, "auto")
-  assert.match(config.branding.accent, /^#[0-9a-f]{6}$/i)
-  assert.match(config.branding.accentSecondary, /^#[0-9a-f]{6}$/i)
-  assert.match(config.branding.accentTertiary, /^#[0-9a-f]{6}$/i)
+  assert.equal(config.branding.accent, "#118cff")
+  assert.equal(config.branding.accentSecondary, "#061829")
+  assert.equal(config.branding.accentTertiary, "#17d4d7")
   assert.ok(config.content.quoteText.length > 0)
   assert.ok(config.content.quoteAttribution.length > 0)
 })

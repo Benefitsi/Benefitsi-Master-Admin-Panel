@@ -9,6 +9,7 @@ import {
   BellRing,
   Check,
   Circle,
+  ChevronLeft,
   ChevronDown,
   Clock3,
   CreditCard,
@@ -20,6 +21,7 @@ import {
   Leaf,
   Languages,
   LockKeyhole,
+  Mail,
   MapPin,
   MapPinned,
   Menu as MenuIcon,
@@ -55,11 +57,11 @@ import {
 } from "react-icons/fa6"
 import type { IconType } from "react-icons"
 import type {
-  Deal,
   MenuItem,
   PartnerRewardMilestone,
   PartnerWithDeals,
 } from "@/lib/admin-data"
+import { isMicrositeTwoForOneDeal } from "@/lib/microsite-deals"
 import type { MicrositeConfig, MicrositeElementStyle } from "@/lib/microsites"
 import { defaultMicrositeFaqItems } from "@/lib/microsite-seo"
 import {
@@ -68,7 +70,9 @@ import {
 } from "@/lib/microsite-personalization"
 import { extractThemePalette } from "@/lib/logo-palette"
 import {
+  micrositeMenuItemDisplayName,
   micrositeMenuItemImageId,
+  micrositeMenuPreviewItems,
   micrositeMenuItemVisibilityId,
 } from "@/lib/microsite-menu"
 
@@ -109,16 +113,22 @@ const socialPlatforms: Array<{
 ]
 
 const BENEFITSI_ICON_SRC = "/Benefitsi_Icon_FullColor_RGB_512.png"
-const BENEFITSI_QR_PLACEHOLDER_SRC = "/benefitsi-app-qr-placeholder.png"
+const BENEFITSI_APP_QR_SRC =
+  process.env.NEXT_PUBLIC_BENEFITSI_APP_QR_URL ||
+  "/benefitsi-app-qr-placeholder.png"
 const PARTNER_DETAIL_SCREEN_SRC = "/partner-details-page.jpg"
+const SOCIAL_FEED_POST_INDICES = [0, 1, 2, 3, 4, 5] as const
 
 function micrositeThemeVars(config: MicrositeConfig): CSSProperties {
   const isDark = config.appearance?.mode === "dark"
 
   return {
-    "--site-bg": isDark ? "#101216" : "#fffdf8",
+    "--site-brand": "#118cff",
+    "--site-bg": isDark ? "#101216" : "#f4f8fc",
     "--site-surface": isDark ? "#181b21" : "#ffffff",
-    "--site-soft": isDark ? "#151a20" : "#f5fbff",
+    "--site-soft": isDark
+      ? "#151a20"
+      : "color-mix(in srgb, var(--site-accent) 5%, #f2f7fc)",
     "--site-text": isDark ? "#f8fafc" : "#151515",
     "--site-muted": isDark ? "#cbd5e1" : "#52525b",
     "--site-border": isDark ? "rgba(255,255,255,.12)" : "rgba(228,228,231,.88)",
@@ -164,7 +174,7 @@ function useResolvedPalette(config: MicrositeConfig, logoUrl: string) {
 
 function restaurantTheme() {
   return {
-    shell: "bg-[#f7f3ee] text-[#151515] shadow-[0_30px_90px_rgba(15,23,42,.10)]",
+    shell: "bg-[var(--site-bg)] text-[#151515] shadow-[0_30px_90px_rgba(15,23,42,.10)]",
     header: "border-zinc-200/70 bg-white/96",
     mobileButton: "text-zinc-900 hover:bg-zinc-50",
     mobilePanel: "border-zinc-200 bg-white text-zinc-800 shadow-[0_24px_64px_rgba(15,23,42,.18)]",
@@ -177,7 +187,7 @@ function restaurantSectionClass(
 ) {
   void template
   void section
-  return "bg-[#f7f3ee]"
+  return "bg-[var(--site-bg)]"
 }
 
 function siteCopy(config: MicrositeConfig, german: string, english: string) {
@@ -345,10 +355,10 @@ export function RestaurantPremiumMicrosite({
         onLanguageChange={setSiteLanguage}
       />
       <HeroSection config={config} template={config.template} />
-      <QuoteSection key={config.content.quoteText} config={config} />
       <DealsSection partner={partner} config={config} template={config.template} />
       <PartnerSocialFeed partner={partner} config={config} />
       <MenuSection partner={partner} config={config} template={config.template} />
+      <QuoteSection key={config.content.quoteText} config={config} />
       <AboutContactSection partner={partner} config={config} template={config.template} />
       <FaqSection config={config} />
       <FooterSection partner={partner} config={config} />
@@ -420,23 +430,6 @@ function MicrositeThemeCss() {
         isolation: isolate;
       }
 
-      .premium-hero-stage::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        z-index: 3;
-        pointer-events: none;
-        background: linear-gradient(
-          90deg,
-          #f7f3ee 0%,
-          rgba(247,243,238,.76) 1.4%,
-          transparent 5.5%,
-          transparent 94.5%,
-          rgba(247,243,238,.76) 98.6%,
-          #f7f3ee 100%
-        );
-      }
-
       .premium-hero-media-inner {
         inset: 0 0 auto;
         height: 490px;
@@ -452,7 +445,7 @@ function MicrositeThemeCss() {
         z-index: 3;
         height: 25%;
         pointer-events: none;
-        background: linear-gradient(180deg, transparent, rgba(247,243,238,.32) 44%, #f7f3ee 100%);
+        background: linear-gradient(180deg, transparent, rgba(244,248,252,.32) 44%, var(--site-bg) 100%);
       }
 
       .premium-hero-glass {
@@ -460,7 +453,7 @@ function MicrositeThemeCss() {
         inset: 285px 0 auto;
         height: 270px;
         width: 100%;
-        background: linear-gradient(180deg, transparent 0%, rgba(255,252,248,.32) 28%, rgba(247,243,238,.94) 73%, #f7f3ee 100%);
+        background: linear-gradient(180deg, transparent 0%, rgba(249,252,255,.32) 28%, rgba(244,248,252,.94) 73%, var(--site-bg) 100%);
         -webkit-backdrop-filter: blur(8px) saturate(112%);
         backdrop-filter: blur(8px) saturate(112%);
         -webkit-mask-image: linear-gradient(180deg, transparent, #000 34%, #000 100%);
@@ -473,23 +466,61 @@ function MicrositeThemeCss() {
       }
 
       .premium-hero-content {
-        left: 0;
-        top: 400px;
         width: 100%;
         padding-inline: 1.5rem;
       }
 
+      .premium-hero-title-panel {
+        margin-inline: -.3rem;
+        padding: .95rem 1rem 1rem;
+        border: 1px solid rgba(255,255,255,.76);
+        border-radius: 1.25rem;
+        background:
+          radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--site-accent) 12%, transparent), transparent 48%),
+          linear-gradient(145deg, rgba(255,255,255,.82), rgba(247,250,252,.64));
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.96),
+          0 18px 42px -30px color-mix(in srgb, var(--site-secondary) 50%, transparent);
+        -webkit-backdrop-filter: blur(18px) saturate(140%);
+        backdrop-filter: blur(18px) saturate(140%);
+      }
+
+      .premium-hero-flow {
+        top: 370px;
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+      }
+
+      .premium-hero-ambient {
+        position: absolute;
+        right: 1rem;
+        top: 2.5rem;
+        z-index: 2;
+        width: min(52vw, 34rem);
+        aspect-ratio: 1;
+        border-radius: 999px;
+        pointer-events: none;
+        opacity: .16;
+        filter: blur(22px);
+        background: radial-gradient(circle, color-mix(in srgb, var(--site-accent) 65%, white) 0%, color-mix(in srgb, var(--site-tertiary) 24%, transparent) 38%, transparent 70%);
+        animation: premium-hero-ambient-drift 10s ease-in-out infinite alternate;
+      }
+
       .premium-feature-row {
         isolation: isolate;
-        color: #211b16;
-        background: linear-gradient(135deg, rgba(255,255,255,.68), rgba(255,248,240,.38));
-        -webkit-backdrop-filter: blur(27px) saturate(168%) contrast(103%);
-        backdrop-filter: blur(27px) saturate(168%) contrast(103%);
+        color: var(--site-secondary);
+        background:
+          radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--site-accent) 13%, transparent), transparent 38%),
+          linear-gradient(135deg, rgba(255,255,255,.64), rgba(239,247,255,.38));
+        -webkit-backdrop-filter: blur(24px) saturate(155%) contrast(102%);
+        backdrop-filter: blur(24px) saturate(155%) contrast(102%);
         box-shadow:
           inset 0 1px 0 rgba(255,255,255,.92),
-          inset 0 -1px 0 rgba(255,255,255,.28),
-          0 26px 56px -20px rgba(103, 57, 21, .34),
-          0 9px 22px -14px rgba(103, 57, 21, .24);
+          inset 0 -1px 0 rgba(255,255,255,.34),
+          inset 1px 0 0 rgba(255,255,255,.46),
+          0 22px 54px -28px color-mix(in srgb, var(--site-brand) 38%, transparent),
+          0 8px 20px -16px color-mix(in srgb, var(--site-accent) 26%, transparent);
       }
 
       .premium-feature-row::before,
@@ -508,13 +539,20 @@ function MicrositeThemeCss() {
       }
 
       .premium-hero-service-icon {
-        color: color-mix(in srgb, var(--site-accent) 52%, #7c2d12 48%);
-        background: rgba(255,255,255,.72);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,.96), 0 9px 20px -15px rgba(52,31,18,.55);
+        color: color-mix(in srgb, var(--site-accent) 72%, var(--site-brand));
+        background: rgba(255,255,255,.58);
+        border: 1px solid rgba(255,255,255,.72);
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.96),
+          inset 0 -1px 0 color-mix(in srgb, var(--site-brand) 10%, transparent),
+          0 8px 18px -14px color-mix(in srgb, var(--site-secondary) 42%, transparent);
+        -webkit-backdrop-filter: blur(14px) saturate(145%);
+        backdrop-filter: blur(14px) saturate(145%);
       }
 
       .premium-hero-service-label {
-        color: #211b16;
+        color: var(--site-secondary);
+        text-decoration: none;
         text-shadow: 0 1px 0 rgba(255,255,255,.64);
       }
 
@@ -533,11 +571,26 @@ function MicrositeThemeCss() {
       }
 
       @container (min-width: 640px) {
+        .premium-hero-title-panel {
+          margin-inline: 0;
+          padding: 0;
+          border: 0;
+          border-radius: 0;
+          background: none;
+          box-shadow: none;
+          -webkit-backdrop-filter: none;
+          backdrop-filter: none;
+        }
+
         .premium-hero-media-inner {
           inset: 0;
           height: 100%;
-          -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 82%, rgba(0,0,0,.9) 89%, transparent 100%);
-          mask-image: linear-gradient(180deg, #000 0%, #000 82%, rgba(0,0,0,.9) 89%, transparent 100%);
+          -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 90%, rgba(0,0,0,.92) 96%, transparent 100%);
+          mask-image: linear-gradient(180deg, #000 0%, #000 90%, rgba(0,0,0,.92) 96%, transparent 100%);
+        }
+
+        .premium-hero-stage::after {
+          height: 14%;
         }
 
         .premium-hero-glass {
@@ -546,10 +599,10 @@ function MicrositeThemeCss() {
           width: 79%;
           background: linear-gradient(
             90deg,
-            rgba(255, 252, 248, .84) 0%,
-            rgba(255, 251, 247, .70) 47%,
-            rgba(255, 249, 244, .14) 82%,
-            rgba(255, 249, 244, 0) 100%
+            rgba(249, 252, 255, .84) 0%,
+            rgba(247, 251, 255, .70) 47%,
+            rgba(242, 248, 255, .14) 82%,
+            rgba(242, 248, 255, 0) 100%
           );
           -webkit-backdrop-filter: blur(20px) saturate(118%);
           backdrop-filter: blur(20px) saturate(118%);
@@ -562,9 +615,11 @@ function MicrositeThemeCss() {
           top: 2.25rem;
         }
 
+        .premium-hero-flow {
+          top: 6.75rem;
+        }
+
         .premium-hero-content {
-          left: 0;
-          top: 7.75rem;
           width: 64%;
           max-width: 510px;
           padding-inline: 2rem;
@@ -576,10 +631,10 @@ function MicrositeThemeCss() {
           width: 69%;
           background: linear-gradient(
             90deg,
-            rgba(255, 252, 248, .88) 0%,
-            rgba(255, 251, 247, .72) 48%,
-            rgba(255, 249, 244, .12) 84%,
-            rgba(255, 249, 244, 0) 100%
+            rgba(249, 252, 255, .88) 0%,
+            rgba(247, 251, 255, .72) 48%,
+            rgba(242, 248, 255, .12) 84%,
+            rgba(242, 248, 255, 0) 100%
           );
         }
 
@@ -588,8 +643,11 @@ function MicrositeThemeCss() {
           top: 2rem;
         }
 
+        .premium-hero-flow {
+          top: 6.25rem;
+        }
+
         .premium-hero-content {
-          top: 7.5rem;
           width: 54%;
           max-width: 650px;
           padding-inline: 3rem;
@@ -698,7 +756,17 @@ function MicrositeThemeCss() {
       }
 
       .premium-app-screen {
+        -webkit-text-size-adjust: none;
+        text-size-adjust: none;
         transition: transform .65s var(--ease-out-expo), box-shadow .65s var(--ease-out-expo);
+      }
+
+      .premium-phone-compact-label {
+        font-size: 5.25px !important;
+        font-weight: 700;
+        line-height: 1.1 !important;
+        letter-spacing: 0;
+        white-space: nowrap;
       }
 
       .premium-app-screen:hover {
@@ -706,12 +774,50 @@ function MicrositeThemeCss() {
         box-shadow: 0 42px 90px -42px color-mix(in srgb, var(--site-accent) 50%, #3f2818);
       }
 
+      .premium-phone-view {
+        animation: premium-phone-view-enter .24s var(--ease-out-expo) both;
+      }
+
+      .premium-phone-scroll {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+        overscroll-behavior-x: none;
+        touch-action: pan-y;
+        scrollbar-width: none;
+      }
+
+      .premium-phone-scroll > * {
+        max-width: 100%;
+      }
+
+      .premium-phone-scroll::-webkit-scrollbar {
+        display: none;
+      }
+
+      .premium-instagram-embed,
+      .premium-instagram-embed .instagram-media,
+      .premium-instagram-embed iframe {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+      }
+
+      .premium-instagram-embed .instagram-media {
+        margin: 0 !important;
+      }
+
+      @keyframes premium-phone-view-enter {
+        from { opacity: 0; transform: translate3d(8px,0,0); }
+        to { opacity: 1; transform: translate3d(0,0,0); }
+      }
+
       .premium-app-cta {
         position: relative;
         isolation: isolate;
         overflow: hidden;
-        background: linear-gradient(112deg, color-mix(in srgb, var(--site-accent) 76%, #111827), color-mix(in srgb, var(--site-accent) 72%, var(--site-tertiary)));
-        box-shadow: 0 22px 44px -24px color-mix(in srgb, var(--site-accent) 70%, #111827);
+        background: linear-gradient(112deg, color-mix(in srgb, var(--site-accent) 91%, var(--site-secondary)), color-mix(in srgb, var(--site-accent) 82%, var(--site-tertiary)));
+        box-shadow: 0 22px 44px -24px color-mix(in srgb, var(--site-accent) 76%, var(--site-secondary));
       }
 
       .premium-app-cta::after {
@@ -723,15 +829,6 @@ function MicrositeThemeCss() {
         background: linear-gradient(110deg, transparent 42%, rgba(255,255,255,.48) 50%, transparent 58%);
         transform: translate3d(-58%,0,0);
         animation: premium-app-cta-sheen 4.8s ease-in-out infinite;
-      }
-
-      .premium-menu-spotlight img {
-        transition: transform .75s var(--ease-out-expo), filter .55s ease;
-      }
-
-      .premium-menu-spotlight:hover img {
-        transform: scale(1.045);
-        filter: saturate(1.08) brightness(1.035);
       }
 
       .premium-faq-item {
@@ -755,19 +852,6 @@ function MicrositeThemeCss() {
         78%, 100% { transform: translate3d(58%,0,0); }
       }
 
-      .premium-quote-shell::before {
-        content: "";
-        position: absolute;
-        left: 50%;
-        top: 0;
-        width: min(22vw, 148px);
-        height: 2px;
-        transform: translateX(-50%);
-        pointer-events: none;
-        opacity: .5;
-        background: linear-gradient(90deg, transparent, var(--site-tertiary), var(--site-accent), transparent);
-      }
-
       .premium-quote-rule {
         background: linear-gradient(90deg, var(--site-accent), var(--site-tertiary), var(--site-secondary));
         transform-origin: center;
@@ -778,31 +862,50 @@ function MicrositeThemeCss() {
         transform: scaleX(.18);
       }
 
-      .premium-topdeal::before,
+      .premium-topdeal::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 4;
+        pointer-events: none;
+        border-radius: inherit;
+        border: 2px solid color-mix(in srgb, var(--site-accent) 76%, white);
+        box-shadow:
+          inset 0 0 20px color-mix(in srgb, var(--site-accent) 18%, transparent),
+          inset 0 1px 0 rgba(255,255,255,.26),
+          0 0 20px -9px color-mix(in srgb, var(--site-accent) 84%, transparent);
+      }
+
       .premium-topdeal::after {
         content: "";
         position: absolute;
+        inset: 0;
+        z-index: 5;
+        padding: 2px;
         pointer-events: none;
-      }
-
-      .premium-topdeal::before {
-        inset: 1px;
-        z-index: 4;
         border-radius: inherit;
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), inset 0 1px 0 rgba(255,255,255,.18);
+        opacity: 1;
+        background: linear-gradient(
+          102deg,
+          color-mix(in srgb, var(--site-accent) 32%, transparent) 8%,
+          var(--site-accent) 34%,
+          color-mix(in srgb, var(--site-accent) 42%, white) 46%,
+          white 50%,
+          var(--site-accent) 55%,
+          color-mix(in srgb, var(--site-accent) 42%, transparent) 78%
+        );
+        background-size: 260% 100%;
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        mask-composite: exclude;
+        filter: drop-shadow(0 0 5px color-mix(in srgb, var(--site-accent) 70%, transparent));
+        animation: premium-topdeal-border 3.4s linear infinite;
       }
 
-      .premium-topdeal::after {
-        inset: -45% -18%;
-        z-index: 4;
-        opacity: 0;
-        background: linear-gradient(112deg, transparent 38%, rgba(255,255,255,.5) 49%, transparent 60%);
-        mix-blend-mode: screen;
-        transform: translate3d(-38%, 0, 0);
-      }
-
-      .premium-topdeal.is-active::after {
-        animation: premium-topdeal-sheen 5.4s ease-in-out .28s infinite;
+      @keyframes premium-topdeal-border {
+        from { background-position: 165% 0; }
+        to { background-position: -65% 0; }
       }
 
       .premium-motion-ready .premium-topdeal.is-active {
@@ -813,9 +916,7 @@ function MicrositeThemeCss() {
 
       .premium-topdeal.is-active > img {
         will-change: transform, filter;
-        animation:
-          premium-topdeal-image-enter .88s var(--ease-out-expo) both,
-          premium-topdeal-image-breathe 7.5s ease-in-out .9s infinite alternate;
+        animation: premium-topdeal-image-enter .88s var(--ease-out-expo) both;
       }
 
       .premium-topdeal > img {
@@ -840,25 +941,44 @@ function MicrositeThemeCss() {
 
       .premium-stamp-circle[data-completed="true"] {
         border-color: #10b981 !important;
-        background: #10b981 !important;
-        color: #fff !important;
+        background: color-mix(in srgb, #10b981 10%, white) !important;
+        color: #047857 !important;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.62) !important;
       }
 
       .premium-stamp-circle[data-completed="true"][data-highlighted="true"] {
         border-color: var(--site-accent) !important;
-        background: var(--site-accent) !important;
-        color: #fff !important;
+        background: color-mix(in srgb, var(--site-accent) 12%, white) !important;
+        color: var(--site-accent) !important;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.62) !important;
       }
 
-      @keyframes premium-hero-image-enter {
-        from {
-          opacity: .82;
-          clip-path: inset(0 0 0 3%);
-        }
-        to {
-          opacity: 1;
-          clip-path: inset(0 0 0 0);
-        }
+      .premium-stamp-circle[data-current="true"] .premium-stamp-number {
+        animation: premium-stamp-number-pop .22s cubic-bezier(.2, 1.55, .5, 1) both;
+      }
+
+      .premium-stamp-circle[data-current="true"] .premium-stamp-check {
+        animation: premium-stamp-check-pop .18s cubic-bezier(.2, 1.45, .45, 1) .06s both;
+      }
+
+      .premium-stamp-circle[data-current="true"] .premium-stamp-gift {
+        animation: premium-stamp-check-pop .2s cubic-bezier(.2, 1.45, .45, 1) .06s both;
+      }
+
+      .premium-stamp-check svg,
+      .premium-stamp-welcome-icon svg {
+        stroke-width: 2.8;
+      }
+
+      @keyframes premium-stamp-number-pop {
+        0% { transform: translateY(1px) scale(.78); }
+        58% { transform: translateY(-2px) scale(1.2); }
+        100% { transform: translateY(0) scale(1); }
+      }
+
+      @keyframes premium-stamp-check-pop {
+        from { opacity: 0; transform: scale(.55) rotate(-12deg); }
+        to { opacity: 1; transform: scale(1) rotate(0); }
       }
 
       @keyframes premium-hero-image-focus {
@@ -895,16 +1015,20 @@ function MicrositeThemeCss() {
         to { opacity: 1; transform: translate3d(0, 0, 0); }
       }
 
+      @keyframes premium-hero-ambient-drift {
+        from { transform: translate3d(-3%, -2%, 0) scale(.94); opacity: .11; }
+        to { transform: translate3d(3%, 3%, 0) scale(1.08); opacity: .2; }
+      }
+
+      @keyframes premium-hero-image-drift {
+        from { transform: scale(1.018) translate3d(-.35%, 0, 0); }
+        to { transform: scale(1.052) translate3d(.45%, -.3%, 0); }
+      }
+
       @keyframes premium-liquid-glint {
         0% { opacity: .08; transform: translate3d(-48%, 0, 0); }
         52% { opacity: .46; }
         100% { opacity: .14; transform: translate3d(48%, 0, 0); }
-      }
-
-      @keyframes premium-topdeal-sheen {
-        0%, 18% { opacity: 0; transform: translate3d(-38%, 0, 0); }
-        38% { opacity: .36; }
-        62%, 100% { opacity: 0; transform: translate3d(38%, 0, 0); }
       }
 
       @keyframes premium-topdeal-image-enter {
@@ -912,17 +1036,13 @@ function MicrositeThemeCss() {
         to { filter: saturate(1) brightness(1); clip-path: inset(0 0 0 0); }
       }
 
-      @keyframes premium-topdeal-image-breathe {
-        from { transform: scale(1); filter: saturate(1) brightness(1); }
-        to { transform: scale(1.026); filter: saturate(1.08) brightness(1.035); }
-      }
-
       .premium-motion-ready .premium-hero-media-inner {
-        animation: premium-hero-image-enter .9s var(--ease-out-expo) both;
+        animation: premium-hero-image-focus 1.08s var(--ease-out-expo) both;
       }
 
       .premium-motion-ready .premium-hero-image {
-        animation: premium-hero-image-focus 1.08s var(--ease-out-expo) both;
+        animation: premium-hero-image-drift 18s ease-in-out 1.1s infinite alternate;
+        will-change: transform;
       }
 
       .premium-motion-ready .premium-hero-glass {
@@ -948,7 +1068,7 @@ function MicrositeThemeCss() {
       }
 
       .premium-about-photos:hover figure:last-child {
-        transform: translate3d(15px, 8px, 0) rotate(5deg);
+        transform: translate3d(-4px, 8px, 0) rotate(4deg);
         box-shadow: 0 34px 70px rgba(15, 23, 42, .24);
       }
 
@@ -1198,10 +1318,10 @@ function SiteHeader({
             style={imageStyleFor(config, "branding.logo")}
             size="nav"
           />
-          <div className="block min-w-0 max-w-40 overflow-hidden @min-[480px]:max-w-44 @min-[640px]:max-w-72">
+          <div className="block min-w-0 flex-1 overflow-hidden @min-[640px]:max-w-72">
             <p
               {...editable("branding.partnerName", "text", "Partnername")}
-              className="w-full max-w-full truncate text-[11px] font-black tracking-[-0.03em] text-zinc-950 @min-[480px]:text-sm @min-[640px]:text-base"
+              className="w-full max-w-full truncate text-sm font-black tracking-[-0.03em] text-zinc-950 @min-[640px]:text-base"
               style={textStyleFor(config, "branding.partnerName")}
             >
               {textValue(config, "branding.partnerName", partner.name || config.hero.headline)}
@@ -1209,7 +1329,7 @@ function SiteHeader({
           </div>
         </div>
         <nav
-          className="hidden min-w-0 items-center justify-end gap-1 text-xs font-bold text-zinc-800 @min-[1180px]:flex"
+          className="hidden min-w-0 items-center justify-end gap-0.5 text-sm font-bold text-zinc-800 @min-[1180px]:flex @min-[1320px]:gap-1 @min-[1320px]:text-[15px]"
           style={navigationTabsStyleFor(config)}
         >
           {navLinks.map((link) => (
@@ -1278,8 +1398,8 @@ function NavigationLink({
       onClick={onNavigate}
       className={
         compact
-          ? "rounded-xl px-3 py-2.5 transition hover:bg-zinc-50 hover:text-[var(--site-accent)]"
-          : "premium-nav-link whitespace-nowrap rounded-lg px-3 py-2 leading-none transition duration-300 hover:text-[var(--site-accent)] active:translate-y-px"
+          ? "rounded-xl px-3 py-2.5 text-[15px] transition hover:bg-zinc-50 hover:text-[var(--site-accent)]"
+          : "premium-nav-link whitespace-nowrap rounded-lg px-2.5 py-2 leading-none transition duration-300 hover:text-[var(--site-accent)] active:translate-y-px @min-[1320px]:px-3"
       }
       style={textStyleFor(config, `navigation.${link.anchor}`)}
     >
@@ -1304,8 +1424,8 @@ function HeroSection({
   ]
 
   return (
-    <section className="relative bg-[#f7f3ee]">
-      <div className="premium-hero-stage relative mx-auto min-h-[1000px] w-full min-w-0 max-w-7xl overflow-visible bg-[#f7f3ee] @min-[640px]:min-h-[870px] @min-[1024px]:min-h-[800px]">
+    <section className="relative bg-[var(--site-bg)]">
+      <div className="premium-hero-stage relative mx-auto min-h-[940px] w-full min-w-0 max-w-7xl overflow-visible bg-[var(--site-bg)] @min-[640px]:min-h-[650px] @min-[1024px]:min-h-[660px]">
         <div className="premium-hero-media-inner absolute inset-0 overflow-hidden bg-[var(--site-secondary)]">
             <BrandedImage
               src={config.hero.backgroundImageUrl}
@@ -1319,12 +1439,15 @@ function HeroSection({
 
         <div aria-hidden="true" className="premium-hero-glass pointer-events-none z-[1]" />
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[2] bg-[linear-gradient(180deg,rgba(255,251,247,.02)_0%,transparent_56%,rgba(255,247,239,.08)_78%,rgba(255,250,246,.42)_100%)]" />
+        <span aria-hidden="true" className="premium-hero-ambient" />
 
         <div className="premium-hero-badge absolute z-10">
           <Badge config={config} />
         </div>
 
-        <div className="premium-hero-content premium-hero-copy absolute z-10">
+        <div className="premium-hero-flow absolute inset-x-0 z-10">
+        <div className="premium-hero-content premium-hero-copy relative">
+          <div className="premium-hero-title-panel">
           <h1
             {...editable("hero.headline", "text", "Startbereich Überschrift")}
             className="max-w-[18ch] whitespace-pre-line text-[clamp(1.75rem,7.8cqw,2.3rem)] font-black leading-[.98] tracking-[-0.04em] text-zinc-950 [text-wrap:balance] @min-[640px]:max-w-[11ch] @min-[640px]:text-[clamp(3rem,6.3cqw,4rem)] @min-[1024px]:text-[clamp(3rem,4.7cqw,4rem)]"
@@ -1339,6 +1462,7 @@ function HeroSection({
           >
             {config.hero.slogan}
           </p>
+          </div>
 
           <div className="mt-6 grid gap-3 text-[13px] font-semibold text-zinc-800 @min-[640px]:mt-7 @min-[640px]:text-sm @min-[1024px]:mt-8">
             <MetaLine
@@ -1358,41 +1482,42 @@ function HeroSection({
             />
           </div>
 
-          <div className="mt-7 flex flex-col gap-2.5 @min-[520px]:flex-row @min-[1024px]:mt-8 @min-[1024px]:gap-3">
+          <div className="mt-6 flex flex-col gap-2.5 @min-[520px]:flex-row @min-[1024px]:gap-3">
             <HeroButton id="hero.primaryButtonLabel" primary label={config.hero.primaryButtonLabel} config={config} />
             <HeroButton id="hero.secondaryButtonLabel" label={config.hero.secondaryButtonLabel} config={config} />
           </div>
         </div>
 
-        <div className="premium-feature-row premium-hero-features absolute bottom-4 left-4 right-4 z-20 grid min-h-[174px] grid-cols-2 overflow-hidden rounded-[1.75rem] border border-white/65 px-2 py-2 @min-[640px]:bottom-8 @min-[640px]:left-6 @min-[640px]:right-6 @min-[640px]:min-h-[180px] @min-[640px]:grid-cols-4 @min-[640px]:rounded-[2.25rem] @min-[640px]:px-2 @min-[640px]:py-5 @min-[1024px]:bottom-10 @min-[1024px]:left-10 @min-[1024px]:right-10 @min-[1024px]:min-h-[190px] @min-[1024px]:px-4">
+        <div className="premium-feature-row premium-hero-features relative z-20 mx-4 grid min-h-[140px] grid-cols-2 overflow-hidden rounded-[1.5rem] border border-white/70 px-2 py-2 @min-[640px]:mx-6 @min-[640px]:min-h-[124px] @min-[640px]:grid-cols-4 @min-[640px]:rounded-[1.75rem] @min-[640px]:px-2 @min-[640px]:py-3 @min-[1024px]:mx-10 @min-[1024px]:min-h-[126px] @min-[1024px]:px-3">
           {config.hero.services.slice(0, 4).map((service, index) => (
             <div
               key={`${service.label}-${index}`}
-              className="flex min-h-[82px] min-w-0 flex-col items-center justify-center gap-1.5 px-2 py-2 text-center odd:border-r odd:border-black/[.06] [&:nth-child(-n+2)]:border-b [&:nth-child(-n+2)]:border-black/[.06] @min-[640px]:min-h-0 @min-[640px]:gap-2 @min-[640px]:border-b-0 @min-[640px]:border-r @min-[640px]:border-black/[.07] @min-[640px]:px-3 @min-[640px]:last:border-r-0 @min-[1024px]:gap-3 @min-[1024px]:px-6"
+              className="flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 px-2 py-1.5 text-center @min-[640px]:min-h-0 @min-[640px]:gap-1.5 @min-[640px]:border-r @min-[640px]:border-white/55 @min-[640px]:px-3 @min-[640px]:last:border-r-0 @min-[1024px]:px-5"
             >
               <ServiceIcon
                 id={`hero.services.${index}.icon`}
                 name={service.icon}
                 config={config}
-                className="premium-hero-service-icon grid size-9 shrink-0 place-items-center rounded-xl @min-[640px]:size-10 @min-[1024px]:size-12"
+                className="premium-hero-service-icon grid size-8 shrink-0 place-items-center rounded-[10px] @min-[640px]:size-9"
               />
               <div className="min-w-0">
                 <p
                   {...editable(`hero.services.${index}.label`, "text", `Service ${index + 1}`)}
-                  className="premium-hero-service-label premium-no-text-reveal text-[11px] font-black leading-tight @min-[640px]:text-sm"
+                  className="premium-hero-service-label premium-no-text-reveal text-[11px] font-black leading-tight @min-[640px]:text-[13px]"
                   style={textStyleFor(config, `hero.services.${index}.label`)}
                 >
                   {service.label}
                 </p>
                 <p
                   {...editable(`hero.services.${index}.description`, "text", `Service Beschreibung ${index + 1}`)}
-                  className="premium-hero-service-description premium-no-text-reveal mt-1.5 hidden text-[11px] leading-4 @min-[640px]:mt-2 @min-[640px]:block @min-[1024px]:text-xs @min-[1024px]:leading-5"
+                  className="premium-hero-service-description premium-no-text-reveal mt-1 hidden text-[10px] leading-4 @min-[640px]:block @min-[1024px]:text-[11px]"
                 >
                   {textValue(config, `hero.services.${index}.description`, featureDescriptions[index] || featureDescriptions[0])}
                 </p>
               </div>
             </div>
           ))}
+        </div>
         </div>
 
       </div>
@@ -1411,22 +1536,22 @@ function LanguageSwitch({
 }) {
   return (
     <div
-      className={`flex shrink-0 items-center rounded-xl border border-zinc-200/80 bg-white/75 p-1 shadow-sm backdrop-blur-xl ${
+      className={`flex shrink-0 items-center gap-0.5 rounded-xl bg-[color-mix(in_srgb,var(--site-accent)_7%,white)] p-1 ring-1 ring-black/[.06] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_8px_24px_-20px_rgba(15,23,42,.5)] backdrop-blur-xl ${
         compact ? "h-10" : "h-11"
       }`}
       role="group"
       aria-label={language === "en" ? "Website language" : "Websitesprache"}
     >
-      <Languages className="ml-1 hidden size-3.5 text-zinc-500 @min-[640px]:block" aria-hidden="true" />
+      <Languages className="mx-1 hidden size-4 text-[var(--site-accent)] @min-[640px]:block" aria-hidden="true" />
       {(["de", "en"] as const).map((option) => (
         <button
           key={option}
           type="button"
           onClick={() => onChange(option)}
-          className={`grid h-8 min-w-8 place-items-center rounded-lg px-1.5 text-[10px] font-black uppercase tracking-[.08em] transition ${
+          className={`grid h-8 min-w-8 place-items-center rounded-lg px-2 text-xs font-black uppercase tracking-[.06em] transition duration-200 active:scale-[.97] ${
             language === option
-              ? "bg-zinc-950 text-white shadow-sm"
-              : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950"
+              ? "bg-white text-[var(--site-accent)] shadow-[0_5px_14px_-10px_rgba(15,23,42,.55)] ring-1 ring-black/[.06]"
+              : "text-zinc-500 hover:bg-white/65 hover:text-zinc-950"
           }`}
           aria-pressed={language === option}
         >
@@ -1462,7 +1587,7 @@ function DealsSection({
         .filter((stamp) => stamp > 0 && stamp <= stampCount),
     ),
   )
-  const twoForOneDeal = partner.deals.find(isTwoForOneDeal)
+  const twoForOneDeal = partner.deals.find(isMicrositeTwoForOneDeal)
   const topDealHeadline = twoForOneDeal?.reward_item || config.deals.topDealHeadline
   const topDealDescription = twoForOneDeal?.customer_description || config.deals.topDealDescription
   const topDealBullets = twoForOneDeal
@@ -1470,17 +1595,11 @@ function DealsSection({
         .filter((item): item is string => Boolean(item?.trim()))
         .slice(0, 3)
     : []
-  const stampStoryRef = useRef<HTMLDivElement | null>(null)
-  const stampPanelRef = useRef<HTMLDivElement | null>(null)
   const topDealRef = useRef<HTMLDivElement | null>(null)
   const [activeStamp, setActiveStamp] = useState(0)
   const [topDealActive, setTopDealActive] = useState(false)
 
   useEffect(() => {
-    const story = stampStoryRef.current
-    const panel = stampPanelRef.current
-    if (!story || !panel) return
-
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       const reducedMotionFrame = window.requestAnimationFrame(() => {
         setActiveStamp(stampCount)
@@ -1488,197 +1607,31 @@ function DealsSection({
       return () => window.cancelAnimationFrame(reducedMotionFrame)
     }
 
-    let disposed = false
-    let refreshFrame = 0
-    let releaseTimer = 0
     let stepTimer = 0
-    let stampTrigger: { kill: () => void } | null = null
-    let stampResizeObserver: ResizeObserver | null = null
-    let detachInputListeners: (() => void) | null = null
 
-    const findScrollContainer = (element: HTMLElement) => {
-      let parent = element.parentElement
+    const playStampSequence = () => {
+      setActiveStamp(0)
 
-      while (parent && parent !== document.body) {
-        const styles = window.getComputedStyle(parent)
-        const canScroll = /(auto|scroll|overlay)/.test(styles.overflowY)
-
-        if (canScroll && parent.scrollHeight > parent.clientHeight + 1) {
-          return parent
+      let nextStamp = 1
+      const advanceStamp = () => {
+        setActiveStamp(nextStamp)
+        nextStamp += 1
+        if (nextStamp <= stampCount) {
+          const progress = (nextStamp - 1) / Math.max(1, stampCount - 1)
+          const nextDelay = Math.round(370 - progress * 220)
+          stepTimer = window.setTimeout(advanceStamp, nextDelay)
+        } else {
+          stepTimer = window.setTimeout(playStampSequence, 2600)
         }
-        parent = parent.parentElement
       }
 
-      return undefined
+      stepTimer = window.setTimeout(advanceStamp, 440)
     }
 
-    void Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(
-      ([gsapModule, scrollTriggerModule]) => {
-        if (disposed) return
-
-        const gsap = gsapModule.gsap
-        const ScrollTrigger = scrollTriggerModule.ScrollTrigger
-        const scroller = findScrollContainer(story)
-        gsap.registerPlugin(ScrollTrigger)
-
-        const inputTarget: EventTarget = scroller || window
-        let locked = false
-        let releasing = false
-        let stepping = false
-        let currentStamp = 0
-        let accumulatedDelta = 0
-        let lastTouchY: number | null = null
-        let queuedDirections: number[] = []
-
-        const syncStamp = (nextStamp: number) => {
-          currentStamp = Math.max(0, Math.min(stampCount, nextStamp))
-          setActiveStamp((current) => (current === currentStamp ? current : currentStamp))
-        }
-        const releaseScene = () => {
-          locked = false
-          releasing = false
-          stepping = false
-          accumulatedDelta = 0
-          queuedDirections = []
-          story.removeAttribute("data-scroll-locked")
-        }
-        const scheduleRelease = () => {
-          if (releasing) return
-          releasing = true
-          releaseTimer = window.setTimeout(releaseScene, 90)
-        }
-        const lockScene = (direction: "forward" | "backward") => {
-          if (locked || releasing) return
-
-          locked = true
-          accumulatedDelta = 0
-          queuedDirections = []
-          story.setAttribute("data-scroll-locked", "true")
-          story.nextElementSibling?.classList.add("is-visible")
-          syncStamp(direction === "forward" ? 0 : stampCount)
-        }
-        const runQueuedStep = () => {
-          if (!locked || releasing || stepping) return
-
-          const direction = queuedDirections.shift()
-          if (!direction) return
-
-          const nextStamp = Math.max(0, Math.min(stampCount, currentStamp + direction))
-          if (nextStamp === currentStamp) {
-            queuedDirections = []
-            scheduleRelease()
-            return
-          }
-
-          stepping = true
-          syncStamp(nextStamp)
-          const reachedExit =
-            (direction > 0 && nextStamp === stampCount) ||
-            (direction < 0 && nextStamp === 0)
-
-          stepTimer = window.setTimeout(() => {
-            stepping = false
-            if (reachedExit) {
-              queuedDirections = []
-              scheduleRelease()
-            } else {
-              runQueuedStep()
-            }
-          }, 260)
-        }
-        const progressFromDelta = (delta: number) => {
-          if (!locked) return
-
-          accumulatedDelta += delta
-          if (Math.abs(accumulatedDelta) < 52 || releasing) return
-
-          const direction = accumulatedDelta > 0 ? 1 : -1
-          accumulatedDelta = 0
-          const lastQueuedDirection = queuedDirections.at(-1)
-          if (lastQueuedDirection && lastQueuedDirection !== direction) {
-            queuedDirections = []
-          }
-          if (queuedDirections.length < stampCount) queuedDirections.push(direction)
-          runQueuedStep()
-        }
-        const onWheel = (event: WheelEvent) => {
-          if (!locked) return
-          event.preventDefault()
-          progressFromDelta(event.deltaY)
-        }
-        const onKeyDown = (event: KeyboardEvent) => {
-          if (!locked) return
-
-          const forward = event.key === "ArrowDown" || event.key === "PageDown" || (event.key === " " && !event.shiftKey)
-          const backward = event.key === "ArrowUp" || event.key === "PageUp" || (event.key === " " && event.shiftKey)
-          if (!forward && !backward) return
-
-          event.preventDefault()
-          progressFromDelta(forward ? 60 : -60)
-        }
-        const onTouchStart = (event: TouchEvent) => {
-          lastTouchY = event.touches[0]?.clientY ?? null
-        }
-        const onTouchMove = (event: TouchEvent) => {
-          if (!locked || lastTouchY === null) return
-
-          const nextTouchY = event.touches[0]?.clientY
-          if (nextTouchY === undefined) return
-          event.preventDefault()
-          progressFromDelta(lastTouchY - nextTouchY)
-          lastTouchY = nextTouchY
-        }
-
-        inputTarget.addEventListener("wheel", onWheel as EventListener, { capture: true, passive: false })
-        inputTarget.addEventListener("touchstart", onTouchStart as EventListener, { passive: true })
-        inputTarget.addEventListener("touchmove", onTouchMove as EventListener, { capture: true, passive: false })
-        document.addEventListener("keydown", onKeyDown)
-        detachInputListeners = () => {
-          inputTarget.removeEventListener("wheel", onWheel as EventListener, true)
-          inputTarget.removeEventListener("touchstart", onTouchStart as EventListener)
-          inputTarget.removeEventListener("touchmove", onTouchMove as EventListener, true)
-          document.removeEventListener("keydown", onKeyDown)
-        }
-
-        stampTrigger = ScrollTrigger.create({
-          id: "premium-stamp-film",
-          trigger: panel,
-          scroller,
-          start: "center 68%",
-          end: "center 32%",
-          invalidateOnRefresh: true,
-          onEnter: () => lockScene("forward"),
-          onEnterBack: () => lockScene("backward"),
-        })
-
-        let observedWidth = story.clientWidth
-        let observedPanelHeight = panel.offsetHeight
-        stampResizeObserver = new ResizeObserver(() => {
-          const nextWidth = story.clientWidth
-          const nextPanelHeight = panel.offsetHeight
-          if (nextWidth === observedWidth && nextPanelHeight === observedPanelHeight) return
-
-          observedWidth = nextWidth
-          observedPanelHeight = nextPanelHeight
-          if (refreshFrame) window.cancelAnimationFrame(refreshFrame)
-          refreshFrame = window.requestAnimationFrame(() => ScrollTrigger.refresh())
-        })
-        stampResizeObserver.observe(story)
-        stampResizeObserver.observe(panel)
-
-        refreshFrame = window.requestAnimationFrame(() => ScrollTrigger.refresh())
-      },
-    )
+    stepTimer = window.setTimeout(playStampSequence, 180)
 
     return () => {
-      disposed = true
-      if (refreshFrame) window.cancelAnimationFrame(refreshFrame)
-      if (releaseTimer) window.clearTimeout(releaseTimer)
       if (stepTimer) window.clearTimeout(stepTimer)
-      story.removeAttribute("data-scroll-locked")
-      detachInputListeners?.()
-      stampResizeObserver?.disconnect()
-      stampTrigger?.kill()
     }
   }, [stampCount])
 
@@ -1855,12 +1808,10 @@ function DealsSection({
         ) : null}
 
         <div
-          ref={stampStoryRef}
           id="stempelkarte"
           className="premium-stamp-story relative scroll-mt-24"
         >
           <div
-            ref={stampPanelRef}
             className="premium-stamp-panel rounded-[1.6rem] bg-white/94 p-5 shadow-[0_24px_64px_rgba(15,23,42,.10)] @min-[640px]:p-7"
           >
           <div className="premium-reveal grid gap-8 @min-[1024px]:grid-cols-[250px_1fr]">
@@ -1900,49 +1851,59 @@ function DealsSection({
                     const highlighted = visibleRewardStamps.includes(number)
                     const completed = number <= activeStamp
                     const current = number === activeStamp
-                    const welcomeStamped = completed && number <= 2
-
                     return (
-                      <div key={number} className="flex flex-col items-center">
+                      <div key={number} className="relative flex w-full flex-col items-center">
+                        {number < stampCount && number % 5 !== 0 ? (
+                          <>
+                            <span aria-hidden="true" className="absolute left-1/2 top-5 z-0 h-px w-[calc(100%+0.5rem)] bg-zinc-200 @min-[640px]:hidden" />
+                            <span
+                              aria-hidden="true"
+                              className={`absolute left-1/2 top-5 z-[1] h-px w-[calc(100%+0.5rem)] origin-left bg-[linear-gradient(90deg,#10b981,var(--site-tertiary),var(--site-accent))] transition-transform duration-300 @min-[640px]:hidden ${
+                                number < activeStamp ? "scale-x-100" : "scale-x-0"
+                              }`}
+                            />
+                          </>
+                        ) : null}
                         <span
                           data-stamp-number={number}
                           data-completed={completed}
                           data-highlighted={highlighted}
-                          className={`premium-stamp-circle relative grid size-10 place-items-center rounded-full border bg-white text-sm font-semibold tabular-nums transition-[transform,background-color,border-color,color,box-shadow] duration-300 ${
+                          data-current={current}
+                          className={`premium-stamp-circle relative z-[2] grid size-10 place-items-center rounded-full border bg-white text-sm font-semibold tabular-nums transition-[transform,background-color,border-color,color] duration-300 ${
                             completed
                               ? highlighted
-                                ? "border-2 shadow-[0_12px_26px_-10px_var(--site-accent)]"
-                                : "border-emerald-500 shadow-[0_10px_24px_-12px_#059669]"
+                                ? "border-2 text-[var(--site-accent)] shadow-[0_10px_22px_-14px_var(--site-accent)]"
+                                : "border-2 border-emerald-500 text-emerald-700 shadow-[0_8px_18px_-14px_#059669]"
                               : highlighted
                                 ? "border-2 border-[var(--site-accent)] text-[var(--site-accent)]"
                                 : "border-zinc-200 text-zinc-500"
-                          } ${current ? "scale-110 ring-4 ring-[color-mix(in_srgb,var(--site-tertiary)_24%,white)]" : ""} ${
-                            welcomeStamped ? "-rotate-[5deg]" : ""
-                          }`}
+                          } ${current ? "scale-110" : ""}`}
                         >
-                          {welcomeStamped ? (
-                            <span className="absolute inset-[5px] rounded-full border border-dashed border-emerald-500/70" />
-                          ) : null}
                           <span
                             {...editable(`stamps.number.${number}`, "text", `Stempel ${number}`)}
-                            className="relative z-10 font-bold text-current"
+                            className="premium-stamp-number relative z-10 font-bold text-current"
                             style={textStyleFor(config, `stamps.number.${number}`)}
                           >
                             {textValue(config, `stamps.number.${number}`, String(number))}
                           </span>
-                          {welcomeStamped ? (
-                            <ThemeIcon
-                              id={`stamps.number.${number}.icon`}
-                              name="check"
-                              config={config}
-                              label={`Stempel ${number} Icon`}
-                              className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-emerald-500 text-[10px] font-black text-white ring-2 ring-white"
-                              iconClassName="leading-none"
-                            />
+                          {completed && !highlighted ? (
+                            <span
+                              aria-hidden="true"
+                              className="premium-stamp-check pointer-events-none absolute -right-1 -top-1 z-20 grid size-4 place-items-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-[0_4px_10px_-4px_rgba(5,150,105,.8)]"
+                            >
+                              <Check className="size-2.5" />
+                            </span>
                           ) : null}
-                          {highlighted && completed ? (
-                            <span className="absolute -right-1.5 -top-1.5 z-20 grid size-5 place-items-center rounded-full bg-[var(--site-accent)] text-white shadow-[0_9px_18px_-10px_rgba(120,72,0,.55)] ring-2 ring-white">
-                              <Gift className="size-3" strokeWidth={2.4} aria-hidden="true" />
+                          {highlighted ? (
+                            <span
+                              aria-hidden="true"
+                              className={`premium-stamp-gift pointer-events-none absolute -bottom-1 -right-1 z-20 grid size-[18px] place-items-center rounded-full border-2 border-white shadow-[0_4px_10px_-4px_rgba(120,72,0,.65)] ${
+                                completed
+                                  ? "bg-[var(--site-accent)] text-white"
+                                  : "bg-[color-mix(in_srgb,var(--site-accent)_12%,white)] text-[var(--site-accent)]"
+                              }`}
+                            >
+                              <Gift className="size-2.5" strokeWidth={2.5} />
                             </span>
                           ) : null}
                         </span>
@@ -1995,10 +1956,10 @@ function DealsSection({
                         label={card.id === "welcome" ? "Willkommensbonus Icon" : `${card.eyebrow} Icon`}
                         className={`grid size-12 shrink-0 place-items-center rounded-xl border shadow-sm ${
                           card.tone === "emerald"
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                            ? "premium-stamp-welcome-icon border-emerald-200 bg-emerald-50 text-emerald-600"
                             : "border-amber-200 bg-amber-50 text-[var(--site-accent)]"
                         }`}
-                        iconClassName="text-xl leading-none"
+                        iconClassName={card.id === "welcome" ? "size-7" : "size-6"}
                       />
                     )}
                     <div className="min-w-0">
@@ -2068,12 +2029,20 @@ function BenefitsEcosystemSection({
     "content.appPhoneScreenshotUrl",
     PARTNER_DETAIL_SCREEN_SRC,
   )
+  const ecosystemKicker = textValue(
+    config,
+    "content.ecosystemKicker",
+    siteCopy(config, "App-Vorteile", "App benefits"),
+  )
+  const compactKicker = /benefitsi/i.test(ecosystemKicker)
+    ? siteCopy(config, "App-Vorteile", "App benefits")
+    : ecosystemKicker
   const features = [
     {
       id: "deals.benefit.0",
       icon: "gift",
       title: siteCopy(config, "Exklusive Partner Deals", "Exclusive partner deals"),
-      text: siteCopy(config, "Nur für Benefitsi Mitglieder", "Only for Benefitsi members"),
+      text: siteCopy(config, "Nur für Mitglieder", "Only for members"),
       featured: true,
     },
     {
@@ -2110,57 +2079,54 @@ function BenefitsEcosystemSection({
   ]
 
   return (
-    <section id="app" className="premium-reveal relative scroll-mt-24 px-1 pb-5 pt-12 @min-[760px]:pt-16">
-      <div className="mx-auto max-w-3xl text-center">
-        <div className="flex items-center justify-center gap-3">
-          <span className="grid size-11 place-items-center rounded-[1rem] bg-white shadow-[0_12px_34px_rgba(15,23,42,.08)] ring-1 ring-zinc-200/70">
-            <img src={BENEFITSI_ICON_SRC} alt="" className="size-7 object-contain" />
-          </span>
+    <section id="app" className="premium-reveal relative scroll-mt-24 px-1 pb-2 pt-7 @min-[760px]:pt-9">
+      <div className="mx-auto grid max-w-6xl items-end gap-4 @min-[760px]:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="max-w-2xl text-left">
           <p
             {...editable("content.ecosystemKicker", "text", "App Vorteile Label")}
-            className="text-xs font-black uppercase tracking-[.15em] text-[var(--site-accent)]"
+            className="text-[10px] font-black uppercase tracking-[.15em] text-[var(--site-accent)]"
             style={textStyleFor(config, "content.ecosystemKicker")}
           >
-            {textValue(config, "content.ecosystemKicker", siteCopy(config, "Die Benefitsi Welt", "The Benefitsi world"))}
+            {compactKicker}
+          </p>
+          <h2
+            {...editable("content.ecosystemHeadline", "text", "App Vorteile Überschrift")}
+            className="mt-2 max-w-[18ch] text-[clamp(2rem,4cqw,3rem)] font-black leading-[.98] tracking-[-.05em] text-zinc-950 [text-wrap:balance]"
+            style={textStyleFor(config, "content.ecosystemHeadline")}
+          >
+            {textValue(config, "content.ecosystemHeadline", siteCopy(config, "Mehr als nur Stempel.", "More than just stamps."))}
+          </h2>
+          <p
+            {...editable("content.ecosystemText", "text", "App Vorteile Text")}
+            className="mt-3 max-w-xl text-sm leading-6 text-zinc-600"
+            style={textStyleFor(config, "content.ecosystemText")}
+          >
+            {textValue(
+              config,
+              "content.ecosystemText",
+              siteCopy(
+                config,
+                "Deals, Treue und Belohnungen direkt in der App.",
+                "Deals, loyalty and rewards directly in the app.",
+              ),
+            )}
           </p>
         </div>
-        <h2
-          {...editable("content.ecosystemHeadline", "text", "App Vorteile Überschrift")}
-          className="mx-auto mt-5 max-w-[15ch] text-[clamp(2.25rem,5cqw,3.75rem)] font-black leading-[.95] tracking-[-.05em] text-zinc-950 [text-wrap:balance]"
-          style={textStyleFor(config, "content.ecosystemHeadline")}
-        >
-          {textValue(config, "content.ecosystemHeadline", siteCopy(config, "Mehr als nur Stempel.", "More than just stamps."))}
-        </h2>
-        <p
-          {...editable("content.ecosystemText", "text", "App Vorteile Text")}
-          className="mx-auto mt-5 max-w-xl text-sm leading-7 text-zinc-600"
-          style={textStyleFor(config, "content.ecosystemText")}
-        >
-          {textValue(
-            config,
-            "content.ecosystemText",
-            siteCopy(
-              config,
-              "Eine App für Deals, Treue, Entdeckungen und kleine Erfolge bei jedem Besuch.",
-              "One app for deals, loyalty, discoveries and small wins with every visit.",
-            ),
-          )}
-        </p>
         <AppExploreButton href={appUrl} config={config} />
       </div>
 
-      <div className="mt-8 grid items-center gap-4 @min-[900px]:grid-cols-[minmax(0,1fr)_minmax(250px,.78fr)_minmax(0,1fr)] @min-[900px]:gap-5">
-        <div className="order-2 grid gap-3 @min-[560px]:grid-cols-3 @min-[900px]:order-1 @min-[900px]:grid-cols-1">
+      <div className="mt-5 grid items-center gap-3 @min-[900px]:grid-cols-[minmax(0,1fr)_minmax(220px,.68fr)_minmax(0,1fr)] @min-[900px]:gap-4">
+        <div className="order-2 grid min-w-0 grid-cols-3 gap-2 @min-[900px]:order-1 @min-[900px]:grid-cols-1">
           {features.slice(0, 3).map((feature, index) => (
             <EcosystemFeatureCard key={feature.id} feature={feature} index={index} config={config} />
           ))}
         </div>
 
         <div className="order-1 @min-[900px]:order-2">
-          <AppScreenShowcase config={config} screenshotUrl={screenshotUrl} />
+          <AppScreenShowcase partner={partner} config={config} screenshotUrl={screenshotUrl} />
         </div>
 
-        <div className="order-3 grid gap-3 @min-[560px]:grid-cols-3 @min-[900px]:grid-cols-1">
+        <div className="order-3 grid min-w-0 grid-cols-3 gap-2 @min-[900px]:grid-cols-1">
           {features.slice(3).map((feature, index) => (
             <EcosystemFeatureCard key={feature.id} feature={feature} index={index + 3} config={config} />
           ))}
@@ -2180,29 +2146,30 @@ function EcosystemFeatureCard({
   config: MicrositeConfig
 }) {
   return (
-    <article className="premium-liquid-panel premium-ecosystem-card group overflow-hidden rounded-[1.35rem] p-4">
+    <article className="premium-liquid-panel premium-ecosystem-card group min-w-0 overflow-hidden rounded-[1.1rem] p-2.5 @min-[560px]:p-3">
       <div className="flex items-start justify-between gap-3">
         <ThemeIcon
           id={`${feature.id}.icon`}
           name={textValue(config, `${feature.id}.icon`, feature.icon)}
           config={config}
           label={`${feature.title} Icon`}
-          className="grid size-10 shrink-0 place-items-center rounded-[.9rem] bg-[color-mix(in_srgb,var(--site-accent)_10%,white)] text-[var(--site-accent)] shadow-[inset_0_0_0_1px_rgba(255,255,255,.8)] transition duration-300 group-hover:-translate-y-1 group-hover:rotate-[-3deg]"
+          className="grid size-7 shrink-0 place-items-center rounded-[.7rem] bg-[color-mix(in_srgb,var(--site-accent)_10%,white)] text-[var(--site-accent)] shadow-[inset_0_0_0_1px_rgba(255,255,255,.8)] transition duration-300 group-hover:-translate-y-0.5 group-hover:rotate-[-3deg] @min-[560px]:size-8"
+          iconClassName="size-3.5 @min-[560px]:size-4"
         />
-        <span className="text-lg font-black tabular-nums tracking-[-.06em] text-[color-mix(in_srgb,var(--site-accent)_19%,white)]">
+        <span className="text-sm font-black tabular-nums tracking-[-.06em] text-[color-mix(in_srgb,var(--site-accent)_34%,white)]">
           0{index + 1}
         </span>
       </div>
       <h3
         {...editable(`${feature.id}.title`, "text", feature.title)}
-        className="mt-4 text-[1rem] font-black leading-tight tracking-[-.025em] text-zinc-950"
+        className="mt-2 text-[11px] font-black leading-tight tracking-[-.025em] text-zinc-950 @min-[560px]:mt-2.5 @min-[560px]:text-sm"
         style={textStyleFor(config, `${feature.id}.title`)}
       >
         {textValue(config, `${feature.id}.title`, feature.title)}
       </h3>
       <p
         {...editable(`${feature.id}.text`, "text", feature.text)}
-        className="mt-1.5 text-xs leading-5 text-zinc-600"
+        className="mt-1 hidden text-[11px] leading-[1.45] text-zinc-600 @min-[560px]:block"
         style={textStyleFor(config, `${feature.id}.text`)}
       >
         {textValue(config, `${feature.id}.text`, feature.text)}
@@ -2212,81 +2179,399 @@ function EcosystemFeatureCard({
 }
 
 function AppScreenShowcase({
+  partner,
   config,
   screenshotUrl,
 }: {
+  partner: PartnerWithDeals
   config: MicrositeConfig
   screenshotUrl: string
 }) {
+  const partnerName = partner.short_name || partner.name || siteCopy(config, "Partner", "Partner")
+  const partnerCategory =
+    partner.category?.filter(Boolean).slice(0, 2).join(" · ") ||
+    partner.type ||
+    siteCopy(config, "Gastronomie", "Hospitality")
+  const partnerDescription =
+    partner.description ||
+    siteCopy(
+      config,
+      "Entdecke diesen Benefitsi Partner, seine aktuellen Vorteile und die Speisekarte.",
+      "Discover this Benefitsi partner, current benefits, and the menu.",
+    )
+  const activeDeals = partner.deals.filter((deal) => deal.active !== false)
+  const activeDeal = activeDeals[0]
+  const dealName =
+    activeDeal?.reward_item ||
+    config.deals.topDealHeadline ||
+    siteCopy(config, "2 für 1 Vorteil", "2-for-1 benefit")
+  const dealDescription =
+    activeDeal?.customer_description ||
+    config.deals.topDealDescription ||
+    siteCopy(config, "Deinen Vorteil direkt in der App auswählen.", "Select your benefit directly in the app.")
+  const savingsLabel = activeDeal?.estimated_savings
+    ? siteCopy(config, "ca. " + formatPrice(activeDeal.estimated_savings, "EUR") + " sparen", "save about " + formatPrice(activeDeal.estimated_savings, "EUR"))
+    : siteCopy(config, "Direkt sparen", "Save instantly")
+  const stampTarget = Math.max(
+    10,
+    partner.stamp_target || 0,
+    ...partner.reward_milestones.map((milestone) => milestone.required_stamps || 0),
+  )
+  const previewStamps = Math.min(4, Math.max(1, stampTarget - 1))
+  const customPreview = screenshotUrl && screenshotUrl !== PARTNER_DETAIL_SCREEN_SRC ? screenshotUrl : null
+  const heroImages = Array.from(
+    new Set(
+      [
+        customPreview,
+        ...(partner.cover_urls || []),
+        partner.discover_card_image_url,
+        partner.feature_card_url,
+        screenshotUrl,
+        PARTNER_DETAIL_SCREEN_SRC,
+      ].filter((value): value is string => Boolean(value)),
+    ),
+  ).slice(0, 5)
+  const menuItems = partner.menus
+    .flatMap((menu) => [...menu.items, ...menu.categories.flatMap((category) => category.items)])
+    .filter((item) => Boolean(item.name))
+    .slice(0, 4)
+  const openingHours = partner.opening_hours
+    .filter((row) => row.is_closed !== true && row.opens_at && row.closes_at)
+    .sort((first, second) => (first.weekday || 0) - (second.weekday || 0))
+    .slice(0, 4)
+  const weekdayLabels = config.language === "de"
+    ? ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"]
+    : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  const fallbackMenuItems = [
+    [siteCopy(config, "Lieblingsgericht", "Signature dish"), "12,90 €"],
+    [siteCopy(config, "Hausgemachtes Getränk", "House drink"), "4,50 €"],
+    [siteCopy(config, "Dessert des Hauses", "House dessert"), "6,90 €"],
+  ] as const
+
+  const [activeCover, setActiveCover] = useState(0)
+  const [favorite, setFavorite] = useState(false)
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [dealSelected, setDealSelected] = useState(false)
+  const [openingExpanded, setOpeningExpanded] = useState(false)
+  const [toastMessage, setToastMessage] = useState("")
+  const phoneScrollRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (heroImages.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    const carouselTimer = window.setInterval(
+      () => setActiveCover((current) => (current + 1) % heroImages.length),
+      8400,
+    )
+    return () => window.clearInterval(carouselTimer)
+  }, [heroImages.length])
+
+  useEffect(() => {
+    if (!toastMessage) return
+    const toastTimer = window.setTimeout(() => setToastMessage(""), 1800)
+    return () => window.clearTimeout(toastTimer)
+  }, [toastMessage])
+
+  const showPhoneToast = (german: string, english: string) => {
+    setToastMessage(siteCopy(config, german, english))
+  }
+
   return (
-    <div className="relative mx-auto flex min-h-[620px] max-w-[360px] flex-col items-center justify-center px-5 py-8 @min-[900px]:min-h-[660px] @min-[900px]:px-3">
+    <div className="relative mx-auto flex min-h-[520px] max-w-[330px] flex-col items-center justify-center px-4 py-3 @min-[900px]:min-h-[545px] @min-[900px]:px-2">
       <div className="pointer-events-none absolute left-1/2 top-1/2 h-[78%] w-[82%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color-mix(in_srgb,var(--site-accent)_16%,transparent)] blur-3xl" />
       <div className="pointer-events-none absolute left-1/2 top-1/2 h-[72%] w-[68%] -translate-x-1/2 -translate-y-1/2 rounded-[48%] border border-[color-mix(in_srgb,var(--site-accent)_16%,transparent)]" />
 
-      <div className="premium-app-screen relative z-[1] w-[220px] rounded-[2.72rem] bg-[#070708] p-[7px] shadow-[0_40px_82px_-30px_rgba(20,18,16,.72),inset_0_0_0_1px_rgba(255,255,255,.15)] @min-[560px]:w-[236px] @min-[900px]:w-[248px]">
+      <div className="premium-app-screen relative z-[1] w-[224px] rounded-[2.45rem] bg-[#070708] p-[6px] shadow-[0_34px_70px_-28px_rgba(20,18,16,.68),inset_0_0_0_1px_rgba(255,255,255,.15)] @min-[560px]:w-[232px] @min-[900px]:w-[240px]">
         <span className="absolute -left-[3px] top-24 h-12 w-[3px] rounded-l-full bg-[#202024]" aria-hidden="true" />
         <span className="absolute -left-[3px] top-40 h-9 w-[3px] rounded-l-full bg-[#202024]" aria-hidden="true" />
         <span className="absolute -right-[3px] top-32 h-16 w-[3px] rounded-r-full bg-[#202024]" aria-hidden="true" />
-        <div className="relative aspect-[738/1600] overflow-hidden rounded-[2.31rem] bg-[#f7f5f1] ring-1 ring-white/10">
-          <span className="pointer-events-none absolute left-1/2 top-2 z-[2] h-[18px] w-[34%] -translate-x-1/2 rounded-full bg-[#070708] shadow-[inset_0_-1px_0_rgba(255,255,255,.08)]" aria-hidden="true" />
-          <BrandedImage
-            src={screenshotUrl}
-            alt={siteCopy(config, "Vorschau der Benefitsi App", "Preview of the Benefitsi app")}
-            editableId="content.appPhoneScreenshotUrl"
-            editableLabel="Bild im Telefon-Mockup"
-            className="h-full w-full object-cover object-top"
-            style={imageStyleFor(config, "content.appPhoneScreenshotUrl")}
-          />
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(112deg,rgba(255,255,255,.12),transparent_22%,transparent_76%,rgba(255,255,255,.05))]" />
+
+        <div className="relative aspect-[738/1600] overflow-hidden rounded-[2.08rem] bg-[#f6f7f9] text-[#172033] ring-1 ring-white/10">
+          <span className="pointer-events-none absolute left-1/2 top-1.5 z-[30] h-[14px] w-[31%] -translate-x-1/2 rounded-full bg-[#070708]" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-[29] flex h-6 items-center justify-between px-3 pt-1 text-[7px] font-black text-white [text-shadow:0_1px_4px_rgba(0,0,0,.55)]">
+            <span>09:41</span>
+            <span className="tracking-[.08em]">● ◒ ▰</span>
+          </div>
+
+          <div ref={phoneScrollRef} className="premium-phone-scroll absolute inset-0 min-w-0 overflow-x-hidden overflow-y-auto bg-[#f6f7f9] pb-7">
+            <div className="relative h-[176px] overflow-hidden bg-[#d8dee7]">
+              <BrandedImage
+                src={heroImages[activeCover] || PARTNER_DETAIL_SCREEN_SRC}
+                alt={siteCopy(config, "Titelbild von " + partnerName, "Cover image for " + partnerName)}
+                editableId="content.appPhoneScreenshotUrl"
+                editableLabel="Partner-Titelbild im Telefon"
+                className="absolute inset-0 h-full w-full object-cover"
+                style={imageStyleFor(config, "content.appPhoneScreenshotUrl")}
+              />
+              <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,12,22,.28),transparent_42%,rgba(5,12,22,.35))]" />
+              <button
+                type="button"
+                onClick={() => phoneScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+                className="absolute left-2 top-7 z-[2] grid size-6 cursor-pointer place-items-center rounded-full bg-[#777]/80 text-white shadow-sm transition hover:bg-[#666]/90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label={siteCopy(config, "Zurück nach oben", "Back to top")}
+              >
+                <ChevronLeft className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
+              </button>
+              <span className="absolute right-2 top-7 z-[2] rounded-full bg-[#0a9fe1] px-2 py-1 text-[5.5px] font-black uppercase tracking-[.06em] text-white shadow-sm">
+                {siteCopy(config, "Offen", "Open")}
+              </span>
+              {heroImages.length > 1 ? (
+                <div className="absolute inset-x-0 bottom-2 z-[2] flex justify-center gap-1" aria-label={siteCopy(config, "Titelbilder", "Cover images")}>
+                  {heroImages.map((image, index) => (
+                    <button
+                      key={image}
+                      type="button"
+                      onClick={() => setActiveCover(index)}
+                      aria-label={siteCopy(config, "Bild " + (index + 1), "Image " + (index + 1))}
+                      aria-pressed={activeCover === index}
+                      className={"h-1.5 cursor-pointer rounded-full shadow-sm transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white " + (activeCover === index ? "w-3.5 bg-white" : "w-1.5 bg-white/55")}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="px-2.5 pb-4 pt-2.5">
+              <div className="flex items-start gap-1.5">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-[13px] font-black leading-[1.08] tracking-[-.035em] text-[#182136]">{partnerName}</h3>
+                  <p className="mt-1 text-[7px] font-medium text-[#7a8492]">{partnerCategory}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFavorite((current) => !current)}
+                  aria-label={favorite ? siteCopy(config, "Aus Favoriten entfernen", "Remove from favorites") : siteCopy(config, "Zu Favoriten hinzufügen", "Add to favorites")}
+                  aria-pressed={favorite}
+                  className={"grid size-6 shrink-0 cursor-pointer place-items-center rounded-full border bg-white shadow-[0_3px_8px_rgba(20,29,43,.1)] transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1] " + (favorite ? "border-[#ffccd5] bg-[#ee6686] text-white" : "border-[#e5e8ed] text-[#687486]")}
+                >
+                  <Heart className={"size-3 " + (favorite ? "fill-current" : "")} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => showPhoneToast("Teilen geöffnet", "Share opened")}
+                  aria-label={siteCopy(config, "Partner teilen", "Share partner")}
+                  className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-full border border-[#e5e8ed] bg-white text-[#687486] shadow-[0_3px_8px_rgba(20,29,43,.1)] transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]"
+                >
+                  <Share2 className="size-3" aria-hidden="true" />
+                </button>
+              </div>
+
+              <div className="mt-2 flex items-center gap-1.5">
+                <span className="inline-flex h-6 items-center gap-1 rounded-full bg-[#eaf8fb] px-1.5 text-[6px] font-black text-[#078d98]">
+                  <Award className="size-2.5" aria-hidden="true" />
+                  {siteCopy(config, "Neu hier", "New here")}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(true)}
+                  className="premium-phone-compact-label inline-flex h-6 cursor-pointer items-center gap-1 rounded-full border border-[#9adbe5] bg-white px-2 text-[#182136] transition hover:bg-[#f5fbfc] active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]"
+                >
+                  <Utensils className="size-2.5" aria-hidden="true" />
+                  {siteCopy(config, "Speisekarte", "Menu")}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDescriptionExpanded((current) => !current)}
+                aria-expanded={descriptionExpanded}
+                className="mt-3 flex w-full cursor-pointer items-center justify-between text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]"
+              >
+                <span className="text-[8px] font-black text-[#202a3c]">{siteCopy(config, "Beschreibung", "Description")}</span>
+                <ChevronDown className={"size-3 text-[#718096] transition-transform " + (descriptionExpanded ? "rotate-180" : "")} aria-hidden="true" />
+              </button>
+              <p className={"mt-1 text-[6.5px] leading-[1.55] text-[#707b8a] " + (descriptionExpanded ? "" : "line-clamp-2")}>
+                {partnerDescription}
+              </p>
+
+              <div className="mt-3.5 flex items-center gap-1.5">
+                <h4 className="text-[10.5px] font-black tracking-[-.025em] text-[#152033]">{siteCopy(config, "Deine Vorteile", "Your benefits")}</h4>
+                <Circle className="size-3 text-[#657184]" strokeWidth={2} aria-hidden="true" />
+              </div>
+
+              <div className="mt-2 rounded-[1rem] border border-[#e1e5eb] bg-white p-2.5 shadow-[0_5px_14px_rgba(23,32,51,.08)]">
+                <span className="inline-flex rounded-full border border-[#b8e3f9] bg-[#e8f7ff] px-2 py-1 text-[5.5px] font-black text-[#078dcc]">
+                  {siteCopy(config, "Top-Vorteil", "Top benefit")}
+                </span>
+                <div className="mt-2 flex items-start gap-2">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#dff2ff] text-[#0a9fe1]">
+                    <Utensils className="size-4" strokeWidth={2.2} aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[9.5px] font-black leading-tight text-[#202a3c]">{dealName}</span>
+                    <span className="mt-1 inline-flex rounded-full bg-[#eef8ff] px-1.5 py-1 text-[5.5px] font-black text-[#078dcc]">{savingsLabel}</span>
+                  </span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-[6.5px] leading-[1.45] text-[#687486]">{dealDescription}</p>
+                <div className="mt-1.5 flex items-center justify-between text-[5.5px] font-semibold text-[#7a8492]">
+                  <span>{siteCopy(config, "Bei jedem Besuch", "On every visit")}</span>
+                  <button type="button" onClick={() => showPhoneToast("Vorteilsdetails geöffnet", "Benefit details opened")} className="cursor-pointer text-[5px] font-black text-[#078dcc] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
+                    {siteCopy(config, "Details", "Details")}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDealSelected((current) => !current)}
+                  aria-pressed={dealSelected}
+                  className={"premium-phone-compact-label mt-2 flex h-6 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full px-3 transition active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1] " + (dealSelected ? "bg-[#e7faf5] text-[#087c68] ring-1 ring-[#9ee3d2]" : "bg-[linear-gradient(90deg,#13c5d1,#0a9fe1)] text-white")}
+                >
+                  {dealSelected ? <Check className="size-2.5" strokeWidth={2.8} aria-hidden="true" /> : null}
+                  {dealSelected ? siteCopy(config, "Ausgewählt", "Selected") : siteCopy(config, "Vorteil auswählen", "Select benefit")}
+                </button>
+              </div>
+
+              {activeDeals.length > 1 ? (
+                <button type="button" onClick={() => showPhoneToast("Alle Vorteile angezeigt", "All benefits shown")} className="premium-phone-compact-label mt-1.5 w-full cursor-pointer py-1 text-center text-[#078dcc] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
+                  {siteCopy(config, "Alle Vorteile anzeigen", "Show all benefits")}
+                </button>
+              ) : null}
+
+              <h4 className="mt-4 text-[10.5px] font-black tracking-[-.025em] text-[#152033]">{siteCopy(config, "Stempelkarte", "Stamp card")}</h4>
+              <div className="mt-2 rounded-[1rem] border border-[#e1e5eb] bg-white p-2.5 shadow-[0_5px_14px_rgba(23,32,51,.07)]">
+                <div className="flex items-end justify-between">
+                  <span>
+                    <span className="block text-[8px] font-black text-[#202a3c]">{previewStamps}/{stampTarget} {siteCopy(config, "Stempel", "stamps")}</span>
+                    <span className="mt-0.5 block text-[5.5px] text-[#7b8696]">{siteCopy(config, "Weiter sammeln und Belohnung sichern", "Keep collecting toward your reward")}</span>
+                  </span>
+                  <BadgeCheck className="size-4 text-[#13aa92]" aria-hidden="true" />
+                </div>
+                <div className="mt-2 grid grid-cols-10 gap-1">
+                  {Array.from({ length: Math.min(stampTarget, 10) }, (_, index) => (
+                    <span key={index} className={"grid aspect-square place-items-center rounded-full border text-[5px] font-black tabular-nums " + (index < previewStamps ? "border-[#14aa91] bg-white text-[#087c68]" : "border-[#dce2e9] bg-white text-[#8792a1]")}>{index + 1}</span>
+                  ))}
+                </div>
+                <button type="button" onClick={() => showPhoneToast("Scanner geöffnet", "Scanner opened")} className="premium-phone-compact-label mt-2 flex h-[26px] w-full cursor-pointer items-center justify-center gap-1 rounded-full bg-[#0a9fe1] text-white transition active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]">
+                  <QrCode className="size-2.5" aria-hidden="true" />
+                  {siteCopy(config, "Stempel sammeln", "Collect stamps")}
+                </button>
+              </div>
+
+              <h4 className="mt-4 text-[10.5px] font-black tracking-[-.025em] text-[#152033]">{siteCopy(config, "Deine Badges", "Your badges")}</h4>
+              <div className="mt-2 grid grid-cols-3 gap-1.5">
+                {[
+                  [Award, siteCopy(config, "Entdecker", "Explorer")],
+                  [Flame, siteCopy(config, "Stammgast", "Regular")],
+                  [Heart, siteCopy(config, "Favorit", "Favorite")],
+                ].map(([Icon, label]) => {
+                  const BadgeIcon = Icon as LucideIcon
+                  return (
+                    <button key={String(label)} type="button" onClick={() => showPhoneToast(String(label), String(label))} className="flex min-h-13 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-[#e4e8ee] bg-white px-1 text-center shadow-[0_4px_12px_rgba(23,32,51,.06)] transition active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]">
+                      <BadgeIcon className="size-3.5 text-[#0a9fe1]" aria-hidden="true" />
+                      <span className="text-[5px] font-black text-[#4f5c6d]">{String(label)}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <h4 className="mt-4 text-[10.5px] font-black tracking-[-.025em] text-[#152033]">{siteCopy(config, "Kontakt & Öffnungszeiten", "Contact & opening hours")}</h4>
+              <div className="mt-2 overflow-hidden rounded-[1rem] border border-[#e1e5eb] bg-white shadow-[0_5px_14px_rgba(23,32,51,.08)]">
+                <button type="button" onClick={() => showPhoneToast("Karte geöffnet", "Map opened")} className="relative block h-24 w-full cursor-pointer overflow-hidden bg-[#e9f0f2] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#13c5d1]">
+                  <span className="absolute inset-0 opacity-55 [background-image:linear-gradient(28deg,transparent_46%,rgba(255,255,255,.9)_47%,rgba(255,255,255,.9)_52%,transparent_53%),linear-gradient(112deg,transparent_43%,rgba(255,255,255,.8)_44%,rgba(255,255,255,.8)_48%,transparent_49%)] [background-size:62px_42px,74px_58px]" />
+                  <span className="absolute left-[54%] top-[43%] grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#0a9fe1] text-white shadow-[0_5px_12px_rgba(10,159,225,.35)]">
+                    <MapPin className="size-3.5" aria-hidden="true" />
+                  </span>
+                  <span className="absolute inset-x-2 bottom-2 truncate rounded-md bg-white/90 px-2 py-1 text-[5px] font-black text-[#435064] shadow-sm backdrop-blur-sm">{partner.address || partner.city_name || siteCopy(config, "Standort", "Location")}</span>
+                </button>
+                <div className="space-y-2 p-2.5">
+                  {partner.address ? (
+                    <button type="button" onClick={() => showPhoneToast("Karten geöffnet", "Maps opened")} className="flex w-full cursor-pointer items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
+                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#eef8ff] text-[#0a9fe1]"><MapPin className="size-3.5" aria-hidden="true" /></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-[5.75px] font-black text-[#354154]">{partner.address}</span><span className="block text-[4.5px] font-black uppercase tracking-[.05em] text-[#0a9fe1]">{siteCopy(config, "In Karten öffnen", "Open in maps")}</span></span>
+                    </button>
+                  ) : null}
+                  {partner.phone ? (
+                    <button type="button" onClick={() => showPhoneToast("Anruf vorbereitet", "Call prepared")} className="flex w-full cursor-pointer items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
+                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#eef8ff] text-[#0a9fe1]"><Phone className="size-3.5" aria-hidden="true" /></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-[5.75px] font-black text-[#354154]">{partner.phone}</span><span className="block text-[4.5px] font-black uppercase tracking-[.05em] text-[#0a9fe1]">{siteCopy(config, "Jetzt anrufen", "Call now")}</span></span>
+                    </button>
+                  ) : null}
+                  {partner.email ? (
+                    <button type="button" onClick={() => showPhoneToast("E-Mail vorbereitet", "Email prepared")} className="flex w-full cursor-pointer items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
+                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#eef8ff] text-[#0a9fe1]"><Mail className="size-3.5" aria-hidden="true" /></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-[5.75px] font-black text-[#354154]">{partner.email}</span><span className="block text-[4.5px] font-black uppercase tracking-[.05em] text-[#0a9fe1]">{siteCopy(config, "E-Mail senden", "Send email")}</span></span>
+                    </button>
+                  ) : null}
+                  {partner.website ? (
+                    <button type="button" onClick={() => showPhoneToast("Website geöffnet", "Website opened")} className="flex w-full cursor-pointer items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
+                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#eef8ff] text-[#0a9fe1]"><Globe2 className="size-3.5" aria-hidden="true" /></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-[5.75px] font-black text-[#354154]">{partner.website.replace(/^https?:\/\//, "")}</span><span className="block text-[4.5px] font-black uppercase tracking-[.05em] text-[#0a9fe1]">{siteCopy(config, "Website öffnen", "Open website")}</span></span>
+                    </button>
+                  ) : null}
+                  <button type="button" onClick={() => setOpeningExpanded((current) => !current)} aria-expanded={openingExpanded} className="flex w-full cursor-pointer items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#eef8ff] text-[#0a9fe1]"><Clock3 className="size-3.5" aria-hidden="true" /></span>
+                    <span className="min-w-0 flex-1"><span className="block text-[5.75px] font-black text-[#354154]">{siteCopy(config, "Öffnungszeiten", "Opening hours")}</span><span className="block truncate text-[4.5px] font-semibold text-[#7b8696]">{config.hero.openingText}</span></span>
+                    <ChevronDown className={"size-3 text-[#788394] transition-transform " + (openingExpanded ? "rotate-180" : "")} aria-hidden="true" />
+                  </button>
+                  {openingExpanded ? (
+                    <div className="rounded-lg bg-[#f6f8fa] px-2 py-1.5">
+                      {(openingHours.length ? openingHours : [null]).map((row, index) => (
+                        <div key={row?.id || index} className="flex items-center justify-between py-1 text-[5.5px] text-[#647084]">
+                          <span className="font-black">{row ? weekdayLabels[row.weekday || 0] : siteCopy(config, "Heute", "Today")}</span>
+                          <span>{row ? (row.label || row.opens_at + " – " + row.closes_at) : config.hero.openingText}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {menuOpen ? (
+            <div className="absolute inset-0 z-[40] flex items-end bg-[#101826]/45 backdrop-blur-[1px]" role="dialog" aria-modal="true" aria-label={siteCopy(config, "Speisekarte", "Menu")}>
+              <button type="button" onClick={() => setMenuOpen(false)} className="absolute inset-0 cursor-default" aria-label={siteCopy(config, "Speisekarte schließen", "Close menu")} />
+              <div className="premium-phone-view relative z-[1] w-full rounded-t-[1.5rem] bg-[#f8fafc] px-3 pb-5 pt-2.5 shadow-[0_-16px_36px_rgba(20,29,43,.2)]">
+                <span className="mx-auto block h-1 w-9 rounded-full bg-[#cbd3de]" aria-hidden="true" />
+                <div className="mt-2 flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-black tracking-[-.03em]">{siteCopy(config, "Speisekarte", "Menu")}</p>
+                    <p className="mt-0.5 text-[6px] text-[#7b8797]">{partnerName}</p>
+                  </div>
+                  <button type="button" onClick={() => setMenuOpen(false)} className="grid size-6 cursor-pointer place-items-center rounded-full bg-white text-[#4f5d70] shadow-sm transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]" aria-label={siteCopy(config, "Schließen", "Close")}>
+                    <X className="size-3" aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="mt-2.5 space-y-1.5">
+                  {(menuItems.length
+                    ? menuItems.map((item) => [item.name || "", formatPrice(item.price ?? "", item.currency)] as const)
+                    : fallbackMenuItems
+                  ).map(([name, price], index) => (
+                    <div key={name + index} className="flex min-h-10 items-center gap-2 rounded-xl border border-[#e8edf2] bg-white p-2 shadow-sm">
+                      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#fff5e8] text-[#f08d1c]"><Utensils className="size-3" aria-hidden="true" /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[7px] font-black text-[#202a3c]">{name}</span>
+                        <span className="mt-0.5 block text-[5.5px] text-[#8993a1]">{siteCopy(config, "Direkt beim Partner erhältlich", "Available at the partner")}</span>
+                      </span>
+                      <span className="shrink-0 text-[6.5px] font-black text-[#f07818]">{price}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {toastMessage ? (
+            <div aria-live="polite" className="premium-phone-view absolute left-1/2 top-9 z-[50] flex -translate-x-1/2 items-center gap-1 rounded-full bg-[#172033]/92 px-2.5 py-1.5 text-[6.5px] font-black text-white shadow-lg backdrop-blur-md">
+              <Check className="size-2.5 text-[#69e5c5]" strokeWidth={2.8} aria-hidden="true" />
+              {toastMessage}
+            </div>
+          ) : null}
+          <div className="pointer-events-none absolute inset-0 z-[60] bg-[linear-gradient(112deg,rgba(255,255,255,.1),transparent_20%,transparent_78%,rgba(255,255,255,.04))]" />
         </div>
       </div>
-
-      <div className="relative z-[2] mt-5 grid w-full max-w-[310px] grid-cols-2 gap-2.5">
-        <AppShowcaseMetric icon={Flame} value="7" label={siteCopy(config, "Tage Streak", "Day streak")} />
-        <AppShowcaseMetric icon={BellRing} value="3" label={siteCopy(config, "Neue Deal Drops", "New deal drops")} />
-      </div>
     </div>
   )
 }
-
-function AppShowcaseMetric({
-  icon: Icon,
-  value,
-  label,
-}: {
-  icon: LucideIcon
-  value: string
-  label: string
-}) {
-  return (
-    <div className="rounded-2xl border border-white/80 bg-white/72 p-3 shadow-[0_16px_32px_-24px_rgba(15,23,42,.42)] backdrop-blur-xl">
-      <div className="flex items-center gap-2 text-[var(--site-accent)]">
-        <Icon className="size-4" aria-hidden="true" />
-        <span className="text-lg font-black tabular-nums">{value}</span>
-      </div>
-      <p className="mt-1 text-[10px] font-black text-zinc-700">{label}</p>
-    </div>
-  )
-}
-
 function AppExploreButton({ href, config }: { href: string; config: MicrositeConfig }) {
   return (
     <a
       href={href}
-      className="premium-app-cta premium-button group mt-5 inline-flex min-h-14 items-center gap-3 rounded-2xl px-4 py-3 text-white transition duration-300 hover:-translate-y-1 hover:scale-[1.015] active:translate-y-0 active:scale-[.985]"
+      className="premium-app-cta premium-button group inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-white transition duration-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-[.985]"
     >
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/92 shadow-sm">
-        <img src={BENEFITSI_ICON_SRC} alt="" className="size-6 object-contain" />
+      <span className="text-sm font-black leading-tight">
+        {siteCopy(config, "Benefitsi App öffnen", "Open the Benefitsi app")}
       </span>
-      <span className="text-left">
-        <span className="block text-[10px] font-bold uppercase tracking-[.12em] text-white/70">
-          {siteCopy(config, "Jetzt in der Benefitsi App", "Now in the Benefitsi app")}
-        </span>
-        <span className="block text-sm font-black leading-tight">
-          {siteCopy(config, "App entdecken", "Explore the app")}
-        </span>
-      </span>
-      <span className="ml-2 grid size-8 place-items-center rounded-full bg-white/15 transition duration-300 group-hover:translate-x-1 group-hover:bg-white/24">
+      <span className="grid size-7 place-items-center rounded-full bg-white/15 transition duration-300 group-hover:translate-x-1 group-hover:bg-white/24">
         <ArrowRight className="size-4" aria-hidden="true" />
       </span>
     </a>
@@ -2434,23 +2719,30 @@ function MenuSection({
           .includes(normalizedMenuQuery),
       )
     : filteredItems
-  const previewItems = [...items]
-    .sort((a, b) => Number(Boolean(b.is_popular)) - Number(Boolean(a.is_popular)))
-    .slice(0, 5)
-  const featuredItem = previewItems[0]
-  const supportingItems = previewItems.slice(1)
+  const previewItems = micrositeMenuPreviewItems(
+    items,
+    config.elementText["content.menuFeaturedItemKey"],
+    6,
+  )
+  const imageLessCount = items.filter(
+    (item) => item.micrositeShowImage !== false && !item.image_url,
+  ).length
 
   return (
     <section id="speisekarte" className={`${restaurantSectionClass(template, "menu")} scroll-mt-24 px-5 py-12 @min-[640px]:px-8 @min-[1024px]:px-10`}>
-      <div className="premium-liquid-panel mx-auto max-w-6xl overflow-hidden rounded-[2rem] p-5 @min-[760px]:p-7 @min-[1024px]:p-8">
+      <div className="mx-auto max-w-6xl">
         <div className="premium-reveal flex flex-col gap-5 @min-[640px]:flex-row @min-[900px]:items-end @min-[900px]:justify-between">
           <div className="max-w-2xl">
-            <p className="mb-3 text-xs font-black uppercase tracking-[.15em] text-[var(--site-accent)]">
-              {siteCopy(config, "Von Gästen gewählt", "Chosen by guests")}
+            <p
+              {...editable("content.menuLabel", "text", "Speisekarte Label")}
+              className="text-xs font-bold uppercase tracking-[.09em] text-[var(--site-accent)]"
+              style={textStyleFor(config, "content.menuLabel")}
+            >
+              {config.content.menuLabel}
             </p>
             <h2
               {...editable("content.menuHeadline", "text", "Speisekarte Überschrift")}
-              className="text-[clamp(2rem,4cqw,3rem)] font-black leading-tight tracking-[-0.04em]"
+              className="mt-3 text-[clamp(2rem,4cqw,3rem)] font-black leading-tight tracking-[-0.04em]"
               style={textStyleFor(config, "content.menuHeadline")}
             >
               {config.content.menuHeadline}
@@ -2463,33 +2755,35 @@ function MenuSection({
               {config.content.menuDescription}
             </p>
           </div>
+
+          {imageLessCount ? (
+            <p className="max-w-xs rounded-xl border border-zinc-200/75 bg-white px-4 py-3 text-sm font-medium leading-5 text-zinc-600 shadow-[0_8px_24px_-18px_rgba(15,23,42,.35)]">
+              {siteCopy(
+                config,
+                "Speisen und Getränke ohne Bild erhalten automatisch einen passenden Platzhalter.",
+                "Food and drinks without an image automatically receive a suitable placeholder.",
+              )}
+            </p>
+          ) : null}
         </div>
 
         {items.length ? (
           <>
-            <div className="mt-7 grid gap-4 @min-[900px]:grid-cols-[1.04fr_.96fr]">
-              {featuredItem ? (
-                <FeaturedMenuCard item={featuredItem} config={config} />
-              ) : null}
-              <div className="grid content-start gap-3">
-              {supportingItems.map((item) => (
+            <div className="mt-7 grid gap-3 @min-[768px]:grid-cols-2">
+              {previewItems.map((item) => (
                 <MenuCard
                   key={item.id ?? `${item.categoryName}-${item.name}-${item.price}`}
                   item={item}
                   config={config}
                 />
               ))}
-              </div>
             </div>
 
-            <div className="mt-7 flex flex-col items-start justify-between gap-4 border-t border-white/70 pt-6 @min-[640px]:flex-row @min-[640px]:items-center">
-              <p className="max-w-md text-sm leading-6 text-zinc-600">
-                {siteCopy(config, "Noch mehr entdecken? Die vollständige Karte enthält alle Kategorien, Extras und Preise.", "Want to discover more? The full menu includes every category, extra and price.")}
-              </p>
+            <div className="mt-6 flex justify-center rounded-[1.2rem] border border-[color-mix(in_srgb,var(--site-accent)_18%,white)] bg-white p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,.32)]">
               <button
                 type="button"
                 onClick={() => setMenuOpen(true)}
-                className="premium-button shrink-0 rounded-2xl bg-[var(--site-accent)] px-7 py-3.5 text-sm font-black text-white shadow-[0_18px_34px_-18px_var(--site-accent)] transition hover:-translate-y-0.5 hover:brightness-105"
+                className="premium-button rounded-2xl bg-[var(--site-accent)] px-8 py-4 text-base font-black text-white shadow-[0_16px_32px_-18px_var(--site-accent)] transition hover:-translate-y-0.5 hover:brightness-105"
               >
                 {siteCopy(config, "Komplette Speisekarte öffnen", "Open full menu")}
               </button>
@@ -2617,7 +2911,7 @@ function AboutContactSection({
           src={aboutHeroImage}
           alt={siteCopy(config, "Hintergrundbild über den Partner", "Partner story background")}
           editableId="content.aboutHeroImageUrl"
-          editableLabel="Über uns Hintergrundbild"
+          editableLabel="Über uns Hintergrundbild (Desktop)"
           className="premium-parallax absolute inset-y-0 right-0 hidden h-full w-[62%] object-cover @min-[900px]:block"
           data-parallax-strength="strong"
           style={imageStyleFor(config, "content.aboutHeroImageUrl")}
@@ -2626,13 +2920,11 @@ function AboutContactSection({
           src={aboutPrepImage}
           alt={siteCopy(config, "Detailbild des Partners", "Partner detail image")}
           editableId="content.aboutPrepImageUrl"
-          editableLabel="Über uns Detailbild"
+          editableLabel="Über uns unteres Overlaybild (Desktop)"
           className="absolute bottom-0 right-0 hidden h-[34%] w-[46%] object-cover opacity-65 blur-[.2px] @min-[900px]:block"
           style={imageStyleFor(config, "content.aboutPrepImageUrl")}
         />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#fff_0%,#fff_42%,rgba(255,255,255,.82)_54%,rgba(255,255,255,.18)_73%,rgba(255,255,255,0)_100%)]" />
-        <div className="pointer-events-none absolute -bottom-12 left-[-12%] h-16 w-[124%] rounded-[50%] border-b-[6px] border-b-transparent bg-white [border-image:linear-gradient(90deg,var(--site-secondary),#1186ee)_1]" />
-
         <div className="relative grid min-h-[480px] gap-5 px-6 py-5 @min-[760px]:px-8 @min-[1024px]:grid-cols-[.54fr_.46fr] @min-[1024px]:px-9 @min-[1024px]:py-6">
           <div className="max-w-[620px]">
             <h2
@@ -2721,17 +3013,17 @@ function AboutContactSection({
                 src={aboutIngredientImage}
                 alt={siteCopy(config, "Bild zu Qualität und Zutaten", "Quality and ingredients image")}
                 editableId="content.aboutIngredientImageUrl"
-                editableLabel="Über uns Zutatenbild"
+                editableLabel="Über uns linkes Kartenbild"
                 className="aspect-[4/5] w-full rounded-xl object-cover"
                 style={imageStyleFor(config, "content.aboutIngredientImageUrl")}
               />
             </figure>
-            <figure className="relative w-full rotate-2 rounded-2xl bg-white p-1.5 shadow-[0_22px_46px_rgba(15,23,42,.20)] @min-[1024px]:absolute @min-[1024px]:right-2 @min-[1024px]:top-[164px] @min-[1024px]:w-[48%]">
+            <figure className="relative w-full rotate-2 rounded-2xl bg-white p-1.5 shadow-[0_22px_46px_rgba(15,23,42,.20)] @min-[1024px]:absolute @min-[1024px]:right-5 @min-[1024px]:top-[164px] @min-[1024px]:w-[44%]">
               <BrandedImage
                 src={aboutLocationImage}
                 alt={siteCopy(config, "Bild zum Standort", "Location image")}
                 editableId="content.aboutLocationImageUrl"
-                editableLabel="Über uns Ortsbild"
+                editableLabel="Über uns rechtes Kartenbild"
                 className="aspect-[4/5] w-full rounded-xl object-cover"
                 style={imageStyleFor(config, "content.aboutLocationImageUrl")}
               />
@@ -2849,7 +3141,7 @@ function CompactContactSection({
           >
             {textValue(config, "content.contactSocialText", siteCopy(config, "Folge uns für Aktionen & Neuigkeiten.", "Follow us for offers and news."))}
           </p>
-          <div className="mt-3 grid grid-cols-3 items-start gap-3 @min-[520px]:flex @min-[520px]:flex-wrap @min-[520px]:items-center">
+          <div className="mx-auto mt-4 grid w-full max-w-[13rem] grid-cols-2 items-start justify-items-center gap-x-5 gap-y-4 @min-[520px]:mx-0 @min-[520px]:mt-3 @min-[520px]:flex @min-[520px]:max-w-none @min-[520px]:flex-wrap @min-[520px]:items-center">
             {socialPlatforms
               .filter((item) =>
                 socialVisible(config, partner, item.platform),
@@ -2898,7 +3190,7 @@ function FaqSection({ config }: { config: MicrositeConfig }) {
     : defaultMicrositeFaqItems
 
   return (
-    <section id="faq" className="scroll-mt-24 bg-[#f7f3ee] px-5 py-10 @min-[640px]:px-8 @min-[1024px]:px-10">
+    <section id="faq" className="scroll-mt-24 bg-[var(--site-bg)] px-5 py-10 @min-[640px]:px-8 @min-[1024px]:px-10">
       <div className="premium-liquid-panel premium-reveal relative mx-auto max-w-6xl overflow-hidden rounded-[1.85rem] p-5 @min-[900px]:p-8">
         <div className="pointer-events-none absolute -right-20 -top-28 size-72 rounded-full bg-[color-mix(in_srgb,var(--site-accent)_10%,transparent)] blur-3xl" />
         <div className="grid gap-5 @min-[900px]:grid-cols-[.35fr_.65fr] @min-[900px]:items-end">
@@ -3296,7 +3588,7 @@ function AppDownloadQrPopup({
 }) {
   const [open, setOpen] = useState(true)
   const appUrl = textValue(config, "content.appDownloadUrl", appDownloadUrlForPartner(partner))
-  const qrUrl = textValue(config, "content.appQrCodeUrl", BENEFITSI_QR_PLACEHOLDER_SRC)
+  const qrUrl = BENEFITSI_APP_QR_SRC
 
   if (!open) return null
 
@@ -3305,33 +3597,30 @@ function AppDownloadQrPopup({
       role="dialog"
       aria-modal="false"
       aria-label={siteCopy(config, "Benefitsi App herunterladen", "Download the Benefitsi app")}
-      className="fixed bottom-3 right-3 z-[45] w-[calc(100%-1.5rem)] max-w-[560px] @min-[620px]:bottom-5 @min-[620px]:right-5 @min-[620px]:w-[min(560px,calc(100%-2.5rem))]"
+      className="fixed bottom-3 right-3 z-[45] w-[calc(100%-1.5rem)] max-w-[390px] @min-[620px]:bottom-5 @min-[620px]:right-5 @min-[620px]:w-[min(390px,calc(100%-2.5rem))]"
     >
-      <button
-        type="button"
-        onClick={() => setOpen(false)}
-        className="absolute -top-10 right-0 inline-flex h-8 items-center gap-1.5 rounded-full border border-white/80 bg-zinc-950/88 px-3 text-xs font-bold text-white shadow-[0_12px_32px_rgba(15,23,42,.22)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-zinc-900"
-        aria-label={siteCopy(config, "App-Hinweis schließen", "Close app prompt")}
-      >
-        <X className="size-4" aria-hidden="true" />
-        <span>{siteCopy(config, "Schließen", "Close")}</span>
-      </button>
-
-      <div className="premium-liquid-panel relative overflow-hidden rounded-[1.45rem] p-3 shadow-[0_24px_70px_rgba(15,23,42,.20)] @min-[620px]:p-4">
+      <div className="premium-liquid-panel relative overflow-hidden rounded-[1.3rem] p-3 pr-10 shadow-[0_20px_56px_rgba(15,23,42,.18)]">
         <div className="pointer-events-none absolute -left-16 -top-24 size-72 rounded-full bg-[color-mix(in_srgb,var(--site-accent)_22%,transparent)] blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 right-0 size-64 rounded-full bg-[color-mix(in_srgb,var(--site-tertiary)_15%,transparent)] blur-3xl" />
-        <div className="relative grid grid-cols-[76px_minmax(0,1fr)] items-center gap-3 @min-[620px]:grid-cols-[112px_minmax(0,1fr)] @min-[620px]:gap-4">
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="absolute right-2 top-2 z-20 grid size-7 place-items-center rounded-full border border-white/75 bg-white/70 text-zinc-700 shadow-sm backdrop-blur-xl transition hover:bg-white hover:text-zinc-950 active:scale-95"
+          aria-label={siteCopy(config, "App-Hinweis schließen", "Close app prompt")}
+        >
+          <X className="size-4" strokeWidth={2.2} aria-hidden="true" />
+        </button>
+
+        <div className="relative grid grid-cols-[72px_minmax(0,1fr)] items-center gap-3 @min-[620px]:grid-cols-[84px_minmax(0,1fr)]">
           <a
             href={appUrl}
-            className="group relative aspect-square rounded-2xl bg-white p-2 shadow-[0_14px_40px_rgba(15,23,42,.12)] ring-1 ring-zinc-200/80 @min-[620px]:rounded-[1.35rem] @min-[620px]:p-3"
+            className="group relative aspect-square rounded-2xl bg-white p-2 shadow-[0_12px_32px_rgba(15,23,42,.11)] ring-1 ring-zinc-200/80"
             aria-label={siteCopy(config, "QR-Code zur Benefitsi App öffnen", "Open the Benefitsi app QR code")}
           >
             <img
-              {...editable("content.appQrCodeUrl", "image", "App QR-Code")}
               src={qrUrl}
               alt={siteCopy(config, "QR-Code für die Benefitsi App", "QR code for the Benefitsi app")}
               className="h-full w-full rounded-xl object-contain transition duration-500 group-hover:scale-[1.03]"
-              style={imageStyleFor(config, "content.appQrCodeUrl")}
             />
           </a>
 
@@ -3341,14 +3630,14 @@ function AppDownloadQrPopup({
             </p>
             <h2
               {...editable("content.appPopupHeadline", "text", "App Popup Überschrift")}
-              className="mt-1 text-base font-black leading-tight tracking-[-.035em] text-zinc-950 @min-[620px]:text-2xl"
+              className="mt-0.5 pr-1 text-base font-black leading-tight tracking-[-.035em] text-zinc-950 @min-[620px]:text-lg"
               style={textStyleFor(config, "content.appPopupHeadline")}
             >
               {textValue(config, "content.appPopupHeadline", siteCopy(config, "Scannen und App holen", "Scan to get the app"))}
             </h2>
             <p
               {...editable("content.appPopupText", "text", "App Popup Text")}
-              className="mt-1 hidden max-w-md text-xs leading-5 text-zinc-600 @min-[620px]:block"
+              className="mt-1 hidden max-w-[30ch] text-[11px] leading-4 text-zinc-600 @min-[620px]:block"
               style={textStyleFor(config, "content.appPopupText")}
             >
               {textValue(
@@ -3364,7 +3653,7 @@ function AppDownloadQrPopup({
               {siteCopy(config, "App öffnen", "Open app")}
               <ArrowRight className="size-3.5" aria-hidden="true" />
             </a>
-            <div className="mt-3 hidden flex-wrap gap-2 @min-[620px]:flex">
+            <div className="mt-2 hidden flex-wrap gap-1.5 @min-[620px]:flex">
               <StoreBadge store="app-store" href={appUrl} language={config.language} compact />
               <StoreBadge store="google-play" href={appUrl} language={config.language} compact />
             </div>
@@ -3385,20 +3674,15 @@ function PartnerSocialFeed({
   const enabled = textValue(config, "content.socialFeed.enabled", "true") !== "false"
   const requestedPlatform = textValue(config, "content.socialFeed.platform", "instagram")
   const platform: "instagram" | "tiktok" = requestedPlatform === "tiktok" ? "tiktok" : "instagram"
-  const profileUrl = partnerSocialUrl(partner, platform)
-  const configuredPostUrls = [0, 1, 2]
+  const profileUrl = textValue(config, `social.${platform}.url`, "").trim() || partnerSocialUrl(partner, platform)
+  const configuredPostUrls = SOCIAL_FEED_POST_INDICES
     .map((index) => textValue(config, `content.socialFeed.${platform}.${index}.url`, "").trim())
     .filter(Boolean)
-  const sourceUrls = configuredPostUrls.length
-    ? configuredPostUrls
-    : profileUrl && socialPostEmbedUrl(platform, profileUrl)
-      ? [profileUrl]
-      : []
-  const posts = sourceUrls
+  const posts = Array.from(new Set(configuredPostUrls))
     .map((url) => ({ url, embedUrl: socialPostEmbedUrl(platform, url) }))
     .filter((post): post is { url: string; embedUrl: string } => Boolean(post.embedUrl))
 
-  if (!enabled || !posts.length) return null
+  if (!enabled || !posts.length || (platform === "instagram" && posts.length < 2)) return null
 
   const PlatformIcon = platform === "tiktok" ? FaTiktok : FaInstagram
   const gridClass = posts.length === 1
@@ -3408,23 +3692,33 @@ function PartnerSocialFeed({
       : "@min-[760px]:grid-cols-3"
 
   return (
-    <section className="bg-[#f7f3ee] px-5 pb-8 pt-7 @min-[640px]:px-8 @min-[1024px]:px-10">
+    <section className="bg-[var(--site-bg)] px-5 pb-8 pt-7 @min-[640px]:px-8 @min-[1024px]:px-10">
       <div className="mx-auto max-w-6xl border-t border-zinc-200/75 pt-9 @min-[760px]:pt-12">
-        <div className="premium-reveal flex flex-col gap-5 @min-[760px]:flex-row @min-[760px]:items-end @min-[760px]:justify-between">
-          <div>
+        <div className="premium-reveal grid gap-5 @min-[760px]:grid-cols-[minmax(0,1fr)_auto] @min-[760px]:items-end">
+          <div className="min-w-0 max-w-3xl pb-1">
             <p
               {...editable("content.socialFeedKicker", "text", "Social Feed Label")}
               className="text-xs font-black uppercase tracking-[.15em] text-[var(--site-accent)]"
               style={textStyleFor(config, "content.socialFeedKicker")}
             >
-              {textValue(config, "content.socialFeedKicker", siteCopy(config, "Direkt aus dem Feed", "Straight from the feed"))}
+              {textValue(
+                config,
+                "content.socialFeedKicker",
+                siteCopy(config, "Direkt aus dem Feed", "Straight from the feed"),
+              )}
             </p>
             <h2
               {...editable("content.socialFeedHeadline", "text", "Social Feed Überschrift")}
-              className="mt-3 text-[clamp(2rem,5cqw,3.5rem)] font-black leading-[1] tracking-[-.045em] text-zinc-950"
+              className="mt-3 overflow-visible pb-1 text-[clamp(1.9rem,5cqw,3.5rem)] font-black leading-[1.08] tracking-[-.04em] text-zinc-950 [text-wrap:balance]"
               style={textStyleFor(config, "content.socialFeedHeadline")}
             >
-              {textValue(config, "content.socialFeedHeadline", siteCopy(config, "Was gerade passiert.", "What’s happening now."))}
+              {textValue(
+                config,
+                "content.socialFeedHeadline",
+                platform === "tiktok"
+                  ? siteCopy(config, "Neu auf TikTok.", "Latest on TikTok.")
+                  : siteCopy(config, "Aus unserem Instagram.", "From our Instagram."),
+              )}
             </h2>
           </div>
 
@@ -3432,45 +3726,79 @@ function PartnerSocialFeed({
             href={profileUrl || posts[0].url}
             target="_blank"
             rel="noreferrer"
-            className="premium-button group inline-flex w-fit items-center gap-2 rounded-xl border border-zinc-200 bg-white/70 px-3 py-2 text-xs font-black text-zinc-800 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-[var(--site-accent)]"
+            className="premium-button group inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-zinc-200 bg-white/75 px-4 py-2.5 text-xs font-black text-zinc-800 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-[var(--site-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]"
           >
             <PlatformIcon className="size-4 text-[var(--site-accent)]" aria-hidden="true" />
-            {platform === "tiktok" ? "TikTok" : "Instagram"}
+            {platform === "tiktok"
+              ? siteCopy(config, "Auf TikTok folgen", "Follow on TikTok")
+              : siteCopy(config, "Auf Instagram folgen", "Follow on Instagram")}
             <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
           </a>
         </div>
 
-        <div className={`mt-7 grid gap-4 ${gridClass}`}>
-          {posts.map((post, index) => (
-            <article
-              key={`${post.url}-${index}`}
-              className="premium-liquid-panel premium-ecosystem-card premium-reveal overflow-hidden rounded-[1.5rem] p-2"
-              style={{ "--reveal-index": index } as CSSProperties}
-            >
-              <div className={`overflow-hidden rounded-[1.15rem] bg-white ${platform === "tiktok" ? "aspect-[9/16]" : "aspect-[4/5]"}`}>
-                <iframe
-                  src={post.embedUrl}
-                  title={`${platform === "tiktok" ? "TikTok" : "Instagram"} ${siteCopy(config, "Beitrag", "post")} ${index + 1}`}
-                  className="h-full w-full border-0"
-                  loading="lazy"
-                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              </div>
-              <a
-                href={post.url}
-                target="_blank"
-                rel="noreferrer"
-                className="group/link flex items-center justify-between gap-3 px-3 py-3 text-xs font-black text-zinc-700"
+        {platform === "instagram" ? (
+          <InstagramEmbedWall
+            posts={posts}
+            config={config}
+          />
+        ) : posts.length ? (
+          <div className={`mt-7 grid gap-4 ${gridClass}`}>
+            {posts.map((post, index) => (
+              <article
+                key={`${post.url}-${index}`}
+                className="premium-liquid-panel premium-ecosystem-card premium-reveal min-w-0 overflow-hidden rounded-[1.5rem] p-2"
+                style={{ "--reveal-index": index } as CSSProperties}
               >
-                <span>{siteCopy(config, "Originalbeitrag öffnen", "Open original post")}</span>
-                <ArrowRight className="size-3.5 text-[var(--site-accent)] transition-transform group-hover/link:translate-x-1" aria-hidden="true" />
-              </a>
-            </article>
-          ))}
-        </div>
+                <div className={`overflow-hidden rounded-[1.15rem] bg-white ${platform === "tiktok" ? "aspect-[9/16]" : "aspect-[4/5]"}`}>
+                  <iframe
+                    src={post.embedUrl}
+                    title={`${platform === "tiktok" ? "TikTok" : "Instagram"} ${siteCopy(config, "Beitrag", "post")} ${index + 1}`}
+                    className="h-full w-full border-0"
+                    loading="lazy"
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
       </div>
     </section>
+  )
+}
+
+function InstagramEmbedWall({
+  posts,
+  config,
+}: {
+  posts: Array<{ url: string; embedUrl: string }>
+  config: MicrositeConfig
+}) {
+  const desktopCardClass = posts.length === 2
+    ? "@min-[760px]:basis-[calc((100%-1rem)/2)]"
+    : "@min-[760px]:basis-[calc((100%-2rem)/3)]"
+
+  return (
+    <div className="premium-instagram-embed mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 [scrollbar-color:color-mix(in_srgb,var(--site-accent)_45%,transparent)_transparent] [scrollbar-width:thin]">
+      {posts.map((post, index) => (
+        <article
+          key={post.url}
+          className={`premium-liquid-panel premium-ecosystem-card premium-reveal min-w-0 max-w-[340px] basis-[82%] shrink-0 snap-start overflow-hidden rounded-[1.3rem] p-2 @min-[760px]:max-w-none ${desktopCardClass}`}
+          style={{ "--reveal-index": index } as CSSProperties}
+        >
+          <div className="relative h-[410px] overflow-hidden rounded-[1rem] bg-white @min-[760px]:h-[440px]">
+            <iframe
+              src={post.embedUrl}
+              title={`Instagram ${siteCopy(config, "Beitrag", "post")} ${index + 1}`}
+              className="absolute inset-0 h-full w-full border-0"
+              loading="lazy"
+              allow="encrypted-media; picture-in-picture; web-share"
+            />
+          </div>
+        </article>
+      ))}
+    </div>
   )
 }
 
@@ -3496,6 +3824,7 @@ function socialPostEmbedUrl(
     return ""
   }
 }
+
 
 function MetaLine({
   id,
@@ -3626,7 +3955,7 @@ function QuoteSection({ config }: { config: MicrositeConfig }) {
     <section
       ref={sectionRef}
       id="partner-zitat"
-      className="premium-quote-shell relative bg-[#f7f3ee] px-6 pb-16 pt-14 text-[var(--site-secondary)] @min-[640px]:px-10 @min-[900px]:pb-24 @min-[900px]:pt-20 @min-[1024px]:px-12"
+      className="premium-quote-shell relative bg-[var(--site-bg)] px-6 pb-16 pt-14 text-[var(--site-secondary)] @min-[640px]:px-10 @min-[900px]:pb-20 @min-[900px]:pt-16 @min-[1024px]:px-12"
     >
       <div className="premium-reveal relative mx-auto max-w-6xl text-center">
         <span className="mx-auto block w-fit text-[var(--site-accent)] opacity-65">
@@ -3891,75 +4220,6 @@ function baseElementStyle(style: MicrositeElementStyle): CSSProperties {
   }
 }
 
-function FeaturedMenuCard({
-  item,
-  config,
-}: {
-  item: MicrositeMenuItem
-  config: MicrositeConfig
-}) {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null)
-  const showImage = item.micrositeShowImage !== false
-  const imageFailed = Boolean(item.image_url && failedSrc === item.image_url)
-  const hasImage = Boolean(showImage && item.image_url && !imageFailed)
-  const imageId = item.micrositeImageId
-
-  return (
-    <article
-      {...(imageId ? editable(imageId, "image", "Großes Menübild") : {})}
-      className={`premium-menu-spotlight premium-ecosystem-card group relative overflow-hidden rounded-[1.65rem] shadow-[0_26px_66px_-34px_rgba(48,30,18,.42)] ${showImage ? "min-h-[310px] @min-[900px]:min-h-[430px]" : "min-h-[250px] bg-[#fffaf3] text-zinc-950 ring-1 ring-inset ring-white/80 @min-[900px]:min-h-[320px]"} ${hasImage ? "bg-zinc-950 text-white" : "bg-[#fffaf3] text-zinc-950"}`}
-    >
-      {showImage ? (
-        item.image_url && !imageFailed ? (
-          <img
-            src={item.image_url}
-            alt={item.name || siteCopy(config, "Beliebtes Gericht", "Popular dish")}
-            onError={() => setFailedSrc(item.image_url)}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        ) : (
-          <BrandedImage
-            src=""
-            alt={siteCopy(config, "Benefitsi Platzhalterbild", "Benefitsi placeholder image")}
-            className="absolute inset-0 h-full w-full"
-          />
-        )
-      ) : (
-        <span
-          aria-hidden="true"
-          className="absolute inset-x-0 top-0 h-1 bg-[var(--site-accent)]"
-        />
-      )}
-      {showImage ? (
-        <div className={`absolute inset-0 ${hasImage ? "bg-[linear-gradient(180deg,rgba(15,12,10,.02)_20%,rgba(15,12,10,.82)_82%,rgba(15,12,10,.95)_100%)]" : "bg-[linear-gradient(180deg,rgba(255,250,243,0)_28%,rgba(255,250,243,.78)_72%,rgba(255,250,243,.98)_100%)]"}`} />
-      ) : null}
-      <div className={`relative flex h-full flex-col justify-between p-5 @min-[900px]:p-6 ${showImage ? "min-h-[310px] @min-[900px]:min-h-[430px]" : "min-h-[250px] @min-[900px]:min-h-[320px]"}`}>
-        <span className={`w-fit rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[.12em] backdrop-blur-xl ${hasImage ? "border border-white/30 bg-black/25 text-white" : "border border-white/90 bg-white/72 text-[var(--site-accent)] shadow-sm"}`}>
-          {siteCopy(config, "Gäste-Favorit", "Guest favorite")}
-        </span>
-        <div>
-          {item.categoryName ? (
-            <p className={`text-[11px] font-black uppercase tracking-[.12em] ${hasImage ? "text-white/65" : "text-zinc-500"}`}>{item.categoryName}</p>
-          ) : null}
-          <div className="mt-2 flex items-end justify-between gap-4">
-            <h3 className="max-w-[15ch] text-[clamp(1.55rem,3cqw,2.35rem)] font-black leading-[1] tracking-[-.045em]">
-              {item.name || siteCopy(config, "Beliebtes Gericht", "Popular dish")}
-            </h3>
-            {item.price !== null && item.price !== undefined ? (
-              <span className="shrink-0 rounded-xl bg-white/90 px-3 py-2 text-sm font-black text-zinc-950 backdrop-blur-xl">
-                {formatPrice(item.price, item.currency)}
-              </span>
-            ) : null}
-          </div>
-          {item.description ? (
-            <p className={`mt-3 max-w-[48ch] text-sm leading-6 ${hasImage ? "text-white/75" : "text-zinc-600"}`}>{item.description}</p>
-          ) : null}
-        </div>
-      </div>
-    </article>
-  )
-}
-
 function MenuCard({ item, config }: { item: MicrositeMenuItem; config: MicrositeConfig }) {
   const isDrink = isDrinkItem(item)
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
@@ -3968,7 +4228,7 @@ function MenuCard({ item, config }: { item: MicrositeMenuItem; config: Microsite
   const imageId = item.micrositeImageId
 
   return (
-    <div className={`premium-card premium-liquid-panel premium-ecosystem-card premium-reveal flex min-w-0 flex-row overflow-hidden rounded-[1.15rem] ${showImage ? "items-start gap-3 p-3.5 @min-[520px]:gap-4" : "items-center p-5"}`}>
+    <article className={`premium-card premium-ecosystem-card premium-reveal flex min-w-0 flex-row overflow-hidden rounded-[1.15rem] border border-white/80 bg-white shadow-[0_14px_36px_rgba(15,23,42,.055)] ${showImage ? "items-start gap-3 p-4 @min-[520px]:gap-4" : "items-center p-5"}`}>
       {showImage ? (
         item.image_url && !imageFailed ? (
           <img
@@ -3979,19 +4239,25 @@ function MenuCard({ item, config }: { item: MicrositeMenuItem; config: Microsite
             className="size-20 shrink-0 rounded-xl object-cover @min-[760px]:size-24"
           />
         ) : (
-          <BrandedImage
-            src=""
-            alt={isDrink ? siteCopy(config, "Benefitsi Platzhalter für Getränk", "Benefitsi drink placeholder") : siteCopy(config, "Benefitsi Platzhalter für Speise", "Benefitsi food placeholder")}
-            className="size-20 shrink-0 rounded-xl @min-[760px]:size-24"
-            editableId={imageId}
-            editableLabel="Menübild"
-          />
+          <span
+            {...(imageId ? editable(imageId, "image", "Menübild") : {})}
+            className="grid size-20 shrink-0 place-items-center rounded-xl bg-[color-mix(in_srgb,var(--site-accent)_7%,white)] text-[var(--site-accent)] @min-[760px]:size-24"
+            title={
+              isDrink
+                ? siteCopy(config, "Getränk ohne Bild", "Drink without an image")
+                : siteCopy(config, "Speise ohne Bild", "Food without an image")
+            }
+          >
+            <span className="grid size-6 place-items-center rounded-full border-2 border-current">
+              <Plus className="size-4" strokeWidth={2.4} aria-hidden="true" />
+            </span>
+          </span>
         )
       ) : null}
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-bold leading-tight tracking-[-0.03em]">
-            {item.name || siteCopy(config, "Gericht", "Dish")}
+            {micrositeMenuItemDisplayName(item.name) || siteCopy(config, "Gericht", "Dish")}
           </h3>
           {item.price !== null && item.price !== undefined ? (
             <span className="shrink-0 font-bold text-[var(--site-accent)]">
@@ -4042,7 +4308,7 @@ function MenuCard({ item, config }: { item: MicrositeMenuItem; config: Microsite
           </details>
         ) : null}
       </div>
-    </div>
+    </article>
   )
 }
 
@@ -4388,36 +4654,6 @@ function rewardLabelForStamp(
     (isMainReward ? (language === "en" ? "Main reward" : "Hauptbelohnung") : "Bonus"),
     language,
   )
-}
-
-function isTwoForOneDeal(deal: Deal) {
-  if (deal.active !== true || deal.stock_remaining === 0) return false
-
-  const now = Date.now()
-  const startsAt = Date.parse(deal.valid_from || deal.starts_at || "")
-  const endsAt = Date.parse(deal.valid_until || deal.ends_at || "")
-
-  if (Number.isFinite(startsAt) && startsAt > now) return false
-  if (Number.isFinite(endsAt) && endsAt < now) return false
-
-  const searchable = [
-    deal.type,
-    deal.discount_type,
-    deal.benefit_category,
-    deal.reward_item,
-    deal.customer_description,
-    deal.terms,
-    JSON.stringify(deal.metadata || {}),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .replace(/[_-]+/g, " ")
-    .toLowerCase()
-  const explicitTwoForOne = /(?:2\s*(?:f\u00fcr|fur|for|x|:)\s*1|two\s+for\s+one|buy\s+one\s+get\s+one|\bbogo\b)/i.test(searchable)
-  const structuredBuyGet = /buy\s*(?:x|one)?\s*get\s*(?:y|one)?/.test(searchable) &&
-    (deal.trigger_value === 1 || deal.benefit_count === 1)
-
-  return explicitTwoForOne || structuredBuyGet
 }
 
 function rewardImageForStamp(

@@ -214,9 +214,9 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
     },
     branding: {
       paletteMode: "auto",
-      accent: "#f59e0b",
-      accentSecondary: "#172554",
-      accentTertiary: "#16c4cc",
+      accent: "#118cff",
+      accentSecondary: "#061829",
+      accentTertiary: "#17d4d7",
       logoUrl: partner.logo_url || "",
       partnerBadgeUrl: "",
     },

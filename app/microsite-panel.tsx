@@ -17,6 +17,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react"
+import { useRouter } from "next/navigation"
 import type { PartnerWithDeals } from "@/lib/admin-data"
 import {
   createDefaultMicrositeConfig,
@@ -25,6 +26,7 @@ import {
 } from "@/lib/microsites"
 import {
   createMicrositeReadinessReport,
+  micrositeReadinessEnglishTranslations,
   type MicrositeReadinessReport,
 } from "@/lib/microsite-readiness"
 import { micrositeTemplatePresets } from "@/lib/microsite-templates"
@@ -48,8 +50,12 @@ import {
   partnerSocialUrl,
 } from "@/lib/microsite-personalization"
 import { extractThemePalette } from "@/lib/logo-palette"
+import { isMicrositeTwoForOneDeal } from "@/lib/microsite-deals"
 import {
+  micrositeMenuItemDisplayName,
   micrositeMenuItemImageId,
+  micrositeMenuItemKey,
+  micrositeMenuPreviewItems,
   micrositeMenuItemVisibilityId,
 } from "@/lib/microsite-menu"
 import { saveMicrositeVersion, type MicrositeActionState } from "./microsite-actions"
@@ -108,6 +114,7 @@ function useBuilderI18n() {
 }
 
 const builderTranslations: Record<string, string> = {
+  ...micrositeReadinessEnglishTranslations,
   "Microsite": "Microsite",
   "Restaurant-Premium-Vorlage": "Restaurant premium template",
   "Für Mobilgeräte optimierte Vorlage · Daten vom Partnerprofil · versionierte Veröffentlichung":
@@ -158,12 +165,34 @@ const builderTranslations: Record<string, string> = {
   "Menübilder": "Menu images",
   "Großes Hauptbild": "Large featured image",
   "Großes Menübild": "Large menu image",
+  "Angezeigtes Hauptgericht": "Featured menu item",
+  "Wähle das Gericht für die große Karte aus.": "Choose the dish used for the large card.",
   "Kleines Menübild": "Small menu image",
   "Bild anzeigen": "Show image",
   "Ohne Bild": "No image",
   "Partnerbild verwenden": "Use partner image",
+  "Aus Asset-Bibliothek wählen": "Choose from asset library",
+  "Bild auswählen": "Choose image",
   "Die ersten fünf Gerichte bilden die Microsite-Vorschau. Das erste Bild wird groß dargestellt.":
     "The first five dishes form the microsite preview. The first image is displayed prominently.",
+  "Die ersten sechs Gerichte bilden die Microsite-Vorschau. Das erste Bild wird groß dargestellt.":
+    "The first six dishes form the microsite preview. The first image is displayed prominently.",
+  "Bis zu sechs direkte Instagram-Post-/Reel- oder TikTok-Video-URLs eintragen. Der Instagram-Bereich erscheint erst, wenn mindestens zwei gültige Instagram-Beiträge hinterlegt sind.":
+    "Add up to six direct Instagram post/reel or TikTok video URLs. The Instagram section appears only when at least two valid Instagram posts are configured.",
+  "Instagram benötigt mindestens zwei Beiträge, bevor der Bereich auf der Microsite angezeigt wird.":
+    "Instagram needs at least two posts before the section is shown on the microsite.",
+  "gültige Beiträge": "valid posts",
+  "Bitte einen direkten Post-, Reel- oder Video-Link verwenden, keinen Profil-Link.":
+    "Use a direct post, reel, or video link rather than a profile link.",
+  "Bild hochladen oder aus der Bibliothek zuweisen":
+    "Upload an image or assign one from the library",
+  "Ziel auswählen, anschließend ein neues Bild hochladen oder unten ein vorhandenes Bild anklicken. Die Änderung erscheint sofort in der Vorschau und wird mit dem Entwurf gespeichert.":
+    "Choose a target, then upload a new image or click an existing image below. The change appears immediately in the preview and is saved with the draft.",
+  "Bildposition": "Image position",
+  "Neues Bild direkt zur Asset-Bibliothek hinzufügen":
+    "Add a new image directly to the asset library",
+  "Für ausgewählte Bildposition verwenden": "Use for the selected image position",
+  "Hier verwenden": "Use here",
   "Über-uns Überschrift": "About headline",
   "Über-uns Text": "About text",
   "Partner-Zitat": "Partner quote",
@@ -171,6 +200,10 @@ const builderTranslations: Record<string, string> = {
   "Kontakt Überschrift": "Contact headline",
   "App-Banner Überschrift": "App banner headline",
   "App-Banner Text": "App banner text",
+  "App & Vorteile": "App & benefits",
+  "App Vorteile Überschrift": "App benefits headline",
+  "App Vorteile Text": "App benefits text",
+  "Über uns & Kontakt": "About & contact",
   "iPhone App-Screenshot URL": "iPhone app screenshot URL",
   "Neuen iPhone App-Screenshot hochladen": "Upload new iPhone app screenshot",
   "App-Vorschau": "App preview",
@@ -399,8 +432,8 @@ const builderTranslations: Record<string, string> = {
   "Social Media": "Social media",
   "Social Feed auf der Microsite": "Social feed on the microsite",
   "Originalbeiträge einbetten": "Embed original posts",
-  "Zeigt bis zu drei echte Instagram- oder TikTok-Beiträge. Profil-Links reichen nicht aus; bitte direkte Beitrags-URLs verwenden.":
-    "Shows up to three real Instagram or TikTok posts. Profile links are not enough; use direct post URLs.",
+  "Direkte Beitrags-URLs zeigen bis zu drei Instagram- oder TikTok-Beiträge. Ohne Beiträge wird stattdessen das verknüpfte Profil angezeigt.":
+    "Direct post URLs show up to three Instagram or TikTok posts. Without posts, the linked profile is shown instead.",
   "Feed anzeigen": "Show feed",
   "Feed-Plattform": "Feed platform",
   "Beitrag 1 URL": "Post 1 URL",
@@ -450,8 +483,8 @@ const builderTranslations: Record<string, string> = {
     "Three contrasting colors were selected from the partner logo.",
   "Logo-Farben wurden zu einer vollständigen professionellen Palette ergänzt.":
     "The logo colors were completed into a professional palette.",
-  "Professionelle Ersatzpalette aktiv – Logo fehlt oder kann nicht analysiert werden.":
-    "Professional fallback palette active—the logo is missing or could not be analyzed.",
+  "Benefitsi Blau-Palette aktiv – das Logo ist einfarbig, fehlt oder kann nicht analysiert werden.":
+    "Benefitsi blue palette active—the logo is monochrome, missing, or could not be analyzed.",
   "Manuelle Farben sind aktiv.": "Manual colors are active.",
   "Palette neu aus Logo auswählen": "Regenerate palette from logo",
   "Primärfarbe": "Primary color",
@@ -465,9 +498,29 @@ const builderTranslations: Record<string, string> = {
   "Wähle ein Element in der Vorschau und ändere nur seine relevanten Eigenschaften.":
     "Select an element in the preview and change only its relevant properties.",
   "Design & Inhalte": "Design & content",
+  "Grundlagen": "Foundations",
+  "Marke und Startbereich des aktuellen Templates.": "Brand and hero settings for the current template.",
+  "Seiteninhalte": "Page content",
+  "Texte und Inhalte in derselben Reihenfolge wie auf der Microsite.":
+    "Text and content in the same order as the microsite.",
   "Marke, Startbereich und Seiteninhalte in der Reihenfolge der Microsite.":
     "Brand, hero, and page content in the microsite order.",
   "Medien & Daten": "Media & data",
+  "Bilder & Medien": "Images & media",
+  "Nur Bilder, die im aktuellen Template tatsächlich verwendet werden.":
+    "Only images that are actually used in the current template.",
+  "Marke & Startbereich Bilder": "Brand & hero images",
+  "Deals & Belohnungen Bilder": "Deals & reward images",
+  "Über-uns Bilder": "About images",
+  "App & Footer Bilder": "App & footer images",
+  "Partner-Badge": "Partner badge",
+  "2für1 Hintergrundbild": "2-for-1 background image",
+  "Über-uns Hauptbild": "About main image",
+  "Über-uns Zutatenbild": "About ingredients image",
+  "Über-uns Ortsbild": "About location image",
+  "Über-uns Detailbild": "About detail image",
+  "Keine aktiven Deal- oder Belohnungsbilder in diesem Template.":
+    "There are no active deal or reward images in this template.",
   "Bilder prüfen, wiederverwenden und die synchronisierten Partnerdaten kontrollieren.":
     "Review and reuse images, then verify synchronized partner data.",
   "Sichtbarkeit & Ausgabe": "Visibility & output",
@@ -868,6 +921,11 @@ function translateBuilderText(locale: BuilderLocale, text: string): string {
     return `${menuImageMatch[1]} menu image`
   }
 
+  const rewardImageMatch = repairedText.match(/^(\d+) Stempel Belohnungsbild$/)
+  if (rewardImageMatch) {
+    return `${rewardImageMatch[1]}-stamp reward image`
+  }
+
   const faqQuestionMatch = repairedText.match(/^FAQ Frage (\d+)$/)
   if (faqQuestionMatch) {
     return `FAQ question ${faqQuestionMatch[1]}`
@@ -968,6 +1026,7 @@ export function MicrositePanel({
   fullscreen?: boolean
   previewBasePath?: string
 }) {
+  const router = useRouter()
   const initialConfig = resolveMicrositeConfig(
     partner.microsite?.draftVersion?.config ??
       partner.microsite?.publishedVersion?.config,
@@ -998,18 +1057,19 @@ export function MicrositePanel({
   )
   const [pendingIntent, setPendingIntent] = useState("")
   const [clientSaveError, setClientSaveError] = useState("")
+  const renderedAssetLibrary = config.assets.library.filter((asset) =>
+    isAvailableMicrositeLibraryAsset(asset, partner),
+  )
   const assetOptions = Array.from(new Set([
     partner.logo_url,
-    partner.feature_card_url,
-    partner.discover_card_image_url,
-    ...(partner.cover_urls || []),
-    config.branding.partnerBadgeUrl,
+    config.branding.logoUrl,
     config.hero.backgroundImageUrl,
-    config.deals.illustrationUrl,
-    config.deals.topDealImageUrl,
-    config.seo.ogImageUrl,
-    ...config.assets.library.map((asset) => asset.url),
-    ...Object.values(config.elementText).filter((value) => /^https?:\/\/|^\//.test(value)),
+    partner.deals.some(isMicrositeTwoForOneDeal) ? config.deals.topDealImageUrl : "",
+    ...renderedAssetLibrary.map((asset) => asset.url),
+    ...menuItemsForMicrositeBuilder(partner).map((item) => item.image_url),
+    ...Object.entries(config.elementText)
+      .filter(([key]) => isRenderedMicrositeImageSlot(key, partner))
+      .map(([, value]) => value),
   ].filter((asset): asset is string => Boolean(asset))))
   const readinessReport = useMemo(
     () => createMicrositeReadinessReport(partner, config),
@@ -1044,8 +1104,8 @@ export function MicrositePanel({
   )
   const useViewportShell = fullscreen
   const inlineSidebarClasses = editorPanelOpen
-    ? "min-h-[calc(100dvh-11rem)] max-h-[calc(100dvh-11rem)] overflow-x-hidden overflow-y-auto border-b lg:min-h-0 lg:max-h-[calc(100vh-1rem)] lg:border-b-0 lg:border-r"
-    : "overflow-x-hidden border-b lg:sticky lg:top-4 lg:max-h-[calc(100vh-1rem)] lg:overflow-x-hidden lg:overflow-y-auto lg:border-b-0 lg:border-r"
+    ? "h-[min(72dvh,720px)] min-h-0 touch-pan-y overflow-y-auto overscroll-y-contain border-b [scrollbar-gutter:stable] [scrollbar-width:thin] lg:sticky lg:top-4 lg:h-[calc(100dvh-2rem)] lg:max-h-[calc(100dvh-2rem)] lg:border-b-0 lg:border-r"
+    : "touch-pan-y overflow-x-hidden border-b lg:sticky lg:top-4 lg:h-[calc(100dvh-2rem)] lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:overscroll-y-contain lg:border-b-0 lg:border-r lg:[scrollbar-gutter:stable] lg:[scrollbar-width:thin]"
 
   useEffect(() => {
     const sidebar = sidebarRef.current
@@ -1322,6 +1382,7 @@ export function MicrositePanel({
             previewStorageKey,
             JSON.stringify(savedConfig),
           )
+          router.refresh()
           inlineTextOverridesRef.current = {}
 
           if (inlineTextOverridesInputRef.current) {
@@ -1342,7 +1403,25 @@ export function MicrositePanel({
         cancelled = true
       }
     }
-  }, [partner, previewStorageKey, state.config, state.ok])
+  }, [partner, previewStorageKey, router, state.config, state.ok])
+
+  useEffect(() => {
+    const applySharedConfig = (serializedConfig: string | null) => {
+      if (!serializedConfig) return
+
+      try {
+        setConfig(resolveMicrositeConfig(JSON.parse(serializedConfig), partner))
+      } catch {
+        // Ignore incomplete or unrelated storage writes.
+      }
+    }
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === previewStorageKey) applySharedConfig(event.newValue)
+    }
+
+    window.addEventListener("storage", handleStorage)
+    return () => window.removeEventListener("storage", handleStorage)
+  }, [partner, previewStorageKey])
 
   useEffect(() => {
     const root = previewRef.current
@@ -1614,7 +1693,7 @@ export function MicrositePanel({
           <button
             type="button"
             onClick={resetToPartnerDefaults}
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 text-[11px] font-semibold leading-none text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
           >
             <RotateCcw className="size-3.5" aria-hidden="true" />
             {tr("Auf Standard zurücksetzen")}
@@ -1626,7 +1705,7 @@ export function MicrositePanel({
             onClick={() => {
               window.localStorage.setItem(previewStorageKey, JSON.stringify(config))
             }}
-            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
+            className="inline-flex h-9 items-center rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
           >
             {tr("Aktuelle Vorschau öffnen")}
           </a>
@@ -1748,11 +1827,11 @@ export function MicrositePanel({
 
         <aside
           ref={sidebarRef}
-            className={`relative w-full min-w-0 max-w-full self-start overflow-x-hidden border-zinc-200 bg-white ${
+            className={`relative w-full min-w-0 max-w-full self-start touch-pan-y overflow-x-hidden border-zinc-200 bg-white [scrollbar-width:thin] ${
             fullscreen
-              ? "border-b overflow-x-hidden overflow-y-auto lg:sticky lg:top-20 lg:h-[calc(100dvh-5rem)] lg:max-h-[calc(100dvh-5rem)] lg:border-b-0 lg:border-r"
+              ? "h-[min(72dvh,720px)] min-h-0 overflow-y-auto overscroll-y-contain border-b [scrollbar-gutter:stable] lg:sticky lg:top-20 lg:h-[calc(100dvh-5rem)] lg:max-h-[calc(100dvh-5rem)] lg:border-b-0 lg:border-r"
               : inlineSidebarClasses
-          } ${editorPanelOpen ? "space-y-6 p-5" : "p-2"}`}
+          } ${editorPanelOpen ? "space-y-4 p-4" : "p-2"}`}
         >
           {fullscreen && editorPanelOpen ? (
             <div
@@ -1800,14 +1879,14 @@ export function MicrositePanel({
           </BuilderCategory>
 
           <BuilderCategory
-            title="Design & Inhalte"
-            description="Marke, Startbereich und Seiteninhalte in der Reihenfolge der Microsite."
+            title="Grundlagen"
+            description="Marke und Startbereich des aktuellen Templates."
           >
 
           <div data-builder-section="brand">
           <ConfigSection title="Marke">
             <PaletteControl
-              logoUrl={partner.logo_url || ""}
+              logoUrl={config.branding.logoUrl || partner.logo_url || ""}
               config={config}
               setConfig={setConfig}
             />
@@ -1815,23 +1894,6 @@ export function MicrositePanel({
               label="Logo"
               value={partner.logo_url || "Im Partnerprofil hinterlegen"}
               source="Partnerprofil → Media"
-            />
-            <EditorField
-              name="partner_badge_url"
-              label="Badge-Icon URL"
-              value={config.branding.partnerBadgeUrl}
-              onChange={(value) =>
-                updateBranding(setConfig, "partnerBadgeUrl", value)
-              }
-              placeholder="https://..."
-              list={`microsite-assets-${partner.id || "new"}`}
-            />
-            <AssetUploadField
-              name="badge_file"
-              label="Neues Badge-Icon hochladen"
-              onPreview={(url) =>
-                updateBranding(setConfig, "partnerBadgeUrl", url)
-              }
             />
           </ConfigSection>
           </div>
@@ -1859,208 +1921,155 @@ export function MicrositePanel({
               value={config.hero.openingText}
               source="Partnerprofil → Öffnungszeiten"
             />
-            <EditorField
-              name="hero_image_url"
-              label="Startbild URL"
-              value={config.hero.backgroundImageUrl}
-              onChange={(value) =>
-                updateHero(setConfig, "backgroundImageUrl", value)
-              }
-              list={`microsite-assets-${partner.id || "new"}`}
-            />
-            <AssetUploadField
-              name="hero_file"
-              label="Neues Startbild hochladen"
-              onPreview={(url) =>
-                updateHero(setConfig, "backgroundImageUrl", url)
-              }
-            />
           </ConfigSection>
           </div>
 
-          <div data-builder-section="content" className="space-y-3">
-          <ConfigSection title="Deals & Vorteile">
-            <EditorField
-              name="deals_headline"
-              label="Überschrift"
-              value={config.deals.headline}
-              onChange={(value) => updateDeals(setConfig, "headline", value)}
-            />
-            <EditorField
-              name="deals_slogan"
-              label="Slogan"
-              value={config.deals.slogan}
-              onChange={(value) => updateDeals(setConfig, "slogan", value)}
-            />
-            <EditorField
-              name="deals_description"
-              label="Beschreibung"
-              value={config.deals.description}
-              onChange={(value) => updateDeals(setConfig, "description", value)}
-              multiline
-            />
-            <EditorField
-              name="deals_illustration_url"
-              label="Intro-Grafik URL"
-              value={config.deals.illustrationUrl}
-              onChange={(value) =>
-                updateDeals(setConfig, "illustrationUrl", value)
-              }
-              list={`microsite-assets-${partner.id || "new"}`}
-            />
-            <AssetUploadField
-              name="deals_illustration_file"
-              label="Neue Intro-Grafik hochladen"
-              onPreview={(url) =>
-                updateDeals(setConfig, "illustrationUrl", url)
-              }
-            />
-            <EditorField
-              name="top_deal_headline"
-              label="Top-Deal Überschrift"
-              value={config.deals.topDealHeadline}
-              onChange={(value) =>
-                updateDeals(setConfig, "topDealHeadline", value)
-              }
-            />
-            <EditorField
-              name="top_deal_image_url"
-              label="Top-Deal Bild URL"
-              value={config.deals.topDealImageUrl}
-              onChange={(value) =>
-                updateDeals(setConfig, "topDealImageUrl", value)
-              }
-              list={`microsite-assets-${partner.id || "new"}`}
-            />
-            <AssetUploadField
-              name="top_deal_file"
-              label="Neues Top-Deal Bild hochladen"
-              onPreview={(url) => updateDeals(setConfig, "topDealImageUrl", url)}
-            />
-          </ConfigSection>
-
-          <ConfigSection title="Weitere Bereiche">
-            <EditorField
-              name="menu_headline"
-              label="Speisekarte Überschrift"
-              value={config.content.menuHeadline}
-              onChange={(value) => updateContent(setConfig, "menuHeadline", value)}
-            />
-            <EditorField
-              name="menu_description"
-              label="Speisekarte Beschreibung"
-              value={config.content.menuDescription}
-              onChange={(value) =>
-                updateContent(setConfig, "menuDescription", value)
-              }
-              multiline
-            />
-            <EditorField
-              name="about_headline"
-              label="Über-uns Überschrift"
-              value={config.content.aboutHeadline}
-              onChange={(value) =>
-                updateContent(setConfig, "aboutHeadline", value)
-              }
-            />
-            <EditorField
-              name="about_text"
-              label="Über-uns Text"
-              value={config.content.aboutText}
-              onChange={(value) => updateContent(setConfig, "aboutText", value)}
-              multiline
-            />
-            <EditorField
-              name="quote_text"
-              label="Partner-Zitat"
-              value={config.content.quoteText}
-              onChange={(value) => updateContent(setConfig, "quoteText", value)}
-              multiline
-            />
-            <EditorField
-              name="quote_attribution"
-              label="Zitat-Absender"
-              value={config.content.quoteAttribution}
-              onChange={(value) =>
-                updateContent(setConfig, "quoteAttribution", value)
-              }
-            />
-            <EditorField
-              name="contact_headline"
-              label="Kontakt Überschrift"
-              value={config.content.contactHeadline}
-              onChange={(value) =>
-                updateContent(setConfig, "contactHeadline", value)
-              }
-            />
-            <EditorField
-              name="app_headline"
-              label="App-Banner Überschrift"
-              value={config.content.appHeadline}
-              onChange={(value) => updateContent(setConfig, "appHeadline", value)}
-            />
-            <EditorField
-              name="app_text"
-              label="App-Banner Text"
-              value={config.content.appText}
-              onChange={(value) => updateContent(setConfig, "appText", value)}
-              multiline
-            />
-            <EditorField
-              name="footer_text"
-              label="Footer-Text"
-              value={config.content.footerText}
-              onChange={(value) => updateContent(setConfig, "footerText", value)}
-            />
-          </ConfigSection>
-
-          <ConfigSection title="App-Vorschau">
-            <p className="text-xs leading-5 text-zinc-500">
-              {tr("Dieses Bild wird direkt im schwarzen Telefonrahmen angezeigt. Du kannst es auch in der Vorschau anklicken.")}
-            </p>
-            <EditorField
-              name="app_phone_screenshot_url"
-              label="Bild im Telefon-Mockup URL"
-              value={config.elementText["content.appPhoneScreenshotUrl"] || "/partner-details-page.jpg"}
-              onChange={(value) =>
-                setConfig((current) =>
-                  setElementTextValue(current, "content.appPhoneScreenshotUrl", value),
-                )
-              }
-              list={`microsite-assets-${partner.id || "new"}`}
-            />
-            <AssetUploadField
-              name="app_phone_screenshot_file"
-              label="Neues Bild für das Telefon-Mockup hochladen"
-              onPreview={(url) =>
-                setConfig((current) =>
-                  setElementTextValue(current, "content.appPhoneScreenshotUrl", url),
-                )
-              }
-            />
-          </ConfigSection>
-
-          <ConfigSection title="Menübilder">
-            <MenuImagesEditor
-              partner={partner}
-              config={config}
-              setConfig={setConfig}
-            />
-          </ConfigSection>
-
-          </div>
-
-          <SocialMediaPanel partner={partner} config={config} setConfig={setConfig} />
           </BuilderCategory>
 
           <BuilderCategory
-            title="Medien & Daten"
-            description="Bilder prüfen, wiederverwenden und die synchronisierten Partnerdaten kontrollieren."
+            title="Seiteninhalte"
+            description="Texte und Inhalte in derselben Reihenfolge wie auf der Microsite."
           >
-            <div data-builder-section="assets">
+
+          <div data-builder-section="content" className="space-y-2">
+            <ConfigSection title="Partner-Zitat">
+              <EditorField
+                name="quote_text"
+                label="Partner-Zitat"
+                value={config.content.quoteText}
+                onChange={(value) => updateContent(setConfig, "quoteText", value)}
+                multiline
+              />
+              <EditorField
+                name="quote_attribution"
+                label="Zitat-Absender"
+                value={config.content.quoteAttribution}
+                onChange={(value) =>
+                  updateContent(setConfig, "quoteAttribution", value)
+                }
+              />
+            </ConfigSection>
+
+            <ConfigSection title="Deals & Vorteile">
+              <EditorField
+                name="deals_headline"
+                label="Überschrift"
+                value={config.deals.headline}
+                onChange={(value) => updateDeals(setConfig, "headline", value)}
+              />
+              <EditorField
+                name="deals_slogan"
+                label="Slogan"
+                value={config.deals.slogan}
+                onChange={(value) => updateDeals(setConfig, "slogan", value)}
+              />
+              <EditorField
+                name="deals_description"
+                label="Beschreibung"
+                value={config.deals.description}
+                onChange={(value) => updateDeals(setConfig, "description", value)}
+                multiline
+              />
+            </ConfigSection>
+
+            <ConfigSection title="App & Vorteile">
+              <EditorField
+                name="ecosystem_headline"
+                label="App Vorteile Überschrift"
+                value={config.elementText["content.ecosystemHeadline"] || "Mehr als nur Stempel."}
+                onChange={(value) =>
+                  setConfig((current) =>
+                    setElementTextValue(current, "content.ecosystemHeadline", value),
+                  )
+                }
+              />
+              <EditorField
+                name="ecosystem_text"
+                label="App Vorteile Text"
+                value={config.elementText["content.ecosystemText"] || "Eine App für Deals, Treue, Entdeckungen und kleine Erfolge bei jedem Besuch."}
+                onChange={(value) =>
+                  setConfig((current) =>
+                    setElementTextValue(current, "content.ecosystemText", value),
+                  )
+                }
+                multiline
+              />
+            </ConfigSection>
+
+            <SocialMediaPanel partner={partner} config={config} setConfig={setConfig} />
+
+            <ConfigSection title="Speisekarte">
+              <EditorField
+                name="menu_headline"
+                label="Speisekarte Überschrift"
+                value={config.content.menuHeadline}
+                onChange={(value) => updateContent(setConfig, "menuHeadline", value)}
+              />
+              <EditorField
+                name="menu_description"
+                label="Speisekarte Beschreibung"
+                value={config.content.menuDescription}
+                onChange={(value) =>
+                  updateContent(setConfig, "menuDescription", value)
+                }
+                multiline
+              />
+              <MenuImagesEditor
+                partner={partner}
+                config={config}
+                setConfig={setConfig}
+              />
+            </ConfigSection>
+
+            <ConfigSection title="Über uns & Kontakt">
+              <EditorField
+                name="about_headline"
+                label="Über-uns Überschrift"
+                value={config.content.aboutHeadline}
+                onChange={(value) =>
+                  updateContent(setConfig, "aboutHeadline", value)
+                }
+              />
+              <EditorField
+                name="about_text"
+                label="Über-uns Text"
+                value={config.content.aboutText}
+                onChange={(value) => updateContent(setConfig, "aboutText", value)}
+                multiline
+              />
+              <EditorField
+                name="contact_headline"
+                label="Kontakt Überschrift"
+                value={config.content.contactHeadline}
+                onChange={(value) =>
+                  updateContent(setConfig, "contactHeadline", value)
+                }
+              />
+            </ConfigSection>
+
+            <ConfigSection title="Footer">
+              <EditorField
+                name="footer_text"
+                label="Footer-Text"
+                value={config.content.footerText}
+                onChange={(value) => updateContent(setConfig, "footerText", value)}
+              />
+            </ConfigSection>
+          </div>
+          </BuilderCategory>
+
+          <BuilderCategory
+            title="Bilder & Medien"
+            description="Nur Bilder, die im aktuellen Template tatsächlich verwendet werden."
+          >
+            <div data-builder-section="assets" className="space-y-2">
+              <CurrentTemplateImagesPanel
+                partner={partner}
+                config={config}
+                setConfig={setConfig}
+              />
               <AssetReadinessPanel partner={partner} config={config} setConfig={setConfig} />
             </div>
-            <DataSourcePanel partner={partner} />
           </BuilderCategory>
 
           <BuilderCategory
@@ -2182,7 +2191,7 @@ export function MicrositePanel({
         </aside>
 
         <div
-          className={`min-w-0 max-w-full overflow-hidden bg-zinc-50 ${
+          className={`min-w-0 max-w-full overflow-x-hidden bg-zinc-50 ${
             useViewportShell ? "flex min-h-0 flex-col p-3" : "p-3 sm:p-5"
           }`}
         >
@@ -2240,7 +2249,7 @@ export function MicrositePanel({
             onInputCapture={handleInlineTextInput}
             onBlurCapture={handleInlineTextBlur}
             data-admin-i18n-ignore="true"
-            className={`microsite-builder-surface mx-auto overflow-x-hidden overflow-y-auto transition-all ${
+            className={`microsite-builder-surface mx-auto overflow-x-hidden overflow-y-visible transition-all ${
               viewport === "mobile"
                 ? "w-full max-w-[390px]"
                 : "w-full max-w-full"
@@ -2338,7 +2347,6 @@ type ReadinessEditTarget = {
 
 function readinessEditTarget(itemId: string): ReadinessEditTarget {
   switch (itemId) {
-    case "partner-review":
     case "partner-logo":
     case "partner-name":
     case "partner-address":
@@ -2356,7 +2364,7 @@ function readinessEditTarget(itemId: string): ReadinessEditTarget {
     case "microsite-hero":
       return { section: "selected", elementId: "hero.backgroundImageUrl" }
     case "microsite-deals-image":
-      return { section: "selected", elementId: "deals.illustrationUrl" }
+      return { section: "assets" }
     case "top-deal-image":
       return { section: "selected", elementId: "deals.topDealImageUrl" }
     case "about-images":
@@ -2399,6 +2407,7 @@ function ReadinessPanel({
 }) {
   const { tr } = useBuilderI18n()
   const completedItems = report.items.filter((item) => item.ok).length
+  const openItems = report.items.filter((item) => !item.ok)
   const blockedItems = report.items.filter(
     (item) => item.severity === "required" && !item.ok,
   )
@@ -2446,12 +2455,12 @@ function ReadinessPanel({
             "Nur ein fehlender Partnername blockiert die Veröffentlichung. Alle anderen Punkte sind Empfehlungen.",
           )}
         </p>
-        {report.items.length ? (
+        {openItems.length ? (
           <div className="mt-4 space-y-2">
             <p className="text-xs font-bold uppercase tracking-[0.1em] text-zinc-500">
               {tr("Checkliste")}
             </p>
-            {report.items.map((item) => (
+            {openItems.map((item) => (
               <ReadinessItemRow
                 key={item.id}
                 item={item}
@@ -2533,7 +2542,7 @@ function ReadinessItemRow({
   )
 }
 
-function DataSourcePanel({ partner }: { partner: PartnerWithDeals }) {
+/* Removed from the microsite options: data sources are managed in partner settings.
   const { tr } = useBuilderI18n()
   const socialCount = partner.socials.filter((item) => Boolean(item.url || item.handle)).length
   const categoryLabel = partner.category?.filter(Boolean).join(", ") || "Fehlt"
@@ -2576,6 +2585,7 @@ function DataSourcePanel({ partner }: { partner: PartnerWithDeals }) {
   )
 }
 
+*/
 type AssetQualityTarget = {
   label: string
   value: string
@@ -2724,19 +2734,60 @@ function AssetReadinessPanel({
   setConfig: Dispatch<SetStateAction<MicrositeConfig>>
 }) {
   const { tr } = useBuilderI18n()
+  const hasTwoForOneDeal = partner.deals.some(isMicrositeTwoForOneDeal)
+  const rewardStamps = Array.from(
+    new Set(
+      partner.reward_milestones
+        .filter((milestone) => milestone.active !== false)
+        .map((milestone) => milestone.required_stamps || 0)
+        .filter((stamp) => stamp > 0),
+    ),
+  ).sort((first, second) => first - second)
   const rows: AssetQualityTarget[] = [
     { label: "Partnerlogo", value: partner.logo_url || "", source: "Profil", slot: "branding.logo", minWidth: 512, minHeight: 512, preferredAspect: 1, aspectTolerance: 0.2 },
-    { label: "Feature-Karte", value: partner.feature_card_url || "", source: "Profil", slot: "partner.feature", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     { label: "Startbild", value: config.hero.backgroundImageUrl, source: "Microsite", slot: "hero.backgroundImageUrl", minWidth: 1600, minHeight: 1200, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "Deals", value: config.deals.illustrationUrl, source: "Microsite", slot: "deals.illustrationUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "Top-Deal", value: config.deals.topDealImageUrl, source: "Microsite", slot: "deals.topDealImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "Über uns 1", value: config.elementText["content.aboutHeroImageUrl"] || "", source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "Über uns 2", value: config.elementText["content.aboutIngredientImageUrl"] || "", source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "iPhone Screenshot", value: config.elementText["content.appPhoneScreenshotUrl"] || "/partner-details-page.jpg", source: "Microsite", slot: "content.appPhoneScreenshotUrl", minWidth: 720, minHeight: 1400, preferredAspect: 9 / 20, aspectTolerance: 0.12 },
-    { label: "Prämie nach 5 Stempeln", value: config.elementText["stamps.reward.5.image"] || "", source: "Microsite", slot: "stamps.reward.5.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
-    { label: "Prämie nach 10 Stempeln", value: config.elementText["stamps.reward.10.image"] || "", source: "Microsite", slot: "stamps.reward.10.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
-    { label: "QR-Code", value: config.elementText["content.appQrCodeUrl"] || "", source: "Microsite", slot: "content.appQrCodeUrl", minWidth: 600, minHeight: 600, preferredAspect: 1, aspectTolerance: 0.12 },
+    ...(hasTwoForOneDeal
+      ? [{ label: "2für1 Hintergrundbild", value: config.deals.topDealImageUrl, source: "Microsite", slot: "deals.topDealImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 }]
+      : []),
+    { label: "Über-uns Hintergrundbild (Desktop)", value: config.elementText["content.aboutHeroImageUrl"] || "", source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Über-uns linkes Kartenbild", value: config.elementText["content.aboutIngredientImageUrl"] || "", source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 900, minHeight: 1100, preferredAspect: 4 / 5, aspectTolerance: 0.25 },
+    { label: "Über-uns rechtes Kartenbild", value: config.elementText["content.aboutLocationImageUrl"] || "", source: "Microsite", slot: "content.aboutLocationImageUrl", minWidth: 900, minHeight: 1100, preferredAspect: 4 / 5, aspectTolerance: 0.25 },
+    { label: "Über-uns unteres Overlaybild (Desktop)", value: config.elementText["content.aboutPrepImageUrl"] || "", source: "Microsite", slot: "content.aboutPrepImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    ...rewardStamps.map((stamp) => ({
+      label: `${stamp} Stempel Belohnungsbild`,
+      value: config.elementText[`stamps.reward.${stamp}.image`] || "",
+      source: "Microsite",
+      slot: `stamps.reward.${stamp}.image`,
+      minWidth: 900,
+      minHeight: 900,
+      preferredAspect: 1,
+      aspectTolerance: 0.2,
+    })),
+    { label: "Bild im Telefon-Mockup", value: config.elementText["content.appPhoneScreenshotUrl"] || "/partner-details-page.jpg", source: "Microsite", slot: "content.appPhoneScreenshotUrl", minWidth: 720, minHeight: 1400, preferredAspect: 9 / 20, aspectTolerance: 0.12 },
+    { label: "Benefitsi Footer Logo", value: config.elementText["footer.benefitsiLogo"] || "/benefitsi-logo-on-light.svg", source: "Microsite", slot: "footer.benefitsiLogo", minWidth: 256, minHeight: 64, preferredAspect: 4, aspectTolerance: 1.5 },
   ]
+  const assetTargets = [
+    ...rows
+      .filter((row) => row.slot !== "branding.logo")
+      .map((row) => ({ label: row.label, slot: row.slot })),
+    ...micrositeMenuPreviewItems(
+      menuItemsForMicrositeBuilder(partner),
+      config.elementText["content.menuFeaturedItemKey"],
+    ).map((item) => ({
+      label: `Speisekarte – ${micrositeMenuItemDisplayName(item.name) || "Gericht"}`,
+      slot: micrositeMenuItemImageId(item),
+    })),
+  ]
+  const [selectedAssetTarget, setSelectedAssetTarget] = useState(
+    assetTargets[0]?.slot || "hero.backgroundImageUrl",
+  )
+  const [pendingLibraryUploadTarget, setPendingLibraryUploadTarget] = useState("")
+  const activeAssetTarget = assetTargets.some((target) => target.slot === selectedAssetTarget)
+    ? selectedAssetTarget
+    : assetTargets[0]?.slot || "hero.backgroundImageUrl"
+  const renderedAssetLibrary = config.assets.library.filter((asset) =>
+    isAvailableMicrositeLibraryAsset(asset, partner),
+  )
   const assetSnapshots = useAssetQualitySnapshots(rows.map((row) => row.value))
   const qualityIssues = rows.filter((row) => {
     const quality = evaluateAssetQuality(row, assetSnapshots[row.value])
@@ -2746,6 +2797,43 @@ function AssetReadinessPanel({
   return (
     <ConfigSection title="Asset-Bibliothek">
       <div className="space-y-3">
+        <div className="rounded-xl border border-teal-200 bg-teal-50/60 p-3">
+          <p className="text-xs font-black text-zinc-900">
+            {tr("Bild hochladen oder aus der Bibliothek zuweisen")}
+          </p>
+          <p className="mt-1 text-[11px] leading-5 text-zinc-600">
+            {tr("Ziel auswählen, anschließend ein neues Bild hochladen oder unten ein vorhandenes Bild anklicken. Die Änderung erscheint sofort in der Vorschau und wird mit dem Entwurf gespeichert.")}
+          </p>
+          <label className="mt-3 block space-y-1.5 text-xs font-bold text-zinc-700">
+            {tr("Bildposition")}
+            <select
+              value={activeAssetTarget}
+              onChange={(event) => setSelectedAssetTarget(event.target.value)}
+              className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-900 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+            >
+              {assetTargets.map((target) => (
+                <option key={target.slot} value={target.slot}>
+                  {tr(target.label)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <input
+            type="hidden"
+            name="asset_library_target"
+            value={pendingLibraryUploadTarget || activeAssetTarget}
+          />
+          <div className="mt-3">
+            <AssetUploadField
+              name="asset_library_file"
+              label="Neues Bild direkt zur Asset-Bibliothek hinzufügen"
+              onPreview={(url) => {
+                setPendingLibraryUploadTarget(activeAssetTarget)
+                setConfig((current) => applyAssetToSlot(current, activeAssetTarget, url))
+              }}
+            />
+          </div>
+        </div>
         {qualityIssues.length ? (
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
             <p className="font-black">{tr("Automatische Bildprüfung")}</p>
@@ -2807,17 +2895,18 @@ function AssetReadinessPanel({
             )
           })}
         </div>
+        {renderedAssetLibrary.length ? (
         <div className="mt-4 border-t border-zinc-200 pt-3">
           <p className="text-xs font-black text-zinc-900">
             {tr("Gespeicherte Asset-Library")}
           </p>
           <div className="mt-2 grid grid-cols-3 gap-2">
-            {config.assets.library.slice(-12).map((asset) => (
+            {renderedAssetLibrary.slice(-12).reverse().map((asset) => (
               <button
                 key={`${asset.slot}-${asset.url}`}
                 type="button"
-                title={`${asset.label} · ${asset.slot}`}
-                onClick={() => setConfig((current) => applyAssetToSlot(current, asset.slot, asset.url))}
+                title={`${tr("Für ausgewählte Bildposition verwenden")}: ${asset.label}`}
+                onClick={() => setConfig((current) => applyAssetToSlot(current, activeAssetTarget, asset.url))}
                 className="group overflow-hidden rounded-lg border border-zinc-200 bg-white text-left transition hover:border-teal-400"
               >
                 <span className="block aspect-square bg-zinc-100">
@@ -2827,12 +2916,279 @@ function AssetReadinessPanel({
                 <span className="block truncate px-1.5 py-1 text-[10px] font-bold text-zinc-600 group-hover:text-teal-700">
                   {asset.label}
                 </span>
+                <span className="block truncate px-1.5 pb-1.5 text-[9px] font-semibold text-teal-700">
+                  {tr("Hier verwenden")}
+                </span>
               </button>
             ))}
           </div>
         </div>
+        ) : null}
       </div>
     </ConfigSection>
+  )
+}
+
+function CurrentTemplateImagesPanel({
+  partner,
+  config,
+  setConfig,
+}: {
+  partner: PartnerWithDeals
+  config: MicrositeConfig
+  setConfig: Dispatch<SetStateAction<MicrositeConfig>>
+}) {
+  const assetListId = `microsite-assets-${partner.id || "new"}`
+  const assetChoices = config.assets.library
+    .filter((asset) => isAvailableMicrositeLibraryAsset(asset, partner))
+    .slice(-12)
+    .reverse()
+  const hasTwoForOneDeal = partner.deals.some(isMicrositeTwoForOneDeal)
+  const rewardStamps = Array.from(
+    new Set(
+      partner.reward_milestones
+        .filter((milestone) => milestone.active !== false)
+        .map((milestone) => milestone.required_stamps || 0)
+        .filter((stamp) => stamp > 0),
+    ),
+  ).sort((first, second) => first - second)
+
+  return (
+    <>
+      <ConfigSection title="Marke & Startbereich Bilder">
+        <TemplateImageEditor
+          groupName="brand-hero-images"
+          name="hero_image_url"
+          label="Startbild"
+          value={config.hero.backgroundImageUrl}
+          uploadName="hero_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) => updateHero(setConfig, "backgroundImageUrl", value)}
+        />
+      </ConfigSection>
+
+      <ConfigSection title="Deals & Belohnungen Bilder">
+        {hasTwoForOneDeal ? (
+          <TemplateImageEditor
+            groupName="deal-reward-images"
+            name="top_deal_image_url"
+            label="2für1 Hintergrundbild"
+            value={config.deals.topDealImageUrl}
+            uploadName="top_deal_file"
+            assetListId={assetListId}
+            assetChoices={assetChoices}
+            onChange={(value) => updateDeals(setConfig, "topDealImageUrl", value)}
+          />
+        ) : null}
+        {rewardStamps.map((stamp) => {
+          const imageId = `stamps.reward.${stamp}.image`
+          return (
+            <TemplateImageEditor
+              key={imageId}
+              groupName="deal-reward-images"
+              name={`reward_image_${stamp}`}
+              label={`${stamp} Stempel Belohnungsbild`}
+              value={config.elementText[imageId] || ""}
+              uploadName={genericElementUploadName(imageId)}
+              assetListId={assetListId}
+              assetChoices={assetChoices}
+              onChange={(value) =>
+                setConfig((current) => setElementTextValue(current, imageId, value))
+              }
+            />
+          )
+        })}
+        {!hasTwoForOneDeal && !rewardStamps.length ? (
+          <p className="rounded-lg bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">
+            Keine aktiven Deal- oder Belohnungsbilder in diesem Template.
+          </p>
+        ) : null}
+      </ConfigSection>
+
+      <ConfigSection title="Über-uns Bilder">
+        <TemplateImageEditor
+          groupName="about-images"
+          name="about_hero_image_url"
+          label="Über-uns Hintergrundbild (Desktop)"
+          value={config.elementText["content.aboutHeroImageUrl"] || ""}
+          uploadName="about_hero_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "content.aboutHeroImageUrl", value),
+            )
+          }
+        />
+        <TemplateImageEditor
+          groupName="about-images"
+          name="about_ingredient_image_url"
+          label="Über-uns linkes Kartenbild"
+          value={config.elementText["content.aboutIngredientImageUrl"] || ""}
+          uploadName="about_ingredient_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "content.aboutIngredientImageUrl", value),
+            )
+          }
+        />
+        <TemplateImageEditor
+          groupName="about-images"
+          name="about_location_image_url"
+          label="Über-uns rechtes Kartenbild"
+          value={config.elementText["content.aboutLocationImageUrl"] || ""}
+          uploadName="about_location_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "content.aboutLocationImageUrl", value),
+            )
+          }
+        />
+        <TemplateImageEditor
+          groupName="about-images"
+          name="about_prep_image_url"
+          label="Über-uns unteres Overlaybild (Desktop)"
+          value={config.elementText["content.aboutPrepImageUrl"] || ""}
+          uploadName="about_prep_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "content.aboutPrepImageUrl", value),
+            )
+          }
+        />
+      </ConfigSection>
+
+      <ConfigSection title="App & Footer Bilder">
+        <TemplateImageEditor
+          groupName="app-footer-images"
+          name="app_phone_screenshot_url"
+          label="Bild im Telefon-Mockup"
+          value={config.elementText["content.appPhoneScreenshotUrl"] || "/partner-details-page.jpg"}
+          uploadName="app_phone_screenshot_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "content.appPhoneScreenshotUrl", value),
+            )
+          }
+        />
+        <TemplateImageEditor
+          groupName="app-footer-images"
+          name="footer_benefitsi_logo_url"
+          label="Benefitsi Footer Logo"
+          value={config.elementText["footer.benefitsiLogo"] || "/benefitsi-logo-on-light.svg"}
+          uploadName="footer_benefitsi_logo_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "footer.benefitsiLogo", value),
+            )
+          }
+        />
+      </ConfigSection>
+    </>
+  )
+}
+
+function TemplateImageEditor({
+  groupName,
+  name,
+  label,
+  value,
+  uploadName,
+  assetListId,
+  assetChoices,
+  onChange,
+}: {
+  groupName: string
+  name: string
+  label: string
+  value: string
+  uploadName: string
+  assetListId: string
+  assetChoices: MicrositeConfig["assets"]["library"]
+  onChange: (value: string) => void
+}) {
+  const { tr } = useBuilderI18n()
+  const [failedValue, setFailedValue] = useState<string | null>(null)
+  const imageAvailable = Boolean(value && failedValue !== value)
+
+  return (
+    <details
+      name={groupName}
+      className="group overflow-hidden rounded-lg bg-zinc-50"
+    >
+      <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-3 py-2 outline-none transition hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-500 [&::-webkit-details-marker]:hidden">
+        <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md bg-white text-zinc-400 ring-1 ring-zinc-200">
+          {imageAvailable ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={value}
+              alt=""
+              onError={() => setFailedValue(value)}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <ImageOff aria-hidden="true" className="size-4" />
+          )}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-xs font-black text-zinc-800">
+          {tr(label)}
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className="size-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <div className="space-y-3 border-t border-zinc-200 bg-white p-3">
+        <EditorField
+          name={name}
+          label="Bild URL"
+          value={value}
+          onChange={onChange}
+          placeholder="https://..."
+          list={assetListId}
+        />
+        {assetChoices.length ? (
+          <div>
+            <p className="text-[11px] font-black text-zinc-700">
+              {tr("Aus Asset-Bibliothek wählen")}
+            </p>
+            <div className="mt-2 grid grid-cols-4 gap-2">
+              {assetChoices.map((asset) => (
+                <button
+                  key={`${asset.slot}-${asset.url}`}
+                  type="button"
+                  title={asset.label}
+                  aria-label={`${tr("Bild auswählen")}: ${asset.label}`}
+                  onClick={() => onChange(asset.url)}
+                  className={`aspect-square overflow-hidden rounded-md border bg-zinc-100 transition hover:border-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 ${
+                    asset.url === value ? "border-teal-600 ring-2 ring-teal-100" : "border-zinc-200"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={asset.url} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        <AssetUploadField
+          name={uploadName}
+          label="Bild hochladen und beim Speichern ersetzen"
+          onPreview={onChange}
+        />
+      </div>
+    </details>
   )
 }
 
@@ -2846,11 +3202,12 @@ function MenuImagesEditor({
   setConfig: Dispatch<SetStateAction<MicrositeConfig>>
 }) {
   const { tr } = useBuilderI18n()
-  const items = menuItemsForMicrositeBuilder(partner)
-    .sort(
-      (a, b) => Number(Boolean(b.is_popular)) - Number(Boolean(a.is_popular)),
-    )
-    .slice(0, 5)
+  const assetListId = `microsite-assets-${partner.id || "new"}`
+  const allItems = menuItemsForMicrositeBuilder(partner)
+  const items = micrositeMenuPreviewItems(
+    allItems,
+    config.elementText["content.menuFeaturedItemKey"],
+  )
   const featuredItem = items[0]
   const supportingItems = items.slice(1)
 
@@ -2873,9 +3230,35 @@ function MenuImagesEditor({
     <div className="space-y-3">
       <p className="text-xs leading-5 text-zinc-600">
         {tr(
-          "Die ersten fünf Gerichte bilden die Microsite-Vorschau. Das erste Bild wird groß dargestellt.",
+          "Die ersten sechs Gerichte bilden die Microsite-Vorschau. Das erste Bild wird groß dargestellt.",
         )}
       </p>
+
+      <label className="block space-y-1.5 text-xs font-bold text-zinc-700">
+        {tr("Angezeigtes Hauptgericht")}
+        <select
+          value={micrositeMenuItemKey(featuredItem)}
+          onChange={(event) =>
+            setConfig((current) =>
+              setElementTextValue(
+                current,
+                "content.menuFeaturedItemKey",
+                event.target.value,
+              ),
+            )
+          }
+          className="h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+        >
+          {allItems.map((item) => (
+            <option key={micrositeMenuItemKey(item)} value={micrositeMenuItemKey(item)}>
+              {micrositeMenuItemDisplayName(item.name) || tr("Gericht")}
+            </option>
+          ))}
+        </select>
+        <span className="block font-normal leading-5 text-zinc-500">
+          {tr("Wähle das Gericht für die große Karte aus.")}
+        </span>
+      </label>
 
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
         <div className="relative aspect-[16/9] overflow-hidden bg-zinc-100">
@@ -2898,7 +3281,7 @@ function MenuImagesEditor({
         <div className="space-y-3 p-3">
           <div className="flex min-h-10 items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3">
             <span className="min-w-0 truncate text-xs font-black text-zinc-900">
-              {featuredItem.name || tr("Gericht")}
+              {micrositeMenuItemDisplayName(featuredItem.name) || tr("Gericht")}
             </span>
             <label className="flex shrink-0 items-center gap-2 text-xs font-bold text-zinc-700">
               {tr("Bild anzeigen")}
@@ -2928,6 +3311,7 @@ function MenuImagesEditor({
               )
             }
             placeholder="https://..."
+            list={assetListId}
           />
           <AssetUploadField
             name={genericElementUploadName(featuredImageId)}
@@ -2989,7 +3373,7 @@ function MenuImagesEditor({
                 )}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-black text-zinc-900">
-                    {item.name || tr("Gericht")}
+                    {micrositeMenuItemDisplayName(item.name) || tr("Gericht")}
                   </span>
                   <span className="mt-0.5 block text-xs font-medium text-zinc-500">
                     {tr("Kleines Menübild")}
@@ -3029,6 +3413,7 @@ function MenuImagesEditor({
                     )
                   }
                   placeholder="https://..."
+                  list={assetListId}
                 />
                 <AssetUploadField
                   name={genericElementUploadName(imageId)}
@@ -3072,6 +3457,51 @@ function menuItemsForMicrositeBuilder(partner: PartnerWithDeals) {
     const categoryItems = menu.categories.flatMap((category) => category.items)
     return categoryItems.length ? categoryItems : menu.items
   })
+}
+
+function isAvailableMicrositeLibraryAsset(
+  asset: MicrositeConfig["assets"]["library"][number],
+  partner: PartnerWithDeals,
+) {
+  return asset.source === "upload" || isRenderedMicrositeImageSlot(asset.slot, partner)
+}
+
+function isRenderedMicrositeImageSlot(
+  slot: string,
+  partner: PartnerWithDeals,
+) {
+  if (
+    [
+      "branding.logo",
+      "hero.backgroundImageUrl",
+      "content.aboutHeroImageUrl",
+      "content.aboutIngredientImageUrl",
+      "content.aboutLocationImageUrl",
+      "content.aboutPrepImageUrl",
+      "content.appPhoneScreenshotUrl",
+      "footer.benefitsiLogo",
+    ].includes(slot)
+  ) {
+    return true
+  }
+
+  if (slot === "deals.topDealImageUrl") {
+    return partner.deals.some(isMicrositeTwoForOneDeal)
+  }
+
+  const rewardImageMatch = slot.match(/^stamps\.reward\.(\d+)\.image$/)
+  if (rewardImageMatch) {
+    const stamp = Number(rewardImageMatch[1])
+    return partner.reward_milestones.some(
+      (milestone) =>
+        milestone.active !== false && milestone.required_stamps === stamp,
+    )
+  }
+
+  return (
+    /^content\.menuItem\.[a-z0-9_-]+\.imageUrl$/i.test(slot) ||
+    /^social\.(instagram|facebook|tiktok|youtube|whatsapp|website|google|linkedin)\.iconUrl$/i.test(slot)
+  )
 }
 
 function SeoSystemPanel({
@@ -3149,7 +3579,6 @@ function BuilderChecklistPanel({
 }) {
   const { tr } = useBuilderI18n()
   const rows = [
-    ["partnerDataReviewDone", "Partnerdaten geprüft", "partner-review"],
     ["assetReviewDone", "Assets/Fallbacks geprüft", "asset-review"],
     ["desktopQaDone", "Desktopprüfung abgeschlossen", "desktop-qa-done"],
     ["mobileQaDone", "Mobilprüfung abgeschlossen", "mobile-qa-done"],
@@ -3274,6 +3703,12 @@ function SocialMediaPanel({
   const feedPlatform = config.elementText["content.socialFeed.platform"] === "tiktok"
     ? "tiktok"
     : "instagram"
+  const feedPostValues = Array.from({ length: 6 }, (_, index) =>
+    config.elementText[`content.socialFeed.${feedPlatform}.${index}.url`]?.trim() || "",
+  )
+  const feedPostCount = new Set(
+    feedPostValues.filter((value) => isValidSocialFeedPostUrl(feedPlatform, value)),
+  ).size
 
   return (
     <ConfigSection title="Social Media">
@@ -3360,7 +3795,7 @@ function SocialMediaPanel({
             <div>
               <p className="text-xs font-black text-zinc-900">{tr("Originalbeiträge einbetten")}</p>
               <p className="mt-1 text-[11px] leading-5 text-zinc-500">
-                {tr("Zeigt bis zu drei echte Instagram- oder TikTok-Beiträge. Profil-Links reichen nicht aus; bitte direkte Beitrags-URLs verwenden.")}
+                {tr("Bis zu sechs direkte Instagram-Post-/Reel- oder TikTok-Video-URLs eintragen. Der Instagram-Bereich erscheint erst, wenn mindestens zwei gültige Instagram-Beiträge hinterlegt sind.")}
               </p>
             </div>
             <label className="flex shrink-0 items-center gap-2 text-[11px] font-bold text-zinc-700">
@@ -3403,30 +3838,66 @@ function SocialMediaPanel({
                 </select>
               </label>
 
-              {[0, 1, 2].map((index) => (
-                <EditorField
-                  key={`${feedPlatform}-${index}`}
-                  name={`social_feed_${feedPlatform}_${index}_url`}
-                  label={`Beitrag ${index + 1} URL`}
-                  value={config.elementText[`content.socialFeed.${feedPlatform}.${index}.url`] || ""}
-                  onChange={(value) =>
-                    setConfig((current) =>
-                      setElementTextValue(
-                        current,
-                        `content.socialFeed.${feedPlatform}.${index}.url`,
-                        value,
-                      ),
-                    )
-                  }
-                  placeholder="Direkte Instagram-Post-/Reel- oder TikTok-Video-URL"
-                />
-              ))}
+              {feedPlatform === "instagram" && feedPostCount < 2 ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold leading-5 text-amber-800">
+                  {feedPostCount}/2 {tr("gültige Beiträge")}. {tr("Instagram benötigt mindestens zwei Beiträge, bevor der Bereich auf der Microsite angezeigt wird.")}
+                </p>
+              ) : null}
+
+              {Array.from({ length: 6 }, (_, index) => index).map((index) => {
+                const value = feedPostValues[index] || ""
+                const invalid = Boolean(value) && !isValidSocialFeedPostUrl(feedPlatform, value)
+
+                return (
+                  <div key={`${feedPlatform}-${index}`}>
+                    <EditorField
+                      name={`social_feed_${feedPlatform}_${index}_url`}
+                      label={`Beitrag ${index + 1} URL`}
+                      value={value}
+                      onChange={(nextValue) =>
+                        setConfig((current) =>
+                          setElementTextValue(
+                            current,
+                            `content.socialFeed.${feedPlatform}.${index}.url`,
+                            nextValue,
+                          ),
+                        )
+                      }
+                      placeholder="Direkte Instagram-Post-/Reel- oder TikTok-Video-URL"
+                    />
+                    {invalid ? (
+                      <p className="mt-1 text-[10px] font-semibold text-rose-700">
+                        {tr("Bitte einen direkten Post-, Reel- oder Video-Link verwenden, keinen Profil-Link.")}
+                      </p>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
           ) : null}
         </div>
       </div>
     </ConfigSection>
   )
+}
+
+function isValidSocialFeedPostUrl(
+  platform: "instagram" | "tiktok",
+  value: string,
+) {
+  if (!value) return false
+
+  try {
+    const url = new URL(value)
+    if (platform === "instagram") {
+      return /(^|\.)instagram\.com$/i.test(url.hostname) &&
+        /^\/(p|reel|tv)\/[^/]+/i.test(url.pathname)
+    }
+
+    return /(^|\.)tiktok\.com$/i.test(url.hostname) && /\/video\/\d+/i.test(url.pathname)
+  } catch {
+    return false
+  }
 }
 
 function SourceLockedField({
@@ -4006,16 +4477,6 @@ function getEditableElement(
       "branding.partnerName",
       config.hero.headline,
     ),
-    "branding.partnerBadgeUrl": {
-      label: "Badge-Icon",
-      kind: "image",
-      value: config.branding.partnerBadgeUrl,
-      uploadName: "badge_file",
-      update: (current, value) => ({
-        ...current,
-        branding: { ...current.branding, partnerBadgeUrl: value },
-      }),
-    },
     "hero.backgroundImageUrl": {
       label: "Startbild",
       kind: "image",
@@ -4058,16 +4519,6 @@ function getEditableElement(
       ...current,
       hero: { ...current.hero, secondaryButtonLabel: value },
     })),
-    "deals.illustrationUrl": {
-      label: "Deals Intro Bild",
-      kind: "image",
-      value: config.deals.illustrationUrl,
-      uploadName: "deals_illustration_file",
-      update: (current, value) => ({
-        ...current,
-        deals: { ...current.deals, illustrationUrl: value },
-      }),
-    },
     "deals.topDealImageUrl": {
       label: "Top-Deal Bild",
       kind: "image",
@@ -4143,7 +4594,7 @@ function getEditableElement(
       content: { ...current.content, aboutText: value },
     })),
     "content.aboutHeroImageUrl": {
-      label: "Über uns Hintergrundbild",
+      label: "Über uns Hintergrundbild (Desktop)",
       kind: "image",
       value: config.elementText["content.aboutHeroImageUrl"] || "",
       uploadName: "about_hero_file",
@@ -4156,7 +4607,7 @@ function getEditableElement(
       }),
     },
     "content.aboutIngredientImageUrl": {
-      label: "Über uns Zutatenbild",
+      label: "Über uns linkes Kartenbild",
       kind: "image",
       value: config.elementText["content.aboutIngredientImageUrl"] || "",
       uploadName: "about_ingredient_file",
@@ -4169,7 +4620,7 @@ function getEditableElement(
       }),
     },
     "content.aboutLocationImageUrl": {
-      label: "Über uns Ortsbild",
+      label: "Über uns rechtes Kartenbild",
       kind: "image",
       value: config.elementText["content.aboutLocationImageUrl"] || "",
       uploadName: "about_location_file",
@@ -4182,7 +4633,7 @@ function getEditableElement(
       }),
     },
     "content.aboutPrepImageUrl": {
-      label: "Über uns Detailbild",
+      label: "Über uns unteres Overlaybild (Desktop)",
       kind: "image",
       value: config.elementText["content.aboutPrepImageUrl"] || "",
       uploadName: "about_prep_file",
@@ -4222,12 +4673,10 @@ function getEditableElement(
 
   if (/^content\.menuItem\.[a-z0-9_-]+\.imageUrl$/.test(id)) {
     const previewItems = partner
-      ? menuItemsForMicrositeBuilder(partner)
-          .sort(
-            (a, b) =>
-              Number(Boolean(b.is_popular)) - Number(Boolean(a.is_popular)),
-          )
-          .slice(0, 5)
+      ? micrositeMenuPreviewItems(
+          menuItemsForMicrositeBuilder(partner),
+          config.elementText["content.menuFeaturedItemKey"],
+        )
       : []
     const itemIndex = previewItems.findIndex(
       (candidate) => micrositeMenuItemImageId(candidate) === id,
@@ -4238,8 +4687,8 @@ function getEditableElement(
       id,
       label:
         itemIndex === 0
-          ? `Großes Menübild – ${item?.name || "Gericht"}`
-          : `${item?.name || "Gericht"} Menübild`,
+          ? `Großes Menübild – ${micrositeMenuItemDisplayName(item?.name) || "Gericht"}`
+          : `${micrositeMenuItemDisplayName(item?.name) || "Gericht"} Menübild`,
       kind: "image",
       value: config.elementText[id] || item?.image_url || "",
       uploadName: genericElementUploadName(id),
@@ -4551,23 +5000,6 @@ function getEditableElement(
       kind: "image",
       value: config.elementText[id] || "",
       uploadName: genericElementUploadName(id),
-      update: (current, value) => ({
-        ...current,
-        elementText: {
-          ...current.elementText,
-          [id]: value,
-        },
-      }),
-    }
-  }
-
-  if (id === "content.appQrCodeUrl") {
-    return {
-      id,
-      label: "App QR-Code",
-      kind: "image",
-      value: config.elementText[id] || "",
-      uploadName: "app_qr_code_file",
       update: (current, value) => ({
         ...current,
         elementText: {
@@ -5016,10 +5448,19 @@ function BuilderCategory({
   const { tr } = useBuilderI18n()
 
   return (
-    <section id={id} className="min-w-0 scroll-mt-24 pt-2 first:pt-0">
-      <h3 className="text-sm font-black text-zinc-950">{tr(title)}</h3>
-      <p className="mt-1 text-xs leading-5 text-zinc-500">{tr(description)}</p>
-      <div className="mt-3 min-w-0 space-y-2">
+    <section
+      id={id}
+      className="min-w-0 scroll-mt-24 rounded-2xl bg-zinc-50/80 p-2.5 ring-1 ring-zinc-100"
+    >
+      <div className="px-1 pb-1">
+        <h3 className="text-[13px] font-black tracking-[-0.01em] text-zinc-950">
+          {tr(title)}
+        </h3>
+        <p className="mt-0.5 text-[11px] leading-4 text-zinc-500">
+          {tr(description)}
+        </p>
+      </div>
+      <div className="mt-2 min-w-0 space-y-2">
         {children}
       </div>
     </section>
@@ -5147,6 +5588,9 @@ function PaletteControl({
 
   const setMode = (mode: "auto" | "manual") => {
     setStatus(mode === "auto" ? "loading" : "idle")
+    if (mode === "auto") {
+      setRefreshToken((current) => current + 1)
+    }
     setConfig((current) => ({
       ...current,
       branding: { ...current.branding, paletteMode: mode },
@@ -5205,7 +5649,7 @@ function PaletteControl({
             : status === "derived"
               ? tr("Logo-Farben wurden zu einer vollständigen professionellen Palette ergänzt.")
               : status === "fallback"
-                ? tr("Professionelle Ersatzpalette aktiv – Logo fehlt oder kann nicht analysiert werden.")
+                ? tr("Benefitsi Blau-Palette aktiv – das Logo ist einfarbig, fehlt oder kann nicht analysiert werden.")
                 : tr("Manuelle Farben sind aktiv.")}
       </p>
 
@@ -5282,7 +5726,7 @@ function ColorField({
           disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
           pattern="#[0-9a-fA-F]{6}"
-          placeholder="#f59e0b"
+          placeholder="#118cff"
           className="h-10 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
           aria-label={tr(label)}
         />
