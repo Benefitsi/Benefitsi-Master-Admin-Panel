@@ -7,9 +7,9 @@ export const KNOWLEDGE_RPC_NAMES = {
   batch: "stage_knowledge_sync_batch",
   complete: "complete_knowledge_sync",
   fail: "fail_knowledge_sync",
-  status: "get_knowledge_source_status",
-  search: "search_knowledge_documents",
-  detail: "get_knowledge_document",
+  status: "get_benefitsi_knowledge_source_status",
+  search: "search_benefitsi_knowledge_documents",
+  detail: "get_benefitsi_knowledge_document",
 } as const
 
 export type KnowledgeRpcOperation = keyof typeof KNOWLEDGE_RPC_NAMES

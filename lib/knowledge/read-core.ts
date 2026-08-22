@@ -31,21 +31,21 @@ export type KnowledgeReadClient = {
 }
 
 export type KnowledgeReadClientOptions = {
+  /** @deprecated Read RPCs are service-role-only and no longer accept tokens. */
   tokenHash?: string
 }
 
 export function createKnowledgeReadClient(
   rpc: KnowledgeReadRpcCaller,
-  options: KnowledgeReadClientOptions = {},
+  _options: KnowledgeReadClientOptions = {},
 ): KnowledgeReadClient {
-  const tokenHash = options.tokenHash ?? ""
+  void _options
   return {
     async searchBenefitsiKnowledge({ query, limit = 50, offset = 0 }) {
       const safeQuery = typeof query === "string" ? query.trim().slice(0, 200) : ""
       const safeLimit = clampInteger(limit, 50, 1, 50)
       const safeOffset = clampInteger(offset, 0, 0, Number.MAX_SAFE_INTEGER)
       const result = await rpc("search", {
-        ...(tokenHash ? { p_token_hash: tokenHash } : {}),
         p_query: safeQuery,
         p_limit: safeLimit,
         p_offset: safeOffset,
@@ -66,7 +66,6 @@ export function createKnowledgeReadClient(
       const safeId = typeof documentId === "string" ? documentId.trim() : ""
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(safeId)) return null
       const result = await rpc("detail", {
-        ...(tokenHash ? { p_token_hash: tokenHash } : {}),
         p_document_id: safeId,
       })
       if (result.error) return null
@@ -74,7 +73,7 @@ export function createKnowledgeReadClient(
     },
 
     async getBenefitsiKnowledgeStatus() {
-      const result = await rpc("status", tokenHash ? { p_token_hash: tokenHash } : {})
+      const result = await rpc("status", {})
       if (result.error) {
         return {
           status: "unavailable",

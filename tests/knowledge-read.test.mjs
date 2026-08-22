@@ -9,25 +9,24 @@ import {
 } from "../lib/knowledge/read-projection.ts"
 import { createKnowledgeReadClient } from "../lib/knowledge/read-core.ts"
 import { KNOWLEDGE_RPC_NAMES } from "../lib/knowledge/rpc.ts"
-import { hashIngestionToken } from "../lib/knowledge/ingestion.ts"
 
 const root = new URL("../", import.meta.url)
 
 test("uses one fixed Benefitsi source and clamps the server page size to 50", () => {
-  assert.equal(KNOWLEDGE_RPC_NAMES.search, "search_knowledge_documents")
-  assert.equal(KNOWLEDGE_RPC_NAMES.detail, "get_knowledge_document")
+  assert.equal(KNOWLEDGE_RPC_NAMES.status, "get_benefitsi_knowledge_source_status")
+  assert.equal(KNOWLEDGE_RPC_NAMES.search, "search_benefitsi_knowledge_documents")
+  assert.equal(KNOWLEDGE_RPC_NAMES.detail, "get_benefitsi_knowledge_document")
 })
 
-test("server read calls bind to fixed RPCs without accepting a source selector", async () => {
+test("server read calls bind to service-role-only Benefitsi RPCs without a token or source selector", async () => {
   const calls = []
-  const readTokenHash = hashIngestionToken("read-token-with-more-than-32-bytes")
   const client = createKnowledgeReadClient(async (operation, args) => {
     calls.push({ operation, args })
     if (operation === "search") {
       return { data: { documents: [], total_count: 0 }, error: null }
     }
     return { data: null, error: null }
-  }, { tokenHash: readTokenHash })
+  }, { tokenHash: "legacy-token-must-not-cross-read-boundary" })
 
   await client.searchBenefitsiKnowledge({ query: " onboarding ", limit: 500, offset: 50 })
   await client.getBenefitsiKnowledgeDocument("11111111-1111-4111-8111-111111111111")
@@ -35,16 +34,23 @@ test("server read calls bind to fixed RPCs without accepting a source selector",
   assert.deepEqual(calls, [
     {
       operation: "search",
-      args: { p_token_hash: readTokenHash, p_query: "onboarding", p_limit: 50, p_offset: 50 },
+      args: { p_query: "onboarding", p_limit: 50, p_offset: 50 },
     },
     {
       operation: "detail",
-      args: { p_token_hash: readTokenHash, p_document_id: "11111111-1111-4111-8111-111111111111" },
+      args: { p_document_id: "11111111-1111-4111-8111-111111111111" },
     },
   ])
 })
 
-test("the server DAL leaves token injection to the trusted RPC adapter", async () => {
+test("read RPC adapter has no ingestion or read-token environment fallback", async () => {
+  const source = await readFile(new URL("lib/knowledge/ingestion-rpc.ts", root), "utf8")
+  assert.doesNotMatch(source, /BENEFITSI_KNOWLEDGE_(READ|INGESTION)_TOKEN/)
+  assert.doesNotMatch(source, /hashIngestionToken/)
+  assert.match(source, /admin\.rpc\(KNOWLEDGE_RPC_NAMES\[operation\], args\)/)
+})
+
+test("the server DAL never injects a token into the read boundary", async () => {
   const calls = []
   const client = createKnowledgeReadClient(async (operation, args) => {
     calls.push({ operation, args })
