@@ -45,6 +45,9 @@ export async function updateSession(request: NextRequest) {
     // route; the route-level timingSafeEqual check remains mandatory.
     pathname.startsWith("/api/automation/") ||
     pathname === "/p" ||
+    // Knowledge ingestion authenticates with its source-bound token at the
+    // route boundary; it must not depend on a browser cookie/session.
+    pathname.startsWith("/api/internal/knowledge/sync") ||
     pathname.startsWith("/p/") ||
     pathname === "/robots.txt" ||
     pathname === "/sitemap.xml"
