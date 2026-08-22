@@ -122,6 +122,13 @@ test("rejects client ownership fields and ARC_PRIVATE in every sync payload", ()
   )
 })
 
+test("accepts worker abort codes without treating them as ownership", () => {
+  assert.deepEqual(parseFailPayload({ runId, errorCode: "ABORTED" }), {
+    runId,
+    errorCode: "ABORTED",
+  })
+})
+
 test("rejects batches above both document-count and serialized-size limits", () => {
   const tooMany = Array.from(
     { length: KNOWLEDGE_MAX_BATCH_DOCUMENTS + 1 },

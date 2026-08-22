@@ -135,10 +135,11 @@ export function parseFailPayload(body: unknown): FailKnowledgeSyncInput {
   const record = assertSafeRecord(body)
   const runId = readRunId(record)
   const errorCode = readText(record, ["errorCode", "error_code"], MAX_ERROR_CODE_LENGTH)
-  if (!errorCode || !/^[a-z0-9][a-z0-9_.:-]*$/.test(errorCode)) {
+  const normalizedErrorCode = errorCode?.toLowerCase() ?? ""
+  if (!errorCode || !/^[a-z0-9][a-z0-9_.:-]*$/.test(normalizedErrorCode)) {
     throw new KnowledgeIngestionInputError("error_code_invalid")
   }
-  if (errorCode === "ARC_PRIVATE" || errorCode === "BENEFITSI_EXTERNAL") {
+  if (normalizedErrorCode === "arc_private" || normalizedErrorCode === "benefitsi_external") {
     throw new KnowledgeIngestionInputError("ownership_not_allowed")
   }
   return { runId, errorCode }
