@@ -55,3 +55,8 @@ test("the browser-facing knowledge component contains no private-table or token 
   assert.doesNotMatch(combined, /createAdminClient\(/)
   assert.doesNotMatch(combined, /token|service.role/i)
 })
+
+test("the token-bound ingestion API bypasses the browser-session redirect", async () => {
+  const proxy = await source("lib/supabase/proxy.ts")
+  assert.match(proxy, /pathname\.startsWith\("\/api\/internal\/knowledge\/sync"\)/)
+})
