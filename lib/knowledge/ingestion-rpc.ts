@@ -5,7 +5,6 @@ import {
   KNOWLEDGE_RPC_NAMES,
   type KnowledgeRpcOperation,
 } from "./rpc"
-import { hashIngestionToken } from "./ingestion"
 
 export type KnowledgeRpcResult = {
   data: unknown
@@ -19,13 +18,7 @@ export type KnowledgeRpcCaller = (
 
 export const callKnowledgeRpc: KnowledgeRpcCaller = async (operation, args) => {
   const admin = createAdminClient()
-  const readOperations = new Set<KnowledgeRpcOperation>(["status", "search", "detail"])
-  const token = process.env.BENEFITSI_KNOWLEDGE_READ_TOKEN?.trim()
-    || process.env.BENEFITSI_KNOWLEDGE_INGESTION_TOKEN?.trim()
-  const rpcArgs = readOperations.has(operation) && !("p_token_hash" in args)
-    ? { p_token_hash: token ? hashIngestionToken(token) : "", ...args }
-    : args
-  const result = await admin.rpc(KNOWLEDGE_RPC_NAMES[operation], rpcArgs)
+  const result = await admin.rpc(KNOWLEDGE_RPC_NAMES[operation], args)
   return {
     data: result.data,
     error: result.error,
