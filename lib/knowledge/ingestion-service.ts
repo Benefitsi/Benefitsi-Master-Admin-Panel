@@ -61,10 +61,15 @@ export async function handleStartKnowledgeSync(
       p_idempotency_key: input.idempotencyKey,
     })
     if (result.error) return rpcFailure("sync_start_failed", logger, startedAt, runId)
-    runId = readRunId(result.data)
+    const start = readStartState(result.data)
+    runId = start.runId
     if (!runId) return rpcFailure("sync_start_failed", logger, startedAt, runId)
     log(logger, startedAt, { runId })
-    return jsonResponse({ runId })
+    return jsonResponse({
+      runId,
+      status: start.status,
+      idempotent: start.idempotent,
+    })
   } catch (error) {
     return inputFailure(error, logger, startedAt, runId)
   }
@@ -175,6 +180,18 @@ function readRunId(data: unknown) {
   const row = firstRow(data)
   const value = row?.run_id ?? row?.runId
   return typeof value === "string" && value.length > 0 ? value : null
+}
+
+function readStartState(data: unknown) {
+  const row = firstRow(data)
+  const status = row?.status
+  return {
+    runId: readRunId(data),
+    status: status === "succeeded" || status === "failed" || status === "aborted"
+      ? status
+      : "running",
+    idempotent: row?.idempotent === true,
+  } as const
 }
 
 function readCount(data: unknown, key: string) {
