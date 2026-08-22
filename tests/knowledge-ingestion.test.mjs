@@ -140,7 +140,7 @@ test("returns the exact safe JSON shapes for start, batch, complete, and fail", 
     rpc: rpcFor("start", calls),
   })
   assert.equal(start.status, 200)
-  assert.deepEqual(await start.json(), { runId })
+  assert.deepEqual(await start.json(), { runId, status: "running", idempotent: false })
 
   const batch = await handleBatchKnowledgeSync(
     request("/batch", { runId, documents: [validDocument(), validDocument({ relativePath: "guide.md" })] }),
