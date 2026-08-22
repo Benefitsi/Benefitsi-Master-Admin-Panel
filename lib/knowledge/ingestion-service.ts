@@ -60,7 +60,7 @@ export async function handleStartKnowledgeSync(
       p_token_hash: hashIngestionToken(token),
       p_idempotency_key: input.idempotencyKey,
     })
-    if (result.error) return rpcFailure("sync_start_failed", logger, startedAt, runId)
+    if (result.error) return rpcFailure("sync_start_failed", logger, startedAt, runId, result.error)
     const start = readStartState(result.data)
     runId = start.runId
     if (!runId) return rpcFailure("sync_start_failed", logger, startedAt, runId)
@@ -93,7 +93,7 @@ export async function handleBatchKnowledgeSync(
       p_run_id: input.runId,
       p_documents: input.documents.map(toRpcDocument),
     })
-    if (result.error) return rpcFailure("sync_batch_failed", logger, startedAt, runId)
+    if (result.error) return rpcFailure("sync_batch_failed", logger, startedAt, runId, result.error)
     const acceptedCount = readCount(result.data, "accepted_count")
     if (acceptedCount === null) return rpcFailure("sync_batch_failed", logger, startedAt, runId)
     log(logger, startedAt, { runId, acceptedCount })
@@ -120,7 +120,7 @@ export async function handleCompleteKnowledgeSync(
       p_token_hash: hashIngestionToken(token),
       p_run_id: input.runId,
     })
-    if (result.error) return rpcFailure("sync_complete_failed", logger, startedAt, runId)
+    if (result.error) return rpcFailure("sync_complete_failed", logger, startedAt, runId, result.error)
     const counts = readSyncCounts(result.data)
     if (!counts) return rpcFailure("sync_complete_failed", logger, startedAt, runId)
     log(logger, startedAt, { runId, ...counts })
@@ -148,7 +148,7 @@ export async function handleFailKnowledgeSync(
       p_run_id: input.runId,
       p_error_code: input.errorCode,
     })
-    if (result.error) return rpcFailure("sync_fail_failed", logger, startedAt, runId)
+    if (result.error) return rpcFailure("sync_fail_failed", logger, startedAt, runId, result.error)
     log(logger, startedAt, { runId, errorCode: input.errorCode })
     return jsonResponse({ status: "failed" })
   } catch (error) {
@@ -268,7 +268,14 @@ function rpcFailure(
   logger: (event: KnowledgeLog) => void,
   startedAt: number,
   runId: string | null,
+  rpcError?: { code?: string | null },
 ) {
-  log(logger, startedAt, { runId, errorCode })
+  log(logger, startedAt, { runId, errorCode: rpcError ? safeRpcErrorCode(rpcError.code) : errorCode })
   return jsonResponse({ error: errorCode }, 502)
+}
+
+function safeRpcErrorCode(code: string | null | undefined) {
+  return typeof code === "string" && /^[A-Za-z0-9_.:-]{1,40}$/.test(code)
+    ? `rpc_${code}`
+    : "rpc_unknown"
 }

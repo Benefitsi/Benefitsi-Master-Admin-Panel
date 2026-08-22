@@ -195,6 +195,25 @@ test("returns the exact safe JSON shapes for start, batch, complete, and fail", 
   assert.equal(calls[1].args.p_documents[0].relative_path, "handbook/onboarding.md")
 })
 
+test("keeps RPC details out of responses while logging only a bounded error code", async () => {
+  const logs = []
+  const response = await handleStartKnowledgeSync(
+    request("/start", { idempotencyKey: "sync-diagnostic" }),
+    {
+      rpc: async () => ({
+        data: null,
+        error: { code: "42501", message: "private database detail must not escape" },
+      }),
+      logger: (event) => logs.push(event),
+    },
+  )
+
+  assert.equal(response.status, 502)
+  assert.deepEqual(await response.json(), { error: "sync_start_failed" })
+  assert.equal(logs[0].errorCode, "rpc_42501")
+  assert.equal(JSON.stringify(logs).includes("private database detail"), false)
+})
+
 test("rejects invalid request data without calling the RPC and never enables caching", async () => {
   const calls = []
   const response = await handleBatchKnowledgeSync(
