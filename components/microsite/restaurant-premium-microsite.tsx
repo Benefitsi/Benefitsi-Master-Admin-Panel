@@ -434,6 +434,7 @@ function MicrositeThemeCss() {
       }
 
       .premium-hero-glass {
+        display: none;
         position: absolute;
         inset: 285px 0 auto;
         height: 270px;
@@ -459,7 +460,7 @@ function MicrositeThemeCss() {
         width: fit-content;
         max-width: 100%;
         margin-inline: 0;
-        padding: .3rem .75rem .55rem;
+        padding: 0 .75rem .55rem;
         border: 1px solid rgba(255,255,255,.76);
         border-radius: 1.25rem;
         background:
@@ -479,7 +480,7 @@ function MicrositeThemeCss() {
         display: flex;
         flex-direction: column;
         gap: 1.5rem;
-        padding-block: 5.75rem 1.25rem;
+        padding-block: 30.625rem 1.25rem;
       }
 
       .premium-hero-ambient {
@@ -586,6 +587,7 @@ function MicrositeThemeCss() {
         }
 
         .premium-hero-glass {
+          display: block;
           inset: 0 auto 0 0;
           height: auto;
           width: 70%;
@@ -917,6 +919,31 @@ function MicrositeThemeCss() {
 
       .premium-stamp-story {
         isolation: isolate;
+      }
+
+      .premium-about-background {
+        opacity: .32;
+        filter: saturate(.82) contrast(.94);
+      }
+
+      .premium-about-scrim {
+        background: linear-gradient(
+          180deg,
+          rgba(255,255,255,.78) 0%,
+          rgba(255,255,255,.88) 52%,
+          rgba(255,255,255,.94) 100%
+        );
+      }
+
+      @container (min-width: 900px) {
+        .premium-about-background {
+          opacity: 1;
+          filter: none;
+        }
+
+        .premium-about-scrim {
+          background: linear-gradient(90deg,#fff 0%,#fff 42%,rgba(255,255,255,.82) 54%,rgba(255,255,255,.18) 73%,rgba(255,255,255,0) 100%);
+        }
       }
 
       .premium-stamp-circle[data-completed="true"] {
@@ -1684,10 +1711,6 @@ function DealsSection({
       }
     }),
   ]
-  const currentMobileRewardId = [...stampMilestoneCards]
-    .reverse()
-    .find((card) => card.stamp <= activeStamp)?.id
-
   return (
     <section id="deals" className={`${restaurantSectionClass(template, "deals")} scroll-mt-24 px-5 pb-10 @min-[640px]:px-8 @min-[1024px]:px-10`}>
       <div className="mx-auto flex max-w-6xl flex-col gap-8 @min-[900px]:gap-10">
@@ -1890,27 +1913,22 @@ function DealsSection({
                 </div>
               </div>
 
-              <div className="premium-stamp-rewards mt-5 min-h-[104px] gap-3 @min-[640px]:mt-7 @min-[640px]:grid @min-[640px]:grid-cols-2 @min-[640px]:min-h-0 @min-[900px]:grid-cols-3">
+              <div className="premium-stamp-rewards mt-5 grid grid-cols-1 gap-3 @min-[640px]:mt-7 @min-[640px]:grid-cols-2 @min-[900px]:grid-cols-3">
                 {stampMilestoneCards.map((card) => {
                   const unlocked = activeStamp >= card.stamp
-                  const currentOnMobile = card.id === currentMobileRewardId
 
                   return (
                     <div
                       key={card.id}
                       data-reward-stamp={card.stamp}
-                      data-active-mobile-reward={currentOnMobile || undefined}
-                      aria-hidden={!unlocked}
-                      className={`relative min-h-[104px] w-full items-center gap-3 rounded-[1rem] border bg-white px-3 py-3 shadow-[0_14px_28px_rgba(120,72,0,.07)] transition-[opacity,transform,box-shadow,border-color] duration-300 ${
-                        currentOnMobile && unlocked ? "flex" : "hidden"
-                      } @min-[640px]:flex ${
+                      className={`relative flex min-h-[104px] w-full items-center gap-3 rounded-[1rem] border bg-white px-3 py-3 shadow-[0_14px_28px_rgba(120,72,0,.07)] transition-[opacity,transform,box-shadow,border-color] duration-300 ${
                         card.tone === "emerald"
                           ? "border-emerald-200"
                           : "border-amber-200"
                       } ${
                         unlocked
-                          ? "visible opacity-100"
-                          : "@min-[640px]:invisible @min-[640px]:translate-y-3 @min-[640px]:opacity-0"
+                          ? "opacity-100"
+                          : "opacity-65"
                       } ${
                         activeStamp === card.stamp
                           ? "-translate-y-1 border-[var(--site-accent)] shadow-[0_20px_42px_-16px_var(--site-accent)]"
@@ -2543,7 +2561,7 @@ function AppExploreButton({ href, config }: { href: string; config: MicrositeCon
   return (
     <a
       href={href}
-      className="premium-app-cta premium-button group inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-white transition duration-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-[.985]"
+      className="premium-app-cta premium-button group inline-flex min-h-11 items-center justify-self-center gap-2 rounded-xl px-4 py-2.5 text-white transition duration-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-[.985] @min-[760px]:justify-self-end"
     >
       <span className="text-sm font-black leading-tight">
         {siteCopy(config, "Benefitsi App öffnen", "Open the Benefitsi app")}
@@ -2893,7 +2911,7 @@ function AboutContactSection({
           alt={siteCopy(config, "Hintergrundbild über den Partner", "Partner story background")}
           editableId="content.aboutHeroImageUrl"
           editableLabel="Über uns Hintergrundbild (Desktop)"
-          className="premium-parallax absolute inset-y-0 right-0 hidden h-full w-[62%] object-cover @min-[900px]:block"
+          className="premium-about-background premium-parallax absolute inset-0 h-full w-full object-cover @min-[900px]:inset-y-0 @min-[900px]:left-auto @min-[900px]:right-0 @min-[900px]:w-[62%]"
           data-parallax-strength="strong"
           style={imageStyleFor(config, "content.aboutHeroImageUrl")}
         />
@@ -2905,7 +2923,7 @@ function AboutContactSection({
           className="absolute bottom-0 right-0 hidden h-[34%] w-[46%] object-cover opacity-65 blur-[.2px] @min-[900px]:block"
           style={imageStyleFor(config, "content.aboutPrepImageUrl")}
         />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#fff_0%,#fff_42%,rgba(255,255,255,.82)_54%,rgba(255,255,255,.18)_73%,rgba(255,255,255,0)_100%)]" />
+        <div className="premium-about-scrim pointer-events-none absolute inset-0" />
         <div className="relative grid min-h-[480px] gap-5 px-6 py-5 @min-[760px]:px-8 @min-[1024px]:grid-cols-[.54fr_.46fr] @min-[1024px]:px-9 @min-[1024px]:py-6">
           <div className="max-w-[620px]">
             <h2
