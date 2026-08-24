@@ -459,7 +459,7 @@ function MicrositeThemeCss() {
         width: fit-content;
         max-width: 100%;
         margin-inline: 0;
-        padding: .75rem .9rem .85rem;
+        padding: .3rem .75rem .55rem;
         border: 1px solid rgba(255,255,255,.76);
         border-radius: 1.25rem;
         background:
@@ -473,10 +473,13 @@ function MicrositeThemeCss() {
       }
 
       .premium-hero-flow {
-        top: 325px;
+        position: relative;
+        inset: auto;
+        top: auto;
         display: flex;
         flex-direction: column;
-        gap: 2rem;
+        gap: 1.5rem;
+        padding-block: 5.75rem 1.25rem;
       }
 
       .premium-hero-ambient {
@@ -607,8 +610,11 @@ function MicrositeThemeCss() {
         }
 
         .premium-hero-flow {
+          position: absolute;
+          inset: 0 0 auto;
           top: 4.5rem;
           gap: 1.75rem;
+          padding-block: 0;
         }
 
         .premium-hero-content {
@@ -1396,7 +1402,7 @@ function HeroSection({
 
   return (
     <section className="relative bg-[var(--site-bg)]">
-      <div className="premium-hero-stage relative mx-auto min-h-[895px] w-full min-w-0 max-w-7xl overflow-visible bg-[var(--site-bg)] @min-[640px]:min-h-[600px] @min-[1024px]:min-h-[600px]">
+      <div className="premium-hero-stage relative mx-auto w-full min-w-0 max-w-7xl overflow-visible bg-[var(--site-bg)] @min-[640px]:min-h-[600px] @min-[1024px]:min-h-[600px]">
         <div className="premium-hero-media-inner absolute inset-0 overflow-hidden bg-[var(--site-secondary)]">
             <BrandedImage
               src={config.hero.backgroundImageUrl}
@@ -1416,7 +1422,7 @@ function HeroSection({
           <Badge config={config} />
         </div>
 
-        <div className="premium-hero-flow absolute inset-x-0 z-10">
+        <div className="premium-hero-flow z-10">
         <div className="premium-hero-content premium-hero-copy relative">
           <div className="premium-hero-title-panel">
           <h1
