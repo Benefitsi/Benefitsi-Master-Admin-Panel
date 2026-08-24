@@ -25,6 +25,7 @@ import {
   MapPin,
   MapPinned,
   Menu as MenuIcon,
+  Minus,
   Percent,
   Phone,
   Pizza,
@@ -358,7 +359,7 @@ export function RestaurantPremiumMicrosite({
       <DealsSection partner={partner} config={config} template={config.template} />
       <PartnerSocialFeed partner={partner} config={config} />
       <MenuSection partner={partner} config={config} template={config.template} />
-      <QuoteSection key={config.content.quoteText} config={config} />
+      <QuoteSection config={config} />
       <AboutContactSection partner={partner} config={config} template={config.template} />
       <FaqSection config={config} />
       <FooterSection partner={partner} config={config} />
@@ -388,8 +389,7 @@ function MicrositeThemeCss() {
         outline-offset: 4px;
       }
 
-      .premium-motion-ready .premium-reveal,
-      .premium-motion-ready .premium-reveal-text {
+      .premium-motion-ready .premium-reveal.premium-reveal-pending {
         opacity: .01;
         filter: blur(7px);
         transform: translate3d(0, 26px, 0);
@@ -400,25 +400,10 @@ function MicrositeThemeCss() {
         transition-delay: calc(var(--reveal-index, 0) * 45ms);
       }
 
-      .premium-motion-ready .premium-reveal-text {
-        transform: translate3d(0, 18px, 0);
-        clip-path: inset(0 0 18% 0 round 10px);
-        transition:
-          opacity .72s var(--ease-out-expo),
-          filter .72s var(--ease-out-expo),
-          transform .78s var(--ease-out-expo),
-          clip-path .78s var(--ease-out-expo);
-      }
-
-      .premium-motion-ready .premium-reveal.is-visible,
-      .premium-motion-ready .premium-reveal-text.is-visible {
+      .premium-motion-ready .premium-reveal.premium-reveal-pending.is-visible {
         opacity: 1;
         filter: blur(0);
         transform: translate3d(0, 0, 0);
-      }
-
-      .premium-motion-ready .premium-reveal-text.is-visible {
-        clip-path: inset(0 0 0 0 round 0);
       }
 
       .premium-parallax {
@@ -471,8 +456,10 @@ function MicrositeThemeCss() {
       }
 
       .premium-hero-title-panel {
-        margin-inline: -.3rem;
-        padding: .95rem 1rem 1rem;
+        width: fit-content;
+        max-width: 100%;
+        margin-inline: 0;
+        padding: .75rem .9rem .85rem;
         border: 1px solid rgba(255,255,255,.76);
         border-radius: 1.25rem;
         background:
@@ -486,7 +473,7 @@ function MicrositeThemeCss() {
       }
 
       .premium-hero-flow {
-        top: 370px;
+        top: 325px;
         display: flex;
         flex-direction: column;
         gap: 2rem;
@@ -572,6 +559,8 @@ function MicrositeThemeCss() {
 
       @container (min-width: 640px) {
         .premium-hero-title-panel {
+          width: auto;
+          max-width: none;
           margin-inline: 0;
           padding: 0;
           border: 0;
@@ -596,27 +585,30 @@ function MicrositeThemeCss() {
         .premium-hero-glass {
           inset: 0 auto 0 0;
           height: auto;
-          width: 79%;
+          width: 70%;
           background: linear-gradient(
             90deg,
             rgba(249, 252, 255, .84) 0%,
-            rgba(247, 251, 255, .70) 47%,
-            rgba(242, 248, 255, .14) 82%,
+            rgba(247, 251, 255, .70) 78%,
+            rgba(246, 250, 255, .54) 84%,
+            rgba(244, 249, 254, .32) 90%,
+            rgba(242, 248, 255, .14) 95%,
             rgba(242, 248, 255, 0) 100%
           );
           -webkit-backdrop-filter: blur(20px) saturate(118%);
           backdrop-filter: blur(20px) saturate(118%);
-          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 58%, rgba(0,0,0,.84) 76%, transparent 100%);
-          mask-image: linear-gradient(90deg, #000 0%, #000 58%, rgba(0,0,0,.84) 76%, transparent 100%);
+          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 78%, rgba(0,0,0,.94) 84%, rgba(0,0,0,.68) 90%, rgba(0,0,0,.3) 96%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 78%, rgba(0,0,0,.94) 84%, rgba(0,0,0,.68) 90%, rgba(0,0,0,.3) 96%, transparent 100%);
         }
 
         .premium-hero-badge {
           left: 2rem;
-          top: 2.25rem;
+          top: 2rem;
         }
 
         .premium-hero-flow {
-          top: 6.75rem;
+          top: 4.5rem;
+          gap: 1.75rem;
         }
 
         .premium-hero-content {
@@ -628,23 +620,27 @@ function MicrositeThemeCss() {
 
       @container (min-width: 1024px) {
         .premium-hero-glass {
-          width: 69%;
+          width: 59%;
           background: linear-gradient(
             90deg,
             rgba(249, 252, 255, .88) 0%,
-            rgba(247, 251, 255, .72) 48%,
-            rgba(242, 248, 255, .12) 84%,
+            rgba(247, 251, 255, .72) 78%,
+            rgba(246, 250, 255, .56) 84%,
+            rgba(244, 249, 254, .34) 90%,
+            rgba(242, 248, 255, .14) 95%,
             rgba(242, 248, 255, 0) 100%
           );
+          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 78%, rgba(0,0,0,.94) 84%, rgba(0,0,0,.68) 90%, rgba(0,0,0,.3) 96%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 78%, rgba(0,0,0,.94) 84%, rgba(0,0,0,.68) 90%, rgba(0,0,0,.3) 96%, transparent 100%);
         }
 
         .premium-hero-badge {
           left: 3rem;
-          top: 2rem;
+          top: 1.75rem;
         }
 
         .premium-hero-flow {
-          top: 6.25rem;
+          top: 4.25rem;
         }
 
         .premium-hero-content {
@@ -831,6 +827,30 @@ function MicrositeThemeCss() {
         animation: premium-app-cta-sheen 4.8s ease-in-out infinite;
       }
 
+      .premium-button-shine {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+      }
+
+      .premium-button-shine::after {
+        content: "";
+        position: absolute;
+        inset: -80% -35%;
+        z-index: 2;
+        pointer-events: none;
+        opacity: .62;
+        background: linear-gradient(110deg, transparent 42%, rgba(255,255,255,.52) 50%, transparent 58%);
+        mix-blend-mode: screen;
+        transform: translate3d(-58%,0,0);
+        animation: premium-app-cta-sheen 4.4s ease-in-out infinite;
+      }
+
+      .premium-button-shine-subtle::after {
+        opacity: .28;
+        animation-duration: 5.4s;
+      }
+
       .premium-faq-item {
         transition: transform .38s var(--ease-out-expo), border-color .3s ease, box-shadow .38s ease;
       }
@@ -860,52 +880,6 @@ function MicrositeThemeCss() {
 
       .premium-motion-ready .premium-quote-shell:not(:has(.is-visible)) .premium-quote-rule {
         transform: scaleX(.18);
-      }
-
-      .premium-topdeal::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        z-index: 4;
-        pointer-events: none;
-        border-radius: inherit;
-        border: 2px solid color-mix(in srgb, var(--site-accent) 76%, white);
-        box-shadow:
-          inset 0 0 20px color-mix(in srgb, var(--site-accent) 18%, transparent),
-          inset 0 1px 0 rgba(255,255,255,.26),
-          0 0 20px -9px color-mix(in srgb, var(--site-accent) 84%, transparent);
-      }
-
-      .premium-topdeal::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        z-index: 5;
-        padding: 2px;
-        pointer-events: none;
-        border-radius: inherit;
-        opacity: 1;
-        background: linear-gradient(
-          102deg,
-          color-mix(in srgb, var(--site-accent) 32%, transparent) 8%,
-          var(--site-accent) 34%,
-          color-mix(in srgb, var(--site-accent) 42%, white) 46%,
-          white 50%,
-          var(--site-accent) 55%,
-          color-mix(in srgb, var(--site-accent) 42%, transparent) 78%
-        );
-        background-size: 260% 100%;
-        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-        -webkit-mask-composite: xor;
-        mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-        mask-composite: exclude;
-        filter: drop-shadow(0 0 5px color-mix(in srgb, var(--site-accent) 70%, transparent));
-        animation: premium-topdeal-border 3.4s linear infinite;
-      }
-
-      @keyframes premium-topdeal-border {
-        from { background-position: 165% 0; }
-        to { background-position: -65% 0; }
       }
 
       .premium-motion-ready .premium-topdeal.is-active {
@@ -954,15 +928,15 @@ function MicrositeThemeCss() {
       }
 
       .premium-stamp-circle[data-current="true"] .premium-stamp-number {
-        animation: premium-stamp-number-pop .22s cubic-bezier(.2, 1.55, .5, 1) both;
+        animation: premium-stamp-number-pop .26s cubic-bezier(.2, 1.55, .5, 1) both;
       }
 
       .premium-stamp-circle[data-current="true"] .premium-stamp-check {
-        animation: premium-stamp-check-pop .18s cubic-bezier(.2, 1.45, .45, 1) .06s both;
+        animation: premium-stamp-check-pop .21s cubic-bezier(.2, 1.45, .45, 1) .07s both;
       }
 
       .premium-stamp-circle[data-current="true"] .premium-stamp-gift {
-        animation: premium-stamp-check-pop .2s cubic-bezier(.2, 1.45, .45, 1) .06s both;
+        animation: premium-stamp-check-pop .24s cubic-bezier(.2, 1.45, .45, 1) .07s both;
       }
 
       .premium-stamp-check svg,
@@ -1130,7 +1104,7 @@ function MicrositeThemeCss() {
       }
 
       .premium-microsite-dark .premium-hero-glass {
-        background: linear-gradient(90deg, rgba(16,18,22,.90), rgba(16,18,22,.68) 56%, transparent 100%);
+        background: linear-gradient(90deg, rgba(16,18,22,.90), rgba(16,18,22,.68) 78%, rgba(16,18,22,.52) 84%, rgba(16,18,22,.30) 90%, rgba(16,18,22,.12) 95%, transparent 100%);
       }
 
       .premium-microsite-dark .premium-feature-row {
@@ -1204,14 +1178,8 @@ function PremiumMotionEffects() {
 
     root.classList.add("premium-motion-ready")
 
-    root
-      .querySelectorAll<HTMLElement>(
-        "section h2, section h3, section p:not(.premium-no-text-reveal), footer p",
-      )
-      .forEach((element) => element.classList.add("premium-reveal-text"))
-
     const revealElements = Array.from(
-      root.querySelectorAll<HTMLElement>(".premium-reveal, .premium-reveal-text"),
+      root.querySelectorAll<HTMLElement>(".premium-reveal"),
     )
     const parallaxElements = Array.from(
       root.querySelectorAll<HTMLElement>(".premium-parallax"),
@@ -1222,6 +1190,7 @@ function PremiumMotionEffects() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.classList.add("is-visible")
+            revealObserver.unobserve(entry.target)
           }
         })
       },
@@ -1236,12 +1205,14 @@ function PremiumMotionEffects() {
 
         if (rect.top < viewportHeight * 0.94 && rect.bottom > 0) {
           element.classList.add("is-visible")
+          revealObserver.unobserve(element)
         }
       })
     }
 
     revealElements.forEach((element, index) => {
       element.style.setProperty("--reveal-index", String(index % 5))
+      element.classList.add("premium-reveal-pending")
       revealObserver.observe(element)
     })
 
@@ -1425,7 +1396,7 @@ function HeroSection({
 
   return (
     <section className="relative bg-[var(--site-bg)]">
-      <div className="premium-hero-stage relative mx-auto min-h-[940px] w-full min-w-0 max-w-7xl overflow-visible bg-[var(--site-bg)] @min-[640px]:min-h-[650px] @min-[1024px]:min-h-[660px]">
+      <div className="premium-hero-stage relative mx-auto min-h-[895px] w-full min-w-0 max-w-7xl overflow-visible bg-[var(--site-bg)] @min-[640px]:min-h-[600px] @min-[1024px]:min-h-[600px]">
         <div className="premium-hero-media-inner absolute inset-0 overflow-hidden bg-[var(--site-secondary)]">
             <BrandedImage
               src={config.hero.backgroundImageUrl}
@@ -1488,7 +1459,7 @@ function HeroSection({
           </div>
         </div>
 
-        <div className="premium-feature-row premium-hero-features relative z-20 mx-4 grid min-h-[140px] grid-cols-2 overflow-hidden rounded-[1.5rem] border border-white/70 px-2 py-2 @min-[640px]:mx-6 @min-[640px]:min-h-[124px] @min-[640px]:grid-cols-4 @min-[640px]:rounded-[1.75rem] @min-[640px]:px-2 @min-[640px]:py-3 @min-[1024px]:mx-10 @min-[1024px]:min-h-[126px] @min-[1024px]:px-3">
+        <div className="premium-feature-row premium-hero-features relative z-20 mx-4 grid min-h-[140px] grid-cols-2 overflow-hidden rounded-[1.5rem] border border-white/70 px-2 py-2 @min-[640px]:mx-6 @min-[640px]:min-h-[106px] @min-[640px]:grid-cols-4 @min-[640px]:rounded-[1.5rem] @min-[640px]:px-2 @min-[640px]:py-2 @min-[1024px]:mx-10 @min-[1024px]:min-h-[106px] @min-[1024px]:px-3">
           {config.hero.services.slice(0, 4).map((service, index) => (
             <div
               key={`${service.label}-${index}`}
@@ -1498,7 +1469,7 @@ function HeroSection({
                 id={`hero.services.${index}.icon`}
                 name={service.icon}
                 config={config}
-                className="premium-hero-service-icon grid size-8 shrink-0 place-items-center rounded-[10px] @min-[640px]:size-9"
+                className="premium-hero-service-icon grid size-8 shrink-0 place-items-center rounded-[10px]"
               />
               <div className="min-w-0">
                 <p
@@ -1618,17 +1589,17 @@ function DealsSection({
         nextStamp += 1
         if (nextStamp <= stampCount) {
           const progress = (nextStamp - 1) / Math.max(1, stampCount - 1)
-          const nextDelay = Math.round(370 - progress * 220)
+          const nextDelay = Math.round(437 - progress * 260)
           stepTimer = window.setTimeout(advanceStamp, nextDelay)
         } else {
-          stepTimer = window.setTimeout(playStampSequence, 2600)
+          stepTimer = window.setTimeout(playStampSequence, 3070)
         }
       }
 
-      stepTimer = window.setTimeout(advanceStamp, 440)
+      stepTimer = window.setTimeout(advanceStamp, 520)
     }
 
-    stepTimer = window.setTimeout(playStampSequence, 180)
+    stepTimer = window.setTimeout(playStampSequence, 212)
 
     return () => {
       if (stepTimer) window.clearTimeout(stepTimer)
@@ -1714,7 +1685,7 @@ function DealsSection({
   return (
     <section id="deals" className={`${restaurantSectionClass(template, "deals")} scroll-mt-24 px-5 pb-10 @min-[640px]:px-8 @min-[1024px]:px-10`}>
       <div className="mx-auto flex max-w-6xl flex-col gap-8 @min-[900px]:gap-10">
-        <div className="premium-reveal pb-2 pt-9">
+        <div className="premium-reveal pb-2 pt-12 @min-[640px]:pt-16">
           <div className="max-w-3xl">
             <h2
               {...editable("deals.headline", "text", "Deals Überschrift")}
@@ -1797,7 +1768,7 @@ function DealsSection({
             </ul>
             <button
               {...editable("deals.topDealButtonLabel", "text", "Top-Deal Button")}
-              className="group mt-6 inline-flex min-h-11 items-center gap-3 rounded-lg bg-[var(--site-accent)] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]"
+              className="premium-button premium-button-shine group mt-6 inline-flex min-h-11 items-center gap-3 rounded-lg bg-[var(--site-accent)] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]"
               style={textStyleFor(config, "deals.topDealButtonLabel")}
             >
               {config.deals.topDealButtonLabel}
@@ -2595,17 +2566,21 @@ function StoreBadge({
   return (
     <a
       href={href}
-      className={`inline-flex w-full min-w-0 max-w-full items-center justify-center rounded-[0.9rem] bg-black text-white shadow-[0_14px_30px_rgba(15,23,42,.18)] ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-zinc-900 @min-[420px]:w-auto ${compact ? "gap-2 px-3 py-2 @min-[420px]:min-w-[150px]" : "gap-3 px-4 py-3 @min-[420px]:min-w-[190px]"}`}
+      className={`inline-flex min-w-0 max-w-full items-center justify-center rounded-[0.8rem] bg-black text-white shadow-[0_12px_26px_rgba(15,23,42,.16)] ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-zinc-900 ${compact ? "w-full gap-1 px-1.5 py-1" : "w-full gap-3 px-4 py-3 @min-[420px]:w-auto @min-[420px]:min-w-[190px]"}`}
       aria-label={isAppStore ? (english ? "Download on the App Store" : "Laden im App Store") : (english ? "Get it on Google Play" : "Jetzt bei Google Play")}
     >
-      {isAppStore ? <AppleGlyph /> : <PlayGlyph />}
+      {isAppStore ? (
+        <AppleGlyph className={compact ? "size-6" : "size-8"} />
+      ) : (
+        <PlayGlyph className={compact ? "size-6" : "size-8"} />
+      )}
       <span>
-        <span className="block text-[10px] font-semibold uppercase leading-none text-zinc-300">
+        <span className={`block font-semibold uppercase leading-none text-zinc-300 ${compact ? "text-[8px]" : "text-[10px]"}`}>
           {isAppStore
             ? english ? "Download on the" : "Laden im"
             : english ? "Get it on" : "Jetzt bei"}
         </span>
-        <span className={`block font-black leading-tight ${compact ? "text-sm" : "text-[1.05rem]"}`}>
+        <span className={`block font-black leading-tight ${compact ? "text-xs" : "text-[1.05rem]"}`}>
           {isAppStore ? "App Store" : "Google Play"}
         </span>
       </span>
@@ -2635,18 +2610,18 @@ function BenefitsiMark({ className = "size-6" }: { className?: string }) {
   )
 }
 
-function AppleGlyph() {
+function AppleGlyph({ className = "size-8" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-8" fill="currentColor">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
       <path d="M16.46 12.42c-.03-3.03 2.48-4.49 2.6-4.56-1.42-2.07-3.62-2.35-4.39-2.39-1.85-.19-3.64 1.1-4.58 1.1-.96 0-2.41-1.07-3.98-1.04-2.03.03-3.92 1.2-4.96 3.03-2.14 3.7-.55 9.14 1.5 12.13 1.03 1.47 2.23 3.11 3.79 3.05 1.53-.06 2.1-.98 3.95-.98 1.83 0 2.37.98 3.97.95 1.64-.03 2.67-1.48 3.66-2.97 1.19-1.68 1.66-3.34 1.68-3.42-.04-.01-3.2-1.23-3.24-4.9Z" />
       <path d="M13.46 3.5c.83-1.04 1.39-2.45 1.24-3.87-1.2.05-2.7.83-3.56 1.84-.76.88-1.44 2.35-1.26 3.72 1.35.1 2.72-.68 3.58-1.69Z" />
     </svg>
   )
 }
 
-function PlayGlyph() {
+function PlayGlyph({ className = "size-8" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 20 20" aria-hidden="true" className="size-8">
+    <svg viewBox="0 0 20 20" aria-hidden="true" className={className}>
       <path d="M3.2 2.4 11 10l-7.8 7.6a2 2 0 0 1-.2-.9V3.3c0-.3.1-.6.2-.9Z" fill="#38bdf8" />
       <path d="m11 10 2.4-2.4 3.2 1.8c.6.4.6 1.2 0 1.6l-3.2 1.8L11 10Z" fill="#facc15" />
       <path d="m3.2 2.4 10.2 5.2L11 10 3.2 2.4Z" fill="#22c55e" />
@@ -2783,7 +2758,7 @@ function MenuSection({
               <button
                 type="button"
                 onClick={() => setMenuOpen(true)}
-                className="premium-button rounded-2xl bg-[var(--site-accent)] px-8 py-4 text-base font-black text-white shadow-[0_16px_32px_-18px_var(--site-accent)] transition hover:-translate-y-0.5 hover:brightness-105"
+                className="premium-button premium-button-shine rounded-2xl bg-[var(--site-accent)] px-8 py-4 text-base font-black text-white shadow-[0_16px_32px_-18px_var(--site-accent)] transition hover:-translate-y-0.5 hover:brightness-105"
               >
                 {siteCopy(config, "Komplette Speisekarte öffnen", "Open full menu")}
               </button>
@@ -2902,7 +2877,7 @@ function AboutContactSection({
   )
 
   return (
-    <section className={`${restaurantSectionClass(template, "about")} px-5 py-8 @min-[640px]:px-8 @min-[1024px]:px-10`}>
+    <section className={`${restaurantSectionClass(template, "about")} px-5 pb-14 pt-8 @min-[640px]:px-8 @min-[640px]:pb-16 @min-[1024px]:px-10`}>
       <div
         id="ueber-uns"
         className="premium-reveal relative mx-auto max-w-6xl scroll-mt-24 overflow-hidden rounded-[1.85rem] border border-white/80 bg-white shadow-[0_30px_85px_rgba(15,23,42,.10)]"
@@ -3034,7 +3009,7 @@ function AboutContactSection({
 
       <div
         id="kontakt"
-        className="premium-reveal mx-auto mt-6 max-w-6xl scroll-mt-24 overflow-hidden rounded-[1.65rem] bg-[#101010] p-3 text-white shadow-[0_30px_90px_rgba(15,23,42,.26)]"
+        className="premium-reveal relative z-[2] mx-auto mt-10 max-w-6xl scroll-mt-24 overflow-hidden rounded-[1.65rem] bg-[#101010] p-3 text-white shadow-[0_30px_90px_rgba(15,23,42,.26)]"
       >
         <CompactContactSection partner={partner} config={config} />
       </div>
@@ -3193,7 +3168,7 @@ function FaqSection({ config }: { config: MicrositeConfig }) {
     <section id="faq" className="scroll-mt-24 bg-[var(--site-bg)] px-5 py-10 @min-[640px]:px-8 @min-[1024px]:px-10">
       <div className="premium-liquid-panel premium-reveal relative mx-auto max-w-6xl overflow-hidden rounded-[1.85rem] p-5 @min-[900px]:p-8">
         <div className="pointer-events-none absolute -right-20 -top-28 size-72 rounded-full bg-[color-mix(in_srgb,var(--site-accent)_10%,transparent)] blur-3xl" />
-        <div className="grid gap-5 @min-[900px]:grid-cols-[.35fr_.65fr] @min-[900px]:items-end">
+        <div className="grid gap-5 @min-[900px]:grid-cols-[minmax(0,1.35fr)_minmax(18rem,.65fr)] @min-[900px]:items-end">
           <div>
             <p className="mb-3 text-xs font-black uppercase tracking-[.15em] text-[var(--site-accent)]">
               {siteCopy(config, "Kurz erklärt", "Good to know")}
@@ -3267,8 +3242,12 @@ function FaqCard({
         >
           {textValue(config, `content.faq.${index}.question`, item.question)}
         </span>
-        <span className={`grid size-8 shrink-0 place-items-center rounded-full border text-zinc-700 transition duration-300 ${isOpen ? "rotate-45 border-[var(--site-accent)] bg-[var(--site-accent)] text-white" : "border-white/80 bg-white/65 group-hover:border-[var(--site-accent)]"}`}>
-          <Plus className="size-4" strokeWidth={2.2} aria-hidden="true" />
+        <span className={`grid size-8 shrink-0 place-items-center rounded-full border transition duration-300 ${isOpen ? "border-[var(--site-accent)] bg-[var(--site-accent)] text-white" : "border-white/80 bg-white/65 text-zinc-700 group-hover:border-[var(--site-accent)]"}`}>
+          {isOpen ? (
+            <Minus className="size-4 text-white" strokeWidth={2.2} aria-hidden="true" />
+          ) : (
+            <Plus className="size-4" strokeWidth={2.2} aria-hidden="true" />
+          )}
         </span>
       </button>
       <div className={`grid transition-[grid-template-rows,opacity] duration-500 [transition-timing-function:var(--ease-out-expo)] ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
@@ -3597,7 +3576,7 @@ function AppDownloadQrPopup({
       role="dialog"
       aria-modal="false"
       aria-label={siteCopy(config, "Benefitsi App herunterladen", "Download the Benefitsi app")}
-      className="fixed bottom-3 right-3 z-[45] w-[calc(100%-1.5rem)] max-w-[390px] @min-[620px]:bottom-5 @min-[620px]:right-5 @min-[620px]:w-[min(390px,calc(100%-2.5rem))]"
+      className="fixed bottom-3 right-3 z-[45] w-[calc(100%-1.5rem)] max-w-[420px] @min-[620px]:bottom-5 @min-[620px]:right-5 @min-[620px]:w-[min(420px,calc(100%-2.5rem))]"
     >
       <div className="premium-liquid-panel relative overflow-hidden rounded-[1.3rem] p-3 pr-10 shadow-[0_20px_56px_rgba(15,23,42,.18)]">
         <div className="pointer-events-none absolute -left-16 -top-24 size-72 rounded-full bg-[color-mix(in_srgb,var(--site-accent)_22%,transparent)] blur-3xl" />
@@ -3611,10 +3590,10 @@ function AppDownloadQrPopup({
           <X className="size-4" strokeWidth={2.2} aria-hidden="true" />
         </button>
 
-        <div className="relative grid grid-cols-[72px_minmax(0,1fr)] items-center gap-3 @min-[620px]:grid-cols-[84px_minmax(0,1fr)]">
+        <div className="relative grid grid-cols-[78px_minmax(0,1fr)] items-center gap-3 @min-[620px]:grid-cols-[92px_minmax(0,1fr)]">
           <a
             href={appUrl}
-            className="group relative aspect-square rounded-2xl bg-white p-2 shadow-[0_12px_32px_rgba(15,23,42,.11)] ring-1 ring-zinc-200/80"
+            className="group relative aspect-square rounded-2xl bg-white p-1.5 shadow-[0_12px_32px_rgba(15,23,42,.11)] ring-1 ring-zinc-200/80"
             aria-label={siteCopy(config, "QR-Code zur Benefitsi App öffnen", "Open the Benefitsi app QR code")}
           >
             <img
@@ -3637,13 +3616,13 @@ function AppDownloadQrPopup({
             </h2>
             <p
               {...editable("content.appPopupText", "text", "App Popup Text")}
-              className="mt-1 hidden max-w-[30ch] text-[11px] leading-4 text-zinc-600 @min-[620px]:block"
+              className="mt-1 hidden whitespace-nowrap text-[10px] leading-4 text-zinc-600 @min-[620px]:block"
               style={textStyleFor(config, "content.appPopupText")}
             >
               {textValue(
                 config,
                 "content.appPopupText",
-                siteCopy(config, "QR-Code mit dem Smartphone scannen und alle Vorteile direkt mitnehmen.", "Scan the QR code with your phone to download the app and take every benefit with you."),
+                siteCopy(config, "QR-Code scannen. Vorteile sichern.", "Scan the QR code. Get your benefits."),
               )}
             </p>
             <a
@@ -3653,7 +3632,7 @@ function AppDownloadQrPopup({
               {siteCopy(config, "App öffnen", "Open app")}
               <ArrowRight className="size-3.5" aria-hidden="true" />
             </a>
-            <div className="mt-2 hidden flex-wrap gap-1.5 @min-[620px]:flex">
+            <div className="mt-2 hidden grid-cols-2 gap-1.5 @min-[620px]:grid">
               <StoreBadge store="app-store" href={appUrl} language={config.language} compact />
               <StoreBadge store="google-play" href={appUrl} language={config.language} compact />
             </div>
@@ -3879,7 +3858,7 @@ function HeroButton({
       href={href}
       className={`premium-button group inline-flex min-h-11 items-center justify-center gap-3 rounded-xl px-6 py-3 text-center text-sm font-black transition duration-300 hover:-translate-y-1 ${
         primary
-          ? "bg-[var(--site-accent)] text-white shadow-[0_16px_30px_-16px_var(--site-accent)] hover:brightness-105"
+          ? "premium-button-shine premium-button-shine-subtle bg-[var(--site-accent)] text-white shadow-[0_16px_30px_-16px_var(--site-accent)] hover:brightness-105"
           : "bg-white text-[var(--site-secondary)] shadow-[0_12px_26px_-20px_var(--site-secondary)] ring-1 ring-black/10 hover:ring-[var(--site-tertiary)]"
       }`}
       style={textStyleFor(config, id)}
@@ -3904,7 +3883,14 @@ function QuoteSection({ config }: { config: MicrositeConfig }) {
       return { token, characters, start }
     })
   }, [quote])
-  const [visibleCharacterCount, setVisibleCharacterCount] = useState(quoteCharacters.length)
+  const [typingState, setTypingState] = useState({
+    quote,
+    visibleCharacterCount: quoteCharacters.length,
+  })
+  const visibleCharacterCount =
+    typingState.quote === quote
+      ? typingState.visibleCharacterCount
+      : quoteCharacters.length
   const sectionRef = useRef<HTMLElement | null>(null)
   const typedRef = useRef(false)
 
@@ -3923,7 +3909,7 @@ function QuoteSection({ config }: { config: MicrositeConfig }) {
         if (!entry.isIntersecting || typedRef.current) return
 
         typedRef.current = true
-        setVisibleCharacterCount(0)
+        setTypingState({ quote, visibleCharacterCount: 0 })
         const duration = Math.max(1400, Math.min(3000, quoteCharacters.length * 28))
         let startedAt: number | null = null
 
@@ -3931,10 +3917,15 @@ function QuoteSection({ config }: { config: MicrositeConfig }) {
           startedAt ??= time
           const progress = Math.min((time - startedAt) / duration, 1)
           const easedProgress = 1 - Math.pow(1 - progress, 2)
-          setVisibleCharacterCount(Math.floor(easedProgress * quoteCharacters.length))
+          setTypingState({
+            quote,
+            visibleCharacterCount: Math.floor(easedProgress * quoteCharacters.length),
+          })
 
           if (progress < 1) {
             frame = window.requestAnimationFrame(typeFrame)
+          } else {
+            setTypingState({ quote, visibleCharacterCount: quoteCharacters.length })
           }
         }
 
@@ -3949,7 +3940,7 @@ function QuoteSection({ config }: { config: MicrositeConfig }) {
       observer.disconnect()
       window.cancelAnimationFrame(frame)
     }
-  }, [quoteCharacters.length])
+  }, [quote, quoteCharacters.length])
 
   return (
     <section
