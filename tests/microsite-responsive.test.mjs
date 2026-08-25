@@ -25,3 +25,17 @@ test("keeps the microsite mobile layout requirements in place", async () => {
   )
   assert.match(source, /\.premium-about-background \{\s+opacity: \.32;/)
 })
+
+test("keeps dark mode polished and uses the official social glyphs", async () => {
+  const source = await readFile(componentUrl, "utf8")
+
+  assert.doesNotMatch(source, /LanguageSwitch|onLanguageChange|<Languages/)
+  assert.match(source, /\.premium-microsite-dark \.premium-hero-title-panel/)
+  assert.match(source, /\.premium-microsite-dark \.premium-stamp-panel/)
+  assert.match(source, /\.premium-microsite-dark \.premium-about-scrim/)
+  assert.match(source, /\.premium-microsite-dark \.premium-branded-image/)
+  assert.match(
+    source,
+    /return <FaTiktok aria-hidden="true" className=\{sizeClassName\} \/>/,
+  )
+})

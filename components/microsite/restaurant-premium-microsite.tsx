@@ -19,7 +19,6 @@ import {
   Heart,
   House,
   Leaf,
-  Languages,
   LockKeyhole,
   Mail,
   MapPin,
@@ -195,135 +194,15 @@ function siteCopy(config: MicrositeConfig, german: string, english: string) {
   return config.language === "en" ? english : german
 }
 
-function localizedMicrositeConfig(
-  source: MicrositeConfig,
-  partner: PartnerWithDeals,
-  language: MicrositeConfig["language"],
-): MicrositeConfig {
-  if (source.language === language) return source
-
-  const english = language === "en"
-  const name = partner.short_name?.trim() || partner.name?.trim() || source.hero.headline
-  const labelByAnchor: Record<string, [string, string]> = {
-    deals: ["Deals & Vorteile", "Deals & benefits"],
-    stempelkarte: ["Stempelkarte", "Stamp card"],
-    speisekarte: ["Speisekarte", "Menu"],
-    "ueber-uns": ["Über uns", "About us"],
-    app: ["Benefitsi-App", "Benefitsi app"],
-    kontakt: ["Kontakt", "Contact"],
-  }
-  const choose = (de: string, en: string) => (english ? en : de)
-  const localizedElementText: Record<string, string> = {
-    ...source.elementText,
-    "deals.benefit.0.title": choose("Exklusive Partner Deals", "Exclusive partner deals"),
-    "deals.benefit.0.text": choose("Nur für Benefitsi Mitglieder", "Only for Benefitsi members"),
-    "deals.benefit.1.title": choose("Einfach & automatisch", "Simple & automatic"),
-    "deals.benefit.1.text": choose("Vorteile nutzen & sparen", "Use benefits and save"),
-    "stamps.description": choose(
-      "Belohnungen und benötigte Stempel werden direkt aus den Partnerdaten übernommen.",
-      "Rewards and required stamps are taken directly from the partner data.",
-    ),
-    "content.appQrLabel": choose("App öffnen & einchecken", "Open the app & check in"),
-    "content.appQrText": choose("QR-Code scannen", "Scan the QR code"),
-    "content.appButtonLabel": choose("App öffnen", "Open the app"),
-  }
-
-  return {
-    ...source,
-    language,
-    navigation: {
-      links: source.navigation.links.map((link) => {
-        const labels = labelByAnchor[link.anchor]
-        return labels ? { ...link, label: english ? labels[1] : labels[0] } : link
-      }),
-    },
-    hero: {
-      ...source.hero,
-      slogan: choose(
-        "Frisch, lokal und immer einen weiteren Besuch wert.",
-        "Fresh, local and always worth another visit.",
-      ),
-      badgeText: choose("Offizieller Benefitsi Partner", "Official Benefitsi partner"),
-      openingText: english
-        ? source.hero.openingText
-            .replace(/^Heute geöffnet/i, "Open today")
-            .replace(/^Geschlossen/i, "Closed")
-        : source.hero.openingText
-            .replace(/^Open today/i, "Heute geöffnet")
-            .replace(/^Closed/i, "Geschlossen"),
-      primaryButtonLabel: choose("Deals ansehen", "View deals"),
-      secondaryButtonLabel: choose("Speisekarte ansehen", "View menu"),
-      services: [
-        { icon: "bag", label: choose("Abholung", "Pickup") },
-        { icon: "leaf", label: choose("Frische Auswahl", "Fresh selection") },
-        { icon: "card", label: choose("Kartenzahlung & Mobile Pay", "Card & mobile pay") },
-        { icon: "people", label: choose("Familienfreundlich", "Family friendly") },
-      ],
-    },
-    deals: {
-      ...source.deals,
-      label: choose("Deals & Vorteile", "Deals & benefits"),
-      headline: choose(`Exklusive Benefitsi Deals bei ${name}`, `Exclusive Benefitsi deals at ${name}`),
-      slogan: choose("Mehr genießen, mehr sparen!", "Enjoy more, save more!"),
-      description: choose(
-        "Entdecke die besten Vorteile und belohne dich bei jedem Besuch.",
-        "Discover the best benefits and get rewarded with every visit.",
-      ),
-      topDealButtonLabel: choose("Vorteil in der App aktivieren", "Activate benefit in the app"),
-    },
-    stamps: {
-      label: choose("Stempelkarte", "Stamp card"),
-      headline: choose("Stempel sammeln. Belohnung genießen.", "Collect stamps. Enjoy rewards."),
-      slogan: choose("Ihre Treue wird belohnt!", "Your loyalty is rewarded!"),
-    },
-    content: {
-      ...source.content,
-      menuLabel: choose("Speisekarte", "Menu"),
-      menuHeadline: choose("Unsere Auswahl entdecken.", "Discover our selection."),
-      menuDescription: choose(
-        "Frisch zubereitet, übersichtlich präsentiert und direkt aus den Partnerdaten.",
-        "Freshly prepared, clearly presented and taken directly from the partner data.",
-      ),
-      aboutLabel: choose("Über uns", "About us"),
-      aboutHeadline: choose(`${name} auf einen Blick`, `Meet ${name}`),
-      aboutText: choose(
-        `Bei ${name} stehen Qualität, Gastfreundschaft und ein unkomplizierter Besuch im Mittelpunkt.`,
-        `${name} is all about quality, hospitality and an easy, enjoyable visit.`,
-      ),
-      quoteText: choose(
-        `Was uns wichtig ist: Jeder Besuch bei ${name} soll sich persönlich, unkompliziert und besonders anfühlen.`,
-        `What matters to us: every visit to ${name} should feel personal, effortless and special.`,
-      ),
-      contactLabel: choose("Kontakt", "Contact"),
-      contactHeadline: choose("So erreichst du uns", "How to reach us"),
-      appHeadline: choose("Deine Vorteile. Immer dabei.", "Your benefits. Always with you."),
-      appText: choose(
-        "Stempel sammeln, Deals aktivieren und Belohnungen direkt in der Benefitsi App freischalten.",
-        "Collect stamps, activate deals and unlock rewards directly in the Benefitsi app.",
-      ),
-      footerText: choose(
-        `Dein Benefitsi Partner ${name}.`,
-        `Your Benefitsi partner ${name}.`,
-      ),
-    },
-    elementText: localizedElementText,
-  }
-}
-
 export function RestaurantPremiumMicrosite({
   partner,
-  config: sourceConfig,
+  config,
   showAppDownloadPopup = true,
 }: {
   partner: PartnerWithDeals
   config: MicrositeConfig
   showAppDownloadPopup?: boolean
 }) {
-  const [siteLanguage, setSiteLanguage] = useState(sourceConfig.language)
-  const config = useMemo(
-    () => localizedMicrositeConfig(sourceConfig, partner, siteLanguage),
-    [partner, siteLanguage, sourceConfig],
-  )
   const theme = restaurantTheme()
   const palette = useResolvedPalette(
     config,
@@ -353,7 +232,6 @@ export function RestaurantPremiumMicrosite({
         partner={partner}
         config={config}
         theme={theme}
-        onLanguageChange={setSiteLanguage}
       />
       <HeroSection config={config} template={config.template} />
       <DealsSection partner={partner} config={config} template={config.template} />
@@ -1080,7 +958,14 @@ function MicrositeThemeCss() {
       }
 
       .premium-microsite-dark {
+        --site-surface-elevated: #20242c;
         color-scheme: dark;
+      }
+
+      .premium-microsite-dark > header {
+        border-color: var(--site-border) !important;
+        background: color-mix(in srgb, var(--site-surface) 92%, transparent) !important;
+        box-shadow: 0 14px 34px -28px rgba(0,0,0,.9);
       }
 
       .premium-microsite-dark section,
@@ -1107,6 +992,8 @@ function MicrositeThemeCss() {
       }
 
       .premium-microsite-dark [class*="bg-zinc-50"],
+      .premium-microsite-dark [class*="bg-zinc-100"],
+      .premium-microsite-dark [class*="bg-zinc-200"],
       .premium-microsite-dark [class*="bg-[#f8f6f1]"],
       .premium-microsite-dark [class*="bg-[#fffdf8]"],
       .premium-microsite-dark [class*="bg-[#f7f3ee]"],
@@ -1128,12 +1015,32 @@ function MicrositeThemeCss() {
       }
 
       .premium-microsite-dark [class*="border-zinc"],
-      .premium-microsite-dark [class*="border-white/80"] {
+      .premium-microsite-dark [class*="border-white/70"],
+      .premium-microsite-dark [class*="border-white/75"],
+      .premium-microsite-dark [class*="border-white/80"],
+      .premium-microsite-dark [class*="border-white/85"] {
         border-color: var(--site-border) !important;
       }
 
-      .premium-microsite-dark #ueber-uns > .absolute.inset-0 {
-        background: linear-gradient(90deg,#181b21 0%,#181b21 42%,rgba(24,27,33,.82) 58%,rgba(24,27,33,.2) 78%,rgba(24,27,33,0) 100%) !important;
+      .premium-microsite-dark .premium-branded-image {
+        background:
+          radial-gradient(circle at 18% 14%, color-mix(in srgb, var(--site-tertiary) 15%, transparent), transparent 36%),
+          radial-gradient(circle at 82% 84%, color-mix(in srgb, var(--site-accent) 12%, transparent), transparent 40%),
+          linear-gradient(145deg, var(--site-surface-elevated), var(--site-surface));
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+      }
+
+      .premium-microsite-dark .premium-about-scrim {
+        background: linear-gradient(180deg,rgba(24,27,33,.76) 0%,rgba(24,27,33,.9) 54%,rgba(24,27,33,.97) 100%) !important;
+      }
+
+      .premium-microsite-dark .premium-about-background {
+        filter: saturate(.78) brightness(.72);
+      }
+
+      .premium-microsite-dark .premium-about-photos figure {
+        background: var(--site-surface-elevated) !important;
+        box-shadow: 0 24px 52px rgba(0,0,0,.42);
       }
 
       .premium-microsite-dark .premium-hero-glass {
@@ -1141,12 +1048,29 @@ function MicrositeThemeCss() {
       }
 
       .premium-microsite-dark .premium-feature-row {
+        color: var(--site-text);
+        border-color: var(--site-border) !important;
         background: color-mix(in srgb, var(--site-surface) 72%, transparent) !important;
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.11),
+          inset 0 -1px 0 rgba(255,255,255,.04),
+          0 26px 58px -34px rgba(0,0,0,.88);
+      }
+
+      .premium-microsite-dark .premium-feature-row::before {
+        background: linear-gradient(155deg, rgba(255,255,255,.08), transparent 40%, rgba(255,255,255,.025) 72%, rgba(255,255,255,.06));
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+      }
+
+      .premium-microsite-dark .premium-liquid-panel::before {
+        opacity: .32;
       }
 
       .premium-microsite-dark .premium-hero-service-icon {
-        color: color-mix(in srgb, var(--site-accent) 58%, #7c2d12 42%);
-        background: rgba(255,255,255,.9);
+        color: color-mix(in srgb, var(--site-accent) 72%, white);
+        border-color: rgba(255,255,255,.12);
+        background: rgba(255,255,255,.08);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 10px 24px -18px rgba(0,0,0,.9);
       }
 
       .premium-microsite-dark .premium-hero-service-label {
@@ -1156,6 +1080,80 @@ function MicrositeThemeCss() {
 
       .premium-microsite-dark .premium-hero-service-description {
         color: #e7e1d8;
+      }
+
+      .premium-microsite-dark .premium-hero-secondary {
+        color: var(--site-text) !important;
+        border: 1px solid var(--site-border);
+        background: var(--site-surface-elevated) !important;
+        box-shadow: 0 14px 28px -20px rgba(0,0,0,.9);
+      }
+
+      .premium-microsite-dark .premium-stamp-panel {
+        border: 1px solid var(--site-border);
+        background: linear-gradient(145deg, rgba(32,36,44,.96), rgba(24,27,33,.94)) !important;
+        box-shadow: 0 30px 76px -38px rgba(0,0,0,.9);
+      }
+
+      .premium-microsite-dark .premium-stamp-progress {
+        color: var(--site-text) !important;
+        background: color-mix(in srgb, var(--site-accent) 15%, var(--site-surface)) !important;
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--site-accent) 22%, transparent);
+      }
+
+      .premium-microsite-dark .premium-stamp-circle {
+        border-color: rgba(255,255,255,.16) !important;
+        background: var(--site-surface-elevated) !important;
+        color: var(--site-muted) !important;
+      }
+
+      .premium-microsite-dark .premium-stamp-circle[data-completed="true"] {
+        border-color: #34d399 !important;
+        background: color-mix(in srgb, #10b981 18%, var(--site-surface)) !important;
+        color: #a7f3d0 !important;
+      }
+
+      .premium-microsite-dark .premium-stamp-circle[data-highlighted="true"] {
+        border-color: var(--site-accent) !important;
+        background: color-mix(in srgb, var(--site-accent) 18%, var(--site-surface)) !important;
+        color: color-mix(in srgb, var(--site-accent) 72%, white) !important;
+      }
+
+      .premium-microsite-dark .premium-stamp-check,
+      .premium-microsite-dark .premium-stamp-gift {
+        border-color: var(--site-surface) !important;
+      }
+
+      .premium-microsite-dark .premium-stamp-gift {
+        background: color-mix(in srgb, var(--site-accent) 18%, var(--site-surface)) !important;
+      }
+
+      .premium-microsite-dark .premium-stamp-circle[data-completed="true"] .premium-stamp-gift {
+        background: var(--site-accent) !important;
+        color: white !important;
+      }
+
+      .premium-microsite-dark .premium-stamp-reward {
+        border-color: var(--site-border) !important;
+        background: var(--site-surface-elevated) !important;
+        box-shadow: 0 18px 38px -24px rgba(0,0,0,.88);
+      }
+
+      .premium-microsite-dark .premium-stamp-reward[data-current-reward="true"] {
+        border-color: var(--site-accent) !important;
+      }
+
+      .premium-microsite-dark .premium-stamp-reward-icon {
+        border-color: var(--site-border) !important;
+        background: color-mix(in srgb, var(--site-accent) 12%, var(--site-surface)) !important;
+      }
+
+      .premium-microsite-dark .premium-app-screen [class*="bg-white"] {
+        background-color: white !important;
+      }
+
+      .premium-microsite-dark .premium-qr-surface {
+        background: white !important;
       }
 
       .premium-microsite-dark #partner-zitat {
@@ -1168,6 +1166,26 @@ function MicrositeThemeCss() {
 
       .premium-microsite-dark iframe {
         filter: saturate(.85) brightness(.78) contrast(1.05);
+      }
+
+      @container (max-width: 639px) {
+        .premium-microsite-dark .premium-hero-title-panel {
+          border-color: rgba(255,255,255,.12);
+          background:
+            radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--site-accent) 13%, transparent), transparent 48%),
+            linear-gradient(145deg, rgba(32,36,44,.96), rgba(24,27,33,.9));
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 20px 44px -30px rgba(0,0,0,.92);
+        }
+      }
+
+      @container (min-width: 900px) {
+        .premium-microsite-dark .premium-about-scrim {
+          background: linear-gradient(90deg,#181b21 0%,#181b21 42%,rgba(24,27,33,.84) 56%,rgba(24,27,33,.24) 76%,rgba(24,27,33,0) 100%) !important;
+        }
+
+        .premium-microsite-dark .premium-about-background {
+          filter: saturate(.82) brightness(.78);
+        }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -1294,12 +1312,10 @@ function SiteHeader({
   partner,
   config,
   theme,
-  onLanguageChange,
 }: {
   partner: PartnerWithDeals
   config: MicrositeConfig
   theme: ReturnType<typeof restaurantTheme>
-  onLanguageChange: (language: MicrositeConfig["language"]) => void
 }) {
   const navStyle = config.elementStyles["navigation.group"] ?? {}
   const [menuOpen, setMenuOpen] = useState(false)
@@ -1341,7 +1357,6 @@ function SiteHeader({
           ))}
         </nav>
         <div className="hidden items-center gap-3 @min-[1180px]:flex">
-          <LanguageSwitch language={config.language} onChange={onLanguageChange} />
           <a
             href="#deals"
             className="premium-button group inline-flex min-h-11 items-center justify-center gap-3 rounded-xl bg-[var(--site-accent)] px-5 py-3 text-sm font-black text-white shadow-[0_16px_30px_-18px_var(--site-accent)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105"
@@ -1351,7 +1366,6 @@ function SiteHeader({
           </a>
         </div>
         <div className="relative z-10 flex shrink-0 items-center justify-end gap-1.5 @min-[1180px]:hidden">
-          <LanguageSwitch language={config.language} onChange={onLanguageChange} compact />
           <button
             type="button"
             onClick={() => setMenuOpen((current) => !current)}
@@ -1526,43 +1540,6 @@ function HeroSection({
 
       </div>
     </section>
-  )
-}
-
-function LanguageSwitch({
-  language,
-  onChange,
-  compact = false,
-}: {
-  language: MicrositeConfig["language"]
-  onChange: (language: MicrositeConfig["language"]) => void
-  compact?: boolean
-}) {
-  return (
-    <div
-      className={`flex shrink-0 items-center gap-0.5 rounded-xl bg-[color-mix(in_srgb,var(--site-accent)_7%,white)] p-1 ring-1 ring-black/[.06] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_8px_24px_-20px_rgba(15,23,42,.5)] backdrop-blur-xl ${
-        compact ? "h-10" : "h-11"
-      }`}
-      role="group"
-      aria-label={language === "en" ? "Website language" : "Websitesprache"}
-    >
-      <Languages className="mx-1 hidden size-4 text-[var(--site-accent)] @min-[640px]:block" aria-hidden="true" />
-      {(["de", "en"] as const).map((option) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => onChange(option)}
-          className={`grid h-8 min-w-8 place-items-center rounded-lg px-2 text-xs font-black uppercase tracking-[.06em] transition duration-200 active:scale-[.97] ${
-            language === option
-              ? "bg-white text-[var(--site-accent)] shadow-[0_5px_14px_-10px_rgba(15,23,42,.55)] ring-1 ring-black/[.06]"
-              : "text-zinc-500 hover:bg-white/65 hover:text-zinc-950"
-          }`}
-          aria-pressed={language === option}
-        >
-          {option}
-        </button>
-      ))}
-    </div>
   )
 }
 
@@ -1830,7 +1807,7 @@ function DealsSection({
               >
                 {config.stamps.slogan}
               </p>
-              <p className="premium-no-text-reveal mt-4 inline-flex items-center gap-2 rounded-full bg-[color-mix(in_srgb,var(--site-tertiary)_14%,white)] px-3 py-1.5 text-xs font-black text-[var(--site-secondary)]" aria-live="polite">
+              <p className="premium-stamp-progress premium-no-text-reveal mt-4 inline-flex items-center gap-2 rounded-full bg-[color-mix(in_srgb,var(--site-tertiary)_14%,white)] px-3 py-1.5 text-xs font-black text-[var(--site-secondary)]" aria-live="polite">
                 <span className="tabular-nums">{activeStamp}/{stampCount}</span>
                 <span>{config.language === "en" ? "stamps completed" : "Stempel geschafft"}</span>
               </p>
@@ -1921,7 +1898,8 @@ function DealsSection({
                     <div
                       key={card.id}
                       data-reward-stamp={card.stamp}
-                      className={`relative flex min-h-[104px] w-full items-center gap-3 rounded-[1rem] border bg-white px-3 py-3 shadow-[0_14px_28px_rgba(120,72,0,.07)] transition-[opacity,transform,box-shadow,border-color] duration-300 ${
+                      data-current-reward={activeStamp === card.stamp}
+                      className={`premium-stamp-reward relative flex min-h-[104px] w-full items-center gap-3 rounded-[1rem] border bg-white px-3 py-3 shadow-[0_14px_28px_rgba(120,72,0,.07)] transition-[opacity,transform,box-shadow,border-color] duration-300 ${
                         card.tone === "emerald"
                           ? "border-emerald-200"
                           : "border-amber-200"
@@ -1949,7 +1927,7 @@ function DealsSection({
                         name={card.iconName}
                         config={config}
                         label={card.id === "welcome" ? "Willkommensbonus Icon" : `${card.eyebrow} Icon`}
-                        className={`grid size-12 shrink-0 place-items-center rounded-xl border shadow-sm ${
+                        className={`premium-stamp-reward-icon grid size-12 shrink-0 place-items-center rounded-xl border shadow-sm ${
                           card.tone === "emerald"
                             ? "premium-stamp-welcome-icon border-emerald-200 bg-emerald-50 text-emerald-600"
                             : "border-amber-200 bg-amber-50 text-[var(--site-accent)]"
@@ -3617,7 +3595,7 @@ function AppDownloadQrPopup({
         <div className="relative grid grid-cols-[78px_minmax(0,1fr)] items-center gap-3 @min-[620px]:grid-cols-[92px_minmax(0,1fr)]">
           <a
             href={appUrl}
-            className="group relative aspect-square rounded-2xl bg-white p-1.5 shadow-[0_12px_32px_rgba(15,23,42,.11)] ring-1 ring-zinc-200/80"
+            className="premium-qr-surface group relative aspect-square rounded-2xl bg-white p-1.5 shadow-[0_12px_32px_rgba(15,23,42,.11)] ring-1 ring-zinc-200/80"
             aria-label={siteCopy(config, "QR-Code zur Benefitsi App öffnen", "Open the Benefitsi app QR code")}
           >
             <img
@@ -3883,7 +3861,7 @@ function HeroButton({
       className={`premium-button group inline-flex min-h-11 items-center justify-center gap-3 rounded-xl px-6 py-3 text-center text-sm font-black transition duration-300 hover:-translate-y-1 ${
         primary
           ? "premium-button-shine premium-button-shine-subtle bg-[var(--site-accent)] text-white shadow-[0_16px_30px_-16px_var(--site-accent)] hover:brightness-105"
-          : "bg-white text-[var(--site-secondary)] shadow-[0_12px_26px_-20px_var(--site-secondary)] ring-1 ring-black/10 hover:ring-[var(--site-tertiary)]"
+          : "premium-hero-secondary bg-white text-[var(--site-secondary)] shadow-[0_12px_26px_-20px_var(--site-secondary)] ring-1 ring-black/10 hover:ring-[var(--site-tertiary)]"
       }`}
       style={textStyleFor(config, id)}
     >
@@ -4472,13 +4450,7 @@ function SocialIcon({
   }
 
   if (platform === "tiktok") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className={sizeClassName}>
-        <path d="M15.2 3c.4 2.3 1.7 3.7 4 3.9v3.2c-1.4.1-2.7-.3-4-1.1v5.9c0 3-2 5.6-5.2 5.6-3 0-5.2-2.1-5.2-5 0-3.5 3.4-6 6.7-4.9V14c-1.3-.5-3 .4-3 1.8 0 1 .8 1.7 1.7 1.7 1.1 0 1.8-.7 1.8-2.1V3h3.2Z" fill="#25f4ee" transform="translate(-1 1)" />
-        <path d="M15.2 3c.4 2.3 1.7 3.7 4 3.9v3.2c-1.4.1-2.7-.3-4-1.1v5.9c0 3-2 5.6-5.2 5.6-3 0-5.2-2.1-5.2-5 0-3.5 3.4-6 6.7-4.9V14c-1.3-.5-3 .4-3 1.8 0 1 .8 1.7 1.7 1.7 1.1 0 1.8-.7 1.8-2.1V3h3.2Z" fill="#fe2c55" transform="translate(1 -1)" />
-        <path d="M15.2 3c.4 2.3 1.7 3.7 4 3.9v3.2c-1.4.1-2.7-.3-4-1.1v5.9c0 3-2 5.6-5.2 5.6-3 0-5.2-2.1-5.2-5 0-3.5 3.4-6 6.7-4.9V14c-1.3-.5-3 .4-3 1.8 0 1 .8 1.7 1.7 1.7 1.1 0 1.8-.7 1.8-2.1V3h3.2Z" fill="white" />
-      </svg>
-    )
+    return <FaTiktok aria-hidden="true" className={sizeClassName} />
   }
 
   if (platform === "youtube") {
