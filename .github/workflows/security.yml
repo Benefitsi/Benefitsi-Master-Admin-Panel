@@ -77,27 +77,3 @@ jobs:
 
       - name: Build
         run: npm run build
-
-  lockfile-refresh:
-    name: Generate remediated lockfile
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Generate audited lockfile
-        run: npm audit fix --package-lock-only --ignore-scripts
-
-      - name: Emit lockfile for reviewed branch update
-        shell: bash
-        run: |
-          node -e 'const fs=require("fs");const b=fs.readFileSync("package-lock.json").toString("base64");for(let i=0,n=0;i<b.length;i+=30000,n++)console.log(`LOCKFILE_${String(n).padStart(3,"0")}:${b.slice(i,i+30000)}`)'
