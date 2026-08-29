@@ -30,6 +30,7 @@ import {
   reviewCityAgentProposalsThroughHermes,
   sourceContentType,
 } from "./sources"
+import { createSourceFetchMetrics } from "./source-metrics"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type SupabaseClient = ReturnType<typeof createAdminClient>
@@ -119,6 +120,16 @@ function safeObject(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {}
+}
+
+function runTrigger(options: RunnerOptions, jobInput: Record<string, unknown>) {
+  if (options.dryRun !== false) return "dry_run"
+
+  const scheduled = jobInput.scheduled === true
+    || typeof jobInput.schedulerJobId === "string"
+    || typeof jobInput.schedulerRunId === "string"
+
+  return scheduled ? "scheduled" : "manual"
 }
 
 async function updateSchedulerJobLink(
@@ -387,7 +398,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
         job_id: job.id,
         profile_id: profileId,
         orchestrator_profile: agentProfile,
-        trigger: options.dryRun === false ? "manual" : "dry_run",
+        trigger: runTrigger(options, jobInput),
         status: "running",
         dry_run: isShadow,
         idempotency_key: idempotencyKey,
@@ -473,8 +484,13 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
   const reviewCandidates: Array<Record<string, unknown>> = []
   const baselineFindings: Array<{ findingType: string }> = []
   const changeCounts: Record<string, number> = {}
+  let sourceFetchAttempts = 0
+  let sourceFetchSuccesses = 0
+  let sourceFetchFailures = 0
 
   for (const source of dueSources) {
+    sourceFetchAttempts += 1
+    let sourceFetchSucceeded = false
     const previousResult = await supabase
       .from("city_agent_source_snapshots")
       .select("id,content_hash,extracted_payload,final_url,http_status,content_type,extraction_method,page_count,canonicalization_version")
@@ -486,6 +502,8 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
 
     try {
       const facts = await provider.fetchSource(source)
+      sourceFetchSuccesses += 1
+      sourceFetchSucceeded = true
       const snapshotInsert = await supabase
         .from("city_agent_source_snapshots")
         .upsert(
@@ -716,6 +734,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
         await addAudit(supabase, runId, "proposal_created", { sourceId: source.id, operation, deduplicationKey }, agentProfile)
       }
     } catch (error) {
+      if (!sourceFetchSucceeded) sourceFetchFailures += 1
       const message = error instanceof Error ? error.message : "Unbekannter Quellenfehler"
       const sourceError = `${source.slug}: ${message}`.slice(0, 500)
       if (source.parser_config.requiredForCoverage === false) sourceWarnings.push(sourceError)
@@ -909,7 +928,8 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
 
   const status = errors.length ? (snapshotCount || eventSeoAudit?.checked || businessAudit?.checked || freshnessAudit?.checked ? "partial" : "failed") : "succeeded"
   const finishedAt = new Date().toISOString()
-  await supabase.from("city_agent_runs").update({ status, source_count: dueSources.length, snapshot_count: snapshotCount, proposal_count: proposalCount, stale_count: staleCount, error_code: errors.length ? "source_errors" : null, error_summary: errors.length ? errors.join(" | ").slice(0, 2_000) : null, metadata: { autoPublishedCount, reviewCandidateCount: reviewCandidates.length, findingCount, operatingMode, moduleKey: moduleKey ?? null, shadow: isShadow, changeCounts, sourceWarnings: sourceWarnings.slice(0, 20), business: businessSummary(businessAudit), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, current: eventSeoAudit.current, stale: eventSeoAudit.stale, expired: eventSeoAudit.expired, missingCanonical: eventSeoAudit.missingCanonical, thin: eventSeoAudit.thin, duplicateTitles: eventSeoAudit.duplicateTitles, recurrence: eventSeoAudit.recurrence } : null, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown, byEntity: freshnessAudit.byEntity, eventRecurrence: freshnessAudit.eventRecurrence, serviceFacts: freshnessAudit.serviceFacts } : null }, finished_at: finishedAt, updated_at: finishedAt }).eq("id", runId)
+  const sourceFetchMetrics = createSourceFetchMetrics(sourceFetchAttempts, sourceFetchSuccesses, sourceFetchFailures)
+  await supabase.from("city_agent_runs").update({ status, source_count: dueSources.length, snapshot_count: snapshotCount, proposal_count: proposalCount, stale_count: staleCount, error_code: errors.length ? "source_errors" : null, error_summary: errors.length ? errors.join(" | ").slice(0, 2_000) : null, metadata: { autoPublishedCount, reviewCandidateCount: reviewCandidates.length, findingCount, operatingMode, moduleKey: moduleKey ?? null, shadow: isShadow, changeCounts, sourceWarnings: sourceWarnings.slice(0, 20), sourceFetchMetrics, business: businessSummary(businessAudit), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, current: eventSeoAudit.current, stale: eventSeoAudit.stale, expired: eventSeoAudit.expired, missingCanonical: eventSeoAudit.missingCanonical, thin: eventSeoAudit.thin, duplicateTitles: eventSeoAudit.duplicateTitles, recurrence: eventSeoAudit.recurrence } : null, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown, byEntity: freshnessAudit.byEntity, eventRecurrence: freshnessAudit.eventRecurrence, serviceFacts: freshnessAudit.serviceFacts } : null }, finished_at: finishedAt, updated_at: finishedAt }).eq("id", runId)
   if (moduleKey) {
     await supabase.from("city_agent_schedules").update({
       last_run_id: runId,
@@ -918,7 +938,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
       updated_at: finishedAt,
     }).eq("city_id", cityId).eq("module_key", moduleKey)
   }
-  await addAudit(supabase, runId, status === "failed" ? "failed" : "completed", { sourceCount: dueSources.length, snapshotCount, proposalCount, errors: errors.length, autoPublishedCount, findingCount, operatingMode, moduleKey: moduleKey ?? null, protected_action_executed: false }, agentProfile)
+  await addAudit(supabase, runId, status === "failed" ? "failed" : "completed", { sourceCount: dueSources.length, sourceFetchMetrics, snapshotCount, proposalCount, errors: errors.length, autoPublishedCount, findingCount, operatingMode, moduleKey: moduleKey ?? null, protected_action_executed: false }, agentProfile)
   if (baselineId) {
     const counts = baselineFindings.reduce<Record<string, number>>((result, finding) => {
       result[finding.findingType] = (result[finding.findingType] ?? 0) + 1
@@ -940,7 +960,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
       content_changed: changeCounts.CONTENT_CHANGED ?? 0,
       unchanged: (changeCounts.NO_CHANGE ?? 0) + (changeCounts.UNCHANGED ?? 0),
       source_recovered: changeCounts.SOURCE_RECOVERED ?? 0,
-      summary: { counts, changeCounts, sourceWarnings: sourceWarnings.slice(0, 20), sourceCount: dueSources.length, proposalCount, findingCount, operatingMode, shadow: isShadow, business: businessSummary(businessAudit), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, current: eventSeoAudit.current, stale: eventSeoAudit.stale, expired: eventSeoAudit.expired, missingCanonical: eventSeoAudit.missingCanonical, thin: eventSeoAudit.thin, duplicateTitles: eventSeoAudit.duplicateTitles, recurrence: eventSeoAudit.recurrence } : null, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown, byEntity: freshnessAudit.byEntity, eventRecurrence: freshnessAudit.eventRecurrence, serviceFacts: freshnessAudit.serviceFacts, samples: freshnessAudit.samples } : null },
+      summary: { counts, changeCounts, sourceWarnings: sourceWarnings.slice(0, 20), sourceCount: dueSources.length, sourceFetchMetrics, proposalCount, findingCount, operatingMode, shadow: isShadow, business: businessSummary(businessAudit), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, current: eventSeoAudit.current, stale: eventSeoAudit.stale, expired: eventSeoAudit.expired, missingCanonical: eventSeoAudit.missingCanonical, thin: eventSeoAudit.thin, duplicateTitles: eventSeoAudit.duplicateTitles, recurrence: eventSeoAudit.recurrence } : null, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown, byEntity: freshnessAudit.byEntity, eventRecurrence: freshnessAudit.eventRecurrence, serviceFacts: freshnessAudit.serviceFacts, samples: freshnessAudit.samples } : null },
       updated_at: finishedAt,
     }).eq("id", baselineId)
     await addAudit(supabase, runId, "baseline_completed", { baselineId, counts, protected_action_executed: false }, agentProfile)
@@ -952,7 +972,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
       supabase,
       job.id,
       agentProfile,
-      { runId, cityId, citySlug, sourceCount: dueSources.length, snapshotCount, proposalCount, autoPublishedCount, findingCount, operatingMode, moduleKey: moduleKey ?? null, shadow: isShadow, errors: errors.slice(0, 10), warnings: sourceWarnings.slice(0, 10), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, findings: eventSeoAudit.findings.length } : null, protected_action_executed: false },
+      { runId, cityId, citySlug, sourceCount: dueSources.length, sourceFetchMetrics, snapshotCount, proposalCount, autoPublishedCount, findingCount, operatingMode, moduleKey: moduleKey ?? null, shadow: isShadow, errors: errors.slice(0, 10), warnings: sourceWarnings.slice(0, 10), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, findings: eventSeoAudit.findings.length } : null, protected_action_executed: false },
       autoPublishedCount ? `${autoPublishedCount} City-Vorschläge wurden nach Ben-Policy veröffentlicht.` : proposalCount ? `${proposalCount} belegte Vorschläge warten auf Prüfung.` : null,
     )
   }
