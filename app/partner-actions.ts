@@ -7,6 +7,10 @@ import sharp from "sharp"
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js"
 import { requireAdmin } from "@/lib/admin"
 import {
+  buildBenDescriptionPrompt,
+  parseBenDescriptionResponse,
+} from "@/lib/partner-description"
+import {
   canManagePartner,
   getPartnerPortalSession,
   type PartnerPortalSession,
@@ -38,6 +42,10 @@ import {
   isRewardType,
   normalizeBenefitCategory,
 } from "@/lib/reward-config"
+import {
+  partnerUpdateMissingMessage,
+  partnerUpdateWasApplied,
+} from "@/lib/partner-save"
 import * as menuImport from "@/lib/menu-import.js"
 import * as menuZipImport from "@/lib/menu-zip-import.js"
 
@@ -60,6 +68,7 @@ const COMEBACK_INACTIVE_MODE = "comeback_inactive"
 export type PartnerActionState = {
   message: string
   ok: boolean
+  description?: string
   partnerId?: string
   created?: boolean
   menuCategory?: {
@@ -584,6 +593,19 @@ export async function savePartner(
       return { ok: false, message: result.error.message }
     }
 
+    if (!partnerUpdateWasApplied(result.data)) {
+      if (!isUpdate) {
+        await rollbackCreatedPartner(supabase, partnerId)
+      }
+      await cleanupUploadedFiles(supabase, uploadedPaths)
+      return {
+        ok: false,
+        message: isUpdate
+          ? partnerUpdateMissingMessage
+          : "Partner could not be created because no database row was returned.",
+      }
+    }
+
     const partnerSocials = parsePartnerSocials(formData)
     const partnerSocialValidation = validatePartnerSocials(partnerSocials)
 
@@ -772,6 +794,101 @@ export async function savePartner(
         error instanceof Error
           ? error.message
           : "Unable to save the partner.",
+    }
+  }
+}
+
+export async function generatePartnerDescription(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  await requireAdmin()
+
+  const name = stringValue(formData, "name")
+  if (!name) {
+    return { ok: false, message: "Partner name is required before asking Ben." }
+  }
+
+  const textValidation = validateTextLengthRules([
+    ["Partner name", name, adminTextLimits.shortText],
+    ["Partner type", stringValue(formData, "type"), adminTextLimits.shortText],
+    ["Partner city", stringValue(formData, "city_name"), adminTextLimits.shortText],
+    ["Address", stringValue(formData, "address"), adminTextLimits.mediumText],
+  ])
+
+  if (textValidation) {
+    return { ok: false, message: textValidation }
+  }
+
+  const bridgeUrl = process.env.M1_BRIDGE_URL?.trim()
+  const bridgeSecret = process.env.M1_BRIDGE_SECRET?.trim()
+
+  if (!bridgeUrl || !bridgeSecret) {
+    return {
+      ok: false,
+      message: "Ben is unavailable: The Hermes/M1 bridge is not configured.",
+    }
+  }
+
+  let endpoint: URL
+  try {
+    endpoint = new URL("/hermes", bridgeUrl)
+  } catch {
+    return { ok: false, message: "Ben is unavailable: The Hermes bridge URL is invalid." }
+  }
+
+  if (
+    endpoint.protocol !== "https:" &&
+    endpoint.hostname !== "localhost" &&
+    endpoint.hostname !== "127.0.0.1"
+  ) {
+    return { ok: false, message: "Ben is unavailable: The Hermes bridge must use HTTPS." }
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${bridgeSecret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "partner-description",
+        profile: "ben",
+        message: buildBenDescriptionPrompt({
+          name,
+          type: stringValue(formData, "type"),
+          city: stringValue(formData, "city_name"),
+          categories: listValue(formData, "category"),
+          address: stringValue(formData, "address"),
+          currentDescription: stringValue(formData, "description"),
+        }),
+      }),
+      signal: AbortSignal.timeout(60_000),
+    })
+
+    if (!response.ok) {
+      return { ok: false, message: "Ben could not create a draft right now. Please try again later." }
+    }
+
+    const body = (await response.json().catch(() => null)) as {
+      response?: unknown
+    } | null
+    const description = parseBenDescriptionResponse(body?.response)
+
+    return {
+      ok: true,
+      description,
+      message: "Ben has inserted a draft. Please review it before saving.",
+    }
+  } catch (error) {
+    console.error(
+      "Ben partner description request failed:",
+      error instanceof Error ? error.message : "unknown error",
+    )
+    return {
+      ok: false,
+      message: "Ben could not be reached right now. Please check the Hermes/M1 bridge.",
     }
   }
 }

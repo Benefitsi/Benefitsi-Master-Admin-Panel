@@ -10,6 +10,7 @@
     "test": "node --import tsx --test tests/*.test.mjs"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "gsap": "^3.15.0",
@@ -19,6 +20,7 @@
     "react-dom": "19.2.4",
     "react-icons": "^5.7.0",
     "server-only": "^0.0.1",
+    "sharp": "^0.35.3",
     "stripe": "^22.3.2",
     "yauzl": "^3.4.0"
   },

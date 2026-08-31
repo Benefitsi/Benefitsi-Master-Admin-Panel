@@ -6,6 +6,7 @@ import {
   useActionState,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -72,6 +73,7 @@ import {
   deletePartnerStaff,
   deletePartner,
   deleteRewardMilestone,
+  generatePartnerDescription,
   reorderMenuCategories,
   reorderMenuItems,
   saveDeal,
@@ -596,7 +598,7 @@ export function PartnerWorkspace({
               {!portalMode ? <button
                 type="button"
                 onClick={startCreatePartner}
-                className="h-9 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white transition hover:bg-teal-800"
+                className="inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-md bg-teal-700 px-3 text-sm font-semibold leading-none text-white transition hover:-translate-y-px hover:bg-teal-800 active:translate-y-0"
               >
                 Add
               </button>
@@ -1029,7 +1031,7 @@ function PartnerDetail({
               <button
                 type="button"
                 onClick={() => setActiveView("settings")}
-                className={`px-3 py-2 text-sm font-semibold transition ${
+                className={`inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold leading-none transition ${
                   activeView === "settings"
                     ? "bg-teal-700 text-white"
                     : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
@@ -1040,7 +1042,7 @@ function PartnerDetail({
               <button
                 type="button"
                 onClick={() => setActiveView("microsite")}
-                className={`px-3 py-2 text-sm font-semibold transition ${
+                className={`inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold leading-none transition ${
                   activeView === "microsite"
                     ? "bg-teal-700 text-white"
                     : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
@@ -1060,49 +1062,49 @@ function PartnerDetail({
               aria-label="Partner settings"
               className="mb-4"
             >
-              <div className="flex w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
-              {settingsTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() =>
-                    {
-                      setTabState({ partnerIdentity, tab: tab.id })
-                      onLocationChange?.({ tab: tab.id, view: "settings" })
-                      rememberWorkspaceLocation({
-                        mode: "view",
-                        partner: partner.id,
-                        tab: tab.id,
-                        view: "settings",
-                      })
-                    }
-                  }
-                  title={tab.label}
-                  aria-current={settingsTab === tab.id ? "page" : undefined}
-                  className={`min-w-0 flex-1 px-1 py-2.5 text-center text-[10px] font-semibold leading-tight transition xl:text-[11px] 2xl:text-xs ${
-                    settingsTab === tab.id
-                      ? tab.id === "danger"
-                        ? "bg-rose-700 text-white"
-                        : "bg-teal-700 text-white"
-                      : tab.id === "danger"
-                        ? "bg-white text-rose-700 hover:bg-rose-50"
-                        : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
-                  }`}
-                >
-                  <span className="inline-flex max-w-full items-start justify-center gap-0.5 whitespace-nowrap">
-                    <span>{tab.label}</span>
-                    {tab.hasRequiredFields ? (
-                      <span
-                        aria-hidden="true"
-                        className="text-sm font-black leading-none text-rose-500"
-                        title="Contains required fields"
-                      >
-                        *
+              <div className="w-full overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
+                <div className="flex min-w-max divide-x divide-zinc-200">
+                  {settingsTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        setTabState({ partnerIdentity, tab: tab.id })
+                        onLocationChange?.({ tab: tab.id, view: "settings" })
+                        rememberWorkspaceLocation({
+                          mode: "view",
+                          partner: partner.id,
+                          tab: tab.id,
+                          view: "settings",
+                        })
+                      }}
+                      title={tab.label}
+                      aria-current={settingsTab === tab.id ? "page" : undefined}
+                      className={`min-h-12 min-w-[8.5rem] flex-1 px-3 py-2.5 text-center text-[11px] font-semibold leading-4 transition whitespace-normal break-words sm:text-xs ${
+                        settingsTab === tab.id
+                          ? tab.id === "danger"
+                            ? "bg-rose-700 text-white"
+                            : "bg-teal-700 text-white"
+                          : tab.id === "danger"
+                            ? "bg-white text-rose-700 hover:bg-rose-50"
+                            : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                      }`}
+                    >
+                      <span className="inline-flex max-w-full items-start justify-center gap-1 whitespace-normal break-words">
+                        <span>{tab.label}</span>
+                        {tab.hasRequiredFields ? (
+                          <span
+                            aria-hidden="true"
+                            className="text-sm font-black leading-none text-rose-500"
+                            title="Contains required fields"
+                          >
+                            *
+                          </span>
+                        ) : null}
                       </span>
-                    ) : null}
-                  </span>
-                </button>
-              ))}
+                    </button>
+                  ))}
+                </div>
               </div>
             </nav>
 
@@ -1227,7 +1229,7 @@ function EditorShell({
   return (
     <div className={flat ? "" : compact ? "overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm" : "rounded-md border border-zinc-200 bg-white shadow-sm"}>
       <div
-        className={`flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${
+        className={`flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${
           flat ? "pb-4" : compact ? "p-3.5" : "p-5"
         } ${
           contentOpen && !flat ? "border-b border-zinc-200" : ""
@@ -1259,7 +1261,7 @@ function EditorShell({
           />
         )}
         {aside ? (
-          <div className="flex shrink-0 flex-wrap gap-2">
+          <div className="flex min-w-0 shrink-0 flex-wrap gap-2">
             {aside}
           </div>
         ) : null}
@@ -1860,6 +1862,12 @@ function PartnerForm({
   portalMode?: boolean
 }) {
   const [state, formAction] = useActionState(savePartner, initialState)
+  const [descriptionState, setDescriptionState] = useState(initialState)
+  const [isGeneratingDescription, startGeneratingDescription] = useTransition()
+  const router = useRouter()
+  const [descriptionDraft, setDescriptionDraft] = useState(
+    () => partner?.description ?? "",
+  )
   const [templateSource, setTemplateSource] =
     useState<PartnerWithDeals | null>(null)
   const [socialHandles, setSocialHandles] = useState<SocialHandleDraft[]>(() =>
@@ -1946,6 +1954,7 @@ function PartnerForm({
   const applyTemplate = (source: PartnerWithDeals) => {
     const nextType = normalizePartnerTypeValue(source.type)
     setTemplateSource(source)
+    setDescriptionDraft(source.description ?? "")
     setSelectedPartnerType(nextType)
     setSocialHandles(socialDraftsFromPartner(source.socials))
     setInitialMilestones(
@@ -1979,6 +1988,8 @@ function PartnerForm({
         .forEach((details) => {
           details.open = false
         })
+
+      router.refresh()
     }
 
     if (!(mode === "create" && state.ok && state.created)) {
@@ -1987,6 +1998,8 @@ function PartnerForm({
 
     const frame = window.requestAnimationFrame(() => {
       setSocialHandles([])
+      setDescriptionDraft("")
+      setDescriptionState(initialState)
       setInitialDeals([])
       setInitialMilestones([createInitialMilestoneDraft()])
       setInitialMenuEnabled(false)
@@ -2007,7 +2020,43 @@ function PartnerForm({
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [mode, state.created, state.ok])
+  }, [mode, router, state])
+
+  const requestDescription = () => {
+    const form = formRef.current
+    if (!form || isGeneratingDescription) return
+
+    // Do not forward the whole partner form here: it can contain large image
+    // files, while Ben only needs the small public profile facts below.
+    const formData = new FormData()
+    for (const fieldName of ["name", "type", "city_id", "address", "description"]) {
+      const field = form.elements.namedItem(fieldName)
+      if (
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLSelectElement ||
+        field instanceof HTMLTextAreaElement
+      ) {
+        formData.set(fieldName, field.value)
+      }
+    }
+
+    const selectedCityId = String(formData.get("city_id") ?? "")
+    const selectedCity = cityOptions.find((option) => option.value === selectedCityId)
+    formData.set("city_name", selectedCity?.label ?? partner?.city_name ?? "")
+    for (const category of form.querySelectorAll<HTMLInputElement>(
+      'input[name="category"]:checked',
+    )) {
+      formData.append("category", category.value)
+    }
+
+    startGeneratingDescription(async () => {
+      const result = await generatePartnerDescription(initialState, formData)
+      setDescriptionState(result)
+      if (result.ok && result.description) {
+        setDescriptionDraft(result.description)
+      }
+    })
+  }
 
   return (
     <form
@@ -2149,34 +2198,35 @@ function PartnerForm({
 
       {mode === "create" ? (
         <nav aria-label="Add partner steps">
-          <div className="flex w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
-            {createTabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  if (tab.id === "review") {
-                    setReviewSnapshot(
-                      createPartnerReviewSnapshot(formRef.current, {
-                        dealCount: initialDeals.length,
-                        menuCategoryCount: initialMenuCategories.length,
-                        menuEnabled: initialMenuEnabled,
-                        menuItemCount: initialMenuItems.length,
-                        milestoneCount: initialMilestones.length,
-                      }),
-                    )
-                  }
-                  setCreateTab(tab.id)
-                }}
-                title={tab.label}
-                aria-current={createTab === tab.id ? "step" : undefined}
-                className={`min-w-0 flex-1 px-1.5 py-2.5 text-center text-[10px] font-semibold leading-tight transition sm:text-[11px] xl:text-xs ${
-                  createTab === tab.id
-                    ? "bg-teal-700 text-white"
-                    : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
-                }`}
-              >
-                  <span className="inline-flex max-w-full items-start justify-center gap-0.5 whitespace-nowrap">
+          <div className="w-full overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
+            <div className="flex min-w-max divide-x divide-zinc-200">
+              {createTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    if (tab.id === "review") {
+                      setReviewSnapshot(
+                        createPartnerReviewSnapshot(formRef.current, {
+                          dealCount: initialDeals.length,
+                          menuCategoryCount: initialMenuCategories.length,
+                          menuEnabled: initialMenuEnabled,
+                          menuItemCount: initialMenuItems.length,
+                          milestoneCount: initialMilestones.length,
+                        }),
+                      )
+                    }
+                    setCreateTab(tab.id)
+                  }}
+                  title={tab.label}
+                  aria-current={createTab === tab.id ? "step" : undefined}
+                  className={`min-h-12 min-w-[8.5rem] flex-1 px-3 py-2.5 text-center text-[11px] font-semibold leading-4 transition whitespace-normal break-words sm:text-xs ${
+                    createTab === tab.id
+                      ? "bg-teal-700 text-white"
+                      : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                  }`}
+                >
+                  <span className="inline-flex max-w-full items-start justify-center gap-1 whitespace-normal break-words">
                     <span>{tab.label}</span>
                     {tab.hasRequiredFields ? (
                       <span
@@ -2189,7 +2239,8 @@ function PartnerForm({
                     ) : null}
                   </span>
                 </button>
-            ))}
+              ))}
+            </div>
           </div>
         </nav>
       ) : null}
@@ -2360,9 +2411,19 @@ function PartnerForm({
         <TextAreaField
           label="Description"
           name="description"
-          defaultValue={partner?.description ?? templateSource?.description}
+          value={descriptionDraft}
+          onChange={setDescriptionDraft}
           required
+          labelAccessory={
+            <GenerateDescriptionButton
+              pending={isGeneratingDescription}
+              onClick={requestDescription}
+            />
+          }
         />
+        {descriptionState.message ? (
+          <ActionMessage state={descriptionState} toast={false} />
+        ) : null}
         <MultiSelectField
           label="Categories"
           name="category"
@@ -10108,8 +10169,8 @@ function FormSection({
       {collapsible ? (
         <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
           <summary className="cursor-pointer list-none px-3 outline-none transition hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-200 [&::-webkit-details-marker]:hidden sm:px-4">
-            <span className={`flex items-center gap-2 ${compact ? "min-h-10" : "min-h-11"}`}>
-              <span className="text-sm font-semibold tracking-normal text-zinc-900">
+            <span className={`flex min-w-0 flex-wrap items-center gap-2 ${compact ? "min-h-10" : "min-h-11"}`}>
+              <span className="min-w-0 break-words text-sm font-semibold tracking-normal text-zinc-900">
                 {title}
               </span>
               {sectionStatus ? <SectionStatusList status={sectionStatus} /> : null}
@@ -10117,7 +10178,7 @@ function FormSection({
                 aria-hidden="true"
                 viewBox="0 0 20 20"
                 fill="none"
-                className={`ml-auto size-4 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
+                className={`ml-auto size-4 shrink-0 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
               >
                 <path
                   d="m5 7.5 5 5 5-5"
@@ -10139,8 +10200,8 @@ function FormSection({
         </details>
       ) : (
         <>
-          <div className={`flex items-center gap-2 px-3 sm:px-4 ${compact ? "min-h-10" : "min-h-11"}`}>
-            <span className="text-sm font-semibold text-zinc-900">
+          <div className={`flex min-w-0 flex-wrap items-center gap-2 px-3 sm:px-4 ${compact ? "min-h-10" : "min-h-11"}`}>
+            <span className="min-w-0 break-words text-sm font-semibold text-zinc-900">
               {title}
             </span>
             {sectionStatus ? <SectionStatusList status={sectionStatus} /> : null}
@@ -10212,7 +10273,7 @@ function FieldGrid({
 }) {
   return (
     <div
-      className={`grid md:grid-cols-2 2xl:grid-cols-3 ${
+      className={`grid min-w-0 md:grid-cols-2 2xl:grid-cols-3 [&>*]:min-w-0 ${
         compact ? "gap-2.5" : "gap-3"
       }`}
     >
@@ -10401,7 +10462,7 @@ function TextField({
     value === undefined ? uncontrolledLength : measureCharacterCount(value)
 
   return (
-    <label className="block space-y-1.5 text-sm">
+    <label className="block min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} recommended={recommended} />
       <div
         className={`flex h-9 w-full items-center rounded-lg border border-zinc-300 bg-white text-sm text-zinc-950 transition focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100 ${
@@ -10468,7 +10529,7 @@ function SelectField({
   onChange?: (value: string) => void
 }) {
   return (
-    <label className="block space-y-1.5 text-sm">
+    <label className="block min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
       <select
         name={name}
@@ -10546,7 +10607,7 @@ function MultiSelectField({
   }, [open])
 
   return (
-    <div className="space-y-1.5 text-sm">
+    <div className="min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
       <details
         ref={detailsRef}
@@ -11744,6 +11805,7 @@ function TextAreaField({
   maxLength,
   showCharacterCount = true,
   onChange,
+  labelAccessory,
 }: {
   label: string
   name: string
@@ -11755,7 +11817,10 @@ function TextAreaField({
   maxLength?: number
   showCharacterCount?: boolean
   onChange?: (value: string) => void
+  labelAccessory?: ReactNode
 }) {
+  const generatedId = useId()
+  const inputId = `text-area-${generatedId.replace(/:/g, "")}`
   const resolvedMaxLength =
     typeof maxLength === "number" ? maxLength : inferTextFieldMaxLength(name)
   const [uncontrolledLength, setUncontrolledLength] = useState(() =>
@@ -11765,9 +11830,15 @@ function TextAreaField({
     value === undefined ? uncontrolledLength : measureCharacterCount(value)
 
   return (
-    <label className="block space-y-1.5 text-sm">
-      <FieldLabel label={label} required={required} />
+    <div className="block min-w-0 space-y-1.5 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <label htmlFor={inputId}>
+          <FieldLabel label={label} required={required} />
+        </label>
+        {labelAccessory}
+      </div>
       <textarea
+        id={inputId}
         name={name}
         rows={3}
         required={required}
@@ -11788,7 +11859,7 @@ function TextAreaField({
         currentLength={currentLength}
         maxLength={showCharacterCount ? resolvedMaxLength : undefined}
       />
-    </label>
+    </div>
   )
 }
 
@@ -11964,6 +12035,44 @@ function IconDeleteSubmitButton({
   )
 }
 
+function GenerateDescriptionButton({
+  onClick,
+  pending,
+}: {
+  onClick: () => void
+  pending: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={pending}
+      aria-busy={pending}
+      title="Generate with Ben"
+      className="inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold leading-none text-teal-800 transition hover:-translate-y-px hover:bg-teal-100 active:translate-y-0 disabled:cursor-wait disabled:opacity-60"
+    >
+      {pending ? (
+        <LoadingSpinner className="size-3.5" />
+      ) : (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="size-3.5"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        >
+          <path d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4L12 3Z" />
+          <path d="m19 14 .7 2.3L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14Z" />
+        </svg>
+      )}
+      <span>{pending ? "Generating..." : "Generate with Ben"}</span>
+    </button>
+  )
+}
+
 function SubmitButton({
   disabled = false,
   label,
@@ -12009,7 +12118,7 @@ function SubmitButton({
       disabled={disabled || pending}
       aria-busy={isActivePending}
       value={value}
-      className={`${sizeClasses} inline-flex items-center justify-center gap-2 rounded-md font-semibold transition disabled:cursor-not-allowed ${toneClasses}`}
+      className={`${sizeClasses} inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold leading-none transition active:translate-y-px disabled:cursor-not-allowed ${toneClasses}`}
     >
       {isActivePending ? <LoadingSpinner className={size === "tiny" ? "size-3" : "size-4"} /> : null}
       {isActivePending ? pendingLabel : label}
