@@ -24,7 +24,7 @@ export type PublishedMicrositePage = {
 }
 
 const PUBLIC_DEAL_COLUMNS =
-  "id,partner_id,type,discount_type,premium_only,benefit_category,audience,activation_required,allow_free_trial,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,trigger_value,expiry_days,happy_hour_start,happy_hour_end,timezone,cooldown_hours,valid_from,valid_until,max_redemptions_global,max_redemptions_per_user,stock_total,stock_remaining,selection_expires_minutes,priority,min_spend,max_discount_amount,reward_track_target,weekdays,reserve_on_selection,metadata,created_at,updated_at"
+  "id,partner_id,type,discount_type,premium_only,benefit_category,audience,activation_required,allow_free_trial,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,display_title,display_subtitle,trigger_value,expiry_days,happy_hour_start,happy_hour_end,timezone,cooldown_hours,valid_from,valid_until,max_redemptions_global,max_redemptions_per_user,stock_total,stock_remaining,selection_expires_minutes,priority,min_spend,max_discount_amount,reward_track_target,weekdays,reserve_on_selection,metadata,created_at,updated_at"
 
 export async function getPublishedMicrositePage(
   supabase: SupabaseClient,

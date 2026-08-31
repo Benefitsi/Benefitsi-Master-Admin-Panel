@@ -88,6 +88,9 @@ test("2-for-1 deal drafts retain the entered item and basics", async () => {
     customerDescription: "",
     staffInstructions: "",
     terms: "",
+    displayTitle: "",
+    displaySubtitle: "",
+    displaySubtitleAuto: false,
   })
 })
 

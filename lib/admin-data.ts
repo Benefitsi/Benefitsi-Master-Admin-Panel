@@ -71,6 +71,8 @@ export type Deal = {
   customer_description: string | null
   staff_instructions: string | null
   terms: string | null
+  display_title: string | null
+  display_subtitle: string | null
   trigger_value: number | null
   expiry_days: number | null
   happy_hour_start: string | null

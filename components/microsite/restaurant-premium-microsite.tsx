@@ -1975,9 +1975,7 @@ function MicrositeDealBanner({
   const title = micrositeDealTitle(deal, config.language)
   const description = micrositeDealDescription(deal, config.language)
   const details = micrositeDealDetails(deal, config.language)
-  const dealLabel = isTopDeal
-    ? config.deals.topDealLabel
-    : micrositeDealTypeLabel(deal, config.language)
+  const dealLabel = micrositeDealTypeLabel(deal, config.language)
   const articleClassName = isTopDeal
     ? `premium-topdeal relative min-h-full overflow-hidden rounded-[1.6rem] bg-[#121212] text-white shadow-[0_30px_80px_rgba(15,23,42,.22)] ${wide ? "@min-[900px]:col-span-2" : ""} ${active ? "is-active" : ""}`
     : `premium-reveal premium-deal-secondary relative min-h-full overflow-hidden rounded-[1.15rem] border border-[var(--site-border)] bg-[var(--site-surface)] text-[var(--site-text)] shadow-[0_16px_36px_rgba(15,23,42,.08)] ${active ? "is-active" : ""}`
@@ -2017,13 +2015,11 @@ function MicrositeDealBanner({
         }
       >
         <p
-          {...(primary && isTopDeal ? editable("deals.topDealLabel", "text", "Top-Deal Label") : {})}
           className={
             isTopDeal
               ? "inline-flex w-fit rounded-full border border-[var(--site-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--site-accent)]"
               : "inline-flex w-fit rounded-full bg-[color-mix(in_srgb,var(--site-accent)_10%,transparent)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--site-accent)]"
           }
-          style={isTopDeal ? textStyleFor(config, "deals.topDealLabel") : undefined}
         >
           {dealLabel}
         </p>
@@ -2278,14 +2274,14 @@ function AppScreenShowcase({
     )
   const activeDeals = partner.deals.filter((deal) => deal.active !== false)
   const activeDeal = activeDeals[0]
-  const dealName =
-    activeDeal?.reward_item ||
-    config.deals.topDealHeadline ||
-    siteCopy(config, "2 für 1 Vorteil", "2-for-1 benefit")
-  const dealDescription =
-    activeDeal?.customer_description ||
-    config.deals.topDealDescription ||
-    siteCopy(config, "Deinen Vorteil direkt in der App auswählen.", "Select your benefit directly in the app.")
+  const dealName = activeDeal
+    ? micrositeDealTitle(activeDeal, config.language)
+    : config.deals.topDealHeadline ||
+      siteCopy(config, "2 für 1 Vorteil", "2-for-1 benefit")
+  const dealDescription = activeDeal
+    ? micrositeDealDescription(activeDeal, config.language)
+    : config.deals.topDealDescription ||
+      siteCopy(config, "Deinen Vorteil direkt in der App auswählen.", "Select your benefit directly in the app.")
   const savingsLabel = activeDeal?.estimated_savings
     ? siteCopy(config, "ca. " + formatPrice(activeDeal.estimated_savings, "EUR") + " sparen", "save about " + formatPrice(activeDeal.estimated_savings, "EUR"))
     : siteCopy(config, "Direkt sparen", "Save instantly")
@@ -2467,10 +2463,7 @@ function AppScreenShowcase({
               </div>
 
               <div className="mt-2 rounded-[1rem] border border-[#e1e5eb] bg-white p-2.5 shadow-[0_5px_14px_rgba(23,32,51,.08)]">
-                <span className="inline-flex rounded-full border border-[#b8e3f9] bg-[#e8f7ff] px-2 py-1 text-[5.5px] font-black text-[#078dcc]">
-                  {siteCopy(config, "Top-Vorteil", "Top benefit")}
-                </span>
-                <div className="mt-2 flex items-start gap-2">
+                <div className="flex items-start gap-2">
                   <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#dff2ff] text-[#0a9fe1]">
                     <Utensils className="size-4" strokeWidth={2.2} aria-hidden="true" />
                   </span>

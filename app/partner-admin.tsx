@@ -309,6 +309,9 @@ type InitialDealDraft = {
   benefitCategory?: string
   dealType?: string
   discountType?: string
+  displaySubtitle?: string
+  displaySubtitleAuto?: boolean
+  displayTitle?: string
   rewardSummary?: string
   title: string
 }
@@ -5489,6 +5492,24 @@ function formatDealDisplayName({
   return reward === "No direct reward" ? label : `${reward} - ${label}`
 }
 
+function formatDealPublicSubtitle(discountType: string, rewardItem: string) {
+  if (discountType === "2for1") {
+    return rewardItem.trim()
+      ? `Zwei bekommen, eins bezahlen – ${rewardItem.trim()}`
+      : "Zwei bekommen, eins bezahlen"
+  }
+
+  if (discountType === "item") {
+    return rewardItem.trim() ? `Gratis ${rewardItem.trim()}` : "Gratisartikel"
+  }
+
+  if (discountType === "bonus_stamp") {
+    return "Bonus auf deine Stempelkarte"
+  }
+
+  return ""
+}
+
 function DealFields({
   deal,
   dealDraft,
@@ -5565,6 +5586,15 @@ function DealFields({
   )
   const [terms, setTerms] = useState(dealDraft?.terms ?? deal?.terms ?? "")
   const [termsDirty, setTermsDirty] = useState(Boolean(dealDraft))
+  const [displayTitle, setDisplayTitle] = useState(
+    dealDraft?.displayTitle ?? deal?.display_title ?? "",
+  )
+  const [displaySubtitle, setDisplaySubtitle] = useState(
+    dealDraft?.displaySubtitle ?? deal?.display_subtitle ?? "",
+  )
+  const [displaySubtitleAuto, setDisplaySubtitleAuto] = useState(
+    dealDraft?.displaySubtitleAuto ?? deal?.display_subtitle == null,
+  )
   const [estimatedSavings, setEstimatedSavings] = useState(
     formatTextInputValue(deal?.estimated_savings),
   )
@@ -5662,6 +5692,9 @@ function DealFields({
       setStaffInstructionsDirty(true)
       setTerms(dealDraft.terms)
       setTermsDirty(true)
+      setDisplayTitle(dealDraft.displayTitle)
+      setDisplaySubtitle(dealDraft.displaySubtitle)
+      setDisplaySubtitleAuto(dealDraft.displaySubtitleAuto)
     })
 
     return () => window.cancelAnimationFrame(frame)
@@ -5897,6 +5930,18 @@ function DealFields({
     emitDraftTitle({ discountType: nextDiscountType })
   }
 
+  const generatedDisplayTitle = formatDealDisplayName({
+    type: selectedDealType,
+    discountType: selectedDiscountType,
+    discountValue: parseOptionalNumberInput(discountValue),
+    rewardItem,
+    benefitCount: parseOptionalNumberInput(benefitCount),
+  })
+  const generatedDisplaySubtitle = formatDealPublicSubtitle(
+    selectedDiscountType,
+    rewardItem,
+  )
+
   return (
     <div className="space-y-4">
       <input
@@ -6039,6 +6084,68 @@ function DealFields({
           name={`${prefix}activation_required`}
           value={activationRequired ? "true" : "false"}
         />
+      </FormSection>
+
+      <FormSection title="Öffentliche Darstellung" compact>
+        <p className="text-xs leading-5 text-zinc-500">
+          Diese Texte sehen Nutzer in der App und auf der öffentlichen Partnerseite. Die technischen Deal-Felder bleiben davon getrennt.
+        </p>
+        <FieldGrid compact>
+          <TextField
+            label="Anzeigetitel"
+            name={`${prefix}display_title`}
+            placeholder="2 für 1 Döner"
+            value={displayTitle}
+            onChange={(value) => {
+              setDisplayTitle(value)
+              onDraftMetaChange?.({ displayTitle: value })
+            }}
+            hint="Optional. Leer verwendet den typbasierten Fallback."
+          />
+          <div className="space-y-2">
+            <TextField
+              label="Anzeigebeschreibung / Unterzeile"
+              name={`${prefix}display_subtitle`}
+              placeholder={generatedDisplaySubtitle || "Zwei bekommen, eins bezahlen"}
+              value={displaySubtitle}
+              maxLength={adminTextLimits.longText}
+              onChange={(value) => {
+                setDisplaySubtitle(value)
+                onDraftMetaChange?.({ displaySubtitle: value })
+              }}
+              hint={
+                displaySubtitleAuto
+                  ? "Automatische Unterzeile ist aktiv. Deaktiviere sie, um einen eigenen Text oder keinen Text zu verwenden."
+                  : "Leer speichern blendet die Unterzeile aus."
+              }
+            />
+            <CheckboxField
+              label="Automatische Unterzeile verwenden"
+              name={`${prefix}display_subtitle_auto`}
+              checked={displaySubtitleAuto}
+              onChange={(checked) => {
+                setDisplaySubtitleAuto(checked)
+                onDraftMetaChange?.({ displaySubtitleAuto: checked })
+              }}
+              hint="Bei Aktivierung wird display_subtitle als null gespeichert."
+            />
+          </div>
+        </FieldGrid>
+        <div className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2.5 text-sm text-teal-950">
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-teal-700">
+            Vorschau
+          </p>
+          <p className="mt-1 font-semibold">{displayTitle.trim() || generatedDisplayTitle}</p>
+          {displaySubtitleAuto ? (
+            generatedDisplaySubtitle ? (
+              <p className="mt-0.5 text-xs text-teal-800">{generatedDisplaySubtitle}</p>
+            ) : null
+          ) : displaySubtitle.trim() ? (
+            <p className="mt-0.5 text-xs text-teal-800">{displaySubtitle.trim()}</p>
+          ) : (
+            <p className="mt-0.5 text-xs italic text-teal-700">Keine Unterzeile</p>
+          )}
+        </div>
       </FormSection>
 
       {hasRewardDetails ? (

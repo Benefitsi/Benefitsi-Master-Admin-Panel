@@ -8,6 +8,14 @@ export type DealFormDraft = {
   customerDescription: string
   staffInstructions: string
   terms: string
+  displayTitle: string
+  displaySubtitle: string
+  displaySubtitleAuto: boolean
+}
+
+export type DealPublicDisplayValues = {
+  displayTitle: string | null
+  displaySubtitle: string | null
 }
 
 export function discountTypeUsesRewardItem(
@@ -27,6 +35,23 @@ function formString(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : ""
 }
 
+export function readDealPublicDisplayValues(
+  formData: FormData,
+  prefix = "",
+): DealPublicDisplayValues {
+  const displayTitle = formString(formData, `${prefix}display_title`) || null
+  const displaySubtitleAuto =
+    formData.get(`${prefix}display_subtitle_auto`) === "on"
+
+  return {
+    displayTitle,
+    displaySubtitle:
+      displaySubtitleAuto || !formData.has(`${prefix}display_subtitle`)
+        ? null
+        : formString(formData, `${prefix}display_subtitle`),
+  }
+}
+
 /**
  * Captures the user-visible deal values that must survive a rejected save.
  * The snapshot intentionally contains text only; files and advanced settings
@@ -41,5 +66,8 @@ export function readDealFormDraft(formData: FormData): DealFormDraft {
     customerDescription: formString(formData, "customer_description"),
     staffInstructions: formString(formData, "staff_instructions"),
     terms: formString(formData, "terms"),
+    displayTitle: formString(formData, "display_title"),
+    displaySubtitle: formString(formData, "display_subtitle"),
+    displaySubtitleAuto: formData.get("display_subtitle_auto") === "on",
   }
 }

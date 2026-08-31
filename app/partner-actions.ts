@@ -18,6 +18,7 @@ import {
 import {
   discountTypeUsesRewardItem,
   readDealFormDraft,
+  readDealPublicDisplayValues,
   type DealFormDraft,
 } from "@/lib/deal-form"
 import {
@@ -173,6 +174,8 @@ type ParsedDeal = {
   customer_description: string | null
   staff_instructions: string | null
   terms: string | null
+  display_title: string | null
+  display_subtitle: string | null
   trigger_value: number | null
   expiry_days: number | null
   happy_hour_start: string | null
@@ -4130,6 +4133,10 @@ function parseDealPayload(
     isLimitedDrop &&
     discountType === "2for1" &&
     checkboxValue(formData, `${prefix}allow_free_trial`)
+  const { displayTitle, displaySubtitle } = readDealPublicDisplayValues(
+    formData,
+    prefix,
+  )
   const baseMetadata = jsonValue(formData, `${prefix}metadata`)
   const metadata = buildDealMetadata(
     formData,
@@ -4170,6 +4177,8 @@ function parseDealPayload(
       `${prefix}staff_instructions`,
     ),
     terms: nullableStringValue(formData, `${prefix}terms`),
+    display_title: displayTitle,
+    display_subtitle: displaySubtitle,
     trigger_value: triggerValue,
     expiry_days:
       type === "streak" || type === "comeback"
@@ -4526,6 +4535,8 @@ function validateDealPayload(payload: ParsedDeal) {
 
   const challengeName = metadataRecord(payload.metadata).challenge_name
   const textValidation = validateTextLengthRules([
+    ["Display title", payload.display_title, adminTextLimits.shortText],
+    ["Display subtitle", payload.display_subtitle, adminTextLimits.longText],
     ["Reward item", payload.reward_item, adminTextLimits.shortText],
     [
       "Customer description",

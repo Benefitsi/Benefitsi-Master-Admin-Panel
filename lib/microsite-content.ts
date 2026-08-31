@@ -151,9 +151,15 @@ export function micrositeDealTitle(
     | "benefit_count"
     | "customer_description"
     | "min_spend"
-  >,
+  > &
+    Partial<Pick<Deal, "display_title">>,
   language: MicrositeContentLanguage = "de",
 ) {
+  const explicitTitle = deal.display_title?.trim()
+  if (explicitTitle) {
+    return explicitTitle
+  }
+
   const dealType = deal.type?.trim().toLowerCase() || ""
   const discountType = deal.discount_type?.trim().toLowerCase() || dealType
   const minimumSpend =
@@ -187,9 +193,24 @@ export function micrositeDealTitle(
 }
 
 export function micrositeDealDescription(
-  deal: Pick<Deal, "customer_description" | "terms" | "type" | "discount_type" | "discount_value" | "reward_item" | "benefit_count" | "min_spend">,
+  deal: Pick<
+    Deal,
+    | "customer_description"
+    | "terms"
+    | "type"
+    | "discount_type"
+    | "discount_value"
+    | "reward_item"
+    | "benefit_count"
+    | "min_spend"
+  > &
+    Partial<Pick<Deal, "display_title" | "display_subtitle">>,
   language: MicrositeContentLanguage = "de",
 ) {
+  if (deal.display_subtitle !== null && deal.display_subtitle !== undefined) {
+    return deal.display_subtitle.trim()
+  }
+
   return (
     deal.customer_description?.trim() ||
     deal.terms?.trim() ||
