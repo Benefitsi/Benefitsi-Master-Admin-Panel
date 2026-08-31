@@ -215,7 +215,16 @@ export async function getPublishedMicrositePage(
 
 function isMissingPublicDealDisplayColumn(error: { message?: string } | null) {
   const message = error?.message?.toLowerCase() || ""
-  return message.includes("display_title") || message.includes("display_subtitle")
+  const looksLikeMissingColumn =
+    message.includes("column") &&
+    (message.includes("does not exist") ||
+      message.includes("not found") ||
+      message.includes("schema cache"))
+
+  return (
+    looksLikeMissingColumn &&
+    (message.includes("display_title") || message.includes("display_subtitle"))
+  )
 }
 
 function sanitizePartnerForPublicMicrosite(
