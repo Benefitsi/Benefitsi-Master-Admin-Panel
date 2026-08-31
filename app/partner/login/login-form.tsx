@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useActionState } from "react"
 import { LoadingSpinner } from "@/components/loading-ui"
 import { login, type LoginActionState } from "@/app/login/actions"
@@ -35,9 +36,17 @@ export function PartnerLoginForm({ isConfigured }: PartnerLoginFormProps) {
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="password" className="text-sm font-medium text-zinc-700">
-          Password
-        </label>
+        <div className="flex items-center justify-between gap-4">
+          <label htmlFor="password" className="text-sm font-medium text-zinc-700">
+            Password
+          </label>
+          <Link
+            href="/partner/forgot-password"
+            className="text-xs font-semibold text-[#118cff] transition hover:text-[#0872d1]"
+          >
+            Forgot password?
+          </Link>
+        </div>
         <input
           id="password"
           name="password"

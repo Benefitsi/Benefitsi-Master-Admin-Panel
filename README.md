@@ -87,6 +87,28 @@ A Supabase-authenticated user can access the partner dashboard when either of th
 - `/partner/microsite-builder/[partner]`: microsite editor for only linked partners
 - `/partner/microsite-preview/[partner]`: scoped preview for only linked partners
 
+## Admin and partner password recovery
+
+Both sign-in pages include a **Forgot password?** link. Supabase Auth sends the
+recovery message through the project's configured SMTP provider (Resend), so no
+Resend API key is exposed to this application.
+
+For production, add these two exact URLs to **Supabase Dashboard > Authentication
+> URL Configuration > Redirect URLs**, replacing the example host with the admin
+panel host:
+
+```text
+https://admin.example.com/reset-password?portal=admin
+https://admin.example.com/reset-password?portal=partner
+```
+
+Then use `supabase/templates/recovery.html` as the **Reset password** email
+template in **Authentication > Email Templates**. The template sends the hashed,
+single-use recovery token to `/auth/confirm`; this makes the cookie-based SSR
+flow reliable even when the email is opened in a different browser. Local
+Supabase already uses this template through `supabase/config.toml`, and local
+emails remain available in Mailpit.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
