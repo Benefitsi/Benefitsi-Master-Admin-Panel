@@ -16,7 +16,11 @@ import { createClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
 
-export default async function PartnerDashboardPage() {
+export default async function PartnerDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const config = getSupabaseConfig()
 
   if (!config.isConfigured) {
@@ -42,6 +46,15 @@ export default async function PartnerDashboardPage() {
   const managedPartnerIds = new Set(
     managedPartners.map((partner) => partner.id).filter(Boolean),
   )
+  const query = await searchParams
+  const requestedPartnerId = singleQueryValue(query.partner)
+  const requestedTab = singleQueryValue(query.tab)
+  const requestedView = singleQueryValue(query.view)
+  const initialManagedPartnerId = managedPartners.some(
+    (partner) => partner.id === requestedPartnerId,
+  )
+    ? requestedPartnerId
+    : managedPartners[0]?.id ?? ""
   const micrositeOnlyPartners = partners.filter(
     (partner) => !partner.id || !managedPartnerIds.has(partner.id),
   )
@@ -109,7 +122,9 @@ export default async function PartnerDashboardPage() {
               cities={dashboard.cities}
               owners={[]}
               initialMode="view"
-              initialPartnerId={managedPartners[0]?.id ?? ""}
+              initialPartnerId={initialManagedPartnerId}
+              initialSettingsTab={requestedTab}
+              initialView={requestedView === "microsite" ? "microsite" : "settings"}
               portalMode
             />
           </section>
@@ -128,6 +143,10 @@ export default async function PartnerDashboardPage() {
     </main>
     </AdminLanguageProvider>
   )
+}
+
+function singleQueryValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? ""
 }
 
 function MicrositeEditorCards({ partners }: { partners: PartnerWithDeals[] }) {

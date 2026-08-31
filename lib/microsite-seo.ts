@@ -1,7 +1,10 @@
 import type { Metadata } from "next"
 import type { MenuItem, PartnerWithDeals } from "./admin-data"
 import type { MicrositeConfig } from "./microsites"
-import { partnerSocialUrl } from "./microsite-personalization"
+import {
+  inferMicrositePartnerProfile,
+  partnerSocialUrl,
+} from "./microsite-personalization"
 
 export const defaultMicrositeFaqItems = [
   {
@@ -359,15 +362,18 @@ function schemaBusinessType(
   partner: PartnerWithDeals,
   config: MicrositeConfig,
 ) {
-  if (config.template === "salon-editorial" || config.template === "atelier-noir") {
+  void config
+  const profile = inferMicrositePartnerProfile(partner)
+
+  if (profile === "salon") {
     return "BeautySalon"
   }
 
-  if (config.template === "wellness-serene") {
+  if (profile === "wellness") {
     return "DaySpa"
   }
 
-  if (config.template === "cinema-spotlight" || config.template === "festival-neon") {
+  if (profile === "cinema") {
     return "MovieTheater"
   }
 

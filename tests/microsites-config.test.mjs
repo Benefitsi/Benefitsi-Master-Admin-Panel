@@ -29,3 +29,22 @@ test("invalid or missing appearance data falls back safely to light mode", () =>
     "light",
   )
 })
+
+test("microsites expose one three-color default template with editable quote copy", () => {
+  const config = createDefaultMicrositeConfig(partner)
+
+  assert.equal(config.template, "restaurant-premium")
+  assert.equal(config.branding.paletteMode, "auto")
+  assert.equal(config.branding.accent, "#118cff")
+  assert.equal(config.branding.accentSecondary, "#061829")
+  assert.equal(config.branding.accentTertiary, "#17d4d7")
+  assert.ok(config.content.quoteText.length > 0)
+  assert.ok(config.content.quoteAttribution.length > 0)
+})
+
+test("legacy template ids resolve to the only supported default template", () => {
+  assert.equal(
+    resolveMicrositeConfig({ template: "festival-neon" }, partner).template,
+    "restaurant-premium",
+  )
+})

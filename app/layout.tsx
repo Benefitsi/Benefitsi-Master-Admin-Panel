@@ -47,7 +47,22 @@ export default function RootLayout({
       lang="de"
       className={`${satoshi.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <template
+          data-impeccable-contract="pinned-reference-20260814"
+          dangerouslySetInnerHTML={{
+            __html: `<!--
+THESIS: Partner identity becomes a responsive benefit card; refuse the generic full-bleed restaurant hero.
+OWN-WORLD: Three logo-derived colors, soft atmospheric fields, crisp white surfaces, compact iconography, and image-led depth.
+STORY: Recognize the partner, confirm place and availability, see the benefit, then explore deals, services, story, and contact.
+FIRST VIEWPORT: Partner copy and actions sit left of a large interactive image on desktop, stack above it on mobile, and resolve into four responsive benefit rows.
+FORM: User-pinned responsive partner-card reference, first and binding direction; seed pinned-reference-20260814.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->`,
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

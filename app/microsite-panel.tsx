@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
   useContext,
-  useTransition,
   type Dispatch,
   type CSSProperties,
   type FocusEvent,
@@ -18,39 +17,84 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react"
+import { useRouter } from "next/navigation"
 import type { PartnerWithDeals } from "@/lib/admin-data"
 import {
+  createDefaultMicrositeConfig,
   resolveMicrositeConfig,
   type MicrositeConfig,
 } from "@/lib/microsites"
 import {
   createMicrositeReadinessReport,
+  micrositeReadinessEnglishTranslations,
   type MicrositeReadinessReport,
 } from "@/lib/microsite-readiness"
-import {
-  applyMicrositeTemplatePreset,
-  micrositeTemplatePresets,
-  type MicrositeTemplatePreset,
-} from "@/lib/microsite-templates"
+import { micrositeTemplatePresets } from "@/lib/microsite-templates"
 import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
 import { PrintableStudioPanel } from "@/components/microsite/printable-studio-panel"
 import { LoadingSpinner } from "@/components/loading-ui"
-import { useRouter } from "next/navigation"
+import {
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  CircleAlert,
+  ImageOff,
+  RotateCcw,
+} from "lucide-react"
 import { useAdminLanguage } from "./admin-language"
 import {
   defaultMicrositeCopyForPartner,
-  defaultMicrositeTemplateForPartner,
+  inferMicrositePartnerProfile,
   partnerSocialLabel,
   partnerSocialUrl,
 } from "@/lib/microsite-personalization"
+import { extractThemePalette } from "@/lib/logo-palette"
+import { isMicrositeTwoForOneDeal } from "@/lib/microsite-deals"
 import {
-  discardMicrositeDraft,
-  saveMicrositeVersion,
-  type MicrositeActionState,
-} from "./microsite-actions"
+  micrositeMenuItemDisplayName,
+  micrositeMenuItemImageId,
+  micrositeMenuItemKey,
+  micrositeMenuPreviewItems,
+  micrositeMenuItemVisibilityId,
+} from "@/lib/microsite-menu"
+import { saveMicrositeVersion, type MicrositeActionState } from "./microsite-actions"
 
 const initialState: MicrositeActionState = { ok: false, message: "" }
 type BuilderLocale = "de" | "en"
+const MICROSITE_UPLOADS_CLEARED_EVENT = "benefitsi:microsite-uploads-cleared"
+const MAX_MICROSITE_ASSET_BYTES = 10 * 1024 * 1024
+const MAX_MICROSITE_UPLOAD_BYTES = 20 * 1024 * 1024
+const ALLOWED_MICROSITE_ASSET_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/svg+xml",
+])
+
+async function saveMicrositeVersionWithFallback(
+  previousState: MicrositeActionState,
+  formData: FormData,
+): Promise<MicrositeActionState> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return {
+      ok: false,
+      message:
+        "Speichern fehlgeschlagen. Bitte Internetverbindung prüfen und erneut versuchen.",
+    }
+  }
+
+  try {
+    return await saveMicrositeVersion(previousState, formData)
+  } catch (error) {
+    console.error("[microsite:save] request failed before completion", error)
+    return {
+      ok: false,
+      message:
+        "Speichern fehlgeschlagen. Bitte Internetverbindung prüfen, die Seite neu laden und erneut versuchen.",
+    }
+  }
+}
 
 type BuilderI18nValue = {
   locale: BuilderLocale
@@ -70,6 +114,7 @@ function useBuilderI18n() {
 }
 
 const builderTranslations: Record<string, string> = {
+  ...micrositeReadinessEnglishTranslations,
   "Microsite": "Microsite",
   "Restaurant-Premium-Vorlage": "Restaurant premium template",
   "Für Mobilgeräte optimierte Vorlage · Daten vom Partnerprofil · versionierte Veröffentlichung":
@@ -113,14 +158,60 @@ const builderTranslations: Record<string, string> = {
   "Top-Deal Überschrift": "Top deal headline",
   "Top-Deal Bild URL": "Top deal image URL",
   "Neues Top-Deal Bild hochladen": "Upload new top deal image",
+  "Slogan": "Slogan",
   "Weitere Bereiche": "More sections",
   "Speisekarte Überschrift": "Menu headline",
   "Speisekarte Beschreibung": "Menu description",
+  "Menübilder": "Menu images",
+  "Großes Hauptbild": "Large featured image",
+  "Großes Menübild": "Large menu image",
+  "Angezeigtes Hauptgericht": "Featured menu item",
+  "Wähle das Gericht für die große Karte aus.": "Choose the dish used for the large card.",
+  "Kleines Menübild": "Small menu image",
+  "Bild anzeigen": "Show image",
+  "Ohne Bild": "No image",
+  "Partnerbild verwenden": "Use partner image",
+  "Aus Asset-Bibliothek wählen": "Choose from asset library",
+  "Bild auswählen": "Choose image",
+  "Die ersten fünf Gerichte bilden die Microsite-Vorschau. Das erste Bild wird groß dargestellt.":
+    "The first five dishes form the microsite preview. The first image is displayed prominently.",
+  "Die ersten sechs Gerichte bilden die Microsite-Vorschau. Das erste Bild wird groß dargestellt.":
+    "The first six dishes form the microsite preview. The first image is displayed prominently.",
+  "Bis zu sechs direkte Instagram-Post-/Reel- oder TikTok-Video-URLs eintragen. Der Instagram-Bereich erscheint erst, wenn mindestens zwei gültige Instagram-Beiträge hinterlegt sind.":
+    "Add up to six direct Instagram post/reel or TikTok video URLs. The Instagram section appears only when at least two valid Instagram posts are configured.",
+  "Instagram benötigt mindestens zwei Beiträge, bevor der Bereich auf der Microsite angezeigt wird.":
+    "Instagram needs at least two posts before the section is shown on the microsite.",
+  "gültige Beiträge": "valid posts",
+  "Bitte einen direkten Post-, Reel- oder Video-Link verwenden, keinen Profil-Link.":
+    "Use a direct post, reel, or video link rather than a profile link.",
+  "Bild hochladen oder aus der Bibliothek zuweisen":
+    "Upload an image or assign one from the library",
+  "Ziel auswählen, anschließend ein neues Bild hochladen oder unten ein vorhandenes Bild anklicken. Die Änderung erscheint sofort in der Vorschau und wird mit dem Entwurf gespeichert.":
+    "Choose a target, then upload a new image or click an existing image below. The change appears immediately in the preview and is saved with the draft.",
+  "Bildposition": "Image position",
+  "Neues Bild direkt zur Asset-Bibliothek hinzufügen":
+    "Add a new image directly to the asset library",
+  "Für ausgewählte Bildposition verwenden": "Use for the selected image position",
+  "Hier verwenden": "Use here",
   "Über-uns Überschrift": "About headline",
   "Über-uns Text": "About text",
+  "Partner-Zitat": "Partner quote",
+  "Zitat-Absender": "Quote attribution",
   "Kontakt Überschrift": "Contact headline",
   "App-Banner Überschrift": "App banner headline",
   "App-Banner Text": "App banner text",
+  "App & Vorteile": "App & benefits",
+  "App Vorteile Überschrift": "App benefits headline",
+  "App Vorteile Text": "App benefits text",
+  "Über uns & Kontakt": "About & contact",
+  "iPhone App-Screenshot URL": "iPhone app screenshot URL",
+  "Neuen iPhone App-Screenshot hochladen": "Upload new iPhone app screenshot",
+  "App-Vorschau": "App preview",
+  "Bild im Telefon-Mockup URL": "Phone mockup image URL",
+  "Neues Bild für das Telefon-Mockup hochladen": "Upload a new phone mockup image",
+  "Dieses Bild wird direkt im schwarzen Telefonrahmen angezeigt. Du kannst es auch in der Vorschau anklicken.":
+    "This image appears directly inside the black phone frame. You can also click it in the preview.",
+  "Bild im Telefon-Mockup": "Phone mockup image",
   "Footer-Text": "Footer text",
   "Version & Notiz": "Version & note",
   "Interne Versionsnotiz": "Internal version note",
@@ -128,6 +219,85 @@ const builderTranslations: Record<string, string> = {
     "e.g. Knobi design finalized, mobile QA done",
   "Speichert…": "Saving...",
   "Entwurf speichern": "Save draft",
+  "Speichern fehlgeschlagen. Bitte Internetverbindung prüfen und erneut versuchen.":
+    "Save failed. Check the internet connection and try again.",
+  "Speichern fehlgeschlagen. Bitte Internetverbindung prüfen, die Seite neu laden und erneut versuchen.":
+    "Save failed. Check the internet connection, reload the page, and try again.",
+  "Die Microsite wurde gleichzeitig an anderer Stelle gespeichert. Bitte erneut versuchen.":
+    "The microsite was saved somewhere else at the same time. Please try again.",
+  "Die ausgewählten Bilder sind zusammen zu groß. Bitte weniger Bilder gleichzeitig speichern (maximal 20 MB).":
+    "The selected images are too large in total. Save fewer images at once (maximum 20 MB).",
+  "Auf Standard zurücksetzen": "Reset to defaults",
+  "Alle Microsite-Einstellungen auf die aktuellen Partner-Standardwerte zurücksetzen? Nicht gespeicherte Änderungen gehen verloren.":
+    "Reset all microsite settings to the current partner defaults? Unsaved changes will be lost.",
+  "erledigt": "done",
+  "Checkliste": "Checklist",
+  "Nur ein fehlender Partnername blockiert die Veröffentlichung. Alle anderen Punkte sind Empfehlungen.":
+    "Only a missing partner name blocks publishing. Every other item is a recommendation.",
+  "Live-Publish ist gesperrt, bis alle Pflichtchecks erledigt sind.":
+    "Live publish is locked until all required checks are complete.",
+  "Warum ist Veröffentlichen gesperrt?": "Why is publishing locked?",
+  "Alle Pflichtchecks sind erledigt. Veröffentlichen ist freigeschaltet.":
+    "All required checks are complete. Publishing is unlocked.",
+  "Pflichtchecks": "required checks",
+  "Der aktuelle Entwurf kann jetzt veröffentlicht werden.":
+    "The current draft can now be published.",
+  "Checkliste öffnen": "Open checklist",
+  "Noch offene Pflichtpunkte": "Required items still open",
+  "Assets geprüft": "Assets reviewed",
+  "Indexierung aktiv": "Indexing enabled",
+  "Strukturierte Daten": "Structured data",
+  "Vorschau noindex": "Preview noindex",
+  "Responsives Layout": "Responsive layout",
+  "Finale Veröffentlichung geprüft": "Final publishing review complete",
+  "Versionierter Entwurf": "Versioned draft",
+  "Sitemap & Robots": "Sitemap & robots",
+  "Öffentliche URL": "Public URL",
+  "Name, Logo, Adresse, Telefon und Öffnungszeiten wurden bewusst geprüft.":
+    "Name, logo, address, phone number, and opening hours have been reviewed.",
+  "Logo ist im Partnerprofil gepflegt und wird zentral ausgespielt.":
+    "The logo is maintained in the partner profile and used consistently.",
+  "Name kommt aus dem Partnerprofil.": "The name comes from the partner profile.",
+  "Adresse/Standort ist für Kontakt, Maps und LocalBusiness-Schema vorhanden.":
+    "The address is available for contact details, maps, and LocalBusiness schema.",
+  "Telefonnummer ist für mobile Aktionen und Local SEO vorhanden.":
+    "A phone number is available for mobile actions and local SEO.",
+  "Öffnungszeiten sind gepflegt und werden in Hero/Kontakt/Schema verwendet.":
+    "Opening hours are maintained and used in the hero, contact area, and schema.",
+  "Microsite-Bilder/Fallbacks wurden für diesen Partner bewusst geprüft.":
+    "Microsite images and fallbacks have been reviewed for this partner.",
+  "Title, Description, Schema und Indexierung wurden bewusst geprüft.":
+    "Title, description, schema, and indexing have been reviewed.",
+  "Partner-spezifischer Titel ist aussagekräftig gepflegt.":
+    "A meaningful partner-specific title is set.",
+  "Meta-Beschreibung nennt Partner, Ort, Deals und Speisekarte ausreichend.":
+    "The meta description adequately covers the partner, location, deals, and menu.",
+  "Öffentliche Live-Seiten dürfen nicht versehentlich auf noindex stehen.":
+    "Public live pages must not accidentally be set to noindex.",
+  "Restaurant, Menu, FAQ und Breadcrumb JSON-LD sind systemisch aktiv.":
+    "Restaurant, menu, FAQ, and breadcrumb JSON-LD are enabled.",
+  "Builder-/Preview-Seiten sind von Indexierung ausgeschlossen.":
+    "Builder and preview pages are excluded from indexing.",
+  "Desktop-Navigation, Hero, Deals, Speisekarte, Kontakt und Footer wurden geprüft.":
+    "Desktop navigation, hero, deals, menu, contact area, and footer have been reviewed.",
+  "Mobile Ansicht wurde im Builder geprüft und freigegeben.":
+    "The mobile view has been reviewed and approved in the builder.",
+  "Desktop- und Mobilvorschau sind im Builder verfügbar und müssen separat freigegeben werden.":
+    "Desktop and mobile previews are available in the builder and require separate approval.",
+  "Vor Publish wurde bewusst geprüft: Daten, Assets, Mobile, SEO/LLM und Live-Link.":
+    "Before publishing, data, assets, mobile, SEO/LLM, and the live link were reviewed.",
+  "Entwurf und Veröffentlichung laufen über Microsite-Versionen.":
+    "Drafting and publishing use versioned microsite records.",
+  "robots.txt und sitemap.xml werden aus den Microsites erzeugt.":
+    "robots.txt and sitemap.xml are generated from the microsites.",
+  "Slug/Subdomain oder Canonical URL ist für die Microsite vorhanden.":
+    "A slug, subdomain, or canonical URL exists for the microsite.",
+  "Speisekarte mit Preisen": "Menu with prices",
+  "Leistungsübersicht vorhanden": "Service overview available",
+  "Gerichte und Preise kommen aus den Partnerdaten.":
+    "Dishes and prices come from the partner data.",
+  "Services, Treatments oder Highlights sind für diesen Partnertyp sichtbar gepflegt.":
+    "Services, treatments, or highlights are configured for this partner type.",
   "Zur Prüfung markieren": "Mark for review",
   "Freigabe erst nach erfüllten Pflichtchecks möglich":
     "Approval is only available after all required checks are complete",
@@ -260,6 +430,17 @@ const builderTranslations: Record<string, string> = {
     "Partner self-service should only expose data, menu, and images; layout stays protected internally.",
   "Partner-Modus prüfen": "Open partner mode",
   "Social Media": "Social media",
+  "Social Feed auf der Microsite": "Social feed on the microsite",
+  "Originalbeiträge einbetten": "Embed original posts",
+  "Direkte Beitrags-URLs zeigen bis zu drei Instagram- oder TikTok-Beiträge. Ohne Beiträge wird stattdessen das verknüpfte Profil angezeigt.":
+    "Direct post URLs show up to three Instagram or TikTok posts. Without posts, the linked profile is shown instead.",
+  "Feed anzeigen": "Show feed",
+  "Feed-Plattform": "Feed platform",
+  "Beitrag 1 URL": "Post 1 URL",
+  "Beitrag 2 URL": "Post 2 URL",
+  "Beitrag 3 URL": "Post 3 URL",
+  "Direkte Instagram-Post-/Reel- oder TikTok-Video-URL":
+    "Direct Instagram post/reel or TikTok video URL",
   "Beschriftung": "Label",
   "Link": "Link",
   "Logo-/Icon-URL": "Logo/icon URL",
@@ -291,6 +472,65 @@ const builderTranslations: Record<string, string> = {
   "Inhalt": "Content",
   "Assets": "Assets",
   "Print": "Print",
+  "Auto aus Logo": "Auto from logo",
+  "Manuell": "Manual",
+  "Aktive 3-Farben-Palette": "Active three-color palette",
+  "Primär": "Primary",
+  "Kontrast": "Contrast",
+  "Highlight": "Highlight",
+  "Logo wird analysiert …": "Analyzing logo…",
+  "Drei kontrastreiche Farben wurden aus dem Partnerlogo gewählt.":
+    "Three contrasting colors were selected from the partner logo.",
+  "Logo-Farben wurden zu einer vollständigen professionellen Palette ergänzt.":
+    "The logo colors were completed into a professional palette.",
+  "Benefitsi Blau-Palette aktiv – das Logo ist einfarbig, fehlt oder kann nicht analysiert werden.":
+    "Benefitsi blue palette active—the logo is monochrome, missing, or could not be analyzed.",
+  "Manuelle Farben sind aktiv.": "Manual colors are active.",
+  "Palette neu aus Logo auswählen": "Regenerate palette from logo",
+  "Primärfarbe": "Primary color",
+  "Kontrastfarbe": "Contrast color",
+  "Highlightfarbe": "Highlight color",
+  "Bearbeiten": "Edit",
+  "Design": "Design",
+  "Inhalte": "Content",
+  "Medien": "Media",
+  "Direkt bearbeiten": "Edit directly",
+  "Wähle ein Element in der Vorschau und ändere nur seine relevanten Eigenschaften.":
+    "Select an element in the preview and change only its relevant properties.",
+  "Design & Inhalte": "Design & content",
+  "Grundlagen": "Foundations",
+  "Marke und Startbereich des aktuellen Templates.": "Brand and hero settings for the current template.",
+  "Seiteninhalte": "Page content",
+  "Texte und Inhalte in derselben Reihenfolge wie auf der Microsite.":
+    "Text and content in the same order as the microsite.",
+  "Marke, Startbereich und Seiteninhalte in der Reihenfolge der Microsite.":
+    "Brand, hero, and page content in the microsite order.",
+  "Medien & Daten": "Media & data",
+  "Bilder & Medien": "Images & media",
+  "Nur Bilder, die im aktuellen Template tatsächlich verwendet werden.":
+    "Only images that are actually used in the current template.",
+  "Marke & Startbereich Bilder": "Brand & hero images",
+  "Deals & Belohnungen Bilder": "Deals & reward images",
+  "Über-uns Bilder": "About images",
+  "App & Footer Bilder": "App & footer images",
+  "Partner-Badge": "Partner badge",
+  "2für1 Hintergrundbild": "2-for-1 background image",
+  "Über-uns Hauptbild": "About main image",
+  "Über-uns Zutatenbild": "About ingredients image",
+  "Über-uns Ortsbild": "About location image",
+  "Über-uns Detailbild": "About detail image",
+  "Keine aktiven Deal- oder Belohnungsbilder in diesem Template.":
+    "There are no active deal or reward images in this template.",
+  "Bilder prüfen, wiederverwenden und die synchronisierten Partnerdaten kontrollieren.":
+    "Review and reuse images, then verify synchronized partner data.",
+  "Sichtbarkeit & Ausgabe": "Visibility & output",
+  "Suchdarstellung und optionale Druckmedien konfigurieren.":
+    "Configure search presentation and optional print media.",
+  "Prüfen & veröffentlichen": "Review & publish",
+  "Qualität prüfen und die Microsite anschließend freigeben.":
+    "Review quality, then approve and publish the microsite.",
+  "Qualität prüfen und die Microsite anschließend veröffentlichen.":
+    "Complete the checklist, then publish the microsite.",
   "Alle Bereiche einklappen": "Collapse all sections",
   "Alle Bereiche ausklappen": "Expand all sections",
   "Formate": "Formats",
@@ -654,9 +894,36 @@ function translateBuilderText(locale: BuilderLocale, text: string): string {
     return directTranslation
   }
 
+  const saveErrorCodeMatch = repairedText.match(
+    /^Speichern fehlgeschlagen\. Bitte erneut versuchen\. Fehlercode: ([a-zA-Z0-9-]+)$/,
+  )
+  if (saveErrorCodeMatch) {
+    return `Save failed. Please try again. Error code: ${saveErrorCodeMatch[1]}`
+  }
+
   const navigationMatch = repairedText.match(/^Navigation (.+)$/)
   if (navigationMatch) {
     return `Navigation ${translateBuilderText(locale, navigationMatch[1])}`
+  }
+
+  const selectedElementMatch = repairedText.match(/^Element: (.+)$/)
+  if (selectedElementMatch) {
+    return `${translateBuilderText(locale, "Element")}: ${translateBuilderText(locale, selectedElementMatch[1])}`
+  }
+
+  const featuredMenuImageMatch = repairedText.match(/^Großes Menübild – (.+)$/)
+  if (featuredMenuImageMatch) {
+    return `Large menu image – ${featuredMenuImageMatch[1]}`
+  }
+
+  const menuImageMatch = repairedText.match(/^(.+) Menübild$/)
+  if (menuImageMatch) {
+    return `${menuImageMatch[1]} menu image`
+  }
+
+  const rewardImageMatch = repairedText.match(/^(\d+) Stempel Belohnungsbild$/)
+  if (rewardImageMatch) {
+    return `${rewardImageMatch[1]}-stamp reward image`
   }
 
   const faqQuestionMatch = repairedText.match(/^FAQ Frage (\d+)$/)
@@ -759,6 +1026,7 @@ export function MicrositePanel({
   fullscreen?: boolean
   previewBasePath?: string
 }) {
+  const router = useRouter()
   const initialConfig = resolveMicrositeConfig(
     partner.microsite?.draftVersion?.config ??
       partner.microsite?.publishedVersion?.config,
@@ -770,9 +1038,9 @@ export function MicrositePanel({
   const [selectedElementId, setSelectedElementId] = useState("hero.headline")
   const [editorPanelOpen, setEditorPanelOpen] = useState(true)
   const [editorPanelWidth, setEditorPanelWidth] = useState(360)
-  const [allBuilderSectionsCollapsed, setAllBuilderSectionsCollapsed] = useState(true)
   const { language: builderLocale } = useAdminLanguage()
   const previewRef = useRef<HTMLDivElement | null>(null)
+  const formRef = useRef<HTMLFormElement | null>(null)
   const sidebarRef = useRef<HTMLElement | null>(null)
   const selectedElementPanelRef = useRef<HTMLDivElement | null>(null)
   const inlineTextOverridesInputRef = useRef<HTMLInputElement | null>(null)
@@ -784,32 +1052,33 @@ export function MicrositePanel({
     moved: boolean
   } | null>(null)
   const [state, formAction, pending] = useActionState(
-    saveMicrositeVersion,
+    saveMicrositeVersionWithFallback,
     initialState,
   )
   const [pendingIntent, setPendingIntent] = useState("")
+  const [clientSaveError, setClientSaveError] = useState("")
+  const renderedAssetLibrary = config.assets.library.filter((asset) =>
+    isAvailableMicrositeLibraryAsset(asset, partner),
+  )
   const assetOptions = Array.from(new Set([
     partner.logo_url,
-    partner.feature_card_url,
-    partner.discover_card_image_url,
-    ...(partner.cover_urls || []),
-    config.branding.partnerBadgeUrl,
+    config.branding.logoUrl,
     config.hero.backgroundImageUrl,
-    config.deals.illustrationUrl,
-    config.deals.topDealImageUrl,
-    config.seo.ogImageUrl,
-    ...config.assets.library.map((asset) => asset.url),
-    ...Object.values(config.elementText).filter((value) => /^https?:\/\/|^\//.test(value)),
+    partner.deals.some(isMicrositeTwoForOneDeal) ? config.deals.topDealImageUrl : "",
+    ...renderedAssetLibrary.map((asset) => asset.url),
+    ...menuItemsForMicrositeBuilder(partner).map((item) => item.image_url),
+    ...Object.entries(config.elementText)
+      .filter(([key]) => isRenderedMicrositeImageSlot(key, partner))
+      .map(([, value]) => value),
   ].filter((asset): asset is string => Boolean(asset))))
   const readinessReport = useMemo(
     () => createMicrositeReadinessReport(partner, config),
     [partner, config],
   )
-  const selectedElement = getEditableElement(selectedElementId, config)
+  const selectedElement = getEditableElement(selectedElementId, config, partner)
   const activeTemplatePreset =
     micrositeTemplatePresets.find((template) => template.id === config.template) ??
     micrositeTemplatePresets[0]
-  const recommendedTemplateId = defaultMicrositeTemplateForPartner(partner)
   const previewIdentifier =
     partner.microsite?.slug || partner.slug || partner.subdomain || partner.id || "partner"
   const previewStorageKey = `benefitsi:microsite-preview:${partner.id || partner.slug || "partner"}`
@@ -818,71 +1087,25 @@ export function MicrositePanel({
   const publishBlockers = readinessReport.items.filter(
     (item) => item.severity === "required" && !item.ok,
   )
+  const builderChecklist = [
+    config.builder.partnerDataReviewDone,
+    config.builder.assetReviewDone,
+    config.builder.desktopQaDone,
+    config.builder.mobileQaDone,
+    config.builder.seoReviewDone,
+    config.builder.publishReviewDone,
+  ]
+  const builderChecklistDone = builderChecklist.filter(Boolean).length
+  const builderChecklistTotal = builderChecklist.length
   const zoomPercent = Math.round(previewZoom * 100)
   const tr = useMemo(
     () => (text: string) => translateBuilderText(builderLocale, text),
     [builderLocale],
   )
-  const builderQuickSections = [
-    ["selected", tr("Element")],
-    ["templates", tr("Layout")],
-    ["brand", tr("Marke")],
-    ["hero", tr("Inhalt")],
-    ["assets", tr("Assets")],
-    ["seo", "SEO"],
-    ["print", tr("Print")],
-  ] as const
   const useViewportShell = fullscreen
   const inlineSidebarClasses = editorPanelOpen
-    ? "min-h-[calc(100dvh-11rem)] max-h-[calc(100dvh-11rem)] overflow-x-hidden overflow-y-auto border-b lg:min-h-0 lg:max-h-[calc(100vh-1rem)] lg:border-b-0 lg:border-r"
-    : "overflow-x-hidden border-b lg:sticky lg:top-4 lg:max-h-[calc(100vh-1rem)] lg:overflow-x-hidden lg:overflow-y-auto lg:border-b-0 lg:border-r"
-
-  function syncBuilderSectionCollapseState() {
-    const details = sidebarRef.current?.querySelectorAll<HTMLDetailsElement>("details")
-
-    if (!details?.length) {
-      return
-    }
-
-    setAllBuilderSectionsCollapsed(Array.from(details).every((item) => !item.open))
-  }
-
-  function toggleAllBuilderSections() {
-    const details = sidebarRef.current?.querySelectorAll<HTMLDetailsElement>("details")
-
-    if (!details?.length) {
-      return
-    }
-
-    const nextOpen = allBuilderSectionsCollapsed
-    details.forEach((item) => {
-      item.open = nextOpen
-    })
-    setAllBuilderSectionsCollapsed(!nextOpen)
-  }
-
-  function jumpToBuilderSection(section: string) {
-    const sidebar = sidebarRef.current
-    const target = sidebar?.querySelector<HTMLElement>(`[data-builder-section="${section}"]`)
-
-    if (!sidebar || !target) {
-      return
-    }
-
-    const nestedDetails = target.querySelectorAll<HTMLDetailsElement>("details")
-
-    nestedDetails.forEach((item) => {
-      item.open = true
-    })
-    if (nestedDetails.length) {
-      setAllBuilderSectionsCollapsed(false)
-    }
-
-    sidebar.scrollTo({
-      top: Math.max(target.offsetTop - 28, 0),
-      behavior: "smooth",
-    })
-  }
+    ? "h-[min(72dvh,720px)] min-h-0 touch-pan-y overflow-y-auto overscroll-y-contain border-b [scrollbar-gutter:stable] [scrollbar-width:thin] lg:sticky lg:top-4 lg:h-[calc(100dvh-2rem)] lg:max-h-[calc(100dvh-2rem)] lg:border-b-0 lg:border-r"
+    : "touch-pan-y overflow-x-hidden border-b lg:sticky lg:top-4 lg:h-[calc(100dvh-2rem)] lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:overscroll-y-contain lg:border-b-0 lg:border-r lg:[scrollbar-gutter:stable] lg:[scrollbar-width:thin]"
 
   useEffect(() => {
     const sidebar = sidebarRef.current
@@ -891,12 +1114,13 @@ export function MicrositePanel({
       return
     }
 
-    syncBuilderSectionCollapseState()
-
     const handleToggle = (event: Event) => {
-      if (event.target instanceof HTMLDetailsElement) {
-        syncBuilderSectionCollapseState()
-      }
+      const opened = event.target
+      if (!(opened instanceof HTMLDetailsElement) || !opened.open || !opened.dataset.configSection) return
+
+      sidebar.querySelectorAll<HTMLDetailsElement>("details[data-config-section]").forEach((item) => {
+        if (item !== opened) item.open = false
+      })
     }
 
     sidebar.addEventListener("toggle", handleToggle, true)
@@ -905,6 +1129,14 @@ export function MicrositePanel({
       sidebar.removeEventListener("toggle", handleToggle, true)
     }
   }, [editorPanelOpen])
+
+  useEffect(() => {
+    const selectedDetails = selectedElementPanelRef.current?.querySelector<HTMLDetailsElement>(
+      "details[data-config-section]",
+    )
+
+    if (selectedDetails) selectedDetails.open = true
+  }, [selectedElementId])
 
   const previewToolbar = (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -989,18 +1221,181 @@ export function MicrositePanel({
     )
   }
 
+  function openPublishChecklist() {
+    const section = sidebarRef.current?.querySelector<HTMLElement>(
+      "#microsite-publish-checklist",
+    )
+    const firstPanel = section?.querySelector<HTMLDetailsElement>(
+      "details[data-config-section]",
+    )
+
+    if (firstPanel) firstPanel.open = true
+    section?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  function openReadinessEditor(itemId: string) {
+    const target = readinessEditTarget(itemId)
+
+    if (target.partnerTab) {
+      const dashboardPath = previewBasePath.startsWith("/partner/")
+        ? "/partner"
+        : "/"
+      const query = new URLSearchParams({
+        partner: partner.id || previewIdentifier,
+        mode: "view",
+        view: "settings",
+        tab: target.partnerTab,
+      })
+
+      window.location.assign(`${dashboardPath}?${query.toString()}#partners`)
+      return
+    }
+
+    setEditorPanelOpen(true)
+    if (target.viewport) setViewport(target.viewport)
+    if (target.elementId) setSelectedElementId(target.elementId)
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const section = sidebarRef.current?.querySelector<HTMLElement>(
+          `[data-builder-section="${target.section}"]`,
+        )
+        const panel = section?.querySelector<HTMLDetailsElement>(
+          "details[data-config-section]",
+        )
+
+        if (panel) panel.open = true
+        section?.scrollIntoView({ behavior: "smooth", block: "start" })
+
+        const firstControl = section?.querySelector<HTMLElement>(
+          'input:not([type="hidden"]):not([type="file"]), textarea, select, button:not([type="submit"])',
+        )
+        firstControl?.focus({ preventScroll: true })
+      })
+    })
+  }
+
+  function resetToPartnerDefaults() {
+    if (
+      !window.confirm(
+        tr(
+          "Alle Microsite-Einstellungen auf die aktuellen Partner-Standardwerte zurücksetzen? Nicht gespeicherte Änderungen gehen verloren.",
+        ),
+      )
+    ) {
+      return
+    }
+
+    setConfig(createDefaultMicrositeConfig(partner))
+    setSelectedElementId("hero.headline")
+    inlineTextOverridesRef.current = {}
+
+    if (inlineTextOverridesInputRef.current) {
+      inlineTextOverridesInputRef.current.value = "{}"
+    }
+
+    formRef.current
+      ?.querySelectorAll<HTMLInputElement>('input[type="file"]')
+      .forEach((input) => {
+        input.value = ""
+      })
+    window.dispatchEvent(new Event(MICROSITE_UPLOADS_CLEARED_EVENT))
+    setClientSaveError("")
+  }
+
+  function handleSaveSubmit(event: FormEvent<HTMLFormElement>) {
+    setClientSaveError("")
+
+    const submitter = (event.nativeEvent as SubmitEvent).submitter
+    if (submitter instanceof HTMLButtonElement) {
+      setPendingIntent(submitter.value || "draft")
+    }
+
+    const activeElement = document.activeElement
+    const activeEditable =
+      activeElement instanceof HTMLElement
+        ? activeElement.closest<HTMLElement>(
+            '[data-microsite-editable-kind="text"]',
+          )
+        : null
+
+    if (activeEditable && previewRef.current?.contains(activeEditable)) {
+      syncInlineTextOverride(
+        activeEditable.dataset.micrositeEditable || "",
+        textFromEditableElement(activeEditable),
+      )
+    }
+
+    const files = Array.from(
+      event.currentTarget.querySelectorAll<HTMLInputElement>(
+        'input[type="file"]',
+      ),
+    ).flatMap((input) => Array.from(input.files ?? []))
+    const unsupportedFile = files.find(
+      (file) => !ALLOWED_MICROSITE_ASSET_TYPES.has(file.type),
+    )
+    const oversizedFile = files.find(
+      (file) => file.size > MAX_MICROSITE_ASSET_BYTES,
+    )
+    const totalBytes = files.reduce((total, file) => total + file.size, 0)
+
+    if (unsupportedFile) {
+      event.preventDefault()
+      setClientSaveError(
+        builderLocale === "en"
+          ? `${unsupportedFile.name}: This image type is not supported. Please use PNG, JPG, WebP or SVG.`
+          : `${unsupportedFile.name}: Dieser Bildtyp wird nicht unterstützt. Bitte PNG, JPG, WebP oder SVG verwenden.`,
+      )
+      return
+    }
+
+    if (oversizedFile) {
+      event.preventDefault()
+      setClientSaveError(
+        builderLocale === "en"
+          ? `${oversizedFile.name}: An image may be no larger than 10 MB.`
+          : `${oversizedFile.name}: Ein Bild darf maximal 10 MB groß sein.`,
+      )
+      return
+    }
+
+    if (totalBytes > MAX_MICROSITE_UPLOAD_BYTES) {
+      event.preventDefault()
+      setClientSaveError(
+        builderLocale === "en"
+          ? "The selected images are larger than 20 MB in total. Save fewer images at once."
+          : "Die ausgewählten Bilder sind zusammen größer als 20 MB. Bitte weniger Bilder gleichzeitig speichern.",
+      )
+    }
+  }
+
   useEffect(() => {
     if (state.ok && state.config) {
       let cancelled = false
 
       queueMicrotask(() => {
         if (!cancelled && state.config) {
-          setConfig(resolveMicrositeConfig(state.config, partner))
+          const savedConfig = resolveMicrositeConfig(state.config, partner)
+
+          setConfig(savedConfig)
+          window.localStorage.setItem(
+            previewStorageKey,
+            JSON.stringify(savedConfig),
+          )
+          router.refresh()
           inlineTextOverridesRef.current = {}
 
           if (inlineTextOverridesInputRef.current) {
             inlineTextOverridesInputRef.current.value = "{}"
           }
+
+          formRef.current
+            ?.querySelectorAll<HTMLInputElement>('input[type="file"]')
+            .forEach((input) => {
+              input.value = ""
+            })
+          window.dispatchEvent(new Event(MICROSITE_UPLOADS_CLEARED_EVENT))
+          setClientSaveError("")
         }
       })
 
@@ -1008,7 +1403,25 @@ export function MicrositePanel({
         cancelled = true
       }
     }
-  }, [partner, state.config, state.ok])
+  }, [partner, previewStorageKey, router, state.config, state.ok])
+
+  useEffect(() => {
+    const applySharedConfig = (serializedConfig: string | null) => {
+      if (!serializedConfig) return
+
+      try {
+        setConfig(resolveMicrositeConfig(JSON.parse(serializedConfig), partner))
+      } catch {
+        // Ignore incomplete or unrelated storage writes.
+      }
+    }
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === previewStorageKey) applySharedConfig(event.newValue)
+    }
+
+    window.addEventListener("storage", handleStorage)
+    return () => window.removeEventListener("storage", handleStorage)
+  }, [partner, previewStorageKey])
 
   useEffect(() => {
     const root = previewRef.current
@@ -1098,7 +1511,7 @@ export function MicrositePanel({
 
     const id = editableTarget.dataset.micrositeEditable || ""
     const value = textFromEditableElement(editableTarget)
-    const element = getEditableElement(id, config)
+    const element = getEditableElement(id, config, partner)
 
     syncInlineTextOverride(id, value)
 
@@ -1277,6 +1690,14 @@ export function MicrositePanel({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={resetToPartnerDefaults}
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 text-[11px] font-semibold leading-none text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+          >
+            <RotateCcw className="size-3.5" aria-hidden="true" />
+            {tr("Auf Standard zurücksetzen")}
+          </button>
           <a
             href={previewHref}
             target="_blank"
@@ -1284,7 +1705,7 @@ export function MicrositePanel({
             onClick={() => {
               window.localStorage.setItem(previewStorageKey, JSON.stringify(config))
             }}
-            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
+            className="inline-flex h-9 items-center rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
           >
             {tr("Aktuelle Vorschau öffnen")}
           </a>
@@ -1292,52 +1713,86 @@ export function MicrositePanel({
             label={partner.microsite?.publishedVersion ? "Live" : "Noch nicht live"}
             active={Boolean(partner.microsite?.publishedVersion)}
           />
-          {partner.microsite?.status === "review" ? (
-            <StatusBadge label="In Prüfung" tone="review" />
-          ) : null}
-          {partner.microsite?.draftVersion ? (
-            <StatusBadge label="Bearbeitung: gespeicherter Entwurf" active={false} />
-          ) : partner.microsite?.publishedVersion ? (
-            <StatusBadge label="Bearbeitung: aktuelle Live-Version" active={false} />
-          ) : (
-            <StatusBadge label="Bearbeitung: aktuelle Partnerdaten" active={false} />
-          )}
-        </div>
-        </div>
-        {editorPanelOpen ? (
-          <div
-            className={`border-t border-zinc-200 px-5 py-3 ${
-              fullscreen ? "sticky top-0 z-30 bg-white/95 backdrop-blur" : ""
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold tabular-nums ring-1 ring-inset ${
+              builderChecklistDone === builderChecklistTotal
+                ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
+                : "bg-amber-50 text-amber-800 ring-amber-200"
             }`}
           >
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={toggleAllBuilderSections}
-                title={allBuilderSectionsCollapsed ? tr("Alle Bereiche ausklappen") : tr("Alle Bereiche einklappen")}
-                aria-label={allBuilderSectionsCollapsed ? tr("Alle Bereiche ausklappen") : tr("Alle Bereiche einklappen")}
-                className="grid size-8 shrink-0 place-items-center rounded-full border border-zinc-200 bg-white text-xs font-black text-zinc-700 shadow-sm transition hover:bg-zinc-50"
-              >
-                {allBuilderSectionsCollapsed ? "+" : "-"}
-              </button>
-              <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-                {builderQuickSections.map(([section, label]) => (
-                  <button
-                    key={section}
-                    type="button"
-                    onClick={() => jumpToBuilderSection(section)}
-                    className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
-                  >
-                    {label}
-                  </button>
-                ))}
+            <CheckCircle2 className="size-3.5" aria-hidden="true" />
+            {builderChecklistDone}/{builderChecklistTotal} {tr("erledigt")}
+          </span>
+        </div>
+        </div>
+        <div
+          className={`border-t px-5 py-3 ${
+            publishBlocked
+              ? "border-amber-200 bg-amber-50/75"
+              : "border-emerald-200 bg-emerald-50/75"
+          }`}
+          role="status"
+        >
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className={`text-xs font-black ${publishBlocked ? "text-amber-950" : "text-emerald-950"}`}>
+                  {publishBlocked
+                    ? tr("Warum ist Veröffentlichen gesperrt?")
+                    : tr("Alle Pflichtchecks sind erledigt. Veröffentlichen ist freigeschaltet.")}
+                </p>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-black tabular-nums ${publishBlocked ? "bg-amber-200/70 text-amber-950" : "bg-emerald-200/70 text-emerald-950"}`}>
+                  {readinessReport.requiredDone}/{readinessReport.requiredTotal} {tr("Pflichtchecks")}
+                </span>
               </div>
+              {publishBlocked ? (
+                <p className="mt-1 truncate text-xs text-amber-900">
+                  {publishBlockers
+                    .slice(0, 4)
+                    .map((item) => tr(item.label))
+                    .join(" · ")}
+                  {publishBlockers.length > 4 ? ` · +${publishBlockers.length - 4}` : ""}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-emerald-800">
+                  {tr("Der aktuelle Entwurf kann jetzt veröffentlicht werden.")}
+                </p>
+              )}
             </div>
+            <button
+              type="button"
+              onClick={openPublishChecklist}
+              className={`shrink-0 text-xs font-black underline decoration-2 underline-offset-4 ${publishBlocked ? "text-amber-950" : "text-emerald-950"}`}
+            >
+              {tr("Checkliste öffnen")}
+            </button>
+          </div>
+        </div>
+        {pending || clientSaveError || state.message ? (
+          <div
+            role={clientSaveError || (!state.ok && state.message) ? "alert" : "status"}
+            aria-live="polite"
+            className={`border-t px-5 py-2.5 text-sm font-semibold ${
+              clientSaveError || (!state.ok && state.message)
+                ? "border-red-200 bg-red-50 text-red-800"
+                : pending
+                  ? "border-blue-200 bg-blue-50 text-blue-800"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-800"
+            }`}
+          >
+            {clientSaveError ||
+              (pending
+                ? builderLocale === "en"
+                  ? "Saving changes…"
+                  : "Änderungen werden gespeichert…"
+                : tr(state.message))}
           </div>
         ) : null}
       </header>
       <form
+        ref={formRef}
         action={formAction}
+        onSubmit={handleSaveSubmit}
         aria-busy={pending}
         className={`grid min-w-0 max-w-full grid-cols-1 gap-0 transition-[grid-template-columns] duration-200 ${
           useViewportShell
@@ -1372,11 +1827,11 @@ export function MicrositePanel({
 
         <aside
           ref={sidebarRef}
-            className={`relative w-full min-w-0 max-w-full self-start overflow-x-hidden border-zinc-200 bg-white ${
+            className={`relative w-full min-w-0 max-w-full self-start touch-pan-y overflow-x-hidden border-zinc-200 bg-white [scrollbar-width:thin] ${
             fullscreen
-              ? "border-b overflow-x-hidden overflow-y-auto lg:sticky lg:top-20 lg:h-[calc(100dvh-5rem)] lg:max-h-[calc(100dvh-5rem)] lg:border-b-0 lg:border-r"
+              ? "h-[min(72dvh,720px)] min-h-0 overflow-y-auto overscroll-y-contain border-b [scrollbar-gutter:stable] lg:sticky lg:top-20 lg:h-[calc(100dvh-5rem)] lg:max-h-[calc(100dvh-5rem)] lg:border-b-0 lg:border-r"
               : inlineSidebarClasses
-          } ${editorPanelOpen ? "space-y-6 p-5" : "p-2"}`}
+          } ${editorPanelOpen ? "space-y-4 p-4" : "p-2"}`}
         >
           {fullscreen && editorPanelOpen ? (
             <div
@@ -1404,6 +1859,10 @@ export function MicrositePanel({
 
           {editorPanelOpen ? (
             <>
+          <BuilderCategory
+            title="Direkt bearbeiten"
+            description="Wähle ein Element in der Vorschau und ändere nur seine relevanten Eigenschaften."
+          >
           <div
             ref={selectedElementPanelRef}
             data-builder-section="selected"
@@ -1417,80 +1876,24 @@ export function MicrositePanel({
               onInlineTextOverride={syncInlineTextOverride}
             />
           </div>
-          <ReadinessPanel report={readinessReport} />
-          <BuilderSectionsPanel onSelect={setSelectedElementId} />
-          <div data-builder-section="templates">
-            <TemplateSystemPanel
-              recommendedTemplateId={recommendedTemplateId}
-              selectedTemplateId={config.template}
-              onApply={(templateId) =>
-                setConfig((current) =>
-                  applyMicrositeTemplatePreset(current, templateId),
-                )
-              }
-            />
-          </div>
-          <DataSourcePanel partner={partner} />
-          <MenuSystemPanel partner={partner} />
-          <div data-builder-section="assets">
-            <AssetReadinessPanel partner={partner} config={config} setConfig={setConfig} />
-          </div>
-          <VersionRollbackPanel partner={partner} setConfig={setConfig} />
-          <div data-builder-section="seo">
-            <SeoSystemPanel config={config} setConfig={setConfig} />
-          </div>
-          <BuilderChecklistPanel config={config} setConfig={setConfig} />
-          <WorkflowPanel
-            partner={partner}
-            report={readinessReport}
-            previewIdentifier={previewIdentifier}
-          />
+          </BuilderCategory>
+
+          <BuilderCategory
+            title="Grundlagen"
+            description="Marke und Startbereich des aktuellen Templates."
+          >
 
           <div data-builder-section="brand">
           <ConfigSection title="Marke">
-            <ColorField
-              name="accent"
-              label="Akzentfarbe"
-              value={config.branding.accent}
-              onChange={(value) =>
-                setConfig((current) => ({
-                  ...current,
-                  branding: { ...current.branding, accent: value },
-                }))
-              }
-            />
-            <ColorField
-              name="accent_secondary"
-              label="Gradientfarbe"
-              value={config.branding.accentSecondary}
-              onChange={(value) =>
-                setConfig((current) => ({
-                  ...current,
-                  branding: { ...current.branding, accentSecondary: value },
-                }))
-              }
+            <PaletteControl
+              logoUrl={config.branding.logoUrl || partner.logo_url || ""}
+              config={config}
+              setConfig={setConfig}
             />
             <SourceLockedField
               label="Logo"
               value={partner.logo_url || "Im Partnerprofil hinterlegen"}
               source="Partnerprofil → Media"
-            />
-            <EditorField
-              name="partner_badge_url"
-              label="Badge-Icon URL"
-              value={config.branding.partnerBadgeUrl}
-              onChange={(value) =>
-                updateBranding(setConfig, "partnerBadgeUrl", value)
-              }
-              placeholder="https://..."
-              list={`microsite-assets-${partner.id || "new"}`}
-            />
-            <AssetUploadField
-              name="badge_file"
-              label="Neues Badge-Icon hochladen"
-              onPreview={(url) =>
-                updateBranding(setConfig, "partnerBadgeUrl", url)
-              }
             />
           </ConfigSection>
           </div>
@@ -1518,184 +1921,165 @@ export function MicrositePanel({
               value={config.hero.openingText}
               source="Partnerprofil → Öffnungszeiten"
             />
-            <EditorField
-              name="hero_image_url"
-              label="Startbild URL"
-              value={config.hero.backgroundImageUrl}
-              onChange={(value) =>
-                updateHero(setConfig, "backgroundImageUrl", value)
-              }
-              list={`microsite-assets-${partner.id || "new"}`}
-            />
-            <AssetUploadField
-              name="hero_file"
-              label="Neues Startbild hochladen"
-              onPreview={(url) =>
-                updateHero(setConfig, "backgroundImageUrl", url)
-              }
-            />
           </ConfigSection>
           </div>
 
-          <ConfigSection title="Deals & Vorteile">
-            <EditorField
-              name="deals_headline"
-              label="Überschrift"
-              value={config.deals.headline}
-              onChange={(value) => updateDeals(setConfig, "headline", value)}
-            />
-            <EditorField
-              name="deals_slogan"
-              label="Slogan"
-              value={config.deals.slogan}
-              onChange={(value) => updateDeals(setConfig, "slogan", value)}
-            />
-            <EditorField
-              name="deals_description"
-              label="Beschreibung"
-              value={config.deals.description}
-              onChange={(value) => updateDeals(setConfig, "description", value)}
-              multiline
-            />
-            <EditorField
-              name="deals_illustration_url"
-              label="Intro-Grafik URL"
-              value={config.deals.illustrationUrl}
-              onChange={(value) =>
-                updateDeals(setConfig, "illustrationUrl", value)
-              }
-              list={`microsite-assets-${partner.id || "new"}`}
-            />
-            <AssetUploadField
-              name="deals_illustration_file"
-              label="Neue Intro-Grafik hochladen"
-              onPreview={(url) =>
-                updateDeals(setConfig, "illustrationUrl", url)
-              }
-            />
-            <EditorField
-              name="top_deal_headline"
-              label="Top-Deal Überschrift"
-              value={config.deals.topDealHeadline}
-              onChange={(value) =>
-                updateDeals(setConfig, "topDealHeadline", value)
-              }
-            />
-            <EditorField
-              name="top_deal_image_url"
-              label="Top-Deal Bild URL"
-              value={config.deals.topDealImageUrl}
-              onChange={(value) =>
-                updateDeals(setConfig, "topDealImageUrl", value)
-              }
-              list={`microsite-assets-${partner.id || "new"}`}
-            />
-            <AssetUploadField
-              name="top_deal_file"
-              label="Neues Top-Deal Bild hochladen"
-              onPreview={(url) => updateDeals(setConfig, "topDealImageUrl", url)}
-            />
-          </ConfigSection>
+          </BuilderCategory>
 
-          <ConfigSection title="Weitere Bereiche">
-            <EditorField
-              name="menu_headline"
-              label="Speisekarte Überschrift"
-              value={config.content.menuHeadline}
-              onChange={(value) => updateContent(setConfig, "menuHeadline", value)}
-            />
-            <EditorField
-              name="menu_description"
-              label="Speisekarte Beschreibung"
-              value={config.content.menuDescription}
-              onChange={(value) =>
-                updateContent(setConfig, "menuDescription", value)
-              }
-              multiline
-            />
-            <EditorField
-              name="about_headline"
-              label="Über-uns Überschrift"
-              value={config.content.aboutHeadline}
-              onChange={(value) =>
-                updateContent(setConfig, "aboutHeadline", value)
-              }
-            />
-            <EditorField
-              name="about_text"
-              label="Über-uns Text"
-              value={config.content.aboutText}
-              onChange={(value) => updateContent(setConfig, "aboutText", value)}
-              multiline
-            />
-            <EditorField
-              name="contact_headline"
-              label="Kontakt Überschrift"
-              value={config.content.contactHeadline}
-              onChange={(value) =>
-                updateContent(setConfig, "contactHeadline", value)
-              }
-            />
-            <EditorField
-              name="app_headline"
-              label="App-Banner Überschrift"
-              value={config.content.appHeadline}
-              onChange={(value) => updateContent(setConfig, "appHeadline", value)}
-            />
-            <EditorField
-              name="app_text"
-              label="App-Banner Text"
-              value={config.content.appText}
-              onChange={(value) => updateContent(setConfig, "appText", value)}
-              multiline
-            />
-            <EditorField
-              name="app_phone_screenshot_url"
-              label="iPhone App-Screenshot URL"
-              value={config.elementText["content.appPhoneScreenshotUrl"] || "/partner-details-page.jpg"}
-              onChange={(value) =>
-                setConfig((current) =>
-                  setElementTextValue(current, "content.appPhoneScreenshotUrl", value),
-                )
-              }
-              list={`microsite-assets-${partner.id || "new"}`}
-            />
-            <AssetUploadField
-              name="app_phone_screenshot_file"
-              label="Neuen iPhone App-Screenshot hochladen"
-              onPreview={(url) =>
-                setConfig((current) =>
-                  setElementTextValue(current, "content.appPhoneScreenshotUrl", url),
-                )
-              }
-            />
-            <EditorField
-              name="footer_text"
-              label="Footer-Text"
-              value={config.content.footerText}
-              onChange={(value) => updateContent(setConfig, "footerText", value)}
-            />
-          </ConfigSection>
+          <BuilderCategory
+            title="Seiteninhalte"
+            description="Texte und Inhalte in derselben Reihenfolge wie auf der Microsite."
+          >
 
-          <ConfigSection title="Version & Notiz">
-            <EditorField
-              name="builder_version_note"
-              label="Interne Versionsnotiz"
-              value={config.builder.versionNote}
-              onChange={(value) =>
-                setConfig((current) => ({
-                  ...current,
-                  builder: { ...current.builder, versionNote: value },
-                }))
-              }
-              placeholder="z. B. Knobi Design finalisiert, mobile geprüft"
-              multiline
-            />
-          </ConfigSection>
+          <div data-builder-section="content" className="space-y-2">
+            <ConfigSection title="Partner-Zitat">
+              <EditorField
+                name="quote_text"
+                label="Partner-Zitat"
+                value={config.content.quoteText}
+                onChange={(value) => updateContent(setConfig, "quoteText", value)}
+                multiline
+              />
+              <EditorField
+                name="quote_attribution"
+                label="Zitat-Absender"
+                value={config.content.quoteAttribution}
+                onChange={(value) =>
+                  updateContent(setConfig, "quoteAttribution", value)
+                }
+              />
+            </ConfigSection>
 
-          <SocialMediaPanel partner={partner} config={config} setConfig={setConfig} />
+            <ConfigSection title="Deals & Vorteile">
+              <EditorField
+                name="deals_headline"
+                label="Überschrift"
+                value={config.deals.headline}
+                onChange={(value) => updateDeals(setConfig, "headline", value)}
+              />
+              <EditorField
+                name="deals_slogan"
+                label="Slogan"
+                value={config.deals.slogan}
+                onChange={(value) => updateDeals(setConfig, "slogan", value)}
+              />
+              <EditorField
+                name="deals_description"
+                label="Beschreibung"
+                value={config.deals.description}
+                onChange={(value) => updateDeals(setConfig, "description", value)}
+                multiline
+              />
+            </ConfigSection>
 
-          <div data-builder-section="print">
+            <ConfigSection title="App & Vorteile">
+              <EditorField
+                name="ecosystem_headline"
+                label="App Vorteile Überschrift"
+                value={config.elementText["content.ecosystemHeadline"] || "Mehr als nur Stempel."}
+                onChange={(value) =>
+                  setConfig((current) =>
+                    setElementTextValue(current, "content.ecosystemHeadline", value),
+                  )
+                }
+              />
+              <EditorField
+                name="ecosystem_text"
+                label="App Vorteile Text"
+                value={config.elementText["content.ecosystemText"] || "Eine App für Deals, Treue, Entdeckungen und kleine Erfolge bei jedem Besuch."}
+                onChange={(value) =>
+                  setConfig((current) =>
+                    setElementTextValue(current, "content.ecosystemText", value),
+                  )
+                }
+                multiline
+              />
+            </ConfigSection>
+
+            <SocialMediaPanel partner={partner} config={config} setConfig={setConfig} />
+
+            <ConfigSection title="Speisekarte">
+              <EditorField
+                name="menu_headline"
+                label="Speisekarte Überschrift"
+                value={config.content.menuHeadline}
+                onChange={(value) => updateContent(setConfig, "menuHeadline", value)}
+              />
+              <EditorField
+                name="menu_description"
+                label="Speisekarte Beschreibung"
+                value={config.content.menuDescription}
+                onChange={(value) =>
+                  updateContent(setConfig, "menuDescription", value)
+                }
+                multiline
+              />
+              <MenuImagesEditor
+                partner={partner}
+                config={config}
+                setConfig={setConfig}
+              />
+            </ConfigSection>
+
+            <ConfigSection title="Über uns & Kontakt">
+              <EditorField
+                name="about_headline"
+                label="Über-uns Überschrift"
+                value={config.content.aboutHeadline}
+                onChange={(value) =>
+                  updateContent(setConfig, "aboutHeadline", value)
+                }
+              />
+              <EditorField
+                name="about_text"
+                label="Über-uns Text"
+                value={config.content.aboutText}
+                onChange={(value) => updateContent(setConfig, "aboutText", value)}
+                multiline
+              />
+              <EditorField
+                name="contact_headline"
+                label="Kontakt Überschrift"
+                value={config.content.contactHeadline}
+                onChange={(value) =>
+                  updateContent(setConfig, "contactHeadline", value)
+                }
+              />
+            </ConfigSection>
+
+            <ConfigSection title="Footer">
+              <EditorField
+                name="footer_text"
+                label="Footer-Text"
+                value={config.content.footerText}
+                onChange={(value) => updateContent(setConfig, "footerText", value)}
+              />
+            </ConfigSection>
+          </div>
+          </BuilderCategory>
+
+          <BuilderCategory
+            title="Bilder & Medien"
+            description="Nur Bilder, die im aktuellen Template tatsächlich verwendet werden."
+          >
+            <div data-builder-section="assets" className="space-y-2">
+              <CurrentTemplateImagesPanel
+                partner={partner}
+                config={config}
+                setConfig={setConfig}
+              />
+              <AssetReadinessPanel partner={partner} config={config} setConfig={setConfig} />
+            </div>
+          </BuilderCategory>
+
+          <BuilderCategory
+            title="Sichtbarkeit & Ausgabe"
+            description="Suchdarstellung und optionale Druckmedien konfigurieren."
+          >
+            <div data-builder-section="seo">
+              <SeoSystemPanel config={config} setConfig={setConfig} />
+            </div>
+            <div data-builder-section="print">
             <ConfigSection title="Print-Studio">
               <PrintableStudioPanel
                 partner={partner}
@@ -1705,6 +2089,32 @@ export function MicrositePanel({
               />
             </ConfigSection>
           </div>
+          </BuilderCategory>
+
+          <BuilderCategory
+            title="Prüfen & veröffentlichen"
+            description="Qualität prüfen und die Microsite anschließend veröffentlichen."
+            id="microsite-publish-checklist"
+          >
+            <div data-builder-section="quality">
+              <ReadinessPanel
+                report={readinessReport}
+                onEditItem={openReadinessEditor}
+              />
+            </div>
+            <div data-builder-section="checklist">
+              <BuilderChecklistPanel
+                config={config}
+                setConfig={setConfig}
+                onEditItem={openReadinessEditor}
+              />
+            </div>
+            <WorkflowPanel
+              partner={partner}
+              report={readinessReport}
+              previewIdentifier={previewIdentifier}
+            />
+          </BuilderCategory>
 
           <div className="flex flex-col gap-2">
             <button
@@ -1717,33 +2127,6 @@ export function MicrositePanel({
             >
               {pending && pendingIntent === "draft" ? <LoadingSpinner /> : null}
               {pending && pendingIntent === "draft" ? tr("Speichert…") : tr("Entwurf speichern")}
-            </button>
-            <button
-              type="submit"
-              name="intent"
-              value="review"
-              onClick={() => setPendingIntent("review")}
-              disabled={pending}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
-            >
-              {pending && pendingIntent === "review" ? <LoadingSpinner /> : null}
-              {pending && pendingIntent === "review" ? tr("Wird markiert…") : tr("Zur Prüfung markieren")}
-            </button>
-            <button
-              type="submit"
-              name="intent"
-              value="approve"
-              onClick={() => setPendingIntent("approve")}
-              disabled={pending || publishBlocked}
-              title={
-                publishBlocked
-                  ? tr("Freigabe erst nach erfüllten Pflichtchecks möglich")
-                  : tr("Microsite intern freigeben")
-              }
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
-            >
-              {pending && pendingIntent === "approve" ? <LoadingSpinner /> : null}
-              {pending && pendingIntent === "approve" ? tr("Wird freigegeben…") : tr("Freigeben")}
             </button>
             <button
               type="submit"
@@ -1765,9 +2148,31 @@ export function MicrositePanel({
               {pending && pendingIntent === "publish" ? tr("Wird veröffentlicht…") : tr("Veröffentlichen")}
             </button>
             {publishBlocked ? (
-              <p className="rounded-md bg-rose-50 px-3 py-2 text-xs font-semibold leading-5 text-rose-700">
-                {tr("Die Live-Veröffentlichung ist gesperrt, bis alle Pflichtprüfungen erledigt sind. Entwurf und Prüfung bleiben möglich.")}
-              </p>
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-800">
+                <p className="text-xs font-black">
+                  {tr("Noch offene Pflichtpunkte")}
+                </p>
+                <ul className="mt-2 space-y-2">
+                  {publishBlockers.map((item) => (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        onClick={() => openReadinessEditor(item.id)}
+                        className="group flex w-full items-start justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs leading-5 transition hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                      >
+                        <span>
+                          <span className="font-black">{tr(item.label)}:</span>{" "}
+                          <span>{tr(item.detail)}</span>
+                        </span>
+                        <ChevronRight
+                          aria-hidden="true"
+                          className="mt-0.5 size-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
             {state.message ? (
               <p className={`text-sm ${state.ok ? "text-emerald-700" : "text-red-700"}`}>
@@ -1786,7 +2191,7 @@ export function MicrositePanel({
         </aside>
 
         <div
-          className={`min-w-0 max-w-full overflow-hidden bg-zinc-50 ${
+          className={`min-w-0 max-w-full overflow-x-hidden bg-zinc-50 ${
             useViewportShell ? "flex min-h-0 flex-col p-3" : "p-3 sm:p-5"
           }`}
         >
@@ -1844,7 +2249,7 @@ export function MicrositePanel({
             onInputCapture={handleInlineTextInput}
             onBlurCapture={handleInlineTextBlur}
             data-admin-i18n-ignore="true"
-            className={`microsite-builder-surface mx-auto overflow-x-hidden overflow-y-auto transition-all ${
+            className={`microsite-builder-surface mx-auto overflow-x-hidden overflow-y-visible transition-all ${
               viewport === "mobile"
                 ? "w-full max-w-[390px]"
                 : "w-full max-w-full"
@@ -1860,7 +2265,11 @@ export function MicrositePanel({
                 zoom: previewZoom,
               }}
             >
-              <MicrositeRenderer partner={partner} config={config} />
+              <MicrositeRenderer
+                partner={partner}
+                config={config}
+                showAppDownloadPopup={false}
+              />
             </div>
           </div>
         </div>
@@ -1929,12 +2338,79 @@ const fontFamilyOptions = [
   { value: "Brush Script MT, cursive", label: "Script" },
 ]
 
-function ReadinessPanel({ report }: { report: MicrositeReadinessReport }) {
+type ReadinessEditTarget = {
+  section: "selected" | "brand" | "hero" | "content" | "assets" | "seo" | "checklist"
+  elementId?: string
+  viewport?: "desktop" | "mobile"
+  partnerTab?: "details" | "rewards" | "deals" | "menu"
+}
+
+function readinessEditTarget(itemId: string): ReadinessEditTarget {
+  switch (itemId) {
+    case "partner-logo":
+    case "partner-name":
+    case "partner-address":
+    case "partner-phone":
+    case "coordinates":
+    case "mobile-actions":
+    case "self-service-safe":
+    case "public-url":
+      return { section: "checklist", partnerTab: "details" }
+    case "opening-hours":
+      return { section: "checklist", partnerTab: "rewards" }
+    case "menu-prices":
+    case "menu-images":
+      return { section: "checklist", partnerTab: "menu" }
+    case "microsite-hero":
+      return { section: "selected", elementId: "hero.backgroundImageUrl" }
+    case "microsite-deals-image":
+      return { section: "assets" }
+    case "top-deal-image":
+      return { section: "selected", elementId: "deals.topDealImageUrl" }
+    case "about-images":
+      return { section: "selected", elementId: "content.aboutHeroImageUrl" }
+    case "asset-review":
+      return { section: "assets" }
+    case "seo-title":
+    case "seo-description":
+    case "seo-keywords":
+    case "public-indexing":
+    case "structured-data":
+    case "preview-noindex":
+    case "sitemap-robots":
+    case "canonical-url":
+    case "site-url-env":
+      return { section: "seo" }
+    case "faq":
+      return { section: "selected", elementId: "faq.0.question" }
+    case "desktop-qa-done":
+    case "responsive":
+      return { section: "checklist", viewport: "desktop" }
+    case "mobile-qa-done":
+      return { section: "checklist", viewport: "mobile" }
+    case "seo-review":
+      return { section: "seo" }
+    case "publish-review":
+    case "draft-versioning":
+    case "published":
+    default:
+      return { section: "checklist" }
+  }
+}
+
+function ReadinessPanel({
+  report,
+  onEditItem,
+}: {
+  report: MicrositeReadinessReport
+  onEditItem: (itemId: string) => void
+}) {
   const { tr } = useBuilderI18n()
+  const completedItems = report.items.filter((item) => item.ok).length
+  const openItems = report.items.filter((item) => !item.ok)
   const blockedItems = report.items.filter(
     (item) => item.severity === "required" && !item.ok,
   )
-  const nextItems = report.items.filter((item) => !item.ok).slice(0, 5)
 
   return (
     <ConfigSection title="Bereitschaft">
@@ -1945,7 +2421,7 @@ function ReadinessPanel({ report }: { report: MicrositeReadinessReport }) {
               {tr("Live-Bereitschaft")}
             </p>
             <p className="mt-1 text-2xl font-black tracking-[-0.05em] text-zinc-950">
-              {report.score}%
+              {completedItems}/{report.items.length} {tr("erledigt")}
             </p>
           </div>
           <span
@@ -1964,7 +2440,7 @@ function ReadinessPanel({ report }: { report: MicrositeReadinessReport }) {
                   : tr("In Arbeit")}
             </span>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
             <ReadinessMetric
             label="Pflicht"
             value={`${report.requiredDone}/${report.requiredTotal}`}
@@ -1974,13 +2450,22 @@ function ReadinessPanel({ report }: { report: MicrositeReadinessReport }) {
             value={`${report.recommendedDone}/${report.recommendedTotal}`}
           />
         </div>
-        {nextItems.length ? (
+        <p className="mt-3 rounded-lg bg-teal-50 px-3 py-2 text-xs font-medium leading-5 text-teal-900">
+          {tr(
+            "Nur ein fehlender Partnername blockiert die Veröffentlichung. Alle anderen Punkte sind Empfehlungen.",
+          )}
+        </p>
+        {openItems.length ? (
           <div className="mt-4 space-y-2">
             <p className="text-xs font-bold uppercase tracking-[0.1em] text-zinc-500">
-              {tr("Nächste Aufgaben")}
+              {tr("Checkliste")}
             </p>
-            {nextItems.map((item) => (
-              <ReadinessItemRow key={item.id} item={item} />
+            {openItems.map((item) => (
+              <ReadinessItemRow
+                key={item.id}
+                item={item}
+                onEdit={() => onEditItem(item.id)}
+              />
             ))}
           </div>
         ) : (
@@ -2010,257 +2495,54 @@ function ReadinessMetric({ label, value }: { label: string; value: string }) {
 
 function ReadinessItemRow({
   item,
+  onEdit,
 }: {
   item: MicrositeReadinessReport["items"][number]
+  onEdit: () => void
 }) {
   const { tr } = useBuilderI18n()
   return (
-    <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
-      <div className="flex items-start gap-2">
-        <span
-          className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full text-[10px] font-black ${
-            item.ok ? "bg-emerald-500 text-white" : "bg-amber-400 text-white"
-          }`}
-        >
-          {item.ok ? "\u2713" : "!"}
+    <button
+      type="button"
+      onClick={onEdit}
+      className="group flex w-full items-start justify-between gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-left transition hover:border-teal-300 hover:bg-teal-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
+      aria-label={`${tr(item.label)} – ${tr("Bearbeiten")}`}
+    >
+      <span className="flex min-w-0 items-start gap-2">
+        <span className="mt-0.5 grid size-4 shrink-0 place-items-center">
+          {item.ok ? (
+            <span className="grid size-4 place-items-center rounded-full bg-emerald-500 text-white">
+              <Check aria-hidden="true" className="size-3" strokeWidth={3} />
+            </span>
+          ) : (
+            <CircleAlert
+              aria-hidden="true"
+              className="size-4 text-amber-600"
+              strokeWidth={2.4}
+            />
+          )}
         </span>
-        <div>
-          <p className="text-xs font-bold text-zinc-900">{tr(item.label)}</p>
-          <p className="mt-0.5 text-[11px] leading-4 text-zinc-500">
+        <span className="min-w-0">
+          <span className="block text-xs font-bold text-zinc-900">
+            {tr(item.label)}
+          </span>
+          <span className="mt-0.5 block text-xs leading-4 text-zinc-500">
             {tr(item.detail)}
-          </p>
-        </div>
-      </div>
-    </div>
+          </span>
+        </span>
+      </span>
+      <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-xs font-bold text-teal-700">
+        {tr("Bearbeiten")}
+        <ChevronRight
+          aria-hidden="true"
+          className="size-3.5 transition-transform group-hover:translate-x-0.5"
+        />
+      </span>
+    </button>
   )
 }
 
-function BuilderSectionsPanel({
-  onSelect,
-}: {
-  onSelect: (id: string) => void
-}) {
-  const { tr } = useBuilderI18n()
-  const sections = [
-    ["Top-Navigation", "navigation.group"],
-    ["Startbereich", "hero.headline"],
-    ["Deals & Vorteile", "deals.headline"],
-    ["Top-Deal", "deals.topDealHeadline"],
-    ["Stempelkarte", "stamps.headline"],
-    ["Speisekarte", "content.menuHeadline"],
-    ["Über uns", "content.aboutHeadline"],
-    ["Kontakt", "content.contactHeadline"],
-    ["FAQ", "content.faqHeadline"],
-    ["Footer", "content.footerText"],
-  ] as const
-
-  return (
-    <ConfigSection title="Builder-Bereiche">
-      <div className="grid grid-cols-2 gap-2">
-        {sections.map(([label, id]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onSelect(id)}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-xs font-black text-zinc-800 transition hover:border-blue-300 hover:bg-blue-50"
-          >
-            {tr(label)}
-          </button>
-        ))}
-      </div>
-    </ConfigSection>
-  )
-}
-
-function templatePreviewMeta(templateId: MicrositeTemplatePreset["id"]) {
-  if (templateId === "restaurant-local") {
-    return {
-      category: "Regional essen",
-      mood: "Warm, regional und erzählerisch.",
-      frame: "border-amber-200 bg-[#fff7ed]",
-      badge: "bg-white text-amber-700",
-      hero: "bg-[linear-gradient(135deg,#fed7aa_0%,#fdba74_48%,#0ea5e9_100%)]",
-      cardStrong: "bg-white/95",
-      cardSoft: "bg-amber-100/90",
-      lineStrong: "bg-amber-700/80",
-      lineSoft: "bg-sky-400/75",
-      orb: "bg-sky-400/80",
-    }
-  }
-
-  if (templateId === "restaurant-clean") {
-    return {
-      category: "Minimalistische Gastronomie",
-      mood: "Reduziert, schnell und mit wenig Bildmaterial.",
-      frame: "border-zinc-200 bg-zinc-50",
-      badge: "bg-white text-zinc-700",
-      hero: "bg-[linear-gradient(135deg,#111827_0%,#334155_58%,#14b8a6_100%)]",
-      cardStrong: "bg-white/95",
-      cardSoft: "bg-zinc-200/90",
-      lineStrong: "bg-zinc-700/80",
-      lineSoft: "bg-teal-400/80",
-      orb: "bg-teal-400/90",
-    }
-  }
-
-  if (templateId === "salon-editorial") {
-    return {
-      category: "Beauty-Studio",
-      mood: "Editorial, hochwertig und serviceorientiert.",
-      frame: "border-rose-200 bg-[#fff1f2]",
-      badge: "bg-white text-rose-700",
-      hero: "bg-[linear-gradient(135deg,#fbcfe8_0%,#fda4af_52%,#b45309_100%)]",
-      cardStrong: "bg-white/95",
-      cardSoft: "bg-rose-100/90",
-      lineStrong: "bg-rose-700/80",
-      lineSoft: "bg-amber-500/75",
-      orb: "bg-amber-500/80",
-    }
-  }
-
-  if (templateId === "atelier-noir") {
-    return {
-      category: "Beauty Noir",
-      mood: "Dunkel, luxuriös und modebewusst.",
-      frame: "border-amber-300 bg-[#17131c]",
-      badge: "bg-white/10 text-amber-100",
-      hero: "bg-[linear-gradient(135deg,#18111b_0%,#3b1f2e_46%,#f59e0b_100%)]",
-      cardStrong: "bg-white/12",
-      cardSoft: "bg-white/6",
-      lineStrong: "bg-amber-300/90",
-      lineSoft: "bg-rose-300/75",
-      orb: "bg-rose-300/80",
-    }
-  }
-
-  if (templateId === "wellness-serene") {
-    return {
-      category: "Wellness",
-      mood: "Ruhig, regenerierend und luftig.",
-      frame: "border-emerald-200 bg-[#ecfdf5]",
-      badge: "bg-white text-emerald-700",
-      hero: "bg-[linear-gradient(135deg,#d1fae5_0%,#a7f3d0_50%,#93c5fd_100%)]",
-      cardStrong: "bg-white/95",
-      cardSoft: "bg-emerald-100/90",
-      lineStrong: "bg-emerald-700/75",
-      lineSoft: "bg-sky-400/75",
-      orb: "bg-sky-300/90",
-    }
-  }
-
-  if (templateId === "festival-neon") {
-    return {
-      category: "Nightlife",
-      mood: "Elektrisierend, markant und energiegeladen.",
-      frame: "border-cyan-300 bg-[#07111f]",
-      badge: "bg-white/10 text-cyan-100",
-      hero: "bg-[linear-gradient(135deg,#07111f_0%,#2563eb_38%,#22d3ee_62%,#f43f5e_100%)]",
-      cardStrong: "bg-white/12",
-      cardSoft: "bg-white/6",
-      lineStrong: "bg-cyan-300/90",
-      lineSoft: "bg-rose-300/80",
-      orb: "bg-cyan-300/80",
-    }
-  }
-
-  if (templateId === "cinema-spotlight") {
-    return {
-      category: "Unterhaltung",
-      mood: "Kontrastreich, eventorientiert und dramatisch.",
-      frame: "border-fuchsia-300 bg-[#18181b]",
-      badge: "bg-white/10 text-fuchsia-100",
-      hero: "bg-[linear-gradient(135deg,#111827_0%,#7e22ce_48%,#e11d48_100%)]",
-      cardStrong: "bg-white/10",
-      cardSoft: "bg-white/5",
-      lineStrong: "bg-rose-300/90",
-      lineSoft: "bg-fuchsia-300/75",
-      orb: "bg-fuchsia-400/80",
-    }
-  }
-
-  return {
-    category: "Restaurant",
-    mood: "Emotional, angebotsorientiert und auf Conversions ausgerichtet.",
-    frame: "border-amber-200 bg-[#fffbeb]",
-    badge: "bg-white text-amber-700",
-    hero: "bg-[linear-gradient(135deg,#f59e0b_0%,#f97316_46%,#16c4cc_100%)]",
-    cardStrong: "bg-white/95",
-    cardSoft: "bg-amber-100/90",
-    lineStrong: "bg-amber-700/80",
-    lineSoft: "bg-cyan-400/75",
-    orb: "bg-cyan-400/85",
-  }
-}
-
-function TemplateSystemPanel({
-  recommendedTemplateId,
-  selectedTemplateId,
-  onApply,
-}: {
-  recommendedTemplateId: MicrositeTemplatePreset["id"]
-  selectedTemplateId: MicrositeConfig["template"]
-  onApply: (templateId: MicrositeTemplatePreset["id"]) => void
-}) {
-  const { tr } = useBuilderI18n()
-  return (
-    <ConfigSection title="Vorlagen">
-      <div className="space-y-2">
-        {micrositeTemplatePresets.map((template) => {
-          const preview = templatePreviewMeta(template.id)
-
-          return (
-            <button
-              key={template.id}
-              type="button"
-              onClick={() => onApply(template.id)}
-              className={`w-full rounded-xl border p-2.5 text-left transition ${
-                selectedTemplateId === template.id
-                  ? "border-teal-400 bg-teal-50 shadow-[0_14px_35px_rgba(20,184,166,.12)]"
-                  : "border-zinc-200 bg-white hover:border-teal-300 hover:bg-teal-50/60"
-              }`}
-            >
-              <div className={`overflow-hidden rounded-xl border p-2.5 ${preview.frame}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${preview.badge}`}>
-                    {tr(preview.category)}
-                  </span>
-                  <span className={`size-6 rounded-full ${preview.orb}`} />
-                </div>
-                <div className="mt-2.5 grid grid-cols-[minmax(0,1.2fr)_minmax(72px,.8fr)] gap-2">
-                  <div className={`min-h-20 rounded-[1rem] ${preview.hero}`} />
-                  <div className="grid gap-2">
-                    <div className={`h-8 rounded-[0.85rem] ${preview.cardStrong}`} />
-                    <div className={`h-10 rounded-[0.85rem] ${preview.cardSoft}`} />
-                  </div>
-                </div>
-                <div className="mt-2.5 flex items-center gap-1.5">
-                  <span className={`h-2 w-12 rounded-full ${preview.lineStrong}`} />
-                  <span className={`h-2 w-8 rounded-full ${preview.lineSoft}`} />
-                </div>
-              </div>
-              <span className="mt-2.5 flex flex-wrap items-center gap-2 text-sm font-black text-zinc-950">
-                <span>{tr(template.name)}</span>
-                {recommendedTemplateId === template.id ? (
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-teal-700">
-                    Auto
-                  </span>
-                ) : null}
-              </span>
-              <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
-                {tr(preview.mood)}
-              </span>
-              <span className="mt-1 block text-[11px] leading-5 text-zinc-500">
-                {tr(template.description)}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-    </ConfigSection>
-  )
-}
-
-function DataSourcePanel({ partner }: { partner: PartnerWithDeals }) {
+/* Removed from the microsite options: data sources are managed in partner settings.
   const { tr } = useBuilderI18n()
   const socialCount = partner.socials.filter((item) => Boolean(item.url || item.handle)).length
   const categoryLabel = partner.category?.filter(Boolean).join(", ") || "Fehlt"
@@ -2303,6 +2585,7 @@ function DataSourcePanel({ partner }: { partner: PartnerWithDeals }) {
   )
 }
 
+*/
 type AssetQualityTarget = {
   label: string
   value: string
@@ -2451,19 +2734,60 @@ function AssetReadinessPanel({
   setConfig: Dispatch<SetStateAction<MicrositeConfig>>
 }) {
   const { tr } = useBuilderI18n()
+  const hasTwoForOneDeal = partner.deals.some(isMicrositeTwoForOneDeal)
+  const rewardStamps = Array.from(
+    new Set(
+      partner.reward_milestones
+        .filter((milestone) => milestone.active !== false)
+        .map((milestone) => milestone.required_stamps || 0)
+        .filter((stamp) => stamp > 0),
+    ),
+  ).sort((first, second) => first - second)
   const rows: AssetQualityTarget[] = [
     { label: "Partnerlogo", value: partner.logo_url || "", source: "Profil", slot: "branding.logo", minWidth: 512, minHeight: 512, preferredAspect: 1, aspectTolerance: 0.2 },
-    { label: "Feature-Karte", value: partner.feature_card_url || "", source: "Profil", slot: "partner.feature", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     { label: "Startbild", value: config.hero.backgroundImageUrl, source: "Microsite", slot: "hero.backgroundImageUrl", minWidth: 1600, minHeight: 1200, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "Deals", value: config.deals.illustrationUrl, source: "Microsite", slot: "deals.illustrationUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "Top-Deal", value: config.deals.topDealImageUrl, source: "Microsite", slot: "deals.topDealImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "Über uns 1", value: config.elementText["content.aboutHeroImageUrl"] || "", source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "Über uns 2", value: config.elementText["content.aboutIngredientImageUrl"] || "", source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "iPhone Screenshot", value: config.elementText["content.appPhoneScreenshotUrl"] || "/partner-details-page.jpg", source: "Microsite", slot: "content.appPhoneScreenshotUrl", minWidth: 720, minHeight: 1400, preferredAspect: 9 / 20, aspectTolerance: 0.12 },
-    { label: "Prämie nach 5 Stempeln", value: config.elementText["stamps.reward.5.image"] || "", source: "Microsite", slot: "stamps.reward.5.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
-    { label: "Prämie nach 10 Stempeln", value: config.elementText["stamps.reward.10.image"] || "", source: "Microsite", slot: "stamps.reward.10.image", minWidth: 900, minHeight: 900, preferredAspect: 1, aspectTolerance: 0.2 },
-    { label: "QR-Code", value: config.elementText["content.appQrCodeUrl"] || "", source: "Microsite", slot: "content.appQrCodeUrl", minWidth: 600, minHeight: 600, preferredAspect: 1, aspectTolerance: 0.12 },
+    ...(hasTwoForOneDeal
+      ? [{ label: "2für1 Hintergrundbild", value: config.deals.topDealImageUrl, source: "Microsite", slot: "deals.topDealImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 }]
+      : []),
+    { label: "Über-uns Hintergrundbild (Desktop)", value: config.elementText["content.aboutHeroImageUrl"] || "", source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Über-uns linkes Kartenbild", value: config.elementText["content.aboutIngredientImageUrl"] || "", source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 900, minHeight: 1100, preferredAspect: 4 / 5, aspectTolerance: 0.25 },
+    { label: "Über-uns rechtes Kartenbild", value: config.elementText["content.aboutLocationImageUrl"] || "", source: "Microsite", slot: "content.aboutLocationImageUrl", minWidth: 900, minHeight: 1100, preferredAspect: 4 / 5, aspectTolerance: 0.25 },
+    { label: "Über-uns unteres Overlaybild (Desktop)", value: config.elementText["content.aboutPrepImageUrl"] || "", source: "Microsite", slot: "content.aboutPrepImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    ...rewardStamps.map((stamp) => ({
+      label: `${stamp} Stempel Belohnungsbild`,
+      value: config.elementText[`stamps.reward.${stamp}.image`] || "",
+      source: "Microsite",
+      slot: `stamps.reward.${stamp}.image`,
+      minWidth: 900,
+      minHeight: 900,
+      preferredAspect: 1,
+      aspectTolerance: 0.2,
+    })),
+    { label: "Bild im Telefon-Mockup", value: config.elementText["content.appPhoneScreenshotUrl"] || "/partner-details-page.jpg", source: "Microsite", slot: "content.appPhoneScreenshotUrl", minWidth: 720, minHeight: 1400, preferredAspect: 9 / 20, aspectTolerance: 0.12 },
+    { label: "Benefitsi Footer Logo", value: config.elementText["footer.benefitsiLogo"] || "/benefitsi-logo-on-light.svg", source: "Microsite", slot: "footer.benefitsiLogo", minWidth: 256, minHeight: 64, preferredAspect: 4, aspectTolerance: 1.5 },
   ]
+  const assetTargets = [
+    ...rows
+      .filter((row) => row.slot !== "branding.logo")
+      .map((row) => ({ label: row.label, slot: row.slot })),
+    ...micrositeMenuPreviewItems(
+      menuItemsForMicrositeBuilder(partner),
+      config.elementText["content.menuFeaturedItemKey"],
+    ).map((item) => ({
+      label: `Speisekarte – ${micrositeMenuItemDisplayName(item.name) || "Gericht"}`,
+      slot: micrositeMenuItemImageId(item),
+    })),
+  ]
+  const [selectedAssetTarget, setSelectedAssetTarget] = useState(
+    assetTargets[0]?.slot || "hero.backgroundImageUrl",
+  )
+  const [pendingLibraryUploadTarget, setPendingLibraryUploadTarget] = useState("")
+  const activeAssetTarget = assetTargets.some((target) => target.slot === selectedAssetTarget)
+    ? selectedAssetTarget
+    : assetTargets[0]?.slot || "hero.backgroundImageUrl"
+  const renderedAssetLibrary = config.assets.library.filter((asset) =>
+    isAvailableMicrositeLibraryAsset(asset, partner),
+  )
   const assetSnapshots = useAssetQualitySnapshots(rows.map((row) => row.value))
   const qualityIssues = rows.filter((row) => {
     const quality = evaluateAssetQuality(row, assetSnapshots[row.value])
@@ -2472,10 +2796,44 @@ function AssetReadinessPanel({
 
   return (
     <ConfigSection title="Asset-Bibliothek">
-      <details className="rounded-xl border border-zinc-200 bg-white p-3">
-        <summary className="cursor-pointer text-sm font-black text-zinc-950">
-          {tr("Medienstatus & Austauschbarkeit")}
-        </summary>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-teal-200 bg-teal-50/60 p-3">
+          <p className="text-xs font-black text-zinc-900">
+            {tr("Bild hochladen oder aus der Bibliothek zuweisen")}
+          </p>
+          <p className="mt-1 text-[11px] leading-5 text-zinc-600">
+            {tr("Ziel auswählen, anschließend ein neues Bild hochladen oder unten ein vorhandenes Bild anklicken. Die Änderung erscheint sofort in der Vorschau und wird mit dem Entwurf gespeichert.")}
+          </p>
+          <label className="mt-3 block space-y-1.5 text-xs font-bold text-zinc-700">
+            {tr("Bildposition")}
+            <select
+              value={activeAssetTarget}
+              onChange={(event) => setSelectedAssetTarget(event.target.value)}
+              className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-900 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+            >
+              {assetTargets.map((target) => (
+                <option key={target.slot} value={target.slot}>
+                  {tr(target.label)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <input
+            type="hidden"
+            name="asset_library_target"
+            value={pendingLibraryUploadTarget || activeAssetTarget}
+          />
+          <div className="mt-3">
+            <AssetUploadField
+              name="asset_library_file"
+              label="Neues Bild direkt zur Asset-Bibliothek hinzufügen"
+              onPreview={(url) => {
+                setPendingLibraryUploadTarget(activeAssetTarget)
+                setConfig((current) => applyAssetToSlot(current, activeAssetTarget, url))
+              }}
+            />
+          </div>
+        </div>
         {qualityIssues.length ? (
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
             <p className="font-black">{tr("Automatische Bildprüfung")}</p>
@@ -2537,17 +2895,18 @@ function AssetReadinessPanel({
             )
           })}
         </div>
+        {renderedAssetLibrary.length ? (
         <div className="mt-4 border-t border-zinc-200 pt-3">
           <p className="text-xs font-black text-zinc-900">
             {tr("Gespeicherte Asset-Library")}
           </p>
           <div className="mt-2 grid grid-cols-3 gap-2">
-            {config.assets.library.slice(-12).map((asset) => (
+            {renderedAssetLibrary.slice(-12).reverse().map((asset) => (
               <button
                 key={`${asset.slot}-${asset.url}`}
                 type="button"
-                title={`${asset.label} · ${asset.slot}`}
-                onClick={() => setConfig((current) => applyAssetToSlot(current, asset.slot, asset.url))}
+                title={`${tr("Für ausgewählte Bildposition verwenden")}: ${asset.label}`}
+                onClick={() => setConfig((current) => applyAssetToSlot(current, activeAssetTarget, asset.url))}
                 className="group overflow-hidden rounded-lg border border-zinc-200 bg-white text-left transition hover:border-teal-400"
               >
                 <span className="block aspect-square bg-zinc-100">
@@ -2557,106 +2916,591 @@ function AssetReadinessPanel({
                 <span className="block truncate px-1.5 py-1 text-[10px] font-bold text-zinc-600 group-hover:text-teal-700">
                   {asset.label}
                 </span>
+                <span className="block truncate px-1.5 pb-1.5 text-[9px] font-semibold text-teal-700">
+                  {tr("Hier verwenden")}
+                </span>
               </button>
             ))}
           </div>
         </div>
-      </details>
+        ) : null}
+      </div>
     </ConfigSection>
   )
 }
 
-function VersionRollbackPanel({
+function CurrentTemplateImagesPanel({
   partner,
+  config,
   setConfig,
 }: {
   partner: PartnerWithDeals
+  config: MicrositeConfig
   setConfig: Dispatch<SetStateAction<MicrositeConfig>>
 }) {
-  const { tr } = useBuilderI18n()
-  const router = useRouter()
-  const [discardPending, startDiscardTransition] = useTransition()
-  const [discardMessage, setDiscardMessage] = useState("")
-  const publishedConfig = partner.microsite?.publishedVersion?.config
-  const draftConfig = partner.microsite?.draftVersion?.config
+  const assetListId = `microsite-assets-${partner.id || "new"}`
+  const assetChoices = config.assets.library
+    .filter((asset) => isAvailableMicrositeLibraryAsset(asset, partner))
+    .slice(-12)
+    .reverse()
+  const hasTwoForOneDeal = partner.deals.some(isMicrositeTwoForOneDeal)
+  const rewardStamps = Array.from(
+    new Set(
+      partner.reward_milestones
+        .filter((milestone) => milestone.active !== false)
+        .map((milestone) => milestone.required_stamps || 0)
+        .filter((stamp) => stamp > 0),
+    ),
+  ).sort((first, second) => first - second)
 
   return (
-    <ConfigSection title="Versionierung & Wiederherstellung">
-      <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-3 text-xs">
-        <div className="grid grid-cols-2 gap-2">
-          <ReadinessMetric
-            label="Entwurf"
-            value={partner.microsite?.draftVersion?.version_number ? `v${partner.microsite.draftVersion.version_number}` : "—"}
+    <>
+      <ConfigSection title="Marke & Startbereich Bilder">
+        <TemplateImageEditor
+          groupName="brand-hero-images"
+          name="hero_image_url"
+          label="Startbild"
+          value={config.hero.backgroundImageUrl}
+          uploadName="hero_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) => updateHero(setConfig, "backgroundImageUrl", value)}
+        />
+      </ConfigSection>
+
+      <ConfigSection title="Deals & Belohnungen Bilder">
+        {hasTwoForOneDeal ? (
+          <TemplateImageEditor
+            groupName="deal-reward-images"
+            name="top_deal_image_url"
+            label="2für1 Hintergrundbild"
+            value={config.deals.topDealImageUrl}
+            uploadName="top_deal_file"
+            assetListId={assetListId}
+            assetChoices={assetChoices}
+            onChange={(value) => updateDeals(setConfig, "topDealImageUrl", value)}
           />
-          <ReadinessMetric
-            label="Live"
-            value={partner.microsite?.publishedVersion?.version_number ? `v${partner.microsite.publishedVersion.version_number}` : "—"}
-          />
-        </div>
-        {draftConfig ? (
-          <p className="rounded-lg bg-teal-50 px-3 py-2 text-[11px] font-semibold leading-5 text-teal-800">
-            {tr("Der Builder lädt gespeicherte Entwürfe standardmäßig zuerst.")}
+        ) : null}
+        {rewardStamps.map((stamp) => {
+          const imageId = `stamps.reward.${stamp}.image`
+          return (
+            <TemplateImageEditor
+              key={imageId}
+              groupName="deal-reward-images"
+              name={`reward_image_${stamp}`}
+              label={`${stamp} Stempel Belohnungsbild`}
+              value={config.elementText[imageId] || ""}
+              uploadName={genericElementUploadName(imageId)}
+              assetListId={assetListId}
+              assetChoices={assetChoices}
+              onChange={(value) =>
+                setConfig((current) => setElementTextValue(current, imageId, value))
+              }
+            />
+          )
+        })}
+        {!hasTwoForOneDeal && !rewardStamps.length ? (
+          <p className="rounded-lg bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">
+            Keine aktiven Deal- oder Belohnungsbilder in diesem Template.
           </p>
         ) : null}
-        <button
-          type="button"
-          disabled={!draftConfig || !partner.id || discardPending}
-          onClick={() => {
-            if (!draftConfig) return
-            if (!window.confirm(tr("Entwurf wirklich verwerfen? Die aktuelle Live-Version wird anschließend geladen."))) return
+      </ConfigSection>
 
-            setDiscardMessage("")
-            startDiscardTransition(async () => {
-              const result = await discardMicrositeDraft(partner.id || "")
-              setDiscardMessage(result.message)
-              if (!result.ok) return
+      <ConfigSection title="Über-uns Bilder">
+        <TemplateImageEditor
+          groupName="about-images"
+          name="about_hero_image_url"
+          label="Über-uns Hintergrundbild (Desktop)"
+          value={config.elementText["content.aboutHeroImageUrl"] || ""}
+          uploadName="about_hero_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "content.aboutHeroImageUrl", value),
+            )
+          }
+        />
+        <TemplateImageEditor
+          groupName="about-images"
+          name="about_ingredient_image_url"
+          label="Über-uns linkes Kartenbild"
+          value={config.elementText["content.aboutIngredientImageUrl"] || ""}
+          uploadName="about_ingredient_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "content.aboutIngredientImageUrl", value),
+            )
+          }
+        />
+        <TemplateImageEditor
+          groupName="about-images"
+          name="about_location_image_url"
+          label="Über-uns rechtes Kartenbild"
+          value={config.elementText["content.aboutLocationImageUrl"] || ""}
+          uploadName="about_location_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "content.aboutLocationImageUrl", value),
+            )
+          }
+        />
+        <TemplateImageEditor
+          groupName="about-images"
+          name="about_prep_image_url"
+          label="Über-uns unteres Overlaybild (Desktop)"
+          value={config.elementText["content.aboutPrepImageUrl"] || ""}
+          uploadName="about_prep_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "content.aboutPrepImageUrl", value),
+            )
+          }
+        />
+      </ConfigSection>
 
-              setConfig((current) =>
-                resolveMicrositeConfig(publishedConfig, {
-                  ...partner,
-                  logo_url: partner.logo_url || current.branding.logoUrl,
-                }),
-              )
-              router.refresh()
-            })
-          }}
-          className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 font-black text-rose-700 transition hover:border-rose-300 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {discardPending
-            ? tr("Entwurf wird verworfen…")
-            : tr("Entwurf verwerfen und aktuelle Version laden")}
-        </button>
-        {discardMessage ? (
-          <p className="text-[11px] font-semibold leading-5 text-zinc-600" role="status">
-            {tr(discardMessage)}
-          </p>
-        ) : null}
-        <p className="text-[11px] leading-5 text-zinc-500">
-          {tr("Jede Speicherung erzeugt eine neue Version. Veröffentlichen setzt nur die geprüfte Version live; alte Live-Versionen bleiben als Sicherheitsnetz erhalten.")}
-        </p>
-      </div>
-    </ConfigSection>
+      <ConfigSection title="App & Footer Bilder">
+        <TemplateImageEditor
+          groupName="app-footer-images"
+          name="app_phone_screenshot_url"
+          label="Bild im Telefon-Mockup"
+          value={config.elementText["content.appPhoneScreenshotUrl"] || "/partner-details-page.jpg"}
+          uploadName="app_phone_screenshot_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "content.appPhoneScreenshotUrl", value),
+            )
+          }
+        />
+        <TemplateImageEditor
+          groupName="app-footer-images"
+          name="footer_benefitsi_logo_url"
+          label="Benefitsi Footer Logo"
+          value={config.elementText["footer.benefitsiLogo"] || "/benefitsi-logo-on-light.svg"}
+          uploadName="footer_benefitsi_logo_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "footer.benefitsiLogo", value),
+            )
+          }
+        />
+      </ConfigSection>
+    </>
   )
 }
 
-function MenuSystemPanel({ partner }: { partner: PartnerWithDeals }) {
-  const menuItems = partner.menus.flatMap((menu) =>
-    menu.categories.length
-      ? menu.categories.flatMap((category) => category.items)
-      : menu.items,
-  )
-  const imageCount = menuItems.filter((item) => item.image_url).length
-  const priceCount = menuItems.filter((item) => item.price !== null && item.price !== "").length
+function TemplateImageEditor({
+  groupName,
+  name,
+  label,
+  value,
+  uploadName,
+  assetListId,
+  assetChoices,
+  onChange,
+}: {
+  groupName: string
+  name: string
+  label: string
+  value: string
+  uploadName: string
+  assetListId: string
+  assetChoices: MicrositeConfig["assets"]["library"]
+  onChange: (value: string) => void
+}) {
+  const { tr } = useBuilderI18n()
+  const [failedValue, setFailedValue] = useState<string | null>(null)
+  const imageAvailable = Boolean(value && failedValue !== value)
 
   return (
-    <ConfigSection title="Speisekarte-System">
-      <div className="grid grid-cols-2 gap-2 rounded-xl border border-zinc-200 bg-white p-3 text-xs">
-        <ReadinessMetric label="Artikel" value={`${menuItems.length}`} />
-        <ReadinessMetric label="Preise" value={`${priceCount}/${menuItems.length}`} />
-        <ReadinessMetric label="Bilder" value={`${imageCount}/${menuItems.length}`} />
-        <ReadinessMetric label="Darstellung" value="Fenster + Platzhalter" />
+    <details
+      name={groupName}
+      className="group overflow-hidden rounded-lg bg-zinc-50"
+    >
+      <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-3 py-2 outline-none transition hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-500 [&::-webkit-details-marker]:hidden">
+        <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md bg-white text-zinc-400 ring-1 ring-zinc-200">
+          {imageAvailable ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={value}
+              alt=""
+              onError={() => setFailedValue(value)}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <ImageOff aria-hidden="true" className="size-4" />
+          )}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-xs font-black text-zinc-800">
+          {tr(label)}
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className="size-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <div className="space-y-3 border-t border-zinc-200 bg-white p-3">
+        <EditorField
+          name={name}
+          label="Bild URL"
+          value={value}
+          onChange={onChange}
+          placeholder="https://..."
+          list={assetListId}
+        />
+        {assetChoices.length ? (
+          <div>
+            <p className="text-[11px] font-black text-zinc-700">
+              {tr("Aus Asset-Bibliothek wählen")}
+            </p>
+            <div className="mt-2 grid grid-cols-4 gap-2">
+              {assetChoices.map((asset) => (
+                <button
+                  key={`${asset.slot}-${asset.url}`}
+                  type="button"
+                  title={asset.label}
+                  aria-label={`${tr("Bild auswählen")}: ${asset.label}`}
+                  onClick={() => onChange(asset.url)}
+                  className={`aspect-square overflow-hidden rounded-md border bg-zinc-100 transition hover:border-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 ${
+                    asset.url === value ? "border-teal-600 ring-2 ring-teal-100" : "border-zinc-200"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={asset.url} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        <AssetUploadField
+          name={uploadName}
+          label="Bild hochladen und beim Speichern ersetzen"
+          onPreview={onChange}
+        />
       </div>
-    </ConfigSection>
+    </details>
+  )
+}
+
+function MenuImagesEditor({
+  partner,
+  config,
+  setConfig,
+}: {
+  partner: PartnerWithDeals
+  config: MicrositeConfig
+  setConfig: Dispatch<SetStateAction<MicrositeConfig>>
+}) {
+  const { tr } = useBuilderI18n()
+  const assetListId = `microsite-assets-${partner.id || "new"}`
+  const allItems = menuItemsForMicrositeBuilder(partner)
+  const items = micrositeMenuPreviewItems(
+    allItems,
+    config.elementText["content.menuFeaturedItemKey"],
+  )
+  const featuredItem = items[0]
+  const supportingItems = items.slice(1)
+
+  if (!items.length) {
+    return (
+      <p className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-600">
+        {tr("Sobald im Admin eine Speisekarte gepflegt ist, erscheinen hier automatisch die beliebtesten Gerichte.")}
+      </p>
+    )
+  }
+
+  const featuredImageId = micrositeMenuItemImageId(featuredItem)
+  const featuredVisibilityId = micrositeMenuItemVisibilityId(featuredItem)
+  const featuredImageUrl =
+    config.elementText[featuredImageId] || featuredItem.image_url || ""
+  const featuredImageVisible =
+    config.elementText[featuredVisibilityId] !== "false"
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs leading-5 text-zinc-600">
+        {tr(
+          "Die ersten sechs Gerichte bilden die Microsite-Vorschau. Das erste Bild wird groß dargestellt.",
+        )}
+      </p>
+
+      <label className="block space-y-1.5 text-xs font-bold text-zinc-700">
+        {tr("Angezeigtes Hauptgericht")}
+        <select
+          value={micrositeMenuItemKey(featuredItem)}
+          onChange={(event) =>
+            setConfig((current) =>
+              setElementTextValue(
+                current,
+                "content.menuFeaturedItemKey",
+                event.target.value,
+              ),
+            )
+          }
+          className="h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+        >
+          {allItems.map((item) => (
+            <option key={micrositeMenuItemKey(item)} value={micrositeMenuItemKey(item)}>
+              {micrositeMenuItemDisplayName(item.name) || tr("Gericht")}
+            </option>
+          ))}
+        </select>
+        <span className="block font-normal leading-5 text-zinc-500">
+          {tr("Wähle das Gericht für die große Karte aus.")}
+        </span>
+      </label>
+
+      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+        <div className="relative aspect-[16/9] overflow-hidden bg-zinc-100">
+          {featuredImageVisible && featuredImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={featuredImageUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="grid h-full place-items-center text-zinc-400">
+              <ImageOff aria-hidden="true" className="size-7" />
+            </span>
+          )}
+          <span className="absolute inset-x-3 bottom-3 w-fit rounded-full bg-zinc-950/78 px-3 py-1.5 text-xs font-black text-white backdrop-blur-md">
+            {tr("Großes Hauptbild")}
+          </span>
+        </div>
+        <div className="space-y-3 p-3">
+          <div className="flex min-h-10 items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3">
+            <span className="min-w-0 truncate text-xs font-black text-zinc-900">
+              {micrositeMenuItemDisplayName(featuredItem.name) || tr("Gericht")}
+            </span>
+            <label className="flex shrink-0 items-center gap-2 text-xs font-bold text-zinc-700">
+              {tr("Bild anzeigen")}
+              <input
+                type="checkbox"
+                checked={featuredImageVisible}
+                onChange={(event) =>
+                  setConfig((current) =>
+                    setElementTextValue(
+                      current,
+                      featuredVisibilityId,
+                      event.target.checked ? "true" : "false",
+                    ),
+                  )
+                }
+                className="size-4 accent-teal-700"
+              />
+            </label>
+          </div>
+          <EditorField
+            name={`visual_${featuredImageId}`}
+            label="Bild URL"
+            value={featuredImageUrl}
+            onChange={(value) =>
+              setConfig((current) =>
+                setElementTextValue(current, featuredImageId, value),
+              )
+            }
+            placeholder="https://..."
+            list={assetListId}
+          />
+          <AssetUploadField
+            name={genericElementUploadName(featuredImageId)}
+            label="Bild hochladen und beim Speichern ersetzen"
+            onPreview={(url) =>
+              setConfig((current) =>
+                setElementTextValue(
+                  setElementTextValue(current, featuredImageId, url),
+                  featuredVisibilityId,
+                  "true",
+                ),
+              )
+            }
+          />
+          <button
+            type="button"
+            onClick={() =>
+              setConfig((current) =>
+                setElementTextValue(
+                  setElementTextValue(current, featuredImageId, ""),
+                  featuredVisibilityId,
+                  "true",
+                ),
+              )
+            }
+            className="text-xs font-bold text-teal-700 underline decoration-2 underline-offset-4 transition hover:text-teal-900"
+          >
+            {tr("Partnerbild verwenden")}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {supportingItems.map((item) => {
+          const imageId = micrositeMenuItemImageId(item)
+          const visibilityId = micrositeMenuItemVisibilityId(item)
+          const imageUrl = config.elementText[imageId] || item.image_url || ""
+          const showImage = config.elementText[visibilityId] !== "false"
+
+          return (
+            <details
+              key={imageId}
+              className="group overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50"
+            >
+              <summary className="flex cursor-pointer list-none items-center gap-3 p-2.5 outline-none transition hover:bg-white focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-500 [&::-webkit-details-marker]:hidden">
+                {showImage && imageUrl ? (
+                  <span className="size-12 shrink-0 overflow-hidden rounded-lg bg-white">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
+                ) : (
+                  <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-white text-zinc-400">
+                    <ImageOff aria-hidden="true" className="size-5" />
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-black text-zinc-900">
+                    {micrositeMenuItemDisplayName(item.name) || tr("Gericht")}
+                  </span>
+                  <span className="mt-0.5 block text-xs font-medium text-zinc-500">
+                    {tr("Kleines Menübild")}
+                    {!showImage ? ` · ${tr("Ohne Bild")}` : ""}
+                  </span>
+                </span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="size-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-180"
+                />
+              </summary>
+              <div className="space-y-3 border-t border-zinc-200 bg-white p-3">
+                <label className="flex min-h-10 items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3 text-xs font-bold text-zinc-800">
+                  {tr("Bild anzeigen")}
+                  <input
+                    type="checkbox"
+                    checked={showImage}
+                    onChange={(event) =>
+                      setConfig((current) =>
+                        setElementTextValue(
+                          current,
+                          visibilityId,
+                          event.target.checked ? "true" : "false",
+                        ),
+                      )
+                    }
+                    className="size-4 accent-teal-700"
+                  />
+                </label>
+                <EditorField
+                  name={`visual_${imageId}`}
+                  label="Bild URL"
+                  value={imageUrl}
+                  onChange={(value) =>
+                    setConfig((current) =>
+                      setElementTextValue(current, imageId, value),
+                    )
+                  }
+                  placeholder="https://..."
+                  list={assetListId}
+                />
+                <AssetUploadField
+                  name={genericElementUploadName(imageId)}
+                  label="Bild hochladen und beim Speichern ersetzen"
+                  onPreview={(url) =>
+                    setConfig((current) =>
+                      setElementTextValue(
+                        setElementTextValue(current, imageId, url),
+                        visibilityId,
+                        "true",
+                      ),
+                    )
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfig((current) =>
+                      setElementTextValue(
+                        setElementTextValue(current, imageId, ""),
+                        visibilityId,
+                        "true",
+                      ),
+                    )
+                  }
+                  className="text-xs font-bold text-teal-700 underline decoration-2 underline-offset-4 transition hover:text-teal-900"
+                >
+                  {tr("Partnerbild verwenden")}
+                </button>
+              </div>
+            </details>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function menuItemsForMicrositeBuilder(partner: PartnerWithDeals) {
+  return partner.menus.flatMap((menu) => {
+    const categoryItems = menu.categories.flatMap((category) => category.items)
+    return categoryItems.length ? categoryItems : menu.items
+  })
+}
+
+function isAvailableMicrositeLibraryAsset(
+  asset: MicrositeConfig["assets"]["library"][number],
+  partner: PartnerWithDeals,
+) {
+  return asset.source === "upload" || isRenderedMicrositeImageSlot(asset.slot, partner)
+}
+
+function isRenderedMicrositeImageSlot(
+  slot: string,
+  partner: PartnerWithDeals,
+) {
+  if (
+    [
+      "branding.logo",
+      "hero.backgroundImageUrl",
+      "content.aboutHeroImageUrl",
+      "content.aboutIngredientImageUrl",
+      "content.aboutLocationImageUrl",
+      "content.aboutPrepImageUrl",
+      "content.appPhoneScreenshotUrl",
+      "footer.benefitsiLogo",
+    ].includes(slot)
+  ) {
+    return true
+  }
+
+  if (slot === "deals.topDealImageUrl") {
+    return partner.deals.some(isMicrositeTwoForOneDeal)
+  }
+
+  const rewardImageMatch = slot.match(/^stamps\.reward\.(\d+)\.image$/)
+  if (rewardImageMatch) {
+    const stamp = Number(rewardImageMatch[1])
+    return partner.reward_milestones.some(
+      (milestone) =>
+        milestone.active !== false && milestone.required_stamps === stamp,
+    )
+  }
+
+  return (
+    /^content\.menuItem\.[a-z0-9_-]+\.imageUrl$/i.test(slot) ||
+    /^social\.(instagram|facebook|tiktok|youtube|whatsapp|website|google|linkedin)\.iconUrl$/i.test(slot)
   )
 }
 
@@ -2727,28 +3571,46 @@ function SeoSystemPanel({
 function BuilderChecklistPanel({
   config,
   setConfig,
+  onEditItem,
 }: {
   config: MicrositeConfig
   setConfig: Dispatch<SetStateAction<MicrositeConfig>>
+  onEditItem: (itemId: string) => void
 }) {
   const { tr } = useBuilderI18n()
   const rows = [
-    ["partnerDataReviewDone", "Partnerdaten geprüft"],
-    ["assetReviewDone", "Assets/Fallbacks geprüft"],
-    ["desktopQaDone", "Desktopprüfung abgeschlossen"],
-    ["mobileQaDone", "Mobilprüfung abgeschlossen"],
-    ["seoReviewDone", "SEO/LLM geprüft"],
-    ["publishReviewDone", "Veröffentlichung final geprüft"],
+    ["assetReviewDone", "Assets/Fallbacks geprüft", "asset-review"],
+    ["desktopQaDone", "Desktopprüfung abgeschlossen", "desktop-qa-done"],
+    ["mobileQaDone", "Mobilprüfung abgeschlossen", "mobile-qa-done"],
+    ["seoReviewDone", "SEO/LLM geprüft", "seo-review"],
+    ["publishReviewDone", "Veröffentlichung final geprüft", "publish-review"],
   ] as const
+  const completed = rows.filter(([key]) => config.builder[key]).length
 
   return (
     <ConfigSection title="Abschlussprüfung">
       <div className="space-y-2 rounded-xl border border-zinc-200 bg-white p-3">
-        {rows.map(([key, label]) => (
-          <label key={key} className="flex items-center gap-2 text-xs font-bold text-zinc-800">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-xs font-black text-zinc-900">{tr("Checkliste")}</p>
+          <span className="text-xs font-bold tabular-nums text-emerald-700">
+            {completed}/{rows.length} {tr("erledigt")}
+          </span>
+        </div>
+        <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-zinc-100" aria-hidden="true">
+          <div
+            className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
+            style={{ width: `${(completed / rows.length) * 100}%` }}
+          />
+        </div>
+        {rows.map(([key, label, editItemId]) => (
+          <div
+            key={key}
+            className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-1.5 transition focus-within:border-teal-300 focus-within:bg-teal-50/60"
+          >
             <input
               type="checkbox"
               checked={config.builder[key]}
+              aria-label={`${tr(label)} – ${tr("erledigt")}`}
               onChange={(event) =>
                 setConfig((current) => ({
                   ...current,
@@ -2759,9 +3621,23 @@ function BuilderChecklistPanel({
                   },
                 }))
               }
+              className="size-4 shrink-0 accent-teal-700"
             />
-            {tr(label)}
-          </label>
+            <button
+              type="button"
+              onClick={() => onEditItem(editItemId)}
+              className="group flex min-w-0 flex-1 items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs font-bold text-zinc-800 outline-none transition hover:bg-white hover:text-teal-800 focus-visible:ring-2 focus-visible:ring-teal-500"
+            >
+              <span className="min-w-0 break-words">{tr(label)}</span>
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs text-teal-700">
+                {tr("Bearbeiten")}
+                <ChevronRight
+                  aria-hidden="true"
+                  className="size-3.5 transition-transform group-hover:translate-x-0.5"
+                />
+              </span>
+            </button>
+          </div>
         ))}
       </div>
     </ConfigSection>
@@ -2783,8 +3659,7 @@ function WorkflowPanel({
     ["2", "Assets bereit", report.items.filter((item) => item.area === "Assets" && !item.ok).length === 0],
     ["3", "Mobilprüfung", report.items.filter((item) => item.area === "Mobile" && !item.ok).length === 0],
     ["4", "SEO/LLM-Prüfung", report.items.filter((item) => item.area === "SEO & LLM" && !item.ok).length === 0],
-    ["5", "Freigabe", partner.microsite?.status === "approved" || Boolean(partner.microsite?.publishedVersion)],
-    ["6", "Live", Boolean(partner.microsite?.publishedVersion)],
+    ["5", "Live", Boolean(partner.microsite?.publishedVersion)],
   ] as const
 
   return (
@@ -2805,7 +3680,7 @@ function WorkflowPanel({
           href={`/partner-self-service/${encodeURIComponent(previewIdentifier)}`}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-black text-zinc-800 transition hover:border-teal-300 hover:bg-teal-50"
+          className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-black text-zinc-800 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-900"
         >
           {tr("Partner-Modus prüfen")}
         </a>
@@ -2823,6 +3698,18 @@ function SocialMediaPanel({
   config: MicrositeConfig
   setConfig: Dispatch<SetStateAction<MicrositeConfig>>
 }) {
+  const { tr } = useBuilderI18n()
+  const feedEnabled = config.elementText["content.socialFeed.enabled"] !== "false"
+  const feedPlatform = config.elementText["content.socialFeed.platform"] === "tiktok"
+    ? "tiktok"
+    : "instagram"
+  const feedPostValues = Array.from({ length: 6 }, (_, index) =>
+    config.elementText[`content.socialFeed.${feedPlatform}.${index}.url`]?.trim() || "",
+  )
+  const feedPostCount = new Set(
+    feedPostValues.filter((value) => isValidSocialFeedPostUrl(feedPlatform, value)),
+  ).size
+
   return (
     <ConfigSection title="Social Media">
       <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-3">
@@ -2902,9 +3789,115 @@ function SocialMediaPanel({
             </div>
           )
         })}
+
+        <div className="border-t border-zinc-200 pt-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-black text-zinc-900">{tr("Originalbeiträge einbetten")}</p>
+              <p className="mt-1 text-[11px] leading-5 text-zinc-500">
+                {tr("Bis zu sechs direkte Instagram-Post-/Reel- oder TikTok-Video-URLs eintragen. Der Instagram-Bereich erscheint erst, wenn mindestens zwei gültige Instagram-Beiträge hinterlegt sind.")}
+              </p>
+            </div>
+            <label className="flex shrink-0 items-center gap-2 text-[11px] font-bold text-zinc-700">
+              {tr("Feed anzeigen")}
+              <input
+                type="checkbox"
+                checked={feedEnabled}
+                onChange={(event) =>
+                  setConfig((current) =>
+                    setElementTextValue(
+                      current,
+                      "content.socialFeed.enabled",
+                      event.target.checked ? "true" : "false",
+                    ),
+                  )
+                }
+              />
+            </label>
+          </div>
+
+          {feedEnabled ? (
+            <div className="mt-4 space-y-3">
+              <label className="block space-y-1.5 text-xs font-medium text-zinc-600">
+                {tr("Feed-Plattform")}
+                <select
+                  value={feedPlatform}
+                  onChange={(event) =>
+                    setConfig((current) =>
+                      setElementTextValue(
+                        current,
+                        "content.socialFeed.platform",
+                        event.target.value === "tiktok" ? "tiktok" : "instagram",
+                      ),
+                    )
+                  }
+                  className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                >
+                  <option value="instagram">Instagram</option>
+                  <option value="tiktok">TikTok</option>
+                </select>
+              </label>
+
+              {feedPlatform === "instagram" && feedPostCount < 2 ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold leading-5 text-amber-800">
+                  {feedPostCount}/2 {tr("gültige Beiträge")}. {tr("Instagram benötigt mindestens zwei Beiträge, bevor der Bereich auf der Microsite angezeigt wird.")}
+                </p>
+              ) : null}
+
+              {Array.from({ length: 6 }, (_, index) => index).map((index) => {
+                const value = feedPostValues[index] || ""
+                const invalid = Boolean(value) && !isValidSocialFeedPostUrl(feedPlatform, value)
+
+                return (
+                  <div key={`${feedPlatform}-${index}`}>
+                    <EditorField
+                      name={`social_feed_${feedPlatform}_${index}_url`}
+                      label={`Beitrag ${index + 1} URL`}
+                      value={value}
+                      onChange={(nextValue) =>
+                        setConfig((current) =>
+                          setElementTextValue(
+                            current,
+                            `content.socialFeed.${feedPlatform}.${index}.url`,
+                            nextValue,
+                          ),
+                        )
+                      }
+                      placeholder="Direkte Instagram-Post-/Reel- oder TikTok-Video-URL"
+                    />
+                    {invalid ? (
+                      <p className="mt-1 text-[10px] font-semibold text-rose-700">
+                        {tr("Bitte einen direkten Post-, Reel- oder Video-Link verwenden, keinen Profil-Link.")}
+                      </p>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          ) : null}
+        </div>
       </div>
     </ConfigSection>
   )
+}
+
+function isValidSocialFeedPostUrl(
+  platform: "instagram" | "tiktok",
+  value: string,
+) {
+  if (!value) return false
+
+  try {
+    const url = new URL(value)
+    if (platform === "instagram") {
+      return /(^|\.)instagram\.com$/i.test(url.hostname) &&
+        /^\/(p|reel|tv)\/[^/]+/i.test(url.pathname)
+    }
+
+    return /(^|\.)tiktok\.com$/i.test(url.hostname) && /\/video\/\d+/i.test(url.pathname)
+  } catch {
+    return false
+  }
 }
 
 function SourceLockedField({
@@ -2949,9 +3942,11 @@ function SelectedElementPanel({
   const { tr } = useBuilderI18n()
   if (!element) {
     return (
-      <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-600">
-        {tr("Klicke ein Element in der Vorschau an, um es hier direkt zu bearbeiten.")}
-      </div>
+      <ConfigSection title="Ausgewähltes Element">
+        <p className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-600">
+          {tr("Klicke ein Element in der Vorschau an, um es hier direkt zu bearbeiten.")}
+        </p>
+      </ConfigSection>
     )
   }
 
@@ -2962,19 +3957,21 @@ function SelectedElementPanel({
   const isGroup = element.kind === "group"
   const isNavigationGroup = element.id === "navigation.group"
   const socialGroupMatch = element.id.match(/^social\.([a-z]+)$/)
+  const isMenuItemImage = /^content\.menuItem\.[a-z0-9_-]+\.imageUrl$/.test(
+    element.id,
+  )
+  const menuItemVisibilityId = isMenuItemImage
+    ? element.id.replace(/\.imageUrl$/, ".showImage")
+    : ""
+  const menuItemImageVisible = menuItemVisibilityId
+    ? config.elementText[menuItemVisibilityId] !== "false"
+    : true
   const iconImageId = `${element.id}.image`
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/50 p-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-blue-700">
-        {tr("Ausgewähltes Element")}
-      </p>
-      <h3 className="mt-1 text-sm font-semibold text-zinc-950">
-        {tr(element.label)}
-      </h3>
-
-      <div className="mt-4 space-y-3">
-        <p className="rounded-md bg-white/80 px-3 py-2 text-[11px] font-medium leading-5 text-zinc-600">
+    <ConfigSection title={`Element: ${element.label}`}>
+      <div className="space-y-3">
+        <p className="rounded-md bg-zinc-50 px-3 py-2 text-[11px] font-medium leading-5 text-zinc-600">
           {tr("Direkt im Builder: Text anklicken und tippen. Bilder und Gruppen kannst du anklicken und leicht nach oben/unten ziehen, um den Abstand zu verändern.")}
         </p>
 
@@ -2993,6 +3990,25 @@ function SelectedElementPanel({
 
         {isImage ? (
           <>
+            {isMenuItemImage ? (
+              <label className="flex min-h-10 items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3 text-xs font-bold text-zinc-800">
+                {tr("Bild anzeigen")}
+                <input
+                  type="checkbox"
+                  checked={menuItemImageVisible}
+                  onChange={(event) =>
+                    setConfig((current) =>
+                      setElementTextValue(
+                        current,
+                        menuItemVisibilityId,
+                        event.target.checked ? "true" : "false",
+                      ),
+                    )
+                  }
+                  className="size-4 accent-teal-700"
+                />
+              </label>
+            ) : null}
             <EditorField
               name={`visual_${element.id}`}
               label="Bild URL"
@@ -3006,7 +4022,16 @@ function SelectedElementPanel({
                 name={element.uploadName}
                 label="Bild hochladen und beim Speichern ersetzen"
                 onPreview={(url) =>
-                  setConfig((current) => element.update(current, url))
+                  setConfig((current) => {
+                    const next = element.update(current, url)
+                    return isMenuItemImage
+                      ? setElementTextValue(
+                          next,
+                          menuItemVisibilityId,
+                          "true",
+                        )
+                      : next
+                  })
                 }
               />
             ) : null}
@@ -3231,7 +4256,7 @@ function SelectedElementPanel({
           />
         ) : null}
       </div>
-    </div>
+    </ConfigSection>
   )
 }
 
@@ -3422,6 +4447,7 @@ function ElementColorField({
 function getEditableElement(
   id: string,
   config: MicrositeConfig,
+  partner?: PartnerWithDeals,
 ): EditableElement | null {
   const simpleElements: Record<
     string,
@@ -3451,16 +4477,6 @@ function getEditableElement(
       "branding.partnerName",
       config.hero.headline,
     ),
-    "branding.partnerBadgeUrl": {
-      label: "Badge-Icon",
-      kind: "image",
-      value: config.branding.partnerBadgeUrl,
-      uploadName: "badge_file",
-      update: (current, value) => ({
-        ...current,
-        branding: { ...current.branding, partnerBadgeUrl: value },
-      }),
-    },
     "hero.backgroundImageUrl": {
       label: "Startbild",
       kind: "image",
@@ -3503,16 +4519,6 @@ function getEditableElement(
       ...current,
       hero: { ...current.hero, secondaryButtonLabel: value },
     })),
-    "deals.illustrationUrl": {
-      label: "Deals Intro Bild",
-      kind: "image",
-      value: config.deals.illustrationUrl,
-      uploadName: "deals_illustration_file",
-      update: (current, value) => ({
-        ...current,
-        deals: { ...current.deals, illustrationUrl: value },
-      }),
-    },
     "deals.topDealImageUrl": {
       label: "Top-Deal Bild",
       kind: "image",
@@ -3588,7 +4594,7 @@ function getEditableElement(
       content: { ...current.content, aboutText: value },
     })),
     "content.aboutHeroImageUrl": {
-      label: "Über uns Hintergrundbild",
+      label: "Über uns Hintergrundbild (Desktop)",
       kind: "image",
       value: config.elementText["content.aboutHeroImageUrl"] || "",
       uploadName: "about_hero_file",
@@ -3601,7 +4607,7 @@ function getEditableElement(
       }),
     },
     "content.aboutIngredientImageUrl": {
-      label: "Über uns Zutatenbild",
+      label: "Über uns linkes Kartenbild",
       kind: "image",
       value: config.elementText["content.aboutIngredientImageUrl"] || "",
       uploadName: "about_ingredient_file",
@@ -3614,7 +4620,7 @@ function getEditableElement(
       }),
     },
     "content.aboutLocationImageUrl": {
-      label: "Über uns Ortsbild",
+      label: "Über uns rechtes Kartenbild",
       kind: "image",
       value: config.elementText["content.aboutLocationImageUrl"] || "",
       uploadName: "about_location_file",
@@ -3627,7 +4633,7 @@ function getEditableElement(
       }),
     },
     "content.aboutPrepImageUrl": {
-      label: "Über uns Detailbild",
+      label: "Über uns unteres Overlaybild (Desktop)",
       kind: "image",
       value: config.elementText["content.aboutPrepImageUrl"] || "",
       uploadName: "about_prep_file",
@@ -3663,6 +4669,31 @@ function getEditableElement(
 
   if (simpleElements[id]) {
     return { id, ...simpleElements[id] }
+  }
+
+  if (/^content\.menuItem\.[a-z0-9_-]+\.imageUrl$/.test(id)) {
+    const previewItems = partner
+      ? micrositeMenuPreviewItems(
+          menuItemsForMicrositeBuilder(partner),
+          config.elementText["content.menuFeaturedItemKey"],
+        )
+      : []
+    const itemIndex = previewItems.findIndex(
+      (candidate) => micrositeMenuItemImageId(candidate) === id,
+    )
+    const item = itemIndex >= 0 ? previewItems[itemIndex] : undefined
+
+    return {
+      id,
+      label:
+        itemIndex === 0
+          ? `Großes Menübild – ${micrositeMenuItemDisplayName(item?.name) || "Gericht"}`
+          : `${micrositeMenuItemDisplayName(item?.name) || "Gericht"} Menübild`,
+      kind: "image",
+      value: config.elementText[id] || item?.image_url || "",
+      uploadName: genericElementUploadName(id),
+      update: (current, value) => setElementTextValue(current, id, value),
+    }
   }
 
   if (id === "navigation.group") {
@@ -3979,27 +5010,10 @@ function getEditableElement(
     }
   }
 
-  if (id === "content.appQrCodeUrl") {
-    return {
-      id,
-      label: "App QR-Code",
-      kind: "image",
-      value: config.elementText[id] || "",
-      uploadName: "app_qr_code_file",
-      update: (current, value) => ({
-        ...current,
-        elementText: {
-          ...current.elementText,
-          [id]: value,
-        },
-      }),
-    }
-  }
-
   if (id === "content.appPhoneScreenshotUrl") {
     return {
       id,
-      label: "iPhone App-Screenshot",
+      label: "Bild im Telefon-Mockup",
       kind: "image",
       value: config.elementText[id] || "/partner-details-page.jpg",
       uploadName: "app_phone_screenshot_file",
@@ -4420,14 +5434,56 @@ function placeCaretAtPoint(element: HTMLElement, x: number, y: number) {
   selection.addRange(range)
 }
 
+function BuilderCategory({
+  title,
+  description,
+  children,
+  id,
+}: {
+  title: string
+  description: string
+  children: ReactNode
+  id?: string
+}) {
+  const { tr } = useBuilderI18n()
+
+  return (
+    <section
+      id={id}
+      className="min-w-0 scroll-mt-24 rounded-2xl bg-zinc-50/80 p-2.5 ring-1 ring-zinc-100"
+    >
+      <div className="px-1 pb-1">
+        <h3 className="text-[13px] font-black tracking-[-0.01em] text-zinc-950">
+          {tr(title)}
+        </h3>
+        <p className="mt-0.5 text-[11px] leading-4 text-zinc-500">
+          {tr(description)}
+        </p>
+      </div>
+      <div className="mt-2 min-w-0 space-y-2">
+        {children}
+      </div>
+    </section>
+  )
+}
+
 function ConfigSection({ title, children }: { title: string; children: ReactNode }) {
   const { tr } = useBuilderI18n()
   return (
-    <details className="min-w-0 space-y-3">
-      <summary className="cursor-pointer break-words text-xs font-bold uppercase tracking-[0.12em] text-zinc-500">
-        {tr(title)}
+    <details
+      name="microsite-builder-settings"
+      data-config-section="true"
+      className="group min-w-0 rounded-xl border border-zinc-200 bg-white px-3 shadow-[0_8px_24px_-22px_rgba(15,23,42,.35)]"
+    >
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 py-3 text-sm font-bold text-zinc-800 outline-none transition hover:text-teal-700 focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-teal-200 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 break-words">{tr(title)}</span>
+        <ChevronDown
+          aria-hidden="true"
+          className="size-4 shrink-0 text-zinc-400 transition-transform duration-200 group-open:rotate-180 group-open:text-teal-600"
+          strokeWidth={2.2}
+        />
       </summary>
-      <div className="min-w-0 space-y-3 pt-2">{children}</div>
+      <div className="min-w-0 space-y-3 pb-4 pt-1">{children}</div>
     </details>
   )
 }
@@ -4478,15 +5534,177 @@ function EditorField({
   )
 }
 
+function PaletteControl({
+  logoUrl,
+  config,
+  setConfig,
+}: {
+  logoUrl: string
+  config: MicrositeConfig
+  setConfig: Dispatch<SetStateAction<MicrositeConfig>>
+}) {
+  const { tr } = useBuilderI18n()
+  const isAuto = config.branding.paletteMode === "auto"
+  const [status, setStatus] = useState<"idle" | "loading" | "logo" | "derived" | "fallback">(
+    isAuto ? "loading" : "idle",
+  )
+  const [refreshToken, setRefreshToken] = useState(0)
+
+  useEffect(() => {
+    if (!isAuto) {
+      return
+    }
+
+    let active = true
+    extractThemePalette(logoUrl).then((palette) => {
+      if (!active) return
+
+      setStatus(palette.source)
+      setConfig((current) => {
+        if (
+          current.branding.accent === palette.primary &&
+          current.branding.accentSecondary === palette.secondary &&
+          current.branding.accentTertiary === palette.tertiary
+        ) {
+          return current
+        }
+
+        return {
+          ...current,
+          branding: {
+            ...current.branding,
+            accent: palette.primary,
+            accentSecondary: palette.secondary,
+            accentTertiary: palette.tertiary,
+          },
+        }
+      })
+    })
+
+    return () => {
+      active = false
+    }
+  }, [isAuto, logoUrl, refreshToken, setConfig])
+
+  const setMode = (mode: "auto" | "manual") => {
+    setStatus(mode === "auto" ? "loading" : "idle")
+    if (mode === "auto") {
+      setRefreshToken((current) => current + 1)
+    }
+    setConfig((current) => ({
+      ...current,
+      branding: { ...current.branding, paletteMode: mode },
+    }))
+  }
+
+  return (
+    <div className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+      <input type="hidden" name="palette_mode" value={config.branding.paletteMode} />
+      <div className="grid grid-cols-2 gap-2 rounded-lg bg-white p-1 ring-1 ring-zinc-200">
+        <button
+          type="button"
+          onClick={() => setMode("auto")}
+          className={`rounded-md px-3 py-2 text-xs font-black transition ${
+            isAuto ? "bg-zinc-950 text-white" : "text-zinc-600 hover:bg-zinc-100"
+          }`}
+          aria-pressed={isAuto}
+        >
+          {tr("Auto aus Logo")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("manual")}
+          className={`rounded-md px-3 py-2 text-xs font-black transition ${
+            !isAuto ? "bg-zinc-950 text-white" : "text-zinc-600 hover:bg-zinc-100"
+          }`}
+          aria-pressed={!isAuto}
+        >
+          {tr("Manuell")}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2" aria-label={tr("Aktive 3-Farben-Palette")}>
+        {[
+          [config.branding.accent, "Primär"],
+          [config.branding.accentSecondary, "Kontrast"],
+          [config.branding.accentTertiary, "Highlight"],
+        ].map(([color, label]) => (
+          <div key={label} className="min-w-0">
+            <span
+              className="block h-12 rounded-lg shadow-[0_8px_18px_rgba(15,23,42,.12)] ring-1 ring-black/5"
+              style={{ backgroundColor: color }}
+            />
+            <span className="mt-1 block truncate text-[10px] font-bold text-zinc-500">
+              {tr(label)}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[11px] leading-4 text-zinc-500" aria-live="polite">
+        {status === "loading"
+          ? tr("Logo wird analysiert …")
+          : status === "logo"
+            ? tr("Drei kontrastreiche Farben wurden aus dem Partnerlogo gewählt.")
+            : status === "derived"
+              ? tr("Logo-Farben wurden zu einer vollständigen professionellen Palette ergänzt.")
+              : status === "fallback"
+                ? tr("Benefitsi Blau-Palette aktiv – das Logo ist einfarbig, fehlt oder kann nicht analysiert werden.")
+                : tr("Manuelle Farben sind aktiv.")}
+      </p>
+
+      {isAuto ? (
+        <button
+          type="button"
+          onClick={() => {
+            setStatus("loading")
+            setRefreshToken((current) => current + 1)
+          }}
+          disabled={status === "loading"}
+          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-black text-zinc-800 transition hover:border-zinc-400 hover:bg-zinc-100 disabled:cursor-wait disabled:opacity-60"
+        >
+          {tr("Palette neu aus Logo auswählen")}
+        </button>
+      ) : null}
+
+      <div className="grid gap-3">
+        <ColorField
+          name="accent"
+          label="Primärfarbe"
+          value={config.branding.accent}
+          disabled={isAuto}
+          onChange={(value) => updateBranding(setConfig, "accent", value)}
+        />
+        <ColorField
+          name="accent_secondary"
+          label="Kontrastfarbe"
+          value={config.branding.accentSecondary}
+          disabled={isAuto}
+          onChange={(value) => updateBranding(setConfig, "accentSecondary", value)}
+        />
+        <ColorField
+          name="accent_tertiary"
+          label="Highlightfarbe"
+          value={config.branding.accentTertiary}
+          disabled={isAuto}
+          onChange={(value) => updateBranding(setConfig, "accentTertiary", value)}
+        />
+      </div>
+    </div>
+  )
+}
+
 function ColorField({
   name,
   label,
   value,
+  disabled = false,
   onChange,
 }: {
   name: string
   label: string
   value: string
+  disabled?: boolean
   onChange: (value: string) => void
 }) {
   const { tr } = useBuilderI18n()
@@ -4497,17 +5715,19 @@ function ColorField({
         <input
           type="color"
           value={value}
+          disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
-          className="h-10 w-14 cursor-pointer rounded-md border border-zinc-300 bg-white p-1"
+          className="h-10 w-14 cursor-pointer rounded-md border border-zinc-300 bg-white p-1 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label={`${tr(label)} Picker`}
         />
         <input
           name={name}
           value={value}
+          disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
           pattern="#[0-9a-fA-F]{6}"
-          placeholder="#f59e0b"
-          className="h-10 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+          placeholder="#118cff"
+          className="h-10 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
           aria-label={tr(label)}
         />
       </div>
@@ -4526,6 +5746,24 @@ function AssetUploadField({
 }) {
   const { tr } = useBuilderI18n()
   const [fileName, setFileName] = useState("")
+  const previewUrlRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const clearUpload = () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current)
+        previewUrlRef.current = null
+      }
+      setFileName("")
+    }
+
+    window.addEventListener(MICROSITE_UPLOADS_CLEARED_EVENT, clearUpload)
+
+    return () => {
+      window.removeEventListener(MICROSITE_UPLOADS_CLEARED_EVENT, clearUpload)
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    }
+  }, [])
 
   return (
     <label className="block space-y-1.5 text-xs font-medium text-zinc-600">
@@ -4533,14 +5771,22 @@ function AssetUploadField({
       <input
         type="file"
         name={name}
+        data-microsite-upload
         accept="image/png,image/jpeg,image/webp,image/svg+xml"
         onChange={(event) => {
           const file = event.target.files?.[0]
 
           setFileName(file?.name ?? "")
 
+          if (previewUrlRef.current) {
+            URL.revokeObjectURL(previewUrlRef.current)
+            previewUrlRef.current = null
+          }
+
           if (file && onPreview) {
-            onPreview(URL.createObjectURL(file))
+            const previewUrl = URL.createObjectURL(file)
+            previewUrlRef.current = previewUrl
+            onPreview(previewUrl)
           }
         }}
         className="block w-full rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2 text-xs file:mr-2 file:rounded file:border-0 file:bg-teal-50 file:px-2 file:py-1 file:font-semibold file:text-teal-800"
@@ -4813,9 +6059,9 @@ function englishMicrositeCopyForPartner(
 ) {
   const categoryText = partner.category?.filter(Boolean).slice(0, 3).join(", ")
   const description = partner.description?.trim()
-  const profile = defaultMicrositeTemplateForPartner(partner)
+  const profile = inferMicrositePartnerProfile(partner)
 
-  if (profile === "salon-editorial" || profile === "atelier-noir") {
+  if (profile === "salon") {
     return {
       heroSlogan: "Style, care and trust in one place.",
       aboutText:
@@ -4833,7 +6079,7 @@ function englishMicrositeCopyForPartner(
     }
   }
 
-  if (profile === "wellness-serene") {
+  if (profile === "wellness") {
     return {
       heroSlogan: "Calm, care and a reason to come back.",
       aboutText:
@@ -4851,7 +6097,7 @@ function englishMicrositeCopyForPartner(
     }
   }
 
-  if (profile === "cinema-spotlight") {
+  if (profile === "cinema") {
     return {
       heroSlogan: "Nights out, member perks and local experiences worth repeating.",
       aboutText:

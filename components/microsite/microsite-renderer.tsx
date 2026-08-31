@@ -2,25 +2,23 @@
 
 import type { PartnerWithDeals } from "@/lib/admin-data"
 import type { MicrositeConfig } from "@/lib/microsites"
-import { PartnerSignatureMicrosite } from "./partner-signature-microsite"
 import { RestaurantPremiumMicrosite } from "./restaurant-premium-microsite"
 
 export function MicrositeRenderer({
   partner,
   config,
+  showAppDownloadPopup = true,
 }: {
   partner: PartnerWithDeals
   config: MicrositeConfig
+  showAppDownloadPopup?: boolean
 }) {
-  if (
-    config.template === "salon-editorial" ||
-    config.template === "atelier-noir" ||
-    config.template === "wellness-serene" ||
-    config.template === "cinema-spotlight" ||
-    config.template === "festival-neon"
-  ) {
-    return <PartnerSignatureMicrosite partner={partner} config={config} />
-  }
-
-  return <RestaurantPremiumMicrosite partner={partner} config={config} />
+  return (
+    <RestaurantPremiumMicrosite
+      key={`${partner.id || partner.slug || "partner"}-${config.language}`}
+      partner={partner}
+      config={config}
+      showAppDownloadPopup={showAppDownloadPopup}
+    />
+  )
 }

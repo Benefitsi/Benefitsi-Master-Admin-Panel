@@ -66,6 +66,16 @@ function createPublicMicrositeClient() {
           elementText: {
             "content.aboutHeadline": "About our shop",
             "content.appPhoneScreenshotUrl": "https://cdn.example/phone.png",
+            "content.appQrCodeUrl": "https://cdn.example/partner-controlled-qr.png",
+            "content.menuFeaturedItemKey": "menu-item-112",
+            "content.socialFeed.enabled": "true",
+            "content.socialFeed.platform": "instagram",
+            "content.socialFeed.instagram.0.url":
+              "https://www.instagram.com/p/valid-public-post/",
+            "content.socialFeed.instagram.5.url":
+              "https://www.instagram.com/reel/another-public-post/",
+            "content.socialFeed.instagram.6.url":
+              "https://www.instagram.com/p/not-a-supported-slot/",
             "social.instagram.url": "javascript:alert(1)",
             "social.instagram.enabled": "true",
             "builder.privateNote": "do not expose",
@@ -91,6 +101,19 @@ function createPublicMicrositeClient() {
       error: null,
     },
     partner_reward_milestones: { data: [], error: null },
+    partner_socials: {
+      data: [
+        {
+          id: "social-1",
+          partner_id: "partner-1",
+          platform: "instagram",
+          url: "https://www.instagram.com/public-shop/",
+          handle: "public-shop",
+          sort_order: 0,
+        },
+      ],
+      error: null,
+    },
     partner_opening_hours: { data: [], error: null },
     menus: { data: [], error: null },
     menu_categories: { data: [], error: null },
@@ -117,6 +140,12 @@ test("published microsites return a narrow, safe public DTO", async () => {
   assert.equal(page.partner.microsite.publishedVersion.created_by, null)
   assert.equal(page.partner.deals[0].staff_instructions, null)
   assert.equal(page.partner.deals[0].metadata, null)
+  assert.equal(page.partner.socials.length, 1)
+  assert.equal(page.partner.socials[0].platform, "instagram")
+  assert.equal(
+    page.partner.socials[0].url,
+    "https://www.instagram.com/public-shop/",
+  )
   assert.equal(page.config.assets.library.length, 0)
   assert.equal(page.config.builder.versionNote, "")
   assert.equal(page.config.printables.note, "")
@@ -124,6 +153,25 @@ test("published microsites return a narrow, safe public DTO", async () => {
   assert.equal(
     page.config.elementText["content.appPhoneScreenshotUrl"],
     "https://cdn.example/phone.png",
+  )
+  assert.equal(page.config.elementText["content.appQrCodeUrl"], undefined)
+  assert.equal(
+    page.config.elementText["content.menuFeaturedItemKey"],
+    "menu-item-112",
+  )
+  assert.equal(page.config.elementText["content.socialFeed.enabled"], "true")
+  assert.equal(page.config.elementText["content.socialFeed.platform"], "instagram")
+  assert.equal(
+    page.config.elementText["content.socialFeed.instagram.0.url"],
+    "https://www.instagram.com/p/valid-public-post/",
+  )
+  assert.equal(
+    page.config.elementText["content.socialFeed.instagram.5.url"],
+    "https://www.instagram.com/reel/another-public-post/",
+  )
+  assert.equal(
+    page.config.elementText["content.socialFeed.instagram.6.url"],
+    undefined,
   )
   assert.equal(page.config.elementText["social.instagram.url"], undefined)
   assert.equal(page.config.elementText["builder.privateNote"], undefined)
