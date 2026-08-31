@@ -16,11 +16,15 @@ import {
   type MicrositeVersion,
   type PartnerMicrosite,
 } from "./microsites"
+import { normalizePublicHttpUrl } from "./microsite-personalization"
 
 export type PublishedMicrositePage = {
   partner: PartnerWithDeals
   config: MicrositeConfig
 }
+
+const PUBLIC_DEAL_COLUMNS =
+  "id,partner_id,type,discount_type,premium_only,benefit_category,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,trigger_value,expiry_days,starts_at,ends_at,valid_from,valid_until,stock_total,stock_remaining,metadata"
 
 export async function getPublishedMicrositePage(
   supabase: SupabaseClient,
@@ -68,7 +72,7 @@ export async function getPublishedMicrositePage(
         .maybeSingle(),
       supabase
         .from("deals")
-        .select("id,partner_id,active,reward_item,customer_description,terms")
+        .select(PUBLIC_DEAL_COLUMNS)
         .eq("partner_id", microsite.partner_id)
         .eq("active", true),
       supabase
@@ -202,6 +206,10 @@ function sanitizePartnerForPublicMicrosite(
     reward_milestones: partner.reward_milestones.map((milestone) => ({
       ...milestone,
       staff_instructions: null,
+    })),
+    socials: partner.socials.map((social) => ({
+      ...social,
+      url: normalizePublicHttpUrl(social.url) || null,
     })),
     staff: [],
     stamp_progress: [],
@@ -400,7 +408,12 @@ function isVisibilityKey(key: string) {
 }
 
 function isSafePublicLink(value: string) {
-  return /^(https?:\/\/|mailto:|tel:|\/|#)/i.test(value.trim())
+  const trimmed = value.trim()
+
+  return (
+    /^(mailto:|tel:|\/|#)/i.test(trimmed) ||
+    Boolean(normalizePublicHttpUrl(trimmed))
+  )
 }
 
 function isSafePublicAsset(value: string) {

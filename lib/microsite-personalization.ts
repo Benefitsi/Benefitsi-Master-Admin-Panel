@@ -271,14 +271,14 @@ export function partnerSocialUrl(
   platform: string,
 ) {
   if (platform === "website") {
-    return normalizeUrl(partner.website)
+    return normalizePublicHttpUrl(partner.website)
   }
 
   if (platform === "whatsapp") {
     const explicitWhatsapp = socialEntryForPlatform(partner.socials, "whatsapp")
 
     if (explicitWhatsapp?.url) {
-      return explicitWhatsapp.url
+      return normalizePublicHttpUrl(explicitWhatsapp.url)
     }
 
     const digits = partner.phone?.replace(/[^\d+]/g, "")
@@ -286,7 +286,7 @@ export function partnerSocialUrl(
   }
 
   const social = socialEntryForPlatform(partner.socials, platform)
-  return normalizeUrl(social?.url)
+  return normalizePublicHttpUrl(social?.url)
 }
 
 export function partnerSocialLabel(
@@ -312,7 +312,7 @@ export function partnerSocialLabel(
 
 export function preferredContactUrl(partner: Pick<PartnerSeed, "website" | "phone" | "email">) {
   return (
-    normalizeUrl(partner.website) ||
+    normalizePublicHttpUrl(partner.website) ||
     (partner.phone ? `tel:${partner.phone.replace(/[^\d+]/g, "")}` : "") ||
     (partner.email ? `mailto:${partner.email}` : "")
   )
@@ -379,26 +379,40 @@ function socialEntryForPlatform(
   )
 }
 
-function normalizeUrl(value?: string | null) {
+export function normalizePublicHttpUrl(value?: string | null) {
   const trimmed = value?.trim()
 
   if (!trimmed) {
     return ""
   }
 
-  if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed
+  let candidate = trimmed
+
+  if (/^\/\//.test(trimmed)) {
+    candidate = `https:${trimmed}`
+  } else if (!/^https?:\/\//i.test(trimmed)) {
+    if (/^[a-z][a-z\d+.-]*:/i.test(trimmed)) {
+      return ""
+    }
+
+    candidate = `https://${trimmed}`
   }
 
-  if (/^(mailto:|tel:)/i.test(trimmed)) {
-    return trimmed
-  }
+  try {
+    const parsed = new URL(candidate)
 
-  return `https://${trimmed.replace(/^\/+/, "")}`
+    if (!/^https?:$/.test(parsed.protocol) || !parsed.hostname) {
+      return ""
+    }
+
+    return candidate
+  } catch {
+    return ""
+  }
 }
 
 function readableWebsiteLabel(value: string) {
-  const normalized = normalizeUrl(value)
+  const normalized = normalizePublicHttpUrl(value)
 
   if (!normalized) {
     return ""
