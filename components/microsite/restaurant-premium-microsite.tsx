@@ -1729,7 +1729,8 @@ function DealsSection({
                 deal={deal}
                 config={config}
                 active={topDealActive}
-                primary={index === 0}
+                primary={isMicrositeTopDeal(deal)}
+                wide={publicDeals.length > 1 && isMicrositeTopDeal(deal)}
               />
             ))}
           </div>
@@ -1943,11 +1944,13 @@ function MicrositeDealBanner({
   config,
   active,
   primary = false,
+  wide = false,
 }: {
   deal: Deal
   config: MicrositeConfig
   active: boolean
   primary?: boolean
+  wide?: boolean
 }) {
   const isTopDeal = isMicrositeTopDeal(deal)
   const title = micrositeDealTitle(deal, config.language)
@@ -1956,48 +1959,96 @@ function MicrositeDealBanner({
   const dealLabel = isTopDeal
     ? config.deals.topDealLabel
     : micrositeDealTypeLabel(deal, config.language)
+  const articleClassName = isTopDeal
+    ? `premium-reveal premium-topdeal relative min-h-full overflow-hidden rounded-[1.6rem] bg-[#121212] text-white shadow-[0_30px_80px_rgba(15,23,42,.22)] ${wide ? "@min-[900px]:col-span-2" : ""} ${active ? "is-active" : ""}`
+    : `premium-reveal premium-deal-secondary relative min-h-full overflow-hidden rounded-[1.15rem] border border-[var(--site-border)] bg-[var(--site-surface)] text-[var(--site-text)] shadow-[0_16px_36px_rgba(15,23,42,.08)] ${active ? "is-active" : ""}`
 
   return (
-    <article
-      className={`premium-reveal premium-topdeal relative min-h-full overflow-hidden rounded-[1.6rem] bg-[#121212] text-white shadow-[0_30px_80px_rgba(15,23,42,.22)] ${active ? "is-active" : ""}`}
-    >
-      <BrandedImage
-        src={config.deals.topDealImageUrl}
-        alt={`${title} – ${siteCopy(config, "Dealbild", "Deal image")}`}
-        editableId={primary ? "deals.topDealImageUrl" : undefined}
-        editableLabel="Deal Bild"
-        className="premium-topdeal-image absolute inset-y-0 right-0 h-full w-full object-cover object-center @min-[640px]:w-[68%]"
-        style={imageStyleFor(config, "deals.topDealImageUrl")}
-      />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#121212_0%,#121212_36%,rgba(18,18,18,.93)_43%,rgba(18,18,18,.16)_73%)]" />
-      {primary ? (
+    <article className={articleClassName}>
+      {isTopDeal ? (
+        <>
+          <BrandedImage
+            src={config.deals.topDealImageUrl}
+            alt={`${title} – ${siteCopy(config, "Dealbild", "Deal image")}`}
+            editableId={primary ? "deals.topDealImageUrl" : undefined}
+            editableLabel="Deal Bild"
+            className="premium-topdeal-image absolute inset-y-0 right-0 h-full w-full object-cover object-center @min-[640px]:w-[68%]"
+            style={imageStyleFor(config, "deals.topDealImageUrl")}
+          />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#121212_0%,#121212_36%,rgba(18,18,18,.93)_43%,rgba(18,18,18,.16)_73%)]" />
+          {primary ? (
+            <span
+              {...editable("deals.topDealImageUrl", "image", "Deal Bild")}
+              aria-hidden="true"
+              className="absolute inset-y-0 right-0 z-[20] min-w-[140px] w-[58%]"
+            />
+          ) : null}
+        </>
+      ) : (
         <span
-          {...editable("deals.topDealImageUrl", "image", "Deal Bild")}
           aria-hidden="true"
-          className="absolute inset-y-0 right-0 z-[20] min-w-[140px] w-[58%]"
+          className="absolute inset-y-0 left-0 w-1 bg-[var(--site-accent)]"
         />
-      ) : null}
-      <div className="relative z-[3] flex min-h-full flex-col p-5 @min-[640px]:p-7 @min-[1024px]:min-h-[310px] @min-[1024px]:p-8">
+      )}
+      <div
+        className={
+          isTopDeal
+            ? "relative z-[3] flex min-h-full flex-col p-5 @min-[640px]:p-7 @min-[1024px]:min-h-[310px] @min-[1024px]:p-8"
+            : "relative z-[3] flex min-h-[132px] flex-col justify-center p-4 pl-5 @min-[640px]:min-h-[148px] @min-[640px]:p-5 @min-[640px]:pl-6"
+        }
+      >
         <p
           {...(primary && isTopDeal ? editable("deals.topDealLabel", "text", "Top-Deal Label") : {})}
-          className="inline-flex w-fit rounded-full border border-[var(--site-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--site-accent)]"
-          style={textStyleFor(config, "deals.topDealLabel")}
+          className={
+            isTopDeal
+              ? "inline-flex w-fit rounded-full border border-[var(--site-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--site-accent)]"
+              : "inline-flex w-fit rounded-full bg-[color-mix(in_srgb,var(--site-accent)_10%,transparent)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--site-accent)]"
+          }
+          style={isTopDeal ? textStyleFor(config, "deals.topDealLabel") : undefined}
         >
           {dealLabel}
         </p>
-        <h3 className="mt-4 max-w-md text-[clamp(2.2rem,5cqw,3.5rem)] font-black leading-none tracking-[-0.04em]">
+        <h3
+          className={
+            isTopDeal
+              ? "mt-4 max-w-md text-[clamp(2.2rem,5cqw,3.5rem)] font-black leading-none tracking-[-0.04em]"
+              : "mt-2 max-w-xl text-xl font-black leading-tight tracking-[-0.03em] @min-[640px]:text-2xl"
+          }
+        >
           {title}
         </h3>
-        <p className="mt-3 max-w-xl text-sm text-zinc-100">
+        <p
+          className={
+            isTopDeal
+              ? "mt-3 max-w-xl text-sm text-zinc-100"
+              : "mt-2 max-w-2xl text-xs leading-5 text-[var(--site-muted)] @min-[640px]:text-sm"
+          }
+        >
           {description}
         </p>
         {details.length ? (
-          <ul className="mt-5 space-y-2 text-sm">
+          <ul
+            className={
+              isTopDeal
+                ? "mt-5 space-y-2 text-sm"
+                : "mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-[var(--site-muted)]"
+            }
+          >
             {details.map((detail, index) => (
-              <li key={`${detail}-${index}`} className="flex items-start gap-2">
-                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-emerald-500 text-white shadow-[0_8px_18px_-10px_#10b981]">
-                  <Check className="size-3" strokeWidth={3} aria-hidden="true" />
-                </span>
+              <li
+                key={`${detail}-${index}`}
+                className="flex items-start gap-2"
+              >
+                {isTopDeal ? (
+                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-emerald-500 text-white shadow-[0_8px_18px_-10px_#10b981]">
+                    <Check className="size-3" strokeWidth={3} aria-hidden="true" />
+                  </span>
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="mt-[0.35rem] size-1.5 shrink-0 rounded-full bg-[var(--site-accent)]"
+                  />
+                )}
                 <span>{detail}</span>
               </li>
             ))}
@@ -2005,11 +2056,18 @@ function MicrositeDealBanner({
         ) : null}
         <button
           {...(primary ? editable("deals.topDealButtonLabel", "text", "Top-Deal Button") : {})}
-          className="premium-button premium-button-shine group mt-6 inline-flex min-h-11 w-fit items-center gap-3 rounded-lg bg-[var(--site-accent)] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]"
-          style={textStyleFor(config, "deals.topDealButtonLabel")}
+          className={
+            isTopDeal
+              ? "premium-button premium-button-shine group mt-6 inline-flex min-h-11 w-fit items-center gap-3 rounded-lg bg-[var(--site-accent)] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]"
+              : "premium-button group mt-4 inline-flex min-h-9 w-fit items-center gap-2 rounded-lg border border-[var(--site-accent)] bg-transparent px-3.5 py-2 text-xs font-semibold text-[var(--site-accent)] transition duration-300 hover:-translate-y-0.5 hover:bg-[color-mix(in_srgb,var(--site-accent)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)] focus-visible:ring-offset-2"
+          }
+          style={isTopDeal ? textStyleFor(config, "deals.topDealButtonLabel") : undefined}
         >
           {config.deals.topDealButtonLabel}
-          <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
+          <ArrowRight
+            className={`${isTopDeal ? "size-4" : "size-3.5"} transition-transform duration-300 group-hover:translate-x-1`}
+            aria-hidden="true"
+          />
         </button>
       </div>
     </article>

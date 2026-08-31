@@ -39,6 +39,17 @@ test("renders admin-backed deals and stamp rewards as responsive collections", a
   assert.doesNotMatch(source, /textValue\(config, card\.titleId, card\.titleFallback\)/)
 })
 
+test("keeps secondary deal banners compact next to the top deal", async () => {
+  const source = await readFile(componentUrl, "utf8")
+
+  assert.match(source, /premium-deal-secondary/)
+  assert.match(
+    source,
+    /wide=\{publicDeals\.length > 1 && isMicrositeTopDeal\(deal\)\}/,
+  )
+  assert.match(source, /isTopDeal \?/)
+})
+
 test("keeps dark mode polished and uses the official social glyphs", async () => {
   const source = await readFile(componentUrl, "utf8")
 
