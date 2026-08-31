@@ -24,7 +24,7 @@ export type PublishedMicrositePage = {
 }
 
 const PUBLIC_DEAL_COLUMNS =
-  "id,partner_id,type,discount_type,premium_only,benefit_category,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,trigger_value,expiry_days,starts_at,ends_at,valid_from,valid_until,stock_total,stock_remaining,metadata"
+  "id,partner_id,type,discount_type,premium_only,benefit_category,audience,activation_required,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,trigger_value,expiry_days,happy_hour_start,happy_hour_end,starts_at,ends_at,valid_from,valid_until,valid_weekdays,min_spend,stock_total,stock_remaining,metadata"
 
 export async function getPublishedMicrositePage(
   supabase: SupabaseClient,
@@ -78,7 +78,7 @@ export async function getPublishedMicrositePage(
       supabase
         .from("partner_reward_milestones")
         .select(
-          "id,partner_id,required_stamps,title,reward_item,customer_description,active",
+          "id,partner_id,required_stamps,reward_type,reward_item,discount_type,discount_value,estimated_savings,title,customer_description,terms,audience,active,reward_track_target",
         )
         .eq("partner_id", microsite.partner_id)
         .eq("active", true),
