@@ -168,8 +168,9 @@ export function micrositeDealTitle(
       : ""
 
   if (dealType === "two_for_one" || discountType === "2for1") {
-    return deal.reward_item?.trim() ||
-      (language === "en" ? "2-for-1 benefit" : "2 für 1 Vorteil")
+    const rewardItem = deal.reward_item?.trim()
+    const prefix = language === "en" ? "2-for-1" : "2 für 1"
+    return rewardItem ? `${prefix} ${rewardItem}` : prefix
   }
 
   if (discountType === "fixed" && isFiniteNumber(deal.discount_value)) {

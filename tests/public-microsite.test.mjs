@@ -242,6 +242,57 @@ test("published microsites return a narrow, safe public DTO", async () => {
   assert.equal(selections.includes("*"), false)
 })
 
+test("public microsites fall back to the legacy deal projection during rollout", async () => {
+  const base = createPublicMicrositeClient()
+  let dealReads = 0
+  const client = {
+    from(table) {
+      if (table !== "deals") {
+        return base.client.from(table)
+      }
+
+      dealReads += 1
+      if (dealReads === 1) {
+        return createQuery(
+          {
+            data: null,
+            error: { message: 'column "display_title" does not exist' },
+          },
+          base.selections,
+        )
+      }
+
+      return createQuery(
+        {
+          data: [
+            {
+              id: "legacy-deal",
+              partner_id: "partner-1",
+              type: "two_for_one",
+              discount_type: "2for1",
+              reward_item: "Döner",
+              active: true,
+            },
+          ],
+          error: null,
+        },
+        base.selections,
+      )
+    },
+  }
+
+  const page = await getPublishedMicrositePage(client, "public-shop")
+
+  assert.ok(page)
+  assert.equal(dealReads, 2)
+  assert.equal(page.partner.deals[0].display_title, null)
+  assert.equal(page.partner.deals[0].display_subtitle, null)
+  assert.equal(
+    base.selections.some((selection) => !selection.includes("display_title")),
+    true,
+  )
+})
+
 test("public microsites keep the deal eligibility fields needed by the renderer", async () => {
   const baseDeal = {
     partner_id: "partner-1",

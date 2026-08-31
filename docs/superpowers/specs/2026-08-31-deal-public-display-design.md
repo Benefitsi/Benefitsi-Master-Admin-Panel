@@ -23,7 +23,7 @@ Die Tabelle `public.deals` erhält zwei nullable Felder:
 
 | Feld | Typ | Semantik |
 | --- | --- | --- |
-| `display_title` | `text` | Optionaler öffentlicher Titel, z. B. „2 für 1 Döner“. Null/leer verwendet den bestehenden typbasierten Fallback. |
+| `display_title` | `text` | Optionaler öffentlicher Titel, z. B. „2 für 1 Döner“. Null/leer verwendet den bestehenden typbasierten Fallback; bei alten 2-für-1-Deals wird der Artikelname ergänzt. |
 | `display_subtitle` | `text` | Optionaler öffentlicher Untertitel. Null bedeutet automatische Unterzeile; leerer Text bedeutet bewusst keine Unterzeile. |
 
 Die Migration ergänzt außerdem die Spalten der `deals_app_view`. Die bestehende View-Reihenfolge bleibt für ältere Scanner-/Redemption-Flows kompatibel; `staff_instructions` wird deshalb technisch weiterhin geliefert, aber nie in der kundenöffentlichen Detailansicht gerendert. Die Public-Microsite sanitisiert interne Hinweise weiterhin zu `null`.
@@ -81,7 +81,7 @@ Eligibility bleibt funktional erhalten: Premium-Sperren, Ablauf und Auswahlstatu
 1. Admin-Formular sendet die drei neuen Werte an `saveDeal`.
 2. `parseDealPayload` validiert Längen und Normalisierung; die bestehende Copy-Erhaltung für abgelehnte Saves wird um die neuen öffentlichen Felder ergänzt.
 3. Die Datenbankmigration erweitert Tabelle und App-View. Die Public-Microsite-Abfrage nimmt nur die für Nutzer erforderlichen Felder auf und setzt `staff_instructions` beim Sanitizing weiterhin auf `null`.
-4. Flutter und Microsite verwenden dieselben Fallback-Regeln, damit ein nicht gepflegter Alt-Deal unverändert funktioniert.
+4. Flutter, Microsite und Admin verwenden dieselben Null-/Leer-/Override-Semantiken. Die etablierte Fallback-Formulierung bleibt für ältere Deal-Typen stabil; der 2-für-1-Artikelname wird in allen drei Oberflächen einheitlich ergänzt.
 
 ## Fehlerfälle
 

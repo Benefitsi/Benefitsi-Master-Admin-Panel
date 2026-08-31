@@ -4,7 +4,7 @@
 
 **Goal:** Give administrators explicit public deal titles/subtitles, remove the Top-Vorteil presentation, and keep app deal details customer-facing.
 
-**Architecture:** Store nullable `display_title`/`display_subtitle` on `public.deals`, parse them through the existing Admin deal form, and reuse the same fallback semantics in the Admin microsite preview and Flutter formatter. Keep existing eligibility/redemption logic intact while removing internal fields from the Flutter detail presentation.
+**Architecture:** Store nullable `display_title`/`display_subtitle` on `public.deals`, parse them through the existing Admin deal form, and reuse the same explicit/null/empty semantics in the Admin microsite preview and Flutter formatter. Keep established fallback wording for legacy deal types (with a normalized two-for-one item title) and keep existing eligibility/redemption logic intact while removing internal fields from the Flutter detail presentation.
 
 **Tech Stack:** Next.js/React + TypeScript Admin Panel, Supabase SQL migrations, Flutter/Dart app, Node test runner, Flutter tests.
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Deals remain equal; no Top-Vorteil selector or badge is added.
-- `display_title` null/empty falls back to the existing generated title.
+- `display_title` null/empty falls back to the established generated title; legacy two-for-one deals include their reward item in that fallback.
 - `display_subtitle` null uses the generated subtitle; an explicitly empty string hides it.
 - `staff_instructions`, audience, technical type/category/application, and internal notices are never rendered in the user-facing deal details.
 - Existing eligibility, redemption, validation, and legacy-deal behavior must remain compatible.
@@ -62,7 +62,7 @@
 
 **Interfaces:**
 - Public deal selection includes `display_title` and `display_subtitle`.
-- `micrositeDealTitle` and `micrositeDealDescription` honor the explicit values and preserve legacy fallbacks.
+- `micrositeDealTitle` and `micrositeDealDescription` honor the explicit values and preserve legacy fallbacks. The common legacy two-for-one fallback is `2 für 1 <Artikel>` when an item is available.
 - The phone preview and deal cards contain no Top-Vorteil badge text.
 
 - [x] **Step 1: Add failing helper/query/source tests for title/subtitle precedence, empty subtitle suppression, and badge absence.

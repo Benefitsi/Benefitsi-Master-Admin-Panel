@@ -122,8 +122,39 @@ test("microsite title and subtitle follow explicit public display fallbacks", ()
   assert.equal(micrositeDealDescription({ ...deal, display_subtitle: "" }, "de"), "")
 })
 
+test("legacy two-for-one titles include the reward item consistently", async () => {
+  const [adminCode, micrositeCode] = await Promise.all([
+    readFile(adminUrl, "utf8"),
+    readFile(micrositeContentUrl, "utf8"),
+  ])
+
+  const legacyDeal = {
+    type: "two_for_one",
+    discount_type: "2for1",
+    discount_value: null,
+    reward_item: "Döner",
+    benefit_count: null,
+    customer_description: "",
+    terms: "",
+    min_spend: null,
+  }
+
+  assert.equal(micrositeDealTitle(legacyDeal, "de"), "2 für 1 Döner")
+  assert.match(adminCode, /formatDealPublicTitle/)
+  assert.match(micrositeCode, /2 für 1/)
+})
+
 test("microsite phone preview does not render a Top-Vorteil badge", async () => {
   const viewCode = await readFile(micrositeViewUrl, "utf8")
 
   assert.doesNotMatch(viewCode, /siteCopy\(config, ["']Top-Vorteil["']/)
+})
+
+test("public microsite deal loading has a legacy projection fallback", async () => {
+  const dataCode = await readFile(micrositeDataUrl, "utf8")
+
+  assert.match(dataCode, /PUBLIC_DEAL_COLUMNS_LEGACY/)
+  assert.match(dataCode, /dealsResult\.error/)
+  assert.match(dataCode, /display_title:\s*null/)
+  assert.match(dataCode, /publicDealsError/)
 })

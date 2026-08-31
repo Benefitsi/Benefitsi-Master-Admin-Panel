@@ -26,6 +26,11 @@ export type PublishedMicrositePage = {
 const PUBLIC_DEAL_COLUMNS =
   "id,partner_id,type,discount_type,premium_only,benefit_category,audience,activation_required,allow_free_trial,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,display_title,display_subtitle,trigger_value,expiry_days,happy_hour_start,happy_hour_end,timezone,cooldown_hours,valid_from,valid_until,max_redemptions_global,max_redemptions_per_user,stock_total,stock_remaining,selection_expires_minutes,priority,min_spend,max_discount_amount,reward_track_target,weekdays,reserve_on_selection,metadata,created_at,updated_at"
 
+// Keep a projection without the additive public-copy fields so a microsite
+// can continue serving legacy deals during a staggered database rollout.
+const PUBLIC_DEAL_COLUMNS_LEGACY =
+  "id,partner_id,type,discount_type,premium_only,benefit_category,audience,activation_required,allow_free_trial,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,trigger_value,expiry_days,happy_hour_start,happy_hour_end,timezone,cooldown_hours,valid_from,valid_until,max_redemptions_global,max_redemptions_per_user,stock_total,stock_remaining,selection_expires_minutes,priority,min_spend,max_discount_amount,reward_track_target,weekdays,reserve_on_selection,metadata,created_at,updated_at"
+
 export async function getPublishedMicrositePage(
   supabase: SupabaseClient,
   slug: string,
@@ -100,9 +105,27 @@ export async function getPublishedMicrositePage(
         .order("created_at"),
     ])
 
+  let publicDealsData = dealsResult.data
+  let publicDealsError = dealsResult.error
+  if (dealsResult.error && isMissingPublicDealDisplayColumn(dealsResult.error)) {
+    const legacyDealsResult = await supabase
+      .from("deals")
+      .select(PUBLIC_DEAL_COLUMNS_LEGACY)
+      .eq("partner_id", microsite.partner_id)
+      .eq("active", true)
+
+    publicDealsData = (legacyDealsResult.data ?? []).map((deal) => ({
+      ...deal,
+      display_title: null,
+      display_subtitle: null,
+    }))
+    publicDealsError = legacyDealsResult.error
+  }
+
   if (
     partnerResult.error ||
     versionResult.error ||
+    publicDealsError ||
     !partnerResult.data ||
     !versionResult.data
   ) {
@@ -152,7 +175,7 @@ export async function getPublishedMicrositePage(
   }
   const annotatedPartner: PartnerWithDeals = {
     ...partner,
-    deals: (dealsResult.data ?? []) as Deal[],
+    deals: (publicDealsData ?? []) as Deal[],
     holidays: [],
     socials: (socialsResult.data ?? []) as PartnerSocial[],
     reward_milestones:
@@ -188,6 +211,11 @@ export async function getPublishedMicrositePage(
     partner: sanitizePartnerForPublicMicrosite(annotatedPartner, config),
     config,
   }
+}
+
+function isMissingPublicDealDisplayColumn(error: { message?: string } | null) {
+  const message = error?.message?.toLowerCase() || ""
+  return message.includes("display_title") || message.includes("display_subtitle")
 }
 
 function sanitizePartnerForPublicMicrosite(

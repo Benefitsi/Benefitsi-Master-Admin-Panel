@@ -5494,9 +5494,7 @@ function formatDealDisplayName({
 
 function formatDealPublicSubtitle(discountType: string, rewardItem: string) {
   if (discountType === "2for1") {
-    return rewardItem.trim()
-      ? `Zwei bekommen, eins bezahlen – ${rewardItem.trim()}`
-      : "Zwei bekommen, eins bezahlen"
+    return "Zwei bekommen, eins bezahlen."
   }
 
   if (discountType === "item") {
@@ -5508,6 +5506,32 @@ function formatDealPublicSubtitle(discountType: string, rewardItem: string) {
   }
 
   return ""
+}
+
+function formatDealPublicTitle({
+  type,
+  discountType,
+  discountValue,
+  rewardItem,
+  benefitCount,
+}: {
+  type: string
+  discountType: string
+  discountValue: number | null
+  rewardItem: string
+  benefitCount: number | null
+}) {
+  if (type.trim().toLowerCase() === "two_for_one" || discountType === "2for1") {
+    return rewardItem.trim() ? `2 für 1 ${rewardItem.trim()}` : "2 für 1"
+  }
+
+  return formatDealDisplayName({
+    type,
+    discountType,
+    discountValue,
+    rewardItem,
+    benefitCount,
+  })
 }
 
 function DealFields({
@@ -5930,7 +5954,7 @@ function DealFields({
     emitDraftTitle({ discountType: nextDiscountType })
   }
 
-  const generatedDisplayTitle = formatDealDisplayName({
+  const generatedDisplayTitle = formatDealPublicTitle({
     type: selectedDealType,
     discountType: selectedDiscountType,
     discountValue: parseOptionalNumberInput(discountValue),
