@@ -73,6 +73,7 @@ import {
   deletePartnerStaff,
   deletePartner,
   deleteRewardMilestone,
+  generateDealCopy,
   generatePartnerDescription,
   reorderMenuCategories,
   reorderMenuItems,
@@ -88,6 +89,8 @@ import {
   saveWeeklyOpeningHours,
   type PartnerActionState,
 } from "./partner-actions"
+import type { BenDealCopyField } from "@/lib/deal-copy"
+import type { DealFormDraft } from "@/lib/deal-form"
 import { researchPartner } from "./partner-enrichment-actions"
 import type {
   GeminiProviderWarning,
@@ -4098,6 +4101,7 @@ function DealsPanel({
         editor={dealEditor}
         onClose={() => setDealEditor(null)}
         partnerId={partnerId}
+        partnerName={partner.name ?? ""}
         visits={partner.visits}
       />
     </div>
@@ -4419,11 +4423,13 @@ function DealEditorDialog({
   editor,
   onClose,
   partnerId,
+  partnerName,
   visits,
 }: {
   editor: DealEditorState | null
   onClose: () => void
   partnerId: string
+  partnerName: string
   visits: Visit[]
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -4491,6 +4497,7 @@ function DealEditorDialog({
         <div className="overflow-y-auto p-3 sm:p-4">
           <DealForm
             deal={deal}
+            partnerName={partnerName}
             partnerId={partnerId}
             mode={deal ? "edit" : "create"}
             visits={visits}
@@ -4522,6 +4529,7 @@ function DealFormShell({
 
 function DealForm({
   deal,
+  partnerName = "",
   defaultActive,
   footerAction,
   onCancel,
@@ -4535,6 +4543,7 @@ function DealForm({
   visits = [],
 }: {
   deal?: Deal
+  partnerName?: string
   defaultActive?: boolean
   footerAction?: ReactNode
   onCancel?: () => void
@@ -4572,6 +4581,8 @@ function DealForm({
 
       <DealFields
         deal={deal}
+        dealDraft={state.dealDraft}
+        partnerName={partnerName}
         defaultActive={defaultActive ?? deal?.active ?? true}
         onDraftActiveChange={onDraftActiveChange}
         onDraftMetaChange={onDraftMetaChange}
@@ -5480,6 +5491,8 @@ function formatDealDisplayName({
 
 function DealFields({
   deal,
+  dealDraft,
+  partnerName = "",
   prefix = "",
   defaultActive,
   onDraftActiveChange,
@@ -5490,6 +5503,8 @@ function DealFields({
   useBrowserValidation = true,
 }: {
   deal?: Deal
+  dealDraft?: DealFormDraft
+  partnerName?: string
   prefix?: string
   defaultActive: boolean
   onDraftActiveChange?: (active: boolean) => void
@@ -5499,18 +5514,23 @@ function DealFields({
   visits?: Visit[]
   useBrowserValidation?: boolean
 }) {
-  const initialDealType = dealUiTypeForDeal(deal)
+  const initialDealType = dealDraft?.dealConcept || dealUiTypeForDeal(deal)
   const initialBackendDealType = backendDealTypeForUi(initialDealType)
   const dealMetadata = metadataObject(deal?.metadata)
   const initialDiscountType =
-    normalizeDiscountTypeForUi(initialBackendDealType, deal?.discount_type) ||
+    normalizeDiscountTypeForUi(
+      initialBackendDealType,
+      dealDraft?.discountType || deal?.discount_type,
+    ) ||
     defaultDiscountTypeForDealType(initialBackendDealType, "")
   const [selectedDealType, setSelectedDealType] = useState(initialDealType)
   const [selectedDiscountType, setSelectedDiscountType] =
     useState(initialDiscountType)
   const [selectedBenefitCategory, setSelectedBenefitCategory] = useState(
-    deal?.benefit_category ??
-      inferBenefitCategory(initialBackendDealType, initialDiscountType),
+    dealDraft
+      ? inferBenefitCategory(initialBackendDealType, initialDiscountType)
+      : deal?.benefit_category ??
+        inferBenefitCategory(initialBackendDealType, initialDiscountType),
   )
   const [dealDropStockTotal, setDealDropStockTotal] = useState(
     formatTextInputValue(deal?.stock_total),
@@ -5522,25 +5542,29 @@ function DealFields({
     deal?.stock_remaining !== null && deal?.stock_remaining !== undefined,
   )
   const [selectedAudience, setSelectedAudience] = useState(
-    normalizeAudienceForEditor(deal?.audience),
+    normalizeAudienceForEditor(dealDraft?.audience || deal?.audience),
   )
   const [active, setActive] = useState(defaultActive)
   const [discountValue, setDiscountValue] = useState(
     formatTextInputValue(deal?.discount_value),
   )
-  const [rewardItem, setRewardItem] = useState(deal?.reward_item ?? "")
-  const [rewardItemDirty, setRewardItemDirty] = useState(false)
+  const [rewardItem, setRewardItem] = useState(
+    dealDraft?.rewardItem ?? deal?.reward_item ?? "",
+  )
+  const [rewardItemDirty, setRewardItemDirty] = useState(Boolean(dealDraft))
   const [customerDescription, setCustomerDescription] = useState(
-    deal?.customer_description ?? "",
+    dealDraft?.customerDescription ?? deal?.customer_description ?? "",
   )
   const [customerDescriptionDirty, setCustomerDescriptionDirty] =
-    useState(false)
+    useState(Boolean(dealDraft))
   const [staffInstructions, setStaffInstructions] = useState(
-    deal?.staff_instructions ?? "",
+    dealDraft?.staffInstructions ?? deal?.staff_instructions ?? "",
   )
-  const [staffInstructionsDirty, setStaffInstructionsDirty] = useState(false)
-  const [terms, setTerms] = useState(deal?.terms ?? "")
-  const [termsDirty, setTermsDirty] = useState(false)
+  const [staffInstructionsDirty, setStaffInstructionsDirty] = useState(
+    Boolean(dealDraft),
+  )
+  const [terms, setTerms] = useState(dealDraft?.terms ?? deal?.terms ?? "")
+  const [termsDirty, setTermsDirty] = useState(Boolean(dealDraft))
   const [estimatedSavings, setEstimatedSavings] = useState(
     formatTextInputValue(deal?.estimated_savings),
   )
@@ -5606,6 +5630,42 @@ function DealFields({
   const [allowFreeTrial, setAllowFreeTrial] = useState(
     deal?.allow_free_trial ?? false,
   )
+  useEffect(() => {
+    if (!dealDraft) return
+
+    const nextDealType = dealDraft.dealConcept || initialDealType
+    const nextBackendDealType = backendDealTypeForUi(nextDealType)
+    const nextDiscountType =
+      normalizeDiscountTypeForUi(
+        nextBackendDealType,
+        dealDraft.discountType,
+      ) || defaultDiscountTypeForDealType(nextBackendDealType, "")
+    const nextConfig = getDealFormConfig({
+      type: nextDealType,
+      discountType: nextDiscountType,
+      benefitCategory:
+        deal?.benefit_category ??
+        inferBenefitCategory(nextBackendDealType, nextDiscountType),
+    })
+    const frame = window.requestAnimationFrame(() => {
+      setSelectedDealType(nextDealType)
+      setSelectedDiscountType(nextDiscountType)
+      setSelectedBenefitCategory(nextConfig.autoValues.benefitCategory)
+      setSelectedAudience(
+        normalizeAudienceForEditor(dealDraft.audience || DEFAULT_AUDIENCE),
+      )
+      setRewardItem(dealDraft.rewardItem)
+      setRewardItemDirty(true)
+      setCustomerDescription(dealDraft.customerDescription)
+      setCustomerDescriptionDirty(true)
+      setStaffInstructions(dealDraft.staffInstructions)
+      setStaffInstructionsDirty(true)
+      setTerms(dealDraft.terms)
+      setTermsDirty(true)
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [deal, dealDraft, initialDealType])
   const config = getDealFormConfig({
     type: selectedDealType,
     discountType: selectedDiscountType,
@@ -5694,6 +5754,46 @@ function DealFields({
         benefitCount: parseOptionalNumberInput(benefitCountText),
       }),
     )
+  }
+
+  const [dealCopyState, setDealCopyState] = useState<PartnerActionState>(initialState)
+  const [isGeneratingDealCopy, startGeneratingDealCopy] = useTransition()
+  const requestDealCopy = (field: BenDealCopyField) => {
+    if (isGeneratingDealCopy || !partnerName.trim()) return
+
+    const formData = new FormData()
+    formData.set("field", field)
+    formData.set("partner_name", partnerName)
+    formData.set("deal_concept", selectedDealType)
+    formData.set("discount_type", selectedDiscountType)
+    formData.set("audience", selectedAudience)
+    formData.set("reward_item", rewardItem)
+    formData.set(
+      "current_text",
+      field === "customer_description"
+        ? customerDescription
+        : field === "staff_instructions"
+          ? staffInstructions
+          : terms,
+    )
+
+    startGeneratingDealCopy(async () => {
+      const result = await generateDealCopy(initialState, formData)
+      setDealCopyState(result)
+
+      if (!result.ok || !result.description) return
+
+      if (field === "customer_description") {
+        setCustomerDescription(result.description)
+        setCustomerDescriptionDirty(true)
+      } else if (field === "staff_instructions") {
+        setStaffInstructions(result.description)
+        setStaffInstructionsDirty(true)
+      } else {
+        setTerms(result.description)
+        setTermsDirty(true)
+      }
+    })
   }
 
   const applyConfigSideEffects = (nextConfig: DealFormConfig) => {
@@ -6241,6 +6341,15 @@ function DealFields({
         <TextAreaField
           label="Customer description"
           name={`${prefix}customer_description`}
+          labelAccessory={
+            partnerName ? (
+              <BenSuggestionButton
+                fieldLabel="Kundenbeschreibung"
+                pending={isGeneratingDealCopy}
+                onClick={() => requestDealCopy("customer_description")}
+              />
+            ) : null
+          }
           value={customerDescription}
           onChange={(value) => {
             setCustomerDescription(value)
@@ -6251,6 +6360,15 @@ function DealFields({
         <TextAreaField
           label="Staff instructions"
           name={`${prefix}staff_instructions`}
+          labelAccessory={
+            partnerName ? (
+              <BenSuggestionButton
+                fieldLabel="Mitarbeiterhinweise"
+                pending={isGeneratingDealCopy}
+                onClick={() => requestDealCopy("staff_instructions")}
+              />
+            ) : null
+          }
           value={staffInstructions}
           onChange={(value) => {
             setStaffInstructions(value)
@@ -6261,6 +6379,15 @@ function DealFields({
         <TextAreaField
           label="Terms"
           name={`${prefix}terms`}
+          labelAccessory={
+            partnerName ? (
+              <BenSuggestionButton
+                fieldLabel="Bedingungen"
+                pending={isGeneratingDealCopy}
+                onClick={() => requestDealCopy("terms")}
+              />
+            ) : null
+          }
           value={terms}
           onChange={(value) => {
             setTerms(value)
@@ -6268,6 +6395,9 @@ function DealFields({
           }}
           showCharacterCount={false}
         />
+        {dealCopyState.message ? (
+          <ActionMessage state={dealCopyState} toast={false} />
+        ) : null}
       </FormSection>
 
       {isLimitedDrop ? (
@@ -12069,6 +12199,49 @@ function GenerateDescriptionButton({
         </svg>
       )}
       <span>{pending ? "Generating..." : "Generate with Ben"}</span>
+    </button>
+  )
+}
+
+function BenSuggestionButton({
+  fieldLabel,
+  onClick,
+  pending,
+}: {
+  fieldLabel: string
+  onClick: () => void
+  pending: boolean
+}) {
+  const label = `Vorschlag mit Ben für ${fieldLabel}`
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={pending}
+      aria-label={label}
+      title={label}
+      aria-busy={pending}
+      className="inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold leading-none text-teal-800 transition hover:-translate-y-px hover:bg-teal-100 active:translate-y-0 disabled:cursor-wait disabled:opacity-60"
+    >
+      {pending ? (
+        <LoadingSpinner className="size-3.5" />
+      ) : (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="size-3.5"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        >
+          <path d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4L12 3Z" />
+          <path d="m19 14 .7 2.3L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14Z" />
+        </svg>
+      )}
+      <span>Ben</span>
     </button>
   )
 }

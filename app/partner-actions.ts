@@ -11,6 +11,16 @@ import {
   parseBenDescriptionResponse,
 } from "@/lib/partner-description"
 import {
+  buildBenDealCopyPrompt,
+  isBenDealCopyField,
+  parseBenDealCopyResponse,
+} from "@/lib/deal-copy"
+import {
+  discountTypeUsesRewardItem,
+  readDealFormDraft,
+  type DealFormDraft,
+} from "@/lib/deal-form"
+import {
   canManagePartner,
   getPartnerPortalSession,
   type PartnerPortalSession,
@@ -69,6 +79,7 @@ export type PartnerActionState = {
   message: string
   ok: boolean
   description?: string
+  dealDraft?: DealFormDraft
   partnerId?: string
   created?: boolean
   menuCategory?: {
@@ -893,6 +904,111 @@ export async function generatePartnerDescription(
   }
 }
 
+export async function generateDealCopy(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  await requireAdmin()
+
+  const field = stringValue(formData, "field")
+  if (!isBenDealCopyField(field)) {
+    return { ok: false, message: "Dieses Deal-Feld ist für Ben nicht freigegeben." }
+  }
+
+  const partnerName = stringValue(formData, "partner_name")
+  if (!partnerName) {
+    return { ok: false, message: "Ein Partnername ist erforderlich, bevor Ben gefragt wird." }
+  }
+
+  const textValidation = validateTextLengthRules([
+    ["Partner name", partnerName, adminTextLimits.shortText],
+    ["Deal concept", stringValue(formData, "deal_concept"), adminTextLimits.shortText],
+    ["Discount type", stringValue(formData, "discount_type"), adminTextLimits.shortText],
+    ["Audience", stringValue(formData, "audience"), adminTextLimits.shortText],
+    ["Reward item", stringValue(formData, "reward_item"), adminTextLimits.shortText],
+    ["Current text", stringValue(formData, "current_text"), adminTextLimits.longText],
+  ])
+
+  if (textValidation) {
+    return { ok: false, message: textValidation }
+  }
+
+  const bridgeUrl = process.env.M1_BRIDGE_URL?.trim()
+  const bridgeSecret = process.env.M1_BRIDGE_SECRET?.trim()
+
+  if (!bridgeUrl || !bridgeSecret) {
+    return {
+      ok: false,
+      message: "Ben ist nicht verfügbar: Die Hermes/M1-Bridge ist nicht konfiguriert.",
+    }
+  }
+
+  let endpoint: URL
+  try {
+    endpoint = new URL("/hermes", bridgeUrl)
+  } catch {
+    return { ok: false, message: "Ben ist nicht verfügbar: Die Bridge-URL ist ungültig." }
+  }
+
+  if (
+    endpoint.protocol !== "https:" &&
+    endpoint.hostname !== "localhost" &&
+    endpoint.hostname !== "127.0.0.1"
+  ) {
+    return { ok: false, message: "Ben ist nicht verfügbar: Die Hermes-Bridge muss HTTPS verwenden." }
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${bridgeSecret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        // The active M1 bridge already exposes this Ben route. The prompt
+        // selects the deal-copy task while keeping bridge compatibility.
+        action: "partner-description",
+        profile: "ben",
+        message: buildBenDealCopyPrompt({
+          field,
+          partnerName,
+          dealConcept: stringValue(formData, "deal_concept"),
+          discountType: stringValue(formData, "discount_type"),
+          audience: stringValue(formData, "audience"),
+          rewardItem: stringValue(formData, "reward_item"),
+          currentText: stringValue(formData, "current_text"),
+        }),
+      }),
+      signal: AbortSignal.timeout(60_000),
+    })
+
+    if (!response.ok) {
+      return { ok: false, message: "Ben konnte gerade keinen Entwurf erstellen. Bitte versuche es später erneut." }
+    }
+
+    const body = (await response.json().catch(() => null)) as {
+      response?: unknown
+    } | null
+    const description = parseBenDealCopyResponse(body?.response)
+
+    return {
+      ok: true,
+      description,
+      message: "Ben hat einen Entwurf eingefügt. Bitte prüfe ihn vor dem Speichern.",
+    }
+  } catch (error) {
+    console.error(
+      "Ben deal copy request failed:",
+      error instanceof Error ? error.message : "unknown error",
+    )
+    return {
+      ok: false,
+      message: "Ben konnte gerade nicht erreicht werden. Bitte prüfe die Hermes/M1-Bridge.",
+    }
+  }
+}
+
 export async function deletePartner(
   _prevState: PartnerActionState,
   formData: FormData,
@@ -1082,6 +1198,14 @@ export async function deletePartner(
   return { ok: true, message: "Partner and all attached data removed." }
 }
 
+function dealSaveFailure(formData: FormData, message: string): PartnerActionState {
+  return {
+    ok: false,
+    message,
+    dealDraft: readDealFormDraft(formData),
+  }
+}
+
 export async function saveDeal(
   _prevState: PartnerActionState,
   formData: FormData,
@@ -1092,7 +1216,7 @@ export async function saveDeal(
     id,
     stringValue(formData, "partner_id"),
   )
-  if (!access.ok) return { ok: false, message: access.message }
+  if (!access.ok) return dealSaveFailure(formData, access.message)
   const { supabase } = access
   const now = new Date().toISOString()
   let payload: ParsedDeal
@@ -1101,11 +1225,10 @@ export async function saveDeal(
     payload = parseDealPayload(formData, "", stringValue(formData, "partner_id"))
     payload.partner_id = access.partnerId
   } catch (error) {
-    return {
-      ok: false,
-      message:
-        error instanceof Error ? error.message : "Unable to parse deal form.",
-    }
+    return dealSaveFailure(
+      formData,
+      error instanceof Error ? error.message : "Unable to parse deal form.",
+    )
   }
 
   if (id) {
@@ -1118,14 +1241,14 @@ export async function saveDeal(
     )
 
     if (preservationMessage) {
-      return { ok: false, message: preservationMessage }
+      return dealSaveFailure(formData, preservationMessage)
     }
   }
 
   const validationMessage = validateDealPayload(payload)
 
   if (validationMessage) {
-    return { ok: false, message: validationMessage }
+    return dealSaveFailure(formData, validationMessage)
   }
 
   const priorityMessage = await validateUniqueAutomaticDealPriority(
@@ -1135,7 +1258,7 @@ export async function saveDeal(
   )
 
   if (priorityMessage) {
-    return { ok: false, message: priorityMessage }
+    return dealSaveFailure(formData, priorityMessage)
   }
 
   // Handle deal drop card image
@@ -1153,7 +1276,7 @@ export async function saveDeal(
     const mediaError = validateMediaFile(dealDropImageFile)
 
     if (mediaError) {
-      return { ok: false, message: mediaError }
+      return dealSaveFailure(formData, mediaError)
     }
 
     const dealId = id || "new"
@@ -1189,7 +1312,7 @@ export async function saveDeal(
     : await insertDeals(supabase, [mutationPayload])
 
   if (mutationMessage) {
-    return { ok: false, message: mutationMessage }
+    return dealSaveFailure(formData, mutationMessage)
   }
 
   // Clean up replaced or removed deal drop images.
@@ -3974,7 +4097,7 @@ function parseDealPayload(
   const endsAt = nullableStringValue(formData, `${prefix}ends_at`)
   const usesDiscountValue =
     discountType === "fixed" || discountType === "percent"
-  const usesRewardItem = discountType === "item"
+  const usesRewardItem = discountTypeUsesRewardItem(discountType)
   const usesBenefitCount = discountType === "bonus_stamp"
   const usesHappyHour = type === "happy_hour"
   const usesTriggerValue =
@@ -4322,7 +4445,7 @@ async function preserveExistingDealCopy(
   }
 
   if (
-    payload.discount_type === "item" &&
+    discountTypeUsesRewardItem(payload.discount_type) &&
     !dealCopyFieldChanged(formData, prefix, "reward_item", current.reward_item)
   ) {
     payload.reward_item = current.reward_item
@@ -4537,12 +4660,10 @@ function validateDealPayload(payload: ParsedDeal) {
     return "Bonus stamp deals require a benefit count."
   }
 
-  if (payload.discount_type === "item" && !payload.reward_item) {
-    return "Item rewards require a reward item."
-  }
-
-  if (payload.discount_type === "2for1" && !payload.reward_item) {
-    return "2-for-1 rewards require an item name."
+  if (discountTypeUsesRewardItem(payload.discount_type) && !payload.reward_item) {
+    return payload.discount_type === "2for1"
+      ? "2-for-1 rewards require an item name."
+      : "Item rewards require a reward item."
   }
 
   if (

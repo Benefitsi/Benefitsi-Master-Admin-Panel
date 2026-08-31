@@ -67,3 +67,72 @@ test("partner editor keeps localized labels inside responsive controls and expos
   assert.match(code, /shrink-0[\s\S]{0,120}whitespace-nowrap/)
   assert.match(code, /\[&>\*\]:min-w-0/)
 })
+
+test("2-for-1 deal drafts retain the entered item and basics", async () => {
+  const { discountTypeUsesRewardItem, readDealFormDraft } = await import(
+    "../lib/deal-form.ts"
+  )
+  const formData = new FormData()
+  formData.set("deal_concept", "two_for_one")
+  formData.set("type", "two_for_one")
+  formData.set("discount_type", "2for1")
+  formData.set("audience", "both")
+  formData.set("reward_item", "Burger")
+
+  assert.equal(discountTypeUsesRewardItem("2for1"), true)
+  assert.deepEqual(readDealFormDraft(formData), {
+    dealConcept: "two_for_one",
+    discountType: "2for1",
+    audience: "both",
+    rewardItem: "Burger",
+    customerDescription: "",
+    staffInstructions: "",
+    terms: "",
+  })
+})
+
+test("Ben deal-copy prompts are German, bounded, and field-scoped", async () => {
+  const { BEN_DEAL_COPY_FIELDS, buildBenDealCopyPrompt } = await import(
+    "../lib/deal-copy.ts"
+  )
+
+  assert.deepEqual(BEN_DEAL_COPY_FIELDS, [
+    "customer_description",
+    "staff_instructions",
+    "terms",
+  ])
+  const prompt = buildBenDealCopyPrompt({
+    field: "customer_description",
+    partnerName: "Café Morgenrot",
+    dealConcept: "two_for_one",
+    discountType: "2for1",
+    audience: "both",
+    rewardItem: "Burger",
+    currentText: "",
+  })
+
+  assert.match(prompt, /Ben/)
+  assert.match(prompt, /deutsch/i)
+  assert.match(prompt, /keine Fakten erfinden/i)
+  assert.match(prompt, /customer_description/)
+  assert.match(prompt, /Café Morgenrot/)
+})
+
+test("deal actions preserve rejected drafts and expose Ben copy generation", async () => {
+  const code = await readFile(actionsUrl, "utf8")
+
+  assert.match(code, /discountTypeUsesRewardItem\(/)
+  assert.match(code, /dealDraft/)
+  assert.match(code, /generateDealCopy/)
+  assert.match(code, /buildBenDealCopyPrompt/)
+  assert.match(code, /action:\s*["']partner-description["']/)
+})
+
+test("deal copy fields expose a Ben suggestion action", async () => {
+  const code = await readFile(adminUrl, "utf8")
+
+  assert.match(code, /dealDraft/)
+  assert.match(code, /generateDealCopy/)
+  assert.match(code, /BenSuggestionButton/)
+  assert.equal((code.match(/BenSuggestionButton/g) ?? []).length >= 3, true)
+})
