@@ -1,5 +1,8 @@
 import type { Deal, PartnerRewardMilestone } from "./admin-data"
-import { isMicrositeDealAvailable } from "./microsite-deals"
+import {
+  isMicrositeDealAvailable,
+  isMicrositeTopDeal,
+} from "./microsite-deals"
 
 export type MicrositeContentLanguage = "de" | "en"
 
@@ -12,23 +15,48 @@ const NON_PUBLIC_TOP_DEAL_TYPES = new Set([
   "bonus_stamp",
 ])
 
+const MICROSITE_DEAL_TYPE_LABELS: Record<
+  string,
+  { de: string; en: string }
+> = {
+  two_for_one: { de: "2-für-1-Deal", en: "2-for-1 deal" },
+  welcome: { de: "Willkommensvorteil", en: "Welcome reward" },
+  comeback: { de: "Zeitbonus", en: "Time-based bonus" },
+  happy_hour: { de: "Happy Hour", en: "Happy hour" },
+  permanent_discount: {
+    de: "Automatischer Basisrabatt",
+    en: "Automatic base discount",
+  },
+  limited_drop: { de: "Deal Drop", en: "Deal drop" },
+  birthday: { de: "Geburtstagsvorteil", en: "Birthday reward" },
+  free_item: { de: "Gratisartikel", en: "Free item" },
+  discount: { de: "Rabatt", en: "Discount" },
+  bonus_stamp: { de: "Bonusstempel", en: "Bonus stamp" },
+  streak: { de: "Streak-Bonus", en: "Streak reward" },
+  challenge: { de: "Challenge", en: "Challenge" },
+}
+
 export function getMicrositePublicDeals(
   deals: Deal[],
   now = Date.now(),
 ) {
-  return deals.filter((deal) => {
-    if (!isMicrositeDealAvailable(deal, now)) {
-      return false
-    }
+  return deals
+    .filter((deal) => {
+      if (!isMicrositeDealAvailable(deal, now)) {
+        return false
+      }
 
-    const dealType = deal.type?.trim().toLowerCase() || ""
-    const discountType = deal.discount_type?.trim().toLowerCase() || ""
+      const dealType = deal.type?.trim().toLowerCase() || ""
+      const discountType = deal.discount_type?.trim().toLowerCase() || ""
 
-    return (
-      !NON_PUBLIC_TOP_DEAL_TYPES.has(dealType) &&
-      discountType !== "bonus_stamp"
+      return (
+        !NON_PUBLIC_TOP_DEAL_TYPES.has(dealType) &&
+        discountType !== "bonus_stamp"
+      )
+    })
+    .sort((first, second) =>
+      Number(isMicrositeTopDeal(second)) - Number(isMicrositeTopDeal(first)),
     )
-  })
 }
 
 export function getMicrositeWelcomeDeals(
@@ -40,6 +68,16 @@ export function getMicrositeWelcomeDeals(
       isMicrositeDealAvailable(deal, now) &&
       deal.type?.trim().toLowerCase() === "welcome",
   )
+}
+
+export function micrositeDealTypeLabel(
+  deal: Pick<Deal, "type">,
+  language: MicrositeContentLanguage = "de",
+) {
+  const type = deal.type?.trim().toLowerCase() || ""
+  const labels = MICROSITE_DEAL_TYPE_LABELS[type]
+
+  return labels?.[language] || deal.type?.trim() || "Deal"
 }
 
 export function getMicrositeStampRewards(

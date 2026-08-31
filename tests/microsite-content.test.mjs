@@ -6,10 +6,12 @@ import {
   getMicrositeStampRewards,
   getMicrositeWelcomeDeals,
   micrositeDealDetails,
+  micrositeDealTypeLabel,
   micrositeDealTitle,
   micrositeStampRewardTitle,
   micrositeWelcomeTitle,
 } from "../lib/microsite-content.ts"
+import { isMicrositeTopDeal } from "../lib/microsite-deals.ts"
 
 const now = Date.parse("2026-08-31T12:00:00.000Z")
 
@@ -49,6 +51,28 @@ test("selects all available public deals but keeps stamp and lifecycle rewards i
     getMicrositeWelcomeDeals(deals, now).map((deal) => deal.id),
     ["welcome"],
   )
+})
+
+test("puts only the stored two-for-one deal first and keeps the app type label for other deals", () => {
+  const deals = [
+    { id: "happy-hour", type: "happy_hour", active: true },
+    { id: "two-for-one", type: "two_for_one", active: true },
+    {
+      id: "happy-hour-two-for-one",
+      type: "happy_hour",
+      discount_type: "2for1",
+      active: true,
+    },
+  ]
+
+  assert.deepEqual(
+    getMicrositePublicDeals(deals).map((deal) => deal.id),
+    ["two-for-one", "happy-hour", "happy-hour-two-for-one"],
+  )
+  assert.equal(isMicrositeTopDeal(deals[1]), true)
+  assert.equal(isMicrositeTopDeal(deals[2]), false)
+  assert.equal(micrositeDealTypeLabel(deals[0]), "Happy Hour")
+  assert.equal(micrositeDealTypeLabel(deals[1]), "2-für-1-Deal")
 })
 
 test("formats the stored deal value and minimum spend for the microsite", () => {

@@ -68,6 +68,7 @@ import {
   getMicrositeWelcomeDeals,
   micrositeDealDescription,
   micrositeDealDetails,
+  micrositeDealTypeLabel,
   micrositeDealTitle,
   micrositeRewardTrackLabel,
   micrositeStampRewardDescription,
@@ -75,6 +76,7 @@ import {
   micrositeWelcomeStampCount,
   micrositeWelcomeTitle,
 } from "@/lib/microsite-content"
+import { isMicrositeTopDeal } from "@/lib/microsite-deals"
 import type { MicrositeConfig, MicrositeElementStyle } from "@/lib/microsites"
 import { defaultMicrositeFaqItems } from "@/lib/microsite-seo"
 import {
@@ -1947,9 +1949,13 @@ function MicrositeDealBanner({
   active: boolean
   primary?: boolean
 }) {
+  const isTopDeal = isMicrositeTopDeal(deal)
   const title = micrositeDealTitle(deal, config.language)
   const description = micrositeDealDescription(deal, config.language)
   const details = micrositeDealDetails(deal, config.language)
+  const dealLabel = isTopDeal
+    ? config.deals.topDealLabel
+    : micrositeDealTypeLabel(deal, config.language)
 
   return (
     <article
@@ -1973,11 +1979,11 @@ function MicrositeDealBanner({
       ) : null}
       <div className="relative z-[3] flex min-h-full flex-col p-5 @min-[640px]:p-7 @min-[1024px]:min-h-[310px] @min-[1024px]:p-8">
         <p
-          {...(primary ? editable("deals.topDealLabel", "text", "Top-Deal Label") : {})}
+          {...(primary && isTopDeal ? editable("deals.topDealLabel", "text", "Top-Deal Label") : {})}
           className="inline-flex w-fit rounded-full border border-[var(--site-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--site-accent)]"
           style={textStyleFor(config, "deals.topDealLabel")}
         >
-          {config.deals.topDealLabel}
+          {dealLabel}
         </p>
         <h3 className="mt-4 max-w-md text-[clamp(2.2rem,5cqw,3.5rem)] font-black leading-none tracking-[-0.04em]">
           {title}

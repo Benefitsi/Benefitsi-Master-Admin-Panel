@@ -15,6 +15,10 @@ export function isMicrositeDealAvailable(
   return true
 }
 
+export function isMicrositeTopDeal(deal: Pick<Deal, "type">) {
+  return deal.type?.trim().toLowerCase() === "two_for_one"
+}
+
 export function isMicrositeTwoForOneDeal(deal: Deal) {
   if (!isMicrositeDealAvailable(deal)) return false
 
