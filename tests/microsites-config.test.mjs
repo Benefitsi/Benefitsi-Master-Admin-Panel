@@ -42,6 +42,46 @@ test("microsites expose one three-color default template with editable quote cop
   assert.ok(config.content.quoteAttribution.length > 0)
 })
 
+test("microsite defaults do not invent a partner-specific two-for-one item", () => {
+  const config = createDefaultMicrositeConfig(partner)
+
+  assert.equal(config.deals.topDealHeadline, "Aktueller Vorteil")
+  assert.equal(
+    config.deals.topDealDescription,
+    "Entdecke den aktuellen Vorteil in der Benefitsi-App.",
+  )
+  assert.deepEqual(config.deals.topDealBullets, [
+    "Gültig gemäß Dealbedingungen",
+    "In der Benefitsi-App auswählen",
+    "Nur in Annweiler",
+  ])
+  assert.doesNotMatch(JSON.stringify(config.deals), /döner/i)
+})
+
+test("legacy hardcoded doner fallback is normalized when a microsite is loaded", () => {
+  const config = resolveMicrositeConfig(
+    {
+      deals: {
+        topDealHeadline: "2 für 1 Döner",
+        topDealDescription: "Zwei Döner genießen – nur einen bezahlen!",
+        topDealBullets: [
+          "Gültig für alle Döner",
+          "Täglich einlösbar",
+          "Nur in Annweiler",
+        ],
+      },
+    },
+    partner,
+  )
+
+  assert.equal(config.deals.topDealHeadline, "Aktueller Vorteil")
+  assert.equal(
+    config.deals.topDealDescription,
+    "Entdecke den aktuellen Vorteil in der Benefitsi-App.",
+  )
+  assert.doesNotMatch(JSON.stringify(config.deals), /döner/i)
+})
+
 test("legacy template ids resolve to the only supported default template", () => {
   assert.equal(
     resolveMicrositeConfig({ template: "festival-neon" }, partner).template,

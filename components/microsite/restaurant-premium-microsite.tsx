@@ -2277,11 +2277,15 @@ function AppScreenShowcase({
   const dealName = activeDeal
     ? micrositeDealTitle(activeDeal, config.language)
     : config.deals.topDealHeadline ||
-      siteCopy(config, "2 für 1 Vorteil", "2-for-1 benefit")
+      siteCopy(config, "Aktueller Vorteil", "Current benefit")
   const dealDescription = activeDeal
     ? micrositeDealDescription(activeDeal, config.language)
     : config.deals.topDealDescription ||
-      siteCopy(config, "Deinen Vorteil direkt in der App auswählen.", "Select your benefit directly in the app.")
+      siteCopy(
+        config,
+        "Details zum aktuellen Vorteil findest du in der Benefitsi-App.",
+        "Find the current benefit details in the Benefitsi app.",
+      )
   const savingsLabel = activeDeal?.estimated_savings
     ? siteCopy(config, "ca. " + formatPrice(activeDeal.estimated_savings, "EUR") + " sparen", "save about " + formatPrice(activeDeal.estimated_savings, "EUR"))
     : siteCopy(config, "Direkt sparen", "Save instantly")

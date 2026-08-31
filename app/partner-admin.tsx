@@ -6118,7 +6118,7 @@ function DealFields({
           <TextField
             label="Anzeigetitel"
             name={`${prefix}display_title`}
-            placeholder="2 für 1 Döner"
+            placeholder="z. B. 2 für 1 ausgewählter Artikel"
             value={displayTitle}
             onChange={(value) => {
               setDisplayTitle(value)

@@ -195,6 +195,13 @@ const defaultNavigation = [
   { label: "Kontakt", anchor: "kontakt" },
 ]
 
+const defaultTopDealHeadline = "Aktueller Vorteil"
+const defaultTopDealDescription =
+  "Entdecke den aktuellen Vorteil in der Benefitsi-App."
+const legacyDefaultTopDealHeadline = "2 für 1 Döner"
+const legacyDefaultTopDealDescription =
+  "Zwei Döner genießen – nur einen bezahlen!"
+
 export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeConfig {
   const name = partner.name?.trim() || partner.short_name?.trim() || "Restaurant"
   const location = micrositeLocationText(partner)
@@ -243,13 +250,13 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       illustrationUrl:
         partner.discover_card_image_url || partner.feature_card_url || backgroundImage,
       topDealLabel: "Top Deal",
-      topDealHeadline: "2 für 1 Döner",
-      topDealDescription: "Zwei Döner genießen – nur einen bezahlen!",
+      topDealHeadline: defaultTopDealHeadline,
+      topDealDescription: defaultTopDealDescription,
       topDealImageUrl:
         partner.discover_card_image_url || partner.feature_card_url || backgroundImage,
       topDealBullets: [
-        "Gültig für alle Döner",
-        "Täglich einlösbar",
+        "Gültig gemäß Dealbedingungen",
+        "In der Benefitsi-App auswählen",
         `Nur in ${location}`,
       ],
       topDealButtonLabel: "Vorteil in der App aktivieren",
@@ -397,13 +404,15 @@ export function resolveMicrositeConfig(
         deals.topDealLabel,
         fallback.deals.topDealLabel,
       ),
-      topDealHeadline: safeString(
+      topDealHeadline: normalizeLegacyTopDealCopy(
         deals.topDealHeadline,
         fallback.deals.topDealHeadline,
+        legacyDefaultTopDealHeadline,
       ),
-      topDealDescription: safeString(
+      topDealDescription: normalizeLegacyTopDealCopy(
         deals.topDealDescription,
         fallback.deals.topDealDescription,
+        legacyDefaultTopDealDescription,
       ),
       topDealImageUrl: safeString(
         deals.topDealImageUrl,
@@ -662,6 +671,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function safeString(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback
+}
+
+function normalizeLegacyTopDealCopy(
+  value: unknown,
+  fallback: string,
+  legacyValue: string,
+) {
+  const candidate = safeString(value, fallback)
+  return candidate === legacyValue ? fallback : candidate
 }
 
 function safeLocationString(value: unknown, fallback: string) {
