@@ -30,10 +30,12 @@ test("renders admin-backed deals and stamp rewards as responsive collections", a
   const source = await readFile(componentUrl, "utf8")
 
   assert.match(source, /getMicrositePublicDeals/)
+  assert.match(source, /getMicrositeStampDeals/)
   assert.match(source, /getMicrositeWelcomeDeals/)
   assert.match(source, /getMicrositeStampRewards/)
   assert.match(source, /publicDeals\.map/)
   assert.match(source, /@min-\[900px\]:grid-cols-2/)
+  assert.match(source, /stampDeals\.map/)
   assert.match(source, /stampRewards\.map/)
   assert.doesNotMatch(source, /const twoForOneDeal = partner\.deals\.find/)
   assert.doesNotMatch(source, /textValue\(config, card\.titleId, card\.titleFallback\)/)
@@ -48,6 +50,7 @@ test("keeps secondary deal banners compact next to the top deal", async () => {
     /wide=\{publicDeals\.length > 1 && isMicrositeTopDeal\(deal\)\}/,
   )
   assert.match(source, /isTopDeal \?/)
+  assert.match(source, /const articleClassName = isTopDeal\s+\? `premium-topdeal/)
 })
 
 test("keeps dark mode polished and uses the official social glyphs", async () => {

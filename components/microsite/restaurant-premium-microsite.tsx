@@ -64,6 +64,7 @@ import type {
 } from "@/lib/admin-data"
 import {
   getMicrositePublicDeals,
+  getMicrositeStampDeals,
   getMicrositeStampRewards,
   getMicrositeWelcomeDeals,
   micrositeDealDescription,
@@ -1569,6 +1570,7 @@ function DealsSection({
 }) {
   const publicDeals = getMicrositePublicDeals(partner.deals)
   const welcomeDeals = getMicrositeWelcomeDeals(partner.deals)
+  const stampDeals = getMicrositeStampDeals(partner.deals)
   const stampRewards = getMicrositeStampRewards(partner.reward_milestones)
   const stampCount = Math.max(
     10,
@@ -1658,6 +1660,23 @@ function DealsSection({
         titleId: "stamps.welcomeBonus.title",
         titleFallback: title,
         textId: "stamps.welcomeBonus.text",
+        textFallback: micrositeDealDescription(deal, config.language),
+        imageId: null,
+        imageUrl: null,
+        iconName: micrositeRewardIconName(title),
+        tone: "emerald" as const,
+      }
+    }),
+    ...stampDeals.map((deal, index) => {
+      const title = micrositeDealTitle(deal, config.language)
+
+      return {
+        id: `stamp-deal-${deal.id || index}`,
+        stamp: null,
+        eyebrow: micrositeDealTypeLabel(deal, config.language),
+        titleId: "stamps.automaticBonus.title",
+        titleFallback: title,
+        textId: "stamps.automaticBonus.text",
         textFallback: micrositeDealDescription(deal, config.language),
         imageId: null,
         imageUrl: null,
@@ -1844,13 +1863,13 @@ function DealsSection({
 
               <div className="premium-stamp-rewards mt-5 grid grid-cols-1 gap-3 @min-[640px]:mt-7 @min-[640px]:grid-cols-2 @min-[900px]:grid-cols-3">
                 {stampMilestoneCards.map((card) => {
-                  const unlocked = activeStamp >= card.stamp
+                  const unlocked = card.stamp === null || activeStamp >= card.stamp
 
                   return (
                     <div
                       key={card.id}
-                      data-reward-stamp={card.stamp}
-                      data-current-reward={activeStamp === card.stamp}
+                      data-reward-stamp={card.stamp ?? undefined}
+                      data-current-reward={card.stamp !== null && activeStamp === card.stamp}
                       className={`premium-stamp-reward relative flex min-h-[104px] w-full items-center gap-3 rounded-[1rem] border bg-white px-3 py-3 shadow-[0_14px_28px_rgba(120,72,0,.07)] transition-[opacity,transform,box-shadow,border-color] duration-300 ${
                         card.tone === "emerald"
                           ? "border-emerald-200"
@@ -1960,7 +1979,7 @@ function MicrositeDealBanner({
     ? config.deals.topDealLabel
     : micrositeDealTypeLabel(deal, config.language)
   const articleClassName = isTopDeal
-    ? `premium-reveal premium-topdeal relative min-h-full overflow-hidden rounded-[1.6rem] bg-[#121212] text-white shadow-[0_30px_80px_rgba(15,23,42,.22)] ${wide ? "@min-[900px]:col-span-2" : ""} ${active ? "is-active" : ""}`
+    ? `premium-topdeal relative min-h-full overflow-hidden rounded-[1.6rem] bg-[#121212] text-white shadow-[0_30px_80px_rgba(15,23,42,.22)] ${wide ? "@min-[900px]:col-span-2" : ""} ${active ? "is-active" : ""}`
     : `premium-reveal premium-deal-secondary relative min-h-full overflow-hidden rounded-[1.15rem] border border-[var(--site-border)] bg-[var(--site-surface)] text-[var(--site-text)] shadow-[0_16px_36px_rgba(15,23,42,.08)] ${active ? "is-active" : ""}`
 
   return (

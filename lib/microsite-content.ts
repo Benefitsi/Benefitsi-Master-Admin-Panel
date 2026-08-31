@@ -70,6 +70,25 @@ export function getMicrositeWelcomeDeals(
   )
 }
 
+export function getMicrositeStampDeals(
+  deals: Deal[],
+  now = Date.now(),
+) {
+  return deals.filter((deal) => {
+    if (!isMicrositeDealAvailable(deal, now)) {
+      return false
+    }
+
+    const dealType = deal.type?.trim().toLowerCase() || ""
+    const discountType = deal.discount_type?.trim().toLowerCase() || ""
+
+    return (
+      dealType === "bonus_stamp" ||
+      (discountType === "bonus_stamp" && dealType !== "welcome")
+    )
+  })
+}
+
 export function micrositeDealTypeLabel(
   deal: Pick<Deal, "type">,
   language: MicrositeContentLanguage = "de",
@@ -179,10 +198,36 @@ export function micrositeDealDescription(
 }
 
 export function micrositeDealDetails(
-  deal: Pick<Deal, "terms" | "min_spend">,
+  deal: Pick<Deal, "terms" | "min_spend"> &
+    Partial<
+      Pick<
+        Deal,
+        | "type"
+        | "happy_hour_start"
+        | "happy_hour_end"
+        | "valid_weekdays"
+        | "weekdays"
+      >
+    >,
   language: MicrositeContentLanguage = "de",
 ) {
-  const details = [deal.terms?.trim()]
+  const details: string[] = []
+  const dealType = deal.type?.trim().toLowerCase() || ""
+  const terms = deal.terms?.trim()
+  const happyHourSchedule =
+    dealType === "happy_hour"
+      ? micrositeHappyHourSchedule(deal, language)
+      : ""
+
+  if (happyHourSchedule) {
+    details.push(happyHourSchedule)
+    const supplementalTerms = removeHappyHourScheduleTerms(terms)
+    if (supplementalTerms) {
+      details.push(supplementalTerms)
+    }
+  } else if (terms) {
+    details.push(terms)
+  }
 
   if (isFiniteNumber(deal.min_spend)) {
     details.push(
@@ -260,11 +305,12 @@ export function micrositeStampRewardDescription(
   milestone: Pick<PartnerRewardMilestone, "customer_description" | "terms" | "title" | "reward_item" | "reward_type" | "discount_type" | "discount_value">,
   language: MicrositeContentLanguage = "de",
 ) {
-  return (
-    milestone.customer_description?.trim() ||
-    milestone.terms?.trim() ||
-    micrositeStampRewardTitle(milestone, language)
-  )
+  // The App's DiscoverRewardMilestone DTO intentionally contains only the
+  // structured reward fields. Do not surface free-text milestone copy here:
+  // it can contradict the configured stamp threshold (for example, 5 vs. 6).
+  void milestone
+  void language
+  return ""
 }
 
 export function micrositeRewardTrackLabel(
@@ -305,4 +351,147 @@ function formatNumber(value: number, language: MicrositeContentLanguage) {
 
 function formatEuroAmount(value: number, language: MicrositeContentLanguage) {
   return `${formatNumber(value, language)} €`
+}
+
+function micrositeHappyHourSchedule(
+  deal: Partial<
+    Pick<
+      Deal,
+      | "happy_hour_start"
+      | "happy_hour_end"
+      | "valid_weekdays"
+      | "weekdays"
+    >
+  >,
+  language: MicrositeContentLanguage,
+) {
+  const start = formatMicrositeTime(deal.happy_hour_start)
+  const end = formatMicrositeTime(deal.happy_hour_end)
+  const weekdays = resolveMicrositeWeekdays(deal)
+
+  if (!start || !end || !weekdays.length) {
+    return ""
+  }
+
+  const weekdaySummary = formatMicrositeWeekdaySummary(weekdays, language)
+  return weekdaySummary ? `${weekdaySummary} ${start}-${end}` : `${start}-${end}`
+}
+
+function resolveMicrositeWeekdays(
+  deal: Partial<Pick<Deal, "valid_weekdays" | "weekdays">>,
+) {
+  const direct = parseMicrositeWeekdays(deal.valid_weekdays)
+  return direct.length ? direct : parseMicrositeWeekdays(deal.weekdays)
+}
+
+function parseMicrositeWeekdays(value: unknown) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const labels: Record<string, number> = {
+    monday: 1,
+    mon: 1,
+    montag: 1,
+    mo: 1,
+    tuesday: 2,
+    tue: 2,
+    tues: 2,
+    dienstag: 2,
+    di: 2,
+    wednesday: 3,
+    wed: 3,
+    mittwoch: 3,
+    mi: 3,
+    thursday: 4,
+    thu: 4,
+    thurs: 4,
+    donnerstag: 4,
+    do: 4,
+    friday: 5,
+    fri: 5,
+    freitag: 5,
+    fr: 5,
+    saturday: 6,
+    sat: 6,
+    samstag: 6,
+    sa: 6,
+    sunday: 7,
+    sun: 7,
+    sonntag: 7,
+    so: 7,
+  }
+
+  return Array.from(
+    new Set(
+      value.flatMap((entry) => {
+        if (typeof entry === "number" && Number.isInteger(entry)) {
+          return entry >= 1 && entry <= 7 ? [entry] : []
+        }
+
+        if (typeof entry !== "string") {
+          return []
+        }
+
+        const normalized = entry.trim().toLowerCase()
+        if (/^[1-7]$/.test(normalized)) {
+          return [Number(normalized)]
+        }
+
+        return labels[normalized] ? [labels[normalized]] : []
+      }),
+    ),
+  ).sort((first, second) => first - second)
+}
+
+function formatMicrositeWeekdaySummary(
+  weekdays: number[],
+  language: MicrositeContentLanguage,
+) {
+  if (weekdays.length === 5 && weekdays.every((weekday, index) => weekday === index + 1)) {
+    return language === "en" ? "Mon-Fri" : "Mo-Fr"
+  }
+
+  if (weekdays.length === 2 && weekdays[0] === 6 && weekdays[1] === 7) {
+    return language === "en" ? "Sat-Sun" : "Sa-So"
+  }
+
+  const labels =
+    language === "en"
+      ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+      : ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+
+  return weekdays.map((weekday) => labels[weekday - 1]).join(", ")
+}
+
+function formatMicrositeTime(value: string | null | undefined) {
+  const raw = value?.trim() || ""
+  const match = /^(\d{1,2}):(\d{2})/.exec(raw)
+  if (!match) {
+    return raw
+  }
+
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour > 23 || minute > 59) {
+    return raw
+  }
+
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
+}
+
+function removeHappyHourScheduleTerms(terms: string | undefined) {
+  if (!terms) {
+    return ""
+  }
+
+  return terms
+    .replace(
+      /(?:\b(?:täglich|jeden\s+tag|every\s+day|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+)?(?:von|from)?\s*\d{1,2}:\d{2}\s*(?:bis|to|-|–|—)\s*\d{1,2}:\d{2}\s*(?:uhr|hours?)?\s*(?:gültig|valid)/gi,
+      " ",
+    )
+    .replace(/\s+/g, " ")
+    .replace(/^\s*\.\s*/, "")
+    .replace(/^[\s,;:·–—-]+|[\s,;:·–—-]+$/g, "")
+    .trim()
 }

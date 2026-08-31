@@ -3,11 +3,13 @@ import test from "node:test"
 
 import {
   getMicrositePublicDeals,
+  getMicrositeStampDeals,
   getMicrositeStampRewards,
   getMicrositeWelcomeDeals,
   micrositeDealDetails,
   micrositeDealTypeLabel,
   micrositeDealTitle,
+  micrositeStampRewardDescription,
   micrositeStampRewardTitle,
   micrositeWelcomeTitle,
 } from "../lib/microsite-content.ts"
@@ -51,6 +53,10 @@ test("selects all available public deals but keeps stamp and lifecycle rewards i
     getMicrositeWelcomeDeals(deals, now).map((deal) => deal.id),
     ["welcome"],
   )
+  assert.deepEqual(
+    getMicrositeStampDeals(deals, now).map((deal) => deal.id),
+    ["bonus-stamp"],
+  )
 })
 
 test("puts only the stored two-for-one deal first and keeps the app type label for other deals", () => {
@@ -90,6 +96,22 @@ test("formats the stored deal value and minimum spend for the microsite", () => 
     "Nur auf einen Einkauf ab 50 €.",
     "Ab 50 € Einkaufswert",
   ])
+})
+
+test("uses the stored happy-hour weekdays instead of contradictory free-text schedule terms", () => {
+  assert.deepEqual(
+    micrositeDealDetails({
+      type: "happy_hour",
+      terms:
+        "Täglich von 16:00 bis 18:00 Uhr gültig. Nicht mit anderen Deals kombinierbar.",
+      min_spend: null,
+      happy_hour_start: "16:00:00",
+      happy_hour_end: "18:00:00",
+      valid_weekdays: [6, 7],
+      weekdays: null,
+    }),
+    ["Sa-So 16:00-18:00", "Nicht mit anderen Deals kombinierbar."],
+  )
 })
 
 test("keeps every active base and premium milestone, including equal stamp targets", () => {
@@ -144,5 +166,19 @@ test("uses the real welcome and stamp reward values instead of generic copy", ()
       reward_item: null,
     }),
     "15 € Rabatt",
+  )
+  assert.equal(
+    micrositeStampRewardDescription({
+      required_stamps: 5,
+      reward_type: "fixed",
+      discount_type: "fixed",
+      discount_value: 5,
+      title: "5 EUR Rabatt",
+      reward_item: null,
+      customer_description:
+        "Nach 6 Stempeln gibt es 5 EUR Rabatt auf die Bestellung.",
+      terms: "Mindestbon 12 EUR.",
+    }),
+    "",
   )
 })

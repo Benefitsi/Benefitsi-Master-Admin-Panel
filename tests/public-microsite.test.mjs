@@ -278,6 +278,14 @@ test("public microsites keep the deal eligibility fields needed by the renderer"
     selections.find((selection) => selection.includes("stock_remaining")) ?? "",
     /valid_from/,
   )
+  assert.match(
+    selections.find((selection) => selection.includes("stock_remaining")) ?? "",
+    /weekdays/,
+  )
+  assert.doesNotMatch(
+    selections.find((selection) => selection.includes("stock_remaining")) ?? "",
+    /valid_weekdays|starts_at|ends_at/,
+  )
   assert.deepEqual(
     page.partner.deals.map((deal) => isMicrositeTwoForOneDeal(deal)),
     [false, false, false, true],
