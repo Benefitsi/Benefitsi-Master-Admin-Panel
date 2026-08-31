@@ -26,6 +26,19 @@ test("keeps the microsite mobile layout requirements in place", async () => {
   assert.match(source, /\.premium-about-background \{\s+opacity: \.32;/)
 })
 
+test("renders admin-backed deals and stamp rewards as responsive collections", async () => {
+  const source = await readFile(componentUrl, "utf8")
+
+  assert.match(source, /getMicrositePublicDeals/)
+  assert.match(source, /getMicrositeWelcomeDeals/)
+  assert.match(source, /getMicrositeStampRewards/)
+  assert.match(source, /publicDeals\.map/)
+  assert.match(source, /@min-\[900px\]:grid-cols-2/)
+  assert.match(source, /stampRewards\.map/)
+  assert.doesNotMatch(source, /const twoForOneDeal = partner\.deals\.find/)
+  assert.doesNotMatch(source, /textValue\(config, card\.titleId, card\.titleFallback\)/)
+})
+
 test("keeps dark mode polished and uses the official social glyphs", async () => {
   const source = await readFile(componentUrl, "utf8")
 

@@ -1,14 +1,22 @@
 import type { Deal } from "./admin-data"
 
-export function isMicrositeTwoForOneDeal(deal: Deal) {
+export function isMicrositeDealAvailable(
+  deal: Deal,
+  now = Date.now(),
+) {
   if (deal.active !== true || deal.stock_remaining === 0) return false
 
-  const now = Date.now()
   const startsAt = Date.parse(deal.valid_from || deal.starts_at || "")
   const endsAt = Date.parse(deal.valid_until || deal.ends_at || "")
 
   if (Number.isFinite(startsAt) && startsAt > now) return false
   if (Number.isFinite(endsAt) && endsAt < now) return false
+
+  return true
+}
+
+export function isMicrositeTwoForOneDeal(deal: Deal) {
+  if (!isMicrositeDealAvailable(deal)) return false
 
   const searchable = [
     deal.type,
