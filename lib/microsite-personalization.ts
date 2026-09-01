@@ -208,7 +208,7 @@ export function defaultMicrositeCopyForPartner(partner: PartnerSeed) {
         { label: "Events & Premieren", icon: "star" },
         { label: "Food & Drinks", icon: "gift" },
         { label: "Gruppenbesuche", icon: "people" },
-        { label: "Digitale Rewards", icon: "phone" },
+        { label: "Digitale Belohnungen", icon: "phone" },
       ],
       printHeadline: `Heute bei ${name}`,
       printSubheadline:
@@ -229,7 +229,7 @@ export function defaultMicrositeCopyForPartner(partner: PartnerSeed) {
     contactHeadline: "Bereit für deinen nächsten Besuch?",
     appHeadline: "Alle lokalen Vorteile in deiner Benefitsi App",
     appText:
-      "Deals aktivieren, Loyalty-Stempel sammeln und den Lieblingspartner immer nur einen Tap entfernt haben.",
+      "Vorteile aktivieren, Loyalty-Stempel sammeln und den Lieblingspartner immer nur einen Tap entfernt haben.",
     footerText: "Lokaler Geschmack, loyale Gäste und eine Microsite für mehr Wiederbesuche.",
     services: [
       { label: "Abholung", icon: "bag" },

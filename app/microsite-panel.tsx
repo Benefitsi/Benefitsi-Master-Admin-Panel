@@ -151,7 +151,7 @@ const builderTranslations: Record<string, string> = {
   "Partnerprofil → Öffnungszeiten": "Partner profile -> Opening hours",
   "Startbild URL": "Hero image URL",
   "Neues Startbild hochladen": "Upload new hero image",
-  "Deals & Vorteile": "Deals & benefits",
+  "Vorteile & Aktionen": "Benefits & campaigns",
   "Beschreibung": "Description",
   "Intro-Grafik URL": "Intro image URL",
   "Neue Intro-Grafik hochladen": "Upload new intro image",
@@ -270,16 +270,16 @@ const builderTranslations: Record<string, string> = {
     "Title, description, schema, and indexing have been reviewed.",
   "Partner-spezifischer Titel ist aussagekräftig gepflegt.":
     "A meaningful partner-specific title is set.",
-  "Meta-Beschreibung nennt Partner, Ort, Deals und Speisekarte ausreichend.":
-    "The meta description adequately covers the partner, location, deals, and menu.",
+  "Meta-Beschreibung nennt Partner, Ort, Vorteile und Speisekarte ausreichend.":
+    "The meta description adequately covers the partner, location, benefits, and menu.",
   "Öffentliche Live-Seiten dürfen nicht versehentlich auf noindex stehen.":
     "Public live pages must not accidentally be set to noindex.",
   "Restaurant, Menu, FAQ und Breadcrumb JSON-LD sind systemisch aktiv.":
     "Restaurant, menu, FAQ, and breadcrumb JSON-LD are enabled.",
   "Builder-/Preview-Seiten sind von Indexierung ausgeschlossen.":
     "Builder and preview pages are excluded from indexing.",
-  "Desktop-Navigation, Hero, Deals, Speisekarte, Kontakt und Footer wurden geprüft.":
-    "Desktop navigation, hero, deals, menu, contact area, and footer have been reviewed.",
+  "Desktop-Navigation, Hero, Vorteile, Speisekarte, Kontakt und Footer wurden geprüft.":
+    "Desktop navigation, hero, benefits, menu, contact area, and footer have been reviewed.",
   "Mobile Ansicht wurde im Builder geprüft und freigegeben.":
     "The mobile view has been reviewed and approved in the builder.",
   "Desktop- und Mobilvorschau sind im Builder verfügbar und müssen separat freigegeben werden.":
@@ -333,8 +333,8 @@ const builderTranslations: Record<string, string> = {
   "Restaurant Premium": "Restaurant Premium",
   "Local Restaurant": "Local Restaurant",
   "Clean Food Page": "Clean Food Page",
-  "Emotionaler Hero, Deals, Stempelkarte, App-Banner und starke lokale Story.":
-    "Emotional hero, deals, stamp card, app banner, and a strong local story.",
+  "Emotionaler Hero, Vorteile, Stempelkarte, App-Banner und starke lokale Story.":
+    "Emotional hero, benefits, stamp card, app banner, and a strong local story.",
   "Ruhiger, regionaler Auftritt für Restaurants, Cafés und lokale Gastgeber.":
     "A calmer regional presentation for restaurants, cafes, and local hosts.",
   "Klarer, reduzierter Aufbau für schnelle Partnerseiten mit wenig Bildmaterial.":
@@ -368,7 +368,7 @@ const builderTranslations: Record<string, string> = {
   "Menüs": "menus",
   "Prämien": "Rewards",
   "Microsite-Bilder": "Microsite images",
-  "Start/Deals/Über uns separat": "Hero/deals/about are managed separately",
+  "Start/Vorteile/Über uns separat": "Hero/benefits/about are managed separately",
   "SEO": "SEO",
   "Title/Description separat": "Title/description managed separately",
   "SEO-Titel und -Beschreibung separat": "SEO title/description managed separately",
@@ -382,7 +382,7 @@ const builderTranslations: Record<string, string> = {
   "Partnerlogo": "Partner logo",
   "Feature-Karte": "Feature card",
   "Startbild": "Hero image",
-  "Deals": "Deals",
+  "Vorteile": "Benefits",
   "Über uns 1": "About image 1",
   "Über uns 2": "About image 2",
   "bereit": "ready",
@@ -510,7 +510,7 @@ const builderTranslations: Record<string, string> = {
   "Nur Bilder, die im aktuellen Template tatsächlich verwendet werden.":
     "Only images that are actually used in the current template.",
   "Marke & Startbereich Bilder": "Brand & hero images",
-  "Deals & Belohnungen Bilder": "Deals & reward images",
+  "Vorteils- und Belohnungsbilder": "Benefit and reward images",
   "Über-uns Bilder": "About images",
   "App & Footer Bilder": "App & footer images",
   "Partner-Badge": "Partner badge",
@@ -519,8 +519,8 @@ const builderTranslations: Record<string, string> = {
   "Über-uns Zutatenbild": "About ingredients image",
   "Über-uns Ortsbild": "About location image",
   "Über-uns Detailbild": "About detail image",
-  "Keine aktiven Deal- oder Belohnungsbilder in diesem Template.":
-    "There are no active deal or reward images in this template.",
+  "Keine aktiven Vorteils- oder Belohnungsbilder in diesem Template.":
+    "There are no active benefit or reward images in this template.",
   "Bilder prüfen, wiederverwenden und die synchronisierten Partnerdaten kontrollieren.":
     "Review and reuse images, then verify synchronized partner data.",
   "Sichtbarkeit & Ausgabe": "Visibility & output",
@@ -685,14 +685,14 @@ const builderTranslations: Record<string, string> = {
   "Lokal": "Local",
   "Kontakt Logo (Partnerprofil)": "Contact logo (partner profile)",
   "Startbereich Überschrift": "Hero headline",
-  "Deals-Label": "Deals label",
+  "Vorteils-Label": "Benefits label",
   "Startbereich Slogan": "Hero slogan",
   "Primärer Button": "Primary button",
   "Sekundärer Button": "Secondary button",
-  "Deals Intro Bild": "Deals intro image",
-  "Deals Überschrift": "Deals headline",
-  "Deals Slogan": "Deals slogan",
-  "Deals Beschreibung": "Deals description",
+  "Vorteilsbereich-Introbild": "Benefits intro image",
+  "Vorteils-Überschrift": "Benefits headline",
+  "Vorteils-Slogan": "Benefits slogan",
+  "Vorteilsbeschreibung": "Benefit description",
   "Stempelkarte Überschrift": "Stamp card headline",
   "Stempelkarte Label": "Stamp card label",
   "Stempelkarte Slogan": "Stamp card slogan",
@@ -1950,7 +1950,7 @@ export function MicrositePanel({
               />
             </ConfigSection>
 
-            <ConfigSection title="Deals & Vorteile">
+            <ConfigSection title="Vorteile & Aktionen">
               <EditorField
                 name="deals_headline"
                 label="Überschrift"
@@ -1986,7 +1986,7 @@ export function MicrositePanel({
               <EditorField
                 name="ecosystem_text"
                 label="App Vorteile Text"
-                value={config.elementText["content.ecosystemText"] || "Eine App für Deals, Treue, Entdeckungen und kleine Erfolge bei jedem Besuch."}
+                value={config.elementText["content.ecosystemText"] || "Eine App für Vorteile, Treue, Entdeckungen und kleine Erfolge bei jedem Besuch."}
                 onChange={(value) =>
                   setConfig((current) =>
                     setElementTextValue(current, "content.ecosystemText", value),
@@ -2560,7 +2560,7 @@ function ReadinessItemRow({
     ["Öffnungszeiten", `${partner.opening_hours.length} Einträge`, "Öffnungszeiten"],
     ["Speisekarte", `${partner.menus.length} Menüs`, "Menüs & Artikel"],
     ["Prämien", `${partner.reward_milestones.length} Prämien`, "Stempelkarte"],
-    ["Microsite-Bilder", "Start/Deals/Über uns separat", "Microsite"],
+    ["Microsite-Bilder", "Start/Vorteile/Über uns separat", "Microsite"],
     ["SEO", "SEO-Titel und -Beschreibung separat", "Microsite"],
   ]
 
@@ -2968,7 +2968,7 @@ function CurrentTemplateImagesPanel({
         />
       </ConfigSection>
 
-      <ConfigSection title="Deals & Belohnungen Bilder">
+      <ConfigSection title="Vorteils- und Belohnungsbilder">
         {hasTwoForOneDeal ? (
           <TemplateImageEditor
             groupName="deal-reward-images"
@@ -3001,7 +3001,7 @@ function CurrentTemplateImagesPanel({
         })}
         {!hasTwoForOneDeal && !rewardStamps.length ? (
           <p className="rounded-lg bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">
-            Keine aktiven Deal- oder Belohnungsbilder in diesem Template.
+            Keine aktiven Vorteils- oder Belohnungsbilder in diesem Template.
           </p>
         ) : null}
       </ConfigSection>
@@ -4491,7 +4491,7 @@ function getEditableElement(
       ...current,
       hero: { ...current.hero, headline: value },
     })),
-    "deals.label": textElement("Deals-Label", config.deals.label, (current, value) => ({
+    "deals.label": textElement("Vorteils-Label", config.deals.label, (current, value) => ({
       ...current,
       deals: { ...current.deals, label: value },
     })),
@@ -4529,15 +4529,15 @@ function getEditableElement(
         deals: { ...current.deals, topDealImageUrl: value },
       }),
     },
-    "deals.headline": textElement("Deals Überschrift", config.deals.headline, (current, value) => ({
+    "deals.headline": textElement("Vorteils-Überschrift", config.deals.headline, (current, value) => ({
       ...current,
       deals: { ...current.deals, headline: value },
     })),
-    "deals.slogan": textElement("Deals Slogan", config.deals.slogan, (current, value) => ({
+    "deals.slogan": textElement("Vorteils-Slogan", config.deals.slogan, (current, value) => ({
       ...current,
       deals: { ...current.deals, slogan: value },
     })),
-    "deals.description": textElement("Deals Beschreibung", config.deals.description, (current, value) => ({
+    "deals.description": textElement("Vorteilsbeschreibung", config.deals.description, (current, value) => ({
       ...current,
       deals: { ...current.deals, description: value },
     })),
@@ -4829,7 +4829,7 @@ function getEditableElement(
   const editableTextFallbacks: Record<string, { label: string; fallback: string }> = {
     "deals.benefit.0.title": {
       label: "Benefit 1 Titel",
-      fallback: "Exklusive Partner Deals",
+      fallback: "Exklusive Partnervorteile",
     },
     "deals.benefit.0.text": {
       label: "Benefit 1 Text",
@@ -5052,17 +5052,17 @@ function getEditableElement(
       {
         question: "Welche Vorteile gibt es mit Premium?",
         answer:
-          "Premium-Mitglieder erhalten zusätzliche Deals, exklusive Belohnungen und besondere Aktionen bei teilnehmenden lokalen Partnern.",
+          "Premium-Mitglieder erhalten zusätzliche Vorteile, exklusive Belohnungen und besondere Aktionen bei teilnehmenden lokalen Partnern.",
       },
       {
-        question: "Wie nutze ich den 2 für 1 Deal?",
+        question: "Wie nutze ich den 2 für 1 Vorteil?",
         answer:
           "Aktiviere den Vorteil vor deiner Bestellung in der App. Vor Ort zeigst du den aktiven Vorteil einfach beim Bezahlen vor.",
       },
       {
         question: "Brauche ich die Benefitsi App?",
         answer:
-          "Ja, Deals, Stempel und Belohnungen werden digital in der App gesammelt und eingelöst.",
+          "Ja, Vorteile, Stempel und Belohnungen werden digital in der App gesammelt und eingelöst.",
       },
       {
         question: "Kann ich online bestellen?",
@@ -5928,7 +5928,7 @@ function applyMicrositeLanguage(
   const navigation =
     language === "en"
       ? [
-          { label: "Deals", anchor: "deals" },
+          { label: "Benefits", anchor: "deals" },
           { label: "Stamp Card", anchor: "stempelkarte" },
           { label: copy.menuLabel, anchor: "speisekarte" },
           { label: "About", anchor: "ueber-uns" },
@@ -5936,7 +5936,7 @@ function applyMicrositeLanguage(
           { label: "Contact", anchor: "kontakt" },
         ]
       : [
-          { label: "Deals", anchor: "deals" },
+          { label: "Vorteile", anchor: "deals" },
           { label: "Stempelkarte", anchor: "stempelkarte" },
           { label: copy.menuLabel, anchor: "speisekarte" },
           { label: "Über Uns", anchor: "ueber-uns" },
@@ -5949,7 +5949,7 @@ function applyMicrositeLanguage(
           "content.appKicker": "In the Benefitsi app",
           "content.appBenefit.0": "Check stamp progress anytime",
           "content.appBenefit.1": "Unlock rewards automatically",
-          "content.appBenefit.2": "Use deals quickly and digitally",
+          "content.appBenefit.2": "Use benefits quickly and digitally",
           "content.appQrLabel": "Open app & check in",
           "content.appQrText": "Scan QR code",
           "content.appButtonLabel": "Open app",
@@ -5989,11 +5989,11 @@ function applyMicrositeLanguage(
     },
     deals: {
       ...config.deals,
-      label: language === "en" ? "Deals & Benefits" : "Deals & Vorteile",
+      label: language === "en" ? "Benefits & campaigns" : "Vorteile & Aktionen",
       headline:
         language === "en"
-          ? `Exclusive Benefitsi deals at ${name}`
-          : `Exklusive Benefitsi Deals bei ${name}`,
+          ? `Exclusive Benefitsi benefits at ${name}`
+          : `Exklusive Benefitsi Vorteile bei ${name}`,
       slogan: language === "en" ? "Enjoy more, save more." : "Mehr genießen, mehr sparen!",
       description:
         language === "en"
@@ -6034,16 +6034,16 @@ function applyMicrositeLanguage(
       ...config.seo,
       title:
         language === "en"
-          ? `${name} in ${location} | Deals, stamp card & menu`
-          : `${name} in ${location} | Deals, Stempelkarte & Speisekarte`,
+          ? `${name} in ${location} | Benefits, stamp card & menu`
+          : `${name} in ${location} | Vorteile, Stempelkarte & Speisekarte`,
       description:
         language === "en"
-          ? `${name}: ${location}. Benefitsi deals, stamp card, menu, opening hours and contact at a glance.`
-          : `${name}: ${location}. Benefitsi Deals, Stempelkarte, Speisekarte, Öffnungszeiten und Kontakt auf einen Blick.`,
+          ? `${name}: ${location}. Benefitsi benefits, stamp card, menu, opening hours and contact at a glance.`
+          : `${name}: ${location}. Benefitsi Vorteile, Stempelkarte, Speisekarte, Öffnungszeiten und Kontakt auf einen Blick.`,
       keywords:
         language === "en"
-          ? [name, location, "Benefitsi", "deals", "stamp card", "menu"]
-          : [name, location, "Benefitsi", "Deals", "Stempelkarte", "Speisekarte"],
+          ? [name, location, "Benefitsi", "benefits", "stamp card", "menu"]
+          : [name, location, "Benefitsi", "Vorteile", "Stempelkarte", "Speisekarte"],
     },
     elementText: {
       ...config.elementText,
@@ -6127,7 +6127,7 @@ function englishMicrositeCopyForPartner(
     contactHeadline: "Ready for your next visit?",
     appHeadline: "All local benefits in your Benefitsi app",
     appText:
-      "Activate deals, collect loyalty stamps and keep your favorite partner one tap away.",
+      "Activate benefits, collect loyalty stamps and keep your favorite partner one tap away.",
     footerText: categoryText
       ? `${categoryText}, loyal guests and one microsite for more repeat visits.`
       : "Local flavor, loyal guests and one microsite for more repeat visits.",

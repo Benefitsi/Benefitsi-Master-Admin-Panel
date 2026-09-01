@@ -1714,21 +1714,21 @@ function DealsSection({
         <div className="premium-reveal pb-2 pt-12 @min-[640px]:pt-16">
           <div className="max-w-3xl">
             <h2
-              {...editable("deals.headline", "text", "Deals Überschrift")}
+              {...editable("deals.headline", "text", "Vorteils-Überschrift")}
               className="text-[clamp(2rem,4.8cqw,3.3rem)] font-black leading-[1.04] tracking-[-0.04em]"
               style={textStyleFor(config, "deals.headline")}
             >
               {config.deals.headline}
             </h2>
             <p
-              {...editable("deals.slogan", "text", "Deals Slogan")}
+              {...editable("deals.slogan", "text", "Vorteils-Slogan")}
               className="mt-4 text-[clamp(1.3rem,2.7cqw,1.9rem)] italic text-[var(--site-accent)]"
               style={textStyleFor(config, "deals.slogan")}
             >
               {config.deals.slogan}
             </p>
             <p
-              {...editable("deals.description", "text", "Deals Beschreibung")}
+              {...editable("deals.description", "text", "Vorteilsbeschreibung")}
               className="mt-4 max-w-md text-sm leading-7 text-zinc-600"
               style={textStyleFor(config, "deals.description")}
             >
@@ -1986,16 +1986,16 @@ function MicrositeDealBanner({
         <>
           <BrandedImage
             src={config.deals.topDealImageUrl}
-            alt={`${title} – ${siteCopy(config, "Dealbild", "Deal image")}`}
+            alt={`${title} – ${siteCopy(config, "Vorteilsbild", "Benefit image")}`}
             editableId={primary ? "deals.topDealImageUrl" : undefined}
-            editableLabel="Deal Bild"
+            editableLabel="Vorteilsbild"
             className="premium-topdeal-image absolute inset-y-0 right-0 h-full w-full object-cover object-center @min-[640px]:w-[68%]"
             style={imageStyleFor(config, "deals.topDealImageUrl")}
           />
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#121212_0%,#121212_36%,rgba(18,18,18,.93)_43%,rgba(18,18,18,.16)_73%)]" />
           {primary ? (
             <span
-              {...editable("deals.topDealImageUrl", "image", "Deal Bild")}
+              {...editable("deals.topDealImageUrl", "image", "Vorteilsbild")}
               aria-hidden="true"
               className="absolute inset-y-0 right-0 z-[20] min-w-[140px] w-[58%]"
             />
@@ -2114,7 +2114,7 @@ function BenefitsEcosystemSection({
     {
       id: "deals.benefit.0",
       icon: "gift",
-      title: siteCopy(config, "Exklusive Partner Deals", "Exclusive partner deals"),
+      title: siteCopy(config, "Exklusive Partnervorteile", "Exclusive partner benefits"),
       text: siteCopy(config, "Nur für Mitglieder", "Only for members"),
       featured: true,
     },
@@ -2147,7 +2147,7 @@ function BenefitsEcosystemSection({
       id: "content.ecosystem.favorites",
       icon: "heart",
       title: siteCopy(config, "Favoriten merken", "Save favorites"),
-      text: siteCopy(config, "Lieblingspartner, Deals und Belohnungen immer griffbereit.", "Keep favorite partners, deals and rewards close at hand."),
+      text: siteCopy(config, "Lieblingspartner, Vorteile und Belohnungen immer griffbereit.", "Keep favorite partners, benefits and rewards close at hand."),
     },
   ]
 
@@ -2179,8 +2179,8 @@ function BenefitsEcosystemSection({
               "content.ecosystemText",
               siteCopy(
                 config,
-                "Deals, Treue und Belohnungen direkt in der App.",
-                "Deals, loyalty and rewards directly in the app.",
+                "Vorteile, Treue und Belohnungen direkt in der App.",
+                "Benefits, loyalty and rewards directly in the app.",
               ),
             )}
           </p>
@@ -3259,9 +3259,9 @@ function FaqSection({ config }: { config: MicrositeConfig }) {
   const faqItems = config.language === "en"
     ? [
         { question: "How does the stamp card work?", answer: "Check in with the Benefitsi app after your visit to collect stamps automatically. When you reach a reward, it unlocks in the app." },
-        { question: "Which benefits are included with Premium?", answer: "Premium members receive additional deals, exclusive rewards and special offers from participating local partners." },
-        { question: "How do I use a 2-for-1 deal?", answer: "Activate the benefit in the app before ordering, then show the active benefit when you pay." },
-        { question: "Do I need the Benefitsi app?", answer: "Yes. Deals, stamps and rewards are collected and redeemed digitally in the app." },
+        { question: "Which benefits are included with Premium?", answer: "Premium members receive additional benefits, exclusive rewards and special offers from participating local partners." },
+        { question: "How do I use a 2-for-1 benefit?", answer: "Activate the benefit in the app before ordering, then show the active benefit when you pay." },
+        { question: "Do I need the Benefitsi app?", answer: "Yes. Benefits, stamps and rewards are collected and redeemed digitally in the app." },
         { question: "Can I order online?", answer: "If the partner offers online ordering, you will find the relevant button on the microsite or in the Benefitsi app." },
         { question: "Does it cost anything to participate?", answer: "Many benefits are free to use. Some premium benefits are reserved for Benefitsi Premium members." },
       ]
@@ -3454,7 +3454,7 @@ function FooterSection({
         <FooterLinkColumn
           title={siteCopy(config, "Entdecken", "Explore")}
           links={[
-            { label: siteCopy(config, "Deals & Vorteile", "Deals & benefits"), href: "#deals" },
+            { label: siteCopy(config, "Vorteile & Aktionen", "Benefits & campaigns"), href: "#deals" },
             { label: siteCopy(config, "Stempelkarte", "Stamp card"), href: "#stempelkarte" },
             { label: siteCopy(config, "Speisekarte", "Menu"), href: "#speisekarte" },
           ]}

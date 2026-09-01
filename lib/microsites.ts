@@ -187,7 +187,7 @@ type PartnerSeed = {
 }
 
 const defaultNavigation = [
-  { label: "Deals", anchor: "deals" },
+  { label: "Vorteile", anchor: "deals" },
   { label: "Stempelkarte", anchor: "stempelkarte" },
   { label: "Speisekarte", anchor: "speisekarte" },
   { label: "Über Uns", anchor: "ueber-uns" },
@@ -237,13 +237,13 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       openingText: micrositeOpeningText(partner),
       backgroundImageUrl: backgroundImage,
       badgeText: "Offizieller Benefitsi Partner",
-      primaryButtonLabel: "Deals ansehen",
+      primaryButtonLabel: "Vorteile ansehen",
       secondaryButtonLabel: `${defaults.menuLabel} ansehen`,
       services: defaults.services,
     },
     deals: {
-      label: "Deals & Vorteile",
-      headline: `Exklusive Benefitsi Deals bei ${partner.short_name || name}`,
+      label: "Vorteile & Aktionen",
+      headline: `Exklusive Benefitsi Vorteile bei ${partner.short_name || name}`,
       slogan: "Mehr genießen, mehr sparen!",
       description:
         "Entdecke die besten Vorteile und belohne dich bei jedem Besuch.",
@@ -255,7 +255,7 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       topDealImageUrl:
         partner.discover_card_image_url || partner.feature_card_url || backgroundImage,
       topDealBullets: [
-        "Gültig gemäß Dealbedingungen",
+        "Gültig gemäß Vorteilsbedingungen",
         "In der Benefitsi-App auswählen",
         `Nur in ${location}`,
       ],
@@ -282,9 +282,9 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       footerText: defaults.footerText,
     },
     seo: {
-      title: `${name} in ${location} | Deals, Stempelkarte & Speisekarte`,
-      description: `${name}: ${location}. Benefitsi Deals, Stempelkarte, Speisekarte, Öffnungszeiten und Kontakt auf einen Blick.`,
-      keywords: [name, location, "Benefitsi", "Deals", "Stempelkarte", "Speisekarte"],
+      title: `${name} in ${location} | Vorteile, Stempelkarte & Speisekarte`,
+      description: `${name}: ${location}. Benefitsi Vorteile, Stempelkarte, Speisekarte, Öffnungszeiten und Kontakt auf einen Blick.`,
+      keywords: [name, location, "Benefitsi", "Vorteile", "Stempelkarte", "Speisekarte"],
       ogImageUrl: backgroundImage,
       noIndex: false,
     },

@@ -265,7 +265,7 @@ const dealUiTypeOptions = dealTypeOptions.flatMap((option) =>
   option.value === "comeback"
     ? [
         { value: DURATION_BONUS_DEAL, label: "Zeitbonus" },
-        { value: COMEBACK_INACTIVE_DEAL, label: "Comeback" },
+        { value: COMEBACK_INACTIVE_DEAL, label: "Comeback-Deal" },
       ]
     : [option],
 )
@@ -994,7 +994,7 @@ function PartnerDetail({
   }> = [
     { id: "details", label: "Partner Profile", hasRequiredFields: true },
     { id: "rewards", label: "Operating Hours", hasRequiredFields: true },
-    { id: "deals", label: "Deals & Rewards", hasRequiredFields: true },
+    { id: "deals", label: "Benefits & Rewards", hasRequiredFields: true },
     ...(partnerTypeSupportsMenu(partner.type)
       ? [{ id: "menu" as const, label: "Menu Management", hasRequiredFields: true }]
       : []),
@@ -3441,7 +3441,7 @@ function InitialDealsEditor({
         </div>
       ) : (
         <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
-          No deals staged.
+          No benefits staged.
         </div>
       )}
       <button
@@ -3449,7 +3449,7 @@ function InitialDealsEditor({
         onClick={handleAdd}
         className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
       >
-        Add deal
+        Add benefit
       </button>
     </div>
   )
@@ -4088,7 +4088,7 @@ function DealsPanel({
         </div>
       ) : (
         <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
-          No deals staged.
+          No benefits staged.
         </div>
       )}
       {partnerId ? (
@@ -4097,7 +4097,7 @@ function DealsPanel({
           onClick={() => setDealEditor({ mode: "create" })}
           className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
         >
-          Add deal
+          Add benefit
         </button>
       ) : null}
       <DealEditorDialog
@@ -4472,10 +4472,10 @@ function DealEditorDialog({
         <header className="flex items-start justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
           <div>
             <h3 id="deal-dialog-title" className="text-lg font-bold tracking-tight text-zinc-950">
-              {deal ? "Edit deal" : "Add deal"}
+              {deal ? "Edit benefit" : "Add benefit"}
             </h3>
             <p className="mt-0.5 text-xs text-zinc-500">
-              Configure the reward and confirm before saving.
+              Configure the benefit and confirm before saving.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -4597,8 +4597,8 @@ function DealForm({
       <ActionMessage state={state} />
       <div className="flex flex-wrap gap-2">
         <SubmitButton
-          label={mode === "create" ? "Add deal" : "Save deal"}
-          pendingLabel={mode === "create" ? "Adding deal..." : "Saving deal..."}
+          label={mode === "create" ? "Add benefit" : "Save benefit"}
+          pendingLabel={mode === "create" ? "Adding benefit..." : "Saving benefit..."}
         />
         {mode === "edit" && onCancel ? (
           <button
@@ -4613,9 +4613,9 @@ function DealForm({
       </div>
       <ConfirmDialog
         open={confirmingSave}
-        title={mode === "create" ? "Add this deal?" : "Save changes to this deal?"}
+        title={mode === "create" ? "Add this benefit?" : "Save changes to this benefit?"}
         description="Review the reward, item, eligibility, dates, and limits before confirming."
-        confirmLabel={mode === "create" ? "Add deal" : "Save deal"}
+        confirmLabel={mode === "create" ? "Add benefit" : "Save benefit"}
         onCancel={() => setConfirmingSave(false)}
         onConfirm={() => {
           confirmedSubmitRef.current = true
@@ -4671,7 +4671,7 @@ type DealFormConfig = {
 
 const dealFieldHelp = {
   dealType:
-    "Legt Auslöser oder Kampagne fest, zum Beispiel Happy Hour, Willkommen oder Streak.",
+    "Legt Auslöser oder Kampagne fest, zum Beispiel Happy Hour, Willkommensdeal, Comeback-Deal oder Streak-Bonus.",
   discountType:
     "Legt fest, was Nutzer erhalten: Prozent- oder €-Rabatt, Gratisartikel, Bonusstempel oder 2 für 1.",
   benefitCategory:
@@ -4897,7 +4897,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
     shortDescription:
       "Vorteil zum Geburtstag. Je nach Belohnungsformat direkt auswählbar oder automatisch.",
     description:
-      "Ein Auslöser zum Geburtstag. Direkte Kassenaktionen sind Geburtstagsdeals; automatische Zusatzstempel Geburtstagsboni.",
+      "Ein Auslöser zum Geburtstag. Direkt auswählbare Belohnungen sind Geburtstagsdeals; automatische Zusatzstempel Geburtstagsboni.",
     recommendedSetup: [
       "Bonusstempel: automatisch beim Scan, keine Aktivierung",
       "Gratisartikel, Rabatt oder 2 für 1: vor dem Besuch auswählen",
@@ -5016,7 +5016,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   challenge: {
     shortDescription: "Bonus für eine Challenge oder ein Ziel.",
     description:
-      "Ein Challenge-Bonus für eine Aufgabe oder ein Ziel. Je nach Belohnungsformat erfolgt er automatisch oder wird vorher ausgewählt.",
+      "Eine Challenge für eine Aufgabe oder ein Ziel. Je nach Belohnungsformat erfolgt die Belohnung automatisch oder wird vorher ausgewählt.",
     recommendedSetup: [
       "Der Challenge-Name unterscheidet Challenges intern",
       "Bonusstempel werden automatisch angewendet",

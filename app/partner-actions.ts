@@ -779,18 +779,18 @@ export async function savePartner(
 
       if (initialDealError) {
         warnings.push(
-          `Partner was created, but deals were skipped: ${initialDealError}`,
+          `Partner was created, but benefits were skipped: ${initialDealError}`,
         )
       } else if (initialDealPriorityError) {
         warnings.push(
-          `Partner was created, but deals were skipped: ${initialDealPriorityError}`,
+          `Partner was created, but benefits were skipped: ${initialDealPriorityError}`,
         )
       } else if (initialDeals.length > 0) {
         const dealMessage = await insertDeals(supabase, initialDeals)
 
         if (dealMessage) {
           warnings.push(
-            `Partner was created, but deals could not be added: ${dealMessage}`,
+            `Partner was created, but benefits could not be added: ${dealMessage}`,
           )
         }
       }
@@ -923,7 +923,7 @@ export async function generateDealCopy(
 
   const field = stringValue(formData, "field")
   if (!isBenDealCopyField(field)) {
-    return { ok: false, message: "Dieses Deal-Feld ist für Ben nicht freigegeben." }
+    return { ok: false, message: "Dieses Vorteilsfeld ist für Ben nicht freigegeben." }
   }
 
   const partnerName = stringValue(formData, "partner_name")
@@ -1097,7 +1097,7 @@ export async function deletePartner(
         supabase.from("redemption_reversals").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove deal redemptions.",
+      message: "Unable to remove benefit redemptions.",
       run: () => supabase.from("deal_redemptions").delete().eq("partner_id", id),
     },
     {
@@ -1109,7 +1109,7 @@ export async function deletePartner(
       run: () => supabase.from("visits").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove deal selections.",
+      message: "Unable to remove benefit selections.",
       run: () => supabase.from("deal_selections").delete().eq("partner_id", id),
     },
     {
@@ -1183,7 +1183,7 @@ export async function deletePartner(
       run: () => supabase.from("microsites").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove partner deals.",
+      message: "Unable to remove partner benefits.",
       run: () => supabase.from("deals").delete().eq("partner_id", id),
     },
     {
@@ -1238,7 +1238,7 @@ export async function saveDeal(
   } catch (error) {
     return dealSaveFailure(
       formData,
-      error instanceof Error ? error.message : "Unable to parse deal form.",
+      error instanceof Error ? error.message : "Unable to parse benefit form.",
     )
   }
 
@@ -1344,7 +1344,7 @@ export async function saveDeal(
 
   return {
     ok: true,
-    message: id ? "Deal updated." : "Deal added.",
+    message: id ? "Benefit updated." : "Benefit added.",
   }
 }
 
@@ -2865,7 +2865,7 @@ export async function deleteDeal(
   const { supabase } = access
 
   if (!id) {
-    return { ok: false, message: "Deal id is required." }
+    return { ok: false, message: "Benefit id is required." }
   }
 
   const result = await supabase.from("deals").delete().eq("id", id)
@@ -2876,7 +2876,7 @@ export async function deleteDeal(
 
   revalidatePath("/")
 
-  return { ok: true, message: "Deal removed." }
+  return { ok: true, message: "Benefit removed." }
 }
 
 async function collectPartnerDeletionMediaUrls(
@@ -4532,11 +4532,11 @@ function normalizeDealDiscountType(type: string, discountType: string) {
 
 function validateDealPayload(payload: ParsedDeal) {
   if (!payload.partner_id) {
-    return "A deal must be attached to a partner."
+    return "A benefit must be attached to a partner."
   }
 
   if (!isDealType(payload.type)) {
-    return "Deal type is required."
+    return "Reward format is required."
   }
 
   if (!isDiscountType(payload.discount_type)) {
@@ -4609,12 +4609,12 @@ function validateDealPayload(payload: ParsedDeal) {
     payload.type === "two_for_one" &&
     payload.discount_type !== "2for1"
   ) {
-    return "2-for-1 deals must use the 2-for-1 reward type."
+    return "2-for-1 benefits must use the 2-for-1 reward type."
   }
 
   if (payload.type === "permanent_discount") {
     if (payload.benefit_category !== "automatic_fallback") {
-      return "Permanent fallback discounts must apply only if no selected deal."
+      return "Permanent fallback discounts must apply only if no selected benefit."
     }
 
     if (payload.activation_required) {
@@ -4648,20 +4648,20 @@ function validateDealPayload(payload: ParsedDeal) {
       payload.benefit_category !== "automatic_background" ||
       payload.activation_required)
   ) {
-    return "Automatic bonus stamp deals must use bonus stamp, apply automatically, and not require activation."
+    return "Automatic bonus stamp benefits must use bonus stamp, apply automatically, and not require activation."
   }
 
   if (payload.type === "free_item" && payload.discount_type !== "item") {
-    return "Free item deals must use the free item reward type."
+    return "Free item benefits must use the free item reward type."
   }
 
   if (payload.type === "happy_hour") {
     if (payload.benefit_category !== "direct_selectable") {
-      return "Happy Hour deals must be selected before visit."
+      return "Happy Hour benefits must be selected before visit."
     }
 
     if (payload.discount_type === "bonus_stamp") {
-      return "Happy Hour deals cannot use automatic bonus stamps."
+      return "Happy Hour benefits cannot use automatic bonus stamps."
     }
 
     if (
@@ -4682,7 +4682,7 @@ function validateDealPayload(payload: ParsedDeal) {
     payload.discount_type === "bonus_stamp" &&
     (!payload.benefit_count || payload.benefit_count < 1)
   ) {
-    return "Bonus stamp deals require a benefit count."
+    return "Bonus stamp benefits require a benefit count."
   }
 
   if (discountTypeUsesRewardItem(payload.discount_type) && !payload.reward_item) {
@@ -4711,14 +4711,14 @@ function validateDealPayload(payload: ParsedDeal) {
     payload.type === "happy_hour" &&
     (!payload.happy_hour_start || !payload.happy_hour_end)
   ) {
-    return "Happy hour deals require start and end times."
+    return "Happy Hour benefits require start and end times."
   }
 
   if (
     payload.type === "streak" &&
     (!payload.trigger_value || payload.trigger_value <= 0)
   ) {
-    return "Streak deals require a trigger value greater than 0."
+    return "Streak bonuses require a trigger value greater than 0."
   }
 
   if (payload.type === "challenge") {
@@ -4750,21 +4750,21 @@ function validateDealPayload(payload: ParsedDeal) {
           : null
 
       if (!payload.trigger_value || payload.trigger_value <= 0) {
-        return "Comeback Deals require an inactivity period greater than 0."
+        return "Comeback deals require an inactivity period greater than 0."
       }
 
       if (
         typeof inactivityUnit !== "string" ||
         !["days", "weeks", "months"].includes(inactivityUnit)
       ) {
-        return "Comeback Deals require days, weeks, or months as the inactivity unit."
+        return "Comeback deals require days, weeks, or months as the inactivity unit."
       }
 
       if (
         (minVisitCount !== null && minVisitCount < 0) ||
         (maxVisitCount !== null && maxVisitCount < 0)
       ) {
-        return "Comeback Deal visit filters cannot be negative."
+        return "Comeback deal visit filters cannot be negative."
       }
 
       if (
@@ -4778,14 +4778,14 @@ function validateDealPayload(payload: ParsedDeal) {
       const durationUnit = metadata.duration_unit
 
       if (!payload.trigger_value || payload.trigger_value <= 0) {
-        return "Duration Bonus deals require a duration greater than 0."
+        return "Time bonuses require a duration greater than 0."
       }
 
       if (
         typeof durationUnit !== "string" ||
         !["hours", "days", "weeks"].includes(durationUnit)
       ) {
-        return "Duration Bonus deals require hours, days, or weeks as the duration unit."
+        return "Time bonuses require hours, days, or weeks as the duration unit."
       }
     }
   }
@@ -4858,9 +4858,9 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
   const customerDescription = (() => {
     switch (payload.type) {
       case "two_for_one":
-        return `Aktiviere den 2-für-1-Deal: Erhalte zwei ${payload.reward_item || "ausgewählte Produkte"} zum Preis von einem.`
+        return `Aktiviere den 2-für-1-Vorteil: Erhalte zwei ${payload.reward_item || "ausgewählte Produkte"} zum Preis von einem.`
       case "free_item":
-        return `Aktiviere den Deal und erhalte ${reward} gratis.`
+        return `Aktiviere den Vorteil und erhalte ${reward} gratis.`
       case "bonus_stamp":
         return `Erhalte ${reward} nach einem qualifizierten Besuch automatisch.`
       case "happy_hour":
@@ -4884,16 +4884,16 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
       case "limited_drop":
         return `Deal Drop: Erhalte ${reward}, solange das Kontingent reicht.`
       default:
-        return `Aktiviere den Deal und erhalte ${reward}.`
+        return `Aktiviere den Vorteil und erhalte ${reward}.`
     }
   })()
 
   const staffInstructions = (() => {
     switch (payload.type) {
       case "two_for_one":
-        return `1 ${payload.reward_item || "Produkt"} berechnen und ein gleichwertiges oder günstigeres zweites Produkt gratis ausgeben. Keine Stempel für diesen Deal.`
+        return `1 ${payload.reward_item || "Produkt"} berechnen und ein gleichwertiges oder günstigeres zweites Produkt gratis ausgeben. Keine Stempel für diesen Vorteil.`
       case "free_item":
-        return `Aktivierten Deal prüfen und ${reward} kostenlos zum aktuellen Bon hinzufügen.`
+        return `Aktivierten Vorteil prüfen und ${reward} kostenlos zum aktuellen Bon hinzufügen.`
       case "bonus_stamp":
         return "Keine manuelle Kassenaktion. Bonusstempel nach bestätigtem Scan automatisch gutschreiben."
       case "happy_hour":
@@ -4911,28 +4911,28 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
       case "limited_drop":
         return `Reservierte Deal-Drop-Auswahl prüfen und ${reward} entsprechend der Anzeige einlösen.`
       default:
-        return `Aktivierten Deal und Berechtigung im Scan prüfen; ${reward} am aktuellen Bon anwenden.`
+        return `Aktivierten Vorteil und Berechtigung im Scan prüfen; ${reward} am aktuellen Bon anwenden.`
     }
   })()
 
   const terms = (() => {
     switch (payload.type) {
       case "two_for_one":
-        return "Gilt für zwei gleiche oder gleichwertige Produkte. Keine Stempel für diesen Deal. Nicht mit anderen Deals kombinierbar."
+        return "Gilt für zwei gleiche oder gleichwertige Produkte. Keine Stempel für diesen Vorteil. Nicht mit anderen Vorteilen kombinierbar."
       case "free_item":
-        return "Nur zusammen mit dem angegebenen Hauptprodukt einlösbar. Nicht mit anderen Deals kombinierbar."
+        return "Nur zusammen mit dem angegebenen Hauptprodukt einlösbar. Nicht mit anderen Vorteilen kombinierbar."
       case "bonus_stamp":
         return "Nur für qualifizierte Besuche. Nicht mit anderen Bonusstempeln kombinierbar."
       case "happy_hour":
         return timeWindow
-          ? `Nur von ${timeWindow} gültig. Nicht mit anderen Deals kombinierbar.`
-          : "Nur im konfigurierten Happy-Hour-Zeitraum gültig. Nicht mit anderen Deals kombinierbar."
+          ? `Nur von ${timeWindow} gültig. Nicht mit anderen Vorteilen kombinierbar.`
+          : "Nur im konfigurierten Happy-Hour-Zeitraum gültig. Nicht mit anderen Vorteilen kombinierbar."
       case "welcome":
         return "Einmal pro Nutzerkonto einlösbar. Nicht mit anderen Willkommensdeals kombinierbar."
       case "limited_drop":
-        return "Nur solange das Kontingent reicht. Nicht mit anderen Deals kombinierbar."
+        return "Nur solange das Kontingent reicht. Nicht mit anderen Vorteilen kombinierbar."
       default:
-        return "Einmal pro Besuch einlösbar, sofern nicht anders angegeben. Nicht mit anderen Deals kombinierbar."
+        return "Einmal pro Besuch einlösbar, sofern nicht anders angegeben. Nicht mit anderen Vorteilen kombinierbar."
     }
   })()
 
@@ -4980,7 +4980,7 @@ function withDefaultMilestoneCopy(payload: ParsedMilestone): ParsedMilestone {
     ),
     terms: nonEmptyCopy(
       payload.terms,
-      "Nach Erreichen des Stempelziels einlösbar. Nicht mit anderen Deals kombinierbar, sofern nicht anders angegeben.",
+      "Nach Erreichen des Stempelziels einlösbar. Nicht mit anderen Vorteilen kombinierbar, sofern nicht anders angegeben.",
     ),
   }
 }
@@ -5050,7 +5050,7 @@ function validateUniqueInitialAutomaticDealPriorities(deals: ParsedDeal[]) {
     }
 
     if (usedPriorities.has(deal.priority)) {
-      return `Automatic deals cannot share priority ${deal.priority}.`
+      return `Automatic benefits cannot share priority ${deal.priority}.`
     }
 
     usedPriorities.add(deal.priority)
@@ -5090,7 +5090,7 @@ async function validateUniqueAutomaticDealPriority(
   }
 
   if (result.data?.length) {
-    return `Another automatic deal already uses priority ${payload.priority}.`
+    return `Another automatic benefit already uses priority ${payload.priority}.`
   }
 
   return null

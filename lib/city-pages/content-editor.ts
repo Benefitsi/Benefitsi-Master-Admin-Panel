@@ -818,7 +818,7 @@ export const cityContentEditorDefinitions: Record<
     table: "city_partner_benefits",
     singular: "Vorteil",
     plural: "Partner-Vorteile",
-    description: "Lokale Benefits mit Partner- und optionaler Deal-Zuordnung.",
+    description: "Lokale Vorteile mit Partner- und optionaler Vorteils-Zuordnung.",
     titleField: "title",
     fields: [
       {
@@ -827,7 +827,7 @@ export const cityContentEditorDefinitions: Record<
         kind: "partner",
         required: true,
       },
-      { name: "deal_id", label: "Zugeordneter Deal", kind: "deal" },
+      { name: "deal_id", label: "Zugeordneter Vorteil", kind: "deal" },
       {
         name: "title",
         label: "Titel",

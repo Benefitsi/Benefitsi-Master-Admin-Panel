@@ -51,7 +51,7 @@ test("microsite defaults do not invent a partner-specific two-for-one item", () 
     "Entdecke den aktuellen Vorteil in der Benefitsi-App.",
   )
   assert.deepEqual(config.deals.topDealBullets, [
-    "Gültig gemäß Dealbedingungen",
+    "Gültig gemäß Vorteilsbedingungen",
     "In der Benefitsi-App auswählen",
     "Nur in Annweiler",
   ])

@@ -1,16 +1,16 @@
 export const dealTypeOptions = [
   { value: "two_for_one", label: "2 für 1" },
-  { value: "welcome", label: "Willkommen" },
-  { value: "comeback", label: "Zeitbonus" },
+  { value: "welcome", label: "Willkommensdeal" },
+  { value: "comeback", label: "Comeback-Deal" },
   { value: "happy_hour", label: "Happy Hour" },
   { value: "permanent_discount", label: "Dauerrabatt" },
   { value: "limited_drop", label: "Deal Drop" },
-  { value: "birthday", label: "Geburtstag" },
+  { value: "birthday", label: "Geburtstagsdeal" },
   { value: "free_item", label: "Gratisartikel" },
   { value: "discount", label: "Rabatt" },
   { value: "bonus_stamp", label: "Bonusstempel" },
   { value: "streak", label: "Streak-Bonus" },
-  { value: "challenge", label: "Challenge-Bonus" },
+  { value: "challenge", label: "Challenge" },
 ] as const
 
 export const discountTypeOptions = [

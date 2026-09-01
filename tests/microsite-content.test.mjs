@@ -111,7 +111,7 @@ test("uses canonical public labels for reward formats and lifecycle triggers", (
     "Dauerrabatt",
   )
   assert.equal(micrositeDealTypeLabel({ type: "streak" }), "Streak-Bonus")
-  assert.equal(micrositeDealTypeLabel({ type: "challenge" }), "Challenge-Bonus")
+  assert.equal(micrositeDealTypeLabel({ type: "challenge" }), "Challenge")
 })
 
 test("formats the stored deal value and minimum spend for the microsite", () => {

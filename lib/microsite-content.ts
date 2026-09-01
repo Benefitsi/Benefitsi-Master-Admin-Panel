@@ -27,7 +27,7 @@ const MICROSITE_DEAL_TYPE_LABELS: Record<
   discount: { de: "Rabatt", en: "Discount" },
   bonus_stamp: { de: "Bonusstempel", en: "Bonus stamp" },
   streak: { de: "Streak-Bonus", en: "Streak reward" },
-  challenge: { de: "Challenge-Bonus", en: "Challenge reward" },
+  challenge: { de: "Challenge", en: "Challenge" },
 }
 
 export function getMicrositePublicDeals(

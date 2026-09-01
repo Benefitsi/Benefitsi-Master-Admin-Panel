@@ -15,17 +15,17 @@ export const defaultMicrositeFaqItems = [
   {
     question: "Welche Vorteile gibt es mit Premium?",
     answer:
-      "Premium-Mitglieder erhalten zusätzliche Deals, exklusive Belohnungen und besondere Aktionen bei teilnehmenden lokalen Partnern.",
+      "Premium-Mitglieder erhalten zusätzliche Vorteile, exklusive Belohnungen und besondere Aktionen bei teilnehmenden lokalen Partnern.",
   },
   {
-    question: "Wie nutze ich den 2 für 1 Deal?",
+    question: "Wie nutze ich den 2 für 1 Vorteil?",
     answer:
       "Aktiviere den Vorteil vor deiner Bestellung in der App. Vor Ort zeigst du den aktiven Vorteil einfach beim Bezahlen vor.",
   },
   {
     question: "Brauche ich die Benefitsi App?",
     answer:
-      "Ja, Deals, Stempel und Belohnungen werden digital in der App gesammelt und eingelöst.",
+      "Ja, Vorteile, Stempel und Belohnungen werden digital in der App gesammelt und eingelöst.",
   },
   {
     question: "Kann ich online bestellen?",
@@ -51,8 +51,8 @@ export function createMicrositeMetadata({
   const name = partner.name || config.hero.headline
   const location = config.hero.locationText
   const offerLabel = config.content.menuLabel || "Angebote"
-  const fallbackTitle = `${name} in ${location} | Deals, Benefitsi & ${offerLabel}`
-  const fallbackDescription = `${name}: ${config.hero.slogan} Entdecke Benefitsi Deals, ${offerLabel}, Öffnungszeiten und Kontakt in ${location}.`
+  const fallbackTitle = `${name} in ${location} | Vorteile, Benefitsi & ${offerLabel}`
+  const fallbackDescription = `${name}: ${config.hero.slogan} Entdecke Benefitsi Vorteile, ${offerLabel}, Öffnungszeiten und Kontakt in ${location}.`
   const title = config.seo.title || fallbackTitle
   const description = truncateDescription(config.seo.description || fallbackDescription)
   const canonical = canonicalUrlFor(partner, slug)

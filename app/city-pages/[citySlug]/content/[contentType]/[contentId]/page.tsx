@@ -302,7 +302,7 @@ function EditorFieldControl({
   } else if (field.kind === "deal") {
     control = (
       <select {...common} defaultValue={stringValue(value)} className={inputClass}>
-        <option value="">Kein Deal</option>
+        <option value="">Kein Vorteil</option>
         {deals.map((deal) => (
           <option key={deal.id} value={deal.id}>
             {deal.title}
@@ -593,7 +593,7 @@ function errorMessage(error: string) {
     invalid_partner:
       "Der gewählte Partner gehört nicht zu dieser Stadt oder ist nicht mehr verfügbar.",
     invalid_deal:
-      "Der gewählte Deal gehört nicht zum ausgewählten Partner oder ist nicht mehr verfügbar.",
+      "Der gewählte Vorteil gehört nicht zum ausgewählten Partner oder ist nicht mehr verfügbar.",
     content_missing: "Der Datensatz wurde nicht gefunden oder gehört zu einer anderen Stadt.",
     review_sync:
       "Der Inhalt wurde gespeichert, aber der zentrale Prüfdatensatz konnte nicht aktualisiert werden.",

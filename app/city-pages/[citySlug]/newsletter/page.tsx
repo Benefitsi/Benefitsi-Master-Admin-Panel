@@ -34,7 +34,7 @@ const statusLabels: Record<string, string> = {
 const interestLabels = {
   events: "Wochenende & Events",
   family: "Familie",
-  food: "Gastro & Deals",
+  food: "Gastro & Vorteile",
   culture: "Kultur",
   clubs: "Vereine",
   notices: "Wichtige Meldungen",

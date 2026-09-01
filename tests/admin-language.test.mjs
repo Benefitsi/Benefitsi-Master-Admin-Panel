@@ -40,7 +40,7 @@ test("uses the canonical German benefit taxonomy in the admin selector", async (
   )
   assert.equal(
     dealTypeOptions.find((option) => option.value === "comeback")?.label,
-    "Zeitbonus",
+    "Comeback-Deal",
   )
   assert.equal(
     dealTypeOptions.find((option) => option.value === "permanent_discount")?.label,
@@ -190,7 +190,7 @@ test("translates complete admin workflows in both directions", () => {
   assert.equal(translateValue("Partner management", "de"), "Partnerverwaltung")
   assert.equal(translateValue("Partnerverwaltung", "en"), "Partner management")
   assert.equal(translateValue("Select...", "de"), "Bitte auswählen ...")
-  assert.equal(translateValue("Add deal", "de"), "Deal hinzufügen")
+  assert.equal(translateValue("Add deal", "de"), "Vorteil hinzufügen")
   assert.equal(
     translateValue("Review submitted partner menus before publishing", "de"),
     "Eingereichte Partnermenüs vor der Veröffentlichung prüfen",
@@ -258,13 +258,13 @@ test("translates import, image editing, login, and empty-state copy", () => {
   )
   assert.equal(translateValue("Indian", "de"), "Indisch")
   assert.equal(translateValue("Indisch", "en"), "Indian")
-  assert.equal(translateValue("Deal Drop inventory", "de"), "Deal-Drop-Kontingent")
+  assert.equal(translateValue("Deal Drop inventory", "de"), "Deal Drop-Kontingent")
   assert.equal(translateValue("Challenge name", "de"), "Name der Challenge")
   assert.equal(translateValue("Comeback Deal", "de"), "Comeback-Deal")
-  assert.equal(translateValue("Selectable deal", "de"), "Auswählbarer Deal")
+  assert.equal(translateValue("Selectable deal", "de"), "Auswählbarer Vorteil")
   assert.equal(
     translateValue("Selected direct deal source", "de"),
-    "Ausgewählter direkter Deal",
+    "Ausgewählter direkter Vorteil",
   )
   assert.equal(translateValue("3 visits this week", "de"), "3 Besuche diese Woche")
   assert.equal(translateValue("7/7 days open", "de"), "7 von 7 Tagen geöffnet")
