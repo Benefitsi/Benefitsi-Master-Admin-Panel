@@ -264,22 +264,22 @@ const CREATE_NEW_OWNER_VALUE = "__create_new_owner__"
 const dealUiTypeOptions = dealTypeOptions.flatMap((option) =>
   option.value === "comeback"
     ? [
-        { value: DURATION_BONUS_DEAL, label: "Time-based bonus" },
-        { value: COMEBACK_INACTIVE_DEAL, label: "Comeback Deal" },
+        { value: DURATION_BONUS_DEAL, label: "Zeitbonus" },
+        { value: COMEBACK_INACTIVE_DEAL, label: "Comeback" },
       ]
     : [option],
 )
 
 const durationUnitOptions = [
-  { value: "hours", label: "Hours" },
-  { value: "days", label: "Days" },
-  { value: "weeks", label: "Weeks" },
+  { value: "hours", label: "Stunden" },
+  { value: "days", label: "Tage" },
+  { value: "weeks", label: "Wochen" },
 ] as const
 
 const inactivityUnitOptions = [
-  { value: "days", label: "Days" },
-  { value: "weeks", label: "Weeks" },
-  { value: "months", label: "Months" },
+  { value: "days", label: "Tage" },
+  { value: "weeks", label: "Wochen" },
+  { value: "months", label: "Monate" },
 ] as const
 
 const menuStatusOptions = [
@@ -4671,78 +4671,75 @@ type DealFormConfig = {
 
 const dealFieldHelp = {
   dealType:
-    "The business trigger or campaign type, such as Happy Hour, Welcome reward, or Streak reward.",
+    "Legt Auslöser oder Kampagne fest, zum Beispiel Happy Hour, Willkommen oder Streak.",
   discountType:
-    "What the user receives: percentage discount, fixed € amount, free item, bonus stamp, or 2-for-1.",
+    "Legt fest, was Nutzer erhalten: Prozent- oder €-Rabatt, Gratisartikel, Bonusstempel oder 2 für 1.",
   benefitCategory:
-    "Controls how the benefit is applied: user-selected, automatic background, or fallback if no deal is selected.",
+    "Legt die Aktivierung fest: vor dem Besuch auswählen, automatisch beim Scan oder als Fallback.",
   audience:
-    "Who can use this benefit: free users, premium users, or both.",
+    "Legt fest, wer diesen Vorteil nutzen kann: Free, Premium oder beide.",
   activationRequired:
-    "Whether the user must select this deal before scanning. This is automatically set by benefit category.",
+    "Legt fest, ob der Vorteil vor dem Scan ausgewählt werden muss. Die Einstellung wird aus der Aktivierung abgeleitet.",
   discountValue:
-    "Only used for percent or fixed discounts. Percent means %, fixed means EUR.",
+    "Nur für prozentuale oder feste Rabatte. Prozent bedeutet %, fest bedeutet €.",
   rewardItem:
-    "Name of the free item or reward staff should give, for example Free drink.",
-  benefitCount: "Number of bonus stamps to add. Used for bonus stamp rewards.",
+    "Name des Artikels, den das Personal ausgibt, zum Beispiel Gratisgetränk.",
+  benefitCount: "Anzahl der zusätzlichen Bonusstempel.",
   estimatedSavings:
-    "Approximate money value used for user savings stats and post-scan animation.",
-  expiryDays: "How many days an earned reward remains valid.",
+    "Geschätzter Geldwert für Ersparnisstatistik und Animation nach dem Scan.",
+  expiryDays: "So viele Tage bleibt eine verdiente Belohnung gültig.",
   triggerValue:
-    "The condition threshold, such as streak days or challenge target.",
+    "Schwellenwert für den Auslöser, zum Beispiel Streak-Tage oder Challenge-Ziel.",
   challengeName:
-    "Internal challenge name used to distinguish multiple challenge rewards.",
+    "Interner Name zur Unterscheidung mehrerer Challenges.",
   durationValue:
-    "Reward users who return within this configured duration.",
+    "Belohnt Nutzer, die innerhalb dieses Zeitraums zurückkehren.",
   inactivityValue:
-    "Reward inactive users who have not returned for this configured time period.",
-  stockTotal: "Total available stock for a limited deal drop.",
-  stockRemaining: "How many redemptions are still available.",
+    "Belohnt inaktive Nutzer, die innerhalb dieses Zeitraums nicht zurückgekehrt sind.",
+  stockTotal: "Gesamtzahl verfügbarer Einlösungen für diesen Deal Drop.",
+  stockRemaining: "So viele Einlösungen sind noch verfügbar.",
   reserveOnSelection:
-    "If enabled, stock is temporarily reserved when the user selects the deal.",
-  validWindow: "Date/time range when this deal can be used.",
-  happyHour: "Daily time window when the Happy Hour deal is available.",
+    "Reserviert das Kontingent vorübergehend, wenn ein Nutzer den Vorteil auswählt.",
+  validWindow: "Zeitraum, in dem dieser Vorteil genutzt werden kann.",
+  happyHour: "Tägliches Zeitfenster, in dem die Happy Hour verfügbar ist.",
   happyHourWeekdays:
-    "Choose the days when this Happy Hour is available. If no days are selected, this Happy Hour applies every day.",
-  cooldownHours:
-    "Minimum time before the same user can use this deal again.",
-  maxRedemptionsGlobal:
-    "Maximum total times this deal can be redeemed by all users.",
-  maxRedemptionsPerUser:
-    "Maximum times each user can redeem this deal.",
+    "Wähle die Tage für diese Happy Hour. Ohne Auswahl gilt sie täglich.",
+  cooldownHours: "Mindestzeit, bevor derselbe Nutzer den Vorteil erneut nutzen kann.",
+  maxRedemptionsGlobal: "Maximale Gesamtzahl aller Einlösungen.",
+  maxRedemptionsPerUser: "Maximale Einlösungen pro Nutzer.",
   selectionExpiryMinutes:
-    "How long the selected deal remains valid before the QR scan.",
-  minSpend: "Minimum order value required to use this deal.",
-  maxDiscountAmount: "Maximum discount cap for percentage discounts.",
+    "So lange bleibt ein ausgewählter Vorteil vor dem QR-Scan gültig.",
+  minSpend: "Erforderlicher Mindestbestellwert für diesen Vorteil.",
+  maxDiscountAmount: "Maximaler Rabattbetrag bei prozentualen Rabatten.",
   rewardTrackTarget:
-    "Which reward track this applies to: base, premium, or all eligible.",
-  timezone: "Timezone used for time-based deals like Happy Hour.",
-  weekdays: "Days of week when this deal is available.",
+    "Für welchen Stempelkartenpfad dies gilt: Basis, Premium oder alle berechtigten Nutzer.",
+  timezone: "Zeitzone für zeitbasierte Vorteile wie Happy Hour.",
+  weekdays: "Wochentage, an denen dieser Vorteil verfügbar ist.",
   staffInstructions:
-    "Shown to scanner/order staff so they know what to give or apply.",
-  customerDescription: "Shown to users in the app.",
-  terms: "Fine print or conditions for this deal.",
+    "Wird dem Scan- und Kassenpersonal angezeigt.",
+  customerDescription: "Wird Nutzern in der App und auf der Partnerseite angezeigt.",
+  terms: "Bedingungen für diesen Vorteil.",
 } as const
 
 const dealExplanations: Record<string, DealTypeExplanation> = {
   two_for_one: {
     shortDescription:
-      "User selects this before visiting to get two items for the price of one.",
+      "Nutzer wählen den Vorteil vor dem Besuch aus und erhalten zwei Artikel zum Preis von einem.",
     description:
-      "A direct selectable deal where the user gets two items for the price of one. The user must select this before the QR scan. Only one direct deal can be used per visit.",
+      "Ein direkt auswählbarer Vorteil: Nutzer erhalten zwei Artikel zum Preis von einem. Die Auswahl erfolgt vor dem QR-Scan; pro Besuch ist nur ein direkter Vorteil möglich.",
     recommendedSetup: [
-      "Reward/effect type: 2-for-1",
-      "Benefit category: User selects before visit",
-      "Activation required: Yes",
+      "Belohnungsformat: 2 für 1",
+      "Aktivierung: Vor dem Besuch auswählen",
+      "Aktivierung erforderlich: Ja",
     ],
     requiredFields: [
-      "Audience",
-      "Customer description",
-      "Staff instructions",
-      "Estimated savings",
-      "Optional expiry or limits",
+      "Zielgruppe",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
+      "Geschätzte Ersparnis",
+      "Optionale Gültigkeit oder Limits",
     ],
-    example: "Buy one döner, get one döner free.",
+    example: "Zwei Pizzen erhalten, eine bezahlen.",
     autoSet: [
       "type = two_for_one",
       "discount_type = 2for1",
@@ -4752,21 +4749,21 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   welcome: {
     shortDescription:
-      "First-visit reward. Can be selectable or automatic depending on reward type.",
+      "Vorteil für den ersten Besuch. Je nach Belohnungsformat direkt auswählbar oder automatisch.",
     description:
-      "A reward for a user’s first visit or first qualifying interaction with a partner. It can either be a selectable direct reward or an automatic bonus stamp.",
+      "Vorteil für den ersten Besuch oder die erste qualifizierte Interaktion. Direkte Kassenaktionen sind Willkommensdeals; automatische Zusatzstempel sind Willkommensboni.",
     recommendedSetup: [
-      "If the reward is a bonus stamp: automatic background, no activation",
-      "If the reward is a free item, discount, or 2-for-1: user selects before visit",
+      "Bonusstempel: automatisch beim Scan, keine Aktivierung",
+      "Gratisartikel, Rabatt oder 2 für 1: vor dem Besuch auswählen",
     ],
     requiredFields: [
-      "Reward/effect type",
-      "Audience",
-      "Customer description",
-      "Staff instructions",
-      "Reward item, discount value, or bonus stamp count depending on reward type",
+      "Belohnungsformat",
+      "Zielgruppe",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
+      "Artikel, Rabattwert oder Anzahl Bonusstempel – abhängig vom Belohnungsformat",
     ],
-    example: "First visit: free drink or First visit: +1 bonus stamp.",
+    example: "Erster Besuch: Gratisgetränk oder +1 Bonusstempel.",
     autoSet: [
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
@@ -4774,71 +4771,71 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   comeback: {
     shortDescription:
-      "Reward for returning within a configured duration.",
+      "Zeitbonus für die Rückkehr innerhalb eines definierten Zeitraums.",
     description:
-      "Reward users who return within a configured duration. It can be automatic, such as +1 bonus stamp, or selectable, such as a free item.",
+      "Belohnt Nutzer, die innerhalb eines festgelegten Zeitraums zurückkehren. Der Zeitbonus ist ein eigener automatischer Auslöser.",
     recommendedSetup: [
-      "If the reward is a bonus stamp: automatic background, no activation",
-      "If the reward is a free item, discount, or 2-for-1: user selects before visit",
+      "Bonusstempel: automatisch beim Scan, keine Aktivierung",
+      "Direkte Vorteile: vor dem Besuch auswählen",
     ],
     requiredFields: [
-      "Reward/effect type",
-      "Duration value and unit",
-      "Expiry days if the reward expires",
-      "Customer description",
-      "Staff instructions",
+      "Belohnungsformat",
+      "Zeitraum und Einheit",
+      "Gültigkeitstage bei Ablauf",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
     ],
-    example: "Come back within 72 hours and get +1 bonus stamp.",
+    example: "Innerhalb von 72 Stunden zurückkehren und +1 Bonusstempel erhalten.",
     autoSet: [
       "metadata.bonus_mode = duration_bonus",
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
     ],
-    important: "Save backend type as comeback, not duration_bonus.",
+    important: "Im Backend bleibt der Typ comeback; duration_bonus wird nicht als Typ gespeichert.",
   },
   comeback_inactive: {
     shortDescription:
-      "Reward inactive users who have not returned for a configured time period.",
+      "Reaktiviert Nutzer, die für einen definierten Zeitraum nicht zurückgekehrt sind.",
     description:
-      "Reward inactive users who have not returned for a configured time period. Useful for reactivation campaigns.",
+      "Eine Reaktivierungskampagne für inaktive Nutzer. Direkte Kassenaktionen heißen Comeback-Deal; automatische Zusatzstempel Comeback-Bonus.",
     recommendedSetup: [
-      "Configure inactivity and optional visit-count filters",
-      "Use the candidate preview to confirm matching users",
-      "Bonus stamp rewards apply automatically; item, discount, and 2-for-1 rewards are selectable",
+      "Inaktivitätszeitraum und optionale Besuchsfilter festlegen",
+      "Vorschau nutzen, um passende Nutzer zu prüfen",
+      "Bonusstempel sind automatisch; Artikel, Rabatt und 2 für 1 werden vorher ausgewählt",
     ],
     requiredFields: [
-      "Inactivity period value and unit",
-      "Reward/effect type",
-      "Candidate filters if needed",
-      "Customer description",
-      "Staff instructions",
+      "Inaktivitätszeitraum und Einheit",
+      "Belohnungsformat",
+      "Optionale Kandidatenfilter",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
     ],
-    example: "Users inactive for 3 weeks get a free drink.",
+    example: "Nutzer ohne Besuch seit drei Wochen erhalten ein Gratisgetränk.",
     autoSet: [
       "type = comeback",
       "metadata.bonus_mode = comeback_inactive",
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
     ],
-    important: "Saved with backend type comeback and metadata.bonus_mode = comeback_inactive.",
+    important: "Wird mit Backend-Typ comeback und metadata.bonus_mode = comeback_inactive gespeichert.",
   },
   happy_hour: {
-    shortDescription: "Available only during the configured time window.",
+    shortDescription: "Nur im festgelegten Zeitfenster verfügbar.",
     description:
-      "A time-limited direct deal that is available only during a specific time window. The user selects it before the QR scan, and it is revalidated during redemption.",
+      "Eine zeitlich begrenzte Kampagne. Nutzer wählen den Vorteil vor dem QR-Scan aus; bei der Einlösung wird das Zeitfenster erneut geprüft.",
     recommendedSetup: [
-      "Benefit category: User selects before visit",
-      "Activation required: Yes",
+      "Aktivierung: Vor dem Besuch auswählen",
+      "Aktivierung erforderlich: Ja",
     ],
     requiredFields: [
-      "Happy hour start",
-      "Happy hour end",
-      "Reward/effect type",
-      "Discount value or reward item depending on reward type",
-      "Customer description",
-      "Staff instructions",
+      "Beginn der Happy Hour",
+      "Ende der Happy Hour",
+      "Belohnungsformat",
+      "Rabattwert oder Artikel – abhängig vom Belohnungsformat",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
     ],
-    example: "10% off between 15:00 and 18:00.",
+    example: "10 % Rabatt zwischen 15:00 und 18:00 Uhr.",
     autoSet: [
       "type = happy_hour",
       "benefit_category = direct_selectable",
@@ -4847,49 +4844,49 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   permanent_discount: {
     shortDescription:
-      "Applies automatically only when no direct deal is selected.",
+      "Gilt automatisch nur, wenn kein direkter Vorteil ausgewählt wurde.",
     description:
-      "An automatic fallback discount. It applies only if the user did not select another direct deal. It does not stack with selected direct deals.",
+      "Ein Dauerrabatt als automatischer Fallback. Er gilt nur, wenn kein anderer direkter Vorteil ausgewählt wurde und ist nicht kombinierbar.",
     recommendedSetup: [
-      "Reward/effect type: Percentage discount or Fixed € discount",
-      "Benefit category: Applies only if no selected deal",
-      "Activation required: No",
+      "Belohnungsformat: Prozentualer oder fester €-Rabatt",
+      "Aktivierung: Automatisch als Fallback",
+      "Aktivierung erforderlich: Nein",
     ],
     requiredFields: [
-      "Discount value",
-      "Audience",
-      "Customer description",
-      "Staff instructions",
-      "Estimated savings",
+      "Rabattwert",
+      "Zielgruppe",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
+      "Geschätzte Ersparnis",
     ],
     example:
-      "Premium users always get 5% off if they do not use another deal.",
+      "Premium-Nutzer erhalten immer 5 % Rabatt, wenn sie keinen anderen Vorteil nutzen.",
     autoSet: [
       "type = permanent_discount",
       "benefit_category = automatic_fallback",
       "activation_required = false",
     ],
-    important: "Display this as Permanent fallback discount, not just Permanent discount.",
+    important: "Als Dauerrabatt anzeigen.",
   },
   limited_drop: {
-    shortDescription: "Limited by time or stock. User selects before visiting.",
+    shortDescription: "Zeitlich oder mengenmäßig begrenzt. Vor dem Besuch auswählen.",
     description:
-      "A limited-time or limited-stock direct deal. The user must select it before the QR scan. It can expire or sell out.",
+      "Ein zeitlich oder mengenmäßig begrenzter direkter Vorteil. Nutzer wählen ihn vor dem QR-Scan aus. Er kann ablaufen oder ausverkauft sein.",
     recommendedSetup: [
-      "Benefit category: User selects before visit",
-      "Activation required: Yes",
+      "Aktivierung: Vor dem Besuch auswählen",
+      "Aktivierung erforderlich: Ja",
     ],
     requiredFields: [
-      "Reward/effect type",
-      "Stock total",
-      "Stock remaining",
-      "Valid from",
-      "Valid until",
-      "Customer description",
-      "Staff instructions",
-      "Estimated savings",
+      "Belohnungsformat",
+      "Gesamtkontingent",
+      "Verbleibendes Kontingent",
+      "Gültig ab",
+      "Gültig bis",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
+      "Geschätzte Ersparnis",
     ],
-    example: "Only 50 free drinks available today.",
+    example: "Heute sind nur 50 Gratisgetränke verfügbar.",
     autoSet: [
       "type = limited_drop",
       "benefit_category = direct_selectable",
@@ -4898,21 +4895,21 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   birthday: {
     shortDescription:
-      "Birthday reward. Can be selectable or automatic depending on reward type.",
+      "Vorteil zum Geburtstag. Je nach Belohnungsformat direkt auswählbar oder automatisch.",
     description:
-      "A birthday reward. It can be a selectable direct reward or an automatic bonus stamp.",
+      "Ein Auslöser zum Geburtstag. Direkte Kassenaktionen sind Geburtstagsdeals; automatische Zusatzstempel Geburtstagsboni.",
     recommendedSetup: [
-      "If the reward is a bonus stamp: automatic background, no activation",
-      "If the reward is a free item, discount, or 2-for-1: user selects before visit",
+      "Bonusstempel: automatisch beim Scan, keine Aktivierung",
+      "Gratisartikel, Rabatt oder 2 für 1: vor dem Besuch auswählen",
     ],
     requiredFields: [
-      "Reward/effect type",
-      "Audience",
-      "Reward item, discount value, or bonus stamp count depending on reward type",
-      "Customer description",
-      "Staff instructions",
+      "Belohnungsformat",
+      "Zielgruppe",
+      "Artikel, Rabattwert oder Anzahl Bonusstempel – abhängig vom Belohnungsformat",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
     ],
-    example: "Birthday week: free dessert.",
+    example: "Geburtstagswoche: Gratisdessert.",
     autoSet: [
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
@@ -4920,121 +4917,121 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   free_item: {
     shortDescription:
-      "User selects this before visiting to receive a specific free item.",
+      "Nutzer wählen diesen Vorteil vor dem Besuch aus und erhalten einen bestimmten Gratisartikel.",
     description:
-      "A direct selectable deal where the user receives a specific free item. This requires the item name, not a discount value.",
+      "Ein direkt auswählbarer Vorteil mit einem bestimmten Gratisartikel. Erfordert den Artikelnamen, keinen Rabattwert.",
     recommendedSetup: [
-      "Reward/effect type: Free item",
-      "Benefit category: User selects before visit",
-      "Activation required: Yes",
+      "Belohnungsformat: Gratisartikel",
+      "Aktivierung: Vor dem Besuch auswählen",
+      "Aktivierung erforderlich: Ja",
     ],
     requiredFields: [
-      "Free item name",
-      "Customer description",
-      "Staff instructions",
-      "Estimated savings",
+      "Artikelname",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
+      "Geschätzte Ersparnis",
     ],
-    example: "Free drink with your order.",
+    example: "Gratisgetränk zur Bestellung.",
     autoSet: [
       "type = free_item",
       "discount_type = item",
       "benefit_category = direct_selectable",
       "activation_required = true",
     ],
-    important: "Hide discount value for this deal type. Require reward_item.",
+    important: "Keinen Rabattwert anzeigen. reward_item ist erforderlich.",
   },
   discount: {
     shortDescription:
-      "User selects this before visiting. Does not stack with other direct deals.",
+      "Nutzer wählen diesen Vorteil vor dem Besuch aus. Nicht mit anderen direkten Vorteilen kombinierbar.",
     description:
-      "A normal discount deal that the user selects before visiting. This can be a percentage or fixed currency amount. It does not stack with other direct deals.",
+      "Ein regulärer Rabatt, den Nutzer vor dem Besuch auswählen. Er kann prozentual oder als fester Betrag gelten und ist nicht kombinierbar.",
     recommendedSetup: [
-      "Reward/effect type: Percentage discount or Fixed € discount",
-      "Benefit category: User selects before visit",
-      "Activation required: Yes",
+      "Belohnungsformat: Prozentualer oder fester €-Rabatt",
+      "Aktivierung: Vor dem Besuch auswählen",
+      "Aktivierung erforderlich: Ja",
     ],
     requiredFields: [
-      "Discount value",
-      "Audience",
-      "Customer description",
-      "Staff instructions",
-      "Estimated savings",
+      "Rabattwert",
+      "Zielgruppe",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
+      "Geschätzte Ersparnis",
     ],
-    example: "10% off or €5 off.",
+    example: "10 % Rabatt oder 5 € Rabatt.",
     autoSet: [
       "type = discount",
       "benefit_category = direct_selectable",
       "activation_required = true",
     ],
-    important: "Display this as Selectable discount, not just Discount.",
+    important: "Als Rabatt anzeigen.",
   },
   bonus_stamp: {
     shortDescription:
-      "Adds extra stamps automatically during scan if eligible.",
+      "Fügt beim Scan automatisch Zusatzstempel hinzu, wenn die Person berechtigt ist.",
     description:
-      "An automatic background reward that adds extra stamps during redemption if eligible. Users do not select this manually.",
+      "Ein automatischer Vorteil, der bei der Einlösung Zusatzstempel hinzufügt. Nutzer wählen ihn nicht manuell aus.",
     recommendedSetup: [
-      "Reward/effect type: Bonus stamp",
-      "Benefit category: Applies automatically during scan",
-      "Activation required: No",
+      "Belohnungsformat: Bonusstempel",
+      "Aktivierung: Automatisch beim Scan",
+      "Aktivierung erforderlich: Nein",
     ],
     requiredFields: [
-      "Number of bonus stamps",
-      "Audience",
-      "Customer description",
-      "Optional staff instructions",
+      "Anzahl Bonusstempel",
+      "Zielgruppe",
+      "Kundenbeschreibung",
+      "Optionale Mitarbeiterhinweise",
     ],
-    example: "+1 bonus stamp today.",
+    example: "+1 Bonusstempel heute.",
     autoSet: [
       "type = bonus_stamp",
       "discount_type = bonus_stamp",
       "benefit_category = automatic_background",
       "activation_required = false",
     ],
-    important: "Hide discount value. Require benefit_count.",
+    important: "Keinen Rabattwert anzeigen. benefit_count ist erforderlich.",
   },
   streak: {
-    shortDescription: "Reward based on the user's streak with this partner.",
+    shortDescription: "Bonus auf Basis einer Besuchsserie bei diesem Partner.",
     description:
-      "A reward based on the user’s streak with a partner. The reward can be a bonus stamp, free item, fixed discount, percentage discount, or 2-for-1.",
+      "Ein Streak-Bonus auf Basis einer Besuchsserie. Die Belohnung kann Bonusstempel, Gratisartikel, festen oder prozentualen Rabatt oder 2 für 1 enthalten.",
     recommendedSetup: [
-      "Trigger value is required",
-      "Bonus stamp rewards apply automatically",
-      "Free item, discount, and 2-for-1 rewards are selected before visit",
+      "Auslöserwert ist erforderlich",
+      "Bonusstempel werden automatisch angewendet",
+      "Gratisartikel, Rabatt und 2 für 1 werden vor dem Besuch ausgewählt",
     ],
     requiredFields: [
-      "Trigger value",
-      "Reward/effect type",
-      "Benefit count, reward item, or discount value depending on reward type",
-      "Expiry days if the earned reward expires",
-      "Customer description",
-      "Staff instructions",
+      "Auslöserwert",
+      "Belohnungsformat",
+      "Anzahl, Artikel oder Rabattwert – abhängig vom Belohnungsformat",
+      "Gültigkeitstage bei Ablauf",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
     ],
-    example: "3-day streak: free drink or 5-day streak: +1 bonus stamp.",
+    example: "3-Tage-Streak: Gratisgetränk oder 5-Tage-Streak: +1 Bonusstempel.",
     autoSet: [
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
     ],
   },
   challenge: {
-    shortDescription: "Reward connected to a challenge or goal.",
+    shortDescription: "Bonus für eine Challenge oder ein Ziel.",
     description:
-      "A reward connected to a challenge or goal. Depending on the reward effect, it can be automatic or selectable.",
+      "Ein Challenge-Bonus für eine Aufgabe oder ein Ziel. Je nach Belohnungsformat erfolgt er automatisch oder wird vorher ausgewählt.",
     recommendedSetup: [
-      "Challenge name identifies this challenge internally",
-      "Bonus stamp rewards apply automatically",
-      "Free item, discount, and 2-for-1 rewards are selected before visit",
-      "Trigger value can be used as the challenge target",
+      "Der Challenge-Name unterscheidet Challenges intern",
+      "Bonusstempel werden automatisch angewendet",
+      "Gratisartikel, Rabatt und 2 für 1 werden vor dem Besuch ausgewählt",
+      "Der Auslöserwert kann als Challenge-Ziel dienen",
     ],
     requiredFields: [
-      "Challenge name",
-      "Reward/effect type",
-      "Trigger value if used as the challenge target",
-      "Benefit count, reward item, or discount value depending on reward type",
-      "Customer description",
-      "Staff instructions",
+      "Challenge-Name",
+      "Belohnungsformat",
+      "Auslöserwert bei Nutzung als Challenge-Ziel",
+      "Anzahl, Artikel oder Rabattwert – abhängig vom Belohnungsformat",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
     ],
-    example: "Complete 3 visits this week and get a free drink.",
+    example: "Drei Besuche in dieser Woche abschließen und ein Gratisgetränk erhalten.",
     autoSet: [
       "metadata.challenge_name stores the internal challenge name",
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
@@ -5348,15 +5345,15 @@ function buildDealValidationMessages({
   const parsedTriggerValue = parseOptionalNumberInput(triggerValue)
 
   if (discountType === "percent" && !parsedDiscountValue) {
-    messages.discountValue = "Enter a percentage between 1 and 100."
+    messages.discountValue = "Bitte einen Prozentsatz zwischen 1 und 100 eingeben."
   }
 
   if (discountType === "fixed" && !parsedDiscountValue) {
-    messages.discountValue = "Enter an amount greater than 0."
+    messages.discountValue = "Bitte einen Betrag größer als 0 eingeben."
   }
 
   if (discountType === "percent" && parsedDiscountValue && parsedDiscountValue > 100) {
-    messages.discountValue = "Enter a percentage between 1 and 100."
+    messages.discountValue = "Bitte einen Prozentsatz zwischen 1 und 100 eingeben."
   }
 
   const parsedMinSpend = parseOptionalNumberInput(minSpend)
@@ -5367,48 +5364,48 @@ function buildDealValidationMessages({
     parsedMinSpend < parsedDiscountValue
   ) {
     messages.minSpend =
-      "Minimum spend is less than the discount amount — users may get more off than they spend."
+      "Der Mindestbestellwert ist kleiner als der Rabattwert – Nutzer könnten mehr Rabatt erhalten als sie ausgeben."
   }
 
   if ((discountType === "item" || discountType === "2for1") && !rewardItem.trim()) {
     messages.rewardItem =
       discountType === "2for1"
-        ? "Enter the item included in the 2-for-1 deal."
-        : "Enter the free item name."
+        ? "Bitte den Artikel für 2 für 1 eingeben."
+        : "Bitte den Namen des Gratisartikels eingeben."
   }
 
   if (discountType === "bonus_stamp" && !parsedBenefitCount) {
-    messages.benefitCount = "Enter at least 1 bonus stamp."
+    messages.benefitCount = "Bitte mindestens 1 Bonusstempel eingeben."
   }
 
   if (type === "happy_hour" && !happyHourStart) {
-    messages.happyHourStart = "Enter a start time."
+    messages.happyHourStart = "Bitte eine Startzeit eingeben."
   }
 
   if (type === "happy_hour" && !happyHourEnd) {
-    messages.happyHourEnd = "Enter an end time."
+    messages.happyHourEnd = "Bitte eine Endzeit eingeben."
   }
 
   if (
     (type === "streak" || type === "challenge") &&
     !parsedTriggerValue
   ) {
-    messages.triggerValue = "Enter a trigger value greater than 0."
+    messages.triggerValue = "Bitte einen Auslöserwert größer als 0 eingeben."
   }
 
   if (type === "challenge" && !challengeName.trim()) {
-    messages.challengeName = "Enter a challenge name."
+    messages.challengeName = "Bitte einen Challenge-Namen eingeben."
   }
 
   if (
     (type === DURATION_BONUS_DEAL || type === "comeback") &&
     !parsedDurationValue
   ) {
-    messages.durationValue = "Enter a duration greater than 0."
+    messages.durationValue = "Bitte einen Zeitraum größer als 0 eingeben."
   }
 
   if (type === COMEBACK_INACTIVE_DEAL && !parsedInactivityValue) {
-    messages.inactivityValue = "Enter an inactivity period greater than 0."
+    messages.inactivityValue = "Bitte einen Inaktivitätszeitraum größer als 0 eingeben."
   }
 
   if (
@@ -5416,11 +5413,11 @@ function buildDealValidationMessages({
     parsedMaxVisitCount !== null &&
     parsedMaxVisitCount < parsedMinVisitCount
   ) {
-    messages.visitCountRange = "Maximum visits must be at least minimum visits."
+    messages.visitCountRange = "Die maximale Besuchszahl muss mindestens der minimalen Besuchszahl entsprechen."
   }
 
   if (type === "limited_drop" && !endsAt) {
-    messages.endsAt = "Limited Deal Drops must have an end time."
+    messages.endsAt = "Deal Drops benötigen eine Endzeit."
   }
 
   return messages
@@ -5433,27 +5430,27 @@ function formatDraftRewardSummary(
   benefitCount: number | null,
 ) {
   if (discountType === "percent") {
-    return discountValue !== null ? `${discountValue}% off` : "percentage off"
+    return discountValue !== null ? `${discountValue} % Rabatt` : "Prozentualer Rabatt"
   }
 
   if (discountType === "fixed") {
-    return discountValue !== null ? `€${discountValue} off` : "fixed € off"
+    return discountValue !== null ? `${discountValue} € Rabatt` : "Fester €-Rabatt"
   }
 
   if (discountType === "item") {
-    return rewardItem.trim() || "Free item"
+    return rewardItem.trim() || "Gratisartikel"
   }
 
   if (discountType === "bonus_stamp") {
     const count = benefitCount ?? 1
-    return `+${count} bonus ${count === 1 ? "stamp" : "stamps"}`
+    return `+${count} Bonusstempel`
   }
 
   if (discountType === "2for1") {
-    return rewardItem.trim() ? `2-for-1 ${rewardItem.trim()}` : "2-for-1"
+    return rewardItem.trim() ? `2 für 1 ${rewardItem.trim()}` : "2 für 1"
   }
 
-  return "No direct reward"
+  return "Kein direkter Vorteil"
 }
 
 function defaultDealDraftTitle() {
@@ -5481,7 +5478,7 @@ function formatDealDisplayName({
   benefitCount: number | null
   typeLabel?: string
 }) {
-  const label = typeLabel || labelForValue(dealUiTypeOptions, type) || "Deal"
+  const label = typeLabel || labelForValue(dealUiTypeOptions, type) || "Vorteil"
   const reward = formatDraftRewardSummary(
     discountType,
     discountValue,
@@ -5489,7 +5486,7 @@ function formatDealDisplayName({
     benefitCount,
   )
 
-  return reward === "No direct reward" ? label : `${reward} - ${label}`
+  return reward === "Kein direkter Vorteil" ? label : `${reward} – ${label}`
 }
 
 function formatDealPublicSubtitle(discountType: string, rewardItem: string) {
@@ -5523,6 +5520,30 @@ function formatDealPublicTitle({
 }) {
   if (type.trim().toLowerCase() === "two_for_one" || discountType === "2for1") {
     return rewardItem.trim() ? `2 für 1 ${rewardItem.trim()}` : "2 für 1"
+  }
+
+  if (discountType === "percent" && discountValue !== null) {
+    return `${discountValue} % Rabatt`
+  }
+
+  if (discountType === "fixed" && discountValue !== null) {
+    return `${discountValue} € Rabatt`
+  }
+
+  if (discountType === "item") {
+    return rewardItem.trim() ? `Gratis ${rewardItem.trim()}` : "Gratisartikel"
+  }
+
+  if (discountType === "bonus_stamp") {
+    return `+${benefitCount ?? 1} Bonusstempel`
+  }
+
+  if (type === "welcome") {
+    return discountType === "bonus_stamp" ? "Willkommensbonus" : "Willkommensdeal"
+  }
+
+  if (type === COMEBACK_INACTIVE_DEAL) {
+    return discountType === "bonus_stamp" ? "Comeback-Bonus" : "Comeback-Deal"
   }
 
   return formatDealDisplayName({
@@ -6038,13 +6059,13 @@ function DealFields({
         </>
       ) : null}
       <FormSection
-        title="Basics"
+        title="Grundlagen"
         compact
         required="subtle"
       >
         <FieldGrid compact>
           <SelectField
-            label="Deal type"
+            label="Auslöser oder Kampagne"
             name={`${prefix}deal_concept`}
             value={selectedDealType}
             options={withCurrentOption(
@@ -6055,7 +6076,7 @@ function DealFields({
             required={useBrowserValidation}
           />
           <SelectField
-            label="Reward/effect type"
+            label="Belohnungsformat"
             name={`${prefix}discount_type`}
             value={selectedDiscountType}
             options={withCurrentOption(
@@ -6069,7 +6090,7 @@ function DealFields({
             required={useBrowserValidation}
           />
           <SelectField
-            label="Audience"
+            label="Zielgruppe"
             name={`${prefix}audience`}
             value={selectedAudience}
             options={audienceOptions}
@@ -6080,7 +6101,7 @@ function DealFields({
             required
           />
           <CheckboxField
-            label="Active"
+            label="Aktiv"
             name={`${prefix}active`}
             checked={active}
             onChange={(checked) => {
@@ -6095,7 +6116,7 @@ function DealFields({
         />
         {dealDropSoldOut ? (
           <WarningNote>
-            This Deal Drop is sold out and users cannot redeem it.
+            Dieser Deal Drop ist ausverkauft und kann nicht mehr eingelöst werden.
           </WarningNote>
         ) : null}
         <input
@@ -6174,16 +6195,16 @@ function DealFields({
 
       {hasRewardDetails ? (
         <FormSection
-          title="Reward details"
+          title="Belohnungsdetails"
           compact
           required={rewardDetailsRequired ? "subtle" : undefined}
         >
           <FieldGrid compact>
             {config.visibleFields.has("challengeName") ? (
               <TextField
-                label="Challenge name"
+                label="Challenge-Name"
                 name={`${prefix}challenge_name`}
-                placeholder="3 visits this week"
+                placeholder="3 Besuche diese Woche"
                 value={challengeName}
                 onChange={(value) => {
                   setChallengeName(value)
@@ -6209,7 +6230,7 @@ function DealFields({
             {config.visibleFields.has("durationConfig") ? (
               <>
                 <TextField
-                  label="Duration value"
+                  label="Zeitraum"
                   name={`${prefix}duration_value`}
                   type="number"
                   min={1}
@@ -6223,7 +6244,7 @@ function DealFields({
                   warning={validationMessages.durationValue}
                 />
                 <SelectField
-                  label="Duration unit"
+                  label="Zeiteinheit"
                   name={`${prefix}duration_unit`}
                   value={durationUnit}
                   options={durationUnitOptions}
@@ -6261,9 +6282,9 @@ function DealFields({
             ) : null}
             {config.visibleFields.has("rewardItem") ? (
               <TextField
-                label={selectedDiscountType === "2for1" ? "Item name" : "Free item name"}
+                label={selectedDiscountType === "2for1" ? "Artikelname" : "Name des Gratisartikels"}
                 name={`${prefix}reward_item`}
-                placeholder="Free drink"
+                placeholder="z. B. Getränk"
                 value={rewardItem}
                 onChange={(value) => {
                   setRewardItemDirty(true)
@@ -6272,8 +6293,8 @@ function DealFields({
                 }}
                 hint={
                   selectedDiscountType === "2for1"
-                    ? "Example: Burger, coffee, or main course."
-                    : "Example: Free drink."
+                    ? "Zum Beispiel Burger, Kaffee oder Hauptgericht."
+                    : "Zum Beispiel Gratisgetränk."
                 }
                 required={
                   useBrowserValidation &&
@@ -6284,7 +6305,7 @@ function DealFields({
             ) : null}
             {config.visibleFields.has("benefitCount") ? (
               <TextField
-                label="Number of bonus stamps"
+                label="Anzahl Bonusstempel"
                 name={`${prefix}benefit_count`}
                 type="number"
                 min={1}
@@ -6294,7 +6315,7 @@ function DealFields({
                   setBenefitCount(value)
                   emitDraftTitle({ benefitCountText: value })
                 }}
-                hint="Example: 1 adds one extra stamp."
+                hint="Zum Beispiel: 1 fügt einen zusätzlichen Stempel hinzu."
                 required={
                   useBrowserValidation &&
                   config.requiredFields.has("benefitCount")
@@ -6304,26 +6325,26 @@ function DealFields({
             ) : null}
             {config.visibleFields.has("estimatedSavings") ? (
               <TextField
-                label="Estimated savings (€)"
+                label="Geschätzte Ersparnis (€)"
                 name={`${prefix}estimated_savings`}
                 type="number"
                 step="any"
                 min={0}
                 value={estimatedSavings}
                 onChange={setEstimatedSavings}
-                hint="Used for savings stats and animations."
+                hint="Wird für Ersparnisstatistiken und Animationen verwendet."
                 recommended={isLimitedDrop}
               />
             ) : null}
             {config.visibleFields.has("happyHour") ? (
               <>
                 <TextField
-                  label="Happy hour start"
+                  label="Beginn der Happy Hour"
                   name={`${prefix}happy_hour_start`}
                   type="time"
                   value={happyHourStart}
                   onChange={setHappyHourStart}
-                  hint="Daily start time."
+                  hint="Tägliche Startzeit."
                   required={
                     useBrowserValidation &&
                     config.requiredFields.has("happyHour")
@@ -6331,12 +6352,12 @@ function DealFields({
                   warning={validationMessages.happyHourStart}
                 />
                 <TextField
-                  label="Happy hour end"
+                  label="Ende der Happy Hour"
                   name={`${prefix}happy_hour_end`}
                   type="time"
                   value={happyHourEnd}
                   onChange={setHappyHourEnd}
-                  hint="Daily end time."
+                  hint="Tägliche Endzeit."
                   required={
                     useBrowserValidation &&
                     config.requiredFields.has("happyHour")
@@ -6344,7 +6365,7 @@ function DealFields({
                   warning={validationMessages.happyHourEnd}
                 />
                 <WeekdayChipField
-                  label="Happy Hour weekdays"
+                  label="Wochentage der Happy Hour"
                   name={`${prefix}valid_weekdays`}
                   defaultValues={deal?.valid_weekdays}
                   hint={dealFieldHelp.happyHourWeekdays}
@@ -6353,13 +6374,13 @@ function DealFields({
             ) : null}
             {config.visibleFields.has("triggerValue") ? (
               <TextField
-                label="Trigger value"
+                label="Auslöserwert"
                 name={`${prefix}trigger_value`}
                 type="number"
                 min={1}
                 value={triggerValue}
                 onChange={setTriggerValue}
-                hint="Example: 3 for a 3-day streak."
+                hint="Zum Beispiel: 3 für einen 3-Tage-Streak."
                 required={
                   useBrowserValidation &&
                   config.requiredFields.has("triggerValue")
@@ -6369,19 +6390,19 @@ function DealFields({
             ) : null}
             {config.visibleFields.has("expiryDays") ? (
               <TextField
-                label="Expiry days"
+                label="Gültigkeitstage"
                 name={`${prefix}expiry_days`}
                 type="number"
                 min={0}
                 value={expiryDays}
                 onChange={setExpiryDays}
-                hint="Optional expiry after reward is earned."
+                hint="Optionale Gültigkeit nach dem Erhalt der Belohnung."
               />
             ) : null}
             {config.visibleFields.has("limitedWindow") ? (
               <>
                 <TextField
-                  label="Valid from"
+                  label="Gültig ab"
                   name={`${prefix}starts_at`}
                   type="datetime-local"
                   value={startsAt}
@@ -6389,7 +6410,7 @@ function DealFields({
                   hint={dealFieldHelp.validWindow}
                 />
                 <TextField
-                  label="Valid until"
+                  label="Gültig bis"
                   name={`${prefix}ends_at`}
                   type="datetime-local"
                   value={endsAt}
@@ -6401,11 +6422,11 @@ function DealFields({
             ) : null}
             {showsAllowFreeTrial ? (
               <CheckboxField
-                label="Allow free user trial"
+                label="Free-Testeinlösung erlauben"
                 name={`${prefix}allow_free_trial`}
                 checked={allowFreeTrial}
                 onChange={setAllowFreeTrial}
-                hint="Free users can redeem this once using their global 2-for-1 trial."
+                hint="Free-Nutzer können diesen Vorteil einmal mit ihrer globalen 2-für-1-Testeinlösung nutzen."
               />
             ) : null}
           </FieldGrid>
@@ -6433,10 +6454,10 @@ function DealFields({
       ) : null}
 
       {isLimitedDrop ? (
-        <FormSection title="Deal Drop inventory" compact required="subtle">
+        <FormSection title="Deal-Drop-Kontingent" compact required="subtle">
           <FieldGrid compact>
             <TextField
-              label="Stock total"
+              label="Gesamtkontingent"
               name={`${prefix}stock_total`}
               type="number"
               min={0}
@@ -6448,7 +6469,7 @@ function DealFields({
               required={useBrowserValidation}
             />
             <TextField
-              label="Stock remaining"
+              label="Verbleibendes Kontingent"
               name={`${prefix}stock_remaining`}
               type="number"
               min={0}
@@ -6462,15 +6483,15 @@ function DealFields({
           </FieldGrid>
           {dealDropSoldOut ? (
             <p className="text-xs font-semibold text-amber-700">
-              This Deal Drop is currently sold out.
+              Dieser Deal Drop ist aktuell ausverkauft.
             </p>
           ) : null}
         </FormSection>
       ) : null}
 
-      <FormSection title="Customer and staff copy" compact>
+      <FormSection title="Kundentext und Mitarbeiterhinweise" compact>
         <TextAreaField
-          label="Customer description"
+          label="Kundenbeschreibung"
           name={`${prefix}customer_description`}
           labelAccessory={
             partnerName ? (
@@ -6489,7 +6510,7 @@ function DealFields({
           showCharacterCount={false}
         />
         <TextAreaField
-          label="Staff instructions"
+          label="Mitarbeiterhinweise"
           name={`${prefix}staff_instructions`}
           labelAccessory={
             partnerName ? (
@@ -6508,7 +6529,7 @@ function DealFields({
           showCharacterCount={false}
         />
         <TextAreaField
-          label="Terms"
+          label="Bedingungen"
           name={`${prefix}terms`}
           labelAccessory={
             partnerName ? (
@@ -6532,13 +6553,13 @@ function DealFields({
       </FormSection>
 
       {isLimitedDrop ? (
-        <FormSection title="Deal Drop card image" compact>
+        <FormSection title="Deal-Drop-Kartenbild" compact>
           <p className="text-xs leading-5 text-zinc-500">
-            Upload a highlight image for the deal card (710×400px).
+            Lade ein Highlight-Bild für die Vorteilskarte hoch (710×400 px).
           </p>
           <MediaUploadField
             key={`deal-drop-image-${deal?.id ?? "new"}`}
-            label="Deal Drop card image (710×400)"
+            label="Deal-Drop-Kartenbild (710×400)"
             fileName={`${prefix}deal_drop_image_file`}
             existingName={`${prefix}existing_deal_drop_image_url`}
             removeName={`${prefix}remove_deal_drop_image`}
@@ -6572,7 +6593,7 @@ function DealFields({
           {!isLimitedDrop ? (
             <>
               <TextField
-                label="Valid from"
+                label="Gültig ab"
                 name={`${prefix}valid_from`}
                 type="datetime-local"
                 value={validFrom}
@@ -6580,7 +6601,7 @@ function DealFields({
                 hint={dealFieldHelp.validWindow}
               />
               <TextField
-                label="Valid until"
+                label="Gültig bis"
                 name={`${prefix}valid_until`}
                 type="datetime-local"
                 value={validUntil}
@@ -6592,7 +6613,7 @@ function DealFields({
           {!isWelcomeDeal ? (
             <>
               <TextField
-                label="Max redemptions global"
+                label="Maximale Einlösungen insgesamt"
                 name={`${prefix}max_redemptions_global`}
                 type="number"
                 min={0}
@@ -6600,7 +6621,7 @@ function DealFields({
                 hint={dealFieldHelp.maxRedemptionsGlobal}
               />
               <TextField
-                label="Max redemptions per user"
+                label="Maximale Einlösungen pro Nutzer"
                 name={`${prefix}max_redemptions_per_user`}
                 type="number"
                 min={0}
@@ -6608,7 +6629,7 @@ function DealFields({
                 hint={dealFieldHelp.maxRedemptionsPerUser}
               />
               <TextField
-                label="Cooldown hours"
+                label="Wartezeit in Stunden"
                 name={`${prefix}cooldown_hours`}
                 type="number"
                 min={0}
@@ -6618,7 +6639,7 @@ function DealFields({
             </>
           ) : null}
           <TextField
-            label="Minimum spend"
+            label="Mindestbestellwert"
             name={`${prefix}min_spend`}
             type="number"
             step="any"
@@ -6629,7 +6650,7 @@ function DealFields({
             warning={validationMessages.minSpend}
           />
           <TextField
-            label="Max discount amount"
+            label="Maximaler Rabattbetrag"
             name={`${prefix}max_discount_amount`}
             type="number"
             step="any"
@@ -6638,21 +6659,21 @@ function DealFields({
             hint={dealFieldHelp.maxDiscountAmount}
           />
           <TextField
-            label="Timezone"
+            label="Zeitzone"
             name={`${prefix}timezone`}
             defaultValue={deal?.timezone ?? DEFAULT_TIMEZONE}
             hint={dealFieldHelp.timezone}
           />
           {isLimitedDrop ? (
             <WeekdayChipField
-              label="Valid weekdays"
+              label="Gültige Wochentage"
               name={`${prefix}valid_weekdays`}
               defaultValues={deal?.valid_weekdays}
               hint={dealFieldHelp.weekdays}
             />
           ) : !isHappyHour ? (
             <MultiSelectField
-              label="Weekdays"
+              label="Wochentage"
               name={`${prefix}weekdays`}
               defaultValues={deal?.weekdays}
               options={withCurrentOptions(weekdayOptions, deal?.weekdays)}
@@ -6701,12 +6722,12 @@ function DealDropPreviewCard({
   const accessLabel = formatPreviewAccessLabel(audience, trialEligible)
 
   return (
-    <FormSection title="Live preview" defaultOpen={false} compact>
+    <FormSection title="Live-Vorschau" defaultOpen={false} compact>
       <div className="max-w-md rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
         {soldOut ? (
           <div className="mb-3">
             <WarningNote>
-              This Deal Drop is sold out and users cannot redeem it.
+              Dieser Deal Drop ist ausverkauft und kann nicht mehr eingelöst werden.
             </WarningNote>
           </div>
         ) : null}
@@ -6719,13 +6740,13 @@ function DealDropPreviewCard({
         </h4>
         <p className="mt-1 text-sm leading-6 text-zinc-600">{description}</p>
         <div className="mt-4 grid gap-2 text-sm text-zinc-700 sm:grid-cols-2">
-          <Info label="Stock" value={stockState} />
+          <Info label="Kontingent" value={stockState} />
           <Info label="Countdown" value={countdownState} />
           <Info
-            label="Estimated savings"
+            label="Geschätzte Ersparnis"
             value={formatSavingsPreview(discountType, estimatedSavings)}
           />
-          <Info label="Expiry" value={expiryInfo} />
+          <Info label="Gültigkeit" value={expiryInfo} />
         </div>
       </div>
     </FormSection>
@@ -12723,7 +12744,23 @@ function dealCardTypeLabel(deal: Deal) {
     }
   }
 
-  return labelForValue(dealUiTypeOptions, dealUiTypeForDeal(deal)) || "Deal"
+  if (deal.type === "welcome") {
+    return deal.discount_type === "bonus_stamp"
+      ? "Willkommensbonus"
+      : "Willkommensdeal"
+  }
+
+  if (
+    deal.type === "comeback" &&
+    metadataString(metadataObject(deal.metadata), "bonus_mode") ===
+      COMEBACK_INACTIVE_MODE
+  ) {
+    return deal.discount_type === "bonus_stamp"
+      ? "Comeback-Bonus"
+      : "Comeback-Deal"
+  }
+
+  return labelForValue(dealUiTypeOptions, dealUiTypeForDeal(deal)) || "Vorteil"
 }
 
 function metadataObject(value: unknown): Record<string, unknown> {
@@ -13139,21 +13176,21 @@ function formatDealDropRewardTitle(
   const item = rewardItem.trim()
 
   if (discountType === "item") {
-    return item ? `Free ${item}` : "Free item"
+    return item ? `Gratis ${item}` : "Gratisartikel"
   }
 
   if (discountType === "percent") {
-    return discountValue !== null ? `${discountValue}% off` : "Percent discount"
+    return discountValue !== null ? `${discountValue} % Rabatt` : "Prozentualer Rabatt"
   }
 
   if (discountType === "fixed") {
     return discountValue !== null
-      ? `€${discountValue} off`
-      : "Fixed discount"
+      ? `${discountValue} € Rabatt`
+      : "Fester Rabatt"
   }
 
   if (normalizeDiscountTypeForUi("limited_drop", discountType) === "2for1") {
-    return "2-for-1"
+    return item ? `2 für 1 ${item}` : "2 für 1"
   }
 
   return "Deal Drop"
@@ -13161,10 +13198,10 @@ function formatDealDropRewardTitle(
 
 function formatDealDropRewardText(discountType: string) {
   if (discountType === "item") {
-    return "Free reward item"
+    return "Gratisartikel"
   }
 
-  return labelForValue(discountTypeOptions, discountType) || "Reward preview"
+  return labelForValue(discountTypeOptions, discountType) || "Vorteilsvorschau"
 }
 
 function formatDealDropStockState(
@@ -13569,30 +13606,30 @@ function formatRewardValue(
   const label = labelForValue(discountTypeOptions, discountType)
 
   if (discountValue === null || discountValue === undefined) {
-    return label || "Not set"
+    return label || "Nicht festgelegt"
   }
 
   if (discountType === "percent") {
-    return `${discountValue}% off`
+    return `${discountValue} % Rabatt`
   }
 
   if (discountType === "fixed") {
-    return `€${discountValue} off`
+    return `${discountValue} € Rabatt`
   }
 
   if (discountType === "bonus_stamp") {
-    return `+${discountValue} bonus ${discountValue === 1 ? "stamp" : "stamps"}`
+    return `+${discountValue} Bonusstempel`
   }
 
-  return `${label || "Value"} ${discountValue}`
+  return `${label || "Wert"} ${discountValue}`
 }
 
 function formatBenefitCategory(value?: string | null) {
   const labels: Record<string, string> = {
-    direct_selectable: "Selectable deal",
-    automatic_background: "Automatic benefit",
-    automatic_fallback: "Fallback benefit",
-    base_stamp: "Base stamp",
+    direct_selectable: "Vor dem Besuch auswählen",
+    automatic_background: "Automatisch beim Scan",
+    automatic_fallback: "Automatisch als Fallback",
+    base_stamp: "Basisstempel",
   }
 
   return formatTechnicalLabel(value, labels)
@@ -13600,10 +13637,10 @@ function formatBenefitCategory(value?: string | null) {
 
 function formatBenefitSource(value?: string | null) {
   const labels: Record<string, string> = {
-    base_stamp: "Base stamp",
-    selected_direct_deal: "Selected direct deal source",
-    fallback_deal: "Fallback deal",
-    reward_milestone: "Reward milestone",
+    base_stamp: "Basisstempel",
+    selected_direct_deal: "Ausgewählter direkter Vorteil",
+    fallback_deal: "Fallback-Vorteil",
+    reward_milestone: "Stempelbelohnung",
   }
 
   return formatTechnicalLabel(value, labels)
@@ -13614,7 +13651,7 @@ function formatTechnicalLabel(
   labels: Record<string, string>,
 ) {
   if (!value) {
-    return "Not set"
+    return "Nicht festgelegt"
   }
 
   return (

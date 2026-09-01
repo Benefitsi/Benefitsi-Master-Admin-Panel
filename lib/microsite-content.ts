@@ -19,21 +19,15 @@ const MICROSITE_DEAL_TYPE_LABELS: Record<
   string,
   { de: string; en: string }
 > = {
-  two_for_one: { de: "2-für-1-Deal", en: "2-for-1 deal" },
-  welcome: { de: "Willkommensvorteil", en: "Welcome reward" },
-  comeback: { de: "Zeitbonus", en: "Time-based bonus" },
+  two_for_one: { de: "2 für 1", en: "2-for-1" },
   happy_hour: { de: "Happy Hour", en: "Happy hour" },
-  permanent_discount: {
-    de: "Automatischer Basisrabatt",
-    en: "Automatic base discount",
-  },
+  permanent_discount: { de: "Dauerrabatt", en: "Permanent discount" },
   limited_drop: { de: "Deal Drop", en: "Deal drop" },
-  birthday: { de: "Geburtstagsvorteil", en: "Birthday reward" },
   free_item: { de: "Gratisartikel", en: "Free item" },
   discount: { de: "Rabatt", en: "Discount" },
   bonus_stamp: { de: "Bonusstempel", en: "Bonus stamp" },
   streak: { de: "Streak-Bonus", en: "Streak reward" },
-  challenge: { de: "Challenge", en: "Challenge" },
+  challenge: { de: "Challenge-Bonus", en: "Challenge reward" },
 }
 
 export function getMicrositePublicDeals(
@@ -90,13 +84,64 @@ export function getMicrositeStampDeals(
 }
 
 export function micrositeDealTypeLabel(
-  deal: Pick<Deal, "type">,
+  deal: Pick<Deal, "type" | "discount_type" | "metadata">,
   language: MicrositeContentLanguage = "de",
 ) {
   const type = deal.type?.trim().toLowerCase() || ""
+  const discountType = deal.discount_type?.trim().toLowerCase() || ""
+  const isBonusStamp = discountType === "bonus_stamp" || type === "bonus_stamp"
+
+  if (type === "welcome") {
+    return language === "en"
+      ? isBonusStamp
+        ? "Welcome bonus"
+        : "Welcome deal"
+      : isBonusStamp
+        ? "Willkommensbonus"
+        : "Willkommensdeal"
+  }
+
+  if (type === "comeback") {
+    const mode = micrositeDealMetadataString(deal.metadata, "bonus_mode")
+
+    if (mode === "comeback_inactive") {
+      return language === "en"
+        ? isBonusStamp
+          ? "Comeback bonus"
+          : "Comeback deal"
+        : isBonusStamp
+          ? "Comeback-Bonus"
+          : "Comeback-Deal"
+    }
+
+    return language === "en" ? "Time bonus" : "Zeitbonus"
+  }
+
+  if (type === "birthday") {
+    return language === "en"
+      ? isBonusStamp
+        ? "Birthday bonus"
+        : "Birthday deal"
+      : isBonusStamp
+        ? "Geburtstagsbonus"
+        : "Geburtstagsdeal"
+  }
+
   const labels = MICROSITE_DEAL_TYPE_LABELS[type]
 
-  return labels?.[language] || deal.type?.trim() || "Deal"
+  return labels?.[language] || deal.type?.trim() || (language === "en" ? "Benefit" : "Vorteil")
+}
+
+function micrositeDealMetadataString(
+  metadata: Deal["metadata"],
+  key: string,
+) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return ""
+  }
+
+  const value = metadata[key]
+  return typeof value === "string" ? value.trim() : ""
 }
 
 export function getMicrositeStampRewards(

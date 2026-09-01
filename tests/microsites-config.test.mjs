@@ -82,6 +82,19 @@ test("legacy hardcoded doner fallback is normalized when a microsite is loaded",
   assert.doesNotMatch(JSON.stringify(config.deals), /döner/i)
 })
 
+test("legacy top-deal labels are normalized to the neutral benefit label", () => {
+  const config = resolveMicrositeConfig(
+    {
+      deals: {
+        topDealLabel: "Top Deal",
+      },
+    },
+    partner,
+  )
+
+  assert.equal(config.deals.topDealLabel, "Vorteil")
+})
+
 test("legacy template ids resolve to the only supported default template", () => {
   assert.equal(
     resolveMicrositeConfig({ template: "festival-neon" }, partner).template,

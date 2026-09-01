@@ -89,7 +89,7 @@ export function createMicrositeReadinessReport(
     recommended("coordinates", "Google-Maps-Koordinaten", "Koordinaten verbessern Maps, Route und strukturierte Daten.", Boolean(partner.coordinates), "SEO & LLM"),
     recommended("microsite-hero", "Hero-Bild", "Hero nutzt ein microsite-spezifisches Kampagnenbild.", Boolean(config.hero.backgroundImageUrl), "Assets"),
     recommended("microsite-deals-image", "Deals-Bild", "Deals & Vorteile haben ein eigenes Bild.", Boolean(config.deals.illustrationUrl), "Assets"),
-    recommended("top-deal-image", "Top-Deal-Bild", "Top-Deal hat ein eigenes, emotionales Bild.", !hasActiveDeal || Boolean(config.deals.topDealImageUrl), "Assets"),
+    recommended("top-deal-image", "Vorteilsbild", "Der aktuelle Vorteil hat ein eigenes, emotionales Bild.", !hasActiveDeal || Boolean(config.deals.topDealImageUrl), "Assets"),
     recommended("asset-review", "Assets geprüft", "Microsite-Bilder/Fallbacks wurden für diesen Partner bewusst geprüft.", assetReviewDone, "Assets"),
     recommended("about-images", "Über-uns-Bilder", "Über-uns-Bereich hat mindestens zwei austauschbare Bilder.", micrositeImages.length >= 2, "Assets"),
     recommended("menu-images", "Menübilder", "Mindestens einige Speisen haben Bilder; ohne Bild werden Platzhalter genutzt.", menuItems.length === 0 || menuItemsWithImage.length >= 1, "Assets"),
@@ -150,7 +150,7 @@ export const micrositeReadinessEnglishTranslations: Readonly<Record<string, stri
   "Google-Maps-Koordinaten": "Google Maps coordinates",
   "Hero-Bild": "Hero image",
   "Deals-Bild": "Deals image",
-  "Top-Deal-Bild": "Top-deal image",
+  Vorteilsbild: "Benefit image",
   "Assets geprüft": "Assets reviewed",
   "Über-uns-Bilder": "About-us images",
   Menübilder: "Menu images",
@@ -193,8 +193,8 @@ export const micrositeReadinessEnglishTranslations: Readonly<Record<string, stri
     "The hero uses a microsite-specific campaign image.",
   "Deals & Vorteile haben ein eigenes Bild.":
     "Deals and benefits have a dedicated image.",
-  "Top-Deal hat ein eigenes, emotionales Bild.":
-    "The top deal has a dedicated promotional image.",
+  "Der aktuelle Vorteil hat ein eigenes, emotionales Bild.":
+    "The current benefit has a dedicated promotional image.",
   "Microsite-Bilder/Fallbacks wurden für diesen Partner bewusst geprüft.":
     "Microsite images and fallbacks have been reviewed for this partner.",
   "Über-uns-Bereich hat mindestens zwei austauschbare Bilder.":

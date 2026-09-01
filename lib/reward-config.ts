@@ -1,66 +1,66 @@
 export const dealTypeOptions = [
-  { value: "two_for_one", label: "2-for-1" },
-  { value: "welcome", label: "Welcome reward" },
-  { value: "comeback", label: "Time-based bonus" },
-  { value: "happy_hour", label: "Happy Hour deal" },
-  { value: "permanent_discount", label: "Permanent fallback discount" },
-  { value: "limited_drop", label: "Limited deal drop" },
-  { value: "birthday", label: "Birthday reward" },
-  { value: "free_item", label: "Free item deal" },
-  { value: "discount", label: "Selectable discount" },
-  { value: "bonus_stamp", label: "Automatic bonus stamp" },
-  { value: "streak", label: "Streak reward" },
-  { value: "challenge", label: "Challenge reward" },
+  { value: "two_for_one", label: "2 für 1" },
+  { value: "welcome", label: "Willkommen" },
+  { value: "comeback", label: "Zeitbonus" },
+  { value: "happy_hour", label: "Happy Hour" },
+  { value: "permanent_discount", label: "Dauerrabatt" },
+  { value: "limited_drop", label: "Deal Drop" },
+  { value: "birthday", label: "Geburtstag" },
+  { value: "free_item", label: "Gratisartikel" },
+  { value: "discount", label: "Rabatt" },
+  { value: "bonus_stamp", label: "Bonusstempel" },
+  { value: "streak", label: "Streak-Bonus" },
+  { value: "challenge", label: "Challenge-Bonus" },
 ] as const
 
 export const discountTypeOptions = [
-  { value: "none", label: "No direct reward" },
-  { value: "fixed", label: "Fixed € discount" },
-  { value: "percent", label: "Percentage discount" },
-  { value: "item", label: "Free item" },
-  { value: "bonus_stamp", label: "Bonus stamp" },
-  { value: "2for1", label: "2-for-1" },
+  { value: "none", label: "Kein direkter Vorteil" },
+  { value: "fixed", label: "Fester €-Rabatt" },
+  { value: "percent", label: "Prozentualer Rabatt" },
+  { value: "item", label: "Gratisartikel" },
+  { value: "bonus_stamp", label: "Bonusstempel" },
+  { value: "2for1", label: "2 für 1" },
 ] as const
 
 export const dealDropDiscountTypeOptions = [
-  { value: "item", label: "Free item" },
-  { value: "fixed", label: "Fixed € discount" },
-  { value: "percent", label: "Percentage discount" },
-  { value: "2for1", label: "2-for-1" },
+  { value: "item", label: "Gratisartikel" },
+  { value: "fixed", label: "Fester €-Rabatt" },
+  { value: "percent", label: "Prozentualer Rabatt" },
+  { value: "2for1", label: "2 für 1" },
 ] as const
 
 export const benefitCategoryOptions = [
   {
     value: "direct_selectable",
-    label: "User selects before visit",
-    hint: "User must choose this before the QR scan. Only one direct deal can be redeemed per visit.",
+    label: "Vor dem Besuch auswählen",
+    hint: "Nutzer wählen diesen Vorteil vor dem QR-Scan aus. Pro Besuch ist nur ein direkter Vorteil einlösbar.",
   },
   {
     value: "automatic_background",
-    label: "Applies automatically during scan",
-    hint: "No activation button. The system applies this automatically during scan if eligible.",
+    label: "Automatisch beim Scan",
+    hint: "Keinen Aktivierungsbutton anzeigen. Das System wendet den Vorteil beim Scan automatisch an, wenn die Person berechtigt ist.",
   },
   {
     value: "automatic_fallback",
-    label: "Applies only if no selected deal",
-    hint: "Applies automatically only if the user has not selected another direct deal.",
+    label: "Automatisch als Fallback",
+    hint: "Gilt automatisch nur, wenn kein anderer direkter Vorteil ausgewählt wurde.",
   },
 ] as const
 
 export const audienceOptions = [
-  { value: "free", label: "Free users" },
-  { value: "premium", label: "Premium users" },
-  { value: "both", label: "Free + Premium" },
+  { value: "free", label: "Free" },
+  { value: "premium", label: "Premium" },
+  { value: "both", label: "Free und Premium" },
 ] as const
 
 export const milestoneAudienceOptions = audienceOptions
 
 export const rewardTypeOptions = [
-  { value: "item", label: "Reward item" },
-  { value: "fixed", label: "Fixed amount" },
-  { value: "percent", label: "Percent" },
-  { value: "2for1", label: "2-for-1" },
-  { value: "bonus_stamp", label: "Bonus stamp" },
+  { value: "item", label: "Artikel" },
+  { value: "fixed", label: "Fester Betrag" },
+  { value: "percent", label: "Prozent" },
+  { value: "2for1", label: "2 für 1" },
+  { value: "bonus_stamp", label: "Bonusstempel" },
 ] as const
 
 export const partnerStaffRoleOptions = [

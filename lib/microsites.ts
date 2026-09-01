@@ -249,7 +249,7 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
         "Entdecke die besten Vorteile und belohne dich bei jedem Besuch.",
       illustrationUrl:
         partner.discover_card_image_url || partner.feature_card_url || backgroundImage,
-      topDealLabel: "Top Deal",
+      topDealLabel: "Vorteil",
       topDealHeadline: defaultTopDealHeadline,
       topDealDescription: defaultTopDealDescription,
       topDealImageUrl:
@@ -400,7 +400,7 @@ export function resolveMicrositeConfig(
         deals.illustrationUrl,
         fallback.deals.illustrationUrl,
       ),
-      topDealLabel: safeString(
+      topDealLabel: normalizeLegacyTopDealLabel(
         deals.topDealLabel,
         fallback.deals.topDealLabel,
       ),
@@ -680,6 +680,16 @@ function normalizeLegacyTopDealCopy(
 ) {
   const candidate = safeString(value, fallback)
   return candidate === legacyValue ? fallback : candidate
+}
+
+function normalizeLegacyTopDealLabel(value: unknown, fallback: string) {
+  const normalized = safeString(value, fallback)
+
+  return /^(?:top[- ]?deal|top[- ]?vorteil|hauptdeal|daily deal)$/i.test(
+    normalized,
+  )
+    ? fallback
+    : normalized
 }
 
 function safeLocationString(value: unknown, fallback: string) {

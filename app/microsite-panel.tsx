@@ -155,9 +155,9 @@ const builderTranslations: Record<string, string> = {
   "Beschreibung": "Description",
   "Intro-Grafik URL": "Intro image URL",
   "Neue Intro-Grafik hochladen": "Upload new intro image",
-  "Top-Deal Überschrift": "Top deal headline",
-  "Top-Deal Bild URL": "Top deal image URL",
-  "Neues Top-Deal Bild hochladen": "Upload new top deal image",
+  "Vorteil Überschrift": "Benefit headline",
+  "Vorteil Bild URL": "Benefit image URL",
+  "Neues Vorteil Bild hochladen": "Upload new benefit image",
   "Slogan": "Slogan",
   "Weitere Bereiche": "More sections",
   "Speisekarte Überschrift": "Menu headline",
@@ -348,7 +348,7 @@ const builderTranslations: Record<string, string> = {
     "A calm premium wellness direction for massage, spa, and recovery partners.",
   "Kontrastreiche Event-Optik für Kino, Freizeit und erlebnisorientierte Partner.":
     "A high-contrast event look for cinema, activities, and experience-led partners.",
-  "Top-Deal": "Top deal",
+  "Vorteil": "Benefit",
   "Stempelkarte": "Stamp card",
   "Speisekarte": "Menu",
   "Über uns": "About",
@@ -514,7 +514,7 @@ const builderTranslations: Record<string, string> = {
   "Über-uns Bilder": "About images",
   "App & Footer Bilder": "App & footer images",
   "Partner-Badge": "Partner badge",
-  "2für1 Hintergrundbild": "2-for-1 background image",
+  "2 für 1 Hintergrundbild": "2-for-1 background image",
   "Über-uns Hauptbild": "About main image",
   "Über-uns Zutatenbild": "About ingredients image",
   "Über-uns Ortsbild": "About location image",
@@ -561,10 +561,10 @@ const builderTranslations: Record<string, string> = {
   "Partnername": "Partner name",
   "Badge-Icon": "Badge icon",
   "Badge-Text": "Badge text",
-  "Top-Deal Bild": "Top deal image",
-  "Top-Deal Label": "Top deal label",
-  "Top-Deal Beschreibung": "Top deal description",
-  "Top-Deal Button": "Top deal button",
+  "Vorteil Bild": "Benefit image",
+  "Vorteil Label": "Benefit label",
+  "Vorteil Beschreibung": "Benefit description",
+  "Vorteil Button": "Benefit button",
   "Speisekarte Label": "Menu label",
   "Benefit 1 Titel": "Benefit 1 title",
   "Benefit 1 Text": "Benefit 1 text",
@@ -946,14 +946,14 @@ function translateBuilderText(locale: BuilderLocale, text: string): string {
     return `Service ${serviceTextMatch[1]} text`
   }
 
-  const topDealBulletMatch = repairedText.match(/^Top-Deal Punkt (\d+)$/)
+  const topDealBulletMatch = repairedText.match(/^Vorteil Punkt (\d+)$/)
   if (topDealBulletMatch) {
-    return `Top-deal bullet ${topDealBulletMatch[1]}`
+    return `Benefit bullet ${topDealBulletMatch[1]}`
   }
 
-  const topDealBulletIconMatch = repairedText.match(/^Top-Deal Punkt (\d+) Icon$/)
+  const topDealBulletIconMatch = repairedText.match(/^Vorteil Punkt (\d+) Icon$/)
   if (topDealBulletIconMatch) {
-    return `Top-deal bullet ${topDealBulletIconMatch[1]} icon`
+    return `Benefit bullet ${topDealBulletIconMatch[1]} icon`
   }
 
   const stampMatch = repairedText.match(/^Stempel (\d+)$/)
@@ -2747,7 +2747,7 @@ function AssetReadinessPanel({
     { label: "Partnerlogo", value: partner.logo_url || "", source: "Profil", slot: "branding.logo", minWidth: 512, minHeight: 512, preferredAspect: 1, aspectTolerance: 0.2 },
     { label: "Startbild", value: config.hero.backgroundImageUrl, source: "Microsite", slot: "hero.backgroundImageUrl", minWidth: 1600, minHeight: 1200, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     ...(hasTwoForOneDeal
-      ? [{ label: "2für1 Hintergrundbild", value: config.deals.topDealImageUrl, source: "Microsite", slot: "deals.topDealImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 }]
+      ? [{ label: "2 für 1 Hintergrundbild", value: config.deals.topDealImageUrl, source: "Microsite", slot: "deals.topDealImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 }]
       : []),
     { label: "Über-uns Hintergrundbild (Desktop)", value: config.elementText["content.aboutHeroImageUrl"] || "", source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     { label: "Über-uns linkes Kartenbild", value: config.elementText["content.aboutIngredientImageUrl"] || "", source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 900, minHeight: 1100, preferredAspect: 4 / 5, aspectTolerance: 0.25 },
@@ -2973,7 +2973,7 @@ function CurrentTemplateImagesPanel({
           <TemplateImageEditor
             groupName="deal-reward-images"
             name="top_deal_image_url"
-            label="2für1 Hintergrundbild"
+            label="2 für 1 Hintergrundbild"
             value={config.deals.topDealImageUrl}
             uploadName="top_deal_file"
             assetListId={assetListId}
@@ -4520,7 +4520,7 @@ function getEditableElement(
       hero: { ...current.hero, secondaryButtonLabel: value },
     })),
     "deals.topDealImageUrl": {
-      label: "Top-Deal Bild",
+      label: "Vorteil Bild",
       kind: "image",
       value: config.deals.topDealImageUrl,
       uploadName: "top_deal_file",
@@ -4541,19 +4541,19 @@ function getEditableElement(
       ...current,
       deals: { ...current.deals, description: value },
     })),
-    "deals.topDealHeadline": textElement("Top-Deal Überschrift", config.deals.topDealHeadline, (current, value) => ({
+    "deals.topDealHeadline": textElement("Vorteil Überschrift", config.deals.topDealHeadline, (current, value) => ({
       ...current,
       deals: { ...current.deals, topDealHeadline: value },
     })),
-    "deals.topDealLabel": textElement("Top-Deal Label", config.deals.topDealLabel, (current, value) => ({
+    "deals.topDealLabel": textElement("Vorteil Label", config.deals.topDealLabel, (current, value) => ({
       ...current,
       deals: { ...current.deals, topDealLabel: value },
     })),
-    "deals.topDealDescription": textElement("Top-Deal Beschreibung", config.deals.topDealDescription, (current, value) => ({
+    "deals.topDealDescription": textElement("Vorteil Beschreibung", config.deals.topDealDescription, (current, value) => ({
       ...current,
       deals: { ...current.deals, topDealDescription: value },
     })),
-    "deals.topDealButtonLabel": textElement("Top-Deal Button", config.deals.topDealButtonLabel, (current, value) => ({
+    "deals.topDealButtonLabel": textElement("Vorteil Button", config.deals.topDealButtonLabel, (current, value) => ({
       ...current,
       deals: { ...current.deals, topDealButtonLabel: value },
     })),
@@ -4800,7 +4800,7 @@ function getEditableElement(
 
     return {
       id,
-      label: `Top-Deal Punkt ${index + 1}`,
+      label: `Vorteil Punkt ${index + 1}`,
       kind: "text",
       value: bullet,
       update: (current, value) => ({
@@ -5188,7 +5188,7 @@ function getEditableElement(
     return {
       id,
       ...iconOverrideElement(
-        `Top-Deal Punkt ${Number(topDealBulletIconMatch[1]) + 1} Icon`,
+        `Vorteil Punkt ${Number(topDealBulletIconMatch[1]) + 1} Icon`,
         config,
         id,
         "check",

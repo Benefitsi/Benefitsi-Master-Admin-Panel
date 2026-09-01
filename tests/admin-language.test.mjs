@@ -24,24 +24,39 @@ test("keeps partner dashboard singular and plural labels unambiguous", () => {
   assert.equal(translateValue("Partnerbetrieb", "en"), "Partner location")
 })
 
-test("uses precise reward terminology in the reward type selector", async () => {
-  const { dealTypeOptions, rewardTypeOptions } = await import("../lib/reward-config.ts")
+test("uses the canonical German benefit taxonomy in the admin selector", async () => {
+  const {
+    benefitCategoryOptions,
+    dealTypeOptions,
+    discountTypeOptions,
+    rewardTypeOptions,
+  } = await import("../lib/reward-config.ts")
   const itemOption = rewardTypeOptions.find((option) => option.value === "item")
-  const timeBasedBonus = dealTypeOptions.find(
-    (option) => option.value === "comeback",
-  )
-  const limitedDealDrop = dealTypeOptions.find(
-    (option) => option.value === "limited_drop",
-  )
 
-  assert.equal(itemOption?.label, "Reward item")
-  assert.equal(translateValue(itemOption?.label ?? "", "de"), "Prämienartikel")
-  assert.equal(timeBasedBonus?.label, "Time-based bonus")
-  assert.equal(translateValue(timeBasedBonus?.label ?? "", "de"), "Zeitbonus")
-  assert.equal(limitedDealDrop?.label, "Limited deal drop")
+  assert.equal(itemOption?.label, "Artikel")
   assert.equal(
-    translateValue(limitedDealDrop?.label ?? "", "de"),
-    "Limitierter Deal Drop",
+    dealTypeOptions.find((option) => option.value === "two_for_one")?.label,
+    "2 für 1",
+  )
+  assert.equal(
+    dealTypeOptions.find((option) => option.value === "comeback")?.label,
+    "Zeitbonus",
+  )
+  assert.equal(
+    dealTypeOptions.find((option) => option.value === "permanent_discount")?.label,
+    "Dauerrabatt",
+  )
+  assert.equal(
+    dealTypeOptions.find((option) => option.value === "limited_drop")?.label,
+    "Deal Drop",
+  )
+  assert.equal(
+    discountTypeOptions.find((option) => option.value === "item")?.label,
+    "Gratisartikel",
+  )
+  assert.equal(
+    benefitCategoryOptions.find((option) => option.value === "direct_selectable")?.label,
+    "Vor dem Besuch auswählen",
   )
 })
 

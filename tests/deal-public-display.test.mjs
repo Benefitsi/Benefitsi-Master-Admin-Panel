@@ -19,6 +19,7 @@ const micrositeViewUrl = new URL(
   "../components/microsite/restaurant-premium-microsite.tsx",
   import.meta.url,
 )
+const micrositePanelUrl = new URL("../app/microsite-panel.tsx", import.meta.url)
 
 test("deal drafts retain public title and nullable subtitle mode", () => {
   const formData = new FormData()
@@ -148,6 +149,15 @@ test("microsite phone preview does not render a Top-Vorteil badge", async () => 
   const viewCode = await readFile(micrositeViewUrl, "utf8")
 
   assert.doesNotMatch(viewCode, /siteCopy\(config, ["']Top-Vorteil["']/)
+})
+
+test("microsite builder keeps legacy config keys but exposes neutral benefit labels", async () => {
+  const builderCode = await readFile(micrositePanelUrl, "utf8")
+
+  assert.match(builderCode, /Vorteil Überschrift/)
+  assert.match(builderCode, /Vorteil Bild/)
+  assert.match(builderCode, /Vorteil Button/)
+  assert.doesNotMatch(builderCode, /Top-Deal (?:Überschrift|Bild|Label|Beschreibung|Button)/)
 })
 
 test("public microsite deal loading has a legacy projection fallback", async () => {

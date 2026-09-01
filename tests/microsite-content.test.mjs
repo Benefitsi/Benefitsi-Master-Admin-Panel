@@ -78,7 +78,40 @@ test("puts only the stored two-for-one deal first and keeps the app type label f
   assert.equal(isMicrositeTopDeal(deals[1]), true)
   assert.equal(isMicrositeTopDeal(deals[2]), false)
   assert.equal(micrositeDealTypeLabel(deals[0]), "Happy Hour")
-  assert.equal(micrositeDealTypeLabel(deals[1]), "2-für-1-Deal")
+  assert.equal(micrositeDealTypeLabel(deals[1]), "2 für 1")
+})
+
+test("uses canonical public labels for reward formats and lifecycle triggers", () => {
+  assert.equal(
+    micrositeDealTypeLabel({ type: "welcome", discount_type: "item" }),
+    "Willkommensdeal",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({ type: "welcome", discount_type: "bonus_stamp" }),
+    "Willkommensbonus",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({
+      type: "comeback",
+      discount_type: "item",
+      metadata: { bonus_mode: "comeback_inactive" },
+    }),
+    "Comeback-Deal",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({
+      type: "comeback",
+      discount_type: "bonus_stamp",
+      metadata: { bonus_mode: "comeback_inactive" },
+    }),
+    "Comeback-Bonus",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({ type: "permanent_discount" }),
+    "Dauerrabatt",
+  )
+  assert.equal(micrositeDealTypeLabel({ type: "streak" }), "Streak-Bonus")
+  assert.equal(micrositeDealTypeLabel({ type: "challenge" }), "Challenge-Bonus")
 })
 
 test("formats the stored deal value and minimum spend for the microsite", () => {

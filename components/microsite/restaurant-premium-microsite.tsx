@@ -2070,7 +2070,7 @@ function MicrositeDealBanner({
           </ul>
         ) : null}
         <button
-          {...(primary ? editable("deals.topDealButtonLabel", "text", "Top-Deal Button") : {})}
+          {...(primary ? editable("deals.topDealButtonLabel", "text", "Vorteil Button") : {})}
           className={
             isTopDeal
               ? "premium-button premium-button-shine group mt-6 inline-flex min-h-11 w-fit items-center gap-3 rounded-lg bg-[var(--site-accent)] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]"
