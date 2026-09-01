@@ -139,3 +139,31 @@ test("deal copy fields expose a Ben suggestion action", async () => {
   assert.match(code, /BenSuggestionButton/)
   assert.equal((code.match(/BenSuggestionButton/g) ?? []).length >= 3, true)
 })
+
+test("default deal copy uses the canonical lifecycle terminology", async () => {
+  const code = await readFile(actionsUrl, "utf8")
+
+  assert.match(code, /Willkommensdeal/)
+  assert.match(code, /Willkommensbonus/)
+  assert.match(code, /Comeback-Deal/)
+  assert.match(code, /Comeback-Bonus/)
+  assert.match(code, /Zeitbonus/)
+  assert.doesNotMatch(code, /Willkommensvorteil|Comeback-Vorteil/)
+})
+
+test("deal writes carry canonical taxonomy dimensions alongside legacy fields", async () => {
+  const [actions, data] = await Promise.all([
+    readFile(actionsUrl, "utf8"),
+    readFile(new URL("../lib/admin-data.ts", import.meta.url), "utf8"),
+  ])
+
+  for (const field of [
+    "reward_format",
+    "trigger_key",
+    "campaign_type",
+    "activation_mode",
+  ]) {
+    assert.match(actions, new RegExp(`${field}\\s*:`))
+    assert.match(data, new RegExp(`${field}: string \\| null`))
+  }
+})

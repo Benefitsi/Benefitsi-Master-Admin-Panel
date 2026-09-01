@@ -850,7 +850,7 @@ export const cityContentEditorDefinitions: Record<
         required: true,
         options: [
           { value: "stamp_card", label: "Stempelkarte" },
-          { value: "welcome", label: "Willkommensvorteil" },
+          { value: "welcome", label: "Willkommensdeal" },
           { value: "deal_drop", label: "Deal Drop" },
           { value: "family", label: "Familie" },
           { value: "leisure", label: "Freizeit" },

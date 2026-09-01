@@ -174,6 +174,63 @@ export function normalizeBenefitCategory(
   return isBenefitCategory(category) ? category : inferred
 }
 
+/**
+ * Returns the canonical storage dimension for the public reward format while
+ * retaining the existing `type`/`discount_type` values for legacy clients.
+ */
+export function canonicalRewardFormat(
+  type: string,
+  discountType: string,
+): "two_for_one" | "discount" | "free_item" | "bonus_stamp" | null {
+  if (type === "two_for_one" || discountType === "2for1") return "two_for_one"
+  if (type === "free_item" || discountType === "item") return "free_item"
+  if (type === "bonus_stamp" || discountType === "bonus_stamp") {
+    return "bonus_stamp"
+  }
+  if (
+    type === "discount" ||
+    ["fixed", "percent"].includes(discountType)
+  ) {
+    return "discount"
+  }
+  return null
+}
+
+/** Returns the canonical lifecycle trigger, if this benefit has one. */
+export function canonicalTriggerKey(
+  type: string,
+  dealConcept?: string,
+): "welcome" | "time_bonus" | "comeback" | "birthday" | "streak" | "challenge" | null {
+  if (dealConcept === "duration_bonus" || type === "duration_bonus") {
+    return "time_bonus"
+  }
+  if (type === "welcome" || type === "welcome_bonus") return "welcome"
+  if (dealConcept === "comeback_inactive" || type === "comeback_inactive") {
+    return "comeback"
+  }
+  if (type === "comeback" || type === "comeback_bonus") return "comeback"
+  if (type === "birthday") return "birthday"
+  if (type === "streak" || type === "streak_bonus") return "streak"
+  if (type === "challenge" || type === "challenge_bonus") return "challenge"
+  return null
+}
+
+/** Returns the campaign/availability dimension, if applicable. */
+export function canonicalCampaignType(
+  type: string,
+): "happy_hour" | "deal_drop" | null {
+  if (type === "happy_hour") return "happy_hour"
+  if (type === "limited_drop" || type === "deal_drop") return "deal_drop"
+  return null
+}
+
+/** Normalizes the three supported activation modes for database storage. */
+export function canonicalActivationMode(
+  category: string,
+): "direct_selectable" | "automatic_background" | "automatic_fallback" | null {
+  return isBenefitCategory(category) ? category : null
+}
+
 export function isDealType(value: string): value is DealType {
   return dealTypeOptions.some((option) => option.value === value)
 }

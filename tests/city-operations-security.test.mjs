@@ -156,6 +156,16 @@ test("central event editor persists schedules behind the event review gate", asy
   assert.match(page, /schedule_sync/)
 })
 
+test("central benefit editor uses the canonical welcome-deal label", async () => {
+  const definitions = await readFile(
+    new URL("../lib/city-pages/content-editor.ts", import.meta.url),
+    "utf8",
+  )
+
+  assert.match(definitions, /value: "welcome", label: "Willkommensdeal"/)
+  assert.doesNotMatch(definitions, /Willkommensvorteil/)
+})
+
 test("central event editor captures planning fields without bypassing review", async () => {
   const [actions, definitions] = await Promise.all([
     readFile(

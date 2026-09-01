@@ -45,6 +45,10 @@ import {
   DEFAULT_TIMEZONE,
   MAX_STAMP_CARD_STAMPS,
   activationRequiredForCategory,
+  canonicalActivationMode,
+  canonicalCampaignType,
+  canonicalRewardFormat,
+  canonicalTriggerKey,
   isAudience,
   isDealType,
   isDiscountType,
@@ -161,6 +165,10 @@ type PartnerMediaFormValues = {
 type ParsedDeal = {
   partner_id: string
   type: string
+  reward_format: string | null
+  trigger_key: string | null
+  campaign_type: string | null
+  activation_mode: string | null
   discount_type: string
   premium_only: boolean
   benefit_category: string
@@ -4149,6 +4157,12 @@ function parseDealPayload(
   const payload: ParsedDeal = {
     partner_id: partnerId,
     type,
+    reward_format: canonicalRewardFormat(type, discountType),
+    trigger_key: canonicalTriggerKey(type, dealConcept),
+    campaign_type: canonicalCampaignType(type),
+    activation_mode: canonicalActivationMode(
+      isLimitedDrop ? "direct_selectable" : benefitCategory,
+    ),
     discount_type: discountType,
     premium_only: audience === "premium",
     benefit_category: isLimitedDrop ? "direct_selectable" : benefitCategory,
@@ -4833,6 +4847,13 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
     payload.benefit_count,
   )
   const timeWindow = dealTimeWindow(payload)
+  const isAutomatic =
+    payload.benefit_category === "automatic_background" ||
+    payload.benefit_category === "automatic_fallback" ||
+    payload.discount_type === "bonus_stamp"
+  const comebackIsTimeBonus =
+    metadataRecord(payload.metadata).bonus_mode === "duration_bonus" ||
+    payload.trigger_key === "time_bonus"
 
   const customerDescription = (() => {
     switch (payload.type) {
@@ -4847,13 +4868,19 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
           ? `Happy Hour: ${reward} von ${timeWindow}.`
           : `Happy Hour: ${reward}.`
       case "welcome":
-        return `Willkommensvorteil: Erhalte ${reward} bei deinem ersten qualifizierten Besuch.`
+        return isAutomatic
+          ? `Willkommensbonus: Erhalte ${reward} bei deinem ersten qualifizierten Besuch automatisch.`
+          : `Willkommensdeal: Erhalte ${reward} bei deinem ersten qualifizierten Besuch.`
       case "streak":
         return `Nach ${payload.trigger_value ?? 3} qualifizierten Besuchen erhältst du ${reward}.`
       case "challenge":
         return `Schließe die Challenge ab und erhalte ${reward}.`
       case "comeback":
-        return `Dein Comeback-Vorteil: Erhalte ${reward} bei einem berechtigten Besuch.`
+        return comebackIsTimeBonus
+          ? `Zeitbonus: Erhalte ${reward} bei einer schnellen Rückkehr.`
+          : isAutomatic
+            ? `Comeback-Bonus: Erhalte ${reward} bei einem berechtigten Besuch automatisch.`
+            : `Comeback-Deal: Erhalte ${reward} bei einem berechtigten Besuch.`
       case "limited_drop":
         return `Deal Drop: Erhalte ${reward}, solange das Kontingent reicht.`
       default:
@@ -4871,12 +4898,12 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
         return "Keine manuelle Kassenaktion. Bonusstempel nach bestätigtem Scan automatisch gutschreiben."
       case "happy_hour":
         return timeWindow
-          ? `Aktivierten Happy-Hour-Deal prüfen und ${reward} im Zeitraum ${timeWindow} anwenden.`
-          : `Aktivierten Happy-Hour-Deal prüfen und ${reward} anwenden.`
+          ? `Aktivierten Vorteil im Rahmen der Happy Hour prüfen und ${reward} im Zeitraum ${timeWindow} anwenden.`
+          : `Aktivierten Vorteil im Rahmen der Happy Hour prüfen und ${reward} anwenden.`
       case "welcome":
         return `Berechtigung im Scan prüfen und ${reward} einmalig auf den aktuellen Bon anwenden.`
       case "streak":
-        return `Streak-Prämie im Kundenkonto prüfen und ${reward} nach der Einlösung kostenlos ausgeben.`
+        return `Streak-Bonus im Kundenkonto prüfen und ${reward} nach der Einlösung kostenlos ausgeben.`
       case "challenge":
         return `Aktive Challenge und Berechtigung prüfen; ${reward} exakt einmal am aktuellen Bon anwenden.`
       case "comeback":
@@ -4901,7 +4928,7 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
           ? `Nur von ${timeWindow} gültig. Nicht mit anderen Deals kombinierbar.`
           : "Nur im konfigurierten Happy-Hour-Zeitraum gültig. Nicht mit anderen Deals kombinierbar."
       case "welcome":
-        return "Einmal pro Nutzerkonto einlösbar. Nicht mit anderen Welcome-Deals kombinierbar."
+        return "Einmal pro Nutzerkonto einlösbar. Nicht mit anderen Willkommensdeals kombinierbar."
       case "limited_drop":
         return "Nur solange das Kontingent reicht. Nicht mit anderen Deals kombinierbar."
       default:
