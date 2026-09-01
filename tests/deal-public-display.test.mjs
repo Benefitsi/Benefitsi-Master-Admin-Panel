@@ -5,6 +5,7 @@ import test from "node:test"
 import {
   readDealFormDraft,
   readDealPublicDisplayValues,
+  isForbiddenPublicDealTitle,
 } from "../lib/deal-form.ts"
 import {
   micrositeDealDescription,
@@ -52,6 +53,13 @@ test("deal drafts preserve an explicitly empty subtitle instead of falling back"
   assert.equal(draft.displayTitle, "Mein Deal")
   assert.equal(draft.displaySubtitle, "")
   assert.equal(draft.displaySubtitleAuto, false)
+})
+
+test("public deal titles reject legacy campaign aliases before saving", () => {
+  assert.equal(isForbiddenPublicDealTitle("Top Deal Pizza"), true)
+  assert.equal(isForbiddenPublicDealTitle("Top-Vorteil"), true)
+  assert.equal(isForbiddenPublicDealTitle("2 für 1 Pizza"), false)
+  assert.equal(isForbiddenPublicDealTitle("Deal Drop"), false)
 })
 
 test("payload display values preserve null automatic and empty custom subtitle states", () => {

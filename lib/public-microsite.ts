@@ -29,7 +29,7 @@ const PUBLIC_DEAL_COLUMNS =
 // Keep a projection without the additive public-copy fields so a microsite
 // can continue serving legacy deals during a staggered database rollout.
 const PUBLIC_DEAL_COLUMNS_LEGACY =
-  "id,partner_id,type,discount_type,premium_only,benefit_category,audience,activation_required,allow_free_trial,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,display_title,display_subtitle,trigger_value,expiry_days,happy_hour_start,happy_hour_end,timezone,cooldown_hours,valid_from,valid_until,max_redemptions_global,max_redemptions_per_user,stock_total,stock_remaining,selection_expires_minutes,priority,min_spend,max_discount_amount,reward_track_target,weekdays,reserve_on_selection,metadata,created_at,updated_at"
+  "id,partner_id,type,discount_type,premium_only,benefit_category,audience,activation_required,allow_free_trial,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,trigger_value,expiry_days,happy_hour_start,happy_hour_end,timezone,cooldown_hours,valid_from,valid_until,max_redemptions_global,max_redemptions_per_user,stock_total,stock_remaining,selection_expires_minutes,priority,min_spend,max_discount_amount,reward_track_target,weekdays,reserve_on_selection,metadata,created_at,updated_at"
 
 export async function getPublishedMicrositePage(
   supabase: SupabaseClient,
@@ -107,7 +107,7 @@ export async function getPublishedMicrositePage(
 
   let publicDealsData = dealsResult.data
   let publicDealsError = dealsResult.error
-  if (dealsResult.error && isMissingPublicDealDisplayColumn(dealsResult.error)) {
+  if (dealsResult.error && isMissingPublicDealCanonicalColumn(dealsResult.error)) {
     const legacyDealsResult = await supabase
       .from("deals")
       .select(PUBLIC_DEAL_COLUMNS_LEGACY)
@@ -217,7 +217,7 @@ export async function getPublishedMicrositePage(
   }
 }
 
-function isMissingPublicDealDisplayColumn(error: { message?: string } | null) {
+export function isMissingPublicDealCanonicalColumn(error: { message?: string } | null) {
   const message = error?.message?.toLowerCase() || ""
   const looksLikeMissingColumn =
     message.includes("column") &&
@@ -225,10 +225,14 @@ function isMissingPublicDealDisplayColumn(error: { message?: string } | null) {
       message.includes("not found") ||
       message.includes("schema cache"))
 
-  return (
-    looksLikeMissingColumn &&
-    (message.includes("display_title") || message.includes("display_subtitle"))
-  )
+  return looksLikeMissingColumn && [
+    "display_title",
+    "display_subtitle",
+    "reward_format",
+    "trigger_key",
+    "campaign_type",
+    "activation_mode",
+  ].some((column) => message.includes(column))
 }
 
 function sanitizePartnerForPublicMicrosite(

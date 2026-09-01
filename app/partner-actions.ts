@@ -17,6 +17,7 @@ import {
 } from "@/lib/deal-copy"
 import {
   discountTypeUsesRewardItem,
+  isForbiddenPublicDealTitle,
   readDealFormDraft,
   readDealPublicDisplayValues,
   type DealFormDraft,
@@ -4541,6 +4542,10 @@ function validateDealPayload(payload: ParsedDeal) {
 
   if (!isDiscountType(payload.discount_type)) {
     return "Discount type is required."
+  }
+
+  if (isForbiddenPublicDealTitle(payload.display_title)) {
+    return "Der öffentliche Anzeigetext enthält einen veralteten Begriff. Bitte verwende Vorteil oder einen konkreten Vorteilstitel."
   }
 
   if (!isAudience(payload.audience)) {

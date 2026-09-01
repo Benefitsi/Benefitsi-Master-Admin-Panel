@@ -215,3 +215,59 @@ test("uses the real welcome and stamp reward values instead of generic copy", ()
     "",
   )
 })
+
+test("microsite public titles reject legacy aliases and stay concrete", () => {
+  assert.equal(
+    micrositeDealTitle({
+      type: "two_for_one",
+      discount_type: "2for1",
+      discount_value: null,
+      reward_item: "Pizza",
+      benefit_count: null,
+      customer_description: "",
+      min_spend: null,
+      display_title: "Top Deal Pizza",
+    }),
+    "2 für 1 Pizza",
+  )
+  assert.equal(
+    micrositeDealTitle({
+      type: "free_item",
+      discount_type: "item",
+      discount_value: null,
+      reward_item: "Ayran",
+      benefit_count: null,
+      customer_description: "",
+      min_spend: null,
+      display_title: "Gratisartikel",
+    }),
+    "Gratisartikel: Ayran",
+  )
+  assert.equal(
+    micrositeDealTitle({
+      type: "discount",
+      discount_type: "percent",
+      discount_value: 15,
+      reward_item: null,
+      benefit_count: null,
+      customer_description: "",
+      min_spend: null,
+      display_title: "Rabatt",
+    }),
+    "15 % Rabatt",
+  )
+})
+
+test("stamp reward titles use the canonical German term", () => {
+  assert.equal(
+    micrositeStampRewardTitle({
+      reward_type: "stamp_reward",
+      discount_type: null,
+      discount_value: null,
+      reward_item: null,
+      title: "Stamp Reward",
+      customer_description: null,
+    }),
+    "Stempelbelohnung",
+  )
+})

@@ -5438,7 +5438,7 @@ function formatDraftRewardSummary(
   }
 
   if (discountType === "item") {
-    return rewardItem.trim() || "Gratisartikel"
+    return rewardItem.trim() ? `Gratisartikel: ${rewardItem.trim()}` : "Gratisartikel"
   }
 
   if (discountType === "bonus_stamp") {
@@ -5495,7 +5495,7 @@ function formatDealPublicSubtitle(discountType: string, rewardItem: string) {
   }
 
   if (discountType === "item") {
-    return rewardItem.trim() ? `Gratis ${rewardItem.trim()}` : "Gratisartikel"
+    return rewardItem.trim() ? `Gratisartikel: ${rewardItem.trim()}` : "Gratisartikel"
   }
 
   if (discountType === "bonus_stamp") {

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import publicMicrositeModule from "../lib/public-microsite.ts"
+import publicMicrositeModule, {
+  isMissingPublicDealCanonicalColumn,
+} from "../lib/public-microsite.ts"
 import { isMicrositeTwoForOneDeal } from "../lib/microsite-deals.ts"
 import { partnerSocialUrl } from "../lib/microsite-personalization.ts"
 
@@ -289,6 +291,21 @@ test("public microsites fall back to the legacy deal projection during rollout",
   assert.equal(page.partner.deals[0].display_subtitle, null)
   assert.equal(
     base.selections.some((selection) => !selection.includes("display_title")),
+    true,
+  )
+})
+
+test("public microsite retries when any canonical taxonomy column is missing", () => {
+  assert.equal(
+    isMissingPublicDealCanonicalColumn({
+      message: 'column "reward_format" does not exist',
+    }),
+    true,
+  )
+  assert.equal(
+    isMissingPublicDealCanonicalColumn({
+      message: 'column "activation_mode" is missing from schema cache',
+    }),
     true,
   )
 })
