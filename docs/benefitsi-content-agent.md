@@ -15,16 +15,17 @@ The Admin Panel sends bounded public facts to `POST /hermes`:
   "action": "content-draft",
   "profile": "benefitsi-content",
   "task": "partner_description",
-  "payload": { "name": "...", "city": "..." },
-  "message": "..."
+  "payload": { "name": "...", "city": "..." }
 }
 ```
 
-The M1 bridge accepts only the six allowlisted editorial tasks, limits the
-payload, requires the dedicated profile, and runs Hermes with the
-`context_engine` toolset. The profile has no MCP server, bundled skills,
-scheduler, database credential or publication capability. The bridge also
-requires the instruction/data markers when the Admin Panel supplies a prompt.
+The M1 bridge accepts only the six allowlisted editorial tasks and their
+task-specific public fields, limits the payload, requires the dedicated
+profile, and builds the prompt server-side. It never accepts a client-supplied
+instruction or prompt. Generic Hermes chat, session, and Kanban actions cannot
+use this profile. Hermes runs with the `context_engine` toolset. The profile
+has no MCP server, bundled skills, scheduler, database credential or
+publication capability.
 
 ## M1 installation
 

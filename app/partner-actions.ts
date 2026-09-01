@@ -10,7 +10,6 @@ import {
   isDealCopyField,
 } from "@/lib/deal-copy"
 import {
-  buildContentDraftPrompt,
   parseContentDraftResponse,
   type ContentDraftTask,
 } from "@/lib/content-agent"
@@ -109,12 +108,6 @@ async function requestContentDraft(
     throw new Error("Content-Agent is unavailable: The Hermes bridge must use HTTPS.")
   }
 
-  const message = buildContentDraftPrompt({
-    task,
-    facts: payload,
-    currentText: payload.currentText,
-  })
-
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -126,7 +119,6 @@ async function requestContentDraft(
       profile: "benefitsi-content",
       task,
       payload,
-      message,
     }),
     signal: AbortSignal.timeout(60_000),
   })

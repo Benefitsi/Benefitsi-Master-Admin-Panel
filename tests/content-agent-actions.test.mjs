@@ -15,6 +15,9 @@ test("partner and deal copy actions use the dedicated Content-Agent bridge contr
   assert.match(code, /parseContentDraftResponse/)
   assert.doesNotMatch(code, /action:\s*["']partner-description["']/)
   assert.doesNotMatch(code, /profile:\s*["']ben["']/)
+
+  const bridgeRequest = code.slice(code.indexOf("body: JSON.stringify"), code.indexOf("signal: AbortSignal.timeout"))
+  assert.doesNotMatch(bridgeRequest, /message/)
 })
 
 test("content actions keep drafts human-reviewed and do not save agent output", async () => {

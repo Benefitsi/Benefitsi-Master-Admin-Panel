@@ -127,7 +127,7 @@ test("deal actions preserve rejected drafts and expose Content-Agent copy genera
   assert.match(code, /discountTypeUsesRewardItem\(/)
   assert.match(code, /dealDraft/)
   assert.match(code, /generateDealCopy/)
-  assert.match(code, /buildContentDraftPrompt/)
+  assert.match(code, /requestContentDraft\(/)
   assert.match(code, /action:\s*["']content-draft["']/)
 })
 
