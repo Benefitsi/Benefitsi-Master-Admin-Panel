@@ -31,6 +31,9 @@ test("Ben description prompts are scoped to public partner facts and German outp
   assert.match(prompt, /deutsch/i)
   assert.match(prompt, /Café Morgenrot/)
   assert.match(prompt, /keine Fakten erfinden/i)
+  assert.doesNotMatch(prompt, /Hauptstraße 4/)
+  assert.match(prompt, /1 bis 2 kurze, direkte Sätze/i)
+  assert.match(prompt, /keine Adresse/i)
   assert.match(prompt, /JSON/i)
 })
 
@@ -43,18 +46,18 @@ test("Ben responses accept fenced JSON and reject empty or oversized description
   assert.throws(() => parseBenDescriptionResponse(JSON.stringify({ description: "x".repeat(2001) })), /2000/)
 })
 
-test("partner actions guard updates and route Ben through the existing M1 bridge", async () => {
+test("partner actions guard updates and route copy drafts through the dedicated M1 Content-Agent", async () => {
   const code = await readFile(actionsUrl, "utf8")
 
   assert.match(code, /partnerUpdateWasApplied\(result\.data\)/)
   assert.match(code, /M1_BRIDGE_URL/)
   assert.match(code, /M1_BRIDGE_SECRET/)
-  assert.match(code, /action:\s*["']partner-description["']/)
-  assert.match(code, /profile:\s*["']ben["']/)
+  assert.match(code, /action:\s*["']content-draft["']/)
+  assert.match(code, /profile:\s*["']benefitsi-content["']/)
   assert.match(code, /generatePartnerDescription/)
 })
 
-test("partner editor keeps localized labels inside responsive controls and exposes Ben on Description", async () => {
+test("partner editor keeps localized labels inside responsive controls and exposes the Content-Agent on Description", async () => {
   const code = await readFile(adminUrl, "utf8")
 
   assert.match(code, /overflow-x-auto[\s\S]*min-w-max/)
@@ -121,23 +124,23 @@ test("Ben deal-copy prompts are German, bounded, and field-scoped", async () => 
   assert.match(prompt, /Café Morgenrot/)
 })
 
-test("deal actions preserve rejected drafts and expose Ben copy generation", async () => {
+test("deal actions preserve rejected drafts and expose Content-Agent copy generation", async () => {
   const code = await readFile(actionsUrl, "utf8")
 
   assert.match(code, /discountTypeUsesRewardItem\(/)
   assert.match(code, /dealDraft/)
   assert.match(code, /generateDealCopy/)
-  assert.match(code, /buildBenDealCopyPrompt/)
-  assert.match(code, /action:\s*["']partner-description["']/)
+  assert.match(code, /requestContentDraft\(/)
+  assert.match(code, /action:\s*["']content-draft["']/)
 })
 
-test("deal copy fields expose a Ben suggestion action", async () => {
+test("deal copy fields expose a Content-Agent suggestion action", async () => {
   const code = await readFile(adminUrl, "utf8")
 
   assert.match(code, /dealDraft/)
   assert.match(code, /generateDealCopy/)
-  assert.match(code, /BenSuggestionButton/)
-  assert.equal((code.match(/BenSuggestionButton/g) ?? []).length >= 3, true)
+  assert.match(code, /ContentAgentSuggestionButton/)
+  assert.equal((code.match(/ContentAgentSuggestionButton/g) ?? []).length >= 3, true)
 })
 
 test("default deal copy uses the canonical lifecycle terminology", async () => {

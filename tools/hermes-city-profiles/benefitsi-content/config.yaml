@@ -1,0 +1,9 @@
+model:
+  default: MiniMax-M3.0
+  provider: minimax
+  base_url: https://api.minimax.io/anthropic
+fallback_providers: []
+toolsets:
+  - context_engine
+_config_version: 33
+mcp_servers: {}
