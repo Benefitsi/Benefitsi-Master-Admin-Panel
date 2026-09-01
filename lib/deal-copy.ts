@@ -6,7 +6,10 @@ export const BEN_DEAL_COPY_FIELDS = [
   "terms",
 ] as const
 
+export const DEAL_COPY_FIELDS = BEN_DEAL_COPY_FIELDS
+
 export type BenDealCopyField = (typeof BEN_DEAL_COPY_FIELDS)[number]
+export type DealCopyField = BenDealCopyField
 
 export const BEN_DEAL_COPY_MAX_LENGTH = 2_000
 
@@ -33,6 +36,8 @@ function bounded(value: unknown, maxLength: number) {
 export function isBenDealCopyField(value: string): value is BenDealCopyField {
   return (BEN_DEAL_COPY_FIELDS as readonly string[]).includes(value)
 }
+
+export const isDealCopyField = isBenDealCopyField
 
 export function buildBenDealCopyPrompt(input: BenDealCopyInput) {
   const context = {

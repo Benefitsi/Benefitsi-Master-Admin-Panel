@@ -7,14 +7,12 @@ import sharp from "sharp"
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js"
 import { requireAdmin } from "@/lib/admin"
 import {
-  buildBenDescriptionPrompt,
-  parseBenDescriptionResponse,
-} from "@/lib/partner-description"
-import {
-  buildBenDealCopyPrompt,
-  isBenDealCopyField,
-  parseBenDealCopyResponse,
+  isDealCopyField,
 } from "@/lib/deal-copy"
+import {
+  parseContentDraftResponse,
+  type ContentDraftTask,
+} from "@/lib/content-agent"
 import {
   discountTypeUsesRewardItem,
   isForbiddenPublicDealTitle,
@@ -80,6 +78,71 @@ const DURATION_BONUS_DEAL = "duration_bonus"
 const COMEBACK_INACTIVE_DEAL = "comeback_inactive"
 const DURATION_BONUS_MODE = "duration_bonus"
 const COMEBACK_INACTIVE_MODE = "comeback_inactive"
+const CONTENT_AGENT_PROFILE = "benefitsi-content"
+
+type ContentDraftBridgePayload = Record<string, unknown>
+
+async function requestContentDraft(
+  task: ContentDraftTask,
+  payload: ContentDraftBridgePayload,
+) {
+  const bridgeUrl = process.env.M1_BRIDGE_URL?.trim()
+  const bridgeSecret = process.env.M1_BRIDGE_SECRET?.trim()
+
+  if (!bridgeUrl || !bridgeSecret) {
+    throw new Error("Content-Agent is unavailable: The Hermes/M1 bridge is not configured.")
+  }
+
+  let endpoint: URL
+  try {
+    endpoint = new URL("/hermes", bridgeUrl)
+  } catch {
+    throw new Error("Content-Agent is unavailable: The Hermes bridge URL is invalid.")
+  }
+
+  if (
+    endpoint.protocol !== "https:" &&
+    endpoint.hostname !== "localhost" &&
+    endpoint.hostname !== "127.0.0.1"
+  ) {
+    throw new Error("Content-Agent is unavailable: The Hermes bridge must use HTTPS.")
+  }
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${bridgeSecret}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "content-draft",
+      profile: "benefitsi-content",
+      task,
+      payload,
+    }),
+    signal: AbortSignal.timeout(60_000),
+  })
+
+  if (!response.ok) {
+    throw new Error("The Content-Agent could not create a draft right now. Please try again later.")
+  }
+
+  const body = (await response.json().catch(() => null)) as {
+    response?: unknown
+    profile?: unknown
+    task?: unknown
+  } | null
+
+  if (body?.profile !== CONTENT_AGENT_PROFILE || body.task !== task) {
+    throw new Error("The Content-Agent returned an invalid response.")
+  }
+
+  try {
+    return parseContentDraftResponse(body.response, task)
+  } catch {
+    throw new Error("The Content-Agent returned an invalid draft.")
+  }
+}
 
 export type PartnerActionState = {
   message: string
@@ -829,7 +892,7 @@ export async function generatePartnerDescription(
 
   const name = stringValue(formData, "name")
   if (!name) {
-    return { ok: false, message: "Partner name is required before asking Ben." }
+    return { ok: false, message: "Partner name is required before asking the Content-Agent." }
   }
 
   const textValidation = validateTextLengthRules([
@@ -843,75 +906,32 @@ export async function generatePartnerDescription(
     return { ok: false, message: textValidation }
   }
 
-  const bridgeUrl = process.env.M1_BRIDGE_URL?.trim()
-  const bridgeSecret = process.env.M1_BRIDGE_SECRET?.trim()
-
-  if (!bridgeUrl || !bridgeSecret) {
-    return {
-      ok: false,
-      message: "Ben is unavailable: The Hermes/M1 bridge is not configured.",
-    }
-  }
-
-  let endpoint: URL
   try {
-    endpoint = new URL("/hermes", bridgeUrl)
-  } catch {
-    return { ok: false, message: "Ben is unavailable: The Hermes bridge URL is invalid." }
-  }
-
-  if (
-    endpoint.protocol !== "https:" &&
-    endpoint.hostname !== "localhost" &&
-    endpoint.hostname !== "127.0.0.1"
-  ) {
-    return { ok: false, message: "Ben is unavailable: The Hermes bridge must use HTTPS." }
-  }
-
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${bridgeSecret}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        action: "partner-description",
-        profile: "ben",
-        message: buildBenDescriptionPrompt({
-          name,
-          type: stringValue(formData, "type"),
-          city: stringValue(formData, "city_name"),
-          categories: listValue(formData, "category"),
-          address: stringValue(formData, "address"),
-          currentDescription: stringValue(formData, "description"),
-        }),
-      }),
-      signal: AbortSignal.timeout(60_000),
+    const description = await requestContentDraft("partner_description", {
+      name,
+      type: stringValue(formData, "type"),
+      city: stringValue(formData, "city_name"),
+      categories: listValue(formData, "category"),
+      address: stringValue(formData, "address"),
+      currentText: stringValue(formData, "description"),
     })
-
-    if (!response.ok) {
-      return { ok: false, message: "Ben could not create a draft right now. Please try again later." }
-    }
-
-    const body = (await response.json().catch(() => null)) as {
-      response?: unknown
-    } | null
-    const description = parseBenDescriptionResponse(body?.response)
 
     return {
       ok: true,
       description,
-      message: "Ben has inserted a draft. Please review it before saving.",
+      message: "The Content-Agent inserted a draft. Please review it before saving.",
     }
   } catch (error) {
     console.error(
-      "Ben partner description request failed:",
+      "Content-Agent partner description request failed:",
       error instanceof Error ? error.message : "unknown error",
     )
     return {
       ok: false,
-      message: "Ben could not be reached right now. Please check the Hermes/M1 bridge.",
+      message:
+        error instanceof Error
+          ? error.message
+          : "The Content-Agent could not be reached right now. Please check the Hermes/M1 bridge.",
     }
   }
 }
@@ -923,13 +943,13 @@ export async function generateDealCopy(
   await requireAdmin()
 
   const field = stringValue(formData, "field")
-  if (!isBenDealCopyField(field)) {
-    return { ok: false, message: "Dieses Vorteilsfeld ist für Ben nicht freigegeben." }
+  if (!isDealCopyField(field)) {
+    return { ok: false, message: "This deal field is not approved for the Content-Agent." }
   }
 
   const partnerName = stringValue(formData, "partner_name")
   if (!partnerName) {
-    return { ok: false, message: "Ein Partnername ist erforderlich, bevor Ben gefragt wird." }
+    return { ok: false, message: "A partner name is required before asking the Content-Agent." }
   }
 
   const textValidation = validateTextLengthRules([
@@ -945,78 +965,35 @@ export async function generateDealCopy(
     return { ok: false, message: textValidation }
   }
 
-  const bridgeUrl = process.env.M1_BRIDGE_URL?.trim()
-  const bridgeSecret = process.env.M1_BRIDGE_SECRET?.trim()
-
-  if (!bridgeUrl || !bridgeSecret) {
-    return {
-      ok: false,
-      message: "Ben ist nicht verfügbar: Die Hermes/M1-Bridge ist nicht konfiguriert.",
-    }
-  }
-
-  let endpoint: URL
   try {
-    endpoint = new URL("/hermes", bridgeUrl)
-  } catch {
-    return { ok: false, message: "Ben ist nicht verfügbar: Die Bridge-URL ist ungültig." }
-  }
-
-  if (
-    endpoint.protocol !== "https:" &&
-    endpoint.hostname !== "localhost" &&
-    endpoint.hostname !== "127.0.0.1"
-  ) {
-    return { ok: false, message: "Ben ist nicht verfügbar: Die Hermes-Bridge muss HTTPS verwenden." }
-  }
-
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${bridgeSecret}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        // The active M1 bridge already exposes this Ben route. The prompt
-        // selects the deal-copy task while keeping bridge compatibility.
-        action: "partner-description",
-        profile: "ben",
-        message: buildBenDealCopyPrompt({
-          field,
-          partnerName,
-          dealConcept: stringValue(formData, "deal_concept"),
-          discountType: stringValue(formData, "discount_type"),
-          audience: stringValue(formData, "audience"),
-          rewardItem: stringValue(formData, "reward_item"),
-          currentText: stringValue(formData, "current_text"),
-        }),
-      }),
-      signal: AbortSignal.timeout(60_000),
+    const task: ContentDraftTask =
+      field === "staff_instructions" ? "staff_instructions" : "deal_copy"
+    const description = await requestContentDraft(task, {
+      field,
+      partnerName,
+      dealConcept: stringValue(formData, "deal_concept"),
+      discountType: stringValue(formData, "discount_type"),
+      audience: stringValue(formData, "audience"),
+      rewardItem: stringValue(formData, "reward_item"),
+      currentText: stringValue(formData, "current_text"),
     })
-
-    if (!response.ok) {
-      return { ok: false, message: "Ben konnte gerade keinen Entwurf erstellen. Bitte versuche es später erneut." }
-    }
-
-    const body = (await response.json().catch(() => null)) as {
-      response?: unknown
-    } | null
-    const description = parseBenDealCopyResponse(body?.response)
 
     return {
       ok: true,
       description,
-      message: "Ben hat einen Entwurf eingefügt. Bitte prüfe ihn vor dem Speichern.",
+      message: "The Content-Agent inserted a draft. Please review it before saving.",
     }
   } catch (error) {
     console.error(
-      "Ben deal copy request failed:",
+      "Content-Agent deal copy request failed:",
       error instanceof Error ? error.message : "unknown error",
     )
     return {
       ok: false,
-      message: "Ben konnte gerade nicht erreicht werden. Bitte prüfe die Hermes/M1-Bridge.",
+      message:
+        error instanceof Error
+          ? error.message
+          : "The Content-Agent could not be reached right now. Please check the Hermes/M1 bridge.",
     }
   }
 }
