@@ -31,6 +31,9 @@ test("Ben description prompts are scoped to public partner facts and German outp
   assert.match(prompt, /deutsch/i)
   assert.match(prompt, /Café Morgenrot/)
   assert.match(prompt, /keine Fakten erfinden/i)
+  assert.doesNotMatch(prompt, /Hauptstraße 4/)
+  assert.match(prompt, /1 bis 2 kurze, direkte Sätze/i)
+  assert.match(prompt, /keine Adresse/i)
   assert.match(prompt, /JSON/i)
 })
 
