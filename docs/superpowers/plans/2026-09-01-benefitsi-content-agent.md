@@ -4,7 +4,7 @@
 
 **Goal:** Create a least-privilege `benefitsi-content` Hermes profile on the M1 and route Admin Panel editorial draft actions through it while keeping Ben as the orchestrator/reviewer.
 
-**Architecture:** The Admin Panel will keep its existing server actions and human-review workflow, but send bounded structured prompts to the M1 bridge with `profile: "benefitsi-content"` and `action: "content-draft"`. The new profile will be a draft-only MiniMax profile with no MCP server, database credential, scheduler or publication capability; the bridge will enforce the profile/action boundary and return a normalized JSON draft.
+**Architecture:** The Admin Panel will keep its existing server actions and human-review workflow, but send bounded structured payloads to the M1 bridge with `profile: "benefitsi-content"` and `action: "content-draft"`. The new profile will be a draft-only MiniMax profile with no MCP server, database credential, scheduler or publication capability; the bridge will enforce the profile/action boundary, build the prompt server-side from task-specific fields, and return a normalized JSON draft.
 
 **Tech Stack:** Next.js server actions, TypeScript, Node test runner with `tsx`, Python Hermes/M1 bridge, Hermes profile YAML/Markdown, Vercel Production.
 
@@ -50,7 +50,7 @@
 
 **Interfaces:**
 - Bridge POST `/hermes` accepts `{ action: "content-draft", task, payload }` only for the `benefitsi-content` profile.
-- The bridge calls `hermes_chat("benefitsi-content", ...)` with the restricted toolset and returns `{ action, profile, task, response, sessionId }`.
+- The bridge calls its validated internal Hermes runner for `benefitsi-content` with the restricted toolset and returns `{ action, profile, task, response, sessionId }`.
 - The profile uses MiniMax M3.0, the existing M1 credential mechanism, no MCP/database access, no scheduled worker, and no publish/automation mutation capability.
 
 - [x] **Step 1: Add bridge regression tests/fixture assertions for allowed profile/action, rejected Ben/city profiles, bounded payload size, and draft-only toolset.**
