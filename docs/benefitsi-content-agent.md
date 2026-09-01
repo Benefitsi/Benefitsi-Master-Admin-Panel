@@ -15,9 +15,15 @@ The Admin Panel sends bounded public facts to `POST /hermes`:
   "action": "content-draft",
   "profile": "benefitsi-content",
   "task": "partner_description",
-  "payload": { "name": "...", "city": "..." }
+  "payload": { "name": "...", "type": "...", "city": "...", "categories": ["..."] }
 }
 ```
+
+Partnerbeschreibungen sind bewusst kurz und direkt (1 bis 2 Sätze). Der
+Content-Agent erhält dafür keine Adresse und keinen bestehenden Beschreibungstext
+und darf keine Adresse, Öffnungszeiten, Kontaktdaten oder Wegbeschreibung in den
+Entwurf aufnehmen. Die Adresse bleibt ausschließlich ein separates Feld im
+Admin-Panel und in der App.
 
 The M1 bridge accepts only the six allowlisted editorial tasks and their
 task-specific public fields (with text, text-array and numeric type checks),

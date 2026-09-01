@@ -27,3 +27,15 @@ test("content actions keep drafts human-reviewed and do not save agent output", 
   assert.match(code, /AbortSignal\.timeout\(60_000\)/)
   assert.doesNotMatch(code, /supabase[\s\S]{0,120}description\s*=/i)
 })
+
+test("partner description actions send no address or existing description to the Content-Agent", async () => {
+  const code = await readFile(actionsUrl, "utf8")
+  const start = code.indexOf('export async function generatePartnerDescription')
+  const end = code.indexOf('export async function generateDealCopy', start)
+  assert.ok(start >= 0 && end > start)
+  const partnerAction = code.slice(start, end)
+
+  assert.doesNotMatch(partnerAction, /stringValue\(formData, ["']address["']/)
+  assert.doesNotMatch(partnerAction, /address:/)
+  assert.doesNotMatch(partnerAction, /currentText:/)
+})

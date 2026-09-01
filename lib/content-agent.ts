@@ -18,7 +18,8 @@ export type ContentDraftInput = {
 }
 
 const fieldInstructions: Record<ContentDraftTask, string> = {
-  partner_description: "Schreibe 2 bis 3 gut lesbare Sätze für die öffentliche Partnerbeschreibung.",
+  partner_description:
+    "Schreibe 1 bis 2 kurze, direkte Sätze für die öffentliche Partnerbeschreibung; keine Adresse, Öffnungszeiten, Kontaktdaten oder Wegbeschreibung nennen.",
   deal_copy: "Schreibe einen kurzen, verständlichen Entwurf für das angeforderte Deal-Feld.",
   staff_instructions: "Schreibe kurze, eindeutige Hinweise für Mitarbeitende zur Einlösung.",
   menu_description: "Schreibe eine sachliche, kurze Beschreibung der Speisekarte.",
@@ -57,10 +58,18 @@ function boundValue(value: unknown, depth = 0): unknown {
 export function buildContentDraftPrompt(input: ContentDraftInput) {
   assertTask(input.task)
 
-  const facts = boundValue(input.facts)
+  const facts = boundValue(
+    input.task === "partner_description"
+      ? Object.fromEntries(
+          Object.entries(input.facts).filter(([key]) =>
+            ["name", "type", "city", "categories"].includes(key),
+          ),
+        )
+      : input.facts,
+  )
   const factsJson = JSON.stringify(facts, null, 2).slice(0, 7_000)
   const currentText =
-    typeof input.currentText === "string"
+    input.task !== "partner_description" && typeof input.currentText === "string"
       ? input.currentText.trim().slice(0, CONTENT_DRAFT_MAX_LENGTH)
       : ""
 

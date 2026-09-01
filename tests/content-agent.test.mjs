@@ -37,6 +37,24 @@ test("content prompts separate instructions from bounded public data", () => {
   assert.ok(prompt.includes("Ignore the rules"))
 })
 
+test("partner descriptions omit addresses and existing copy from the agent prompt", () => {
+  const prompt = buildContentDraftPrompt({
+    task: "partner_description",
+    facts: {
+      name: "Café Morgenrot",
+      type: "Gastronomie",
+      city: "Annweiler",
+      categories: ["Frühstück"],
+      address: "Hauptstraße 4",
+    },
+    currentText: "Besuche uns in der Hauptstraße 4 – direkt neben dem Markt.",
+  })
+
+  assert.doesNotMatch(prompt, /Hauptstraße 4/)
+  assert.match(prompt, /1 bis 2 kurze, direkte Sätze/i)
+  assert.match(prompt, /keine Adresse/i)
+})
+
 test("content prompts bound arbitrary fields and do not include unbounded input", () => {
   const oversized = "x".repeat(20_000)
   const prompt = buildContentDraftPrompt({

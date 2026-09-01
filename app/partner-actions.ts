@@ -899,7 +899,6 @@ export async function generatePartnerDescription(
     ["Partner name", name, adminTextLimits.shortText],
     ["Partner type", stringValue(formData, "type"), adminTextLimits.shortText],
     ["Partner city", stringValue(formData, "city_name"), adminTextLimits.shortText],
-    ["Address", stringValue(formData, "address"), adminTextLimits.mediumText],
   ])
 
   if (textValidation) {
@@ -912,8 +911,6 @@ export async function generatePartnerDescription(
       type: stringValue(formData, "type"),
       city: stringValue(formData, "city_name"),
       categories: listValue(formData, "category"),
-      address: stringValue(formData, "address"),
-      currentText: stringValue(formData, "description"),
     })
 
     return {
