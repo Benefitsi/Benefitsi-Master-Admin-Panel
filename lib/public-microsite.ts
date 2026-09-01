@@ -116,6 +116,10 @@ export async function getPublishedMicrositePage(
 
     publicDealsData = (legacyDealsResult.data ?? []).map((deal) => ({
       ...deal,
+      reward_format: null,
+      trigger_key: null,
+      campaign_type: null,
+      activation_mode: null,
       display_title: null,
       display_subtitle: null,
     }))
