@@ -143,12 +143,12 @@ test("deal copy fields expose a Ben suggestion action", async () => {
 test("default deal copy uses the canonical lifecycle terminology", async () => {
   const code = await readFile(actionsUrl, "utf8")
 
-  assert.match(code, /Willkommensdeal/)
-  assert.match(code, /Willkommensbonus/)
-  assert.match(code, /Comeback-Deal/)
-  assert.match(code, /Comeback-Bonus/)
+  assert.match(code, /Willkommen:/)
+  assert.match(code, /Willkommensvorteilen/)
+  assert.match(code, /Comeback:/)
+  assert.match(code, /Comeback-Berechtigung/)
   assert.match(code, /Zeitbonus/)
-  assert.doesNotMatch(code, /Willkommensvorteil|Comeback-Vorteil/)
+  assert.doesNotMatch(code, /Willkommensdeal|Willkommensbonus|Comeback-Deal|Comeback-Bonus/)
 })
 
 test("deal writes carry canonical taxonomy dimensions alongside legacy fields", async () => {

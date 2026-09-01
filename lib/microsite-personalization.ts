@@ -146,7 +146,7 @@ export function defaultMicrositeCopyForPartner(partner: PartnerSeed) {
       contactHeadline: "Buche deinen nächsten Termin.",
       appHeadline: "Deine Vorteile und Wiederbesuche in einer App",
       appText:
-        "Angebote aktivieren, Loyalty-Vorteile sammeln und mit deinem Lieblingsstudio verbunden bleiben.",
+        "Vorteile aktivieren, Treuestempel sammeln und mit deinem Lieblingsstudio verbunden bleiben.",
       footerText: "Moderner Service, loyale Gäste und ein starker lokaler Auftritt.",
       services: [
         { label: "Beratung", icon: "spark" },
@@ -156,7 +156,7 @@ export function defaultMicrositeCopyForPartner(partner: PartnerSeed) {
       ],
       printHeadline: `${name} x Benefitsi`,
       printSubheadline:
-        serviceSummary || "Termine, Specials und Loyalty-Vorteile für wiederkehrende Gäste.",
+        serviceSummary || "Termine, Specials und Treuevorteile für wiederkehrende Gäste.",
       printNote: `${name} in ${place} entdecken`,
     }
   }
@@ -172,9 +172,9 @@ export function defaultMicrositeCopyForPartner(partner: PartnerSeed) {
       menuDescription:
         "Massagen, Pakete, Wellness-Rituale und hochwertige Zusatzleistungen lassen sich hier ruhig und hochwertig darstellen.",
       contactHeadline: "Bereit zum Abschalten?",
-      appHeadline: "Wellness-Angebote und Loyalty-Vorteile in deiner Tasche",
+      appHeadline: "Wellness-Vorteile und Treuestempel in deiner Tasche",
       appText:
-        "Gäste können individuelle Angebote freischalten, Besuche sammeln und leichter wiederkommen.",
+        "Gäste können individuelle Vorteile freischalten, Besuche sammeln und leichter wiederkommen.",
       footerText: "Ruhige Premium-Sprache, verlässliche Betreuung und stärkere Retention für lokale Wellness-Partner.",
       services: [
         { label: "Entspannende Sessions", icon: "leaf" },
@@ -194,7 +194,7 @@ export function defaultMicrositeCopyForPartner(partner: PartnerSeed) {
       heroSlogan: "Ausgeh-Abende, Member-Perks und lokale Erlebnisse mit Wiederkehrfaktor.",
       aboutText:
         description ||
-        `${name} macht aus Besuchen wiederkehrende Erlebnisse mit exklusiven Angeboten, leichter Entdeckung und stärkerer lokaler Sichtbarkeit in ${place}.`,
+        `${name} macht aus Besuchen wiederkehrende Erlebnisse mit exklusiven Vorteilen, leichter Entdeckung und stärkerer lokaler Sichtbarkeit in ${place}.`,
       menuLabel: "Highlights",
       menuHeadline: "Erlebnisse, die Gäste nicht verpassen sollten.",
       menuDescription:
@@ -212,7 +212,7 @@ export function defaultMicrositeCopyForPartner(partner: PartnerSeed) {
       ],
       printHeadline: `Heute bei ${name}`,
       printSubheadline:
-        serviceSummary || "Das nächste Event, Bundle oder Benefitsi Angebot aufmerksamkeitsstark bewerben.",
+        serviceSummary || "Das nächste Event, Bundle oder den nächsten Benefitsi-Vorteil aufmerksamkeitsstark bewerben.",
       printNote: `${name} in ${place}`,
     }
   }
@@ -229,7 +229,7 @@ export function defaultMicrositeCopyForPartner(partner: PartnerSeed) {
     contactHeadline: "Bereit für deinen nächsten Besuch?",
     appHeadline: "Alle lokalen Vorteile in deiner Benefitsi App",
     appText:
-      "Vorteile aktivieren, Loyalty-Stempel sammeln und den Lieblingspartner immer nur einen Tap entfernt haben.",
+      "Vorteile aktivieren, Treuestempel sammeln und den Lieblingspartner immer nur einen Tap entfernt haben.",
     footerText: "Lokaler Geschmack, loyale Gäste und eine Microsite für mehr Wiederbesuche.",
     services: [
       { label: "Abholung", icon: "bag" },
@@ -239,7 +239,7 @@ export function defaultMicrositeCopyForPartner(partner: PartnerSeed) {
     ],
     printHeadline: `${name} x Benefitsi`,
     printSubheadline:
-      serviceSummary || "Bestes Angebot, Top-Gerichte und Loyalty-Vorteile an einem Ort zeigen.",
+      serviceSummary || "Beste Vorteile, Top-Gerichte und Treuestempel an einem Ort zeigen.",
     printNote: `${name} in ${place}`,
   }
 }

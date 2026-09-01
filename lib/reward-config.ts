@@ -1,15 +1,15 @@
 export const dealTypeOptions = [
   { value: "two_for_one", label: "2 für 1" },
-  { value: "welcome", label: "Willkommensdeal" },
-  { value: "comeback", label: "Comeback-Deal" },
+  { value: "welcome", label: "Willkommen" },
+  { value: "comeback", label: "Comeback" },
   { value: "happy_hour", label: "Happy Hour" },
   { value: "permanent_discount", label: "Dauerrabatt" },
   { value: "limited_drop", label: "Deal Drop" },
-  { value: "birthday", label: "Geburtstagsdeal" },
+  { value: "birthday", label: "Geburtstag" },
   { value: "free_item", label: "Gratisartikel" },
   { value: "discount", label: "Rabatt" },
   { value: "bonus_stamp", label: "Bonusstempel" },
-  { value: "streak", label: "Streak-Bonus" },
+  { value: "streak", label: "Streak" },
   { value: "challenge", label: "Challenge" },
 ] as const
 
@@ -56,7 +56,7 @@ export const audienceOptions = [
 export const milestoneAudienceOptions = audienceOptions
 
 export const rewardTypeOptions = [
-  { value: "item", label: "Artikel" },
+  { value: "item", label: "Gratisartikel" },
   { value: "fixed", label: "Fester Betrag" },
   { value: "percent", label: "Prozent" },
   { value: "2for1", label: "2 für 1" },

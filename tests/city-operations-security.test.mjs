@@ -162,8 +162,8 @@ test("central benefit editor uses the canonical welcome-deal label", async () =>
     "utf8",
   )
 
-  assert.match(definitions, /value: "welcome", label: "Willkommensdeal"/)
-  assert.doesNotMatch(definitions, /Willkommensvorteil/)
+  assert.match(definitions, /value: "welcome", label: "Willkommen"/)
+  assert.doesNotMatch(definitions, /Willkommensdeal|Willkommensvorteil/)
 })
 
 test("central event editor captures planning fields without bypassing review", async () => {

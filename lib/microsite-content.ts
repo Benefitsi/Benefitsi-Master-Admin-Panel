@@ -26,30 +26,37 @@ const MICROSITE_DEAL_TYPE_LABELS: Record<
   free_item: { de: "Gratisartikel", en: "Free item" },
   discount: { de: "Rabatt", en: "Discount" },
   bonus_stamp: { de: "Bonusstempel", en: "Bonus stamp" },
-  streak: { de: "Streak-Bonus", en: "Streak reward" },
+  streak: { de: "Streak", en: "Streak" },
   challenge: { de: "Challenge", en: "Challenge" },
 }
 
-const FORBIDDEN_PUBLIC_TITLE = /\b(?:top[ -]?(?:deal|vorteil)|hauptdeal|daily[ -]?deal)\b/i
+const FORBIDDEN_PUBLIC_TITLE = /\b(?:top[ -]?(?:deal|vorteil)|hauptdeal|daily[ -]?deal|(?:gratis|free)[ -]?rewards?|reward)\b/i
 
 export function normalizeMicrositePublicText(value: string | null | undefined) {
   if (!value?.trim()) return ""
   return value
     .trim()
     .replace(/\b2\s*[-–]?\s*for\s*[-–]?\s*1\b/gi, "2 für 1")
-    .replace(/\b(?:gratis|free)[- ]?rewards?\b/gi, "Gratisartikel")
+    .replace(/\b(?:gratis|free)[- ]?rewards?\s*[:\-–]?\s*/gi, "Gratis ")
     .replace(/\b(?:stamp|stempel)[- ]?rewards?\b/gi, "Stempelbelohnung")
     .replace(/\bstempel[- ]?belohnung\b/gi, "Stempelbelohnung")
-    .replace(/\bwillkommensvorteile?\b/gi, "Willkommensdeal")
-    .replace(/\bcomeback[- ]?vorteile?\b/gi, "Comeback-Deal")
-    .replace(/\bgeburtstagsvorteile?\b/gi, "Geburtstagsdeal")
-    .replace(/\bstreak[- ]?boni\b/gi, "Streak-Bonus")
+    .replace(/\bwillkommens(?:deal|vorteile?)\b/gi, "Willkommen")
+    .replace(/\bcomeback[- ]?(?:deal|vorteile?)\b/gi, "Comeback")
+    .replace(/\bgeburtstags(?:deal|vorteile?)\b/gi, "Geburtstag")
+    .replace(/\bstreak[- ]?(?:boni|bonus)\b/gi, "Streak")
     .replace(/\bvorteile?\s+drop\b/gi, "Deal Drop")
     .replace(/\b(?:top[- ]?(?:deal|vorteil)|hauptdeal|daily[- ]?deal)\b/gi, "Vorteil")
     .replace(/\bdeal\b(?!\s+drop\b)/gi, "Vorteil")
     .replace(/\brewards\b/gi, "Belohnungen")
     .replace(/\breward\b/gi, "Belohnung")
     .replace(/[ \t]{2,}/g, " ")
+    .trim()
+}
+
+function normalizeRewardItem(value: string | null | undefined) {
+  return (value?.trim() || "")
+    .replace(/^(?:Gratisartikel|Free item)\s*[:\-–]?\s*/i, "")
+    .replace(/^(?:Gratis|Free)\s+/i, "")
     .trim()
 }
 
@@ -111,23 +118,11 @@ export function micrositeDealTypeLabel(
   language: MicrositeContentLanguage = "de",
 ) {
   const type = deal.type?.trim().toLowerCase() || ""
-  const discountType = deal.discount_type?.trim().toLowerCase() || ""
-  const rewardFormat = deal.reward_format?.trim().toLowerCase() || ""
   const trigger = deal.trigger_key?.trim().toLowerCase() || ""
-  const isBonusStamp =
-    rewardFormat === "bonus_stamp" ||
-    discountType === "bonus_stamp" ||
-    type === "bonus_stamp" ||
-    deal.activation_mode === "automatic_background"
-
   if (trigger === "welcome" || type === "welcome") {
     return language === "en"
-      ? isBonusStamp
-        ? "Welcome bonus"
-        : "Welcome deal"
-      : isBonusStamp
-        ? "Willkommensbonus"
-        : "Willkommensdeal"
+      ? "Welcome"
+      : "Willkommen"
   }
 
   if (trigger === "time_bonus" || (trigger !== "comeback" && type === "comeback" && micrositeDealMetadataString(deal.metadata, "bonus_mode") === "duration_bonus")) {
@@ -138,31 +133,19 @@ export function micrositeDealTypeLabel(
     const mode = micrositeDealMetadataString(deal.metadata, "bonus_mode")
 
     if (mode === "comeback_inactive") {
-      return language === "en"
-        ? isBonusStamp
-          ? "Comeback bonus"
-          : "Comeback deal"
-        : isBonusStamp
-          ? "Comeback-Bonus"
-          : "Comeback-Deal"
+      return language === "en" ? "Comeback" : "Comeback"
     }
 
     return language === "en" ? "Time bonus" : "Zeitbonus"
   }
 
   if (trigger === "birthday" || type === "birthday") {
-    return language === "en"
-      ? isBonusStamp
-        ? "Birthday bonus"
-        : "Birthday deal"
-      : isBonusStamp
-        ? "Geburtstagsbonus"
-        : "Geburtstagsdeal"
+    return language === "en" ? "Birthday" : "Geburtstag"
   }
 
   const labels = MICROSITE_DEAL_TYPE_LABELS[type]
 
-  return labels?.[language] || deal.type?.trim() || (language === "en" ? "Benefit" : "Vorteil")
+  return labels?.[language] || (language === "en" ? "Benefit" : "Vorteil")
 }
 
 function micrositeDealMetadataString(
@@ -250,8 +233,13 @@ export function micrositeDealTitle(
     ? `${generatedBaseTitle}${minimumSpend}`
     : generatedBaseTitle
   const isGenericTitle =
-    (rewardFormat === "two_for_one" && ["2 für 1", "2-for-1"].includes(explicitTitle)) ||
-    (rewardFormat === "free_item" && ["Gratisartikel", "Free item"].includes(explicitTitle)) ||
+    (rewardFormat === "two_for_one" &&
+      (["2 für 1", "2-for-1"].includes(explicitTitle) ||
+        (Boolean(normalizeRewardItem(deal.reward_item)) && explicitTitle === normalizeRewardItem(deal.reward_item)))) ||
+    (rewardFormat === "free_item" &&
+      (["Gratisartikel", "Free item"].includes(explicitTitle) ||
+        (Boolean(normalizeRewardItem(deal.reward_item)) && explicitTitle === normalizeRewardItem(deal.reward_item)) ||
+        /^(?:Gratisartikel|Free item)\s*[:\-–]/iu.test(explicitTitle))) ||
     (rewardFormat === "discount" && ["Rabatt", "Discount"].includes(explicitTitle)) ||
     (rewardFormat === "bonus_stamp" && ["Bonusstempel", "Bonus stamp"].includes(explicitTitle))
 
@@ -261,7 +249,7 @@ export function micrositeDealTitle(
   if (generatedTitle) return generatedTitle
 
   if (dealType === "two_for_one" || discountType === "2for1") {
-    const rewardItem = deal.reward_item?.trim()
+    const rewardItem = normalizeRewardItem(deal.reward_item)
     const prefix = language === "en" ? "2-for-1" : "2 für 1"
     return rewardItem ? `${prefix} ${rewardItem}` : prefix
   }
@@ -280,7 +268,7 @@ export function micrositeDealTitle(
   }
 
   return (
-    deal.reward_item?.trim() ||
+    normalizeRewardItem(deal.reward_item) ||
     deal.customer_description?.trim() ||
     (language === "en" ? "Partner benefit" : "Partner-Vorteil")
   )
@@ -296,9 +284,12 @@ function canonicalMicrositeRewardFormat(
   const type = deal.type?.trim().toLowerCase() || ""
   const discountType = deal.discount_type?.trim().toLowerCase() || ""
   if (type === "two_for_one" || discountType === "2for1") return "two_for_one"
-  if (type === "free_item") return "free_item"
-  if (type === "discount" && ["fixed", "percent"].includes(discountType)) return "discount"
-  if (type === "bonus_stamp" && discountType === "bonus_stamp") return "bonus_stamp"
+  if (type === "free_item" || discountType === "item") return "free_item"
+  // Lifecycle triggers (welcome, comeback, birthday, …) can carry a
+  // concrete reward format in discount_type.  The concrete format wins for
+  // the public title so every surface renders the same benefit.
+  if (["fixed", "percent"].includes(discountType)) return "discount"
+  if (type === "bonus_stamp" || discountType === "bonus_stamp") return "bonus_stamp"
   return ""
 }
 
@@ -309,7 +300,7 @@ function generatedMicrositeDealTitle(
   rewardFormat: string,
   language: MicrositeContentLanguage,
 ) {
-  const rewardItem = deal.reward_item?.trim()
+  const rewardItem = normalizeRewardItem(deal.reward_item)
   if (rewardFormat === "two_for_one") {
     return rewardItem ? `${language === "en" ? "2-for-1" : "2 für 1"} ${rewardItem}` : language === "en" ? "2-for-1" : "2 für 1"
   }
@@ -320,28 +311,23 @@ function generatedMicrositeDealTitle(
     return `${formatNumber(deal.discount_value, language)} % ${language === "en" ? "discount" : "Rabatt"}`
   }
   if (rewardFormat === "free_item" && rewardItem) {
-    return `${language === "en" ? "Free item" : "Gratisartikel"}: ${rewardItem}`
+    return `${language === "en" ? "Free" : "Gratis"} ${rewardItem}`
   }
   if (rewardFormat === "bonus_stamp") {
     return `+${deal.benefit_count ?? 1} ${language === "en" ? "bonus stamps" : "Bonusstempel"}`
   }
 
-  const isBonusStamp =
-    rewardFormat === "bonus_stamp" ||
-    discountType === "bonus_stamp" ||
-    dealType === "bonus_stamp" ||
-    deal.activation_mode === "automatic_background"
-  if (dealType === "welcome") return language === "en" ? (isBonusStamp ? "Welcome bonus" : "Welcome deal") : isBonusStamp ? "Willkommensbonus" : "Willkommensdeal"
+  if (dealType === "welcome") return language === "en" ? "Welcome" : "Willkommen"
   if (dealType === "comeback") {
     const mode = micrositeDealMetadataString(deal.metadata, "bonus_mode")
     if (mode === "duration_bonus") return language === "en" ? "Time bonus" : "Zeitbonus"
-    return language === "en" ? (isBonusStamp ? "Comeback bonus" : "Comeback deal") : isBonusStamp ? "Comeback-Bonus" : "Comeback-Deal"
+    return language === "en" ? "Comeback" : "Comeback"
   }
-  if (dealType === "birthday") return language === "en" ? (isBonusStamp ? "Birthday bonus" : "Birthday deal") : isBonusStamp ? "Geburtstagsbonus" : "Geburtstagsdeal"
+  if (dealType === "birthday") return language === "en" ? "Birthday" : "Geburtstag"
   if (dealType === "happy_hour") return language === "en" ? "Happy hour" : "Happy Hour"
   if (dealType === "permanent_discount") return language === "en" ? "Permanent discount" : "Dauerrabatt"
   if (dealType === "limited_drop") return language === "en" ? "Deal drop" : "Deal Drop"
-  if (dealType === "streak") return language === "en" ? "Streak bonus" : "Streak-Bonus"
+  if (dealType === "streak") return language === "en" ? "Streak" : "Streak"
   if (dealType === "challenge") return language === "en" ? "Challenge" : "Challenge"
   return ""
 }
@@ -443,19 +429,22 @@ export function micrositeStampRewardTitle(
   >,
   language: MicrositeContentLanguage = "de",
 ) {
-  const rawExplicitTitle = milestone.title?.trim() || milestone.reward_item?.trim()
-  const explicitTitle = normalizeMicrositePublicText(rawExplicitTitle)
+  const rawTitle = milestone.title?.trim() || ""
+  const explicitTitle = normalizeMicrositePublicText(rawTitle)
   const rewardType =
     milestone.reward_type?.trim().toLowerCase() ||
     milestone.discount_type?.trim().toLowerCase() ||
     ""
 
-  if (explicitTitle && /(?:stamp|stempel)/i.test(rewardType) && /(?:reward|belohnung|stamp|stempel)/i.test(explicitTitle)) {
+  // The configured reward format is authoritative. This prevents a legacy
+  // free-form title (or the raw reward item) from replacing a concrete,
+  // canonical public title on the microsite.
+  if (/(?:stamp|stempel)/i.test(rewardType)) {
     return language === "en" ? "Stamp reward" : "Stempelbelohnung"
   }
 
-  if (explicitTitle && !FORBIDDEN_PUBLIC_TITLE.test(rawExplicitTitle || "")) {
-    return explicitTitle
+  if (rewardType === "item" && normalizeRewardItem(milestone.reward_item)) {
+    return `${language === "en" ? "Free" : "Gratis"} ${normalizeRewardItem(milestone.reward_item)}`
   }
 
   if (rewardType === "fixed" && isFiniteNumber(milestone.discount_value)) {
@@ -463,7 +452,7 @@ export function micrositeStampRewardTitle(
   }
 
   if (rewardType === "percent" && isFiniteNumber(milestone.discount_value)) {
-    return `${formatNumber(milestone.discount_value, language)}% ${language === "en" ? "discount" : "Rabatt"}`
+    return `${formatNumber(milestone.discount_value, language)} % ${language === "en" ? "discount" : "Rabatt"}`
   }
 
   if (rewardType === "bonus_stamp" && isFiniteNumber(milestone.discount_value)) {
@@ -471,7 +460,16 @@ export function micrositeStampRewardTitle(
   }
 
   if (rewardType === "2for1") {
-    return language === "en" ? "2-for-1 benefit" : "2 für 1 Vorteil"
+    const item = normalizeRewardItem(milestone.reward_item)
+    return item
+      ? `${language === "en" ? "2-for-1" : "2 für 1"} ${item}`
+      : language === "en"
+        ? "2-for-1"
+        : "2 für 1"
+  }
+
+  if (explicitTitle && !FORBIDDEN_PUBLIC_TITLE.test(rawTitle)) {
+    return explicitTitle
   }
 
   return (

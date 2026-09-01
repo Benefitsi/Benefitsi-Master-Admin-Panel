@@ -265,7 +265,7 @@ const dealUiTypeOptions = dealTypeOptions.flatMap((option) =>
   option.value === "comeback"
     ? [
         { value: DURATION_BONUS_DEAL, label: "Zeitbonus" },
-        { value: COMEBACK_INACTIVE_DEAL, label: "Comeback-Deal" },
+        { value: COMEBACK_INACTIVE_DEAL, label: "Comeback" },
       ]
     : [option],
 )
@@ -477,7 +477,7 @@ const partnerSettingsTabCopy: Record<
 > = {
   details: { title: "Partner profile", description: "Business information, contact details, location, branding, and media." },
   rewards: { title: "Operating hours", description: "Weekly opening schedule, date-specific hour changes, and yearly holiday exceptions." },
-  deals: { title: "Deals and rewards", description: "Customer offers, stamp milestones, eligibility rules, availability, and redemption settings." },
+  deals: { title: "Benefits and rewards", description: "Customer benefits, stamp milestones, eligibility rules, availability, and redemption settings." },
   menu: { title: "Menu management", description: "Menu details, categories, items, pricing, images, and display order." },
   access: { title: "Staff access", description: "Manage the staff members who can administer or scan for this partner." },
   activity: { title: "Customer activity", description: "Review stamp-card progress, visits, applied benefits, and redemptions." },
@@ -490,7 +490,7 @@ const createPartnerTabCopy: Record<
 > = {
   profile: { title: "Business profile", description: "Enter the partner's identity, ownership, contact details, and location." },
   operations: { title: "Operations and media", description: "Configure opening hours, holiday closures, branding, and cover images." },
-  offers: { title: "Rewards and deals", description: "Set up stamp-card milestones and optional customer deals." },
+  offers: { title: "Rewards and benefits", description: "Set up stamp-card milestones and optional customer benefits." },
   menu: { title: "Starter menu", description: "Create the initial menu, categories, items, prices, and images." },
   review: { title: "Review and create", description: "Review required sections, then create the partner and all staged content." },
 }
@@ -587,7 +587,7 @@ export function PartnerWorkspace({
         <LiveMetric label="Partners" value={partnerCount} />
         <LiveMetric label="Active partners" value={activePartners} />
         <LiveMetric label="Featured partners" value={featuredPartners} />
-        <LiveMetric label="Deals" value={dealCount} />
+        <LiveMetric label="Benefits" value={dealCount} />
         <LiveMetric label="Menu approvals required" value={pendingMenuReviews.length} />
       </div>
 
@@ -913,7 +913,7 @@ function PartnerListButton({
             {partner.is_featured ? <FeaturedBadge compact /> : null}
             {!hasDeals ? (
               <span className="whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                Deal recommended
+                Benefit recommended
               </span>
             ) : null}
             {pendingMenuCount ? (
@@ -1940,7 +1940,7 @@ function PartnerForm({
   }> = [
     { id: "profile", label: "Business Profile", hasRequiredFields: true },
     { id: "operations", label: "Operations & Media", hasRequiredFields: true },
-    { id: "offers", label: "Rewards & Deals", hasRequiredFields: true },
+    { id: "offers", label: "Rewards & Benefits", hasRequiredFields: true },
     ...(menuSupported
       ? [{ id: "menu" as const, label: "Starter Menu", hasRequiredFields: true }]
       : []),
@@ -2617,14 +2617,14 @@ function PartnerForm({
           </FormSection>
 
           <FormSection
-            title="Deals"
+            title="Benefits"
             defaultOpen={false}
             status={{ label: "Recommended", tone: "recommended" }}
           >
             {initialDeals.length === 0 ? (
               <WarningNote>
-                At least one deal is recommended, but the partner can be
-                created without deals.
+              At least one benefit is recommended, but the partner can be
+              created without benefits.
               </WarningNote>
             ) : null}
             <InitialDealsEditor
@@ -3166,7 +3166,7 @@ function InitialMilestonesEditor({
           >
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-zinc-900">
-                Milestone {index + 1}
+                Belohnungsstufe {index + 1}
               </p>
               {milestones.length > 1 ? (
                 <button
@@ -3174,7 +3174,7 @@ function InitialMilestonesEditor({
                   onClick={() => onRemove(milestone.id)}
                   className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
                 >
-                  Remove
+                  Entfernen
                 </button>
               ) : null}
             </div>
@@ -3192,7 +3192,7 @@ function InitialMilestonesEditor({
                 required
               />
               <SelectField
-                label="Reward type"
+                label="Belohnungstyp"
                 name={`initial_milestone_${index}_reward_type`}
                 value={milestone.rewardType}
                 options={rewardTypeOptions}
@@ -3213,7 +3213,7 @@ function InitialMilestonesEditor({
               />
               {showsRewardItem ? (
                 <TextField
-                  label="Reward item"
+                  label="Artikelname"
                   name={`initial_milestone_${index}_reward_item`}
                   value={milestone.rewardItem}
                   onChange={(rewardItem) =>
@@ -3363,9 +3363,9 @@ function InitialDealsEditor({
                       toggleDraftId(current, deal.id),
                     )
                   }
-                  title={`Deal ${index + 1}`}
+                  title={`Vorteil ${index + 1}`}
                   rewardSummary={
-                    deal.rewardSummary || deal.title || "Reward not set"
+                    deal.rewardSummary || deal.title || "Vorteil nicht eingerichtet"
                   }
                   actions={
                     <>
@@ -3378,14 +3378,14 @@ function InitialDealsEditor({
                       }
                       className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
                     >
-                      {expanded ? "Collapse" : "Edit"}
+                      {expanded ? "Einklappen" : "Bearbeiten"}
                     </button>
                     <button
                       type="button"
                       onClick={() => onRemove(deal.id)}
                       className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
                     >
-                      Remove
+                      Entfernen
                     </button>
                     </>
                   }
@@ -4071,8 +4071,8 @@ function DealsPanel({
     <div className="space-y-4">
       {!hasDealRows ? (
         <WarningNote>
-          At least one deal is recommended, but this partner can exist
-          without deals.
+          At least one benefit is recommended, but this partner can exist
+          without benefits.
         </WarningNote>
       ) : null}
       {hasDealRows ? (
@@ -4116,7 +4116,7 @@ function DealsPanel({
 
   return (
     <EditorShell
-      title="Deals"
+      title="Benefits"
       description="Configure selectable, automatic, and fallback benefits for the Supabase redemption flow."
       collapsible
       defaultOpen={false}
@@ -4151,7 +4151,7 @@ function DealCardHeader({
   typeLabel?: string
 }) {
   const displayTypeLabel =
-    typeLabel || labelForValue(dealUiTypeOptions, dealType) || "Deal"
+    typeLabel || labelForValue(dealUiTypeOptions, dealType) || "Benefit"
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -4293,8 +4293,8 @@ function NewDealCard({
         }
         expanded={expanded}
         onToggle={() => setExpanded((value) => !value)}
-        title={`Deal ${index + 1}`}
-        rewardSummary={deal.rewardSummary || deal.title || "Reward not set"}
+        title={`Vorteil ${index + 1}`}
+        rewardSummary={deal.rewardSummary || deal.title || "Vorteil nicht eingerichtet"}
         actions={
           <>
           <button
@@ -4302,14 +4302,14 @@ function NewDealCard({
             onClick={() => setExpanded((value) => !value)}
             className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
           >
-            {expanded ? "Collapse" : "Edit"}
+            {expanded ? "Einklappen" : "Bearbeiten"}
           </button>
           <button
             type="button"
             onClick={onRemove}
             className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
           >
-            Remove
+            Entfernen
           </button>
           </>
         }
@@ -4395,7 +4395,7 @@ function DealCard({
         typeLabel={dealCardTypeLabel(deal)}
         expanded={false}
         onToggle={onEdit}
-        title={`Deal ${index + 1}`}
+        title={`Benefit ${index + 1}`}
         rewardSummary={formatDealRewardSummary(deal)}
         actions={
           deal.id ? (
@@ -4671,7 +4671,7 @@ type DealFormConfig = {
 
 const dealFieldHelp = {
   dealType:
-    "Legt Auslöser oder Kampagne fest, zum Beispiel Happy Hour, Willkommensdeal, Comeback-Deal oder Streak-Bonus.",
+    "Legt Auslöser oder Kampagne fest, zum Beispiel Happy Hour, Willkommen, Comeback oder Streak.",
   discountType:
     "Legt fest, was Nutzer erhalten: Prozent- oder €-Rabatt, Gratisartikel, Bonusstempel oder 2 für 1.",
   benefitCategory:
@@ -4751,7 +4751,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
     shortDescription:
       "Vorteil für den ersten Besuch. Je nach Belohnungsformat direkt auswählbar oder automatisch.",
     description:
-      "Vorteil für den ersten Besuch oder die erste qualifizierte Interaktion. Direkte Kassenaktionen sind Willkommensdeals; automatische Zusatzstempel sind Willkommensboni.",
+      "Vorteil für den ersten Besuch oder die erste qualifizierte Interaktion. Der Auslöser heißt Willkommen; das Belohnungsformat bestimmt die konkrete Ausgabe.",
     recommendedSetup: [
       "Bonusstempel: automatisch beim Scan, keine Aktivierung",
       "Gratisartikel, Rabatt oder 2 für 1: vor dem Besuch auswählen",
@@ -4797,7 +4797,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
     shortDescription:
       "Reaktiviert Nutzer, die für einen definierten Zeitraum nicht zurückgekehrt sind.",
     description:
-      "Eine Reaktivierungskampagne für inaktive Nutzer. Direkte Kassenaktionen heißen Comeback-Deal; automatische Zusatzstempel Comeback-Bonus.",
+      "Eine Reaktivierungskampagne für inaktive Nutzer. Der Auslöser heißt Comeback; das Belohnungsformat bestimmt die konkrete Ausgabe.",
     recommendedSetup: [
       "Inaktivitätszeitraum und optionale Besuchsfilter festlegen",
       "Vorschau nutzen, um passende Nutzer zu prüfen",
@@ -4897,7 +4897,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
     shortDescription:
       "Vorteil zum Geburtstag. Je nach Belohnungsformat direkt auswählbar oder automatisch.",
     description:
-      "Ein Auslöser zum Geburtstag. Direkt auswählbare Belohnungen sind Geburtstagsdeals; automatische Zusatzstempel Geburtstagsboni.",
+      "Ein Auslöser zum Geburtstag. Der Auslöser heißt Geburtstag; das Belohnungsformat bestimmt die konkrete Ausgabe.",
     recommendedSetup: [
       "Bonusstempel: automatisch beim Scan, keine Aktivierung",
       "Gratisartikel, Rabatt oder 2 für 1: vor dem Besuch auswählen",
@@ -4993,7 +4993,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   streak: {
     shortDescription: "Bonus auf Basis einer Besuchsserie bei diesem Partner.",
     description:
-      "Ein Streak-Bonus auf Basis einer Besuchsserie. Die Belohnung kann Bonusstempel, Gratisartikel, festen oder prozentualen Rabatt oder 2 für 1 enthalten.",
+      "Ein Streak auf Basis einer Besuchsserie. Die Belohnung kann Bonusstempel, Gratisartikel, festen oder prozentualen Rabatt oder 2 für 1 enthalten.",
     recommendedSetup: [
       "Auslöserwert ist erforderlich",
       "Bonusstempel werden automatisch angewendet",
@@ -5438,7 +5438,8 @@ function formatDraftRewardSummary(
   }
 
   if (discountType === "item") {
-    return rewardItem.trim() ? `Gratisartikel: ${rewardItem.trim()}` : "Gratisartikel"
+    const item = normalizeRewardItem(rewardItem)
+    return item ? `Gratis ${item}` : "Gratisartikel"
   }
 
   if (discountType === "bonus_stamp") {
@@ -5447,7 +5448,8 @@ function formatDraftRewardSummary(
   }
 
   if (discountType === "2for1") {
-    return rewardItem.trim() ? `2 für 1 ${rewardItem.trim()}` : "2 für 1"
+    const item = normalizeRewardItem(rewardItem)
+    return item ? `2 für 1 ${item}` : "2 für 1"
   }
 
   return "Kein direkter Vorteil"
@@ -5486,7 +5488,9 @@ function formatDealDisplayName({
     benefitCount,
   )
 
-  return reward === "Kein direkter Vorteil" ? label : `${reward} – ${label}`
+  // The reward format is the public title. Appending the technical trigger
+  // created divergent labels such as "10 % Rabatt – Rabatt".
+  return reward === "Kein direkter Vorteil" ? label : reward
 }
 
 function formatDealPublicSubtitle(discountType: string, rewardItem: string) {
@@ -5495,7 +5499,8 @@ function formatDealPublicSubtitle(discountType: string, rewardItem: string) {
   }
 
   if (discountType === "item") {
-    return rewardItem.trim() ? `Gratisartikel: ${rewardItem.trim()}` : "Gratisartikel"
+    const item = normalizeRewardItem(rewardItem)
+    return item ? `Gratis ${item}` : "Gratisartikel"
   }
 
   if (discountType === "bonus_stamp") {
@@ -5519,7 +5524,8 @@ function formatDealPublicTitle({
   benefitCount: number | null
 }) {
   if (type.trim().toLowerCase() === "two_for_one" || discountType === "2for1") {
-    return rewardItem.trim() ? `2 für 1 ${rewardItem.trim()}` : "2 für 1"
+    const item = normalizeRewardItem(rewardItem)
+    return item ? `2 für 1 ${item}` : "2 für 1"
   }
 
   if (discountType === "percent" && discountValue !== null) {
@@ -5531,7 +5537,8 @@ function formatDealPublicTitle({
   }
 
   if (discountType === "item") {
-    return rewardItem.trim() ? `Gratis ${rewardItem.trim()}` : "Gratisartikel"
+    const item = normalizeRewardItem(rewardItem)
+    return item ? `Gratis ${item}` : "Gratisartikel"
   }
 
   if (discountType === "bonus_stamp") {
@@ -5539,11 +5546,11 @@ function formatDealPublicTitle({
   }
 
   if (type === "welcome") {
-    return discountType === "bonus_stamp" ? "Willkommensbonus" : "Willkommensdeal"
+    return "Willkommen"
   }
 
   if (type === COMEBACK_INACTIVE_DEAL) {
-    return discountType === "bonus_stamp" ? "Comeback-Bonus" : "Comeback-Deal"
+    return "Comeback"
   }
 
   return formatDealDisplayName({
@@ -5553,6 +5560,13 @@ function formatDealPublicTitle({
     rewardItem,
     benefitCount,
   })
+}
+
+function normalizeRewardItem(value: string | null | undefined) {
+  return (value?.trim() || "")
+    .replace(/^(?:Gratisartikel|Free item)\s*[:\-–]?\s*/i, "")
+    .replace(/^(?:Gratis|Free)\s+/i, "")
+    .trim()
 }
 
 function DealFields({
@@ -5751,7 +5765,7 @@ function DealFields({
   })
   const selectedBackendDealType = backendDealTypeForUi(selectedDealType)
   const selectedDealTypeLabel =
-    labelForValue(dealUiTypeOptions, selectedDealType) || "Deal"
+    labelForValue(dealUiTypeOptions, selectedDealType) || "Benefit"
   const benefitCategory = config.autoValues.benefitCategory
   const activationRequired = config.autoValues.activationRequired
   const isLimitedDrop = selectedBackendDealType === "limited_drop"
@@ -6994,7 +7008,7 @@ function MilestoneForm({
             required
           />
           <SelectField
-            label="Reward type"
+            label="Belohnungstyp"
             name="reward_type"
             value={rewardType}
             options={withCurrentOption(rewardTypeOptions, milestone?.reward_type)}
@@ -7009,7 +7023,7 @@ function MilestoneForm({
           />
           {showsRewardItem ? (
             <TextField
-              label="Reward item"
+              label="Artikelname"
               name="reward_item"
               defaultValue={milestone?.reward_item}
               required
@@ -9980,7 +9994,7 @@ function RedemptionHistoryPanel({
                                   )}
                                 />
                                 <Info
-                                  label="Reward item"
+                                  label="Artikelname"
                                   value={benefit.reward_item || "Not set"}
                                 />
                                 <Info
@@ -10367,7 +10381,7 @@ function DeleteMilestoneForm({
         if (
           !window.confirm(
             language === "de"
-              ? "Diese Prämienstufe löschen?"
+              ? "Diese Belohnungsstufe löschen?"
               : "Delete this milestone?",
           )
         ) {
@@ -12745,9 +12759,7 @@ function dealCardTypeLabel(deal: Deal) {
   }
 
   if (deal.type === "welcome") {
-    return deal.discount_type === "bonus_stamp"
-      ? "Willkommensbonus"
-      : "Willkommensdeal"
+    return "Willkommen"
   }
 
   if (
@@ -12755,9 +12767,7 @@ function dealCardTypeLabel(deal: Deal) {
     metadataString(metadataObject(deal.metadata), "bonus_mode") ===
       COMEBACK_INACTIVE_MODE
   ) {
-    return deal.discount_type === "bonus_stamp"
-      ? "Comeback-Bonus"
-      : "Comeback-Deal"
+    return "Comeback"
   }
 
   return labelForValue(dealUiTypeOptions, dealUiTypeForDeal(deal)) || "Vorteil"

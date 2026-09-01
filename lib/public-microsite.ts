@@ -217,13 +217,21 @@ export async function getPublishedMicrositePage(
   }
 }
 
-export function isMissingPublicDealCanonicalColumn(error: { message?: string } | null) {
-  const message = error?.message?.toLowerCase() || ""
+export function isMissingPublicDealCanonicalColumn(error: unknown) {
+  const record = error && typeof error === "object"
+    ? error as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown }
+    : {}
+  const message = [record.message, record.details, record.hint, record.code]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .toLowerCase()
   const looksLikeMissingColumn =
-    message.includes("column") &&
+    (message.includes("column") || message.includes("schema cache") || message.includes("pgrst") || message.includes("42703")) &&
     (message.includes("does not exist") ||
       message.includes("not found") ||
-      message.includes("schema cache"))
+      message.includes("schema cache") ||
+      message.includes("42703") ||
+      message.includes("pgrst"))
 
   return looksLikeMissingColumn && [
     "display_title",

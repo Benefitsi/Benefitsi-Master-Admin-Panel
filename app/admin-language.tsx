@@ -231,8 +231,8 @@ const translations = [
   ["The analytics RPCs or permission tables are not available in this environment yet. No substitute values are shown until the canonical Supabase migration has been applied.", "Die Analytics-RPCs oder Berechtigungstabellen sind in dieser Umgebung noch nicht verfügbar. Bis die kanonische Supabase-Migration angewendet wurde, werden bewusst keine Ersatzwerte angezeigt."],
   ["Apply the migration with get_my_analytics_permissions_v1 and get_business_analytics_v1.", "Wende die Migration mit get_my_analytics_permissions_v1 und get_business_analytics_v1 an."],
   ["Partner Profile", "Partnerprofil"],
-  ["Hours & Rewards", "Zeiten & Prämien"],
-  ["Deals & Offers", "Vorteile & Angebote"],
+  ["Hours & Rewards", "Zeiten & Belohnungen"],
+  ["Deals & Offers", "Vorteile"],
   ["Operating Hours", "Öffnungszeiten"],
   ["Deals & Rewards", "Vorteile & Belohnungen"],
   ["Menu Management", "Menüverwaltung"],
@@ -242,9 +242,9 @@ const translations = [
   ["Partner settings", "Partnereinstellungen"],
   ["Microsite builder", "Microsite-Builder"],
   ["Partner profile", "Partnerprofil"],
-  ["Hours and loyalty rewards", "Öffnungszeiten und Treueprämien"],
-  ["Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields.", "Bearbeite Partnerdaten, Social-Media-Profile, Medien, Prämienstufen, Vorteile, Menü, Öffnungszeiten und die Supabase-Zuordnung."],
-  ["Deals and offers", "Vorteile und Angebote"],
+  ["Hours and loyalty rewards", "Öffnungszeiten und Treuebelohnungen"],
+  ["Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields.", "Bearbeite Partnerdaten, Social-Media-Profile, Medien, Belohnungsstufen, Vorteile, Menü, Öffnungszeiten und die Supabase-Zuordnung."],
+  ["Deals and offers", "Vorteile"],
   ["Menu management", "Menüverwaltung"],
   ["Staff access", "Mitarbeiterzugriff"],
   ["Customer activity", "Kundenaktivität"],
@@ -254,14 +254,16 @@ const translations = [
   ["Operations and media", "Betrieb und Medien"],
   ["Operations & Media", "Betrieb & Medien"],
   ["Rewards and deals", "Belohnungen und Vorteile"],
+  ["Rewards and benefits", "Belohnungen und Vorteile"],
   ["Rewards & Deals", "Belohnungen & Vorteile"],
+  ["Rewards & Benefits", "Belohnungen & Vorteile"],
   ["Starter menu", "Startmenü"],
   ["Starter Menu", "Startmenü"],
   ["Review and create", "Prüfen und erstellen"],
   ["Review & Create", "Prüfen & Erstellen"],
   ["Enter the partner's identity, ownership, contact details, and location.", "Erfasse Identität, Inhaber, Kontaktdaten und Standort des Partners."],
   ["Configure opening hours, holiday closures, branding, and cover images.", "Lege Öffnungszeiten, Feiertagsschließungen, Branding und Titelbilder fest."],
-  ["Set up stamp-card milestones and optional customer deals.", "Richte Stempelkarten-Prämien und optionale Kundenvorteile ein."],
+  ["Set up stamp-card milestones and optional customer deals.", "Richte Stempelbelohnungen und optionale Kundenvorteile ein."],
   ["Create the initial menu, categories, items, prices, and images.", "Erstelle das erste Menü mit Kategorien, Artikeln, Preisen und Bildern."],
   ["Review required sections, then create the partner and all staged content.", "Prüfe alle Pflichtbereiche und erstelle anschließend den Partner samt vorbereiteten Inhalten."],
   ["Please complete all required partner fields before saving.", "Bitte fülle vor dem Speichern alle Pflichtfelder des Partners aus."],
@@ -275,8 +277,8 @@ const translations = [
   ["Profile", "Profil"],
   ["Contact and Location", "Kontakt und Standort"],
   ["Business information, contact details, location, branding, and media.", "Unternehmensdaten, Kontaktdaten, Standort, Marke und Medien."],
-  ["Opening schedule, holiday closures, and stamp-card milestones.", "Öffnungszeiten, Feiertagsschließungen und Stempelkarten-Prämien."],
-  ["Customer offers, eligibility rules, availability, and redemption settings.", "Kundenangebote, Teilnahmebedingungen, Verfügbarkeit und Einlöseeinstellungen."],
+  ["Opening schedule, holiday closures, and stamp-card milestones.", "Öffnungszeiten, Feiertagsschließungen und Stempelbelohnungen."],
+  ["Customer offers, eligibility rules, availability, and redemption settings.", "Kundenvorteile, Teilnahmebedingungen, Verfügbarkeit und Einlöseeinstellungen."],
   ["Menu details, categories, items, pricing, images, and display order.", "Menüdetails, Kategorien, Artikel, Preise, Bilder und Anzeigereihenfolge."],
   ["Manage the staff members who can administer or scan for this partner.", "Mitarbeiter verwalten, die für diesen Partner administrieren oder scannen dürfen."],
   ["Review stamp-card progress, visits, applied benefits, and redemptions.", "Stempelkarten-Fortschritt, Besuche, Vorteile und Einlösungen prüfen."],
@@ -292,23 +294,27 @@ const translations = [
   ["Click any preview to replace it.", "Klicke auf eine Vorschau, um sie zu ersetzen."],
   ["Click the image to upload or replace it.", "Klicke auf das Bild, um es hochzuladen oder zu ersetzen."],
   ["Restore", "Wiederherstellen"],
-  ["Stamp-card milestones", "Stempelkarten-Prämien"],
-  ["Milestone", "Prämienstufe"],
-  ["Milestone Details", "Details der Prämienstufe"],
-  ["Milestone reward", "Stempelkarten-Prämie"],
-  ["Add milestone", "Prämienstufe hinzufügen"],
-  ["Save milestone", "Prämienstufe speichern"],
-  ["Adding milestone...", "Prämienstufe wird hinzugefügt ..."],
-  ["Saving milestone...", "Prämienstufe wird gespeichert ..."],
-  ["Manage stamp-card rewards separately from deals.", "Verwalte Stempelkarten-Prämien getrennt von Vorteilen."],
+  ["Stamp-card milestones", "Stempelbelohnungen"],
+  ["Milestone", "Belohnungsstufe"],
+  ["Milestone Details", "Details der Belohnungsstufe"],
+  ["Milestone reward", "Stempelbelohnung"],
+  ["Add milestone", "Belohnungsstufe hinzufügen"],
+  ["Save milestone", "Belohnungsstufe speichern"],
+  ["Adding milestone...", "Belohnungsstufe wird hinzugefügt ..."],
+  ["Saving milestone...", "Belohnungsstufe wird gespeichert ..."],
+  ["Manage stamp-card rewards separately from deals.", "Verwalte Stempelbelohnungen getrennt von Vorteilen."],
   ["Deals", "Vorteile"],
+  ["Benefits", "Vorteile"],
+  ["Benefit", "Vorteil"],
+  ["Benefit recommended", "Vorteil empfohlen"],
+  ["Benefit not set", "Vorteil nicht eingerichtet"],
   ["Add deal", "Vorteil hinzufügen"],
   ["Save deal", "Vorteil speichern"],
   ["Adding deal...", "Vorteil wird hinzugefügt ..."],
   ["Saving deal...", "Vorteil wird gespeichert ..."],
   ["Deleting deal...", "Vorteil wird gelöscht ..."],
   ["Deal type", "Belohnungsformat"],
-  ["Reward/effect type", "Prämien-/Effekttyp"],
+  ["Reward/effect type", "Belohnungs-/Effekttyp"],
   ["Basics", "Grundlagen"],
   ["Setup", "Einrichtung"],
   ["Auto-set", "Automatisch gesetzt"],
@@ -335,13 +341,13 @@ const translations = [
   ["Selectable discount: A normal discount deal that the user selects before visiting. This can be a percentage or fixed currency amount. It does not stack with other direct deals.", "Auswählbarer Rabatt: Ein regulärer Vorteil, den der Nutzer vor dem Besuch auswählt. Er kann prozentual oder als fester Betrag gelten und ist nicht mit anderen direkten Vorteilen kombinierbar."],
   ["A normal discount deal that the user selects before visiting. This can be a percentage or fixed currency amount. It does not stack with other direct deals.", "Ein regulärer Vorteil, den der Nutzer vor dem Besuch auswählt. Er kann prozentual oder als fester Betrag gelten und ist nicht mit anderen direkten Vorteilen kombinierbar."],
   ["Example: 10% off or €5 off.", "Beispiel: 10 % oder 5 € Rabatt."],
-  ["Display this as Selectable discount, not just Discount.", "Als „Auswählbarer Rabatt“ anzeigen, nicht nur als „Rabatt“."],
+  ["Display this as Selectable discount, not just Discount.", "Als „Rabatt“ anzeigen; die Aktivierung wird separat festgelegt."],
   ["Enter a percentage between 1 and 100.", "Gib einen Prozentwert zwischen 1 und 100 ein."],
   ["Example: 10 = 10% off.", "Beispiel: 10 entspricht 10 % Rabatt."],
   ["Menu", "Menü"],
   ["Required", "Erforderlich"],
   ["Required stamps", "Erforderliche Stempel"],
-  ["Reward type", "Prämientyp"],
+  ["Reward type", "Belohnungstyp"],
   ["Item", "Artikel"],
   ["Doner", "Döner"],
   ["Doner kebab", "Döner"],
@@ -361,19 +367,19 @@ const translations = [
   ["Bonus stamp", "Bonusstempel"],
   ["Bonus stamp count", "Anzahl der Bonusstempel"],
   ["Discount value", "Rabattwert"],
-  ["Welcome reward", "Willkommensprämie"],
+  ["Welcome reward", "Willkommen"],
   ["Time-based bonus", "Zeitbonus"],
   ["Happy Hour deal", "Happy-Hour-Vorteil"],
-  ["Permanent fallback discount", "Automatischer Basisrabatt"],
+  ["Permanent fallback discount", "Dauerrabatt"],
   ["Limited deal drop", "Limitierter Deal Drop"],
-  ["Birthday reward", "Geburtstagsprämie"],
+  ["Birthday reward", "Geburtstag"],
   ["Free item deal", "Vorteil mit Gratisartikel"],
-  ["Selectable discount", "Auswählbarer Rabatt"],
+  ["Selectable discount", "Rabatt"],
   ["Automatic bonus stamp", "Automatischer Bonusstempel"],
-  ["Streak reward", "Streak-Prämie"],
-  ["Challenge reward", "Challenge-Prämie"],
-  ["Comeback Deal", "Comeback-Deal"],
-  ["No direct reward", "Keine direkte Prämie"],
+  ["Streak reward", "Streak"],
+  ["Challenge reward", "Challenge"],
+  ["Comeback Deal", "Comeback"],
+  ["No direct reward", "Kein direkter Vorteil"],
   ["Fixed € discount", "Fester Euro-Rabatt"],
   ["Percentage discount", "Prozentualer Rabatt"],
   ["percentage off", "prozentualer Rabatt"],
@@ -399,7 +405,7 @@ const translations = [
   ["Free item", "Gratisartikel"],
   ["Discount", "Rabatt"],
   ["Bonus stamp", "Bonusstempel"],
-  ["Streak bonus", "Streak-Bonus"],
+  ["Streak bonus", "Streak"],
   ["Challenge bonus", "Challenge"],
   ["No direct benefit", "Kein direkter Vorteil"],
   ["Fixed € discount", "Fester €-Rabatt"],
@@ -410,10 +416,10 @@ const translations = [
   ["Article", "Artikel"],
   ["Free trial only", "Nur kostenlose Testphase"],
   ["Title", "Titel"],
-  ["Reward item", "Prämienartikel"],
-  ["Free reward item", "Gratis-Prämienartikel"],
+  ["Reward item", "Artikelname"],
+  ["Free reward item", "Gratisartikel"],
   ["Free dessert", "Gratisdessert"],
-  ["Reward preview", "Prämienvorschau"],
+  ["Reward preview", "Vorteilsvorschau"],
   ["Estimated savings", "Geschätzte Ersparnis"],
   ["Audience", "Zielgruppe"],
   ["Customer description", "Kundenbeschreibung"],
@@ -452,7 +458,7 @@ const translations = [
   ["Map location", "Kartenposition"],
   ["Opening hours", "Öffnungszeiten"],
   ["Social profiles", "Social-Media-Profile"],
-  ["Rewards", "Prämien"],
+  ["Rewards", "Belohnungen"],
   ["Set", "Eingerichtet"],
   ["Not set", "Nicht eingerichtet"],
   ["Social media", "Soziale Medien"],
@@ -592,7 +598,7 @@ const translations = [
   ["Automatic benefit", "Automatischer Vorteil"],
   ["Fallback benefit", "Fallback-Vorteil"],
   ["Selected direct deal source", "Ausgewählter direkter Vorteil"],
-  ["Reward milestone", "Prämienstufe"],
+  ["Reward milestone", "Belohnungsstufe"],
   ["Stamp delta", "Stempeländerung"],
   ["Scanned by", "Gescannt von"],
   ["Selected direct deal", "Ausgewählter direkter Vorteil"],
@@ -638,7 +644,7 @@ const translations = [
   ["Manage system overview", "Systemübersicht verwalten"],
   ["Quickly switch between areas", "Schnell zwischen den Bereichen wechseln"],
   ["Mobile user app", "Mobile Nutzer-App"],
-  ["Mobile user app for deals, stamps, rewards, and challenges.", "Mobile Nutzer-App für Vorteile, Stempel, Prämien und Challenges."],
+  ["Mobile user app for deals, stamps, rewards, and challenges.", "Mobile Nutzer-App für Vorteile, Stempel, Belohnungen und Challenges."],
   ["App link coming soon", "App-Link folgt"],
   ["Drafts & live pages", "Entwürfe & Live-Seiten"],
   ["Builder, drafts & live pages", "Builder, Entwürfe & Live-Seiten"],
@@ -661,7 +667,7 @@ const translations = [
   ["Preview", "Vorschau"],
   ["Live page", "Live-Seite"],
   ["System ownership", "Systemzuständigkeit"],
-  ["Mobile app, user account, deals, stamps, rewards, and scanning.", "Mobile App, Nutzerkonto, Vorteile, Stempel, Prämien und Scanning."],
+  ["Mobile app, user account, deals, stamps, rewards, and scanning.", "Mobile App, Nutzerkonto, Vorteile, Stempel, Belohnungen und Scanning."],
   ["Partner data, builder, draft, preview, publishing, and partner portal.", "Partnerdaten, Builder, Entwurf, Vorschau, Veröffentlichung und Partnerportal."],
   ["Main website, partner acquisition, city pages, and SEO pages.", "Hauptwebseite, Partnergewinnung, Städte- und SEO-Seiten."],
   ["Back to partner management", "Zur Partnerverwaltung"],
@@ -685,7 +691,7 @@ const translations = [
   ["Match existing categories and items by name and update only their add-ons. Images and other fields stay unchanged.", "Vorhandene Kategorien und Artikel anhand des Namens zuordnen und ausschließlich ihre Extras aktualisieren. Bilder und andere Felder bleiben unverändert."],
   ["Free drink", "Gratisgetränk"],
   ["No social handles added.", "Noch keine Social-Media-Profile hinzugefügt."],
-  ["No stamp-card milestones configured yet.", "Noch keine Stempelkarten-Prämien eingerichtet."],
+  ["No stamp-card milestones configured yet.", "Noch keine Stempelbelohnungen eingerichtet."],
   ["No scanner or admin access configured yet.", "Noch kein Scanner- oder Administratorzugriff eingerichtet."],
   ["No menu configured yet.", "Noch kein Menü eingerichtet."],
   ["No items in this category.", "Keine Artikel in dieser Kategorie."],
@@ -713,7 +719,7 @@ const translations = [
   ["Square Post", "Quadratischer Beitrag"],
   ["Story Banner", "Story-Banner"],
   ["Landscape Banner", "Querformat-Banner"],
-  ["Bold Offer", "Markantes Angebot"],
+  ["Bold Offer", "Markanter Vorteil"],
   ["Clean Story", "Klare Story"],
   ["Photo Spotlight", "Foto im Fokus"],
   ["Editorial Luxe", "Editorial Elegant"],
@@ -724,12 +730,14 @@ const translations = [
   ["Entertainment", "Unterhaltung"],
   ["Retail & services", "Einzelhandel & Dienstleistungen"],
   ["Add another", "Weiteres hinzufügen"],
-  ["Add another milestone", "Weitere Prämienstufe hinzufügen"],
+  ["Add another milestone", "Weitere Belohnungsstufe hinzufügen"],
   ["Allow free user trial", "Kostenlose Testphase erlauben"],
   ["Approve menu", "Menü freigeben"],
   ["At least one deal is recommended, but the partner can be created without deals.", "Mindestens ein Vorteil wird empfohlen, der Partner kann jedoch auch ohne Vorteile erstellt werden."],
   ["At least one deal is recommended, but this partner can exist without deals.", "Mindestens ein Vorteil wird empfohlen, dieser Partner kann jedoch auch ohne Vorteile bestehen."],
-  ["At least one milestone is required before a partner can be created.", "Vor dem Erstellen eines Partners ist mindestens eine Prämienstufe erforderlich."],
+  ["At least one benefit is recommended, but the partner can be created without benefits.", "Mindestens ein Vorteil wird empfohlen, der Partner kann jedoch auch ohne Vorteile erstellt werden."],
+  ["At least one benefit is recommended, but this partner can exist without benefits.", "Mindestens ein Vorteil wird empfohlen, dieser Partner kann jedoch auch ohne Vorteile bestehen."],
+  ["At least one milestone is required before a partner can be created.", "Vor dem Erstellen eines Partners ist mindestens eine Belohnungsstufe erforderlich."],
   ["Business snapshot", "Unternehmensüberblick"],
   ["Challenge name", "Name der Challenge"],
   ["Change menu item image", "Bild des Menüartikels ändern"],
@@ -747,7 +755,7 @@ const translations = [
   ["Deal Drop card image (710×400)", "Kartenbild des Deal Drops (710 × 400)"],
   ["Deal Drop inventory", "Deal-Drop-Kontingent"],
   ["Delete partner?", "Partner löschen?"],
-  ["Deleting milestone...", "Prämienstufe wird gelöscht ..."],
+  ["Deleting milestone...", "Belohnungsstufe wird gelöscht ..."],
   ["Deleting partner...", "Partner wird gelöscht ..."],
   ["Dismiss notification", "Benachrichtigung schließen"],
   ["Duration unit", "Zeiteinheit"],
@@ -813,7 +821,7 @@ const translations = [
   ["Removing access...", "Zugriff wird entfernt ..."],
   ["Removing deal...", "Vorteil wird entfernt ..."],
   ["Restore cover", "Titelbild wiederherstellen"],
-  ["Reward details", "Prämiendetails"],
+  ["Reward details", "Belohnungsdetails"],
   ["Saving order...", "Reihenfolge wird gespeichert ..."],
   ["Select a ZIP or one or more menu JSON files with an optional assets manifest, or CSV. Name and status are still required.", "Wähle eine ZIP-Datei, eine oder mehrere Menü-JSON-Dateien mit optionalem Asset-Manifest oder eine CSV-Datei aus. Name und Status bleiben Pflichtfelder."],
   ["Select one or more menu JSON files and an optional assets manifest together. CSV remains supported. The menu name and status above remain required.", "Wähle eine oder mehrere Menü-JSON-Dateien gemeinsam mit einem optionalen Asset-Manifest aus. CSV wird weiterhin unterstützt. Menüname und Status oben bleiben Pflichtfelder."],
@@ -837,13 +845,13 @@ const translations = [
   ["Enter an inactivity period greater than 0.", "Gib einen Inaktivitätszeitraum größer als 0 ein."],
   ["Maximum visits must be at least minimum visits.", "Die maximale Besuchsanzahl muss mindestens der minimalen Besuchsanzahl entsprechen."],
   ["Limited Deal Drops must have an end time.", "Limitierte Deal Drops benötigen einen Endzeitpunkt."],
-  ["Item rewards require a reward item.", "Prämien des Typs „Prämienartikel“ benötigen einen Artikel."],
-  ["Item milestones require a reward item.", "Prämienstufen des Typs „Prämienartikel“ benötigen einen Artikel."],
-  ["Fixed and percent milestones require a discount value.", "Prämienstufen mit festem oder prozentualem Rabatt benötigen einen Rabattwert."],
+  ["Item rewards require a reward item.", "Belohnungen des Formats „Gratisartikel“ benötigen einen Artikel."],
+  ["Item milestones require a reward item.", "Belohnungsstufen des Formats „Gratisartikel“ benötigen einen Artikel."],
+  ["Fixed and percent milestones require a discount value.", "Belohnungsstufen mit festem oder prozentualem Rabatt benötigen einen Rabattwert."],
   ["Upload a highlight image for the deal card (710×400px).", "Lade ein Highlight-Bild für die Vorteilskarte hoch (710 × 400 px)."],
   ["Uploading image…", "Bild wird hochgeladen …"],
-  ["Visits can contain multiple applied benefits; the server decides the full reward bundle.", "Ein Besuch kann mehrere angewendete Vorteile enthalten; der Server bestimmt das vollständige Prämienpaket."],
-  ["Will copy: type, city, description, categories, phone, website, social handles, and milestones. Name, email, address, and owner will not be copied.", "Übernommen werden Typ, Stadt, Beschreibung, Kategorien, Telefon, Webseite, Social-Media-Profile und Prämienstufen. Name, E-Mail-Adresse, Anschrift und Inhaber werden nicht übernommen."],
+  ["Visits can contain multiple applied benefits; the server decides the full reward bundle.", "Ein Besuch kann mehrere angewendete Vorteile enthalten; der Server bestimmt das vollständige Belohnungspaket."],
+  ["Will copy: type, city, description, categories, phone, website, social handles, and milestones. Name, email, address, and owner will not be copied.", "Übernommen werden Typ, Stadt, Beschreibung, Kategorien, Telefon, Webseite, Social-Media-Profile und Belohnungsstufen. Name, E-Mail-Adresse, Anschrift und Inhaber werden nicht übernommen."],
   ["+ Add option", "+ Option hinzufügen"],
   ["(optional)", "(optional)"],
   ["in the background…", "im Hintergrund …"],
@@ -1206,12 +1214,12 @@ export function translateValue(value: string, language: AdminLanguage) {
   const milestoneCount = core.match(/^(\d+)\s+milestones?$/i)
   if (milestoneCount && language === "de") {
     return `${leading}${milestoneCount[1]} ${
-      milestoneCount[1] === "1" ? "Prämienstufe" : "Prämienstufen"
+      milestoneCount[1] === "1" ? "Belohnungsstufe" : "Belohnungsstufen"
     }${trailing}`
   }
 
   const germanMilestoneCount = core.match(
-    /^(\d+)\s+Prämienstufe(?:n)?$/i,
+    /^(\d+)\s+Belohnungsstufe(?:n)?$/i,
   )
   if (germanMilestoneCount && language === "en") {
     return `${leading}${germanMilestoneCount[1]} ${
@@ -1430,16 +1438,17 @@ function canonicalizeBenefitSurfaceCopy(value: string, language: AdminLanguage) 
     ? [
         ["Deal Drops", "__BENEFIT_DEAL_DROPS__"],
         ["Deal Drop", "__BENEFIT_DEAL_DROP__"],
-        ["Willkommensdeal", "__BENEFIT_WELCOME_DEAL__"],
-        ["Comeback-Deal", "__BENEFIT_COMEBACK_DEAL__"],
-        ["Geburtstagsdeal", "__BENEFIT_BIRTHDAY_DEAL__"],
+        ["Willkommensdeal", "__BENEFIT_WELCOME_TRIGGER__"],
+        ["Comeback-Deal", "__BENEFIT_COMEBACK_TRIGGER__"],
+        ["Geburtstagsdeal", "__BENEFIT_BIRTHDAY_TRIGGER__"],
+        ["Comeback Deal", "__BENEFIT_COMEBACK_TRIGGER__"],
       ]
     : [
         ["deal drops", "__BENEFIT_DEAL_DROPS__"],
         ["deal drop", "__BENEFIT_DEAL_DROP__"],
-        ["welcome deal", "__BENEFIT_WELCOME_DEAL__"],
-        ["comeback deal", "__BENEFIT_COMEBACK_DEAL__"],
-        ["birthday deal", "__BENEFIT_BIRTHDAY_DEAL__"],
+        ["welcome deal", "__BENEFIT_WELCOME_TRIGGER__"],
+        ["comeback deal", "__BENEFIT_COMEBACK_TRIGGER__"],
+        ["birthday deal", "__BENEFIT_BIRTHDAY_TRIGGER__"],
       ]
 
   let normalized = value
@@ -1454,21 +1463,22 @@ function canonicalizeBenefitSurfaceCopy(value: string, language: AdminLanguage) 
 
   if (language === "de") {
     normalized = normalized
-      .replaceAll("Willkommensdeals", "Willkommensdeal")
-      .replaceAll("Willkommensvorteile", "Willkommensdeal")
-      .replaceAll("Willkommensvorteil", "Willkommensdeal")
-      .replaceAll("Comeback-Deals", "Comeback-Deal")
-      .replaceAll("Comeback-Vorteile", "Comeback-Deal")
-      .replaceAll("Comeback-Vorteil", "Comeback-Deal")
-      .replaceAll("Geburtstagsvorteile", "Geburtstagsdeal")
-      .replaceAll("Geburtstagsvorteil", "Geburtstagsdeal")
-      .replaceAll("Streak-Boni", "Streak-Bonus")
+      .replaceAll("Willkommensdeals", "Willkommen")
+      .replaceAll("Willkommensvorteile", "Willkommen")
+      .replaceAll("Willkommensvorteil", "Willkommen")
+      .replaceAll("Comeback-Deals", "Comeback")
+      .replaceAll("Comeback-Vorteile", "Comeback")
+      .replaceAll("Comeback-Vorteil", "Comeback")
+      .replaceAll("Geburtstagsvorteile", "Geburtstag")
+      .replaceAll("Geburtstagsvorteil", "Geburtstag")
+      .replaceAll("Streak-Boni", "Streak")
+      .replaceAll("Streak-Bonus", "Streak")
       .replaceAll("Boni", "Belohnungen")
-      .replaceAll("Deals & Offers", "Vorteile & Angebote")
+      .replaceAll("Deals & Offers", "Vorteile")
       .replaceAll("Deals & Rewards", "Vorteile & Belohnungen")
       .replaceAll("Deals & Prämien", "Vorteile & Belohnungen")
       .replaceAll("Deals & Vorteile", "Vorteile & Aktionen")
-      .replaceAll("Deals und Angebote", "Vorteile und Angebote")
+      .replaceAll("Deals und Angebote", "Vorteile")
       .replaceAll("Prämien und Deals", "Belohnungen und Vorteile")
       .replaceAll("Prämien & Deals", "Belohnungen & Vorteile")
       .replaceAll("Deal-Typ", "Belohnungsformat")
@@ -1476,17 +1486,20 @@ function canonicalizeBenefitSurfaceCopy(value: string, language: AdminLanguage) 
       .replaceAll("Deal", "Vorteil")
   } else {
     normalized = normalized
-      .replaceAll("welcome deals", "welcome deal")
-      .replaceAll("welcome benefits", "welcome deal")
-      .replaceAll("comeback deals", "comeback deal")
-      .replaceAll("comeback benefits", "comeback deal")
-      .replaceAll("birthday benefit", "birthday deal")
-      .replaceAll("birthday benefits", "birthday deal")
-      .replaceAll("streak bonuses", "streak bonus")
-      .replaceAll("Deals & Offers", "Benefits & offers")
+      .replaceAll("welcome deals", "welcome")
+      .replaceAll("welcome benefits", "welcome")
+      .replaceAll("comeback deals", "comeback")
+      .replaceAll("comeback benefits", "comeback")
+      .replaceAll("birthday benefit", "birthday")
+      .replaceAll("birthday benefits", "birthday")
+      .replaceAll("streak bonuses", "streak")
+      .replaceAll("Deals & Offers", "Benefits")
       .replaceAll("Deals & Rewards", "Benefits & rewards")
       .replaceAll("Deals & Benefits", "Benefits & campaigns")
-      .replaceAll("Deals and offers", "Benefits and offers")
+      .replaceAll("Deals and offers", "Benefits")
+      .replaceAll("Customer offers", "Customer benefits")
+      .replaceAll(/\bdeals\b/g, "benefits")
+      .replaceAll(/\bdeal\b/g, "benefit")
       .replaceAll("Rewards and deals", "Rewards and benefits")
       .replaceAll("Rewards & Deals", "Rewards & benefits")
       .replaceAll("Deal type", "Reward format")
@@ -1497,9 +1510,9 @@ function canonicalizeBenefitSurfaceCopy(value: string, language: AdminLanguage) 
   return normalized
     .replaceAll("__BENEFIT_DEAL_DROPS__", language === "de" ? "Deal Drops" : "deal drops")
     .replaceAll("__BENEFIT_DEAL_DROP__", language === "de" ? "Deal Drop" : "deal drop")
-    .replaceAll("__BENEFIT_WELCOME_DEAL__", language === "de" ? "Willkommensdeal" : "welcome deal")
-    .replaceAll("__BENEFIT_COMEBACK_DEAL__", language === "de" ? "Comeback-Deal" : "comeback deal")
-    .replaceAll("__BENEFIT_BIRTHDAY_DEAL__", language === "de" ? "Geburtstagsdeal" : "birthday deal")
+    .replaceAll("__BENEFIT_WELCOME_TRIGGER__", language === "de" ? "Willkommen" : "welcome")
+    .replaceAll("__BENEFIT_COMEBACK_TRIGGER__", language === "de" ? "Comeback" : "comeback")
+    .replaceAll("__BENEFIT_BIRTHDAY_TRIGGER__", language === "de" ? "Geburtstag" : "birthday")
 }
 
 export function isTranslationVariant(value: string, original: string) {

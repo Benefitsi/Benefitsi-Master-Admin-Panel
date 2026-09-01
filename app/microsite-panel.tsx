@@ -366,7 +366,7 @@ const builderTranslations: Record<string, string> = {
   "E-Mail": "Email",
   "Einträge": "entries",
   "Menüs": "menus",
-  "Prämien": "Rewards",
+  "Belohnungen": "Rewards",
   "Microsite-Bilder": "Microsite images",
   "Start/Vorteile/Über uns separat": "Hero/benefits/about are managed separately",
   "SEO": "SEO",
@@ -570,7 +570,7 @@ const builderTranslations: Record<string, string> = {
   "Benefit 1 Text": "Benefit 1 text",
   "Benefit 2 Titel": "Benefit 2 title",
   "Benefit 2 Text": "Benefit 2 text",
-  "Willkommensbonus Titel": "Welcome bonus title",
+  "Willkommen Titel": "Welcome title",
   "Kontakt Öffnungszeiten": "Contact opening hours",
   "Footer Vertrauen 1": "Footer trust 1",
   "Footer Vertrauen 2": "Footer trust 2",
@@ -583,12 +583,12 @@ const builderTranslations: Record<string, string> = {
   "Benefit 2 Icon": "Benefit 2 icon",
   "Ort Icon": "Location icon",
   "App-Banner Icon": "App banner icon",
-  "Willkommensbonus Icon": "Welcome bonus icon",
+  "Willkommen Icon": "Welcome icon",
   "Adresse Icon": "Address icon",
   "Telefon Icon": "Phone icon",
   "Benefitsi Footer Logo": "Benefitsi footer logo",
-  "Prämie nach 5 Stempeln": "5-stamp reward",
-  "Prämie nach 10 Stempeln": "10-stamp reward",
+  "Belohnung nach 5 Stempeln": "5-stamp reward",
+  "Belohnung nach 10 Stempeln": "10-stamp reward",
   "Vorlagenschrift": "Template font",
   "Automatische Bildprüfung": "Automated image audit",
   "Bildauflösung zu niedrig": "Low resolution",
@@ -612,8 +612,8 @@ const builderTranslations: Record<string, string> = {
   "Minimalistische Gastronomie": "Minimal food",
   "Beauty-Studio": "Beauty studio",
   "Beauty Noir": "Beauty noir",
-  "Emotional, angebotsorientiert und auf Conversions ausgerichtet.":
-    "Emotional, offer-led, and conversion-focused.",
+  "Emotional, vorteilsorientiert und auf Conversions ausgerichtet.":
+    "Emotional, benefit-led, and conversion-focused.",
   "Warm, regional und erzählerisch.": "Warm, regional, and story-led.",
   "Reduziert, schnell und mit wenig Bildmaterial.": "Reduced, fast, and image-light.",
   "Editorial, hochwertig und serviceorientiert.": "Editorial, premium, and service-led.",
@@ -625,13 +625,13 @@ const builderTranslations: Record<string, string> = {
   "Quadratischer Beitrag": "Square post",
   "Story-Banner": "Story banner",
   "Querformat-Banner": "Landscape banner",
-  "Markantes Angebot": "Bold offer",
+  "Markanter Vorteil": "Bold benefit",
   "Klare Story": "Clean story",
   "Foto im Fokus": "Photo spotlight",
   "Editorial Elegant": "Editorial luxe",
   "Mitternachtsglanz": "Midnight glow",
-  "Großzügiges, angebotsorientiertes Flyer-Layout mit klarem CTA und starkem Startbild.":
-    "Large offer-led flyer layout with a clear CTA and strong hero image.",
+  "Großzügiges, vorteilsorientiertes Flyer-Layout mit klarem CTA und starkem Startbild.":
+    "Large benefit-led flyer layout with a clear CTA and strong hero image.",
   "Luftiges Editorial-Layout mit hochwertigen Abständen für ruhige, vertrauenswürdige Marken.":
     "Airy editorial layout with premium spacing for calm and trusted brands.",
   "Bildbetonte Komposition mit der Botschaft im unteren Drittel.":
@@ -648,14 +648,14 @@ const builderTranslations: Record<string, string> = {
     "Keep the message calm, breathable, and easy to scan from a distance.",
   "Nutze dramatische Kontraste und eine plakatartige, eventorientierte Hierarchie.":
     "Use dramatic contrast and a poster-like, event-driven hierarchy.",
-  "Verbinde ein klares Angebot mit einem hochwertigen lokalen Markenauftritt.":
-    "Balance offer clarity with a polished local-brand presentation.",
+  "Verbinde einen klaren Vorteil mit einem hochwertigen lokalen Markenauftritt.":
+    "Balance benefit clarity with a polished local-brand presentation.",
   "Geteiltes Editorial": "Editorial split",
   "Bildbetont": "Image-led",
   "Fokus im unteren Bereich": "Bottom spotlight",
   "Gerahmtes Editorial": "Framed editorial",
   "Neon-Plakat": "Neon poster",
-  "Angebots-Hierarchie": "Offer stack",
+  "Vorteils-Hierarchie": "Benefit stack",
   "Ideal für Theken-Flyer, Plakate und gedruckte Handzettel.":
     "Ideal for counter flyers, posters, and printable handouts.",
   "Ideal für mobile Storys und vertikale Displays.":
@@ -2559,7 +2559,7 @@ function ReadinessItemRow({
     ["Social Media", `${socialCount} Einträge`, "Partnerprofil"],
     ["Öffnungszeiten", `${partner.opening_hours.length} Einträge`, "Öffnungszeiten"],
     ["Speisekarte", `${partner.menus.length} Menüs`, "Menüs & Artikel"],
-    ["Prämien", `${partner.reward_milestones.length} Prämien`, "Stempelkarte"],
+    ["Belohnungen", `${partner.reward_milestones.length} Belohnungen`, "Stempelkarte"],
     ["Microsite-Bilder", "Start/Vorteile/Über uns separat", "Microsite"],
     ["SEO", "SEO-Titel und -Beschreibung separat", "Microsite"],
   ]
@@ -4852,7 +4852,7 @@ function getEditableElement(
       fallback: "Hauptbelohnung",
     },
     "stamps.welcomeBonus.title": {
-      label: "Willkommensbonus Titel",
+      label: "Willkommen Titel",
       fallback: "Direkt 2 Stempel beim ersten Besuch.",
     },
     "content.aboutSlogan": {
@@ -5118,7 +5118,7 @@ function getEditableElement(
       fallback: "benefitsi",
     },
     "stamps.welcomeBonus.icon": {
-      label: "Willkommensbonus Icon",
+      label: "Willkommen Icon",
       fallback: "check",
     },
     "content.aboutValue.0.icon": {
@@ -5956,7 +5956,7 @@ function applyMicrositeLanguage(
           "content.appVisual.0": "Benefitsi App",
           "content.appVisual.1": copy.menuLabel,
           "content.appVisual.2": "Scan & reward",
-          "content.contactSocialText": "Follow us for offers and news.",
+          "content.contactSocialText": "Follow us for benefits and news.",
         }
       : {
           "content.appKicker": "In der Benefitsi App",
@@ -5982,7 +5982,7 @@ function applyMicrositeLanguage(
         language === "en"
           ? "Official Benefitsi Partner"
           : "Offizieller Benefitsi Partner",
-      primaryButtonLabel: language === "en" ? "View deals" : "Deals ansehen",
+          primaryButtonLabel: language === "en" ? "View benefits" : "Vorteile ansehen",
       secondaryButtonLabel:
         language === "en" ? `View ${copy.menuLabel}` : `${copy.menuLabel} ansehen`,
       slogan: copy.heroSlogan,
@@ -6074,7 +6074,7 @@ function englishMicrositeCopyForPartner(
       contactHeadline: "Book your next appointment.",
       appHeadline: "Your benefits and repeat visits in one app",
       appText:
-        "Activate offers, collect loyalty benefits and stay connected with your favorite studio.",
+        "Activate benefits, collect loyalty rewards and stay connected with your favorite studio.",
       footerText: "Modern service, loyal guests and a strong local presence.",
     }
   }
@@ -6090,9 +6090,9 @@ function englishMicrositeCopyForPartner(
       menuDescription:
         "Massages, packages, wellness rituals and premium add-ons can be explored in a calm, high-quality layout.",
       contactHeadline: "Ready to unwind?",
-      appHeadline: "Wellness offers and loyalty benefits in your pocket",
+      appHeadline: "Wellness benefits and loyalty rewards in your pocket",
       appText:
-        "Unlock tailored offers, collect visits and make it easier to come back.",
+        "Unlock tailored benefits, collect visits and make it easier to come back.",
       footerText: "Calm premium storytelling, reliable care and stronger retention for local wellness partners.",
     }
   }
@@ -6102,7 +6102,7 @@ function englishMicrositeCopyForPartner(
       heroSlogan: "Nights out, member perks and local experiences worth repeating.",
       aboutText:
         description ||
-        `${name} turns visits into repeatable experiences with exclusive offers and stronger local discovery in ${location}.`,
+        `${name} turns visits into repeatable experiences with exclusive benefits and stronger local discovery in ${location}.`,
       menuLabel: "Highlights",
       menuHeadline: "Experiences guests should not miss.",
       menuDescription:

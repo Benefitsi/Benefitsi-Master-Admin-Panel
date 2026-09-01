@@ -84,11 +84,11 @@ test("puts only the stored two-for-one deal first and keeps the app type label f
 test("uses canonical public labels for reward formats and lifecycle triggers", () => {
   assert.equal(
     micrositeDealTypeLabel({ type: "welcome", discount_type: "item" }),
-    "Willkommensdeal",
+    "Willkommen",
   )
   assert.equal(
     micrositeDealTypeLabel({ type: "welcome", discount_type: "bonus_stamp" }),
-    "Willkommensbonus",
+    "Willkommen",
   )
   assert.equal(
     micrositeDealTypeLabel({
@@ -96,7 +96,7 @@ test("uses canonical public labels for reward formats and lifecycle triggers", (
       discount_type: "item",
       metadata: { bonus_mode: "comeback_inactive" },
     }),
-    "Comeback-Deal",
+    "Comeback",
   )
   assert.equal(
     micrositeDealTypeLabel({
@@ -104,13 +104,13 @@ test("uses canonical public labels for reward formats and lifecycle triggers", (
       discount_type: "bonus_stamp",
       metadata: { bonus_mode: "comeback_inactive" },
     }),
-    "Comeback-Bonus",
+    "Comeback",
   )
   assert.equal(
     micrositeDealTypeLabel({ type: "permanent_discount" }),
     "Dauerrabatt",
   )
-  assert.equal(micrositeDealTypeLabel({ type: "streak" }), "Streak-Bonus")
+  assert.equal(micrositeDealTypeLabel({ type: "streak" }), "Streak")
   assert.equal(micrositeDealTypeLabel({ type: "challenge" }), "Challenge")
 })
 
@@ -241,7 +241,33 @@ test("microsite public titles reject legacy aliases and stay concrete", () => {
       min_spend: null,
       display_title: "Gratisartikel",
     }),
-    "Gratisartikel: Ayran",
+    "Gratis Ayran",
+  )
+  assert.equal(
+    micrositeDealTitle({
+      type: "free_item",
+      discount_type: "item",
+      discount_value: null,
+      reward_item: "Ayran",
+      benefit_count: null,
+      customer_description: "",
+      min_spend: null,
+      display_title: "Ayran",
+    }),
+    "Gratis Ayran",
+  )
+  assert.equal(
+    micrositeDealTitle({
+      type: "free_item",
+      discount_type: "item",
+      discount_value: null,
+      reward_item: "Ayran",
+      benefit_count: null,
+      customer_description: "",
+      min_spend: null,
+      display_title: "Reward",
+    }),
+    "Gratis Ayran",
   )
   assert.equal(
     micrositeDealTitle({
@@ -269,5 +295,38 @@ test("stamp reward titles use the canonical German term", () => {
       customer_description: null,
     }),
     "Stempelbelohnung",
+  )
+  assert.equal(
+    micrositeStampRewardTitle({
+      reward_type: "item",
+      discount_type: "item",
+      discount_value: null,
+      reward_item: "Ayran",
+      title: "Reward",
+      customer_description: null,
+    }),
+    "Gratis Ayran",
+  )
+  assert.equal(
+    micrositeStampRewardTitle({
+      reward_type: "item",
+      discount_type: "item",
+      discount_value: null,
+      reward_item: "Ayran",
+      title: null,
+      customer_description: null,
+    }),
+    "Gratis Ayran",
+  )
+  assert.equal(
+    micrositeStampRewardTitle({
+      reward_type: "2for1",
+      discount_type: "2for1",
+      discount_value: null,
+      reward_item: "Pizza",
+      title: null,
+      customer_description: null,
+    }),
+    "2 für 1 Pizza",
   )
 })

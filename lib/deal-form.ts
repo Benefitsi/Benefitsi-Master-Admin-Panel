@@ -18,7 +18,7 @@ export type DealPublicDisplayValues = {
   displaySubtitle: string | null
 }
 
-const forbiddenPublicDealTitlePattern = /\b(?:top[ -]?(?:deal|vorteil)|hauptdeal|daily[ -]?deal)\b/i
+const forbiddenPublicDealTitlePattern = /\b(?:top[ -]?(?:deal|vorteil)|hauptdeal|daily[ -]?deal|(?:gratis|free)[ -]?rewards?|reward)\b/i
 
 export function isForbiddenPublicDealTitle(value: string | null | undefined) {
   return typeof value === "string" && forbiddenPublicDealTitlePattern.test(value)

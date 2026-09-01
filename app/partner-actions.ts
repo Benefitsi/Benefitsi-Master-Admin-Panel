@@ -4692,7 +4692,7 @@ function validateDealPayload(payload: ParsedDeal) {
 
   if (discountTypeUsesRewardItem(payload.discount_type) && !payload.reward_item) {
     return payload.discount_type === "2for1"
-      ? "2-for-1 rewards require an item name."
+      ? "2-for-1 benefits require an item name."
       : "Item rewards require a reward item."
   }
 
@@ -4723,7 +4723,7 @@ function validateDealPayload(payload: ParsedDeal) {
     payload.type === "streak" &&
     (!payload.trigger_value || payload.trigger_value <= 0)
   ) {
-    return "Streak bonuses require a trigger value greater than 0."
+    return "Streak benefits require a trigger value greater than 0."
   }
 
   if (payload.type === "challenge") {
@@ -4731,11 +4731,11 @@ function validateDealPayload(payload: ParsedDeal) {
     const challengeName = metadata.challenge_name
 
     if (typeof challengeName !== "string" || !challengeName.trim()) {
-      return "Challenge rewards require a challenge name."
+      return "Challenge benefits require a challenge name."
     }
 
     if (!payload.trigger_value || payload.trigger_value <= 0) {
-      return "Challenge rewards require a trigger value greater than 0."
+      return "Challenge benefits require a trigger value greater than 0."
     }
   }
 
@@ -4755,21 +4755,21 @@ function validateDealPayload(payload: ParsedDeal) {
           : null
 
       if (!payload.trigger_value || payload.trigger_value <= 0) {
-        return "Comeback deals require an inactivity period greater than 0."
+        return "Comeback benefits require an inactivity period greater than 0."
       }
 
       if (
         typeof inactivityUnit !== "string" ||
         !["days", "weeks", "months"].includes(inactivityUnit)
       ) {
-        return "Comeback deals require days, weeks, or months as the inactivity unit."
+        return "Comeback benefits require days, weeks, or months as the inactivity unit."
       }
 
       if (
         (minVisitCount !== null && minVisitCount < 0) ||
         (maxVisitCount !== null && maxVisitCount < 0)
       ) {
-        return "Comeback deal visit filters cannot be negative."
+        return "Comeback benefit visit filters cannot be negative."
       }
 
       if (
@@ -4874,8 +4874,8 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
           : `Happy Hour: ${reward}.`
       case "welcome":
         return isAutomatic
-          ? `Willkommensbonus: Erhalte ${reward} bei deinem ersten qualifizierten Besuch automatisch.`
-          : `Willkommensdeal: Erhalte ${reward} bei deinem ersten qualifizierten Besuch.`
+          ? `Willkommen: Erhalte ${reward} bei deinem ersten qualifizierten Besuch automatisch.`
+          : `Willkommen: Erhalte ${reward} bei deinem ersten qualifizierten Besuch.`
       case "streak":
         return `Nach ${payload.trigger_value ?? 3} qualifizierten Besuchen erhältst du ${reward}.`
       case "challenge":
@@ -4884,8 +4884,8 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
         return comebackIsTimeBonus
           ? `Zeitbonus: Erhalte ${reward} bei einer schnellen Rückkehr.`
           : isAutomatic
-            ? `Comeback-Bonus: Erhalte ${reward} bei einem berechtigten Besuch automatisch.`
-            : `Comeback-Deal: Erhalte ${reward} bei einem berechtigten Besuch.`
+            ? `Comeback: Erhalte ${reward} bei einem berechtigten Besuch automatisch.`
+            : `Comeback: Erhalte ${reward} bei einem berechtigten Besuch.`
       case "limited_drop":
         return `Deal Drop: Erhalte ${reward}, solange das Kontingent reicht.`
       default:
@@ -4908,7 +4908,7 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
       case "welcome":
         return `Berechtigung im Scan prüfen und ${reward} einmalig auf den aktuellen Bon anwenden.`
       case "streak":
-        return `Streak-Bonus im Kundenkonto prüfen und ${reward} nach der Einlösung kostenlos ausgeben.`
+        return `Streak im Kundenkonto prüfen und ${reward} nach der Einlösung kostenlos ausgeben.`
       case "challenge":
         return `Aktive Challenge und Berechtigung prüfen; ${reward} exakt einmal am aktuellen Bon anwenden.`
       case "comeback":
@@ -4933,7 +4933,7 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
           ? `Nur von ${timeWindow} gültig. Nicht mit anderen Vorteilen kombinierbar.`
           : "Nur im konfigurierten Happy-Hour-Zeitraum gültig. Nicht mit anderen Vorteilen kombinierbar."
       case "welcome":
-        return "Einmal pro Nutzerkonto einlösbar. Nicht mit anderen Willkommensdeals kombinierbar."
+        return "Einmal pro Nutzerkonto einlösbar. Nicht mit anderen Willkommensvorteilen kombinierbar."
       case "limited_drop":
         return "Nur solange das Kontingent reicht. Nicht mit anderen Vorteilen kombinierbar."
       default:

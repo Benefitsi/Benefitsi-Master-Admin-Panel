@@ -50,9 +50,9 @@ export function createMicrositeMetadata({
 }): Metadata {
   const name = partner.name || config.hero.headline
   const location = config.hero.locationText
-  const offerLabel = config.content.menuLabel || "Angebote"
-  const fallbackTitle = `${name} in ${location} | Vorteile, Benefitsi & ${offerLabel}`
-  const fallbackDescription = `${name}: ${config.hero.slogan} Entdecke Benefitsi Vorteile, ${offerLabel}, Öffnungszeiten und Kontakt in ${location}.`
+  const benefitLabel = config.content.menuLabel || "Vorteile"
+  const fallbackTitle = `${name} in ${location} | Vorteile, Benefitsi & ${benefitLabel}`
+  const fallbackDescription = `${name}: ${config.hero.slogan} Entdecke Benefitsi Vorteile, ${benefitLabel}, Öffnungszeiten und Kontakt in ${location}.`
   const title = config.seo.title || fallbackTitle
   const description = truncateDescription(config.seo.description || fallbackDescription)
   const canonical = canonicalUrlFor(partner, slug)

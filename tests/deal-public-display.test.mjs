@@ -58,6 +58,8 @@ test("deal drafts preserve an explicitly empty subtitle instead of falling back"
 test("public deal titles reject legacy campaign aliases before saving", () => {
   assert.equal(isForbiddenPublicDealTitle("Top Deal Pizza"), true)
   assert.equal(isForbiddenPublicDealTitle("Top-Vorteil"), true)
+  assert.equal(isForbiddenPublicDealTitle("Reward"), true)
+  assert.equal(isForbiddenPublicDealTitle("Gratis-Reward"), true)
   assert.equal(isForbiddenPublicDealTitle("2 für 1 Pizza"), false)
   assert.equal(isForbiddenPublicDealTitle("Deal Drop"), false)
 })
