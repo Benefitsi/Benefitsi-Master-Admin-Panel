@@ -125,4 +125,3 @@ export function parseContentDraftResponse(raw: unknown, task: ContentDraftTask |
 
   return normalized
 }
-

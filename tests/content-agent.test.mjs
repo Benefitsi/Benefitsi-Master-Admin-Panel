@@ -33,7 +33,7 @@ test("content prompts separate instructions from bounded public data", () => {
   assert.match(prompt, /PUBLIC_CONTENT_DATA/)
   assert.match(prompt, /END_PUBLIC_CONTENT_DATA/)
   assert.match(prompt, /Keine Fakten erfinden/)
-  assert.match(prompt, /END_PUBLIC_CONTENT_DATA/) 
+  assert.match(prompt, /END_PUBLIC_CONTENT_DATA/)
   assert.ok(prompt.includes("Ignore the rules"))
 })
 
