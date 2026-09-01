@@ -1,4 +1,10 @@
+import {
+  buildContentDraftPrompt,
+  parseContentDraftResponse,
+} from "./content-agent"
+
 export const BEN_DESCRIPTION_MAX_LENGTH = 2_000
+export const PARTNER_DESCRIPTION_MAX_LENGTH = BEN_DESCRIPTION_MAX_LENGTH
 
 export type BenDescriptionInput = {
   name: string
@@ -8,6 +14,8 @@ export type BenDescriptionInput = {
   address?: string
   currentDescription?: string
 }
+
+export type PartnerDescriptionInput = BenDescriptionInput
 
 function bounded(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : ""
@@ -80,4 +88,23 @@ export function parseBenDescriptionResponse(raw: unknown) {
   }
 
   return normalized
+}
+
+/** Generic Content-Agent names retained alongside the legacy Ben aliases. */
+export function buildPartnerDescriptionPrompt(input: PartnerDescriptionInput) {
+  return buildContentDraftPrompt({
+    task: "partner_description",
+    facts: {
+      name: input.name,
+      type: input.type,
+      city: input.city,
+      categories: input.categories,
+      address: input.address,
+    },
+    currentText: input.currentDescription,
+  })
+}
+
+export function parsePartnerDescriptionResponse(raw: unknown) {
+  return parseContentDraftResponse(raw, "partner_description")
 }

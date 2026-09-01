@@ -89,7 +89,7 @@ import {
   saveWeeklyOpeningHours,
   type PartnerActionState,
 } from "./partner-actions"
-import type { BenDealCopyField } from "@/lib/deal-copy"
+import type { DealCopyField } from "@/lib/deal-copy"
 import type { DealFormDraft } from "@/lib/deal-form"
 import { researchPartner } from "./partner-enrichment-actions"
 import type {
@@ -2033,7 +2033,7 @@ function PartnerForm({
     if (!form || isGeneratingDescription) return
 
     // Do not forward the whole partner form here: it can contain large image
-    // files, while Ben only needs the small public profile facts below.
+    // files, while the Content-Agent only needs the small public profile facts below.
     const formData = new FormData()
     for (const fieldName of ["name", "type", "city_id", "address", "description"]) {
       const field = form.elements.namedItem(fieldName)
@@ -5836,7 +5836,7 @@ function DealFields({
 
   const [dealCopyState, setDealCopyState] = useState<PartnerActionState>(initialState)
   const [isGeneratingDealCopy, startGeneratingDealCopy] = useTransition()
-  const requestDealCopy = (field: BenDealCopyField) => {
+  const requestDealCopy = (field: DealCopyField) => {
     if (isGeneratingDealCopy || !partnerName.trim()) return
 
     const formData = new FormData()
@@ -6495,7 +6495,7 @@ function DealFields({
           name={`${prefix}customer_description`}
           labelAccessory={
             partnerName ? (
-              <BenSuggestionButton
+              <ContentAgentSuggestionButton
                 fieldLabel="Kundenbeschreibung"
                 pending={isGeneratingDealCopy}
                 onClick={() => requestDealCopy("customer_description")}
@@ -6514,7 +6514,7 @@ function DealFields({
           name={`${prefix}staff_instructions`}
           labelAccessory={
             partnerName ? (
-              <BenSuggestionButton
+              <ContentAgentSuggestionButton
                 fieldLabel="Mitarbeiterhinweise"
                 pending={isGeneratingDealCopy}
                 onClick={() => requestDealCopy("staff_instructions")}
@@ -6533,7 +6533,7 @@ function DealFields({
           name={`${prefix}terms`}
           labelAccessory={
             partnerName ? (
-              <BenSuggestionButton
+              <ContentAgentSuggestionButton
                 fieldLabel="Bedingungen"
                 pending={isGeneratingDealCopy}
                 onClick={() => requestDealCopy("terms")}
@@ -12330,7 +12330,7 @@ function GenerateDescriptionButton({
       onClick={onClick}
       disabled={pending}
       aria-busy={pending}
-      title="Generate with Ben"
+      title="Generate with Content-Agent"
       className="inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold leading-none text-teal-800 transition hover:-translate-y-px hover:bg-teal-100 active:translate-y-0 disabled:cursor-wait disabled:opacity-60"
     >
       {pending ? (
@@ -12350,12 +12350,12 @@ function GenerateDescriptionButton({
           <path d="m19 14 .7 2.3L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14Z" />
         </svg>
       )}
-      <span>{pending ? "Generating..." : "Generate with Ben"}</span>
+      <span>{pending ? "Generating..." : "Generate with Content-Agent"}</span>
     </button>
   )
 }
 
-function BenSuggestionButton({
+function ContentAgentSuggestionButton({
   fieldLabel,
   onClick,
   pending,
@@ -12364,7 +12364,7 @@ function BenSuggestionButton({
   onClick: () => void
   pending: boolean
 }) {
-  const label = `Vorschlag mit Ben für ${fieldLabel}`
+  const label = `Vorschlag mit Content-Agent für ${fieldLabel}`
 
   return (
     <button
@@ -12393,7 +12393,7 @@ function BenSuggestionButton({
           <path d="m19 14 .7 2.3L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14Z" />
         </svg>
       )}
-      <span>Ben</span>
+      <span>Content-Agent</span>
     </button>
   )
 }
