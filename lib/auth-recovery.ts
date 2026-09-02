@@ -16,6 +16,12 @@ export function resetPasswordPathForPortal(portal: AuthPortal) {
   return `/reset-password?portal=${portal}`
 }
 
+export function recoveryCallbackUrl(origin: string, portal: AuthPortal) {
+  const callbackUrl = new URL("/auth/confirm", origin)
+  callbackUrl.searchParams.set("next", resetPasswordPathForPortal(portal))
+  return callbackUrl.toString()
+}
+
 export function safeRecoveryRedirect(value: string | null | undefined) {
   if (!value) {
     return resetPasswordPathForPortal("admin")

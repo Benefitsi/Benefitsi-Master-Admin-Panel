@@ -6,6 +6,7 @@ import {
   forgotPasswordPathForPortal,
   loginPathForPortal,
   normalizeAuthPortal,
+  recoveryCallbackUrl,
   resetPasswordPathForPortal,
   safeRecoveryRedirect,
 } from "../lib/auth-recovery.ts"
@@ -25,6 +26,10 @@ test("keeps admin and partner recovery destinations separate", () => {
   assert.equal(
     resetPasswordPathForPortal("partner"),
     "/reset-password?portal=partner",
+  )
+  assert.equal(
+    recoveryCallbackUrl("https://admin.example.com", "partner"),
+    "https://admin.example.com/auth/confirm?next=%2Freset-password%3Fportal%3Dpartner",
   )
 })
 
@@ -50,7 +55,15 @@ test("recovery callbacks only redirect to the known internal reset page", () => 
 })
 
 test("both login forms expose password recovery and auth routes stay public", async () => {
-  const [adminLogin, partnerLogin, proxy, requestForm, resetForm, callback] =
+  const [
+    adminLogin,
+    partnerLogin,
+    proxy,
+    requestForm,
+    resetForm,
+    callback,
+    recoveryTemplate,
+  ] =
     await Promise.all([
       read("app/login/login-form.tsx"),
       read("app/partner/login/login-form.tsx"),
@@ -58,6 +71,7 @@ test("both login forms expose password recovery and auth routes stay public", as
       read("app/forgot-password/recovery-request-form.tsx"),
       read("app/reset-password/reset-password-form.tsx"),
       read("app/auth/confirm/route.ts"),
+      read("supabase/templates/recovery.html"),
     ])
 
   assert.match(adminLogin, /href="\/forgot-password"/)
@@ -66,9 +80,12 @@ test("both login forms expose password recovery and auth routes stay public", as
   assert.match(proxy, /pathname === "\/partner\/forgot-password"/)
   assert.match(proxy, /pathname === "\/reset-password"/)
   assert.match(requestForm, /auth\.resetPasswordForEmail/)
+  assert.match(requestForm, /recoveryCallbackUrl\(window\.location\.origin, portal\)/)
   assert.match(requestForm, /If an account exists/)
   assert.match(resetForm, /auth\.exchangeCodeForSession/)
   assert.match(resetForm, /auth\.updateUser/)
   assert.match(callback, /auth\.verifyOtp/)
   assert.match(callback, /type === "recovery"/)
+  assert.match(recoveryTemplate, /href="{{ \.ConfirmationURL }}"/)
+  assert.doesNotMatch(recoveryTemplate, /\.SiteURL/)
 })
