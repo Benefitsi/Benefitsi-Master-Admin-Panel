@@ -159,3 +159,32 @@ test("strips legacy two-for-one decorations from reward items before formatting"
     "2 für 1 Pizza",
   )
 })
+
+test("rejects decorated generic public titles without rejecting specific partner titles", () => {
+  for (const public_title of [
+    "Happy Hour!",
+    "Happy Hour Angebot",
+    "Deal Drop Aktion",
+    "Rabatt!",
+  ]) {
+    assert.equal(
+      formatBenefitTitle({
+        type: "discount",
+        discount_type: "percent",
+        discount_value: 15,
+        public_title,
+      }, "de"),
+      "15 % Rabatt",
+    )
+  }
+
+  assert.equal(
+    formatBenefitTitle({ type: "discount", public_title: "Mittagsrabatt" }, "de"),
+    "Mittagsrabatt",
+  )
+})
+
+test("returns a single lifecycle label when no concrete reward is configured", () => {
+  assert.equal(formatBenefitTitle({ type: "welcome" }, "de"), "Willkommensdeal")
+  assert.equal(formatBenefitTitle({ type: "comeback" }, "de"), "Comeback-Deal")
+})

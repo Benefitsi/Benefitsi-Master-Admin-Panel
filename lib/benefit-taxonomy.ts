@@ -33,6 +33,7 @@ const nonConcretePublicTitles = new Set([
   "challenge", "challenge-bonus", "happy hour", "deal drop", "dauerrabatt",
   "permanent discount", "vorteil", "benefit",
 ])
+const nonConcreteTitleDecoration = /^(?:happy hour|deal drop|rabatt|discount|gratisartikel|free item|bonusstempel|bonus stamps|willkommen|willkommensdeal|willkommensbonus|welcome|welcome deal|welcome bonus|zeitbonus|time bonus|comeback|comeback-deal|comeback-bonus|comeback deal|comeback bonus|geburtstag|birthday|streak|streak-bonus|challenge|challenge-bonus|dauerrabatt|permanent discount|vorteil|benefit)(?:[\s-]+(?:angebot|aktion|deal|bonus|vorteil|benefit|rabatt|discount|gratisartikel|free item))*$/iu
 
 function normalizePublicText(value: string) {
   return value
@@ -45,6 +46,18 @@ function normalizePublicText(value: string) {
 
 function hasForbiddenPublicText(value: string) {
   return forbiddenPublicText.test(normalizePublicText(value))
+}
+
+function isNonConcretePublicTitle(value: string) {
+  const normalized = normalizePublicText(value)
+    .replace(/[!?.:;,…]+$/gu, "")
+    .trim()
+    .toLowerCase()
+
+  return (
+    nonConcretePublicTitles.has(normalized) ||
+    nonConcreteTitleDecoration.test(normalized)
+  )
 }
 
 function normalizedString(value: unknown) {
@@ -174,7 +187,7 @@ function publicTitle(input: BenefitTaxonomyInput) {
   if (
     !normalizedTitle ||
     hasForbiddenPublicText(normalizedTitle) ||
-    nonConcretePublicTitles.has(normalizedTitle.toLowerCase())
+    isNonConcretePublicTitle(normalizedTitle)
   ) {
     return ""
   }
@@ -232,11 +245,14 @@ export function formatBenefitTitle(
 
   const title = concreteTitle(input, language)
   const lifecycleTrigger = trigger(input)
+  const label = localizedLabel(input, language)
   const result =
     lifecycleTrigger === "welcome" || lifecycleTrigger === "comeback"
       ? normalizedString(input.activation_mode) === "automatic_fallback"
         ? title
-        : `${localizedLabel(input, language)}: ${title}`
+        : title === label
+          ? title
+          : `${label}: ${title}`
       : title
 
   if (!hasForbiddenPublicText(result)) {
