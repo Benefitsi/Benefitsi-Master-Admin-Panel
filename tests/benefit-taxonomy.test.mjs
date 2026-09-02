@@ -145,6 +145,42 @@ test("rejects separator variants of retired titles without rejecting concrete ti
   )
 })
 
+test("rejects retired alias phrases inside longer public titles", () => {
+  for (const public_title of [
+    "Unser Rabattvorteil",
+    "Dauervorteil für alle",
+    "Automatischer Basisrabatt 15 %",
+    "Bonus-Stempel Aktion",
+    "Time-based bonus abends",
+    "Selectable discount 15 %",
+  ]) {
+    assert.equal(
+      formatBenefitTitle({
+        type: "discount",
+        discount_type: "percent",
+        discount_value: 15,
+        public_title,
+      }, "de"),
+      "15 % Rabatt",
+    )
+  }
+
+  for (const [public_title, expected] of [
+    ["Mittagsrabatt", "Mittagsrabatt"],
+    ["2 für 1 Pizza", "2 für 1 Pizza"],
+    ["2-for-1 Pasta", "2 für 1 Pasta"],
+    ["Gratis Ayran", "Gratis Ayran"],
+    ["15 % Rabatt", "15 % Rabatt"],
+    ["5 € Rabatt", "5 € Rabatt"],
+    ["+2 Bonusstempel", "+2 Bonusstempel"],
+  ]) {
+    assert.equal(
+      formatBenefitTitle({ type: "discount", public_title }, "de"),
+      expected,
+    )
+  }
+})
+
 test("keeps allowed explicit public titles while normalizing legacy two-for-one spelling", () => {
   assert.equal(
     formatBenefitTitle({ type: "two_for_one", public_title: "2-for-1 Pasta" }, "de"),

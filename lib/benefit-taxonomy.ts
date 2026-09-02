@@ -63,17 +63,23 @@ function normalizePublicText(value: string) {
 
 function retiredPublicTitleKey(value: string) {
   return normalizePublicText(value)
-    .replace(/[!?.:;,…]+$/gu, "")
-    .trim()
     .toLowerCase()
-    .replace(/[\s-]+/gu, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+}
+
+function hasRetiredPublicTitle(value: string) {
+  const candidate = ` ${retiredPublicTitleKey(value)} `
+  return [...retiredPublicTitleKeys].some((retiredTitle) =>
+    candidate.includes(` ${retiredTitle} `),
+  )
 }
 
 function hasForbiddenPublicText(value: string) {
   const normalized = normalizePublicText(value)
   return (
     forbiddenPublicText.test(normalized) ||
-    retiredPublicTitleKeys.has(retiredPublicTitleKey(normalized))
+    hasRetiredPublicTitle(normalized)
   )
 }
 
