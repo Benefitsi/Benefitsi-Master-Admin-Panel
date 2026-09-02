@@ -1,3 +1,5 @@
+import { isForbiddenPublicDisplayText } from "./benefit-taxonomy"
+
 export const dealRewardItemDiscountTypes = ["item", "2for1"] as const
 
 export type DealFormDraft = {
@@ -18,10 +20,8 @@ export type DealPublicDisplayValues = {
   displaySubtitle: string | null
 }
 
-const forbiddenPublicDealTitlePattern = /\b(?:top[ -]?(?:deal|vorteil)|hauptdeal|daily[ -]?deal|(?:gratis|free)[ -]?rewards?|reward)\b/i
-
 export function isForbiddenPublicDealTitle(value: string | null | undefined) {
-  return typeof value === "string" && forbiddenPublicDealTitlePattern.test(value)
+  return isForbiddenPublicDisplayText(value)
 }
 
 export function discountTypeUsesRewardItem(
@@ -45,16 +45,25 @@ export function readDealPublicDisplayValues(
   formData: FormData,
   prefix = "",
 ): DealPublicDisplayValues {
-  const displayTitle = formString(formData, `${prefix}display_title`) || null
+  const titleKey = formData.has(`${prefix}public_title`)
+    ? `${prefix}public_title`
+    : `${prefix}display_title`
+  const subtitleKey = formData.has(`${prefix}public_subtitle`)
+    ? `${prefix}public_subtitle`
+    : `${prefix}display_subtitle`
+  const subtitleAutoKey = formData.has(`${prefix}public_subtitle_auto`)
+    ? `${prefix}public_subtitle_auto`
+    : `${prefix}display_subtitle_auto`
+  const displayTitle = formString(formData, titleKey) || null
   const displaySubtitleAuto =
-    formData.get(`${prefix}display_subtitle_auto`) === "on"
+    formData.get(subtitleAutoKey) === "on"
 
   return {
     displayTitle,
     displaySubtitle:
-      displaySubtitleAuto || !formData.has(`${prefix}display_subtitle`)
+      displaySubtitleAuto || !formData.has(subtitleKey)
         ? null
-        : formString(formData, `${prefix}display_subtitle`),
+        : formString(formData, subtitleKey),
   }
 }
 

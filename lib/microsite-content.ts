@@ -3,6 +3,11 @@ import {
   isMicrositeDealAvailable,
   isMicrositeTopDeal,
 } from "./microsite-deals"
+import {
+  benefitTaxonomyLabel,
+  formatBenefitTitle,
+  isForbiddenPublicDisplayText,
+} from "./benefit-taxonomy"
 
 export type MicrositeContentLanguage = "de" | "en"
 
@@ -15,42 +20,51 @@ const NON_PUBLIC_TOP_DEAL_TYPES = new Set([
   "bonus_stamp",
 ])
 
-const MICROSITE_DEAL_TYPE_LABELS: Record<
-  string,
-  { de: string; en: string }
-> = {
-  two_for_one: { de: "2 für 1", en: "2-for-1" },
-  happy_hour: { de: "Happy Hour", en: "Happy hour" },
-  permanent_discount: { de: "Dauerrabatt", en: "Permanent discount" },
-  limited_drop: { de: "Deal Drop", en: "Deal drop" },
-  free_item: { de: "Gratisartikel", en: "Free item" },
-  discount: { de: "Rabatt", en: "Discount" },
-  bonus_stamp: { de: "Bonusstempel", en: "Bonus stamp" },
-  streak: { de: "Streak", en: "Streak" },
-  challenge: { de: "Challenge", en: "Challenge" },
-}
-
-const FORBIDDEN_PUBLIC_TITLE = /\b(?:top[ -]?(?:deal|vorteil)|hauptdeal|daily[ -]?deal|(?:gratis|free)[ -]?rewards?|reward)\b/i
-
 export function normalizeMicrositePublicText(value: string | null | undefined) {
   if (!value?.trim()) return ""
-  return value
-    .trim()
+  const protectedTerms: Array<[RegExp, string]> = [
+    [/\bwillkommensbonus\b/giu, "__BENEFIT_WELCOME_BONUS__"],
+    [/\bwillkommensdeal\b/giu, "__BENEFIT_WELCOME_DEAL__"],
+    [/\bcomeback[- ]bonus\b/giu, "__BENEFIT_COMEBACK_BONUS__"],
+    [/\bcomeback[- ]deal\b/giu, "__BENEFIT_COMEBACK_DEAL__"],
+    [/\bdeal drops?\b/giu, "__BENEFIT_DEAL_DROP__"],
+    [/\bstreak[- ]bonus\b/giu, "__BENEFIT_STREAK_BONUS__"],
+    [/\bchallenge[- ]bonus\b/giu, "__BENEFIT_CHALLENGE_BONUS__"],
+  ]
+  let normalized = value.trim().normalize("NFKC").replace(/[‐‑‒–—―]/gu, "-")
+
+  for (const [pattern, token] of protectedTerms) {
+    normalized = normalized.replace(pattern, token)
+  }
+
+  normalized = normalized
     .replace(/\b2\s*[-–]?\s*for\s*[-–]?\s*1\b/gi, "2 für 1")
     .replace(/\b(?:gratis|free)[- ]?rewards?\s*[:\-–]?\s*/gi, "Gratis ")
     .replace(/\b(?:stamp|stempel)[- ]?rewards?\b/gi, "Stempelbelohnung")
     .replace(/\bstempel[- ]?belohnung\b/gi, "Stempelbelohnung")
-    .replace(/\bwillkommens(?:deal|vorteile?)\b/gi, "Willkommen")
-    .replace(/\bcomeback[- ]?(?:deal|vorteile?)\b/gi, "Comeback")
+    .replace(/\bwillkommens(?:vorteile?|deals?)\b/gi, "Willkommensdeal")
+    .replace(/\bwillkommen(?=\s*:)/giu, "Willkommensdeal")
+    .replace(/\bcomeback[- ]?(?:vorteile?|deals?)\b/gi, "Comeback-Deal")
+    .replace(/\bcomeback[- ]?bonus\b/gi, "Comeback-Bonus")
     .replace(/\bgeburtstags(?:deal|vorteile?)\b/gi, "Geburtstag")
-    .replace(/\bstreak[- ]?(?:boni|bonus)\b/gi, "Streak")
+    .replace(/\bstreak[- ]?(?:boni|bonus)\b/gi, "Streak-Bonus")
+    .replace(/\bchallenge[- ]?(?:boni|bonus)\b/gi, "Challenge-Bonus")
     .replace(/\bvorteile?\s+drop\b/gi, "Deal Drop")
-    .replace(/\b(?:top[- ]?(?:deal|vorteil)|hauptdeal|daily[- ]?deal)\b/gi, "Vorteil")
+    .replace(/\b(?:top[- ]?(?:deal|vorteil)|hauptdeal|daily[- ]?deal|2[- ]?für[- ]?1[- ]?deal|rabattvorteil|dauervorteil|automatischer basisrabatt|bonus[- ]stempel|streak bonus)\b/gi, "Vorteil")
     .replace(/\bdeal\b(?!\s+drop\b)/gi, "Vorteil")
     .replace(/\brewards\b/gi, "Belohnungen")
     .replace(/\breward\b/gi, "Belohnung")
     .replace(/[ \t]{2,}/g, " ")
     .trim()
+
+  return normalized
+    .replaceAll("__BENEFIT_WELCOME_BONUS__", "Willkommensbonus")
+    .replaceAll("__BENEFIT_WELCOME_DEAL__", "Willkommensdeal")
+    .replaceAll("__BENEFIT_COMEBACK_BONUS__", "Comeback-Bonus")
+    .replaceAll("__BENEFIT_COMEBACK_DEAL__", "Comeback-Deal")
+    .replaceAll("__BENEFIT_DEAL_DROP__", "Deal Drop")
+    .replaceAll("__BENEFIT_STREAK_BONUS__", "Streak-Bonus")
+    .replaceAll("__BENEFIT_CHALLENGE_BONUS__", "Challenge-Bonus")
 }
 
 function normalizeRewardItem(value: string | null | undefined) {
@@ -114,50 +128,10 @@ export function getMicrositeStampDeals(
 }
 
 export function micrositeDealTypeLabel(
-  deal: Partial<Pick<Deal, "type" | "discount_type" | "reward_format" | "metadata" | "trigger_key" | "activation_mode">>,
+  deal: Partial<Pick<Deal, "type" | "discount_type" | "reward_format" | "metadata" | "trigger_key" | "campaign_type" | "activation_mode" | "benefit_category">>,
   language: MicrositeContentLanguage = "de",
 ) {
-  const type = deal.type?.trim().toLowerCase() || ""
-  const trigger = deal.trigger_key?.trim().toLowerCase() || ""
-  if (trigger === "welcome" || type === "welcome") {
-    return language === "en"
-      ? "Welcome"
-      : "Willkommen"
-  }
-
-  if (trigger === "time_bonus" || (trigger !== "comeback" && type === "comeback" && micrositeDealMetadataString(deal.metadata, "bonus_mode") === "duration_bonus")) {
-    return language === "en" ? "Time bonus" : "Zeitbonus"
-  }
-
-  if (trigger === "comeback" || type === "comeback") {
-    const mode = micrositeDealMetadataString(deal.metadata, "bonus_mode")
-
-    if (mode === "comeback_inactive") {
-      return language === "en" ? "Comeback" : "Comeback"
-    }
-
-    return language === "en" ? "Time bonus" : "Zeitbonus"
-  }
-
-  if (trigger === "birthday" || type === "birthday") {
-    return language === "en" ? "Birthday" : "Geburtstag"
-  }
-
-  const labels = MICROSITE_DEAL_TYPE_LABELS[type]
-
-  return labels?.[language] || (language === "en" ? "Benefit" : "Vorteil")
-}
-
-function micrositeDealMetadataString(
-  metadata: Deal["metadata"] | null | undefined,
-  key: string,
-) {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return ""
-  }
-
-  const value = metadata[key]
-  return typeof value === "string" ? value.trim() : ""
+  return benefitTaxonomyLabel(toTaxonomyInput(deal), language)
 }
 
 export function getMicrositeStampRewards(
@@ -216,120 +190,26 @@ export function micrositeDealTitle(
     | "trigger_key"
     | "campaign_type"
     | "activation_mode"
+    | "benefit_category"
   >> &
-    Partial<Pick<Deal, "display_title">>,
+    Partial<Pick<Deal, "display_title" | "public_title">> & {
+    public_title?: string | null
+  },
   language: MicrositeContentLanguage = "de",
 ) {
-  const dealType = deal.type?.trim().toLowerCase() || ""
-  const discountType = deal.discount_type?.trim().toLowerCase() || dealType
-  const rewardFormat = canonicalMicrositeRewardFormat(deal)
-  const explicitTitle = normalizeMicrositePublicText(deal.display_title)
   const minimumSpend =
     typeof deal.min_spend === "number" && Number.isFinite(deal.min_spend)
       ? ` ${language === "en" ? "from" : "ab"} ${formatEuroAmount(deal.min_spend, language)} ${language === "en" ? "minimum spend" : "Einkaufswert"}`
       : ""
-  const generatedBaseTitle = generatedMicrositeDealTitle(deal, dealType, discountType, rewardFormat, language)
-  const generatedTitle = generatedBaseTitle && rewardFormat === "discount"
-    ? `${generatedBaseTitle}${minimumSpend}`
-    : generatedBaseTitle
-  const isGenericTitle =
-    (rewardFormat === "two_for_one" &&
-      (["2 für 1", "2-for-1"].includes(explicitTitle) ||
-        (Boolean(normalizeRewardItem(deal.reward_item)) && explicitTitle === normalizeRewardItem(deal.reward_item)))) ||
-    (rewardFormat === "free_item" &&
-      (["Gratisartikel", "Free item"].includes(explicitTitle) ||
-        (Boolean(normalizeRewardItem(deal.reward_item)) && explicitTitle === normalizeRewardItem(deal.reward_item)) ||
-        /^(?:Gratisartikel|Free item)\s*[:\-–]/iu.test(explicitTitle))) ||
-    (rewardFormat === "discount" && ["Rabatt", "Discount"].includes(explicitTitle)) ||
-    (rewardFormat === "bonus_stamp" && ["Bonusstempel", "Bonus stamp"].includes(explicitTitle))
-
-  if (explicitTitle && !FORBIDDEN_PUBLIC_TITLE.test(deal.display_title || "") && !isGenericTitle) {
-    return explicitTitle
-  }
-  if (generatedTitle) return generatedTitle
-
-  if (dealType === "two_for_one" || discountType === "2for1") {
-    const rewardItem = normalizeRewardItem(deal.reward_item)
-    const prefix = language === "en" ? "2-for-1" : "2 für 1"
-    return rewardItem ? `${prefix} ${rewardItem}` : prefix
-  }
-
-  if (discountType === "fixed" && isFiniteNumber(deal.discount_value)) {
-    return `${formatEuroAmount(deal.discount_value, language)} ${language === "en" ? "discount" : "Rabatt"}${minimumSpend}`
-  }
-
-  if (discountType === "percent" && isFiniteNumber(deal.discount_value)) {
-    return `${formatNumber(deal.discount_value, language)} % ${language === "en" ? "discount" : "Rabatt"}${minimumSpend}`
-  }
-
-  if (discountType === "bonus_stamp") {
-    const count = deal.benefit_count ?? 1
-    return `${language === "en" ? "+" : "+"}${count} ${language === "en" ? "bonus stamps" : "Bonusstempel"}`
-  }
-
-  return (
-    normalizeRewardItem(deal.reward_item) ||
-    deal.customer_description?.trim() ||
-    (language === "en" ? "Partner benefit" : "Partner-Vorteil")
+  const title = formatBenefitTitle(
+    toTaxonomyInput(deal),
+    language,
   )
-}
 
-function canonicalMicrositeRewardFormat(
-  deal: Partial<Pick<Deal, "type" | "discount_type" | "reward_format">>,
-) {
-  const explicit = deal.reward_format?.trim().toLowerCase()
-  if (["two_for_one", "discount", "free_item", "bonus_stamp"].includes(explicit || "")) {
-    return explicit || ""
+  if (minimumSpend && !title.includes(`${formatEuroAmount(deal.min_spend!, language)} ${language === "en" ? "minimum spend" : "Einkaufswert"}`)) {
+    return `${title}${minimumSpend}`
   }
-  const type = deal.type?.trim().toLowerCase() || ""
-  const discountType = deal.discount_type?.trim().toLowerCase() || ""
-  if (type === "two_for_one" || discountType === "2for1") return "two_for_one"
-  if (type === "free_item" || discountType === "item") return "free_item"
-  // Lifecycle triggers (welcome, comeback, birthday, …) can carry a
-  // concrete reward format in discount_type.  The concrete format wins for
-  // the public title so every surface renders the same benefit.
-  if (["fixed", "percent"].includes(discountType)) return "discount"
-  if (type === "bonus_stamp" || discountType === "bonus_stamp") return "bonus_stamp"
-  return ""
-}
-
-function generatedMicrositeDealTitle(
-  deal: Partial<Pick<Deal, "type" | "discount_type" | "discount_value" | "reward_item" | "benefit_count" | "reward_format" | "trigger_key" | "activation_mode" | "metadata">>,
-  dealType: string,
-  discountType: string,
-  rewardFormat: string,
-  language: MicrositeContentLanguage,
-) {
-  const rewardItem = normalizeRewardItem(deal.reward_item)
-  if (rewardFormat === "two_for_one") {
-    return rewardItem ? `${language === "en" ? "2-for-1" : "2 für 1"} ${rewardItem}` : language === "en" ? "2-for-1" : "2 für 1"
-  }
-  if (rewardFormat === "discount" && discountType === "fixed" && isFiniteNumber(deal.discount_value)) {
-    return `${formatEuroAmount(deal.discount_value, language)} ${language === "en" ? "discount" : "Rabatt"}`
-  }
-  if (rewardFormat === "discount" && discountType === "percent" && isFiniteNumber(deal.discount_value)) {
-    return `${formatNumber(deal.discount_value, language)} % ${language === "en" ? "discount" : "Rabatt"}`
-  }
-  if (rewardFormat === "free_item" && rewardItem) {
-    return `${language === "en" ? "Free" : "Gratis"} ${rewardItem}`
-  }
-  if (rewardFormat === "bonus_stamp") {
-    return `+${deal.benefit_count ?? 1} ${language === "en" ? "bonus stamps" : "Bonusstempel"}`
-  }
-
-  if (dealType === "welcome") return language === "en" ? "Welcome" : "Willkommen"
-  if (dealType === "comeback") {
-    const mode = micrositeDealMetadataString(deal.metadata, "bonus_mode")
-    if (mode === "duration_bonus") return language === "en" ? "Time bonus" : "Zeitbonus"
-    return language === "en" ? "Comeback" : "Comeback"
-  }
-  if (dealType === "birthday") return language === "en" ? "Birthday" : "Geburtstag"
-  if (dealType === "happy_hour") return language === "en" ? "Happy hour" : "Happy Hour"
-  if (dealType === "permanent_discount") return language === "en" ? "Permanent discount" : "Dauerrabatt"
-  if (dealType === "limited_drop") return language === "en" ? "Deal drop" : "Deal Drop"
-  if (dealType === "streak") return language === "en" ? "Streak" : "Streak"
-  if (dealType === "challenge") return language === "en" ? "Challenge" : "Challenge"
-  return ""
+  return title
 }
 
 export function micrositeDealDescription(
@@ -344,9 +224,13 @@ export function micrositeDealDescription(
     | "benefit_count"
     | "min_spend"
   > &
-    Partial<Pick<Deal, "display_title" | "display_subtitle">>,
+    Partial<Pick<Deal, "display_title" | "display_subtitle" | "public_subtitle">>,
   language: MicrositeContentLanguage = "de",
 ) {
+  if (deal.public_subtitle !== null && deal.public_subtitle !== undefined) {
+    return normalizeMicrositePublicText(deal.public_subtitle)
+  }
+
   if (deal.display_subtitle !== null && deal.display_subtitle !== undefined) {
     return normalizeMicrositePublicText(deal.display_subtitle)
   }
@@ -468,7 +352,7 @@ export function micrositeStampRewardTitle(
         : "2 für 1"
   }
 
-  if (explicitTitle && !FORBIDDEN_PUBLIC_TITLE.test(rawTitle)) {
+  if (explicitTitle && !isForbiddenPublicDisplayText(rawTitle)) {
     return explicitTitle
   }
 
@@ -518,6 +402,32 @@ export function micrositeWelcomeStampCount(
 
 function isFiniteNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value)
+}
+
+function toTaxonomyInput(
+  deal: Partial<Pick<Deal, "type" | "discount_type" | "discount_value" | "reward_item" | "benefit_count" | "reward_format" | "trigger_key" | "campaign_type" | "activation_mode" | "benefit_category" | "metadata">> & {
+    display_title?: string | null
+    public_title?: string | null
+  },
+) {
+  return {
+    type: deal.type,
+    discount_type: deal.discount_type,
+    discount_value: deal.discount_value,
+    reward_item: deal.reward_item,
+    benefit_count: deal.benefit_count,
+    reward_format: deal.reward_format,
+    trigger_key: deal.trigger_key,
+    campaign_type: deal.campaign_type,
+    activation_mode: deal.activation_mode,
+    benefit_category: deal.benefit_category,
+    metadata:
+      deal.metadata && typeof deal.metadata === "object" && !Array.isArray(deal.metadata)
+        ? (deal.metadata as Record<string, unknown>)
+        : null,
+    public_title: deal.public_title,
+    display_title: deal.display_title,
+  }
 }
 
 function formatNumber(value: number, language: MicrositeContentLanguage) {

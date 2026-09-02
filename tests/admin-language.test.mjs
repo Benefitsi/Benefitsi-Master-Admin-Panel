@@ -40,7 +40,7 @@ test("uses the canonical German benefit taxonomy in the admin selector", async (
   )
   assert.equal(
     dealTypeOptions.find((option) => option.value === "comeback")?.label,
-    "Comeback",
+    "Comeback-Deal",
   )
   assert.equal(
     dealTypeOptions.find((option) => option.value === "permanent_discount")?.label,
@@ -260,7 +260,7 @@ test("translates import, image editing, login, and empty-state copy", () => {
   assert.equal(translateValue("Indisch", "en"), "Indian")
   assert.equal(translateValue("Deal Drop inventory", "de"), "Deal Drop-Kontingent")
   assert.equal(translateValue("Challenge name", "de"), "Name der Challenge")
-  assert.equal(translateValue("Comeback Deal", "de"), "Comeback")
+  assert.equal(translateValue("Comeback Deal", "de"), "Comeback-Deal")
   assert.equal(translateValue("Selectable deal", "de"), "Auswählbarer Vorteil")
   assert.equal(
     translateValue("Selected direct deal source", "de"),

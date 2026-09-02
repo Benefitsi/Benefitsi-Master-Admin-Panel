@@ -91,6 +91,10 @@ import {
 } from "./partner-actions"
 import type { DealCopyField } from "@/lib/deal-copy"
 import type { DealFormDraft } from "@/lib/deal-form"
+import {
+  benefitTaxonomyLabel,
+  formatBenefitTitle,
+} from "@/lib/benefit-taxonomy"
 import { researchPartner } from "./partner-enrichment-actions"
 import type {
   GeminiProviderWarning,
@@ -265,7 +269,7 @@ const dealUiTypeOptions = dealTypeOptions.flatMap((option) =>
   option.value === "comeback"
     ? [
         { value: DURATION_BONUS_DEAL, label: "Zeitbonus" },
-        { value: COMEBACK_INACTIVE_DEAL, label: "Comeback" },
+        { value: COMEBACK_INACTIVE_DEAL, label: "Comeback-Deal" },
       ]
     : [option],
 )
@@ -5516,50 +5520,23 @@ function formatDealPublicTitle({
   discountValue,
   rewardItem,
   benefitCount,
+  benefitCategory,
 }: {
   type: string
   discountType: string
   discountValue: number | null
   rewardItem: string
   benefitCount: number | null
+  benefitCategory?: string | null
 }) {
-  if (type.trim().toLowerCase() === "two_for_one" || discountType === "2for1") {
-    const item = normalizeRewardItem(rewardItem)
-    return item ? `2 für 1 ${item}` : "2 für 1"
-  }
-
-  if (discountType === "percent" && discountValue !== null) {
-    return `${discountValue} % Rabatt`
-  }
-
-  if (discountType === "fixed" && discountValue !== null) {
-    return `${discountValue} € Rabatt`
-  }
-
-  if (discountType === "item") {
-    const item = normalizeRewardItem(rewardItem)
-    return item ? `Gratis ${item}` : "Gratisartikel"
-  }
-
-  if (discountType === "bonus_stamp") {
-    return `+${benefitCount ?? 1} Bonusstempel`
-  }
-
-  if (type === "welcome") {
-    return "Willkommen"
-  }
-
-  if (type === COMEBACK_INACTIVE_DEAL) {
-    return "Comeback"
-  }
-
-  return formatDealDisplayName({
+  return formatBenefitTitle({
     type,
-    discountType,
-    discountValue,
-    rewardItem,
-    benefitCount,
-  })
+    discount_type: discountType,
+    discount_value: discountValue,
+    reward_item: rewardItem,
+    benefit_count: benefitCount,
+    benefit_category: benefitCategory,
+  }, "de")
 }
 
 function normalizeRewardItem(value: string | null | undefined) {
@@ -5646,13 +5623,14 @@ function DealFields({
   const [terms, setTerms] = useState(dealDraft?.terms ?? deal?.terms ?? "")
   const [termsDirty, setTermsDirty] = useState(Boolean(dealDraft))
   const [displayTitle, setDisplayTitle] = useState(
-    dealDraft?.displayTitle ?? deal?.display_title ?? "",
+    dealDraft?.displayTitle ?? deal?.public_title ?? deal?.display_title ?? "",
   )
   const [displaySubtitle, setDisplaySubtitle] = useState(
-    dealDraft?.displaySubtitle ?? deal?.display_subtitle ?? "",
+    dealDraft?.displaySubtitle ?? deal?.public_subtitle ?? deal?.display_subtitle ?? "",
   )
   const [displaySubtitleAuto, setDisplaySubtitleAuto] = useState(
-    dealDraft?.displaySubtitleAuto ?? deal?.display_subtitle == null,
+    dealDraft?.displaySubtitleAuto ??
+      (deal?.public_subtitle ?? deal?.display_subtitle) == null,
   )
   const [estimatedSavings, setEstimatedSavings] = useState(
     formatTextInputValue(deal?.estimated_savings),
@@ -5995,6 +5973,7 @@ function DealFields({
     discountValue: parseOptionalNumberInput(discountValue),
     rewardItem,
     benefitCount: parseOptionalNumberInput(benefitCount),
+    benefitCategory,
   })
   const generatedDisplaySubtitle = formatDealPublicSubtitle(
     selectedDiscountType,
@@ -12758,19 +12737,7 @@ function dealCardTypeLabel(deal: Deal) {
     }
   }
 
-  if (deal.type === "welcome") {
-    return "Willkommen"
-  }
-
-  if (
-    deal.type === "comeback" &&
-    metadataString(metadataObject(deal.metadata), "bonus_mode") ===
-      COMEBACK_INACTIVE_MODE
-  ) {
-    return "Comeback"
-  }
-
-  return labelForValue(dealUiTypeOptions, dealUiTypeForDeal(deal)) || "Vorteil"
+  return benefitTaxonomyLabel(deal, "de")
 }
 
 function metadataObject(value: unknown): Record<string, unknown> {

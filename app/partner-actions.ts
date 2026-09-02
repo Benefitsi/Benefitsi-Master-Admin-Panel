@@ -246,6 +246,8 @@ type ParsedDeal = {
   customer_description: string | null
   staff_instructions: string | null
   terms: string | null
+  public_title: string | null
+  public_subtitle: string | null
   display_title: string | null
   display_subtitle: string | null
   trigger_value: number | null
@@ -4166,6 +4168,8 @@ function parseDealPayload(
       `${prefix}staff_instructions`,
     ),
     terms: nullableStringValue(formData, `${prefix}terms`),
+    public_title: displayTitle,
+    public_subtitle: displaySubtitle,
     display_title: displayTitle,
     display_subtitle: displaySubtitle,
     trigger_value: triggerValue,
@@ -4518,7 +4522,7 @@ function validateDealPayload(payload: ParsedDeal) {
     return "Discount type is required."
   }
 
-  if (isForbiddenPublicDealTitle(payload.display_title)) {
+  if (isForbiddenPublicDealTitle(payload.public_title)) {
     return "Der öffentliche Anzeigetext enthält einen veralteten Begriff. Bitte verwende Vorteil oder einen konkreten Vorteilstitel."
   }
 
@@ -4528,8 +4532,8 @@ function validateDealPayload(payload: ParsedDeal) {
 
   const challengeName = metadataRecord(payload.metadata).challenge_name
   const textValidation = validateTextLengthRules([
-    ["Display title", payload.display_title, adminTextLimits.shortText],
-    ["Display subtitle", payload.display_subtitle, adminTextLimits.longText],
+    ["Public title", payload.public_title, adminTextLimits.shortText],
+    ["Public subtitle", payload.public_subtitle, adminTextLimits.longText],
     ["Reward item", payload.reward_item, adminTextLimits.shortText],
     [
       "Customer description",
@@ -4837,7 +4841,7 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
   const customerDescription = (() => {
     switch (payload.type) {
       case "two_for_one":
-        return `Aktiviere den 2-für-1-Vorteil: Erhalte zwei ${payload.reward_item || "ausgewählte Produkte"} zum Preis von einem.`
+        return `Aktiviere 2 für 1: Erhalte zwei ${payload.reward_item || "ausgewählte Produkte"} zum Preis von einem.`
       case "free_item":
         return `Aktiviere den Vorteil und erhalte ${reward} gratis.`
       case "bonus_stamp":
@@ -4848,8 +4852,8 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
           : `Happy Hour: ${reward}.`
       case "welcome":
         return isAutomatic
-          ? `Willkommen: Erhalte ${reward} bei deinem ersten qualifizierten Besuch automatisch.`
-          : `Willkommen: Erhalte ${reward} bei deinem ersten qualifizierten Besuch.`
+          ? `Willkommensbonus: Erhalte ${reward} bei deinem ersten qualifizierten Besuch automatisch.`
+          : `Willkommensdeal: Erhalte ${reward} bei deinem ersten qualifizierten Besuch.`
       case "streak":
         return `Nach ${payload.trigger_value ?? 3} qualifizierten Besuchen erhältst du ${reward}.`
       case "challenge":
@@ -4858,8 +4862,8 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
         return comebackIsTimeBonus
           ? `Zeitbonus: Erhalte ${reward} bei einer schnellen Rückkehr.`
           : isAutomatic
-            ? `Comeback: Erhalte ${reward} bei einem berechtigten Besuch automatisch.`
-            : `Comeback: Erhalte ${reward} bei einem berechtigten Besuch.`
+            ? `Comeback-Bonus: Erhalte ${reward} bei einem berechtigten Besuch automatisch.`
+            : `Comeback-Deal: Erhalte ${reward} bei einem berechtigten Besuch.`
       case "limited_drop":
         return `Deal Drop: Erhalte ${reward}, solange das Kontingent reicht.`
       default:
@@ -4907,7 +4911,7 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
           ? `Nur von ${timeWindow} gültig. Nicht mit anderen Vorteilen kombinierbar.`
           : "Nur im konfigurierten Happy-Hour-Zeitraum gültig. Nicht mit anderen Vorteilen kombinierbar."
       case "welcome":
-        return "Einmal pro Nutzerkonto einlösbar. Nicht mit anderen Willkommensvorteilen kombinierbar."
+        return "Einmal pro Nutzerkonto einlösbar. Nicht mit anderen Willkommensdeals oder Willkommensboni kombinierbar."
       case "limited_drop":
         return "Nur solange das Kontingent reicht. Nicht mit anderen Vorteilen kombinierbar."
       default:
@@ -5000,7 +5004,7 @@ function describeDealReward(
   }
 
   if (discountType === "2for1") {
-    return "einen 2-für-1-Vorteil"
+    return "den Vorteil 2 für 1"
   }
 
   return "den konfigurierten Vorteil"

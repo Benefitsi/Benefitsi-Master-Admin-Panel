@@ -6,12 +6,13 @@ export type BenefitTaxonomyInput = {
   discount_value?: number | null
   reward_item?: string | null
   benefit_count?: number | null
-  metadata?: Record<string, unknown> | null
+  metadata?: unknown
   reward_format?: string | null
   trigger?: string | null
   trigger_key?: string | null
   campaign_type?: string | null
   activation_mode?: string | null
+  benefit_category?: string | null
   audience?: string | null
   public_title?: string | null
   public_subtitle?: string | null
@@ -28,12 +29,15 @@ const retiredPublicTitleKeys = new Set([
   "daily deal",
   "hauptdeal", "haupt deal",
   "top deal", "top vorteil",
-  "2 für 1 deal", "2 for 1 deal",
+  "2 für 1 deal", "2 for 1 deal", "2-für-1-deal", "2-for-1-deal",
   "rabattvorteil", "rabatt vorteil",
   "dauervorteil", "dauer vorteil",
   "automatischer basisrabatt",
   "bonus stempel",
   "streak bonus",
+  "willkommensvorteil",
+  "comeback vorteil",
+  "geburtstagsvorteil",
   "welcome reward", "welcome rewards",
   "time based bonus",
   "selectable discount",
@@ -71,7 +75,7 @@ function retiredPublicTitleKey(value: string) {
 function hasRetiredPublicTitle(value: string) {
   const candidate = ` ${retiredPublicTitleKey(value)} `
   return [...retiredPublicTitleKeys].some((retiredTitle) =>
-    candidate.includes(` ${retiredTitle} `),
+    candidate.includes(` ${retiredPublicTitleKey(retiredTitle)} `),
   )
 }
 
@@ -100,7 +104,12 @@ function normalizedString(value: unknown) {
 }
 
 function metadataString(input: BenefitTaxonomyInput, key: string) {
-  return normalizedString(input.metadata?.[key])
+  const metadata = input.metadata
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return ""
+  }
+
+  return normalizedString((metadata as Record<string, unknown>)[key])
 }
 
 function recognized<T extends string>(value: string, values: readonly T[]): T | null {
@@ -159,7 +168,13 @@ function campaignType(input: BenefitTaxonomyInput): CampaignType {
 function isAutomaticBonus(input: BenefitTaxonomyInput, format: RewardFormat) {
   return (
     format === "bonus_stamp" ||
-    normalizedString(input.activation_mode) === "automatic_background"
+    ["automatic_scan", "automatic_background"].includes(
+      normalizedString(input.activation_mode),
+    ) ||
+    ["automatic_background", "automatic_scan"].includes(
+      normalizedString(input.benefit_category),
+    ) ||
+    ["welcome_bonus", "comeback_bonus"].includes(normalizedString(input.type))
   )
 }
 
@@ -211,18 +226,22 @@ export function benefitTaxonomyLabel(
 }
 
 function publicTitle(input: BenefitTaxonomyInput) {
-  const title = input.public_title ?? input.display_title
+  const title =
+    (typeof input.public_title === "string" && input.public_title.trim()) ||
+    (typeof input.display_title === "string" && input.display_title.trim()) ||
+    ""
   if (typeof title !== "string") {
     return ""
   }
 
   const normalizedTitle = normalizePublicText(title)
-    .replace(/\b2\s*[-–]?\s*for\s*[-–]?\s*1\b/giu, "2 für 1")
+    .replace(/\b2\s*[-\s]*(?:for|für)\s*[-\s]*1\b/giu, "2 für 1")
 
   if (
     !normalizedTitle ||
     hasForbiddenPublicText(normalizedTitle) ||
-    isNonConcretePublicTitle(normalizedTitle)
+    isNonConcretePublicTitle(normalizedTitle) ||
+    isGenericFormatTitle(input, normalizedTitle)
   ) {
     return ""
   }
@@ -238,6 +257,35 @@ function rewardItem(input: BenefitTaxonomyInput) {
     .trim()
 
   return hasForbiddenPublicText(item) ? "" : item
+}
+
+function normalizedTitleKey(value: string) {
+  return normalizePublicText(value)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+}
+
+function isGenericFormatTitle(input: BenefitTaxonomyInput, value: string) {
+  const format = rewardFormat(input)
+  const titleKey = normalizedTitleKey(value)
+  const itemKey = normalizedTitleKey(rewardItem(input))
+
+  if (format === "two_for_one") {
+    return ["2 für 1", "2 for 1"].includes(titleKey) ||
+      (itemKey !== "" && titleKey === itemKey)
+  }
+  if (format === "free_item") {
+    return ["gratisartikel", "free item"].includes(titleKey) ||
+      (itemKey !== "" && titleKey === itemKey)
+  }
+  if (format === "discount") {
+    return ["rabatt", "discount"].includes(titleKey)
+  }
+  if (format === "bonus_stamp") {
+    return ["bonusstempel", "bonus stamps", "bonus stamp"].includes(titleKey)
+  }
+  return false
 }
 
 function numberValue(value: number | null | undefined) {
@@ -295,4 +343,9 @@ export function formatBenefitTitle(
   }
 
   return concreteTitle({ ...input, reward_item: null }, language)
+}
+
+/** Returns whether a string contains a retired public taxonomy term. */
+export function isForbiddenPublicDisplayText(value: string | null | undefined) {
+  return typeof value === "string" && hasForbiddenPublicText(value)
 }

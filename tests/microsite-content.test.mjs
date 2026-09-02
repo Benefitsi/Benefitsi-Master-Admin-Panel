@@ -84,11 +84,11 @@ test("puts only the stored two-for-one deal first and keeps the app type label f
 test("uses canonical public labels for reward formats and lifecycle triggers", () => {
   assert.equal(
     micrositeDealTypeLabel({ type: "welcome", discount_type: "item" }),
-    "Willkommen",
+    "Willkommensdeal",
   )
   assert.equal(
     micrositeDealTypeLabel({ type: "welcome", discount_type: "bonus_stamp" }),
-    "Willkommen",
+    "Willkommensbonus",
   )
   assert.equal(
     micrositeDealTypeLabel({
@@ -96,7 +96,7 @@ test("uses canonical public labels for reward formats and lifecycle triggers", (
       discount_type: "item",
       metadata: { bonus_mode: "comeback_inactive" },
     }),
-    "Comeback",
+    "Comeback-Deal",
   )
   assert.equal(
     micrositeDealTypeLabel({
@@ -104,7 +104,7 @@ test("uses canonical public labels for reward formats and lifecycle triggers", (
       discount_type: "bonus_stamp",
       metadata: { bonus_mode: "comeback_inactive" },
     }),
-    "Comeback",
+    "Comeback-Bonus",
   )
   assert.equal(
     micrositeDealTypeLabel({ type: "permanent_discount" }),
@@ -328,5 +328,85 @@ test("stamp reward titles use the canonical German term", () => {
       customer_description: null,
     }),
     "2 für 1 Pizza",
+  )
+})
+
+test("microsite labels preserve trigger, reward format, and activation semantics", () => {
+  assert.equal(
+    micrositeDealTypeLabel({
+      type: "welcome",
+      discount_type: "percent",
+      reward_format: "discount",
+      activation_mode: "direct_selectable",
+    }),
+    "Willkommensdeal",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({
+      type: "welcome",
+      discount_type: "bonus_stamp",
+      reward_format: "bonus_stamp",
+      activation_mode: "automatic_background",
+    }),
+    "Willkommensbonus",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({
+      type: "comeback",
+      trigger_key: "time_bonus",
+      reward_format: "bonus_stamp",
+      activation_mode: "automatic_background",
+    }),
+    "Zeitbonus",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({
+      type: "comeback",
+      metadata: { bonus_mode: "comeback_inactive" },
+      reward_format: "discount",
+      discount_type: "percent",
+      activation_mode: "direct_selectable",
+    }),
+    "Comeback-Deal",
+  )
+})
+
+test("microsite titles reject every retired public alias before rendering", () => {
+  for (const display_title of [
+    "2-für-1-Deal",
+    "Rabattvorteil",
+    "Dauervorteil",
+    "Automatischer Basisrabatt",
+    "Bonus-Stempel",
+    "Streak Bonus",
+    "Time-based bonus",
+    "Selectable discount",
+  ]) {
+    assert.equal(
+      micrositeDealTitle({
+        type: "discount",
+        discount_type: "percent",
+        discount_value: 15,
+        reward_item: null,
+        benefit_count: null,
+        customer_description: "",
+        min_spend: null,
+        display_title,
+      }),
+      "15 % Rabatt",
+    )
+  }
+
+  assert.equal(
+    micrositeDealTitle({
+      type: "welcome",
+      discount_type: "percent",
+      discount_value: 20,
+      reward_item: null,
+      benefit_count: null,
+      customer_description: "",
+      min_spend: null,
+    }),
+    "Willkommensdeal: 20 % Rabatt",
   )
 })

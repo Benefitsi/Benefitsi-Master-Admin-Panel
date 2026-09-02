@@ -24,7 +24,7 @@ export type PublishedMicrositePage = {
 }
 
 const PUBLIC_DEAL_COLUMNS =
-  "id,partner_id,type,reward_format,trigger_key,campaign_type,activation_mode,discount_type,premium_only,benefit_category,audience,activation_required,allow_free_trial,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,display_title,display_subtitle,trigger_value,expiry_days,happy_hour_start,happy_hour_end,timezone,cooldown_hours,valid_from,valid_until,max_redemptions_global,max_redemptions_per_user,stock_total,stock_remaining,selection_expires_minutes,priority,min_spend,max_discount_amount,reward_track_target,weekdays,reserve_on_selection,metadata,created_at,updated_at"
+  "id,partner_id,type,reward_format,trigger_key,campaign_type,activation_mode,discount_type,premium_only,benefit_category,audience,activation_required,allow_free_trial,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,public_title,public_subtitle,display_title,display_subtitle,trigger_value,expiry_days,happy_hour_start,happy_hour_end,timezone,cooldown_hours,valid_from,valid_until,max_redemptions_global,max_redemptions_per_user,stock_total,stock_remaining,selection_expires_minutes,priority,min_spend,max_discount_amount,reward_track_target,weekdays,reserve_on_selection,metadata,created_at,updated_at"
 
 // Keep a projection without the additive public-copy fields so a microsite
 // can continue serving legacy deals during a staggered database rollout.
@@ -120,6 +120,8 @@ export async function getPublishedMicrositePage(
       trigger_key: null,
       campaign_type: null,
       activation_mode: null,
+      public_title: null,
+      public_subtitle: null,
       display_title: null,
       display_subtitle: null,
     }))
@@ -240,6 +242,8 @@ export function isMissingPublicDealCanonicalColumn(error: unknown) {
     "trigger_key",
     "campaign_type",
     "activation_mode",
+    "public_title",
+    "public_subtitle",
   ].some((column) => message.includes(column))
 }
 

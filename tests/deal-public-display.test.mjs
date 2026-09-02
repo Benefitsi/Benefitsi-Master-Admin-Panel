@@ -64,6 +64,21 @@ test("public deal titles reject legacy campaign aliases before saving", () => {
   assert.equal(isForbiddenPublicDealTitle("Deal Drop"), false)
 })
 
+test("public deal validation rejects all retired aliases, including separator variants", () => {
+  for (const title of [
+    "2-für-1-Deal",
+    "Rabattvorteil",
+    "Dauervorteil",
+    "Automatischer Basisrabatt",
+    "Bonus-Stempel",
+    "Streak Bonus",
+    "Time-based bonus",
+    "Selectable discount",
+  ]) {
+    assert.equal(isForbiddenPublicDealTitle(title), true, title)
+  }
+})
+
 test("payload display values preserve null automatic and empty custom subtitle states", () => {
   const automatic = new FormData()
   automatic.set("display_title", "2 für 1 Döner")
@@ -108,6 +123,36 @@ test("public microsite contract includes explicit deal display fields", async ()
   assert.match(contentCode, /display_subtitle/)
   assert.match(dataCode, /display_title/)
   assert.match(dataCode, /display_subtitle/)
+  assert.match(contentCode, /public_title/)
+  assert.match(dataCode, /public_title/)
+  assert.match(dataCode, /public_subtitle/)
+})
+
+test("public taxonomy fields prefer the new public aliases and retain display fallbacks", () => {
+  assert.equal(
+    micrositeDealTitle({
+      type: "discount",
+      discount_type: "percent",
+      discount_value: 20,
+      reward_item: null,
+      min_spend: null,
+      public_title: "Öffentlicher Mittagstisch-Rabatt",
+      display_title: "Legacy title",
+    }, "de"),
+    "Öffentlicher Mittagstisch-Rabatt",
+  )
+  assert.equal(
+    micrositeDealTitle({
+      type: "discount",
+      discount_type: "percent",
+      discount_value: 20,
+      reward_item: null,
+      min_spend: null,
+      public_title: "",
+      display_title: "Legacy title",
+    }, "de"),
+    "Legacy title",
+  )
 })
 
 test("microsite title and subtitle follow explicit public display fallbacks", () => {

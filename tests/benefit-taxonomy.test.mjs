@@ -309,3 +309,56 @@ test("rejects separator and two-for-one generic decorations while keeping item t
     "2 für 1 Pizza",
   )
 })
+
+test("uses the structured reward format when a public title contains only the item", () => {
+  assert.equal(
+    formatBenefitTitle({
+      type: "free_item",
+      reward_format: "free_item",
+      discount_type: "item",
+      reward_item: "Ayran",
+      public_title: "Ayran",
+    }, "de"),
+    "Gratis Ayran",
+  )
+  assert.equal(
+    formatBenefitTitle({
+      type: "two_for_one",
+      reward_format: "two_for_one",
+      discount_type: "2for1",
+      reward_item: "Pizza",
+      public_title: "Pizza",
+    }, "de"),
+    "2 für 1 Pizza",
+  )
+})
+
+test("resolves trigger and activation dimensions independently of legacy type", () => {
+  assert.equal(
+    benefitTaxonomyLabel({
+      type: "welcome",
+      reward_format: "discount",
+      discount_type: "percent",
+      activation_mode: "direct_selectable",
+    }, "de"),
+    "Willkommensdeal",
+  )
+  assert.equal(
+    benefitTaxonomyLabel({
+      type: "welcome",
+      reward_format: "bonus_stamp",
+      discount_type: "bonus_stamp",
+      activation_mode: "automatic_background",
+    }, "de"),
+    "Willkommensbonus",
+  )
+  assert.equal(
+    benefitTaxonomyLabel({
+      type: "comeback",
+      trigger_key: "time_bonus",
+      reward_format: "bonus_stamp",
+      activation_mode: "automatic_background",
+    }, "de"),
+    "Zeitbonus",
+  )
+})

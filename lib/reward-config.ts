@@ -1,7 +1,7 @@
 export const dealTypeOptions = [
   { value: "two_for_one", label: "2 für 1" },
-  { value: "welcome", label: "Willkommen" },
-  { value: "comeback", label: "Comeback" },
+  { value: "welcome", label: "Willkommensdeal" },
+  { value: "comeback", label: "Comeback-Deal" },
   { value: "happy_hour", label: "Happy Hour" },
   { value: "permanent_discount", label: "Dauerrabatt" },
   { value: "limited_drop", label: "Deal Drop" },

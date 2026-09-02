@@ -367,7 +367,7 @@ const translations = [
   ["Bonus stamp", "Bonusstempel"],
   ["Bonus stamp count", "Anzahl der Bonusstempel"],
   ["Discount value", "Rabattwert"],
-  ["Welcome reward", "Willkommen"],
+  ["Welcome reward", "Willkommensbonus"],
   ["Time-based bonus", "Zeitbonus"],
   ["Happy Hour deal", "Happy-Hour-Vorteil"],
   ["Permanent fallback discount", "Dauerrabatt"],
@@ -378,7 +378,7 @@ const translations = [
   ["Automatic bonus stamp", "Automatischer Bonusstempel"],
   ["Streak reward", "Streak"],
   ["Challenge reward", "Challenge"],
-  ["Comeback Deal", "Comeback"],
+  ["Comeback Deal", "Comeback-Deal"],
   ["No direct reward", "Kein direkter Vorteil"],
   ["Fixed € discount", "Fester Euro-Rabatt"],
   ["Percentage discount", "Prozentualer Rabatt"],
@@ -395,9 +395,9 @@ const translations = [
   ["Premium users", "Premium-Nutzer"],
   ["Free + Premium", "Kostenlos + Premium"],
   ["2-for-1", "2 für 1"],
-  ["Welcome", "Willkommen"],
+  ["Welcome", "Willkommensdeal"],
   ["Time bonus", "Zeitbonus"],
-  ["Comeback", "Comeback"],
+  ["Comeback", "Comeback-Deal"],
   ["Happy Hour", "Happy Hour"],
   ["Permanent discount", "Dauerrabatt"],
   ["Deal Drop", "Deal Drop"],
@@ -405,8 +405,8 @@ const translations = [
   ["Free item", "Gratisartikel"],
   ["Discount", "Rabatt"],
   ["Bonus stamp", "Bonusstempel"],
-  ["Streak bonus", "Streak"],
-  ["Challenge bonus", "Challenge"],
+  ["Streak bonus", "Streak-Bonus"],
+  ["Challenge bonus", "Challenge-Bonus"],
   ["No direct benefit", "Kein direkter Vorteil"],
   ["Fixed € discount", "Fester €-Rabatt"],
   ["Percentage discount", "Prozentualer Rabatt"],
@@ -1442,10 +1442,13 @@ function canonicalizeBenefitSurfaceCopy(value: string, language: AdminLanguage) 
     ? [
         ["Deal Drops", "__BENEFIT_DEAL_DROPS__"],
         ["Deal Drop", "__BENEFIT_DEAL_DROP__"],
-        ["Willkommensdeal", "__BENEFIT_WELCOME_TRIGGER__"],
-        ["Comeback-Deal", "__BENEFIT_COMEBACK_TRIGGER__"],
-        ["Geburtstagsdeal", "__BENEFIT_BIRTHDAY_TRIGGER__"],
-        ["Comeback Deal", "__BENEFIT_COMEBACK_TRIGGER__"],
+        ["Willkommensbonus", "__BENEFIT_WELCOME_BONUS__"],
+        ["Willkommensdeal", "__BENEFIT_WELCOME_DEAL__"],
+        ["Comeback-Bonus", "__BENEFIT_COMEBACK_BONUS__"],
+        ["Comeback-Deal", "__BENEFIT_COMEBACK_DEAL__"],
+        ["Geburtstag", "__BENEFIT_BIRTHDAY_TRIGGER__"],
+        ["Streak-Bonus", "__BENEFIT_STREAK_BONUS__"],
+        ["Challenge-Bonus", "__BENEFIT_CHALLENGE_BONUS__"],
       ]
     : [
         ["deal drops", "__BENEFIT_DEAL_DROPS__"],
@@ -1467,16 +1470,16 @@ function canonicalizeBenefitSurfaceCopy(value: string, language: AdminLanguage) 
 
   if (language === "de") {
     normalized = normalized
-      .replaceAll("Willkommensdeals", "Willkommen")
-      .replaceAll("Willkommensvorteile", "Willkommen")
-      .replaceAll("Willkommensvorteil", "Willkommen")
-      .replaceAll("Comeback-Deals", "Comeback")
-      .replaceAll("Comeback-Vorteile", "Comeback")
-      .replaceAll("Comeback-Vorteil", "Comeback")
+      .replaceAll("Willkommensdeals", "Willkommensdeal")
+      .replaceAll("Willkommensvorteile", "Willkommensdeal")
+      .replaceAll("Willkommensvorteil", "Willkommensdeal")
+      .replaceAll("Comeback-Deals", "Comeback-Deal")
+      .replaceAll("Comeback-Vorteile", "Comeback-Deal")
+      .replaceAll("Comeback-Vorteil", "Comeback-Deal")
       .replaceAll("Geburtstagsvorteile", "Geburtstag")
       .replaceAll("Geburtstagsvorteil", "Geburtstag")
-      .replaceAll("Streak-Boni", "Streak")
-      .replaceAll("Streak-Bonus", "Streak")
+      .replaceAll("Streak-Boni", "Streak-Bonus")
+      .replaceAll("Challenge-Boni", "Challenge-Bonus")
       .replaceAll("Boni", "Belohnungen")
       .replaceAll("Deals & Offers", "Vorteile")
       .replaceAll("Deals & Rewards", "Vorteile & Belohnungen")
@@ -1514,9 +1517,13 @@ function canonicalizeBenefitSurfaceCopy(value: string, language: AdminLanguage) 
   return normalized
     .replaceAll("__BENEFIT_DEAL_DROPS__", language === "de" ? "Deal Drops" : "deal drops")
     .replaceAll("__BENEFIT_DEAL_DROP__", language === "de" ? "Deal Drop" : "deal drop")
-    .replaceAll("__BENEFIT_WELCOME_TRIGGER__", language === "de" ? "Willkommen" : "welcome")
-    .replaceAll("__BENEFIT_COMEBACK_TRIGGER__", language === "de" ? "Comeback" : "comeback")
+    .replaceAll("__BENEFIT_WELCOME_BONUS__", language === "de" ? "Willkommensbonus" : "welcome bonus")
+    .replaceAll("__BENEFIT_WELCOME_DEAL__", language === "de" ? "Willkommensdeal" : "welcome deal")
+    .replaceAll("__BENEFIT_COMEBACK_BONUS__", language === "de" ? "Comeback-Bonus" : "comeback bonus")
+    .replaceAll("__BENEFIT_COMEBACK_DEAL__", language === "de" ? "Comeback-Deal" : "comeback deal")
     .replaceAll("__BENEFIT_BIRTHDAY_TRIGGER__", language === "de" ? "Geburtstag" : "birthday")
+    .replaceAll("__BENEFIT_STREAK_BONUS__", language === "de" ? "Streak-Bonus" : "streak bonus")
+    .replaceAll("__BENEFIT_CHALLENGE_BONUS__", language === "de" ? "Challenge-Bonus" : "challenge bonus")
 }
 
 export function isTranslationVariant(value: string, original: string) {

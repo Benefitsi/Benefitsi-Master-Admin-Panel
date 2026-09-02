@@ -75,6 +75,8 @@ export type Deal = {
   customer_description: string | null
   staff_instructions: string | null
   terms: string | null
+  public_title: string | null
+  public_subtitle: string | null
   display_title: string | null
   display_subtitle: string | null
   trigger_value: number | null
