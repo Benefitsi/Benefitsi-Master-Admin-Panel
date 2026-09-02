@@ -51,9 +51,16 @@ export const audienceOptions = [
   { value: "free", label: "Free" },
   { value: "premium", label: "Premium" },
   { value: "both", label: "Free und Premium" },
+  { value: "free_trial_only", label: "Nur Free-Testphase" },
 ] as const
 
-export const milestoneAudienceOptions = audienceOptions
+// Milestones use a separate database constraint and intentionally keep their
+// existing three audiences until that table is migrated independently.
+export const milestoneAudienceOptions = [
+  { value: "free", label: "Free" },
+  { value: "premium", label: "Premium" },
+  { value: "both", label: "Free und Premium" },
+] as const
 
 export const rewardTypeOptions = [
   { value: "item", label: "Gratisartikel" },

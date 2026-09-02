@@ -4032,6 +4032,7 @@ function dealAudienceValueLabel(audience = "both") {
   if (audience === "premium") return "Premium"
   if (audience === "free") return "Free"
   if (audience === "both") return "Free + Premium"
+  if (audience === "free_trial_only") return "Nur Free-Testphase"
 
   return "Free + Premium"
 }

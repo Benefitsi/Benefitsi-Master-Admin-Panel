@@ -5,6 +5,21 @@ import {
   benefitTaxonomyLabel,
   formatBenefitTitle,
 } from "../lib/benefit-taxonomy.ts"
+import {
+  audienceOptions,
+  milestoneAudienceOptions,
+} from "../lib/reward-config.ts"
+
+test("keeps all four canonical audiences available to deal writers", () => {
+  assert.deepEqual(
+    audienceOptions.map((option) => option.value),
+    ["free", "premium", "both", "free_trial_only"],
+  )
+  assert.deepEqual(
+    milestoneAudienceOptions.map((option) => option.value),
+    ["free", "premium", "both"],
+  )
+})
 
 test("formats every reward format as a concrete German public title", () => {
   assert.equal(

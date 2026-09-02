@@ -49,3 +49,13 @@ test("partner menu publication is not forced into review", async () => {
   assert.doesNotMatch(admin, /label="Menu approval status"/)
   assert.doesNotMatch(admin, /value:\s*["']review["']\s*,\s*label:\s*["']Needs review["']/)
 })
+
+test("partner management keeps the menu as a direct top tab", async () => {
+  const admin = await readFile(adminUrl, "utf8")
+
+  assert.match(
+    admin,
+    /id:\s*["']menu["'](?:\s+as\s+const)?\s*,\s*label:\s*["']Menu Management["']|id:\s*["']menu["']\s*,\s*label:\s*["']Menu Management["']/,
+  )
+  assert.match(admin, /aria-label="Partner settings"/)
+})
