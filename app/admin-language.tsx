@@ -19,8 +19,6 @@ const translations = [
   ["Partners", "Partner"],
   ["Active partners", "Aktive Partner"],
   ["Featured partners", "Hervorgehobene Partner"],
-  ["Menu approvals required", "Menüfreigaben erforderlich"],
-  ["Menu approvals", "Menüfreigaben"],
   ["Select a partner to edit.", "Wähle einen Partner zur Bearbeitung aus."],
   ["Add", "Hinzufügen"],
   ["Generate with Content-Agent", "Mit dem Content-Agent generieren"],
@@ -42,7 +40,6 @@ const translations = [
   ["item", "Artikel"],
   ["items", "Artikel"],
   ["characters", "Zeichen"],
-  ["awaiting approval", "zur Freigabe ausstehend"],
   ["more", "weitere"],
   ["Select...", "Bitte auswählen ..."],
   ["Inactive", "Inaktiv"],
@@ -515,20 +512,12 @@ const translations = [
   ["Saving operating hours...", "Öffnungszeiten werden gespeichert ..."],
   ["Menu name", "Menüname"],
   ["Menu details", "Menüdetails"],
-  ["Update the menu name, description, or approval status here.", "Aktualisiere hier den Menünamen, die Beschreibung oder den Freigabestatus."],
-  ["Menu approval status", "Freigabestatus des Menüs"],
   ["Menu description", "Menübeschreibung"],
   ["Status", "Status"],
   ["Draft", "Entwurf"],
-  ["Needs review", "Prüfung erforderlich"],
   ["Published", "Veröffentlicht"],
   ["Archived", "Archiviert"],
   ["Menu status", "Menüstatus"],
-  ["Review queue", "Prüfwarteschlange"],
-  ["Review submitted partner menus before publishing", "Eingereichte Partnermenüs vor der Veröffentlichung prüfen"],
-  ["Preview every submitted menu here. Open its partner menu management page if changes are needed before approval.", "Prüfe hier jedes eingereichte Menü. Öffne bei Änderungsbedarf vor der Freigabe die Menüverwaltung des Partners."],
-  ["All menus are reviewed", "Alle Menüs sind geprüft"],
-  ["New submissions will appear here when their status is set to Needs review.", "Neue Einreichungen erscheinen hier, sobald ihr Status auf „Prüfung erforderlich“ gesetzt wird."],
   ["Updated", "Aktualisiert"],
   ["Add menu", "Menü hinzufügen"],
   ["Save menu", "Menü speichern"],
@@ -748,7 +737,6 @@ const translations = [
   ["Add another", "Weiteres hinzufügen"],
   ["Add another milestone", "Weitere Belohnungsstufe hinzufügen"],
   ["Allow free user trial", "Kostenlose Testphase erlauben"],
-  ["Approve menu", "Menü freigeben"],
   ["At least one deal is recommended, but the partner can be created without deals.", "Mindestens ein Vorteil wird empfohlen, der Partner kann jedoch auch ohne Vorteile erstellt werden."],
   ["At least one deal is recommended, but this partner can exist without deals.", "Mindestens ein Vorteil wird empfohlen, dieser Partner kann jedoch auch ohne Vorteile bestehen."],
   ["At least one benefit is recommended, but the partner can be created without benefits.", "Mindestens ein Vorteil wird empfohlen, der Partner kann jedoch auch ohne Vorteile erstellt werden."],
@@ -1277,11 +1265,6 @@ export function translateValue(value: string, language: AdminLanguage) {
     return `${leading}${weeklyVisits[1]} ${
       weeklyVisits[1] === "1" ? "Besuch" : "Besuche"
     } diese Woche${trailing}`
-  }
-
-  const reviewCount = core.match(/^(\d+)\s+menu\s+(review|reviews)$/i)
-  if (reviewCount && language === "de") {
-    return `${leading}${reviewCount[1]} ${reviewCount[1] === "1" ? "Menüprüfung" : "Menüprüfungen"}${trailing}`
   }
 
   const characterCount = core.match(/^(\d+)\s*\/\s*(\d+)\s+characters$/i)

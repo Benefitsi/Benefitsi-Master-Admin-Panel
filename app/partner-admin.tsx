@@ -62,7 +62,6 @@ import {
   weekdayOptions,
 } from "@/lib/reward-config"
 import {
-  approveMenu,
   createPartnerCoverUpload,
   deleteDeal,
   deleteMenu,
@@ -289,7 +288,6 @@ const inactivityUnitOptions = [
 
 const menuStatusOptions = [
   { value: "published", label: "Published" },
-  { value: "review", label: "Needs review" },
   { value: "draft", label: "Draft" },
   { value: "archived", label: "Archived" },
 ] as const
@@ -382,16 +380,6 @@ type InitialMilestoneDraft = {
   staffInstructions: string
   terms: string
   title: string
-}
-
-type PendingMenuReview = {
-  id?: string
-  menuName: string
-  partnerId: string
-  partnerName: string
-  categories: number
-  items: number
-  updatedAt: string | null
 }
 
 type SectionStatusTone = "info" | "recommended" | "required" | "required-subtle"
@@ -536,23 +524,6 @@ export function PartnerWorkspace({
     (count, partner) => count + partner.deals.length,
     0,
   )
-  const pendingMenuReviews = useMemo(
-    () =>
-      partners.flatMap((partner) =>
-        partner.menus
-          .filter((menu) => menu.status === "review")
-          .map((menu) => ({
-            id: menu.id,
-            menuName: menu.name || "Untitled menu",
-            partnerId: partner.id ?? "",
-            partnerName: partner.name || "Untitled partner",
-            categories: menu.categories.length,
-            items: menu.items.length,
-            updatedAt: menu.updated_at,
-          })),
-      ),
-    [partners],
-  )
   const filteredPartners = useMemo(() => {
     const normalized = query.trim().toLowerCase()
 
@@ -586,12 +557,11 @@ export function PartnerWorkspace({
   return (
     <section id="partners" className="partner-management-brand space-y-3">
       <ToastViewport />
-      <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-5">
+      <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
         <LiveMetric label="Partners" value={partnerCount} />
         <LiveMetric label="Active partners" value={activePartners} />
         <LiveMetric label="Featured partners" value={featuredPartners} />
         <LiveMetric label="Benefits" value={dealCount} />
-        <LiveMetric label="Menu approvals required" value={pendingMenuReviews.length} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]">
@@ -697,180 +667,6 @@ function LiveMetric({ label, value }: { label: string; value: number }) {
   )
 }
 
-export function PendingMenuReviewPanel({
-  reviews,
-  onSelectPartner,
-}: {
-  reviews: PendingMenuReview[]
-  onSelectPartner: (partnerId: string) => void
-}) {
-  const visibleReviews = reviews.slice(0, 6)
-  const hiddenCount = Math.max(reviews.length - visibleReviews.length, 0)
-
-  if (!reviews.length) {
-    return null
-  }
-
-  return (
-    <div className="rounded-xl border border-zinc-200 bg-white px-3 py-2 shadow-sm">
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="font-semibold text-zinc-900">Menu approvals required</span>
-          <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
-            {reviews.length}
-          </span>
-        </div>
-        <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-          {visibleReviews.map((review) => (
-            <button
-              type="button"
-              key={review.id ?? `${review.partnerId}-${review.menuName}`}
-              onClick={() => onSelectPartner(review.partnerId)}
-              className="max-w-full rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-left text-xs font-medium text-zinc-700 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-900 sm:max-w-72"
-            >
-              <span className="block truncate">{review.partnerName}</span>
-              <span className="block truncate text-zinc-500">
-                {review.menuName} · {review.items} items
-              </span>
-            </button>
-          ))}
-          {hiddenCount ? (
-            <span className="inline-flex h-8 items-center rounded-md border border-zinc-200 bg-zinc-50 px-2.5 text-xs font-medium text-zinc-500">
-              +{hiddenCount} more
-            </span>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export function MenuApprovalWorkspace({
-  partners,
-}: {
-  partners: PartnerWithDeals[]
-}) {
-  const reviews = partners.flatMap((partner) =>
-    partner.menus
-      .filter((menu) => menu.status === "review")
-      .map((menu) => ({ partner, menu })),
-  )
-
-  return (
-    <section className="space-y-4">
-      <ToastViewport />
-      <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-teal-700">Review queue</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-zinc-950">Menu approvals</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600">
-            Preview every submitted menu here. Open its partner menu management page if changes are needed before approval.
-          </p>
-        </div>
-        <span className="inline-flex w-fit rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
-          {reviews.length} awaiting approval
-        </span>
-      </div>
-
-      {reviews.length ? (
-        <div className="space-y-4">
-          {reviews.map(({ partner, menu }) => (
-            <MenuApprovalCard
-              key={menu.id ?? `${partner.id}-${menu.name}`}
-              menu={menu}
-              partner={partner}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-dashed border-zinc-300 bg-white p-10 text-center shadow-sm">
-          <h3 className="text-base font-semibold text-zinc-900">All menus are reviewed</h3>
-          <p className="mt-1 text-sm text-zinc-500">New submissions will appear here when their status is set to Needs review.</p>
-        </div>
-      )}
-    </section>
-  )
-}
-
-function MenuApprovalCard({
-  menu,
-  partner,
-}: {
-  menu: PartnerMenu
-  partner: PartnerWithDeals
-}) {
-  const [state, formAction] = useActionState(approveMenu, initialState)
-  useToastNotification(state)
-  const categories = sortMenuCategories(menu.categories)
-  const sortedItems = sortMenuItems(menu.items)
-  const uncategorizedItems = sortedItems.filter((item) => !item.category_id)
-
-  return (
-    <article className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-      <header className="flex flex-col gap-3 border-b border-zinc-200 bg-zinc-50/70 p-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">{partner.name || "Untitled partner"}</p>
-          <h3 className="mt-1 text-lg font-bold text-zinc-950">{menu.name || "Untitled menu"}</h3>
-          <p className="mt-1 text-sm text-zinc-600">{menu.description || "No description"}</p>
-          <p className="mt-2 text-xs text-zinc-500">
-            {categories.length} categories · {menu.items.length} items · Updated {formatDateTime(menu.updated_at)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/?partner=${encodeURIComponent(partner.id ?? "")}&tab=menu&view=settings`}
-            className="inline-flex h-9 items-center rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
-          >
-            Edit in partner menu
-          </Link>
-          <form action={formAction}>
-            <input type="hidden" name="id" value={menu.id ?? ""} />
-            <SubmitButton label="Approve menu" pendingLabel="Approving..." size="compact" />
-          </form>
-        </div>
-      </header>
-
-      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
-        {categories.map((category) => {
-          const items = sortedItems.filter((item) => item.category_id === category.id)
-          return (
-            <section key={category.id ?? category.name} className="rounded-lg border border-zinc-200 bg-white p-3">
-              <h4 className="font-semibold text-zinc-900">{category.name || "Untitled category"}</h4>
-              {items.length ? (
-                <ul className="mt-2 divide-y divide-zinc-100">
-                  {items.map((item) => (
-                    <li key={item.id ?? item.name} className="flex gap-3 py-2 text-sm">
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-medium text-zinc-800">{item.name || "Untitled item"}</span>
-                        {item.description ? <span className="mt-0.5 block text-xs text-zinc-500">{item.description}</span> : null}
-                      </span>
-                      <span className="shrink-0 font-semibold text-zinc-700">{formatPrice(item.price, item.currency)}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="mt-2 text-xs text-zinc-500">No items in this category.</p>}
-            </section>
-          )
-        })}
-        {uncategorizedItems.length ? (
-          <section className="rounded-lg border border-zinc-200 bg-white p-3">
-            <h4 className="font-semibold text-zinc-900">Other items</h4>
-            <ul className="mt-2 divide-y divide-zinc-100">
-              {uncategorizedItems.map((item) => (
-                <li key={item.id ?? item.name} className="flex gap-3 py-2 text-sm">
-                  <span className="min-w-0 flex-1 font-medium text-zinc-800">{item.name || "Untitled item"}</span>
-                  <span className="shrink-0 font-semibold text-zinc-700">{formatPrice(item.price, item.currency)}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-      </div>
-      <div className="px-4 pb-4"><ActionMessage state={state} /></div>
-    </article>
-  )
-}
-
 function PartnerListButton({
   partner,
   selected,
@@ -880,9 +676,6 @@ function PartnerListButton({
   selected: boolean
   onSelect: () => void
 }) {
-  const pendingMenuCount = partner.menus.filter(
-    (menu) => menu.status === "review",
-  ).length
   const hasDeals = partner.deals.length > 0
 
   return (
@@ -917,11 +710,6 @@ function PartnerListButton({
             {!hasDeals ? (
               <span className="whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
                 Benefit recommended
-              </span>
-            ) : null}
-            {pendingMenuCount ? (
-              <span className="whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                {pendingMenuCount} menu {pendingMenuCount === 1 ? "review" : "reviews"}
               </span>
             ) : null}
           </div>
@@ -3601,7 +3389,7 @@ function InitialMenuEditor({
               required
             />
             <SelectField
-              label="Menu approval status"
+              label="Menu status"
               name="initial_menu_status"
               defaultValue={DEFAULT_MENU_STATUS}
               options={menuStatusOptions}
@@ -8319,7 +8107,7 @@ function MenuCard({
       <section className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4">
         <div>
           <h3 className="text-base font-semibold text-zinc-950">Menu details</h3>
-          <p className="mt-1 text-sm text-zinc-600">Update the menu name, description, or approval status here.</p>
+          <p className="mt-1 text-sm text-zinc-600">Update the menu name, description, or status here.</p>
         </div>
         <div className="mt-4">
           <MenuForm menu={menu} partnerId={partnerId} />
@@ -8525,11 +8313,13 @@ function MenuForm({
   onSaved?: () => void
   partnerId: string
 }) {
-  const [status, setStatus] = useState(menu?.status ?? DEFAULT_MENU_STATUS)
+  const normalizedMenuStatus =
+    menu?.status === "review" ? DEFAULT_MENU_STATUS : menu?.status ?? DEFAULT_MENU_STATUS
+  const [status, setStatus] = useState(normalizedMenuStatus)
   const initialMenuValues = {
     name: (menu?.name ?? "Speisekarte").trim(),
     description: (menu?.description ?? "").trim(),
-    status: menu?.status ?? DEFAULT_MENU_STATUS,
+    status: normalizedMenuStatus,
   }
   const savedMenuValuesRef = useRef(initialMenuValues)
   const submittedMenuValuesRef = useRef(initialMenuValues)
@@ -8645,7 +8435,7 @@ function MenuForm({
           name="status"
           value={status}
           onChange={setStatus}
-          options={withCurrentOption(menuStatusOptions, menu?.status)}
+          options={menuStatusOptions}
           required
         />
       </FieldGrid>

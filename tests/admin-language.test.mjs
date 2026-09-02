@@ -191,10 +191,7 @@ test("translates complete admin workflows in both directions", () => {
   assert.equal(translateValue("Partnerverwaltung", "en"), "Partner management")
   assert.equal(translateValue("Select...", "de"), "Bitte auswählen ...")
   assert.equal(translateValue("Add deal", "de"), "Vorteil hinzufügen")
-  assert.equal(
-    translateValue("Review submitted partner menus before publishing", "de"),
-    "Eingereichte Partnermenüs vor der Veröffentlichung prüfen",
-  )
+  assert.equal(translateValue("Menu status", "de"), "Menüstatus")
   assert.equal(
     translateValue("Benefitsi-Systeme öffnen", "en"),
     "Open Benefitsi systems",

@@ -1647,9 +1647,6 @@ export async function saveMenu(
   const now = new Date().toISOString()
   const payload = parseMenuPayload(formData)
   payload.partner_id = access.partnerId
-  if (!access.portalSession.isAdmin && payload.status === "published") {
-    payload.status = "review"
-  }
   const validationMessage = validateMenuPayload(payload)
   const importFiles = id ? [] : fileValues(formData, "menu_file")
   const expectedImportFileCount = id
@@ -1735,7 +1732,6 @@ export async function saveMenu(
     }
 
     revalidatePath("/")
-    revalidatePath("/menu-approvals")
     return {
       ...importResult,
       menuId,
@@ -1744,7 +1740,6 @@ export async function saveMenu(
   }
 
   revalidatePath("/")
-  revalidatePath("/menu-approvals")
 
   return {
     ok: true,
@@ -1819,32 +1814,6 @@ export async function reorderMenuItems(
   revalidatePath("/")
 
   return { ok: true, message: "Item order saved." }
-}
-
-export async function approveMenu(
-  _prevState: PartnerActionState,
-  formData: FormData,
-): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
-  const id = stringValue(formData, "id")
-
-  if (!id) {
-    return { ok: false, message: "Menu id is required." }
-  }
-
-  const result = await supabase
-    .from("menus")
-    .update({ status: "published", updated_at: new Date().toISOString() })
-    .eq("id", id)
-
-  if (result.error) {
-    return { ok: false, message: result.error.message }
-  }
-
-  revalidatePath("/")
-  revalidatePath("/menu-approvals")
-
-  return { ok: true, message: "Menu approved and published." }
 }
 
 export async function deleteMenu(
@@ -2227,7 +2196,6 @@ export async function saveMenuCategoryImage(
       after(() => cleanupPublicMediaUrls(supabase, [previousImageUrl]))
     }
     revalidatePath("/")
-    revalidatePath("/menu-approvals")
     return {
       ok: true,
       message: "Menu category image uploaded.",
@@ -2294,7 +2262,6 @@ export async function saveMenuItemImage(
       after(() => cleanupPublicMediaUrls(supabase, [previousImageUrl]))
     }
     revalidatePath("/")
-    revalidatePath("/menu-approvals")
     return {
       ok: true,
       message: "Menu item image uploaded.",
@@ -2544,7 +2511,6 @@ async function importMenuIntoMenu(
     : "No menu files were imported."
 
   revalidatePath("/")
-  revalidatePath("/menu-approvals")
   return {
     ok: batch.successes.length > 0,
     issues: details.length > 0,
@@ -2833,7 +2799,6 @@ async function saveImportedMenuCategories(
   }
 
   revalidatePath("/")
-  revalidatePath("/menu-approvals")
   return {
     ok: true,
     message: `${importMode === "replace" ? "Replaced the menu with" : "Appended"} ${imported.length} categories and ${itemCount} items.`,
@@ -5705,7 +5670,7 @@ function validateMenuPayload(payload: ParsedMenu) {
     return "Menu name is required."
   }
 
-  if (!["draft", "review", "published", "archived"].includes(payload.status)) {
+  if (!["draft", "published", "archived"].includes(payload.status)) {
     return "Choose a valid menu status."
   }
 
