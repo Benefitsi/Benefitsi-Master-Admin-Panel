@@ -33,7 +33,7 @@ const nonConcretePublicTitles = new Set([
   "challenge", "challenge-bonus", "happy hour", "deal drop", "dauerrabatt",
   "permanent discount", "vorteil", "benefit",
 ])
-const nonConcreteTitleDecoration = /^(?:happy hour|deal drop|rabatt|discount|gratisartikel|free item|bonusstempel|bonus stamps|willkommen|willkommensdeal|willkommensbonus|welcome|welcome deal|welcome bonus|zeitbonus|time bonus|comeback|comeback-deal|comeback-bonus|comeback deal|comeback bonus|geburtstag|birthday|streak|streak-bonus|challenge|challenge-bonus|dauerrabatt|permanent discount|vorteil|benefit)(?:[\s-]+(?:angebot|aktion|deal|bonus|vorteil|benefit|rabatt|discount|gratisartikel|free item))*$/iu
+const nonConcreteTitleDecoration = /^(?:happy[\s-]+hour|deal[\s-]+drop|2\s*[-\s]*(?:für|for)\s*[-\s]*1|rabatt|discount|gratisartikel|free item|bonusstempel|bonus stamps|willkommen|willkommensdeal|willkommensbonus|welcome|welcome deal|welcome bonus|zeitbonus|time bonus|comeback|comeback-deal|comeback-bonus|comeback deal|comeback bonus|geburtstag|birthday|streak|streak-bonus|challenge|challenge-bonus|dauerrabatt|permanent discount|vorteil|benefit)(?:[\s-]+(?:angebot|aktion|deal|bonus|vorteil|benefit|rabatt|discount|gratisartikel|free item))*$/iu
 
 function normalizePublicText(value: string) {
   return value

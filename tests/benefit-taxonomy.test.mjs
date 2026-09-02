@@ -188,3 +188,29 @@ test("returns a single lifecycle label when no concrete reward is configured", (
   assert.equal(formatBenefitTitle({ type: "welcome" }, "de"), "Willkommensdeal")
   assert.equal(formatBenefitTitle({ type: "comeback" }, "de"), "Comeback-Deal")
 })
+
+test("rejects separator and two-for-one generic decorations while keeping item titles", () => {
+  for (const public_title of [
+    "Happy-Hour-Vorteil",
+    "2 für 1 Vorteil",
+    "2-for-1 Deal",
+  ]) {
+    assert.equal(
+      formatBenefitTitle({
+        type: "two_for_one",
+        reward_item: "Pizza",
+        public_title,
+      }, "de"),
+      "2 für 1 Pizza",
+    )
+  }
+
+  assert.equal(
+    formatBenefitTitle({
+      type: "two_for_one",
+      reward_item: "Pizza",
+      public_title: "2 für 1 Pizza",
+    }, "de"),
+    "2 für 1 Pizza",
+  )
+})
