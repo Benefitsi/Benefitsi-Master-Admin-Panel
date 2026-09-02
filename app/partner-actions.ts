@@ -1,11 +1,11 @@
 "use server"
 
-import { randomUUID } from "node:crypto"
+import { randomInt, randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import sharp from "sharp"
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js"
-import { requireAdmin } from "@/lib/admin"
+import { requireAdmin, verifyAdminPassword } from "@/lib/admin"
 import {
   isDealCopyField,
 } from "@/lib/deal-copy"
@@ -150,6 +150,7 @@ export type PartnerActionState = {
   description?: string
   dealDraft?: DealFormDraft
   partnerId?: string
+  partnerPin?: number
   created?: boolean
   menuCategory?: {
     id: string
@@ -1001,11 +1002,20 @@ export async function deletePartner(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
+  const { supabase, adminSession } = await requireAdmin()
   const id = stringValue(formData, "id")
+  const deletePassword = stringValue(formData, "delete_password")
 
   if (!id) {
     return { ok: false, message: "Partner id is required." }
+  }
+
+  if (!deletePassword) {
+    return { ok: false, message: "Admin password is required to delete a partner." }
+  }
+
+  if (!(await verifyAdminPassword(adminSession, deletePassword))) {
+    return { ok: false, message: "Admin password verification failed." }
   }
 
   const cleanupResult = await collectPartnerDeletionMediaUrls(supabase, id)
@@ -1184,6 +1194,45 @@ export async function deletePartner(
   revalidatePath("/")
 
   return { ok: true, message: "Partner and all attached data removed." }
+}
+
+export async function rotatePartnerPin(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+
+  if (!id) {
+    return { ok: false, message: "Partner id is required." }
+  }
+
+  const pin = randomInt(1000, 10000)
+  const result = await supabase
+    .from("partners")
+    .update({ pin })
+    .eq("id", id)
+    .select("id, pin")
+    .maybeSingle()
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  if (!result.data) {
+    return {
+      ok: false,
+      message: "Partner PIN could not be rotated because the partner was not found.",
+    }
+  }
+
+  revalidatePath("/")
+
+  return {
+    ok: true,
+    partnerPin: typeof result.data.pin === "number" ? result.data.pin : pin,
+    message: "Partner PIN rotated.",
+  }
 }
 
 function dealSaveFailure(formData: FormData, message: string): PartnerActionState {
@@ -3180,7 +3229,7 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     is_featured: checkboxValue(formData, "is_featured"),
     stamp_target: stampTarget,
     loves: isUpdate ? integerValue(formData, "existing_loves") ?? 0 : 0,
-    pin: null,
+    ...(isUpdate ? {} : { pin: null }),
     address: stringValue(formData, "address"),
     phone: stringValue(formData, "phone"),
     website: stringValue(formData, "website"),
@@ -6232,6 +6281,8 @@ function buildPartnerSocialUrl(platform: string, handle: string) {
       return `https://www.tiktok.com/@${normalizedHandle}`
     case "x":
       return `https://x.com/${normalizedHandle}`
+    case "youtube":
+      return `https://www.youtube.com/@${normalizedHandle}`
     default:
       return ""
   }

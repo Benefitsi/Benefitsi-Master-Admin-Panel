@@ -87,6 +87,7 @@ import {
   savePartner,
   saveRewardMilestone,
   saveWeeklyOpeningHours,
+  rotatePartnerPin,
   type PartnerActionState,
 } from "./partner-actions"
 import type { DealCopyField } from "@/lib/deal-copy"
@@ -404,7 +405,6 @@ type SectionStatusValue = SectionStatus | SectionStatus[]
 
 type PartnerSettingsTab =
   | "details"
-  | "rewards"
   | "deals"
   | "menu"
   | "access"
@@ -412,7 +412,7 @@ type PartnerSettingsTab =
   | "danger"
 
 function isPartnerSettingsTab(value: string | undefined): value is PartnerSettingsTab {
-  return ["details", "rewards", "deals", "menu", "access", "activity", "danger"].includes(
+  return ["details", "deals", "menu", "access", "activity", "danger"].includes(
     value ?? "",
   )
 }
@@ -480,8 +480,7 @@ const partnerSettingsTabCopy: Record<
   { title: string; description: string }
 > = {
   details: { title: "Partner profile", description: "Business information, contact details, location, branding, and media." },
-  rewards: { title: "Operating hours", description: "Weekly opening schedule, date-specific hour changes, and yearly holiday exceptions." },
-  deals: { title: "Benefits and rewards", description: "Customer benefits, stamp milestones, eligibility rules, availability, and redemption settings." },
+  deals: { title: "Stamps and Deals", description: "Manage stamp-card rewards alongside customer deals, eligibility rules, availability, and redemption settings." },
   menu: { title: "Menu management", description: "Menu details, categories, items, pricing, images, and display order." },
   access: { title: "Staff access", description: "Manage the staff members who can administer or scan for this partner." },
   activity: { title: "Customer activity", description: "Review stamp-card progress, visits, applied benefits, and redemptions." },
@@ -997,8 +996,7 @@ function PartnerDetail({
     hasRequiredFields?: boolean
   }> = [
     { id: "details", label: "Partner Profile", hasRequiredFields: true },
-    { id: "rewards", label: "Operating Hours", hasRequiredFields: true },
-    { id: "deals", label: "Benefits & Rewards", hasRequiredFields: true },
+    { id: "deals", label: "Stamps & Deals", hasRequiredFields: true },
     ...(partnerTypeSupportsMenu(partner.type)
       ? [{ id: "menu" as const, label: "Menu Management", hasRequiredFields: true }]
       : []),
@@ -1149,13 +1147,10 @@ function PartnerDetail({
                 </div>
               </div>
             ) : null}
-            {settingsTab === "rewards" ? (
-              <OpeningHoursPanel partner={partner} embedded />
-            ) : null}
             {settingsTab === "deals" ? (
               <div className="space-y-3">
-                <DealsPanel partner={partner} embedded />
                 <MilestonesPanel partner={partner} embedded />
+                <DealsPanel partner={partner} embedded />
               </div>
             ) : null}
             {settingsTab === "menu" ? <MenuPanel partner={partner} embedded /> : null}
@@ -2446,8 +2441,16 @@ function PartnerForm({
         />
       </FormSection>
 
+      {mode === "edit" && partner?.id ? (
+        <OpeningHoursPanel
+          partner={partner}
+          embedded
+          withinPartnerForm
+        />
+      ) : null}
+
       <FormSection
-        title="Contact and Location"
+        title="Contact, Location and Socials"
         defaultOpen={false}
         required={requiredSectionMarker}
       >
@@ -7304,9 +7307,11 @@ function PartnerStaffForm({
 function OpeningHoursPanel({
   partner,
   embedded = false,
+  withinPartnerForm = false,
 }: {
   partner: PartnerWithDeals
   embedded?: boolean
+  withinPartnerForm?: boolean
 }) {
   const partnerId = partner.id ?? ""
   const hoursByWeekday = new Map(
@@ -7320,6 +7325,7 @@ function OpeningHoursPanel({
       </InfoNote>
       {partnerId ? (
         <WeeklyOpeningHoursForm
+          embedded={withinPartnerForm}
           holidays={partner.holidays}
           hoursByWeekday={hoursByWeekday}
           partnerId={partnerId}
@@ -7349,10 +7355,12 @@ function OpeningHoursPanel({
 }
 
 function WeeklyOpeningHoursForm({
+  embedded = false,
   holidays,
   hoursByWeekday,
   partnerId,
 }: {
+  embedded?: boolean
   holidays: PartnerHoliday[]
   hoursByWeekday: Map<number | null, PartnerOpeningHour>
   partnerId: string
@@ -7362,11 +7370,66 @@ function WeeklyOpeningHoursForm({
     initialState,
   )
   const formRef = useActionSuccess(state)
+  const embeddedFieldsRef = useRef<HTMLDivElement>(null)
+
+  const saveEmbeddedHours = () => {
+    const container = embeddedFieldsRef.current
+
+    if (!container) {
+      return
+    }
+
+    const formData = new FormData()
+    formData.set("partner_id", partnerId)
+
+    container
+      .querySelectorAll<HTMLInputElement>("[data-opening-hours-name]")
+      .forEach((input) => {
+        const name = input.dataset.openingHoursName
+
+        if (
+          !name ||
+          input.disabled ||
+          ((input.type === "checkbox" || input.type === "radio") &&
+            !input.checked)
+        ) {
+          return
+        }
+
+        formData.append(name, input.value)
+      })
+
+    formAction(formData)
+  }
+
+  const fields = (
+    <WeeklyHoursFields
+      embedded={embedded}
+      holidays={holidays}
+      hoursByWeekday={hoursByWeekday}
+    />
+  )
+
+  if (embedded) {
+    return (
+      <div ref={embeddedFieldsRef} className="space-y-4">
+        {fields}
+        <ActionMessage state={state} />
+        <button
+          type="button"
+          onClick={saveEmbeddedHours}
+          className="h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
+        >
+          Save operating hours
+        </button>
+      </div>
+    )
+  }
 
   return (
     <form ref={formRef} action={formAction} className="space-y-4">
       <input type="hidden" name="partner_id" value={partnerId} />
-      <WeeklyHoursFields holidays={holidays} hoursByWeekday={hoursByWeekday} />
+      {fields}
       <ActionMessage state={state} />
       <SubmitButton
         label="Save operating hours"
@@ -7377,12 +7440,17 @@ function WeeklyOpeningHoursForm({
 }
 
 function WeeklyHoursFields({
+  embedded = false,
   holidays = [],
   hoursByWeekday = new Map(),
 }: {
+  embedded?: boolean
   holidays?: PartnerHoliday[]
   hoursByWeekday?: Map<number | null, PartnerOpeningHour>
 }) {
+  const fieldName = (name: string) => (embedded ? undefined : name)
+  const fieldDataName = (name: string) =>
+    embedded ? { "data-opening-hours-name": name } : {}
   const [bulkOpenTime, setBulkOpenTime] = useState("09:00")
   const [bulkCloseTime, setBulkCloseTime] = useState("18:00")
   const [bulkApplied, setBulkApplied] = useState(false)
@@ -7524,16 +7592,51 @@ function WeeklyHoursFields({
           </button>
         </div>
         <div className="p-3 sm:p-4">
-          <input type="hidden" name="holiday_count" value={holidayRows.length} />
+          <input
+            type="hidden"
+            name={fieldName("holiday_count")}
+            value={holidayRows.length}
+            {...fieldDataName("holiday_count")}
+          />
           {holidayRows.map((holiday, index) => (
             <div key={`holiday-fields-${holiday.id}`}>
-              <input type="hidden" name={`holiday_${index}_date`} value={holiday.date} />
-              <input type="hidden" name={`holiday_${index}_label`} value={holiday.label} />
-              <input type="hidden" name={`holiday_${index}_kind`} value={holiday.kind} />
-              <input type="hidden" name={`holiday_${index}_opens_at`} value={holiday.opensAt} />
-              <input type="hidden" name={`holiday_${index}_closes_at`} value={holiday.closesAt} />
+              <input
+                type="hidden"
+                name={fieldName(`holiday_${index}_date`)}
+                value={holiday.date}
+                {...fieldDataName(`holiday_${index}_date`)}
+              />
+              <input
+                type="hidden"
+                name={fieldName(`holiday_${index}_label`)}
+                value={holiday.label}
+                {...fieldDataName(`holiday_${index}_label`)}
+              />
+              <input
+                type="hidden"
+                name={fieldName(`holiday_${index}_kind`)}
+                value={holiday.kind}
+                {...fieldDataName(`holiday_${index}_kind`)}
+              />
+              <input
+                type="hidden"
+                name={fieldName(`holiday_${index}_opens_at`)}
+                value={holiday.opensAt}
+                {...fieldDataName(`holiday_${index}_opens_at`)}
+              />
+              <input
+                type="hidden"
+                name={fieldName(`holiday_${index}_closes_at`)}
+                value={holiday.closesAt}
+                {...fieldDataName(`holiday_${index}_closes_at`)}
+              />
               {holiday.repeatsYearly ? (
-                <input type="hidden" name={`holiday_${index}_repeats_yearly`} value="on" />
+                <input
+                  type="hidden"
+                  name={fieldName(`holiday_${index}_repeats_yearly`)}
+                  value="on"
+                  {...fieldDataName(`holiday_${index}_repeats_yearly`)}
+                />
               ) : null}
             </div>
           ))}
@@ -7622,7 +7725,8 @@ function WeeklyHoursFields({
                 <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
                   <input
                     type="checkbox"
-                    name={`is_closed_${day.value}`}
+                    name={fieldName(`is_closed_${day.value}`)}
+                    {...fieldDataName(`is_closed_${day.value}`)}
                     checked={hour.isClosed}
                     onChange={(event) => {
                       const isClosed = event.target.checked
@@ -7639,7 +7743,8 @@ function WeeklyHoursFields({
                 </label>
                 <input
                   aria-label={`${day.label} opening time`}
-                  name={`opens_at_${day.value}`}
+                  name={fieldName(`opens_at_${day.value}`)}
+                  {...fieldDataName(`opens_at_${day.value}`)}
                   type="time"
                   required={!hour.isClosed}
                   value={hour.isClosed ? "" : hour.opensAt}
@@ -7651,7 +7756,8 @@ function WeeklyHoursFields({
                 />
                 <input
                   aria-label={`${day.label} closing time`}
-                  name={`closes_at_${day.value}`}
+                  name={fieldName(`closes_at_${day.value}`)}
+                  {...fieldDataName(`closes_at_${day.value}`)}
                   type="time"
                   required={!hour.isClosed}
                   value={hour.isClosed ? "" : hour.closesAt}
@@ -7661,7 +7767,12 @@ function WeeklyHoursFields({
                   }
                   className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                 />
-                <input type="hidden" name={`label_${day.value}`} value={hour.label} />
+                <input
+                  type="hidden"
+                  name={fieldName(`label_${day.value}`)}
+                  value={hour.label}
+                  {...fieldDataName(`label_${day.value}`)}
+                />
               </div>
             )
           })}
@@ -10234,6 +10345,8 @@ function DeletePartnerForm({
 }) {
   const [state, formAction] = useActionState(deletePartner, initialState)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deletePassword, setDeletePassword] = useState("")
+  const [deletePasswordError, setDeletePasswordError] = useState("")
   const formRef = useRef<HTMLFormElement>(null)
   const confirmedSubmitRef = useRef(false)
   const { language } = useAdminLanguage()
@@ -10262,6 +10375,7 @@ function DeletePartnerForm({
       className="space-y-3"
     >
       <input type="hidden" name="id" value={partner.id ?? ""} />
+      <input type="hidden" name="delete_password" value={deletePassword} />
       <ActionMessage state={state} />
       <SubmitButton
         label="Delete partner"
@@ -10278,13 +10392,41 @@ function DeletePartnerForm({
         }
         confirmLabel="Delete partner"
         tone="danger"
-        onCancel={() => setConfirmingDelete(false)}
+        onCancel={() => {
+          setConfirmingDelete(false)
+          setDeletePassword("")
+          setDeletePasswordError("")
+        }}
         onConfirm={() => {
+          if (!deletePassword.trim()) {
+            setDeletePasswordError("Enter your admin password to continue.")
+            return
+          }
+
           confirmedSubmitRef.current = true
           setConfirmingDelete(false)
           formRef.current?.requestSubmit()
         }}
-      />
+      >
+        <label className="mt-4 block space-y-2 text-sm">
+          <span className="font-medium text-zinc-800">Admin password</span>
+          <input
+            type="password"
+            value={deletePassword}
+            onChange={(event) => {
+              setDeletePassword(event.target.value)
+              if (deletePasswordError) setDeletePasswordError("")
+            }}
+            autoComplete="current-password"
+            className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-rose-600 focus:ring-2 focus:ring-rose-100"
+          />
+          {deletePasswordError ? (
+            <span className="block text-xs font-medium text-rose-700">
+              {deletePasswordError}
+            </span>
+          ) : null}
+        </label>
+      </ConfirmDialog>
     </form>
   )
 }
@@ -12043,18 +12185,76 @@ function PartnerPinDisplay({
   partnerId?: string | null
   pin?: number | string | null
 }) {
+  const [state, formAction] = useActionState(rotatePartnerPin, initialState)
+  const [confirmingRotation, setConfirmingRotation] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+  const confirmedRotationRef = useRef(false)
+  const router = useRouter()
   const generatedPin = partnerId ? derivePartnerPin(partnerId) : null
+  const displayedPin =
+    mode === "edit" ? state.partnerPin ?? pin ?? generatedPin : null
+
+  useEffect(() => {
+    if (state.ok) {
+      router.refresh()
+    }
+  }, [router, state.ok])
 
   return (
-    <ReadOnlyField
-      label="Partner PIN"
-      value={mode === "edit" ? pin ?? generatedPin : "Generated automatically on creation"}
-      hint={
-        mode === "edit"
-          ? "Automatically generated from the permanent partner record and kept read-only."
-          : "Auto-generated when the partner is created and kept read-only here."
-      }
-    />
+    <div className="space-y-2">
+      <ReadOnlyField
+        label="Partner PIN"
+        value={
+          mode === "edit"
+            ? displayedPin
+            : "Generated automatically on creation"
+        }
+        hint={
+          mode === "edit"
+            ? "Automatically generated from the permanent partner record. Rotate it here when the partner needs a new PIN."
+            : "Auto-generated when the partner is created and kept read-only here."
+        }
+      />
+      {mode === "edit" && partnerId ? (
+        <>
+          <form
+            ref={formRef}
+            action={formAction}
+            onSubmit={(event) => {
+              if (confirmedRotationRef.current) {
+                confirmedRotationRef.current = false
+                return
+              }
+
+              event.preventDefault()
+              setConfirmingRotation(true)
+            }}
+            className="flex flex-wrap items-center gap-2"
+          >
+            <input type="hidden" name="id" value={partnerId} />
+            <ActionMessage state={state} />
+            <SubmitButton
+              label="Rotate partner PIN"
+              pendingLabel="Rotating partner PIN..."
+              size="compact"
+              tone="outline"
+            />
+          </form>
+          <ConfirmDialog
+            open={confirmingRotation}
+            title="Rotate partner PIN?"
+            description="The current PIN will stop working and a new PIN will be generated for this partner."
+            confirmLabel="Rotate PIN"
+            onCancel={() => setConfirmingRotation(false)}
+            onConfirm={() => {
+              confirmedRotationRef.current = true
+              setConfirmingRotation(false)
+              formRef.current?.requestSubmit()
+            }}
+          />
+        </>
+      ) : null}
+    </div>
   )
 }
 
@@ -12452,6 +12652,7 @@ function ConfirmDialog({
   tone = "default",
   onCancel,
   onConfirm,
+  children,
 }: {
   open: boolean
   title: string
@@ -12460,6 +12661,7 @@ function ConfirmDialog({
   tone?: "default" | "danger"
   onCancel: () => void
   onConfirm: () => void
+  children?: ReactNode
 }) {
   if (!open) {
     return null
@@ -12489,6 +12691,7 @@ function ConfirmDialog({
         >
           {description}
         </p>
+        {children}
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
