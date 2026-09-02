@@ -66,15 +66,31 @@ test("uses explicit taxonomy dimensions before readable legacy enum values", () 
   assert.equal(benefitTaxonomyLabel({ type: "limited_drop" }, "de"), "Deal Drop")
 })
 
-test("never renders banned public titles and falls back to a concrete title", () => {
-  for (const public_title of [
-    "Top Deal Pizza",
-    "Top-Vorteil",
-    "Hauptdeal",
+test("rejects the full retired visible-title list and falls back to a concrete title", () => {
+  const retiredPublicTitles = [
     "Daily Deal",
+    "Hauptdeal",
+    "Top-Vorteil",
+    "Top Deal Pizza",
+    "2-für-1-Deal",
+    "Rabattvorteil",
+    "Dauervorteil",
+    "Automatischer Basisrabatt",
+    "Bonus-Stempel",
+    "Streak Bonus",
+    "Welcome reward",
+    "Time-based bonus",
+    "Selectable discount",
     "Reward",
+    "Rewards",
+    "Gratis Reward",
     "Gratis-Reward",
-  ]) {
+    "Gratis–Rewards",
+    "Free Reward",
+    "Free-Reward",
+  ]
+
+  for (const public_title of retiredPublicTitles) {
     const title = formatBenefitTitle({
       type: "discount",
       discount_type: "percent",
@@ -84,6 +100,49 @@ test("never renders banned public titles and falls back to a concrete title", ()
 
     assert.equal(title, "15 % Rabatt")
   }
+})
+
+test("rejects separator variants of retired titles without rejecting concrete titles", () => {
+  for (const public_title of [
+    "Daily-Deal",
+    "Haupt-Deal",
+    "Top Vorteil",
+    "2 für 1 Deal",
+    "2–für–1–Deal",
+    "Rabatt Vorteil",
+    "Rabatt-Vorteil",
+    "Dauer Vorteil",
+    "Dauer–Vorteil",
+    "Automatischer-Basisrabatt",
+    "Automatischer–Basisrabatt",
+    "Bonus Stempel",
+    "Bonus–Stempel",
+    "Streak-Bonus",
+    "Streak–Bonus",
+    "Welcome-reward",
+    "Time based bonus",
+    "Time–based–bonus",
+    "Selectable-discount",
+  ]) {
+    assert.equal(
+      formatBenefitTitle({
+        type: "discount",
+        discount_type: "percent",
+        discount_value: 15,
+        public_title,
+      }, "de"),
+      "15 % Rabatt",
+    )
+  }
+
+  assert.equal(
+    formatBenefitTitle({ type: "discount", public_title: "Mittagsrabatt" }, "de"),
+    "Mittagsrabatt",
+  )
+  assert.equal(
+    formatBenefitTitle({ type: "two_for_one", public_title: "2 für 1 Pizza" }, "de"),
+    "2 für 1 Pizza",
+  )
 })
 
 test("keeps allowed explicit public titles while normalizing legacy two-for-one spelling", () => {

@@ -24,6 +24,23 @@ type Trigger = "welcome" | "time_bonus" | "comeback" | "birthday" | "streak" | "
 type CampaignType = "happy_hour" | "deal_drop" | null
 
 const forbiddenPublicText = /\b(?:top[ -]?(?:deal|vorteil)|hauptdeal|daily[ -]?deal|(?:gratis|free)[ -]?rewards?|reward)\b/iu
+const retiredPublicTitleKeys = new Set([
+  "daily deal",
+  "hauptdeal", "haupt deal",
+  "top deal", "top vorteil",
+  "2 für 1 deal", "2 for 1 deal",
+  "rabattvorteil", "rabatt vorteil",
+  "dauervorteil", "dauer vorteil",
+  "automatischer basisrabatt",
+  "bonus stempel",
+  "streak bonus",
+  "welcome reward", "welcome rewards",
+  "time based bonus",
+  "selectable discount",
+  "reward", "rewards",
+  "gratis reward", "gratis rewards",
+  "free reward", "free rewards",
+])
 const nonConcretePublicTitles = new Set([
   "2 für 1", "2-for-1", "rabatt", "discount", "gratisartikel", "free item",
   "bonusstempel", "bonus stamps", "willkommen", "willkommensdeal",
@@ -44,8 +61,20 @@ function normalizePublicText(value: string) {
     .trim()
 }
 
+function retiredPublicTitleKey(value: string) {
+  return normalizePublicText(value)
+    .replace(/[!?.:;,…]+$/gu, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/gu, " ")
+}
+
 function hasForbiddenPublicText(value: string) {
-  return forbiddenPublicText.test(normalizePublicText(value))
+  const normalized = normalizePublicText(value)
+  return (
+    forbiddenPublicText.test(normalized) ||
+    retiredPublicTitleKeys.has(retiredPublicTitleKey(normalized))
+  )
 }
 
 function isNonConcretePublicTitle(value: string) {
