@@ -96,3 +96,66 @@ test("keeps allowed explicit public titles while normalizing legacy two-for-one 
     "Mittagsrabatt",
   )
 })
+
+test("replaces generic campaign and lifecycle titles with the concrete reward", () => {
+  for (const public_title of [
+    "Happy Hour",
+    "Deal Drop",
+    "Rabatt",
+    "Gratisartikel",
+    "Willkommensdeal",
+    "Comeback-Bonus",
+  ]) {
+    const title = formatBenefitTitle({
+      type: "discount",
+      discount_type: "percent",
+      discount_value: 15,
+      public_title,
+    }, "de")
+
+    assert.equal(title, "15 % Rabatt")
+  }
+})
+
+test("uses the canonical automatic fallback label before generic reward labels", () => {
+  const input = {
+    type: "welcome",
+    reward_format: "discount",
+    discount_type: "percent",
+    discount_value: 10,
+    activation_mode: "automatic_fallback",
+  }
+
+  assert.equal(benefitTaxonomyLabel(input, "de"), "Dauerrabatt")
+  assert.equal(benefitTaxonomyLabel(input, "en"), "Permanent discount")
+  assert.equal(formatBenefitTitle(input, "de"), "10 % Rabatt")
+})
+
+test("removes forbidden variants from every public title source and generated title", () => {
+  assert.equal(
+    formatBenefitTitle({
+      type: "two_for_one",
+      reward_item: "Top Deal Pizza",
+      display_title: "Top–Vorteil",
+    }, "de"),
+    "2 für 1",
+  )
+  assert.equal(
+    formatBenefitTitle({
+      type: "free_item",
+      reward_item: "Gratis-Reward Ayran",
+    }, "de"),
+    "Gratisartikel",
+  )
+})
+
+test("strips legacy two-for-one decorations from reward items before formatting", () => {
+  assert.equal(
+    formatBenefitTitle({ type: "two_for_one", reward_item: "2 für 1 Hauptgericht" }, "de"),
+    "2 für 1 Hauptgericht",
+  )
+  assert.equal(
+    formatBenefitTitle({ type: "two_for_one", reward_item: "2-für-1 Pizza" }, "de"),
+    "2 für 1 Pizza",
+  )
+})

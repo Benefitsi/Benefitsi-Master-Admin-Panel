@@ -24,6 +24,28 @@ type Trigger = "welcome" | "time_bonus" | "comeback" | "birthday" | "streak" | "
 type CampaignType = "happy_hour" | "deal_drop" | null
 
 const forbiddenPublicText = /\b(?:top[ -]?(?:deal|vorteil)|hauptdeal|daily[ -]?deal|(?:gratis|free)[ -]?rewards?|reward)\b/iu
+const nonConcretePublicTitles = new Set([
+  "2 für 1", "2-for-1", "rabatt", "discount", "gratisartikel", "free item",
+  "bonusstempel", "bonus stamps", "willkommen", "willkommensdeal",
+  "willkommensbonus", "welcome", "welcome deal", "welcome bonus", "zeitbonus",
+  "time bonus", "comeback", "comeback-deal", "comeback-bonus", "comeback deal",
+  "comeback bonus", "geburtstag", "birthday", "streak", "streak-bonus",
+  "challenge", "challenge-bonus", "happy hour", "deal drop", "dauerrabatt",
+  "permanent discount", "vorteil", "benefit",
+])
+
+function normalizePublicText(value: string) {
+  return value
+    .normalize("NFKC")
+    .replace(/[‐‑‒–—―]/gu, "-")
+    .replace(/\p{Z}+/gu, " ")
+    .replace(/[ \t]{2,}/gu, " ")
+    .trim()
+}
+
+function hasForbiddenPublicText(value: string) {
+  return forbiddenPublicText.test(normalizePublicText(value))
+}
 
 function normalizedString(value: unknown) {
   return typeof value === "string" ? value.trim().toLowerCase() : ""
@@ -102,6 +124,10 @@ function localizedLabel(
   const campaign = campaignType(input)
   const automaticBonus = isAutomaticBonus(input, format)
 
+  if (normalizedString(input.activation_mode) === "automatic_fallback") {
+    return language === "en" ? "Permanent discount" : "Dauerrabatt"
+  }
+
   if (lifecycleTrigger === "welcome") {
     return automaticBonus
       ? language === "en" ? "Welcome bonus" : "Willkommensbonus"
@@ -138,21 +164,32 @@ export function benefitTaxonomyLabel(
 
 function publicTitle(input: BenefitTaxonomyInput) {
   const title = input.public_title ?? input.display_title
-  if (typeof title !== "string" || !title.trim() || forbiddenPublicText.test(title)) {
+  if (typeof title !== "string") {
     return ""
   }
 
-  return title
-    .trim()
+  const normalizedTitle = normalizePublicText(title)
     .replace(/\b2\s*[-–]?\s*for\s*[-–]?\s*1\b/giu, "2 für 1")
+
+  if (
+    !normalizedTitle ||
+    hasForbiddenPublicText(normalizedTitle) ||
+    nonConcretePublicTitles.has(normalizedTitle.toLowerCase())
+  ) {
+    return ""
+  }
+
+  return normalizedTitle
 }
 
 function rewardItem(input: BenefitTaxonomyInput) {
-  return (input.reward_item || "")
-    .trim()
+  const item = normalizePublicText(input.reward_item || "")
     .replace(/^(?:gratisartikel|free item)\s*[:\-–]?\s*/iu, "")
     .replace(/^(?:gratis|free)\s+/iu, "")
+    .replace(/^2\s*[-\s‐‑‒–—―]*(?:für|for)\s*[-\s‐‑‒–—―]*1\b\s*/iu, "")
     .trim()
+
+  return hasForbiddenPublicText(item) ? "" : item
 }
 
 function numberValue(value: number | null | undefined) {
@@ -195,8 +232,16 @@ export function formatBenefitTitle(
 
   const title = concreteTitle(input, language)
   const lifecycleTrigger = trigger(input)
-  if (lifecycleTrigger === "welcome" || lifecycleTrigger === "comeback") {
-    return `${localizedLabel(input, language)}: ${title}`
+  const result =
+    lifecycleTrigger === "welcome" || lifecycleTrigger === "comeback"
+      ? normalizedString(input.activation_mode) === "automatic_fallback"
+        ? title
+        : `${localizedLabel(input, language)}: ${title}`
+      : title
+
+  if (!hasForbiddenPublicText(result)) {
+    return result
   }
-  return title
+
+  return concreteTitle({ ...input, reward_item: null }, language)
 }
