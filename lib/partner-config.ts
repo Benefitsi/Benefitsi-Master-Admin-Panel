@@ -75,6 +75,7 @@ export const partnerSocialPlatformOptions = [
   { value: "instagram", label: "Instagram" },
   { value: "tiktok", label: "TikTok" },
   { value: "x", label: "X" },
+  { value: "youtube", label: "YouTube" },
 ] as const
 
 export const partnerSocialPlatforms = partnerSocialPlatformOptions.map(
@@ -84,7 +85,7 @@ export const partnerSocialPlatforms = partnerSocialPlatformOptions.map(
 export type PartnerSocialPlatform =
   (typeof partnerSocialPlatformOptions)[number]["value"]
 
-export const MAX_PARTNER_SOCIALS = partnerSocialPlatforms.length
+export const MAX_PARTNER_SOCIALS = 5
 
 export const adminTextLimits = {
   coordinates: 64,

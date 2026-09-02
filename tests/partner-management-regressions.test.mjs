@@ -10,6 +10,7 @@ import { partnerUpdateWasApplied } from "../lib/partner-save.ts"
 
 const actionsUrl = new URL("../app/partner-actions.ts", import.meta.url)
 const adminUrl = new URL("../app/partner-admin.tsx", import.meta.url)
+const configUrl = new URL("../lib/partner-config.ts", import.meta.url)
 
 test("an update is only considered applied when Supabase returns the partner row", () => {
   assert.equal(partnerUpdateWasApplied([{ id: "partner-1" }]), true)
@@ -169,4 +170,42 @@ test("deal writes carry canonical taxonomy dimensions alongside legacy fields", 
     assert.match(actions, new RegExp(`${field}\\s*:`))
     assert.match(data, new RegExp(`${field}: string \\| null`))
   }
+})
+
+test("partner socials support YouTube and five profiles", async () => {
+  const [config, admin] = await Promise.all([
+    readFile(configUrl, "utf8"),
+    readFile(adminUrl, "utf8"),
+  ])
+
+  assert.match(config, /value:\s*[\"']youtube[\"']/)
+  assert.match(config, /MAX_PARTNER_SOCIALS\s*=\s*5/)
+  assert.match(
+    admin,
+    /Add up to \{MAX_PARTNER_SOCIALS\} social profiles/,
+  )
+})
+
+test("partner settings embed hours and combine stamps with deals", async () => {
+  const code = await readFile(adminUrl, "utf8")
+
+  assert.match(
+    code,
+    /<OpeningHoursPanel[\s\S]*?partner=\{partner\}[\s\S]*?withinPartnerForm[\s\S]*?Contact, Location and Socials/,
+  )
+  assert.match(code, /<DealsPanel partner=\{partner\} embedded \/>/)
+  assert.match(code, /<MilestonesPanel partner=\{partner\} embedded \/>/)
+  assert.doesNotMatch(code, /\{ id: "rewards", label: "Operating Hours"/)
+})
+
+test("partner deletion reauthenticates and partner PIN can be rotated", async () => {
+  const [actions, admin] = await Promise.all([
+    readFile(actionsUrl, "utf8"),
+    readFile(adminUrl, "utf8"),
+  ])
+
+  assert.match(actions, /verifyAdminPassword\(adminSession, deletePassword\)/)
+  assert.match(actions, /export async function rotatePartnerPin/)
+  assert.match(admin, /name="delete_password"/)
+  assert.match(admin, /Rotate partner PIN/)
 })
