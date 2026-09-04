@@ -87,6 +87,18 @@ test("menu approvals are opened from Partner management instead of the primary n
   )
 })
 
+test("active and featured partner metrics filter the list, with featured limited to active partners", async () => {
+  const code = await readFile(adminUrl, "utf8")
+
+  assert.match(code, /const \[partnerFilter, setPartnerFilter\]/)
+  assert.match(code, /label="Aktive Partner"[\s\S]*active=\{partnerFilter === "active"\}[\s\S]*onClick=/)
+  assert.match(code, /label="Hervorgehobene Partner"[\s\S]*active=\{partnerFilter === "featured"\}[\s\S]*onClick=/)
+  assert.match(code, /partnerFilter === "active" && !isPartnerActive\(partner\)/)
+  assert.match(code, /partnerFilter === "featured" && !\(isPartnerActive\(partner\) && partner\.is_featured\)/)
+  assert.match(code, /isPartnerActive\(partner\) && partner\.is_featured/)
+  assert.match(code, /aria-pressed=\{active\}/)
+})
+
 test("partner social settings include YouTube and allow more than four profiles", () => {
   assert.ok(
     partnerSocialPlatformOptions.some((option) => option.value === "youtube"),

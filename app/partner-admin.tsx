@@ -461,6 +461,7 @@ export function PartnerWorkspace({
   initialView = "settings",
 }: PartnerWorkspaceProps) {
   const [query, setQuery] = useState("")
+  const [partnerFilter, setPartnerFilter] = useState<"all" | "active" | "featured">("all")
   const [mode, setMode] = useState<"view" | "create">(
     partners.length && initialMode === "view" ? "view" : "create",
   )
@@ -482,7 +483,9 @@ export function PartnerWorkspace({
 
   const partnerCount = partners.length
   const activePartners = partners.filter(isPartnerActive).length
-  const featuredPartners = partners.filter((partner) => partner.is_featured).length
+  const featuredPartners = partners.filter(
+    (partner) => isPartnerActive(partner) && partner.is_featured,
+  ).length
   const dealCount = partners.reduce(
     (count, partner) => count + partner.deals.length,
     0,
@@ -507,12 +510,12 @@ export function PartnerWorkspace({
   const filteredPartners = useMemo(() => {
     const normalized = query.trim().toLowerCase()
 
-    if (!normalized) {
-      return partners
-    }
+    return partners.filter((partner) => {
+      if (partnerFilter === "active" && !isPartnerActive(partner)) return false
+      if (partnerFilter === "featured" && !(isPartnerActive(partner) && partner.is_featured)) return false
+      if (!normalized) return true
 
-    return partners.filter((partner) =>
-      [
+      return [
         partner.name,
         partner.short_name,
         partner.city_name,
@@ -525,9 +528,9 @@ export function PartnerWorkspace({
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
-        .includes(normalized),
-    )
-  }, [partners, query])
+        .includes(normalized)
+    })
+  }, [partners, partnerFilter, query])
 
   const selectedPartner =
     partners.find((partner) => partner.id === selectedId) ??
@@ -539,8 +542,19 @@ export function PartnerWorkspace({
       <ToastViewport />
       <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-[1.1fr_1.1fr_1fr_1fr_1fr]">
         <LiveMetric label="Partner" value={partnerCount} />
-        <LiveMetric label="Aktive Partner" value={activePartners} />
-        <LiveMetric secondary label="Hervorgehobene Partner" value={featuredPartners} />
+        <LiveMetric
+          label="Aktive Partner"
+          value={activePartners}
+          active={partnerFilter === "active"}
+          onClick={() => setPartnerFilter((current) => current === "active" ? "all" : "active")}
+        />
+        <LiveMetric
+          secondary
+          label="Hervorgehobene Partner"
+          value={featuredPartners}
+          active={partnerFilter === "featured"}
+          onClick={() => setPartnerFilter((current) => current === "featured" ? "all" : "featured")}
+        />
         <LiveMetric secondary label="Deals" value={dealCount} />
         <LiveMetric
           secondary
@@ -645,11 +659,15 @@ function LiveMetric({
   label,
   value,
   href,
+  active = false,
+  onClick,
   secondary = false,
 }: {
   label: string
   value: number
   href?: string
+  active?: boolean
+  onClick?: () => void
   secondary?: boolean
 }) {
   const content = (
@@ -660,7 +678,7 @@ function LiveMetric({
       </p>
     </>
   )
-  const className = `${secondary ? "bg-zinc-50/60" : ""} border-b border-zinc-200 px-3 py-2.5 last:border-b-0 sm:border-b-0`
+  const className = `${secondary ? "bg-zinc-50/60" : ""} ${active ? "bg-teal-50 ring-1 ring-inset ring-teal-200" : ""} border-b border-zinc-200 px-3 py-2.5 last:border-b-0 sm:border-b-0`
 
   if (href) {
     return (
@@ -672,6 +690,10 @@ function LiveMetric({
         {content}
       </Link>
     )
+  }
+
+  if (onClick) {
+    return <button type="button" aria-pressed={active} onClick={onClick} className={`${className} block w-full text-left transition hover:bg-zinc-50 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-teal-600`}>{content}</button>
   }
 
   return <div className={className}>{content}</div>
