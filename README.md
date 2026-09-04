@@ -127,3 +127,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+### Preventing Server Action version skew
+
+Production deployments use `NEXT_DEPLOYMENT_ID` (Vercel deployments use
+`VERCEL_DEPLOYMENT_ID` automatically) to ensure browsers do not keep using
+Server Actions from an older build during a rolling update. For a
+self-hosted multi-instance deployment, also set the same
+`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` on every instance before building:
+
+```bash
+NEXT_DEPLOYMENT_ID=release-2026-09-05
+NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$(openssl rand -base64 32)
+```
