@@ -84,6 +84,18 @@ test("active and featured partner metrics filter the list, with featured limited
   assert.match(code, /aria-pressed=\{active\}/)
 })
 
+test("partner list filters by status and keeps the detail pane within the filtered results", async () => {
+  const code = await readFile(adminUrl, "utf8")
+
+  assert.match(code, /partnerStatusOptions/)
+  assert.match(code, /aria-label="Status"/)
+  assert.match(code, /statusFilter === "active"/)
+  assert.match(code, /statusFilter === "inactive"/)
+  assert.match(code, /filteredPartners\.find\(\(partner\) => partner\.id === selectedId\)/)
+  assert.match(code, /Reset filters/)
+  assert.match(code, /aria-live="polite"/)
+})
+
 test("2-for-1 deal drafts retain the entered item and basics", async () => {
   const { discountTypeUsesRewardItem, readDealFormDraft } = await import(
     "../lib/deal-form.ts"

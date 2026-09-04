@@ -41,6 +41,13 @@ import {
   type PartnerMediaSpec,
 } from "@/lib/partner-config"
 import {
+  allPartnerCategoryOptions,
+  normalizePartnerCategories,
+  normalizePartnerCategoriesForType,
+  partnerCategoryOptionsForType,
+  partnerTypeOptions,
+} from "@/lib/partner-categories"
+import {
   DEFAULT_AUDIENCE,
   DEFAULT_DEAL_DROP_WEEKDAYS,
   DEFAULT_REWARD_TRACK_TARGET,
@@ -207,35 +214,6 @@ function useActionSuccess(
   return formRef
 }
 
-const partnerTypeOptions = [
-  { value: "Food & Drink", label: "Food & Drink" },
-  { value: "Services", label: "Services" },
-  { value: "Wellness", label: "Wellness" },
-  { value: "Activities", label: "Activities" },
-]
-
-const categoryOptions = [
-  "Döner",
-  "Pizza",
-  "Shawarma",
-  "Burger",
-  "Chinese",
-  "Imbiss",
-  "Metzgerei",
-  "Suppe",
-  "Cafe",
-  "Grill",
-  "Falafel",
-  "Bowl",
-  "Thai",
-  "Sushi",
-  "Restaurant",
-  "Asia",
-  "Eis",
-  "Inder",
-  "Grieche",
-].map((category) => ({ value: category, label: category }))
-
 const emptyCityOptions = [
   {
     value: "",
@@ -293,6 +271,16 @@ const menuStatusOptions = [
 ] as const
 
 const menuCurrencyOptions = [{ value: "EUR", label: "EUR (€)" }] as const
+
+const partnerStatusOptions = [
+  { value: "all", label: "All statuses" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+  { value: "paused", label: "Paused" },
+  { value: "draft", label: "Draft" },
+  { value: "pending_verification", label: "Pending verification" },
+  { value: "archived", label: "Archived" },
+] as const
 
 type PartnerWorkspaceProps = {
   partners: PartnerWithDeals[]
@@ -500,6 +488,7 @@ export function PartnerWorkspace({
   const [partnerFilter, setPartnerFilter] = useState<
     "all" | "active" | "featured"
   >("all")
+  const [statusFilter, setStatusFilter] = useState("all")
   const [mode, setMode] = useState<"view" | "create">(
     partners.length && (portalMode || initialMode === "view") ? "view" : "create",
   )
@@ -541,31 +530,42 @@ export function PartnerWorkspace({
         return false
       }
 
-      if (!normalized) return true
+      const matchesQuery =
+        !normalized ||
+        [
+          partner.name,
+          partner.short_name,
+          partner.city_name,
+          partner.type,
+          partner.status,
+          partner.email,
+          partner.owner_email,
+          ...(partner.category ?? []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(normalized)
 
-      return [
-        partner.name,
-        partner.short_name,
-        partner.city_name,
-        partner.type,
-        partner.status,
-        partner.email,
-        partner.owner_email,
-        ...(partner.category ?? []),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(normalized)
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active"
+          ? isPartnerActive(partner)
+          : statusFilter === "inactive"
+            ? !isPartnerActive(partner)
+            : partner.status === statusFilter)
+
+      return matchesQuery && matchesStatus
     })
-  }, [partnerFilter, partners, query])
+  }, [partnerFilter, partners, query, statusFilter])
 
   const selectedPartner =
     filteredPartners.find((partner) => partner.id === selectedId) ??
-    filteredPartners[0] ??
-    (partnerFilter === "all"
-      ? partners.find((partner) => partner.id === selectedId) ?? partners[0]
-      : undefined)
+    filteredPartners[0]
+  const hasActiveFilters =
+    Boolean(query.trim()) ||
+    statusFilter !== "all" ||
+    partnerFilter !== "all"
 
   return (
     <section id="partners" className="partner-management-brand space-y-3">
@@ -621,6 +621,42 @@ export function PartnerWorkspace({
               placeholder="Search partners"
               className="mt-3 h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
             />
+            <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <label className="block text-xs font-semibold text-zinc-600">
+                Status
+                <select
+                  aria-label="Status"
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value)}
+                  className="mt-1 h-9 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm font-normal text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                >
+                  {partnerStatusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p
+                aria-live="polite"
+                className="text-xs font-medium text-zinc-500 sm:pb-2 sm:text-right"
+              >
+                {filteredPartners.length} of {partnerCount} partners
+              </p>
+            </div>
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("")
+                  setStatusFilter("all")
+                  setPartnerFilter("all")
+                }}
+                className="mt-2 text-left text-xs font-semibold text-teal-700 underline decoration-teal-300 underline-offset-2 transition hover:text-teal-900"
+              >
+                Reset filters
+              </button>
+            ) : null}
           </div>
 
           <div className="max-h-[calc(100vh-220px)] space-y-1.5 overflow-y-auto p-2">
@@ -647,7 +683,20 @@ export function PartnerWorkspace({
               ))
             ) : (
               <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
-                No partners match your search.
+                <p>No partners match the current filters.</p>
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("")
+                      setStatusFilter("all")
+                      setPartnerFilter("all")
+                    }}
+                    className="mt-2 font-semibold text-teal-700 underline decoration-teal-300 underline-offset-2 transition hover:text-teal-900"
+                  >
+                    Reset filters
+                  </button>
+                ) : null}
               </div>
             )}
           </div>
@@ -673,6 +722,23 @@ export function PartnerWorkspace({
                 onLocationChange={setWorkspaceLocation}
                 portalMode={portalMode}
               />
+          ) : partners.length && hasActiveFilters ? (
+            <EditorShell
+              title="No matching partners"
+              description="Adjust the search or partner filters to select a partner."
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("")
+                  setStatusFilter("all")
+                  setPartnerFilter("all")
+                }}
+                className="inline-flex min-h-10 items-center justify-center rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
+              >
+                Reset filters
+              </button>
+            </EditorShell>
           ) : (
             <EditorShell
               title="No partners yet"
@@ -1262,7 +1328,7 @@ function PartnerResearchPanel({
         address,
         city: city === "Select..." ? "" : city,
         allowedCities: cities.map((item) => item.name ?? "").filter(Boolean),
-        allowedCategories: categoryOptions.map((item) => item.value),
+        allowedCategories: allPartnerCategoryOptions.map((item) => item.value),
         allowedTypes: partnerTypeOptions.map((item) => item.value),
       })
 
@@ -1762,6 +1828,16 @@ function PartnerForm({
   const partnerTypeDefault = normalizePartnerTypeValue(partner?.type)
   const [selectedPartnerType, setSelectedPartnerType] =
     useState(partnerTypeDefault)
+  const [selectedCategories, setSelectedCategories] = useState(() =>
+    normalizePartnerCategoriesForType(
+      partnerTypeDefault,
+      normalizePartnerCategories(partner?.category ?? templateSource?.category),
+    ),
+  )
+  const categoryOptions = useMemo(
+    () => partnerCategoryOptionsForType(selectedPartnerType),
+    [selectedPartnerType],
+  )
   const cityOptions = withCurrentOption(
     cities.map((city) => ({
       value: city.id,
@@ -1801,6 +1877,9 @@ function PartnerForm({
   const requiredSectionMarker: boolean | "subtle" = "subtle"
   const handlePartnerTypeChange = (nextType: string) => {
     setSelectedPartnerType(nextType)
+    setSelectedCategories((current) =>
+      normalizePartnerCategoriesForType(nextType, current),
+    )
 
     if (!partnerTypeSupportsMenu(nextType)) {
       setInitialMenuEnabled(false)
@@ -1813,6 +1892,9 @@ function PartnerForm({
     setTemplateSource(source)
     setDescriptionDraft(source.description ?? "")
     setSelectedPartnerType(nextType)
+    setSelectedCategories(
+      normalizePartnerCategoriesForType(nextType, source.category),
+    )
     setSocialHandles(socialDraftsFromPartner(source.socials))
     setInitialMilestones(
       source.reward_milestones.length > 0
@@ -1867,6 +1949,7 @@ function PartnerForm({
       setResearchedMedia({ logoUrl: "", featureUrl: "", discoverUrl: "", coverUrls: [] })
       setCreateTab("profile")
       setSelectedOwnerId("")
+      setSelectedCategories([])
       setReviewSnapshot(null)
       setTemplateSource(null)
       setFormVersion((value) => value + 1)
@@ -2284,10 +2367,11 @@ function PartnerForm({
         <MultiSelectField
           label="Categories"
           name="category"
-          defaultValues={normalizePartnerCategories(partner?.category ?? templateSource?.category)}
+          values={selectedCategories}
+          onChange={setSelectedCategories}
           options={withCurrentOptions(
             categoryOptions,
-            normalizePartnerCategories(partner?.category ?? templateSource?.category),
+            selectedCategories,
           )}
           required
         />
@@ -10830,17 +10914,24 @@ function MultiSelectField({
   name,
   options,
   defaultValues,
+  values,
   required,
   hint,
+  onChange,
 }: {
   label: string
   name: string
   options: readonly { value: string; label: string }[]
   defaultValues?: string[] | null
+  values?: string[]
   required?: boolean
   hint?: string
+  onChange?: (values: string[]) => void
 }) {
-  const [selectedValues, setSelectedValues] = useState(defaultValues ?? [])
+  const [uncontrolledSelectedValues, setUncontrolledSelectedValues] = useState(
+    defaultValues ?? [],
+  )
+  const selectedValues = values ?? uncontrolledSelectedValues
   const [open, setOpen] = useState(false)
   const detailsRef = useRef<HTMLDetailsElement>(null)
   const labelsByValue = new Map(options.map((option) => [option.value, option.label]))
@@ -10918,11 +11009,17 @@ function MultiSelectField({
                   value={option.value}
                   checked={checked}
                   onChange={(event) => {
-                    setSelectedValues((current) =>
-                      event.target.checked
-                        ? [...current, option.value]
-                        : current.filter((value) => value !== option.value),
-                    )
+                    const next = event.target.checked
+                      ? selectedValues.includes(option.value)
+                        ? selectedValues
+                        : [...selectedValues, option.value]
+                      : selectedValues.filter((value) => value !== option.value)
+
+                    if (values === undefined) {
+                      setUncontrolledSelectedValues(next)
+                    }
+
+                    onChange?.(next)
                   }}
                   className="size-4 rounded border-zinc-300 accent-teal-700"
                 />
@@ -11818,10 +11915,6 @@ function normalizeMediaUrls(urls?: string[] | null) {
   return (urls ?? [])
     .map((url) => url.trim())
     .filter((url) => url && !isUploadPlaceholderUrl(url))
-}
-
-function normalizePartnerCategories(categories?: string[] | null) {
-  return categories?.map((category) => category === "Doner" ? "Döner" : category) ?? []
 }
 
 function isUploadPlaceholderUrl(url: string) {
