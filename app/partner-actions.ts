@@ -639,7 +639,10 @@ export async function savePartner(
 
   try {
     const ownerResolution = portalSession.isAdmin
-      ? await resolvePartnerOwner(formData)
+      ? await resolvePartnerOwner(
+          formData,
+          isUpdate ? existingPartner?.owner_id : undefined,
+        )
       : existingPartner?.owner_id
         ? { ok: true as const, ownerId: existingPartner.owner_id }
         : {

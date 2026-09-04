@@ -58,6 +58,15 @@ test("partner actions guard updates and route copy drafts through the dedicated 
   assert.match(code, /generatePartnerDescription/)
 })
 
+test("admin edits from the partner dashboard preserve the existing owner", async () => {
+  const code = await readFile(actionsUrl, "utf8")
+
+  assert.match(
+    code,
+    /resolvePartnerOwner\(\s*formData,\s*isUpdate\s*\?\s*existingPartner\?\.owner_id\s*:\s*undefined,\s*\)/,
+  )
+})
+
 test("partner editor keeps localized labels inside responsive controls and exposes the Content-Agent on Description", async () => {
   const code = await readFile(adminUrl, "utf8")
 
