@@ -5,7 +5,9 @@ export const partnerTypeOptions = [
   { value: "Activities", label: "Activities" },
 ] as const
 
-export const partnerCategoriesByType = {
+type KnownPartnerType = "Food & Drink" | "Services" | "Wellness" | "Activities"
+
+export const partnerCategoriesByType: Record<KnownPartnerType, readonly string[]> = {
   "Food & Drink": [
     "Doner Kebab",
     "Pizza",
@@ -69,9 +71,7 @@ export const partnerCategoriesByType = {
   ],
 } as const
 
-type KnownPartnerType = keyof typeof partnerCategoriesByType
-
-const canonicalCategorySet = new Set(
+const canonicalCategorySet = new Set<string>(
   Object.values(partnerCategoriesByType).flat(),
 )
 
@@ -133,7 +133,7 @@ for (const category of canonicalCategorySet) {
   canonicalCategoryByAlias.set(category.toLowerCase(), category)
 }
 
-export const allPartnerCategories = Array.from(canonicalCategorySet)
+export const allPartnerCategories: string[] = Array.from(canonicalCategorySet)
 
 export const allPartnerCategoryOptions = allPartnerCategories.map((category) => ({
   value: category,
@@ -156,7 +156,7 @@ function normalizePartnerTypeForCategories(value?: string | null) {
   return trimmed
 }
 
-export function getPartnerCategoriesForType(partnerType?: string | null) {
+export function getPartnerCategoriesForType(partnerType?: string | null): string[] {
   const normalizedType = normalizePartnerTypeForCategories(partnerType)
 
   if (normalizedType in partnerCategoriesByType) {
@@ -180,7 +180,9 @@ export function normalizePartnerCategory(value?: string | null) {
   return canonicalCategoryByAlias.get(trimmed.toLowerCase()) ?? trimmed
 }
 
-export function normalizePartnerCategories(values?: Array<string | null | undefined>) {
+export function normalizePartnerCategories(
+  values?: Array<string | null | undefined> | null,
+) {
   const deduped: string[] = []
   const seen = new Set<string>()
 
@@ -196,7 +198,7 @@ export function normalizePartnerCategories(values?: Array<string | null | undefi
 
 export function normalizePartnerCategoriesForType(
   partnerType: string | null | undefined,
-  values?: Array<string | null | undefined>,
+  values?: Array<string | null | undefined> | null,
 ) {
   const normalized = normalizePartnerCategories(values)
 
@@ -204,7 +206,7 @@ export function normalizePartnerCategoriesForType(
     return normalized
   }
 
-  const allowed = new Set(getPartnerCategoriesForType(partnerType))
+  const allowed = new Set<string>(getPartnerCategoriesForType(partnerType))
   return normalized.filter((value) => allowed.has(value))
 }
 
