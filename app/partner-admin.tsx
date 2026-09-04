@@ -41,6 +41,13 @@ import {
   type PartnerMediaSpec,
 } from "@/lib/partner-config"
 import {
+  allPartnerCategoryOptions,
+  normalizePartnerCategories,
+  normalizePartnerCategoriesForType,
+  partnerCategoryOptionsForType,
+  partnerTypeOptions,
+} from "@/lib/partner-categories"
+import {
   DEFAULT_AUDIENCE,
   DEFAULT_DEAL_DROP_WEEKDAYS,
   DEFAULT_REWARD_TRACK_TARGET,
@@ -206,35 +213,6 @@ function useActionSuccess(
 
   return formRef
 }
-
-const partnerTypeOptions = [
-  { value: "Food & Drink", label: "Food & Drink" },
-  { value: "Services", label: "Services" },
-  { value: "Wellness", label: "Wellness" },
-  { value: "Activities", label: "Activities" },
-]
-
-const categoryOptions = [
-  "Döner",
-  "Pizza",
-  "Shawarma",
-  "Burger",
-  "Chinese",
-  "Imbiss",
-  "Metzgerei",
-  "Suppe",
-  "Cafe",
-  "Grill",
-  "Falafel",
-  "Bowl",
-  "Thai",
-  "Sushi",
-  "Restaurant",
-  "Asia",
-  "Eis",
-  "Inder",
-  "Grieche",
-].map((category) => ({ value: category, label: category }))
 
 const emptyCityOptions = [
   {
@@ -1198,7 +1176,7 @@ function PartnerResearchPanel({
         address,
         city: city === "Select..." ? "" : city,
         allowedCities: cities.map((item) => item.name ?? "").filter(Boolean),
-        allowedCategories: categoryOptions.map((item) => item.value),
+        allowedCategories: allPartnerCategoryOptions.map((item) => item.value),
         allowedTypes: partnerTypeOptions.map((item) => item.value),
       })
 
@@ -1698,6 +1676,16 @@ function PartnerForm({
   const partnerTypeDefault = normalizePartnerTypeValue(partner?.type)
   const [selectedPartnerType, setSelectedPartnerType] =
     useState(partnerTypeDefault)
+  const [selectedCategories, setSelectedCategories] = useState(() =>
+    normalizePartnerCategoriesForType(
+      partnerTypeDefault,
+      normalizePartnerCategories(partner?.category ?? templateSource?.category),
+    ),
+  )
+  const categoryOptions = useMemo(
+    () => partnerCategoryOptionsForType(selectedPartnerType),
+    [selectedPartnerType],
+  )
   const cityOptions = withCurrentOption(
     cities.map((city) => ({
       value: city.id,
@@ -1737,6 +1725,9 @@ function PartnerForm({
   const requiredSectionMarker: boolean | "subtle" = "subtle"
   const handlePartnerTypeChange = (nextType: string) => {
     setSelectedPartnerType(nextType)
+    setSelectedCategories((current) =>
+      normalizePartnerCategoriesForType(nextType, current),
+    )
 
     if (!partnerTypeSupportsMenu(nextType)) {
       setInitialMenuEnabled(false)
@@ -1749,6 +1740,9 @@ function PartnerForm({
     setTemplateSource(source)
     setDescriptionDraft(source.description ?? "")
     setSelectedPartnerType(nextType)
+    setSelectedCategories(
+      normalizePartnerCategoriesForType(nextType, source.category),
+    )
     setSocialHandles(socialDraftsFromPartner(source.socials))
     setInitialMilestones(
       source.reward_milestones.length > 0
@@ -1803,6 +1797,7 @@ function PartnerForm({
       setResearchedMedia({ logoUrl: "", featureUrl: "", discoverUrl: "", coverUrls: [] })
       setCreateTab("profile")
       setSelectedOwnerId("")
+      setSelectedCategories([])
       setReviewSnapshot(null)
       setTemplateSource(null)
       setFormVersion((value) => value + 1)
@@ -2220,10 +2215,11 @@ function PartnerForm({
         <MultiSelectField
           label="Categories"
           name="category"
-          defaultValues={normalizePartnerCategories(partner?.category ?? templateSource?.category)}
+          values={selectedCategories}
+          onChange={setSelectedCategories}
           options={withCurrentOptions(
             categoryOptions,
-            normalizePartnerCategories(partner?.category ?? templateSource?.category),
+            selectedCategories,
           )}
           required
         />
@@ -10766,17 +10762,24 @@ function MultiSelectField({
   name,
   options,
   defaultValues,
+  values,
   required,
   hint,
+  onChange,
 }: {
   label: string
   name: string
   options: readonly { value: string; label: string }[]
   defaultValues?: string[] | null
+  values?: string[]
   required?: boolean
   hint?: string
+  onChange?: (values: string[]) => void
 }) {
-  const [selectedValues, setSelectedValues] = useState(defaultValues ?? [])
+  const [uncontrolledSelectedValues, setUncontrolledSelectedValues] = useState(
+    defaultValues ?? [],
+  )
+  const selectedValues = values ?? uncontrolledSelectedValues
   const [open, setOpen] = useState(false)
   const detailsRef = useRef<HTMLDetailsElement>(null)
   const labelsByValue = new Map(options.map((option) => [option.value, option.label]))
@@ -10854,11 +10857,17 @@ function MultiSelectField({
                   value={option.value}
                   checked={checked}
                   onChange={(event) => {
-                    setSelectedValues((current) =>
-                      event.target.checked
-                        ? [...current, option.value]
-                        : current.filter((value) => value !== option.value),
-                    )
+                    const next = event.target.checked
+                      ? selectedValues.includes(option.value)
+                        ? selectedValues
+                        : [...selectedValues, option.value]
+                      : selectedValues.filter((value) => value !== option.value)
+
+                    if (values === undefined) {
+                      setUncontrolledSelectedValues(next)
+                    }
+
+                    onChange?.(next)
                   }}
                   className="size-4 rounded border-zinc-300 accent-teal-700"
                 />
@@ -11754,10 +11763,6 @@ function normalizeMediaUrls(urls?: string[] | null) {
   return (urls ?? [])
     .map((url) => url.trim())
     .filter((url) => url && !isUploadPlaceholderUrl(url))
-}
-
-function normalizePartnerCategories(categories?: string[] | null) {
-  return categories?.map((category) => category === "Doner" ? "Döner" : category) ?? []
 }
 
 function isUploadPlaceholderUrl(url: string) {
