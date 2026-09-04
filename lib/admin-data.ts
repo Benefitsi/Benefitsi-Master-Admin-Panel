@@ -327,6 +327,15 @@ export type DashboardData = {
   partnerCount: number
   dealCount: number
   errors: string[]
+  activityErrors: ActivityDataErrors
+}
+
+export type ActivityDataErrors = {
+  progress?: string
+  visits?: string
+  redemptions?: string
+  benefits?: string
+  qrTokens?: string
 }
 
 export type MenuItemAddon = {
@@ -437,6 +446,14 @@ export async function getDashboardData(
     micrositeVersionsResult.error?.message,
   ].filter(Boolean) as string[]
 
+  const activityErrors: ActivityDataErrors = {
+    progress: progressResult.error?.message,
+    visits: visitsResult.error?.message,
+    redemptions: redemptionsResult.error?.message,
+    benefits: benefitsResult.error?.message,
+    qrTokens: qrTokensResult.error?.message,
+  }
+
   const partners = ((partnersResult.data ?? []) as Partner[]).map((partner) => ({
     ...partner,
     deals: [],
@@ -542,6 +559,7 @@ export async function getDashboardData(
     partnerCount: partners.length,
     dealCount: deals.length,
     errors,
+    activityErrors,
   }
 }
 

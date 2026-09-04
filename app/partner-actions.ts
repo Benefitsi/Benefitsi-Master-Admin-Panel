@@ -323,11 +323,11 @@ export async function createPartnerCoverUpload(
   const { supabase } = await requireAdmin()
 
   if (!ALLOWED_PARTNER_MEDIA_TYPES.has(contentType)) {
-    return { ok: false, message: "Cover photos must be PNG, JPEG, WebP, or SVG images." }
+    return { ok: false, message: "Cover-Bilder müssen PNG-, JPEG-, WebP- oder SVG-Dateien sein." }
   }
 
   if (!Number.isFinite(size) || size <= 0 || size > MAX_PARTNER_MEDIA_BYTES) {
-    return { ok: false, message: "Each cover photo must be 10 MB or smaller." }
+    return { ok: false, message: "Jedes Cover-Bild darf höchstens 10 MB groß sein." }
   }
 
   const path = `staged-covers/${randomUUID()}-${safeFileName(fileName)}`
@@ -338,7 +338,7 @@ export async function createPartnerCoverUpload(
   if (error || !data) {
     return {
       ok: false,
-      message: error?.message ?? "Unable to prepare the cover photo upload.",
+      message: error?.message ?? "Der Upload des Cover-Bilds konnte nicht vorbereitet werden.",
     }
   }
 
@@ -412,7 +412,7 @@ export async function savePartner(
         ok: false,
         message: isUpdate
           ? partnerUpdateMissingMessage
-          : "Partner could not be created because no database row was returned.",
+          : "Der Partner konnte nicht angelegt werden, weil keine Datenbankzeile zurückgegeben wurde.",
       }
     }
 
@@ -500,7 +500,7 @@ export async function savePartner(
         await cleanupUploadedFiles(supabase, uploadedPaths)
         return {
           ok: false,
-          message: `${weekdayName(openingHoursError.weekday)} needs opening and closing times, or mark it closed.`,
+          message: `${weekdayName(openingHoursError.weekday)} benötigt Öffnungs- und Schließzeiten oder muss als geschlossen markiert werden.`,
         }
       }
 
@@ -524,7 +524,7 @@ export async function savePartner(
       const holidayError = validatePartnerHolidays(holidays)
 
       if (holidayError) {
-        warnings.push(`Partner was created, but holiday closures were skipped: ${holidayError}`)
+          warnings.push(`Der Partner wurde angelegt, Feiertagsschließungen wurden jedoch übersprungen: ${holidayError}`)
       } else if (holidays.length > 0) {
         const holidayResult = await supabase.from("partner_holidays").insert(
           holidays.map((holiday) => ({
@@ -536,7 +536,7 @@ export async function savePartner(
 
         if (holidayResult.error) {
           warnings.push(
-            `Partner was created, but holiday closures could not be added: ${holidayResult.error.message}`,
+            `Der Partner wurde angelegt, Feiertagsschließungen konnten jedoch nicht hinzugefügt werden: ${holidayResult.error.message}`,
           )
         }
       }
@@ -552,7 +552,7 @@ export async function savePartner(
         )
 
         if (initialMenuWarning) {
-          warnings.push(`Partner was created, but ${initialMenuWarning}`)
+          warnings.push(`Der Partner wurde angelegt, aber ${initialMenuWarning}`)
         }
       }
 
@@ -565,18 +565,18 @@ export async function savePartner(
 
       if (initialDealError) {
         warnings.push(
-          `Partner was created, but deals were skipped: ${initialDealError}`,
+          `Der Partner wurde angelegt, Deals wurden jedoch übersprungen: ${initialDealError}`,
         )
       } else if (initialDealPriorityError) {
         warnings.push(
-          `Partner was created, but deals were skipped: ${initialDealPriorityError}`,
+          `Der Partner wurde angelegt, Deals wurden jedoch übersprungen: ${initialDealPriorityError}`,
         )
       } else if (initialDeals.length > 0) {
         const dealMessage = await insertDeals(supabase, initialDeals)
 
         if (dealMessage) {
           warnings.push(
-            `Partner was created, but deals could not be added: ${dealMessage}`,
+            `Der Partner wurde angelegt, Deals konnten jedoch nicht hinzugefügt werden: ${dealMessage}`,
           )
         }
       }
@@ -590,7 +590,7 @@ export async function savePartner(
       partnerId,
       created: !isUpdate,
       message: [
-        isUpdate ? "Partner updated." : "Partner created.",
+        isUpdate ? "Partner aktualisiert." : "Partner angelegt.",
         ...warnings,
       ].join(" "),
     }
@@ -602,7 +602,7 @@ export async function savePartner(
       message:
         error instanceof Error
           ? error.message
-          : "Unable to save the partner.",
+          : "Der Partner konnte nicht gespeichert werden.",
     }
   }
 }
@@ -615,7 +615,7 @@ export async function generatePartnerDescription(
 
   const name = stringValue(formData, "name")
   if (!name) {
-    return { ok: false, message: "Partner name is required before asking Ben." }
+    return { ok: false, message: "Der Partnername ist erforderlich, bevor Ben gefragt werden kann." }
   }
 
   const textValidation = validateTextLengthRules([
@@ -635,7 +635,7 @@ export async function generatePartnerDescription(
   if (!bridgeUrl || !bridgeSecret) {
     return {
       ok: false,
-      message: "Ben is unavailable: The Hermes/M1 bridge is not configured.",
+      message: "Ben ist nicht verfügbar: Die Hermes-/M1-Brücke ist nicht konfiguriert.",
     }
   }
 
@@ -643,7 +643,7 @@ export async function generatePartnerDescription(
   try {
     endpoint = new URL("/hermes", bridgeUrl)
   } catch {
-    return { ok: false, message: "Ben is unavailable: The Hermes bridge URL is invalid." }
+    return { ok: false, message: "Ben ist nicht verfügbar: Die Hermes-Brücken-URL ist ungültig." }
   }
 
   if (
@@ -651,7 +651,7 @@ export async function generatePartnerDescription(
     endpoint.hostname !== "localhost" &&
     endpoint.hostname !== "127.0.0.1"
   ) {
-    return { ok: false, message: "Ben is unavailable: The Hermes bridge must use HTTPS." }
+    return { ok: false, message: "Ben ist nicht verfügbar: Die Hermes-Brücke muss HTTPS verwenden." }
   }
 
   try {
@@ -677,7 +677,7 @@ export async function generatePartnerDescription(
     })
 
     if (!response.ok) {
-      return { ok: false, message: "Ben could not create a draft right now. Please try again later." }
+      return { ok: false, message: "Ben konnte gerade keinen Entwurf erstellen. Bitte versuche es später erneut." }
     }
 
     const body = (await response.json().catch(() => null)) as {
@@ -688,7 +688,7 @@ export async function generatePartnerDescription(
     return {
       ok: true,
       description,
-      message: "Ben has inserted a draft. Please review it before saving.",
+      message: "Ben hat einen Entwurf eingefügt. Bitte prüfe ihn vor dem Speichern.",
     }
   } catch (error) {
     console.error(
@@ -697,7 +697,7 @@ export async function generatePartnerDescription(
     )
     return {
       ok: false,
-      message: "Ben could not be reached right now. Please check the Hermes/M1 bridge.",
+      message: "Ben konnte gerade nicht erreicht werden. Bitte prüfe die Hermes-/M1-Brücke.",
     }
   }
 }
@@ -709,23 +709,37 @@ export async function deletePartner(
   const { supabase, adminSession } = await requireAdmin()
   const id = stringValue(formData, "id")
   const deletePassword = stringValue(formData, "delete_password")
+  const deleteNameConfirmation = stringValue(formData, "delete_name_confirmation")
 
   if (!id) {
-    return { ok: false, message: "Partner id is required." }
+    return { ok: false, message: "Partner-ID ist erforderlich." }
   }
 
   if (!deletePassword) {
-    return { ok: false, message: "Admin password is required to delete a partner." }
+    return { ok: false, message: "Admin-Passwort ist zum Löschen eines Partners erforderlich." }
   }
 
   if (!(await verifyAdminPassword(adminSession, deletePassword))) {
-    return { ok: false, message: "Admin password verification failed." }
+    return { ok: false, message: "Die Prüfung des Admin-Passworts ist fehlgeschlagen." }
   }
 
   const cleanupResult = await collectPartnerDeletionMediaUrls(supabase, id)
 
   if (cleanupResult.error) {
     return { ok: false, message: cleanupResult.error }
+  }
+
+  const expectedPartnerName = cleanupResult.partnerName?.trim()
+
+  if (!expectedPartnerName) {
+    return { ok: false, message: "Der Partner wurde nicht gefunden." }
+  }
+
+  if (deleteNameConfirmation.trim() !== expectedPartnerName) {
+    return {
+      ok: false,
+      message: "Gib zur Bestätigung des Löschens den Partnernamen exakt ein.",
+    }
   }
 
   const visitLinkResetResult = await supabase
@@ -759,15 +773,15 @@ export async function deletePartner(
     run: () => PromiseLike<{ error: { message: string } | null }>
   }> = [
     {
-      message: "Unable to remove partner notifications.",
+      message: "Partner-Benachrichtigungen konnten nicht entfernt werden.",
       run: () => supabase.from("app_notifications").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove streak rewards.",
+      message: "Serienprämien konnten nicht entfernt werden.",
       run: () => supabase.from("user_streak_rewards").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove streak shields.",
+      message: "Serien-Schutzfunktionen konnten nicht entfernt werden.",
       run: () =>
         supabase
           .from("user_streak_shields")
@@ -775,7 +789,7 @@ export async function deletePartner(
           .or(`partner_id.eq.${id},used_for_partner_id.eq.${id}`),
     },
     {
-      message: "Unable to remove redemption benefits.",
+      message: "Eingelöste Vorteile konnten nicht entfernt werden.",
       run: () =>
         supabase
           .from("redemption_applied_benefits")
@@ -783,48 +797,48 @@ export async function deletePartner(
           .eq("partner_id", id),
     },
     {
-      message: "Unable to remove redemption reversals.",
+      message: "Rücknahmen von Einlösungen konnten nicht entfernt werden.",
       run: () =>
         supabase.from("redemption_reversals").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove deal redemptions.",
+      message: "Deal-Einlösungen konnten nicht entfernt werden.",
       run: () => supabase.from("deal_redemptions").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove QR tokens.",
+      message: "QR-Tokens konnten nicht entfernt werden.",
       run: () => supabase.from("qr_tokens").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove visits.",
+      message: "Besuche konnten nicht entfernt werden.",
       run: () => supabase.from("visits").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove deal selections.",
+      message: "Deal-Auswahlen konnten nicht entfernt werden.",
       run: () => supabase.from("deal_selections").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove stamp cards.",
+      message: "Stempelkarten konnten nicht entfernt werden.",
       run: () => supabase.from("stamp_cards").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove user partner stats.",
+      message: "Partnerstatistiken der Nutzer konnten nicht entfernt werden.",
       run: () =>
         supabase.from("user_partner_stats").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove user challenges.",
+      message: "Nutzer-Challenges konnten nicht entfernt werden.",
       run: () => supabase.from("user_challenges").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove menu items.",
+      message: "Menüartikel konnten nicht entfernt werden.",
       run: () =>
         cleanupResult.menuIds.length
           ? supabase.from("menu_items").delete().in("menu_id", cleanupResult.menuIds)
           : Promise.resolve({ error: null }),
     },
     {
-      message: "Unable to remove menu categories.",
+      message: "Menükategorien konnten nicht entfernt werden.",
       run: () =>
         cleanupResult.menuIds.length
           ? supabase
@@ -834,35 +848,35 @@ export async function deletePartner(
           : Promise.resolve({ error: null }),
     },
     {
-      message: "Unable to remove menus.",
+      message: "Menüs konnten nicht entfernt werden.",
       run: () => supabase.from("menus").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove partner locations.",
+      message: "Partnerstandorte konnten nicht entfernt werden.",
       run: () =>
         supabase.from("partner_locations").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove partner staff.",
+      message: "Partner-Mitarbeiter konnten nicht entfernt werden.",
       run: () => supabase.from("partner_staff").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove partner social profiles.",
+      message: "Social-Media-Profile des Partners konnten nicht entfernt werden.",
       run: () =>
         supabase.from("partner_socials").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove partner holidays.",
+      message: "Feiertagsschließungen des Partners konnten nicht entfernt werden.",
       run: () =>
         supabase.from("partner_holidays").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove partner operating hours.",
+      message: "Öffnungszeiten des Partners konnten nicht entfernt werden.",
       run: () =>
         supabase.from("partner_opening_hours").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove partner milestones.",
+      message: "Prämienstufen des Partners konnten nicht entfernt werden.",
       run: () =>
         supabase
           .from("partner_reward_milestones")
@@ -870,15 +884,15 @@ export async function deletePartner(
           .eq("partner_id", id),
     },
     {
-      message: "Unable to remove partner microsites.",
+      message: "Partner-Microsites konnten nicht entfernt werden.",
       run: () => supabase.from("microsites").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove partner deals.",
+      message: "Partner-Deals konnten nicht entfernt werden.",
       run: () => supabase.from("deals").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove the partner.",
+      message: "Der Partner konnte nicht entfernt werden.",
       run: () => supabase.from("partners").delete().eq("id", id),
     },
   ]
@@ -897,7 +911,7 @@ export async function deletePartner(
 
   revalidatePath("/")
 
-  return { ok: true, message: "Partner and all attached data removed." }
+  return { ok: true, message: "Partner und alle zugehörigen Daten wurden entfernt." }
 }
 
 export async function rotatePartnerPin(
@@ -908,7 +922,7 @@ export async function rotatePartnerPin(
   const id = stringValue(formData, "id")
 
   if (!id) {
-    return { ok: false, message: "Partner id is required." }
+    return { ok: false, message: "Partner-ID ist erforderlich." }
   }
 
   const pin = randomInt(1000, 10000)
@@ -924,7 +938,7 @@ export async function rotatePartnerPin(
   }
 
   if (!result.data) {
-    return { ok: false, message: "Partner PIN could not be rotated because the partner was not found." }
+    return { ok: false, message: "Die Partner-PIN konnte nicht rotiert werden, weil der Partner nicht gefunden wurde." }
   }
 
   revalidatePath("/")
@@ -933,7 +947,7 @@ export async function rotatePartnerPin(
   return {
     ok: true,
     partnerPin: typeof result.data.pin === "number" ? result.data.pin : pin,
-    message: "Partner PIN rotated.",
+    message: "Partner-PIN wurde rotiert.",
   }
 }
 
@@ -952,7 +966,7 @@ export async function saveDeal(
     return {
       ok: false,
       message:
-        error instanceof Error ? error.message : "Unable to parse deal form.",
+        error instanceof Error ? error.message : "Das Deal-Formular konnte nicht gelesen werden.",
     }
   }
 
@@ -1059,7 +1073,7 @@ export async function saveDeal(
 
   return {
     ok: true,
-    message: id ? "Deal updated." : "Deal added.",
+    message: id ? "Deal aktualisiert." : "Deal hinzugefügt.",
   }
 }
 
@@ -1098,7 +1112,7 @@ export async function saveRewardMilestone(
 
   return {
     ok: true,
-    message: id ? "Milestone updated." : "Milestone added.",
+    message: id ? "Prämienstufe aktualisiert." : "Prämienstufe hinzugefügt.",
   }
 }
 
@@ -1110,7 +1124,7 @@ export async function deleteRewardMilestone(
   const id = stringValue(formData, "id")
 
   if (!id) {
-    return { ok: false, message: "Milestone id is required." }
+    return { ok: false, message: "Prämienstufen-ID ist erforderlich." }
   }
 
   const result = await supabase
@@ -1124,7 +1138,7 @@ export async function deleteRewardMilestone(
 
   revalidatePath("/")
 
-  return { ok: true, message: "Milestone removed." }
+  return { ok: true, message: "Prämienstufe entfernt." }
 }
 
 export async function savePartnerStaff(
@@ -1158,7 +1172,7 @@ export async function savePartnerStaff(
 
   return {
     ok: true,
-    message: id ? "Staff access updated." : "Staff access added.",
+    message: id ? "Mitarbeiterzugriff aktualisiert." : "Mitarbeiterzugriff hinzugefügt.",
   }
 }
 
@@ -1170,7 +1184,7 @@ export async function deletePartnerStaff(
   const id = stringValue(formData, "id")
 
   if (!id) {
-    return { ok: false, message: "Staff access id is required." }
+    return { ok: false, message: "Mitarbeiterzugriffs-ID ist erforderlich." }
   }
 
   const result = await supabase.from("partner_staff").delete().eq("id", id)
@@ -1181,7 +1195,7 @@ export async function deletePartnerStaff(
 
   revalidatePath("/")
 
-  return { ok: true, message: "Staff access removed." }
+  return { ok: true, message: "Mitarbeiterzugriff entfernt." }
 }
 
 export async function saveOpeningHour(
@@ -1210,7 +1224,7 @@ export async function saveOpeningHour(
 
   return {
     ok: true,
-    message: id ? "Opening hours updated." : "Opening hours added.",
+    message: id ? "Öffnungszeit aktualisiert." : "Öffnungszeit hinzugefügt.",
   }
 }
 
@@ -1222,7 +1236,7 @@ export async function deleteOpeningHour(
   const id = stringValue(formData, "id")
 
   if (!id) {
-    return { ok: false, message: "Opening hour id is required." }
+    return { ok: false, message: "Öffnungszeit-ID ist erforderlich." }
   }
 
   const existingResult = await supabase
@@ -1241,7 +1255,7 @@ export async function deleteOpeningHour(
     schedulePartnerPublicRevalidation(supabase, existingResult.data.partner_id)
   }
 
-  return { ok: true, message: "Opening hours removed." }
+  return { ok: true, message: "Öffnungszeit entfernt." }
 }
 
 export async function saveWeeklyOpeningHours(
@@ -1252,7 +1266,7 @@ export async function saveWeeklyOpeningHours(
   const partnerId = stringValue(formData, "partner_id")
 
   if (!partnerId) {
-    return { ok: false, message: "Opening hours must be attached to a partner." }
+    return { ok: false, message: "Öffnungszeiten müssen einem Partner zugeordnet sein." }
   }
 
   const rows = parseWeeklyOpeningHourRows(formData, partnerId)
@@ -1263,7 +1277,7 @@ export async function saveWeeklyOpeningHours(
   if (invalidRow) {
     return {
       ok: false,
-      message: `${weekdayName(invalidRow.weekday)} needs opening and closing times, or mark it closed.`,
+      message: `${weekdayName(invalidRow.weekday)} benötigt Öffnungs- und Schließzeiten oder muss als geschlossen markiert werden.`,
     }
   }
 
@@ -1303,14 +1317,14 @@ export async function saveWeeklyOpeningHours(
     schedulePartnerPublicRevalidation(supabase, partnerId)
     return {
       ok: false,
-      message: `Weekly hours saved, but holiday closures could not be updated: ${holidayMessage}`,
+      message: `Öffnungszeiten gespeichert, Feiertagsschließungen konnten jedoch nicht aktualisiert werden: ${holidayMessage}`,
     }
   }
 
   revalidatePath("/")
   schedulePartnerPublicRevalidation(supabase, partnerId)
 
-  return { ok: true, message: "Operating hours and holiday closures saved." }
+  return { ok: true, message: "Öffnungszeiten und Feiertagsschließungen gespeichert." }
 }
 
 export async function saveMenu(
@@ -1339,7 +1353,7 @@ export async function saveMenu(
     return {
       ok: false,
       message:
-        "The selected menu files did not reach the server. No menu was created; select the files again and retry.",
+        "Die ausgewählten Menüdateien haben den Server nicht erreicht. Es wurde kein Menü angelegt; wähle die Dateien erneut aus und versuche es wieder.",
     }
   }
 
@@ -1401,7 +1415,7 @@ export async function saveMenu(
       }
       return {
         ok: false,
-        message: `${createdMenu ? "The menu was not created" : "The existing menu was not populated"} because the import failed: ${importResult.message}`,
+        message: `${createdMenu ? "Das Menü wurde nicht angelegt" : "Das bestehende Menü wurde nicht befüllt"}, weil der Import fehlgeschlagen ist: ${importResult.message}`,
       }
     }
 
@@ -1411,7 +1425,7 @@ export async function saveMenu(
     return {
       ...importResult,
       menuId,
-      message: `${createdMenu ? "Menu added" : "Menu updated"}. ${importResult.message}`,
+      message: `${createdMenu ? "Menü hinzugefügt" : "Menü aktualisiert"}. ${importResult.message}`,
     }
   }
 
@@ -1421,7 +1435,7 @@ export async function saveMenu(
 
   return {
     ok: true,
-    message: id || reusedExistingMenu ? "Menu updated." : "Menu added.",
+    message: id || reusedExistingMenu ? "Menü aktualisiert." : "Menü hinzugefügt.",
     menuId,
   }
 }
@@ -1434,11 +1448,11 @@ export async function reorderMenuCategories(
   const ids = uniqueOrderedIds(orderedIds)
 
   if (!menuId) {
-    return { ok: false, message: "Menu id is required." }
+    return { ok: false, message: "Menü-ID ist erforderlich." }
   }
 
   if (!ids.length) {
-    return { ok: false, message: "Choose at least one category to reorder." }
+    return { ok: false, message: "Wähle mindestens eine Kategorie zum Sortieren aus." }
   }
 
   const message = await updateSortOrderRows(
@@ -1456,7 +1470,7 @@ export async function reorderMenuCategories(
   revalidatePath("/")
   scheduleMenuPublicRevalidation(supabase, menuId)
 
-  return { ok: true, message: "Category order saved." }
+  return { ok: true, message: "Kategorien-Reihenfolge gespeichert." }
 }
 
 export async function reorderMenuItems(
@@ -1467,11 +1481,11 @@ export async function reorderMenuItems(
   const ids = uniqueOrderedIds(orderedIds)
 
   if (!menuId) {
-    return { ok: false, message: "Menu id is required." }
+    return { ok: false, message: "Menü-ID ist erforderlich." }
   }
 
   if (!ids.length) {
-    return { ok: false, message: "Choose at least one item to reorder." }
+    return { ok: false, message: "Wähle mindestens einen Artikel zum Sortieren aus." }
   }
 
   const message = await updateSortOrderRows(
@@ -1489,7 +1503,7 @@ export async function reorderMenuItems(
   revalidatePath("/")
   scheduleMenuPublicRevalidation(supabase, menuId)
 
-  return { ok: true, message: "Item order saved." }
+  return { ok: true, message: "Artikel-Reihenfolge gespeichert." }
 }
 
 export async function approveMenu(
@@ -1500,7 +1514,7 @@ export async function approveMenu(
   const id = stringValue(formData, "id")
 
   if (!id) {
-    return { ok: false, message: "Menu id is required." }
+    return { ok: false, message: "Menü-ID ist erforderlich." }
   }
 
   const result = await supabase
@@ -1516,7 +1530,7 @@ export async function approveMenu(
   revalidatePath("/menu-approvals")
   scheduleMenuPublicRevalidation(supabase, id)
 
-  return { ok: true, message: "Menu approved and published." }
+  return { ok: true, message: "Menü freigegeben und veröffentlicht." }
 }
 
 export async function deleteMenu(
@@ -1527,7 +1541,7 @@ export async function deleteMenu(
   const id = stringValue(formData, "id")
 
   if (!id) {
-    return { ok: false, message: "Menu id is required." }
+    return { ok: false, message: "Menü-ID ist erforderlich." }
   }
 
   const ownerResult = await supabase
@@ -1551,7 +1565,7 @@ export async function deleteMenu(
       message:
         itemMediaResult.error?.message ||
         categoryMediaResult.error?.message ||
-        "Unable to inspect menu media before deletion.",
+        "Menümedien konnten vor dem Löschen nicht geprüft werden.",
     }
   }
 
@@ -1589,7 +1603,7 @@ export async function deleteMenu(
     schedulePartnerPublicRevalidation(supabase, ownerResult.data.partner_id)
   }
 
-  return { ok: true, message: "Menu removed." }
+  return { ok: true, message: "Menü entfernt." }
 }
 
 export async function saveMenuCategory(
@@ -1611,7 +1625,7 @@ export async function saveMenuCategory(
 
     if (mediaError) return { ok: false, message: mediaError }
     if (!menuId) {
-      return { ok: false, message: "A menu category must be attached to a menu." }
+      return { ok: false, message: "Eine Menükategorie muss einem Menü zugeordnet sein." }
     }
     try {
       const uploaded = await uploadPartnerFile(
@@ -1626,7 +1640,7 @@ export async function saveMenuCategory(
     } catch (error) {
       return {
         ok: false,
-        message: error instanceof Error ? error.message : "Unable to upload the menu category image.",
+        message: error instanceof Error ? error.message : "Das Bild der Menükategorie konnte nicht hochgeladen werden.",
       }
     }
   } else if (removeImage && existingImageUrl) {
@@ -1680,7 +1694,7 @@ export async function saveMenuCategory(
 
   return {
     ok: true,
-    message: id ? "Menu category updated." : "Menu category added.",
+    message: id ? "Menükategorie aktualisiert." : "Menükategorie hinzugefügt.",
     menuCategory: result.data ?? undefined,
   }
 }
@@ -1693,7 +1707,7 @@ export async function deleteMenuCategory(
   const id = stringValue(formData, "id")
 
   if (!id) {
-    return { ok: false, message: "Menu category id is required." }
+    return { ok: false, message: "Menükategorie-ID ist erforderlich." }
   }
 
   const [existingResult, itemMediaResult] = await Promise.all([
@@ -1747,7 +1761,7 @@ export async function deleteMenuCategory(
 
   return {
     ok: true,
-    message: "Menu category and its items removed.",
+    message: "Menükategorie und zugehörige Artikel entfernt.",
     deletedId: id,
   }
 }
@@ -1775,7 +1789,7 @@ export async function saveMenuItem(
     }
 
     if (!menuId) {
-      return { ok: false, message: "A menu item must be attached to a menu." }
+      return { ok: false, message: "Ein Menüartikel muss einem Menü zugeordnet sein." }
     }
 
     try {
@@ -1791,7 +1805,7 @@ export async function saveMenuItem(
     } catch (error) {
       return {
         ok: false,
-        message: error instanceof Error ? error.message : "Unable to upload the menu item image.",
+        message: error instanceof Error ? error.message : "Das Bild des Menüartikels konnte nicht hochgeladen werden.",
       }
     }
   } else if (removeImage && existingImageUrl) {
@@ -1850,7 +1864,7 @@ export async function saveMenuItem(
 
   return {
     ok: true,
-    message: id ? "Menu item updated." : "Menu item added.",
+    message: id ? "Menüartikel aktualisiert." : "Menüartikel hinzugefügt.",
     menuItem: result.data ?? undefined,
   }
 }
@@ -1865,7 +1879,7 @@ export async function saveMenuCategoryImage(
   const imageFile = fileValue(formData, "image_file")
 
   if (!id || !menuId || !imageFile) {
-    return { ok: false, message: "A saved menu category and image are required." }
+    return { ok: false, message: "Eine gespeicherte Menükategorie und ein Bild sind erforderlich." }
   }
   const mediaError = validateMediaFile(imageFile)
   if (mediaError) return { ok: false, message: mediaError }
@@ -1877,7 +1891,7 @@ export async function saveMenuCategoryImage(
     .eq("menu_id", menuId)
     .maybeSingle()
   if (existingResult.error || !existingResult.data) {
-    return { ok: false, message: existingResult.error?.message ?? "Menu category not found." }
+    return { ok: false, message: existingResult.error?.message ?? "Menükategorie nicht gefunden." }
   }
   const previousImageUrl = existingResult.data.image_url
 
@@ -1908,14 +1922,14 @@ export async function saveMenuCategoryImage(
     scheduleMenuPublicRevalidation(supabase, menuId)
     return {
       ok: true,
-      message: "Menu category image uploaded.",
+      message: "Bild der Menükategorie hochgeladen.",
       menuCategory: result.data ?? undefined,
     }
   } catch (error) {
     if (uploaded) await cleanupUploadedFiles(supabase, [uploaded])
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Unable to upload the menu category image.",
+      message: error instanceof Error ? error.message : "Das Bild der Menükategorie konnte nicht hochgeladen werden.",
     }
   }
 }
@@ -1930,7 +1944,7 @@ export async function saveMenuItemImage(
   const imageFile = fileValue(formData, "image_file")
 
   if (!id || !menuId || !imageFile) {
-    return { ok: false, message: "A saved menu item and image are required." }
+    return { ok: false, message: "Ein gespeicherter Menüartikel und ein Bild sind erforderlich." }
   }
   const mediaError = validateMediaFile(imageFile)
   if (mediaError) return { ok: false, message: mediaError }
@@ -1942,7 +1956,7 @@ export async function saveMenuItemImage(
     .eq("menu_id", menuId)
     .maybeSingle()
   if (existingResult.error || !existingResult.data) {
-    return { ok: false, message: existingResult.error?.message ?? "Menu item not found." }
+    return { ok: false, message: existingResult.error?.message ?? "Menüartikel nicht gefunden." }
   }
   const previousImageUrl = existingResult.data.image_url
 
@@ -1973,14 +1987,14 @@ export async function saveMenuItemImage(
     scheduleMenuPublicRevalidation(supabase, menuId)
     return {
       ok: true,
-      message: "Menu item image uploaded.",
+      message: "Bild des Menüartikels hochgeladen.",
       menuItem: result.data ?? undefined,
     }
   } catch (error) {
     if (uploaded) await cleanupUploadedFiles(supabase, [uploaded])
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Unable to upload the menu item image.",
+      message: error instanceof Error ? error.message : "Das Bild des Menüartikels konnte nicht hochgeladen werden.",
     }
   }
 }
@@ -1993,7 +2007,7 @@ export async function deleteMenuItem(
   const id = stringValue(formData, "id")
 
   if (!id) {
-    return { ok: false, message: "Menu item id is required." }
+    return { ok: false, message: "Menüartikel-ID ist erforderlich." }
   }
 
   const existingResult = await supabase
@@ -2024,7 +2038,7 @@ export async function deleteMenuItem(
     scheduleMenuPublicRevalidation(supabase, existingResult.data.menu_id)
   }
 
-  return { ok: true, message: "Menu item removed.", deletedId: id }
+  return { ok: true, message: "Menüartikel entfernt.", deletedId: id }
 }
 
 export async function duplicateMenuCategory(
@@ -2034,7 +2048,7 @@ export async function duplicateMenuCategory(
   const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
 
-  if (!id) return { ok: false, message: "Menu category id is required." }
+  if (!id) return { ok: false, message: "Menükategorie-ID ist erforderlich." }
 
   const [categoryResult, itemsResult] = await Promise.all([
     supabase.from("menu_categories").select("*").eq("id", id).maybeSingle(),
@@ -2046,7 +2060,7 @@ export async function duplicateMenuCategory(
   ])
 
   if (categoryResult.error || !categoryResult.data) {
-    return { ok: false, message: categoryResult.error?.message ?? "Menu category not found." }
+    return { ok: false, message: categoryResult.error?.message ?? "Menükategorie nicht gefunden." }
   }
   if (itemsResult.error) return { ok: false, message: itemsResult.error.message }
 
@@ -2061,7 +2075,7 @@ export async function duplicateMenuCategory(
     .from("menu_categories")
     .insert({
       menu_id: category.menu_id,
-      name: `${category.name || "Category"} (copy)`,
+      name: `${category.name || "Kategorie"} (Kopie)`,
       slug: `${category.slug || slugify(category.name || "category")}-copy-${Date.now()}`,
       image_url: category.image_url,
       sort_order: nextAvailableSortOrder(orderResult.data?.map((row) => row.sort_order) ?? []),
@@ -2099,7 +2113,7 @@ export async function duplicateMenuCategory(
   }
   return {
     ok: true,
-    message: `Category duplicated with ${itemCopies.length} ${itemCopies.length === 1 ? "item" : "items"}.`,
+    message: `Kategorie mit ${itemCopies.length} ${itemCopies.length === 1 ? "Artikel" : "Artikeln"} dupliziert.`,
   }
 }
 
@@ -2116,11 +2130,11 @@ export async function importMenuFile(
     "confirm_import_signature",
   )
 
-  if (!menuId) return { ok: false, message: "A menu is required for import." }
+  if (!menuId) return { ok: false, message: "Für den Import ist ein Menü erforderlich." }
   if (!['append', 'replace', 'update_addons'].includes(importMode)) {
-    return { ok: false, message: "Choose whether to append, replace, or update add-ons." }
+    return { ok: false, message: "Wähle aus, ob du ergänzen, ersetzen oder Add-ons aktualisieren möchtest." }
   }
-  if (!files.length) return { ok: false, message: "Choose one or more ZIP, JSON, or CSV files." }
+  if (!files.length) return { ok: false, message: "Wähle mindestens eine ZIP-, JSON- oder CSV-Datei aus." }
 
   return importMenuIntoMenu(
     supabase,
@@ -2212,8 +2226,8 @@ async function importMenuIntoMenu(
   )
   const details = [...batch.errors, ...batch.warnings]
   const summary = batch.successes.length
-    ? `Imported ${batch.successes.length} menu file${batch.successes.length === 1 ? "" : "s"}: ${importedCategories} categories and ${importedItems} items.`
-    : "No menu files were imported."
+    ? `${batch.successes.length} Menüdatei${batch.successes.length === 1 ? "" : "en"} importiert: ${importedCategories} Kategorien und ${importedItems} Artikel.`
+    : "Keine Menüdateien importiert."
 
   revalidatePath("/")
   revalidatePath("/menu-approvals")
@@ -2251,7 +2265,7 @@ async function updateImportedMenuAddons(
       message:
         categoriesResult.error?.message ||
         itemsResult.error?.message ||
-        "Unable to load the existing menu items.",
+        "Die vorhandenen Menüartikel konnten nicht geladen werden.",
     }
   }
 
@@ -2592,7 +2606,7 @@ async function collectPartnerDeletionMediaUrls(
   const partnerResult = await supabase
     .from("partners")
     .select(
-      "logo_url,feature_card_url,discover_card_image_url,cover_urls",
+      "name,logo_url,feature_card_url,discover_card_image_url,cover_urls",
     )
     .eq("id", partnerId)
     .maybeSingle()
@@ -2602,6 +2616,7 @@ async function collectPartnerDeletionMediaUrls(
       error: partnerResult.error.message,
       mediaUrls: [] as string[],
       menuIds: [] as string[],
+      partnerName: null,
     }
   }
 
@@ -2615,6 +2630,7 @@ async function collectPartnerDeletionMediaUrls(
       error: menuResult.error.message,
       mediaUrls: [] as string[],
       menuIds: [] as string[],
+      partnerName: null,
     }
   }
 
@@ -2634,6 +2650,7 @@ async function collectPartnerDeletionMediaUrls(
       error: menuItemResult.error.message,
       mediaUrls: [] as string[],
       menuIds: [] as string[],
+      partnerName: null,
     }
   }
 
@@ -2649,6 +2666,7 @@ async function collectPartnerDeletionMediaUrls(
       error: menuCategoryResult.error.message,
       mediaUrls: [] as string[],
       menuIds: [] as string[],
+      partnerName: null,
     }
   }
 
@@ -2672,6 +2690,7 @@ async function collectPartnerDeletionMediaUrls(
       ...new Set([...partnerUrls, ...menuItemUrls, ...menuCategoryUrls]),
     ],
     menuIds,
+    partnerName: typeof partnerResult.data?.name === "string" ? partnerResult.data.name : null,
   }
 }
 

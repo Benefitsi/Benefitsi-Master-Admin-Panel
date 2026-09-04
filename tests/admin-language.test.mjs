@@ -83,6 +83,21 @@ test("uses menu-specific terminology consistently", () => {
   assert.equal(translateValue("4,5", "en"), "4.5")
 })
 
+test("localizes remaining partner editor fallback and validation copy", () => {
+  assert.equal(translateValue("Benefit not set", "de"), "Vorteil nicht festgelegt")
+  assert.equal(translateValue("Reward not set", "de"), "Prämie nicht festgelegt")
+  assert.equal(translateValue("Staff user", "de"), "Mitarbeiterkonto")
+  assert.equal(translateValue("Unnamed owner", "de"), "Verantwortliche Person ohne Namen")
+  assert.equal(
+    translateValue("Choose a valid holiday date.", "de"),
+    "Wähle ein gültiges Feiertagsdatum aus.",
+  )
+  assert.equal(
+    translateValue("That holiday is already listed.", "de"),
+    "Dieser Feiertag ist bereits eingetragen.",
+  )
+})
+
 test("translates generated reward and schedule labels", () => {
   assert.equal(translateValue("5 stamps - Item", "de"), "5 Stempel – Artikel")
   assert.equal(translateValue("5 Stempel – Artikel", "en"), "5 stamps - Item")

@@ -12,9 +12,11 @@ import {
   useState,
   useTransition,
   type ReactNode,
+  type SyntheticEvent,
 } from "react"
 import { useFormStatus } from "react-dom"
 import type {
+  ActivityDataErrors,
   City,
   Deal,
   MenuCategory,
@@ -284,6 +286,7 @@ type PartnerWorkspaceProps = {
   partners: PartnerWithDeals[]
   cities: City[]
   owners: OwnerOption[]
+  activityErrors?: ActivityDataErrors
   initialMode?: "view" | "create"
   initialPartnerId?: string
   initialSettingsTab?: string
@@ -406,7 +409,7 @@ type CreatePartnerReviewSnapshot = {
   coverCount: number
   milestoneCount: number
   dealCount: number
-  menuStatus: "Set" | "Incomplete" | "Not set"
+  menuStatus: "Eingerichtet" | "Unvollständig" | "Nicht eingerichtet"
   logoSet: boolean
   featureCardSet: boolean
   discoveryImageSet: boolean
@@ -427,30 +430,31 @@ const partnerSettingsTabCopy: Record<
   PartnerSettingsTab,
   { title: string; description: string }
 > = {
-  details: { title: "Partner profile", description: "Business information, opening hours, contact details, location, branding, and media." },
-  rewards: { title: "Hours and loyalty rewards", description: "Opening schedule, holiday closures, and stamp-card milestones." },
-  deals: { title: "Stamps and Deals", description: "Stamp-card rewards, customer offers, eligibility rules, availability, and redemption settings." },
-  menu: { title: "Menu management", description: "Menu details, categories, items, pricing, images, and display order." },
-  access: { title: "Staff access", description: "Manage the staff members who can administer or scan for this partner." },
-  activity: { title: "Customer activity", description: "Review stamp-card progress, visits, applied benefits, and redemptions." },
-  danger: { title: "Delete partner", description: "Permanently remove this partner and its attached records." },
+  details: { title: "Partnerprofil", description: "Stammdaten, Öffnungszeiten, Kontakt, Standort und Medien an einem Ort." },
+  rewards: { title: "Öffnungszeiten und Stempel-Prämien", description: "Wochenplan, Ausnahmen und Prämienstufen verwalten." },
+  deals: { title: "Stempel & Deals", description: "Stempel-Prämien und Kundenvorteile getrennt pflegen." },
+  menu: { title: "Menüverwaltung", description: "Menü, Kategorien, Artikel, Preise, Bilder und Reihenfolge verwalten." },
+  access: { title: "Mitarbeiterzugriff", description: "Verwalte, wer diesen Partner administrieren oder beim Scannen unterstützen darf." },
+  activity: { title: "Kundenaktivität", description: "Geladene Stempel-Fortschritte, Besuche und Einlösungen nachvollziehen." },
+  danger: { title: "Gefahrenbereich", description: "Dauerhaftes Löschen mit zusätzlicher Bestätigung und Admin-Passwort." },
 }
 
 const createPartnerTabCopy: Record<
   CreatePartnerTab,
   { title: string; description: string }
 > = {
-  profile: { title: "Business profile", description: "Enter the partner's identity, ownership, contact details, and location." },
-  operations: { title: "Operations and media", description: "Configure opening hours, holiday closures, branding, and cover images." },
-  offers: { title: "Stamps and Deals", description: "Set up stamp-card milestones and optional customer deals." },
-  menu: { title: "Starter menu", description: "Create the initial menu, categories, items, prices, and images." },
-  review: { title: "Review and create", description: "Review required sections, then create the partner and all staged content." },
+  profile: { title: "Geschäftsprofil", description: "Identität, Verantwortliche, Kontakt und Standort des Partners." },
+  operations: { title: "Betrieb und Medien", description: "Öffnungszeiten, Ausnahmen, Branding und Bilder konfigurieren." },
+  offers: { title: "Stempel & Deals", description: "Stempel-Prämien und optionale Kundenvorteile einrichten." },
+  menu: { title: "Startmenü", description: "Kategorien, Artikel, Preise und Bilder anlegen." },
+  review: { title: "Prüfen und anlegen", description: "Pflichtbereiche prüfen und anschließend den Partner anlegen." },
 }
 
 export function PartnerWorkspace({
   partners,
   cities,
   owners,
+  activityErrors = {},
   initialMode = "view",
   initialPartnerId = "",
   initialSettingsTab,
@@ -533,14 +537,15 @@ export function PartnerWorkspace({
   return (
     <section id="partners" className="partner-management-brand space-y-3">
       <ToastViewport />
-      <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-5">
-        <LiveMetric label="Partners" value={partnerCount} />
-        <LiveMetric label="Active partners" value={activePartners} />
-        <LiveMetric label="Featured partners" value={featuredPartners} />
-        <LiveMetric label="Deals" value={dealCount} />
+      <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-[1.1fr_1.1fr_1fr_1fr_1fr]">
+        <LiveMetric label="Partner" value={partnerCount} />
+        <LiveMetric label="Aktive Partner" value={activePartners} />
+        <LiveMetric secondary label="Hervorgehobene Partner" value={featuredPartners} />
+        <LiveMetric secondary label="Deals" value={dealCount} />
         <LiveMetric
+          secondary
           href="/menu-approvals"
-          label="Menu approvals required"
+          label="Menüfreigaben erforderlich"
           value={pendingMenuReviews.length}
         />
       </div>
@@ -551,23 +556,23 @@ export function PartnerWorkspace({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold tracking-normal">
-                  Partners
+                  Partner
                 </h2>
-                <p className="mt-0.5 text-xs text-zinc-500">Select a partner to edit.</p>
+                <p className="mt-0.5 text-xs text-zinc-500">Partner zur Bearbeitung auswählen.</p>
               </div>
               <button
                 type="button"
                 onClick={startCreatePartner}
                 className="inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-md bg-teal-700 px-3 text-sm font-semibold leading-none text-white transition hover:-translate-y-px hover:bg-teal-800 active:translate-y-0"
               >
-                Add
+                Hinzufügen
               </button>
             </div>
             <input
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search partners"
+              placeholder="Partner suchen"
               className="mt-3 h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
             />
           </div>
@@ -596,7 +601,7 @@ export function PartnerWorkspace({
               ))
             ) : (
               <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
-                No partners match your search.
+                Keine Partner entsprechen deiner Suche.
               </div>
             )}
           </div>
@@ -605,8 +610,8 @@ export function PartnerWorkspace({
         <section className="min-w-0">
           {mode === "create" ? (
             <EditorShell
-              title="Add partner"
-              description="Create the partner profile, assign its owner, upload media, and add any deals in one save."
+              title="Partner hinzufügen"
+              description="Profil, Verantwortliche, Medien und optionale Vorteile in einem Ablauf anlegen."
             >
               <PartnerForm cities={cities} owners={owners} mode="create" partners={partners} />
             </EditorShell>
@@ -617,14 +622,15 @@ export function PartnerWorkspace({
                 owners={owners}
                 onDeleted={startCreatePartner}
                 partner={selectedPartner}
+                activityErrors={activityErrors}
                 initialSettingsTab={workspaceLocation.tab}
                 initialView={workspaceLocation.view}
                 onLocationChange={setWorkspaceLocation}
               />
           ) : (
             <EditorShell
-              title="No partners yet"
-              description="Add a partner to start managing deals."
+              title="Noch keine Partner"
+              description="Füge einen Partner hinzu, um Vorteile und Inhalte zu verwalten."
             >
               <PartnerForm cities={cities} owners={owners} mode="create" partners={partners} />
             </EditorShell>
@@ -639,20 +645,22 @@ function LiveMetric({
   label,
   value,
   href,
+  secondary = false,
 }: {
   label: string
   value: number
   href?: string
+  secondary?: boolean
 }) {
   const content = (
     <>
       <p className="text-xs font-medium text-zinc-500">{label}</p>
-      <p className="mt-0.5 text-xl font-semibold tracking-normal text-zinc-950">
+      <p className={`${secondary ? "mt-0.5 text-lg" : "mt-0.5 text-xl"} font-semibold tracking-normal text-zinc-950`}>
         {value}
       </p>
     </>
   )
-  const className = "border-b border-zinc-200 px-3 py-2.5 last:border-b-0 sm:border-b-0"
+  const className = `${secondary ? "bg-zinc-50/60" : ""} border-b border-zinc-200 px-3 py-2.5 last:border-b-0 sm:border-b-0`
 
   if (href) {
     return (
@@ -687,7 +695,7 @@ export function PendingMenuReviewPanel({
     <div className="rounded-xl border border-zinc-200 bg-white px-3 py-2 shadow-sm">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div className="flex items-center gap-2 text-sm">
-          <span className="font-semibold text-zinc-900">Menu approvals required</span>
+          <span className="font-semibold text-zinc-900">Menüfreigaben erforderlich</span>
           <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
             {reviews.length}
           </span>
@@ -702,13 +710,13 @@ export function PendingMenuReviewPanel({
             >
               <span className="block truncate">{review.partnerName}</span>
               <span className="block truncate text-zinc-500">
-                {review.menuName} · {review.items} items
+                {review.menuName} · {review.items} Artikel
               </span>
             </button>
           ))}
           {hiddenCount ? (
             <span className="inline-flex h-8 items-center rounded-md border border-zinc-200 bg-zinc-50 px-2.5 text-xs font-medium text-zinc-500">
-              +{hiddenCount} more
+              +{hiddenCount} weitere
             </span>
           ) : null}
         </div>
@@ -733,14 +741,14 @@ export function MenuApprovalWorkspace({
       <ToastViewport />
       <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-teal-700">Review queue</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-zinc-950">Menu approvals</h2>
+          <p className="text-sm font-semibold text-teal-700">Prüfwarteschlange</p>
+          <h2 className="mt-1 text-2xl font-bold tracking-tight text-zinc-950">Menüfreigaben</h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600">
-            Preview every submitted menu here. Open its partner menu management page if changes are needed before approval.
+            Eingereichte Menüs prüfen und bei Bedarf direkt in der Menüverwaltung bearbeiten.
           </p>
         </div>
         <span className="inline-flex w-fit rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
-          {reviews.length} awaiting approval
+          {reviews.length} warten auf Freigabe
         </span>
       </div>
 
@@ -756,8 +764,8 @@ export function MenuApprovalWorkspace({
         </div>
       ) : (
         <div className="rounded-xl border border-dashed border-zinc-300 bg-white p-10 text-center shadow-sm">
-          <h3 className="text-base font-semibold text-zinc-900">All menus are reviewed</h3>
-          <p className="mt-1 text-sm text-zinc-500">New submissions will appear here when their status is set to Needs review.</p>
+          <h3 className="text-base font-semibold text-zinc-900">Alle Menüs sind geprüft</h3>
+          <p className="mt-1 text-sm text-zinc-500">Neue Einreichungen erscheinen hier, sobald sie eine Prüfung benötigen.</p>
         </div>
       )}
     </section>
@@ -789,15 +797,15 @@ function MenuApprovalCard({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link
+            <Link
             href={`/?partner=${encodeURIComponent(partner.id ?? "")}&tab=menu&view=settings`}
             className="inline-flex h-9 items-center rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
           >
-            Edit in partner menu
+            In Menüverwaltung bearbeiten
           </Link>
           <form action={formAction}>
             <input type="hidden" name="id" value={menu.id ?? ""} />
-            <SubmitButton label="Approve menu" pendingLabel="Approving..." size="compact" />
+            <SubmitButton label="Menü freigeben" pendingLabel="Wird freigegeben …" size="compact" />
           </form>
         </div>
       </header>
@@ -820,7 +828,7 @@ function MenuApprovalCard({
                     </li>
                   ))}
                 </ul>
-              ) : <p className="mt-2 text-xs text-zinc-500">No items in this category.</p>}
+              ) : <p className="mt-2 text-xs text-zinc-500">Keine Artikel in dieser Kategorie.</p>}
             </section>
           )
         })}
@@ -855,8 +863,6 @@ function PartnerListButton({
   const pendingMenuCount = partner.menus.filter(
     (menu) => menu.status === "review",
   ).length
-  const hasDeals = partner.deals.length > 0
-
   return (
     <button
       type="button"
@@ -883,17 +889,12 @@ function PartnerListButton({
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <p className="text-xs font-medium text-zinc-600">
-              {partner.deals.length} {partner.deals.length === 1 ? "deal" : "deals"}
+              {partner.deals.length} {partner.deals.length === 1 ? "Deal" : "Deals"}
             </p>
             {partner.is_featured ? <FeaturedBadge compact /> : null}
-            {!hasDeals ? (
-              <span className="whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                Deal recommended
-              </span>
-            ) : null}
             {pendingMenuCount ? (
               <span className="whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                {pendingMenuCount} menu {pendingMenuCount === 1 ? "review" : "reviews"}
+                {pendingMenuCount} {pendingMenuCount === 1 ? "Menüprüfung" : "Menüprüfungen"}
               </span>
             ) : null}
           </div>
@@ -907,6 +908,7 @@ function PartnerDetail({
   partner,
   cities,
   owners,
+  activityErrors,
   onDeleted,
   initialSettingsTab,
   initialView = "settings",
@@ -915,6 +917,7 @@ function PartnerDetail({
   partner: PartnerWithDeals
   cities: City[]
   owners: OwnerOption[]
+  activityErrors: ActivityDataErrors
   onDeleted: () => void
   initialSettingsTab?: string
   initialView?: "settings" | "microsite"
@@ -962,14 +965,14 @@ function PartnerDetail({
     label: string
     hasRequiredFields?: boolean
   }> = [
-    { id: "details", label: "Partner Profile", hasRequiredFields: true },
-    { id: "deals", label: "Stamps & Deals", hasRequiredFields: true },
+    { id: "details", label: "Partnerprofil", hasRequiredFields: true },
+    { id: "deals", label: "Stempel & Deals", hasRequiredFields: true },
     ...(partnerTypeSupportsMenu(partner.type)
-      ? [{ id: "menu" as const, label: "Menu Management", hasRequiredFields: true }]
+      ? [{ id: "menu" as const, label: "Menüverwaltung", hasRequiredFields: true }]
       : []),
-    { id: "access", label: "Staff Access", hasRequiredFields: true },
-    { id: "activity", label: "Customer Activity" },
-    { id: "danger", label: "Delete Partner" },
+    { id: "access", label: "Mitarbeiterzugriff", hasRequiredFields: true },
+    { id: "activity", label: "Kundenaktivität" },
+    { id: "danger", label: "Gefahrenbereich" },
   ]
   const activeTabCopy = partnerSettingsTabCopy[settingsTab]
 
@@ -993,8 +996,8 @@ function PartnerDetail({
         title={partner.name || "Untitled partner"}
         description={
           activeView === "settings"
-            ? "Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields."
-            : "Edit the public microsite separately from the partner settings."
+            ? "Stammdaten, Öffnungszeiten, Vorteile, Menü, Socials und Medien verwalten."
+            : "Die öffentliche Partnerseite separat bearbeiten."
         }
         aside={
           <div className="flex flex-wrap gap-2">
@@ -1008,7 +1011,7 @@ function PartnerDetail({
                     : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
                 }`}
               >
-                Partner settings
+                Partnerprofil
               </button>
               <button
                 type="button"
@@ -1019,7 +1022,7 @@ function PartnerDetail({
                     : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
                 }`}
               >
-                Microsite builder
+                Microsite-Builder
               </button>
             </div>
             <StatusPill active={isPartnerActive(partner)} />
@@ -1030,7 +1033,7 @@ function PartnerDetail({
         {activeView === "settings" ? (
           <div>
             <nav
-              aria-label="Partner settings"
+              aria-label="Partnerbereiche"
               className="mb-4"
             >
               <div className="w-full overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
@@ -1067,7 +1070,7 @@ function PartnerDetail({
                           <span
                             aria-hidden="true"
                             className="text-sm font-black leading-none text-rose-500"
-                            title="Contains required fields"
+                            title="Enthält Pflichtfelder"
                           >
                             *
                           </span>
@@ -1121,19 +1124,36 @@ function PartnerDetail({
             ) : null}
             {settingsTab === "activity" ? (
               <div className="space-y-4">
+                <div className="grid gap-2 rounded-lg border border-zinc-200 bg-white p-3 text-sm text-zinc-600 sm:grid-cols-3">
+                  <Info label="Geladene Fortschritte" value={activityErrors.progress ? "Fehler" : String(partner.stamp_progress.length)} />
+                  <Info label="Geladene Besuche" value={activityErrors.visits ? "Fehler" : String(partner.visits.length)} />
+                  <Info
+                    label="Geladene Einlösungen"
+                    value={activityErrors.redemptions ? "Fehler" : String(partner.visits.reduce((count, visit) => count + visit.deal_redemptions.length, 0))}
+                  />
+                </div>
                 <section>
-                  <h3 className="mb-2 text-sm font-semibold text-zinc-900">Stamp-card progress</h3>
-                  <StampProgressPanel progress={partner.stamp_progress} embedded />
+                  <h3 className="mb-2 text-sm font-semibold text-zinc-900">Stempel-Fortschritt</h3>
+                  <StampProgressPanel error={activityErrors.progress} progress={partner.stamp_progress} embedded />
                 </section>
                 <section className="border-t border-zinc-200 pt-4">
-                  <h3 className="mb-2 text-sm font-semibold text-zinc-900">Redemption history</h3>
-                  <RedemptionHistoryPanel partner={partner} visits={partner.visits} embedded />
+                  <h3 className="mb-2 text-sm font-semibold text-zinc-900">Besuchshistorie</h3>
+                  <RedemptionHistoryPanel activityErrors={activityErrors} partner={partner} visits={partner.visits} embedded />
                 </section>
               </div>
             ) : null}
             {settingsTab === "danger" ? (
               <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">
+                <h4 className="text-sm font-bold text-rose-950">Gefahrenbereich</h4>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-rose-900">
+                  Dauerhaftes Löschen entfernt den Partner und alle zugehörigen Daten. Prüfe den Namen und dein Admin-Passwort, bevor du fortfährst.
+                </p>
+                <p className="mt-2 max-w-2xl text-xs leading-5 text-rose-800">
+                  Alternative: Deaktiviere den Partner im Partnerprofil über das Feld „Aktiv“, ohne Daten zu löschen.
+                </p>
+                <div className="mt-4">
                 <DeletePartnerForm partner={partner} onDeleted={onDeleted} />
+                </div>
               </div>
             ) : null}
             </section>
@@ -1143,16 +1163,16 @@ function PartnerDetail({
             <section className="rounded-md border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <p className="font-semibold">Microsite builder</p>
+                  <p className="font-semibold">Microsite-Builder</p>
                   <p className="mt-1 text-teal-800">
-                    Edit the microsite here, or open the full-width builder for more space.
+                    Bearbeite die Microsite hier oder öffne den Builder in voller Breite, um mehr Platz zu haben.
                   </p>
                 </div>
                 <Link
                   href={`/microsite-builder/${encodeURIComponent(builderIdentifier)}`}
                   className="inline-flex h-10 items-center justify-center rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
                 >
-                  Open full-width builder
+                  Builder in voller Breite öffnen
                 </Link>
               </div>
             </section>
@@ -1215,7 +1235,7 @@ function EditorShell({
             />
             <span className="ml-auto flex shrink-0 items-center pt-1">
               <span className="text-xs font-semibold text-zinc-500">
-                {open ? "Collapse" : "Expand"}
+                {open ? "Einklappen" : "Ausklappen"}
               </span>
             </span>
           </button>
@@ -1303,6 +1323,19 @@ function PartnerForm({
   const [reviewSnapshot, setReviewSnapshot] =
     useState<CreatePartnerReviewSnapshot | null>(null)
   const [confirmingSave, setConfirmingSave] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+  const markDirty = useCallback(() => setIsDirty(true), [])
+  const markDirtyForEvent = useCallback(
+    (event: SyntheticEvent<HTMLFormElement>) => {
+      if (
+        !(event.target instanceof HTMLElement) ||
+        !event.target.hasAttribute("data-opening-hours-name")
+      ) {
+        markDirty()
+      }
+    },
+    [markDirty],
+  )
   const [validationMessage, setValidationMessage] = useState("")
   const [formVersion, setFormVersion] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
@@ -1335,17 +1368,18 @@ function PartnerForm({
     label: string
     hasRequiredFields?: boolean
   }> = [
-    { id: "profile", label: "Business Profile", hasRequiredFields: true },
-    { id: "operations", label: "Operations & Media", hasRequiredFields: true },
-    { id: "offers", label: "Stamps & Deals", hasRequiredFields: true },
+    { id: "profile", label: "Geschäftsprofil", hasRequiredFields: true },
+    { id: "operations", label: "Betrieb & Medien", hasRequiredFields: true },
+    { id: "offers", label: "Stempel & Deals", hasRequiredFields: true },
     ...(menuSupported
-      ? [{ id: "menu" as const, label: "Starter Menu", hasRequiredFields: true }]
+      ? [{ id: "menu" as const, label: "Startmenü", hasRequiredFields: true }]
       : []),
-    { id: "review", label: "Review & Create" },
+    { id: "review", label: "Prüfen und anlegen" },
   ]
   const activeCreateTabCopy = createPartnerTabCopy[createTab]
   const requiredSectionMarker: boolean | "subtle" = "subtle"
   const handlePartnerTypeChange = (nextType: string) => {
+    markDirty()
     setSelectedPartnerType(nextType)
 
     if (!partnerTypeSupportsMenu(nextType)) {
@@ -1355,6 +1389,7 @@ function PartnerForm({
   }
 
   const applyTemplate = (source: PartnerWithDeals) => {
+    markDirty()
     const nextType = normalizePartnerTypeValue(source.type)
     setTemplateSource(source)
     setDescriptionDraft(source.description ?? "")
@@ -1386,6 +1421,7 @@ function PartnerForm({
 
   useEffect(() => {
     if (state.ok) {
+      window.requestAnimationFrame(() => setIsDirty(false))
       formRef.current
         ?.querySelectorAll<HTMLDetailsElement>("details[open]")
         .forEach((details) => {
@@ -1421,6 +1457,20 @@ function PartnerForm({
     return () => window.cancelAnimationFrame(frame)
   }, [mode, router, state])
 
+  useEffect(() => {
+    if (!isDirty) {
+      return
+    }
+
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ""
+    }
+
+    window.addEventListener("beforeunload", warnBeforeLeaving)
+    return () => window.removeEventListener("beforeunload", warnBeforeLeaving)
+  }, [isDirty])
+
   const requestDescription = () => {
     const form = formRef.current
     if (!form || isGeneratingDescription) return
@@ -1453,6 +1503,7 @@ function PartnerForm({
       setDescriptionState(result)
       if (result.ok && result.description) {
         setDescriptionDraft(result.description)
+        markDirty()
       }
     })
   }
@@ -1465,9 +1516,11 @@ function PartnerForm({
       action={formAction}
       className="space-y-3"
       noValidate
-      onInput={() => {
+      onInput={(event) => {
+        markDirtyForEvent(event)
         if (validationMessage) setValidationMessage("")
       }}
+      onChange={markDirtyForEvent}
       onSubmit={(event) => {
         const submitter = (event.nativeEvent as SubmitEvent).submitter
         pendingSubmitterRef.current =
@@ -1503,8 +1556,8 @@ function PartnerForm({
           setValidationMessage(
             invalidField.validity.valueMissing
               ? tabLabel
-                ? `Please complete the required fields in ${tabLabel} before creating the partner.`
-                : "Please complete all required partner fields before saving."
+                ? `Bitte vervollständige die Pflichtfelder in „${tabLabel}“, bevor du den Partner anlegst.`
+                : "Bitte vervollständige vor dem Speichern alle Pflichtfelder des Partners."
               : `${fieldLabel ? `${fieldLabel}: ` : ""}${invalidField.validationMessage}`,
           )
           window.requestAnimationFrame(() => {
@@ -1524,7 +1577,7 @@ function PartnerForm({
           pendingSubmitterRef.current = null
           setCreateTab("profile")
           setValidationMessage(
-            "Please select at least one category in Business Profile before creating the partner.",
+            "Bitte wähle im Geschäftsprofil mindestens eine Kategorie aus, bevor du den Partner anlegst.",
           )
           window.requestAnimationFrame(() => {
             form
@@ -1569,7 +1622,7 @@ function PartnerForm({
       <input type="hidden" name="social_count" value={socialHandles.length} />
 
       {mode === "create" ? (
-        <nav aria-label="Add partner steps">
+        <nav aria-label="Schritte zum Hinzufügen eines Partners">
           <div className="w-full overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
             <div className="flex min-w-max divide-x divide-zinc-200">
               {createTabs.map((tab) => (
@@ -1604,7 +1657,7 @@ function PartnerForm({
                       <span
                         aria-hidden="true"
                         className="text-sm font-black leading-none text-rose-500"
-                        title="Contains required fields"
+                        title="Enthält Pflichtfelder"
                       >
                         *
                       </span>
@@ -1639,6 +1692,14 @@ function PartnerForm({
         </div>
       ) : null}
       <ActionMessage state={state} />
+      {mode === "edit" ? (
+        <p
+          role="status"
+          className={`text-xs font-semibold ${isDirty ? "text-amber-700" : "text-emerald-700"}`}
+        >
+          {isDirty ? "Ungespeicherte Änderungen" : "Alle Änderungen gespeichert"}
+        </p>
+      ) : null}
 
       <div
         data-create-tab="profile"
@@ -1649,16 +1710,16 @@ function PartnerForm({
         <CopyFromPartnerPanel partners={partners} onApply={applyTemplate} />
       ) : null}
 
-      <FormSection title="Profile" required={requiredSectionMarker}>
+      <FormSection title="Profil" required={requiredSectionMarker}>
         <FieldGrid>
           <TextField
-            label="Partner name"
+            label="Partnername"
             name="name"
             defaultValue={partner?.name}
             required
           />
           <SelectField
-            label="Partner type"
+            label="Partnertyp"
             name="type"
             value={selectedPartnerType}
             options={withCurrentOption(partnerTypeOptions, partnerTypeDefault)}
@@ -1666,7 +1727,7 @@ function PartnerForm({
             required
           />
           <SelectField
-            label="Partner city"
+            label="Partnerstadt"
             name="city_id"
             defaultValue={partner?.city_id ?? templateSource?.city_id}
             options={cityOptions.length ? cityOptions : emptyCityOptions}
@@ -1674,7 +1735,7 @@ function PartnerForm({
           />
           {owners.length ? (
             <SelectField
-              label="Partner owner"
+              label="Verantwortliche Person"
               name="owner_id"
               defaultValue={partner?.owner_id}
               options={ownerOptions}
@@ -1682,14 +1743,14 @@ function PartnerForm({
             />
           ) : (
             <TextField
-              label="Owner ID"
+              label="Verantwortlichen-ID"
               name="owner_id"
               defaultValue={partner?.owner_id}
               required
             />
           )}
           <TextField
-            label="Email"
+            label="E-Mail"
             name="email"
             type="email"
             defaultValue={partner?.email}
@@ -1698,21 +1759,24 @@ function PartnerForm({
         </FieldGrid>
         <div className="grid gap-3 sm:grid-cols-2">
           <CheckboxField
-            label="Active"
+            label="Aktiv"
             name="active"
             defaultChecked={partner ? isPartnerActive(partner) : true}
           />
           <CheckboxField
-            label="Featured"
+            label="Hervorgehoben"
             name="is_featured"
             defaultChecked={partner?.is_featured ?? false}
           />
         </div>
         <TextAreaField
-          label="Description"
+          label="Beschreibung"
           name="description"
           value={descriptionDraft}
-          onChange={setDescriptionDraft}
+          onChange={(value) => {
+            setDescriptionDraft(value)
+            markDirty()
+          }}
           required
           labelAccessory={
             <GenerateDescriptionButton
@@ -1725,7 +1789,7 @@ function PartnerForm({
           <ActionMessage state={descriptionState} toast={false} />
         ) : null}
         <MultiSelectField
-          label="Categories"
+          label="Kategorien"
           name="category"
           defaultValues={partner?.category ?? templateSource?.category}
           options={withCurrentOptions(categoryOptions, partner?.category ?? templateSource?.category)}
@@ -1742,13 +1806,13 @@ function PartnerForm({
       ) : null}
 
       <FormSection
-        title="Contact, Location and Socials"
+        title="Kontakt, Standort & Socials"
         defaultOpen={false}
         required={requiredSectionMarker}
       >
         <FieldGrid>
           <TextField
-            label="Phone"
+            label="Telefon"
             name="phone"
             defaultValue={partner?.phone ?? templateSource?.phone}
           />
@@ -1760,32 +1824,31 @@ function PartnerForm({
           />
           <TextField
             key={`coordinates-${partner?.id ?? "new"}-${coordinateDefaultValue}`}
-            label="Coordinates"
+            label="Koordinaten"
             name="coordinates"
             defaultValue={coordinateDefaultValue}
             placeholder="49.196197048340196, 8.115435101852437"
-            hint="Copy the latitude and longitude from Google Maps and paste them here."
+            hint="Erweitert: Breitengrad und Längengrad als Zahlenpaar eingeben. Bestehende Koordinaten bleiben unverändert."
             required
           />
         </FieldGrid>
         <TextAreaField
-          label="Address"
+          label="Adresse"
           name="address"
           defaultValue={partner?.address}
           required
         />
         <div className="border-t border-zinc-100 pt-4">
           <div className="mb-4 space-y-1">
-            <p className="text-sm font-semibold text-zinc-900">Social media</p>
+            <p className="text-sm font-semibold text-zinc-900">Social Media</p>
             <p className="text-sm leading-6 text-zinc-600">
-              Optional. Add up to {MAX_PARTNER_SOCIALS} social profiles. Enter a
-              handle or full profile URL and the partner record will store the
-              canonical link automatically.
+              Optional: bis zu {MAX_PARTNER_SOCIALS} Profile hinzufügen. Handle oder vollständige Profil-URL eingeben; der Partner speichert den kanonischen Link automatisch.
             </p>
           </div>
           <SocialHandlesSection
             rows={socialHandles}
-            onAdd={() =>
+            onAdd={() => {
+              markDirty()
               setSocialHandles((current) => [
                 ...current,
                 {
@@ -1794,19 +1857,21 @@ function PartnerForm({
                   handle: "",
                 },
               ])
-            }
-            onRemove={(id) =>
+            }}
+            onRemove={(id) => {
+              markDirty()
               setSocialHandles((current) =>
                 current.filter((row) => row.id !== id),
               )
-            }
-            onUpdate={(id, values) =>
+            }}
+            onUpdate={(id, values) => {
+              markDirty()
               setSocialHandles((current) =>
                 current.map((row) =>
                   row.id === id ? { ...row, ...values } : row,
                 ),
               )
-            }
+            }}
           />
         </div>
       </FormSection>
@@ -1820,7 +1885,7 @@ function PartnerForm({
 
       {mode === "create" ? (
         <FormSection
-          title="Operating Hours"
+        title="Öffnungszeiten"
           required={requiredSectionMarker}
         >
           <WeeklyHoursFields />
@@ -1828,14 +1893,14 @@ function PartnerForm({
       ) : null}
 
       <FormSection
-        title="Media"
+        title="Medien"
         defaultOpen={false}
-        status={{ label: "Recommended", tone: "recommended" }}
+        status={{ label: "Empfohlen", tone: "recommended" }}
       >
         <div className="grid gap-4 lg:auto-rows-fr lg:grid-cols-3">
           <MediaUploadField
             key={`logo-${partner?.logo_url ?? "new"}`}
-            label="Partner logo"
+            label="Partnerlogo"
             fileName="logo_file"
             existingName="existing_logo_url"
             removeName="remove_logo"
@@ -1845,7 +1910,7 @@ function PartnerForm({
           />
           <MediaUploadField
             key={`feature-${partner?.feature_card_url ?? "new"}`}
-            label="Feature card"
+            label="Feature-Karte"
             fileName="feature_card_file"
             existingName="existing_feature_card_url"
             removeName="remove_feature_card"
@@ -1855,7 +1920,7 @@ function PartnerForm({
           />
           <MediaUploadField
             key={`discover-${partner?.discover_card_image_url ?? "new"}`}
-            label="Discover page image"
+            label="Entdecken-Bild"
             fileName="discover_card_file"
             existingName="existing_discover_card_image_url"
             removeName="remove_discover_card_image"
@@ -1878,7 +1943,7 @@ function PartnerForm({
           className={createTab === "offers" ? "flex flex-col gap-4" : "hidden"}
         >
           <FormSection
-            title="Stamp-card milestones"
+            title="Stempelkarten-Prämien"
             required={requiredSectionMarker}
           >
             <input
@@ -1888,18 +1953,21 @@ function PartnerForm({
             />
             <InitialMilestonesEditor
               milestones={initialMilestones}
-              onAdd={() =>
+              onAdd={() => {
+                markDirty()
                 setInitialMilestones((current) => [
                   ...current,
                   createInitialMilestoneDraft(),
                 ])
-              }
-              onRemove={(id) =>
+              }}
+              onRemove={(id) => {
+                markDirty()
                 setInitialMilestones((current) =>
                   current.filter((milestone) => milestone.id !== id),
                 )
-              }
-              onUpdate={(id, values) =>
+              }}
+              onUpdate={(id, values) => {
+                markDirty()
                 setInitialMilestones((current) =>
                   current.map((milestone) =>
                     milestone.id === id
@@ -1907,25 +1975,26 @@ function PartnerForm({
                       : milestone,
                   ),
                 )
-              }
+              }}
             />
           </FormSection>
 
           <FormSection
             title="Deals"
             defaultOpen={false}
-            status={{ label: "Recommended", tone: "recommended" }}
+            status={{ label: "Empfohlen", tone: "recommended" }}
           >
             {initialDeals.length === 0 ? (
               <WarningNote>
-                At least one deal is recommended, but the partner can be
-                created without deals.
+                Mindestens ein Deal wird empfohlen, der Partner kann aber auch
+                ohne Deal angelegt werden.
               </WarningNote>
             ) : null}
             <InitialDealsEditor
               deals={initialDeals}
               onAdd={() => {
                 const id = crypto.randomUUID()
+                markDirty()
 
                 setInitialDeals((current) => [
                   ...current,
@@ -1942,12 +2011,14 @@ function PartnerForm({
 
                 return id
               }}
-              onRemove={(id) =>
+              onRemove={(id) => {
+                markDirty()
                 setInitialDeals((current) =>
                   current.filter((deal) => deal.id !== id),
                 )
-              }
-              onUpdate={(id, values) =>
+              }}
+              onUpdate={(id, values) => {
+                markDirty()
                 setInitialDeals((current) =>
                   current.map((deal) => {
                     if (deal.id !== id) {
@@ -1963,7 +2034,7 @@ function PartnerForm({
                       : nextDeal
                   }),
                 )
-              }
+              }}
             />
           </FormSection>
 
@@ -1975,12 +2046,13 @@ function PartnerForm({
           data-create-tab="menu"
           className={createTab === "menu" ? "flex flex-col gap-4" : "hidden"}
         >
-            <FormSection title="Menu">
+            <FormSection title="Menü">
               <InitialMenuEditor
                 categories={initialMenuCategories}
                 enabled={initialMenuEnabled}
                 items={initialMenuItems}
-                onAddCategory={() =>
+                onAddCategory={() => {
+                  markDirty()
                   setInitialMenuCategories((current) => {
                     const normalized = normalizeInitialCategoryPositions(current)
 
@@ -1998,8 +2070,9 @@ function PartnerForm({
                       },
                     ]
                   })
-                }
-                onAddItem={() =>
+                }}
+                onAddItem={() => {
+                  markDirty()
                   setInitialMenuItems((current) => {
                     const categoryDraftId =
                       sortInitialCategories(initialMenuCategories)[0]?.id ?? ""
@@ -2027,8 +2100,9 @@ function PartnerForm({
                       },
                     ]
                   })
-                }
+                }}
                 onRemoveCategory={(id) => {
+                  markDirty()
                   setInitialMenuCategories((current) =>
                     normalizeInitialCategoryPositions(
                       current.filter((category) => category.id !== id),
@@ -2044,42 +2118,50 @@ function PartnerForm({
                     ),
                   )
                 }}
-                onRemoveItem={(id) =>
+                onRemoveItem={(id) => {
+                  markDirty()
                   setInitialMenuItems((current) =>
                     normalizeInitialItemPositions(
                       current.filter((item) => item.id !== id),
                     ),
                   )
-                }
-                onReorderCategories={(orderedIds) =>
+                }}
+                onReorderCategories={(orderedIds) => {
+                  markDirty()
                   setInitialMenuCategories((current) =>
                     normalizeInitialCategoryPositions(
                       reorderRowsByIds(current, orderedIds),
                     ),
                   )
-                }
-                onReorderItems={(orderedIds) =>
+                }}
+                onReorderItems={(orderedIds) => {
+                  markDirty()
                   setInitialMenuItems((current) =>
                     normalizeInitialItemPositions(
                       reorderRowsByIds(current, orderedIds),
                     ),
                   )
-                }
-                onSetEnabled={setInitialMenuEnabled}
-                onUpdateCategory={(id, values) =>
+                }}
+                onSetEnabled={(enabled) => {
+                  markDirty()
+                  setInitialMenuEnabled(enabled)
+                }}
+                onUpdateCategory={(id, values) => {
+                  markDirty()
                   setInitialMenuCategories((current) =>
                     current.map((category) =>
                       category.id === id ? { ...category, ...values } : category,
                     ),
                   )
-                }
-                onUpdateItem={(id, values) =>
+                }}
+                onUpdateItem={(id, values) => {
+                  markDirty()
                   setInitialMenuItems((current) =>
                     current.map((item) =>
                       item.id === id ? { ...item, ...values } : item,
                     ),
                   )
-                }
+                }}
               />
             </FormSection>
         </div>
@@ -2096,23 +2178,23 @@ function PartnerForm({
       {mode === "create" ? (
         <div className="flex flex-col gap-2 sm:flex-row">
           <SubmitButton
-            label="Add partner"
-            pendingLabel="Adding partner..."
+            label="Partner hinzufügen"
+            pendingLabel="Partner wird hinzugefügt …"
           />
         </div>
       ) : null}
       </div>
       {mode === "edit" ? (
         <div className="flex justify-end border-t border-zinc-200 pt-3">
-          <SubmitButton label="Save partner" pendingLabel="Saving partner..." size="compact" />
+          <SubmitButton label="Änderungen speichern" pendingLabel="Änderungen werden gespeichert …" size="compact" />
         </div>
       ) : null}
       </div>
       <ConfirmDialog
         open={confirmingSave}
-        title="Save partner changes?"
-        description={`This will update ${partner?.name || "this partner"} with the current form values.`}
-        confirmLabel="Save changes"
+        title="Änderungen speichern?"
+        description={`Die Änderungen für ${partner?.name || "diesen Partner"} werden gespeichert.`}
+        confirmLabel="Speichern"
         onCancel={() => setConfirmingSave(false)}
         onConfirm={() => {
           confirmedSubmitRef.current = true
@@ -2166,20 +2248,20 @@ function createPartnerReviewSnapshot(
       .getAll(fileName)
       .some((entry) => entry instanceof File && entry.size > 0)
   const menuStatus = !staged.menuEnabled
-    ? "Not set"
+    ? "Nicht eingerichtet"
     : staged.menuCategoryCount > 0 && staged.menuItemCount > 0
-      ? "Set"
-      : "Incomplete"
+      ? "Eingerichtet"
+      : "Unvollständig"
 
   return {
-    name: value("name") || "Untitled partner",
-    type: selectedLabel("type") || "Type not selected",
-    city: selectedLabel("city_id") || "City not selected",
-    owner: selectedLabel("owner_id") || "Owner not selected",
-    email: value("email") || "Email not added",
-    phone: value("phone") || "Phone not added",
-    website: value("website") || "Website not added",
-    address: value("address") || "Address not added",
+    name: value("name") || "Unbenannter Partner",
+    type: selectedLabel("type") || "Kein Partnertyp ausgewählt",
+    city: selectedLabel("city_id") || "Keine Stadt ausgewählt",
+    owner: selectedLabel("owner_id") || "Keine verantwortliche Person ausgewählt",
+    email: value("email") || "Keine E-Mail hinterlegt",
+    phone: value("phone") || "Keine Telefonnummer hinterlegt",
+    website: value("website") || "Keine Website hinterlegt",
+    address: value("address") || "Keine Adresse hinterlegt",
     categories,
     active: formData.has("active"),
     featured: formData.has("is_featured"),
@@ -2227,7 +2309,7 @@ function CreatePartnerReview({
         <div className="relative flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-100">
-              Partner launch brief
+              Partner-Steckbrief
             </p>
             <h4 className="mt-1 truncate text-lg font-bold tracking-tight">
               {snapshot.name}
@@ -2237,11 +2319,11 @@ function CreatePartnerReview({
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-semibold">
-                {snapshot.active ? "Active on launch" : "Saved as inactive"}
+                {snapshot.active ? "Aktiv zum Start" : "Inaktiv gespeichert"}
               </span>
               {snapshot.featured ? (
                 <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[11px] font-bold text-amber-950">
-                  Featured
+                  Hervorgehoben
                 </span>
               ) : null}
             </div>
@@ -2256,7 +2338,7 @@ function CreatePartnerReview({
               <span>
                 <strong className="block text-base leading-none">{completion}%</strong>
                 <span className="mt-0.5 block text-[8px] font-bold uppercase tracking-wide text-teal-100">
-                  complete
+                  vollständig
                 </span>
               </span>
             </div>
@@ -2267,14 +2349,14 @@ function CreatePartnerReview({
       <div className="grid gap-0 lg:grid-cols-[1.1fr_.9fr]">
         <div className="p-4 sm:p-5">
           <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-            Business snapshot
+            Geschäftsübersicht
           </h5>
           <dl className="mt-3 divide-y divide-zinc-100">
-            <ReviewDetail label="Owner" value={snapshot.owner} />
-            <ReviewDetail label="Email" value={snapshot.email} />
-            <ReviewDetail label="Phone" value={snapshot.phone} />
-            <ReviewDetail label="Website" value={snapshot.website} />
-            <ReviewDetail label="Address" value={snapshot.address} />
+            <ReviewDetail label="Inhaber" value={snapshot.owner} />
+            <ReviewDetail label="E-Mail" value={snapshot.email} />
+            <ReviewDetail label="Telefon" value={snapshot.phone} />
+            <ReviewDetail label="Webseite" value={snapshot.website} />
+            <ReviewDetail label="Adresse" value={snapshot.address} />
           </dl>
           <div className="mt-4 flex flex-wrap gap-2">
             {snapshot.categories.length ? (
@@ -2287,27 +2369,27 @@ function CreatePartnerReview({
                 </span>
               ))
             ) : (
-              <span className="text-xs font-semibold text-rose-700">No categories selected</span>
+              <span className="text-xs font-semibold text-rose-700">Keine Kategorie ausgewählt</span>
             )}
           </div>
         </div>
 
         <div className="border-t border-zinc-200 bg-zinc-50/70 p-4 sm:p-5 lg:border-l lg:border-t-0">
           <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-            Launch inventory
+            Startbestand
           </h5>
           <div className="mt-3 grid gap-x-4 sm:grid-cols-2">
-            <ReviewStatus label="Logo" value={snapshot.logoSet ? "Set" : "Not set"} ready={snapshot.logoSet} />
-            <ReviewStatus label="Feature card" value={snapshot.featureCardSet ? "Set" : "Not set"} ready={snapshot.featureCardSet} />
-            <ReviewStatus label="Discovery image" value={snapshot.discoveryImageSet ? "Set" : "Not set"} ready={snapshot.discoveryImageSet} />
-            <ReviewStatus label="Cover gallery" value={snapshot.coverCount ? `${snapshot.coverCount} image${snapshot.coverCount === 1 ? "" : "s"}` : "Not set"} ready={snapshot.coverCount > 0} />
-            <ReviewStatus label="Description" value={snapshot.descriptionSet ? "Set" : "Not set"} ready={snapshot.descriptionSet} />
-            <ReviewStatus label="Map location" value={snapshot.coordinatesSet ? "Set" : "Not set"} ready={snapshot.coordinatesSet} />
-            <ReviewStatus label="Opening hours" value={`${snapshot.openDays}/7 days open`} ready={snapshot.openDays > 0} />
-            <ReviewStatus label="Social profiles" value={snapshot.socialCount ? `${snapshot.socialCount} set` : "Not set"} ready={snapshot.socialCount > 0} optional />
-            <ReviewStatus label="Rewards" value={snapshot.milestoneCount ? `${snapshot.milestoneCount} milestone${snapshot.milestoneCount === 1 ? "" : "s"}` : "Not set"} ready={snapshot.milestoneCount > 0} optional />
-            <ReviewStatus label="Deals" value={snapshot.dealCount ? `${snapshot.dealCount} deal${snapshot.dealCount === 1 ? "" : "s"}` : "Not set"} ready={snapshot.dealCount > 0} optional />
-            <ReviewStatus label="Menu" value={snapshot.menuStatus} ready={snapshot.menuStatus === "Set"} optional={snapshot.menuStatus === "Not set"} />
+            <ReviewStatus label="Logo" value={snapshot.logoSet ? "Eingerichtet" : "Nicht eingerichtet"} ready={snapshot.logoSet} />
+            <ReviewStatus label="Feature-Karte" value={snapshot.featureCardSet ? "Eingerichtet" : "Nicht eingerichtet"} ready={snapshot.featureCardSet} />
+            <ReviewStatus label="Entdecken-Bild" value={snapshot.discoveryImageSet ? "Eingerichtet" : "Nicht eingerichtet"} ready={snapshot.discoveryImageSet} />
+            <ReviewStatus label="Cover-Galerie" value={snapshot.coverCount ? `${snapshot.coverCount} Bild${snapshot.coverCount === 1 ? "" : "er"}` : "Nicht eingerichtet"} ready={snapshot.coverCount > 0} />
+            <ReviewStatus label="Beschreibung" value={snapshot.descriptionSet ? "Eingerichtet" : "Nicht eingerichtet"} ready={snapshot.descriptionSet} />
+            <ReviewStatus label="Kartenposition" value={snapshot.coordinatesSet ? "Eingerichtet" : "Nicht eingerichtet"} ready={snapshot.coordinatesSet} />
+            <ReviewStatus label="Öffnungszeiten" value={`${snapshot.openDays}/7 Tage eingerichtet`} ready={snapshot.openDays > 0} />
+            <ReviewStatus label="Social-Profile" value={snapshot.socialCount ? `${snapshot.socialCount} eingerichtet` : "Nicht eingerichtet"} ready={snapshot.socialCount > 0} optional />
+            <ReviewStatus label="Prämien" value={snapshot.milestoneCount ? `${snapshot.milestoneCount} Prämienstufe${snapshot.milestoneCount === 1 ? "" : "n"}` : "Nicht eingerichtet"} ready={snapshot.milestoneCount > 0} optional />
+            <ReviewStatus label="Deals" value={snapshot.dealCount ? `${snapshot.dealCount} Deal${snapshot.dealCount === 1 ? "" : "s"}` : "Nicht eingerichtet"} ready={snapshot.dealCount > 0} optional />
+            <ReviewStatus label="Menü" value={snapshot.menuStatus} ready={snapshot.menuStatus === "Eingerichtet"} optional={snapshot.menuStatus === "Nicht eingerichtet"} />
           </div>
           <div
             className={`mt-5 rounded-lg border px-3 py-3 text-sm font-medium ${
@@ -2317,8 +2399,8 @@ function CreatePartnerReview({
             }`}
           >
             {ready
-              ? "Ready to create. All required partner details are complete."
-              : `${snapshot.requiredComplete} of ${snapshot.requiredTotal} required fields are complete. Review the marked tabs before creating.`}
+              ? "Bereit zum Anlegen. Alle erforderlichen Partnerdaten sind vollständig."
+              : `${snapshot.requiredComplete} von ${snapshot.requiredTotal} Pflichtfeldern sind vollständig. Prüfe die markierten Bereiche, bevor du den Partner anlegst.`}
           </div>
         </div>
       </div>
@@ -2379,19 +2461,19 @@ function SocialHandlesSection({
             >
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-zinc-900">
-                  Handle {index + 1}
+                  Profil {index + 1}
                 </p>
                 <button
                   type="button"
                   onClick={() => onRemove(row.id)}
                   className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
                 >
-                  Remove
+                  Entfernen
                 </button>
               </div>
               <div className="mt-3 grid gap-4 md:grid-cols-2">
                 <SelectField
-                  label="Platform"
+                  label="Plattform"
                   name={`social_${index}_platform`}
                   value={row.platform}
                   options={partnerSocialPlatformOptions}
@@ -2399,7 +2481,7 @@ function SocialHandlesSection({
                   required
                 />
                 <TextField
-                  label="Handle or profile URL"
+                  label="Nutzername oder Profil-URL"
                   name={`social_${index}_handle`}
                   value={row.handle}
                   onChange={(handle) => onUpdate(row.id, { handle })}
@@ -2411,7 +2493,7 @@ function SocialHandlesSection({
           ))}
         </div>
       ) : (
-        <EmptyState>No social handles added.</EmptyState>
+        <EmptyState>Noch keine Social-Media-Profile hinzugefügt.</EmptyState>
       )}
       <button
         type="button"
@@ -2419,7 +2501,7 @@ function SocialHandlesSection({
         disabled={rows.length >= MAX_PARTNER_SOCIALS}
         className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:text-zinc-400"
       >
-        Add social handle
+        Social-Media-Profil hinzufügen
       </button>
     </div>
   )
@@ -2439,7 +2521,7 @@ function InitialMilestonesEditor({
   return (
     <div className="space-y-4">
       <InfoNote>
-        At least one milestone is required before a partner can be created.
+        Vor dem Anlegen eines Partners ist mindestens eine Prämienstufe erforderlich.
       </InfoNote>
       {milestones.map((milestone, index) => {
         const showsRewardItem = milestone.rewardType === "item"
@@ -2455,7 +2537,7 @@ function InitialMilestonesEditor({
           >
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-zinc-900">
-                Milestone {index + 1}
+                Prämienstufe {index + 1}
               </p>
               {milestones.length > 1 ? (
                 <button
@@ -2463,13 +2545,13 @@ function InitialMilestonesEditor({
                   onClick={() => onRemove(milestone.id)}
                   className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
                 >
-                  Remove
+                  Entfernen
                 </button>
               ) : null}
             </div>
             <FieldGrid>
               <TextField
-                label="Required stamps"
+                label="Erforderliche Stempel"
                 name={`initial_milestone_${index}_required_stamps`}
                 type="number"
                 min={1}
@@ -2481,7 +2563,7 @@ function InitialMilestonesEditor({
                 required
               />
               <SelectField
-                label="Reward type"
+                label="Prämientyp"
                 name={`initial_milestone_${index}_reward_type`}
                 value={milestone.rewardType}
                 options={rewardTypeOptions}
@@ -2495,14 +2577,14 @@ function InitialMilestonesEditor({
                 required
               />
               <TextField
-                label="Title"
+                label="Titel"
                 name={`initial_milestone_${index}_title`}
                 value={milestone.title}
                 onChange={(title) => onUpdate(milestone.id, { title })}
               />
               {showsRewardItem ? (
                 <TextField
-                  label="Reward item"
+                  label="Prämienartikel"
                   name={`initial_milestone_${index}_reward_item`}
                   value={milestone.rewardItem}
                   onChange={(rewardItem) =>
@@ -2515,8 +2597,8 @@ function InitialMilestonesEditor({
                 <TextField
                   label={
                     milestone.rewardType === "bonus_stamp"
-                      ? "Bonus stamp count"
-                      : "Discount value"
+                      ? "Anzahl Bonusstempel"
+                      : "Rabattwert"
                   }
                   name={`initial_milestone_${index}_discount_value`}
                   type="number"
@@ -2529,7 +2611,7 @@ function InitialMilestonesEditor({
                 />
               ) : null}
               <TextField
-                label="Estimated savings"
+                label="Geschätzte Ersparnis"
                 name={`initial_milestone_${index}_estimated_savings`}
                 type="number"
                 step="any"
@@ -2539,7 +2621,7 @@ function InitialMilestonesEditor({
                 }
               />
               <SelectField
-                label="Audience"
+                label="Zielgruppe"
                 name={`initial_milestone_${index}_audience`}
                 value={milestone.audience}
                 options={milestoneAudienceOptions}
@@ -2549,7 +2631,7 @@ function InitialMilestonesEditor({
             </FieldGrid>
             <div className="mt-4">
               <CheckboxField
-                label="Active"
+                label="Aktiv"
                 name={`initial_milestone_${index}_active`}
                 checked={milestone.active}
                 onChange={(active) => onUpdate(milestone.id, { active })}
@@ -2557,7 +2639,7 @@ function InitialMilestonesEditor({
             </div>
             <div className="mt-4 grid gap-4 lg:grid-cols-3">
               <TextAreaField
-                label="Customer description"
+                label="Kundenbeschreibung"
                 name={`initial_milestone_${index}_customer_description`}
                 value={milestone.customerDescription}
                 onChange={(customerDescription) =>
@@ -2565,7 +2647,7 @@ function InitialMilestonesEditor({
                 }
               />
               <TextAreaField
-                label="Staff instructions"
+                label="Mitarbeiterhinweise"
                 name={`initial_milestone_${index}_staff_instructions`}
                 value={milestone.staffInstructions}
                 onChange={(staffInstructions) =>
@@ -2573,7 +2655,7 @@ function InitialMilestonesEditor({
                 }
               />
               <TextAreaField
-                label="Terms"
+                label="Bedingungen"
                 name={`initial_milestone_${index}_terms`}
                 value={milestone.terms}
                 onChange={(terms) => onUpdate(milestone.id, { terms })}
@@ -2587,7 +2669,7 @@ function InitialMilestonesEditor({
         onClick={onAdd}
         className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
       >
-        Add another milestone
+        Weitere Prämienstufe
       </button>
     </div>
   )
@@ -2654,7 +2736,7 @@ function InitialDealsEditor({
                   }
                   title={`Deal ${index + 1}`}
                   rewardSummary={
-                    deal.rewardSummary || deal.title || "Reward not set"
+                    deal.rewardSummary || deal.title || "Prämie nicht festgelegt"
                   }
                   actions={
                     <>
@@ -2667,14 +2749,14 @@ function InitialDealsEditor({
                       }
                       className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
                     >
-                      {expanded ? "Collapse" : "Edit"}
+                      {expanded ? "Einklappen" : "Bearbeiten"}
                     </button>
                     <button
                       type="button"
                       onClick={() => onRemove(deal.id)}
                       className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
                     >
-                      Remove
+                      Entfernen
                     </button>
                     </>
                   }
@@ -2713,14 +2795,14 @@ function InitialDealsEditor({
                       }
                       className="h-9 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white transition hover:bg-teal-800"
                     >
-                      Done
+                      Fertig
                     </button>
                     <button
                       type="button"
                       onClick={handleAdd}
                       className="h-9 rounded-md border border-teal-700 bg-white px-3 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
                     >
-                      Add another
+                      Weiteres hinzufügen
                     </button>
                   </div>
                 </div>
@@ -2730,7 +2812,7 @@ function InitialDealsEditor({
         </div>
       ) : (
         <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
-          No deals staged.
+          Keine Deals vorbereitet.
         </div>
       )}
       <button
@@ -2738,7 +2820,7 @@ function InitialDealsEditor({
         onClick={handleAdd}
         className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
       >
-        Add deal
+        Deal hinzufügen
       </button>
     </div>
   )
@@ -2851,7 +2933,7 @@ function InitialMenuEditor({
           onChange={(event) => onSetEnabled(event.target.checked)}
           className="size-4 rounded border-zinc-300 accent-teal-700"
         />
-        Create starter menu
+        Startmenü anlegen
       </label>
 
       {enabled ? (
@@ -2868,13 +2950,13 @@ function InitialMenuEditor({
           />
           <FieldGrid>
             <TextField
-              label="Menu name"
+              label="Menüname"
               name="initial_menu_name"
               defaultValue="Speisekarte"
               required
             />
             <SelectField
-              label="Menu approval status"
+              label="Menüfreigabestatus"
               name="initial_menu_status"
               defaultValue={DEFAULT_MENU_STATUS}
               options={menuStatusOptions}
@@ -2882,16 +2964,16 @@ function InitialMenuEditor({
             />
           </FieldGrid>
           <TextAreaField
-            label="Menu description"
+            label="Menübeschreibung"
             name="initial_menu_description"
           />
 
           <div className="space-y-2 rounded-lg border border-zinc-200 bg-white p-3">
             <label htmlFor="initial-menu-import" className="block text-sm font-semibold text-zinc-900">
-              Import menu <span className="font-normal text-zinc-500">(optional)</span>
+              Menü importieren <span className="font-normal text-zinc-500">(optional)</span>
             </label>
             <p className="text-xs leading-5 text-zinc-500">
-              Select one or more menu JSON files and an optional assets manifest together. CSV remains supported. The menu name and status above remain required.
+              Wähle eine oder mehrere Menü-JSON-Dateien und optional eine Asset-Übersicht aus. CSV wird weiterhin unterstützt. Menüname und Status oben bleiben Pflichtfelder.
             </p>
             <input
               id="initial-menu-import"
@@ -2902,22 +2984,22 @@ function InitialMenuEditor({
               className="block w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-[#061829] file:px-3 file:py-1.5 file:font-semibold file:text-white"
             />
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => downloadMenuTemplate("csv")} className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100">CSV template</button>
-              <button type="button" onClick={() => downloadMenuTemplate("json")} className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100">JSON template</button>
+              <button type="button" onClick={() => downloadMenuTemplate("csv")} className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100">CSV-Vorlage</button>
+              <button type="button" onClick={() => downloadMenuTemplate("json")} className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100">JSON-Vorlage</button>
             </div>
           </div>
 
           <div className="space-y-3 border-t border-zinc-200 pt-4">
             <div className="flex items-center justify-between gap-3">
               <h4 className="text-sm font-semibold text-zinc-900">
-                Categories
+                Kategorien
               </h4>
               <button
                 type="button"
                 onClick={handleAddCategory}
                 className="h-8 rounded-md border border-teal-700 bg-white px-3 text-xs font-semibold text-teal-800 transition hover:bg-teal-50"
               >
-                Add category
+                Kategorie hinzufügen
               </button>
             </div>
             {categories.length ? (
@@ -2951,15 +3033,15 @@ function InitialMenuEditor({
                         >
                           <span className="flex min-w-0 items-center gap-3">
                             <ThumbnailPreview
-                              alt={`${category.name || `Category ${index + 1}`} preview`}
+                              alt={`${category.name || `Kategorie ${index + 1}`} Vorschau`}
                               src={category.imagePreviewUrl}
                             />
                             <span className="min-w-0">
                               <span className="block truncate text-sm font-semibold text-zinc-800">
-                                {category.name || `Category ${index + 1}`}
+                                {category.name || `Kategorie ${index + 1}`}
                               </span>
                               <span className="mt-1 block text-xs text-zinc-500">
-                                Position {category.sortOrder || "not set"}
+                                Position {category.sortOrder || "nicht festgelegt"}
                               </span>
                             </span>
                           </span>
@@ -2974,14 +3056,14 @@ function InitialMenuEditor({
                             }
                             className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
                           >
-                            {expanded ? "Collapse" : "Edit"}
+                            {expanded ? "Einklappen" : "Bearbeiten"}
                           </button>
                           <button
                             type="button"
                             onClick={() => onRemoveCategory(category.id)}
                             className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
                           >
-                            Remove
+                            Entfernen
                           </button>
                         </div>
                       </div>
@@ -3007,7 +3089,7 @@ function InitialMenuEditor({
                             }
                           />
                           <TextField
-                            label="Position in menu"
+                            label="Position im Menü"
                             name={`initial_menu_category_${index}_sort_order`}
                             type="number"
                             min={0}
@@ -3017,12 +3099,12 @@ function InitialMenuEditor({
                                 sortOrder: value,
                               })
                             }
-                            hint="Smaller numbers appear first."
+                            hint="Kleinere Zahlen erscheinen zuerst."
                           />
                         </FieldGrid>
                         <MediaUploadField
                           key={`initial-menu-category-${category.id}`}
-                          label="Menu category picture"
+                          label="Bild der Menükategorie"
                           fileName={`initial_menu_category_${index}_image_file`}
                           existingName={`initial_menu_category_${index}_existing_image_url`}
                           removeName={`initial_menu_category_${index}_remove_image`}
@@ -3044,14 +3126,14 @@ function InitialMenuEditor({
                             }
                             className="h-9 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white transition hover:bg-teal-800"
                           >
-                            Done
+                            Fertig
                           </button>
                           <button
                             type="button"
                             onClick={handleAddCategory}
                             className="h-9 rounded-md border border-teal-700 bg-white px-3 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
                           >
-                            Add another
+                            Weitere Kategorie
                           </button>
                         </div>
                       </div>
@@ -3060,19 +3142,19 @@ function InitialMenuEditor({
                 })}
               </div>
             ) : (
-              <EmptyState>No starter categories staged.</EmptyState>
+              <EmptyState>Keine Startmenü-Kategorien vorbereitet.</EmptyState>
             )}
           </div>
 
           <div className="space-y-3 border-t border-zinc-200 pt-4">
             <div className="flex items-center justify-between gap-3">
-              <h4 className="text-sm font-semibold text-zinc-900">Items</h4>
+              <h4 className="text-sm font-semibold text-zinc-900">Artikel</h4>
               <button
                 type="button"
                 onClick={handleAddItem}
                 className="h-8 rounded-md border border-teal-700 bg-white px-3 text-xs font-semibold text-teal-800 transition hover:bg-teal-50"
               >
-                Add item
+                Artikel hinzufügen
               </button>
             </div>
             {items.length ? (
@@ -3082,7 +3164,7 @@ function InitialMenuEditor({
                   const imageInputId = `initial-menu-item-image-${item.id}`
                   const categoryLabel =
                     labelForValue(categoryOptions, item.categoryDraftId) ||
-                    "No category"
+                    "Keine Kategorie"
 
                   return (
                     <div
@@ -3131,11 +3213,11 @@ function InitialMenuEditor({
                               </span>
                               <span className="mt-1 block text-xs text-zinc-500">
                                 {categoryLabel} - Position{" "}
-                                {item.sortOrder || "not set"}
+                                {item.sortOrder || "nicht festgelegt"}
                               </span>
                               <span className="mt-1 block truncate text-xs text-zinc-500">
                                 {truncateText(item.description, 90) ||
-                                  "No description"}
+                                  "Keine Beschreibung"}
                               </span>
                             </span>
                           </span>
@@ -3150,14 +3232,14 @@ function InitialMenuEditor({
                             }
                             className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
                           >
-                            {expanded ? "Collapse" : "Edit"}
+                            {expanded ? "Einklappen" : "Bearbeiten"}
                           </button>
                           <button
                             type="button"
                             onClick={() => onRemoveItem(item.id)}
                             className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
                           >
-                            Remove
+                            Entfernen
                           </button>
                         </div>
                       </div>
@@ -3175,7 +3257,7 @@ function InitialMenuEditor({
                         />
                         <FieldGrid>
                           <TextField
-                            label="Item name"
+                            label="Artikelname"
                             name={`initial_menu_item_${index}_name`}
                             value={item.name}
                             onChange={(value) =>
@@ -3183,7 +3265,7 @@ function InitialMenuEditor({
                             }
                           />
                           <SelectField
-                            label="Category"
+                            label="Kategorie"
                             name={`initial_menu_item_${index}_category_draft_id`}
                             value={item.categoryDraftId}
                             options={categoryOptions}
@@ -3207,20 +3289,20 @@ function InitialMenuEditor({
                             }
                           />
                           <TextField
-                            label="Price"
+                            label="Preis"
                             name={`initial_menu_item_${index}_price`}
                             type="number"
                             step="0.01"
                           />
                           <SelectField
-                            label="Currency"
+                            label="Währung"
                             name={`initial_menu_item_${index}_currency`}
                             defaultValue="EUR"
                             options={menuCurrencyOptions}
                             required
                           />
                           <TextField
-                            label="Position in category"
+                            label="Position in Kategorie"
                             name={`initial_menu_item_${index}_sort_order`}
                             type="number"
                             min={0}
@@ -3228,21 +3310,21 @@ function InitialMenuEditor({
                             onChange={(value) =>
                               onUpdateItem(item.id, { sortOrder: value })
                             }
-                            hint="Smaller numbers appear first."
+                            hint="Kleinere Zahlen erscheinen zuerst."
                           />
                           <TextField
                             label="Tags"
                             name={`initial_menu_item_${index}_tags`}
-                            hint="Separate tags with commas."
+                            hint="Mehrere Tags durch Kommas trennen."
                           />
                           <TextField
-                            label="Allergens"
+                            label="Allergene"
                             name={`initial_menu_item_${index}_allergens`}
-                            hint="Separate allergens with commas."
+                            hint="Mehrere Allergene durch Kommas trennen."
                           />
                         </FieldGrid>
                         <TextAreaField
-                          label="Description"
+                          label="Beschreibung"
                           name={`initial_menu_item_${index}_description`}
                           value={item.description}
                           onChange={(value) =>
@@ -3265,11 +3347,11 @@ function InitialMenuEditor({
                             }
                             className="size-4 rounded border-zinc-300 accent-teal-700"
                           />
-                          Popular
+                          Beliebt
                         </label>
                         <MediaUploadField
                           key={`initial-menu-item-${item.id}`}
-                          label="Menu item picture"
+                          label="Bild des Menüartikels"
                           fileName={`initial_menu_item_${index}_image_file`}
                           existingName={`initial_menu_item_${index}_existing_image_url`}
                           removeName={`initial_menu_item_${index}_remove_image`}
@@ -3290,14 +3372,14 @@ function InitialMenuEditor({
                             }
                             className="h-9 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white transition hover:bg-teal-800"
                           >
-                            Done
+                            Fertig
                           </button>
                           <button
                             type="button"
                             onClick={handleAddItem}
                             className="h-9 rounded-md border border-teal-700 bg-white px-3 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
                           >
-                            Add another
+                            Weiteren Artikel hinzufügen
                           </button>
                         </div>
                       </div>
@@ -3371,20 +3453,19 @@ function DealsPanel({
   const dealCount = partner.deals.length + newDealDrafts.length
   const dealStatus: SectionStatusValue = hasDealRows
     ? [
-        { label: "Recommended", tone: "recommended" },
+        { label: "Empfohlen", tone: "recommended" },
         {
-          label: `${dealCount} ${dealCount === 1 ? "deal" : "deals"}`,
+          label: `${dealCount} ${dealCount === 1 ? "Vorteil" : "Vorteile"}`,
           tone: "info",
         },
       ]
-    : { label: "Recommended", tone: "recommended" }
+    : { label: "Empfohlen", tone: "recommended" }
 
   const content = (
     <div className="space-y-4">
       {!hasDealRows ? (
         <WarningNote>
-          At least one deal is recommended, but this partner can exist
-          without deals.
+          Mindestens ein Vorteil wird empfohlen. Der Partner kann aber auch ohne Vorteil angelegt werden.
         </WarningNote>
       ) : null}
       {hasDealRows ? (
@@ -3436,7 +3517,7 @@ function DealsPanel({
         </div>
       ) : (
         <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
-          No deals staged.
+          Noch keine Vorteile angelegt.
         </div>
       )}
       {partnerId ? (
@@ -3445,7 +3526,7 @@ function DealsPanel({
           onClick={addDealDraft}
           className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
         >
-          Add deal
+          Vorteil hinzufügen
         </button>
       ) : null}
     </div>
@@ -3457,8 +3538,8 @@ function DealsPanel({
 
   return (
     <EditorShell
-      title="Deals"
-      description="Configure selectable, automatic, and fallback benefits for the Supabase redemption flow."
+      title="Kundenvorteile"
+      description="Auswählbare, automatische und Fallback-Vorteile für den bestehenden Einlöseablauf verwalten."
       collapsible
       defaultOpen={false}
       status={dealStatus}
@@ -3857,7 +3938,7 @@ function DealForm({
             onClick={onCancel}
             className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-100"
           >
-            Cancel
+            Abbrechen
           </button>
         ) : null}
         {footerAction}
@@ -5726,16 +5807,14 @@ function MilestonesPanel({
   const partnerId = partner.id ?? ""
   const milestoneStatus: SectionStatus = partner.reward_milestones.length
     ? {
-        label: `${partner.reward_milestones.length} milestone${
-          partner.reward_milestones.length === 1 ? "" : "s"
-        }`,
+        label: `${partner.reward_milestones.length} ${partner.reward_milestones.length === 1 ? "Prämienstufe" : "Prämienstufen"}`,
       }
     : { label: "Required", tone: "required-subtle" }
 
   const content = (
     <div className="space-y-3">
       {showNewMilestone && partnerId ? (
-        <DealFormShell title="Add milestone">
+        <DealFormShell title="Prämienstufe hinzufügen">
           <MilestoneForm
             partner={partner}
             mode="create"
@@ -5754,7 +5833,7 @@ function MilestonesPanel({
           ))}
         </div>
       ) : (
-        <EmptyState>No stamp-card milestones configured yet.</EmptyState>
+        <EmptyState>Noch keine Stempel-Prämien angelegt.</EmptyState>
       )}
       {partnerId ? (
         <button
@@ -5762,7 +5841,7 @@ function MilestonesPanel({
           onClick={() => setShowNewMilestone((value) => !value)}
           className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
         >
-          {showNewMilestone ? "Hide form" : "Add milestone"}
+          {showNewMilestone ? "Formular schließen" : "Prämie hinzufügen"}
         </button>
       ) : null}
     </div>
@@ -5771,7 +5850,7 @@ function MilestonesPanel({
   if (embedded) {
     return (
       <FormSection
-        title="Stamp-card milestones"
+        title="Stempel-Prämien"
         defaultOpen={partner.reward_milestones.length === 0}
         status={milestoneStatus}
       >
@@ -5782,8 +5861,8 @@ function MilestonesPanel({
 
   return (
     <EditorShell
-      title="Stamp-card milestones"
-      description="Manage stamp-card rewards separately from deals."
+      title="Stempel-Prämien"
+      description="Stempel-Prämien werden getrennt von Kundenvorteilen verwaltet."
       collapsible
       defaultOpen={false}
       status={milestoneStatus}
@@ -5826,7 +5905,7 @@ function MilestoneCard({
             onClick={() => setEditing((value) => !value)}
             className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
           >
-            {editing ? "Collapse" : "Edit"}
+            {editing ? "Einklappen" : "Bearbeiten"}
           </button>
           {milestone.id ? <DeleteMilestoneForm milestoneId={milestone.id} /> : null}
         </div>
@@ -6013,10 +6092,10 @@ function PartnerStaffPanel({
             </span>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-zinc-950">
-                Authorized staff
+                Mitarbeiterzugriff
               </p>
               <p className="mt-0.5 text-xs leading-5 text-zinc-500">
-                Give selected users scanner or administrative access.
+                Verwalte, wer diesen Partner administrieren oder beim Scannen unterstützen darf.
               </p>
             </div>
           </div>
@@ -6027,7 +6106,7 @@ function PartnerStaffPanel({
               className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-teal-700 px-3.5 text-sm font-semibold text-white transition hover:bg-teal-800"
             >
               <span aria-hidden="true" className="text-base leading-none">+</span>
-              Add staff access
+              Mitarbeiter hinzufügen
             </button>
           ) : null}
         </div>
@@ -6035,8 +6114,8 @@ function PartnerStaffPanel({
           <div className="rounded-lg border border-teal-200 bg-teal-50/60 p-3 sm:p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <h4 className="text-sm font-semibold text-zinc-950">Add staff access</h4>
-                <p className="mt-1 text-xs text-zinc-600">Choose a user and assign the appropriate role.</p>
+                <h4 className="text-sm font-semibold text-zinc-950">Mitarbeiterzugriff hinzufügen</h4>
+                <p className="mt-1 text-xs text-zinc-600">Vorhandenen Nutzer auswählen und eine Rolle vergeben.</p>
               </div>
               {partner.staff.length > 0 ? (
                 <button
@@ -6044,7 +6123,7 @@ function PartnerStaffPanel({
                   onClick={() => setShowNewStaff(false)}
                   className="h-8 rounded-md border border-zinc-300 bg-white px-2.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
                 >
-                  Cancel
+                  Abbrechen
                 </button>
               ) : null}
             </div>
@@ -6068,7 +6147,7 @@ function PartnerStaffPanel({
             ))}
           </div>
         ) : (
-          <EmptyState>No scanner or admin access configured yet.</EmptyState>
+          <EmptyState>Keine Mitarbeiterzugriffe vorhanden.</EmptyState>
         )}
       </div>
   )
@@ -6079,14 +6158,21 @@ function PartnerStaffPanel({
 
   return (
     <EditorShell
-      title="Partner staff and scanners"
-      description="Authorize partner users as scanners or admins for this partner."
+      title="Mitarbeiterzugriff"
+      description="Admin- und Scanner-Rechte für diesen Partner verwalten."
       collapsible
       defaultOpen={false}
     >
       {content}
     </EditorShell>
   )
+}
+
+export function staffStatusLabel(active: boolean | null | undefined) {
+  if (active === true) return "Aktiv"
+  if (active === false) return "Deaktiviert"
+  if (active === null || active === undefined) return "Unbekannt"
+  return "Unbekannt"
 }
 
 function PartnerStaffCard({
@@ -6101,6 +6187,13 @@ function PartnerStaffCard({
   const [editing, setEditing] = useState(false)
   const staffName =
     staff.user_name || staff.user_email || staff.user_id || "Staff user"
+  const staffStatus = staffStatusLabel(staff.active)
+  const staffStatusClass =
+    staff.active === true
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : staff.active === false
+        ? "border-zinc-200 bg-zinc-100 text-zinc-600"
+        : "border-amber-200 bg-amber-50 text-amber-800"
 
   return (
     <div className="p-3 sm:p-4">
@@ -6116,6 +6209,9 @@ function PartnerStaffCard({
             <span className="mt-1 inline-flex rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-600">
               {labelForValue(partnerStaffRoleOptions, staff.role)}
             </span>
+            <span className={`ml-1 inline-flex rounded-md border px-2 py-0.5 text-xs font-semibold ${staffStatusClass}`}>
+              {staffStatus}
+            </span>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 sm:justify-end">
@@ -6124,7 +6220,7 @@ function PartnerStaffCard({
             onClick={() => setEditing((value) => !value)}
             className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
           >
-            {editing ? "Close" : "Edit access"}
+            {editing ? "Schließen" : "Zugriff bearbeiten"}
           </button>
           {staff.id ? <DeletePartnerStaffForm staffId={staff.id} /> : null}
         </div>
@@ -6175,7 +6271,7 @@ function PartnerStaffForm({
       <FieldGrid>
         {userOptions.length ? (
           <SelectField
-            label="User"
+            label="Nutzer"
             name="user_id"
             defaultValue={staff?.user_id}
             options={withCurrentOption(userOptions, staff?.user_id)}
@@ -6183,14 +6279,14 @@ function PartnerStaffForm({
           />
         ) : (
           <TextField
-            label="User ID"
+            label="Nutzer-ID"
             name="user_id"
             defaultValue={staff?.user_id}
             required
           />
         )}
         <SelectField
-          label="Role"
+          label="Rolle"
           name="role"
           defaultValue={staff?.role ?? "scanner"}
           options={withCurrentOption(partnerStaffRoleOptions, staff?.role)}
@@ -6199,8 +6295,8 @@ function PartnerStaffForm({
       </FieldGrid>
       <ActionMessage state={state} />
       <SubmitButton
-        label={mode === "create" ? "Add staff access" : "Save staff access"}
-        pendingLabel={mode === "create" ? "Adding access..." : "Saving access..."}
+        label={mode === "create" ? "Zugriff hinzufügen" : "Zugriff speichern"}
+        pendingLabel={mode === "create" ? "Zugriff wird hinzugefügt …" : "Zugriff wird gespeichert …"}
       />
     </form>
   )
@@ -6223,7 +6319,7 @@ function OpeningHoursPanel({
   const content = (
     <div className="space-y-4">
       <InfoNote>
-        Toggle closed days, adjust times, then save the weekly schedule once.
+        Schließe einzelne Tage, passe Zeiten an und speichere den Wochenplan einmal.
       </InfoNote>
       {partnerId ? (
         <WeeklyOpeningHoursForm
@@ -6238,7 +6334,7 @@ function OpeningHoursPanel({
 
   if (embedded) {
     return (
-      <FormSection title="Operating hours" required="subtle">
+      <FormSection title="Öffnungszeiten" required="subtle">
         {content}
       </FormSection>
     )
@@ -6246,8 +6342,8 @@ function OpeningHoursPanel({
 
   return (
     <EditorShell
-      title="Operating hours"
-      description="Set the full weekly schedule in one pass."
+      title="Öffnungszeiten"
+      description="Den vollständigen Wochenplan in einem Ablauf pflegen."
       collapsible
       defaultOpen={false}
     >
@@ -8573,19 +8669,43 @@ function DuplicateMenuCategoryButton({
   )
 }
 
+function ActivityDataError({ message }: { message: string }) {
+  const router = useRouter()
+
+  return (
+    <div
+      role="alert"
+      className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800"
+    >
+      <p>{message}</p>
+      <button
+        type="button"
+        onClick={() => router.refresh()}
+        className="mt-3 h-9 rounded-md border border-rose-300 bg-white px-3 text-sm font-semibold text-rose-800 transition hover:bg-rose-100"
+      >
+        Erneut versuchen
+      </button>
+    </div>
+  )
+}
+
 function StampProgressPanel({
   embedded = false,
+  error,
   progress,
 }: {
   embedded?: boolean
+  error?: string
   progress: StampCardProgress[]
 }) {
   const visibleProgress = progress.slice(0, stampProgressDisplayLimit)
 
-  const content = progress.length ? (
+  const content = error ? (
+    <ActivityDataError message="Stempel-Fortschritte konnten nicht geladen werden." />
+  ) : progress.length ? (
         <div className="space-y-3">
           <ResultLimitNote
-            itemLabel="progress rows"
+            itemLabel="Fortschrittszeilen"
             totalCount={progress.length}
             visibleCount={visibleProgress.length}
           />
@@ -8593,11 +8713,11 @@ function StampProgressPanel({
             <table className="min-w-full text-left text-sm">
               <thead className="sticky top-0 z-10 border-b border-zinc-200 bg-white text-xs uppercase tracking-[0.12em] text-zinc-500">
                 <tr>
-                  <th className="py-2 pr-4 pl-3 font-semibold">User</th>
-                  <th className="py-2 pr-4 font-semibold">Current card</th>
-                  <th className="py-2 pr-4 font-semibold">Completed</th>
-                  <th className="py-2 pr-4 font-semibold">Lifetime</th>
-                  <th className="py-2 pr-3 font-semibold">Updated</th>
+                  <th className="py-2 pr-4 pl-3 font-semibold">Nutzer</th>
+                  <th className="py-2 pr-4 font-semibold">Aktuelle Karte</th>
+                  <th className="py-2 pr-4 font-semibold">Abgeschlossen</th>
+                  <th className="py-2 pr-4 font-semibold">Insgesamt</th>
+                  <th className="py-2 pr-3 font-semibold">Aktualisiert</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
@@ -8626,7 +8746,7 @@ function StampProgressPanel({
           </div>
         </div>
       ) : (
-    <EmptyState>No stamp-card progress rows loaded for this partner.</EmptyState>
+    <EmptyState>Keine Stempel-Fortschritte für diesen Partner geladen.</EmptyState>
   )
 
   if (embedded) {
@@ -8635,8 +8755,8 @@ function StampProgressPanel({
 
   return (
     <EditorShell
-      title="Stamp-card progress"
-      description={`Progress comes from stamp_cards_progress_view. MVP cards complete at ${MAX_STAMP_CARD_STAMPS} stamps.`}
+      title="Stempel-Fortschritt"
+      description={`Die Anzeige nutzt ausschließlich geladene Daten. Eine Karte ist bei ${MAX_STAMP_CARD_STAMPS} Stempeln vollständig.`}
       collapsible
       defaultOpen={false}
     >
@@ -8646,22 +8766,38 @@ function StampProgressPanel({
 }
 
 function RedemptionHistoryPanel({
+  activityErrors,
   embedded = false,
   partner,
   visits,
 }: {
+  activityErrors?: ActivityDataErrors
   embedded?: boolean
   partner: PartnerWithDeals
   visits: Visit[]
 }) {
+  const router = useRouter()
   const visibleVisits = visits.slice(0, redemptionHistoryDisplayLimit)
+  const visitsError = activityErrors?.visits
+  const supplementalActivityError =
+    !visitsError &&
+    Boolean(
+      activityErrors?.redemptions ||
+        activityErrors?.benefits ||
+        activityErrors?.qrTokens,
+    )
 
   const content = (
       <div className="space-y-4">
-        {visits.length ? (
+        {visitsError ? (
+          <ActivityDataError message="Besuche konnten nicht geladen werden." />
+        ) : supplementalActivityError ? (
+          <ActivityDataError message="Einige ergänzende Aktivitätsdaten konnten nicht geladen werden. Die Besuchsdaten werden angezeigt, sobald sie verfügbar sind." />
+        ) : null}
+        {!visitsError && visits.length ? (
           <>
             <ResultLimitNote
-              itemLabel="visits"
+              itemLabel="Besuche"
               totalCount={visits.length}
               visibleCount={visibleVisits.length}
             />
@@ -8675,13 +8811,13 @@ function RedemptionHistoryPanel({
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <h3 className="text-base font-semibold text-zinc-950">
-                          {`Visit ${shortId(visit.id)}`}
+                          {`Besuch ${shortId(visit.id)}`}
                         </h3>
                         <p className="mt-1 text-sm text-zinc-600">
                           {visit.user_name ||
                             visit.user_email ||
                             shortId(visit.user_id)}
-                          {" - "}
+                          {" · "}
                           {formatDateTime(visit.visited_at)}
                         </p>
                       </div>
@@ -8693,7 +8829,7 @@ function RedemptionHistoryPanel({
                         value={partner.name || shortId(visit.partner_id)}
                       />
                       <Info
-                        label="Scanned by"
+                        label="Gescannt von"
                         value={
                           visit.staff_user_name ||
                           visit.staff_user_email ||
@@ -8701,27 +8837,27 @@ function RedemptionHistoryPanel({
                         }
                       />
                       <Info
-                        label="Selected direct deal"
+                        label="Direkt gewählter Vorteil"
                         value={shortId(visit.selected_direct_deal_id)}
                       />
                       <Info
-                        label="Fallback deal"
+                        label="Fallback-Vorteil"
                         value={shortId(visit.applied_fallback_deal_id)}
                       />
                       <Info
-                        label="Base stamps"
+                        label="Basisstempel"
                         value={formatOptionalNumber(visit.base_stamp_count)}
                       />
                       <Info
-                        label="Bonus stamps"
+                        label="Bonusstempel"
                         value={formatOptionalNumber(visit.bonus_stamp_count)}
                       />
                       <Info
-                        label="Total stamp delta"
+                        label="Stempel gesamt"
                         value={formatOptionalNumber(visit.total_stamp_delta)}
                       />
                       <Info
-                        label="Deal redemptions"
+                        label="Vorteilseinlösungen"
                         value={formatIdList(
                           visit.deal_redemptions.map(
                             (redemption) => redemption.id,
@@ -8729,7 +8865,7 @@ function RedemptionHistoryPanel({
                         )}
                       />
                       <Info
-                        label="QR tokens"
+                        label="QR-Tokens"
                         value={formatIdList(
                           visit.qr_tokens.map(
                             (token) =>
@@ -8740,7 +8876,7 @@ function RedemptionHistoryPanel({
                     </div>
                     <div className="mt-4 space-y-2">
                       <p className="text-sm font-semibold text-zinc-800">
-                        Applied benefits
+                        Angewendete Vorteile
                       </p>
                       {visit.applied_benefits.length ? (
                         <div className="grid gap-2">
@@ -8792,7 +8928,7 @@ function RedemptionHistoryPanel({
                         </div>
                       ) : (
                         <p className="rounded-md border border-dashed border-zinc-300 p-3 text-sm text-zinc-500">
-                          No applied benefit rows loaded for this visit.
+                          Keine angewendeten Vorteile für diesen Besuch geladen.
                         </p>
                       )}
                     </div>
@@ -8801,9 +8937,18 @@ function RedemptionHistoryPanel({
               </div>
             </div>
           </>
-        ) : (
-          <EmptyState>No redemption visits loaded for this partner.</EmptyState>
-        )}
+        ) : !visitsError ? (
+          <EmptyState>
+            <p>Keine Besuche für diesen Partner geladen.</p>
+            <button
+              type="button"
+              onClick={() => router.refresh()}
+              className="mt-3 h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
+            >
+              Erneut versuchen
+            </button>
+          </EmptyState>
+        ) : null}
       </div>
   )
 
@@ -8813,8 +8958,8 @@ function RedemptionHistoryPanel({
 
   return (
     <EditorShell
-      title="Redemption history"
-      description="Visits can contain multiple applied benefits; the server decides the full reward bundle."
+      title="Besuchshistorie"
+      description="Besuche können mehrere angewendete Vorteile enthalten; die Daten stammen aus dem bestehenden Serverablauf."
       collapsible
       defaultOpen={false}
     >
@@ -9029,10 +9174,11 @@ function DeletePartnerForm({
   const [state, formAction] = useActionState(deletePartner, initialState)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deletePassword, setDeletePassword] = useState("")
+  const [deleteNameConfirmation, setDeleteNameConfirmation] = useState("")
   const [deletePasswordError, setDeletePasswordError] = useState("")
+  const [deleteNameError, setDeleteNameError] = useState("")
   const formRef = useRef<HTMLFormElement>(null)
   const confirmedSubmitRef = useRef(false)
-  const { language } = useAdminLanguage()
 
   useEffect(() => {
     if (!state.ok) {
@@ -9059,30 +9205,34 @@ function DeletePartnerForm({
     >
       <input type="hidden" name="id" value={partner.id ?? ""} />
       <input type="hidden" name="delete_password" value={deletePassword} />
+      <input type="hidden" name="delete_name_confirmation" value={deleteNameConfirmation} />
       <ActionMessage state={state} />
       <SubmitButton
-        label="Delete partner"
-        pendingLabel="Deleting partner..."
+        label="Partner dauerhaft löschen"
+        pendingLabel="Partner wird gelöscht …"
         tone="danger"
       />
       <ConfirmDialog
         open={confirmingDelete}
-        title="Delete partner?"
-        description={
-          language === "de"
-            ? `${partner.name || "Dieser Partner"} und alle zugehörigen Deals werden dauerhaft gelöscht.`
-            : `This will permanently delete ${partner.name || "this partner"} and all attached deals.`
-        }
-        confirmLabel="Delete partner"
+        title="Partner dauerhaft löschen?"
+        description={`${partner.name || "Dieser Partner"} und alle zugehörigen Daten werden dauerhaft gelöscht. Diese Aktion kann nicht automatisch rückgängig gemacht werden.`}
+        confirmLabel="Dauerhaft löschen"
         tone="danger"
         onCancel={() => {
           setConfirmingDelete(false)
           setDeletePassword("")
+          setDeleteNameConfirmation("")
           setDeletePasswordError("")
+          setDeleteNameError("")
         }}
         onConfirm={() => {
+          if (deleteNameConfirmation.trim() !== (partner.name?.trim() ?? "")) {
+            setDeleteNameError("Gib den Partnernamen exakt ein, um das Löschen zu bestätigen.")
+            return
+          }
+
           if (!deletePassword.trim()) {
-            setDeletePasswordError("Enter your admin password to continue.")
+            setDeletePasswordError("Gib dein Admin-Passwort ein, um fortzufahren.")
             return
           }
 
@@ -9092,7 +9242,28 @@ function DeletePartnerForm({
         }}
       >
         <label className="mt-4 block space-y-2 text-sm">
-          <span className="font-medium text-zinc-800">Admin password</span>
+          <span className="font-medium text-zinc-800">Partnernamen bestätigen</span>
+          <span className="block text-xs leading-5 text-zinc-600">
+            Gib „{partner.name || "Partner"}“ exakt ein.
+          </span>
+          <input
+            type="text"
+            value={deleteNameConfirmation}
+            onChange={(event) => {
+              setDeleteNameConfirmation(event.target.value)
+              if (deleteNameError) setDeleteNameError("")
+            }}
+            autoComplete="off"
+            className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-rose-600 focus:ring-2 focus:ring-rose-100"
+          />
+          {deleteNameError ? (
+            <span className="block text-xs font-medium text-rose-700">
+              {deleteNameError}
+            </span>
+          ) : null}
+        </label>
+        <label className="mt-4 block space-y-2 text-sm">
+          <span className="font-medium text-zinc-800">Admin-Passwort</span>
           <input
             type="password"
             value={deletePassword}
@@ -10863,8 +11034,8 @@ function PartnerPinDisplay({
         }
         hint={
           mode === "edit"
-            ? "Automatically generated from the permanent partner record. Rotate it here when the partner needs a new PIN."
-            : "Auto-generated when the partner is created and kept read-only here."
+            ? "Wird aus dem dauerhaften Partnerdatensatz übernommen. Hier rotieren, wenn der Partner eine neue PIN benötigt."
+            : "Wird bei der Partneranlage automatisch erzeugt und bleibt hier schreibgeschützt."
         }
       />
       {mode === "edit" && partnerId ? (
@@ -10886,17 +11057,17 @@ function PartnerPinDisplay({
             <input type="hidden" name="id" value={partnerId} />
             <ActionMessage state={state} />
             <SubmitButton
-              label="Rotate partner PIN"
-              pendingLabel="Rotating partner PIN..."
+              label="Partner-PIN rotieren"
+              pendingLabel="Partner-PIN wird rotiert …"
               size="compact"
               tone="outline"
             />
           </form>
           <ConfirmDialog
             open={confirmingRotation}
-            title="Rotate partner PIN?"
-            description="The current PIN will stop working and a new PIN will be generated for this partner."
-            confirmLabel="Rotate PIN"
+            title="Partner-PIN rotieren?"
+            description="Die aktuelle PIN wird ungültig und für diesen Partner wird eine neue PIN erzeugt."
+            confirmLabel="PIN rotieren"
             onCancel={() => setConfirmingRotation(false)}
             onConfirm={() => {
               confirmedRotationRef.current = true
@@ -11359,7 +11530,7 @@ function StatusPill({ active }: { active: boolean }) {
           : "border-zinc-200 bg-zinc-100 text-zinc-600"
       }`}
     >
-      {active ? "Active" : "Inactive"}
+      {active ? "Aktiv" : "Inaktiv"}
     </span>
   )
 }
@@ -11388,7 +11559,7 @@ function FeaturedBadge({ compact = false }: { compact?: boolean }) {
       }`}
     >
       <StarIcon className="size-3.5" />
-      <span>Featured</span>
+      <span>Hervorgehoben</span>
     </Badge>
   )
 }
@@ -11417,8 +11588,8 @@ function ResultLimitNote({
 }) {
   const hiddenCount = Math.max(totalCount - visibleCount, 0)
   const message = hiddenCount
-    ? `Showing ${visibleCount} of ${totalCount} ${itemLabel}; ${hiddenCount} more are loaded but hidden here.`
-    : `Showing ${visibleCount} of ${totalCount} ${itemLabel}.`
+    ? `${visibleCount} von ${totalCount} ${itemLabel} angezeigt; ${hiddenCount} weitere sind geladen, werden hier aber ausgeblendet.`
+    : `${visibleCount} von ${totalCount} ${itemLabel} angezeigt.`
 
   return (
     <p className="text-xs font-medium text-zinc-500">

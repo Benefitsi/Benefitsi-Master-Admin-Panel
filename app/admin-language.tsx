@@ -378,6 +378,10 @@ const translations = [
   ["Challenge reward", "Challenge-Prämie"],
   ["Comeback Deal", "Comeback-Deal"],
   ["No direct reward", "Keine direkte Prämie"],
+  ["Benefit not set", "Vorteil nicht festgelegt"],
+  ["Reward not set", "Prämie nicht festgelegt"],
+  ["Staff user", "Mitarbeiterkonto"],
+  ["Unnamed owner", "Verantwortliche Person ohne Namen"],
   ["Fixed € discount", "Fester Euro-Rabatt"],
   ["Percentage discount", "Prozentualer Rabatt"],
   ["percentage off", "prozentualer Rabatt"],
@@ -469,6 +473,8 @@ const translations = [
   ["Holiday label", "Bezeichnung"],
   ["Optional label", "Optionale Bezeichnung"],
   ["Add holiday", "Feiertag hinzufügen"],
+  ["Choose a valid holiday date.", "Wähle ein gültiges Feiertagsdatum aus."],
+  ["That holiday is already listed.", "Dieser Feiertag ist bereits eingetragen."],
   ["Full-day closure", "Ganztägig geschlossen"],
   ["Add full-day closures and an optional short label for visitors.", "Ganztägige Schließungen mit einer optionalen kurzen Bezeichnung für Besucher hinzufügen."],
   ["No holiday closures added yet.", "Noch keine Feiertagsschließungen hinzugefügt."],
@@ -1415,7 +1421,7 @@ export function isTranslationVariant(value: string, original: string) {
 }
 
 export function AdminLanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<AdminLanguage>("en")
+  const [language, setLanguageState] = useState<AdminLanguage>("de")
   const [preferenceLoaded, setPreferenceLoaded] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const languageRef = useRef(language)

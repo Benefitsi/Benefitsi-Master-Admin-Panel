@@ -64,6 +64,7 @@ export default async function DashboardPage({
           partners={dashboard.partners}
           cities={dashboard.cities}
           owners={dashboard.owners}
+          activityErrors={dashboard.activityErrors}
           initialMode={requestedMode === "create" ? "create" : "view"}
           initialPartnerId={initialPartnerId}
           initialSettingsTab={requestedTab}

@@ -83,7 +83,7 @@ test("menu approvals are opened from Partner management instead of the primary n
   assert.doesNotMatch(shell, /label="Menu approvals"/)
   assert.match(
     partner,
-    /<LiveMetric\s+href="\/menu-approvals"\s+label="Menu approvals required"\s+value=\{pendingMenuReviews\.length\}\s*\/>/,
+    /<LiveMetric\s+secondary\s+href="\/menu-approvals"\s+label="Menüfreigaben erforderlich"\s+value=\{pendingMenuReviews\.length\}\s*\/>/,
   )
 })
 
@@ -96,18 +96,18 @@ test("partner social settings include YouTube and allow more than four profiles"
 
 test("partner details place opening hours between profile and contact sections", async () => {
   const code = await readFile(adminUrl, "utf8")
-  const profileIndex = code.indexOf('<FormSection title="Profile"')
+  const profileIndex = code.indexOf('<FormSection title="Profil"')
   const hoursMatch = code.match(
     /<OpeningHoursPanel\s+partner=\{partner\}\s+embedded\s+withinPartnerForm/,
   )
   const hoursIndex = hoursMatch?.index ?? -1
-  const contactIndex = code.indexOf('title="Contact, Location and Socials"')
+  const contactIndex = code.indexOf('title="Kontakt, Standort & Socials"')
 
   assert.ok(profileIndex >= 0)
   assert.ok(hoursIndex > profileIndex)
   assert.ok(contactIndex > hoursIndex)
   assert.doesNotMatch(code, /\{ id: "rewards", label: "Hours & Rewards"/)
-  assert.match(code, /\{ id: "offers", label: "Stamps & Deals"/)
+  assert.match(code, /\{ id: "offers", label: "Stempel & Deals"/)
   assert.match(code, /settingsTab === "deals"[\s\S]*MilestonesPanel[\s\S]*DealsPanel/)
 })
 
@@ -131,7 +131,7 @@ test("partner PIN can be rotated without changing the normal profile save path",
   assert.match(actions, /export async function rotatePartnerPin/)
   assert.match(actions, /randomInt\(/)
   assert.match(admin, /rotatePartnerPin/)
-  assert.match(admin, /Rotate partner PIN/)
+  assert.match(admin, /Partner-PIN rotieren/)
   assert.match(actions, /\.update\(\{ pin \}/)
 })
 
@@ -143,4 +143,86 @@ test("partner menu writes invalidate the existing public partner cache", async (
   assert.match(code, /saveMenuCategory/)
   assert.match(code, /saveMenuItem/)
   assert.match(code, /importMenuIntoMenu/)
+})
+
+test("partner management uses concise German overview copy and keeps approvals inline", async () => {
+  const [code, shell] = await Promise.all([
+    readFile(adminUrl, "utf8"),
+    readFile(shellUrl, "utf8"),
+  ])
+
+  assert.match(code, /Aktive Partner/)
+  assert.match(code, /Menüfreigaben erforderlich/)
+  assert.match(shell, /Partnerverwaltung/)
+  assert.doesNotMatch(code, /Supabase routing fields/)
+  assert.doesNotMatch(code, /Deal recommended/)
+})
+
+test("partner editing exposes a single German save flow with unsaved protection", async () => {
+  const code = await readFile(adminUrl, "utf8")
+
+  assert.match(code, /Ungespeicherte Änderungen/)
+  assert.match(code, /beforeunload/)
+  assert.match(code, /Änderungen speichern/)
+})
+
+test("staff and activity panels describe loaded data without inventing records", async () => {
+  const code = await readFile(adminUrl, "utf8")
+
+  assert.match(code, /Mitarbeiterzugriff/)
+  assert.match(code, /Keine Mitarbeiterzugriffe vorhanden/)
+  assert.match(code, /Kundenaktivität/)
+  assert.match(code, /Keine Besuche für diesen Partner geladen/)
+  assert.match(code, /Erneut versuchen/)
+})
+
+test("danger zone explains permanent deletion and retains password confirmation", async () => {
+  const [actions, admin] = await Promise.all([
+    readFile(actionsUrl, "utf8"),
+    readFile(adminUrl, "utf8"),
+  ])
+
+  assert.match(admin, /Gefahrenbereich/)
+  assert.match(admin, /Deaktiviere/)
+  assert.match(admin, /Partnernamen bestätigen/)
+  assert.match(admin, /delete_password/)
+  assert.match(admin, /delete_name_confirmation/)
+  assert.match(actions, /verifyAdminPassword/)
+  assert.match(actions, /deleteNameConfirmation/)
+})
+
+test("partner flow uses German-first copy and keeps unknown staff status neutral", async () => {
+  const code = await readFile(adminUrl, "utf8")
+
+  assert.match(code, /Microsite-Builder/)
+  assert.doesNotMatch(code, /Microsite builder/)
+  assert.match(code, /Prüfen und anlegen/)
+  assert.match(code, /function staffStatusLabel/)
+  assert.match(code, /active === null/)
+  assert.match(code, /Unbekannt/)
+  assert.match(code, /markDirty/)
+  assert.match(code, /setDescriptionDraft\(result\.description\)/)
+})
+
+test("partner activity distinguishes query failures from empty data", async () => {
+  const [admin, data, page] = await Promise.all([
+    readFile(adminUrl, "utf8"),
+    readFile(new URL("../lib/admin-data.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+  ])
+
+  assert.match(data, /activityErrors/)
+  assert.match(page, /activityErrors=\{dashboard\.activityErrors\}/)
+  assert.match(admin, /ActivityDataError/)
+  assert.match(admin, /Stempel-Fortschritte konnten nicht geladen werden/)
+  assert.match(admin, /Besuche konnten nicht geladen werden/)
+})
+
+test("partner action failures use German user-facing messages", async () => {
+  const actions = await readFile(actionsUrl, "utf8")
+
+  assert.match(actions, /Partner-ID ist erforderlich\./)
+  assert.match(actions, /Admin-Passwort ist zum Löschen eines Partners erforderlich\./)
+  assert.doesNotMatch(actions, /Partner id is required\./)
+  assert.doesNotMatch(actions, /Admin password is required to delete a partner\./)
 })

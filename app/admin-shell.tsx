@@ -36,8 +36,8 @@ export function AdminShell(props: AdminShellProps) {
 
 function AdminShellContent({
   adminName,
-  title = "Partner management",
-  subtitle = "All partners and their information",
+  title = "Partnerverwaltung",
+  subtitle = "Alle Partner und ihre Informationen",
   micrositeCount,
   children,
 }: AdminShellProps) {
