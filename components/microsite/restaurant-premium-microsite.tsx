@@ -57,11 +57,27 @@ import {
 } from "react-icons/fa6"
 import type { IconType } from "react-icons"
 import type {
+  Deal,
   MenuItem,
   PartnerRewardMilestone,
   PartnerWithDeals,
 } from "@/lib/admin-data"
-import { isMicrositeTwoForOneDeal } from "@/lib/microsite-deals"
+import {
+  getMicrositePublicDeals,
+  getMicrositeStampDeals,
+  getMicrositeStampRewards,
+  getMicrositeWelcomeDeals,
+  micrositeDealDescription,
+  micrositeDealDetails,
+  micrositeDealTypeLabel,
+  micrositeDealTitle,
+  micrositeRewardTrackLabel,
+  micrositeStampRewardDescription,
+  micrositeStampRewardTitle,
+  micrositeWelcomeStampCount,
+  micrositeWelcomeTitle,
+} from "@/lib/microsite-content"
+import { isMicrositeTopDeal } from "@/lib/microsite-deals"
 import type { MicrositeConfig, MicrositeElementStyle } from "@/lib/microsites"
 import { defaultMicrositeFaqItems } from "@/lib/microsite-seo"
 import {
@@ -1552,30 +1568,23 @@ function DealsSection({
   config: MicrositeConfig
   template: MicrositeConfig["template"]
 }) {
-  const rewardMilestones = partner.reward_milestones.filter(
-    (milestone) => milestone.active !== false,
-  ).sort((first, second) => (first.required_stamps || 0) - (second.required_stamps || 0))
+  const publicDeals = getMicrositePublicDeals(partner.deals)
+  const welcomeDeals = getMicrositeWelcomeDeals(partner.deals)
+  const stampDeals = getMicrositeStampDeals(partner.deals)
+  const stampRewards = getMicrositeStampRewards(partner.reward_milestones)
   const stampCount = Math.max(
     10,
-    ...rewardMilestones
+    ...stampRewards
       .map((milestone) => milestone.required_stamps || 0)
       .filter(Boolean),
   )
   const visibleRewardStamps = Array.from(
     new Set(
-      rewardMilestones
+      stampRewards
         .map((milestone) => milestone.required_stamps || 0)
         .filter((stamp) => stamp > 0 && stamp <= stampCount),
     ),
   )
-  const twoForOneDeal = partner.deals.find(isMicrositeTwoForOneDeal)
-  const topDealHeadline = twoForOneDeal?.reward_item || config.deals.topDealHeadline
-  const topDealDescription = twoForOneDeal?.customer_description || config.deals.topDealDescription
-  const topDealBullets = twoForOneDeal
-    ? [twoForOneDeal.terms, ...config.deals.topDealBullets]
-        .filter((item): item is string => Boolean(item?.trim()))
-        .slice(0, 3)
-    : []
   const topDealRef = useRef<HTMLDivElement | null>(null)
   const [activeStamp, setActiveStamp] = useState(0)
   const [topDealActive, setTopDealActive] = useState(false)
@@ -1618,7 +1627,7 @@ function DealsSection({
 
   useEffect(() => {
     const banner = topDealRef.current
-    if (!banner || !twoForOneDeal) return
+    if (!banner || !publicDeals.length) return
 
     let frame = 0
     const updateBannerState = () => {
@@ -1640,50 +1649,61 @@ function DealsSection({
       document.removeEventListener("scroll", requestBannerUpdate, true)
       window.removeEventListener("resize", requestBannerUpdate)
     }
-  }, [twoForOneDeal])
+  }, [publicDeals.length])
   const stampMilestoneCards = [
-    {
-      id: "welcome",
-      stamp: 2,
-      eyebrow: "Willkommensbonus",
-      titleId: "stamps.welcomeBonus.title",
-      titleFallback: "Direkt 2 Stempel beim ersten Besuch.",
-      textId: "stamps.welcomeBonus.text",
-      textFallback: null,
-      imageId: null,
-      imageUrl: null,
-      iconName: "check",
-      tone: "emerald" as const,
-    },
-    ...visibleRewardStamps.map((stamp) => {
-      const isMainReward = stamp === stampCount
-      const milestone = rewardMilestones.find((item) => item.required_stamps === stamp)
-      const rewardLabel = rewardLabelForStamp(rewardMilestones, stamp, isMainReward, config.language)
-      const rewardLabelLower = rewardLabel.toLowerCase()
+    ...welcomeDeals.map((deal, index) => {
+      const title = micrositeWelcomeTitle(deal, config.language)
+      return {
+        id: `welcome-${deal.id || index}`,
+        stamp: Math.min(stampCount, micrositeWelcomeStampCount(deal)),
+        eyebrow: "Willkommensbonus",
+        titleId: "stamps.welcomeBonus.title",
+        titleFallback: title,
+        textId: "stamps.welcomeBonus.text",
+        textFallback: micrositeDealDescription(deal, config.language),
+        imageId: null,
+        imageUrl: null,
+        iconName: micrositeRewardIconName(title),
+        tone: "emerald" as const,
+      }
+    }),
+    ...stampDeals.map((deal, index) => {
+      const title = micrositeDealTitle(deal, config.language)
 
       return {
-        id: `reward-${stamp}`,
+        id: `stamp-deal-${deal.id || index}`,
+        stamp: null,
+        eyebrow: micrositeDealTypeLabel(deal, config.language),
+        titleId: "stamps.automaticBonus.title",
+        titleFallback: title,
+        textId: "stamps.automaticBonus.text",
+        textFallback: micrositeDealDescription(deal, config.language),
+        imageId: null,
+        imageUrl: null,
+        iconName: micrositeRewardIconName(title),
+        tone: "emerald" as const,
+      }
+    }),
+    ...stampRewards.map((milestone, index) => {
+      const stamp = milestone.required_stamps || 1
+      const title = micrositeStampRewardTitle(milestone, config.language)
+      const trackLabel = micrositeRewardTrackLabel(milestone, config.language)
+
+      return {
+        id: `reward-${milestone.id || stamp}-${index}`,
         stamp,
-        eyebrow: `${stamp} Stempel`,
+        eyebrow: `${stamp} Stempel${trackLabel ? ` · ${trackLabel}` : ""}`,
         titleId: `stamps.reward.${stamp}.label`,
-        titleFallback: rewardLabel,
+        titleFallback: title,
         textId: `stamps.reward.${stamp}.description`,
-        textFallback:
-          milestone?.customer_description && milestone.customer_description !== rewardLabel
-            ? milestone.customer_description
-            : null,
+        textFallback: micrositeStampRewardDescription(milestone, config.language),
         imageId: `stamps.reward.${stamp}.image`,
         imageUrl: textValue(
           config,
           `stamps.reward.${stamp}.image`,
-          rewardImageForStamp(partner, config, stamp, isMainReward),
+          rewardImageForStamp(partner, config, milestone),
         ),
-        iconName:
-          /bonusstempel|bonus stamp|stempelbonus/.test(rewardLabelLower)
-            ? "star"
-            : /rabatt|discount|%|€|euro/.test(rewardLabelLower)
-              ? "percent"
-              : "gift",
+        iconName: micrositeRewardIconName(title),
         tone: "amber" as const,
       }
     }),
@@ -1694,21 +1714,21 @@ function DealsSection({
         <div className="premium-reveal pb-2 pt-12 @min-[640px]:pt-16">
           <div className="max-w-3xl">
             <h2
-              {...editable("deals.headline", "text", "Deals Überschrift")}
+              {...editable("deals.headline", "text", "Vorteils-Überschrift")}
               className="text-[clamp(2rem,4.8cqw,3.3rem)] font-black leading-[1.04] tracking-[-0.04em]"
               style={textStyleFor(config, "deals.headline")}
             >
               {config.deals.headline}
             </h2>
             <p
-              {...editable("deals.slogan", "text", "Deals Slogan")}
+              {...editable("deals.slogan", "text", "Vorteils-Slogan")}
               className="mt-4 text-[clamp(1.3rem,2.7cqw,1.9rem)] italic text-[var(--site-accent)]"
               style={textStyleFor(config, "deals.slogan")}
             >
               {config.deals.slogan}
             </p>
             <p
-              {...editable("deals.description", "text", "Deals Beschreibung")}
+              {...editable("deals.description", "text", "Vorteilsbeschreibung")}
               className="mt-4 max-w-md text-sm leading-7 text-zinc-600"
               style={textStyleFor(config, "deals.description")}
             >
@@ -1717,71 +1737,22 @@ function DealsSection({
           </div>
         </div>
 
-        {twoForOneDeal ? (
-        <div
-          ref={topDealRef}
-          id="two-for-one"
-          className={`premium-reveal premium-topdeal relative overflow-hidden rounded-[1.6rem] bg-[#121212] text-white shadow-[0_30px_80px_rgba(15,23,42,.22)] ${topDealActive ? "is-active" : ""}`}
-        >
-          <BrandedImage
-            src={config.deals.topDealImageUrl}
-            alt={siteCopy(config, "Bild zum Top-Deal", "Top deal image")}
-            className="premium-topdeal-image absolute inset-y-0 right-0 h-full w-full object-cover object-center @min-[640px]:w-[68%]"
-            style={imageStyleFor(config, "deals.topDealImageUrl")}
-          />
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#121212_0%,#121212_36%,rgba(18,18,18,.93)_43%,rgba(18,18,18,.16)_73%)]" />
-          <span
-            {...editable("deals.topDealImageUrl", "image", "Top-Deal Bild")}
-            aria-hidden="true"
-            className="absolute inset-y-0 right-0 z-[20] min-w-[140px] w-[58%]"
-          />
-          <div className="relative z-[3] p-5 @min-[640px]:p-7 @min-[1024px]:min-h-[310px] @min-[1024px]:p-8">
-            <p
-              {...editable("deals.topDealLabel", "text", "Top-Deal Label")}
-              className="inline-flex rounded-full border border-[var(--site-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--site-accent)]"
-              style={textStyleFor(config, "deals.topDealLabel")}
-            >
-              {config.deals.topDealLabel}
-            </p>
-            <h3
-              {...editable("deals.topDealHeadline", "text", "Top Deal Überschrift")}
-              className="mt-4 max-w-md text-[clamp(2.2rem,5cqw,3.5rem)] font-black leading-none tracking-[-0.04em]"
-              style={textStyleFor(config, "deals.topDealHeadline")}
-            >
-              {topDealHeadline}
-            </h3>
-            <p
-              {...editable("deals.topDealDescription", "text", "Top-Deal Beschreibung")}
-              className="mt-3 text-sm text-zinc-100"
-              style={textStyleFor(config, "deals.topDealDescription")}
-            >
-              {topDealDescription}
-            </p>
-            <ul className="mt-5 space-y-2 text-sm">
-              {topDealBullets.map((bullet, index) => (
-                <li key={`${bullet}-${index}`} className="flex items-center gap-2">
-                  <span className="grid size-5 shrink-0 place-items-center rounded-full bg-emerald-500 text-white shadow-[0_8px_18px_-10px_#10b981]">
-                    <Check className="size-3" strokeWidth={3} aria-hidden="true" />
-                  </span>
-                  <span
-                    {...editable(`deals.topDealBullets.${index}`, "text", `Top-Deal Punkt ${index + 1}`)}
-                    style={textStyleFor(config, `deals.topDealBullets.${index}`)}
-                  >
-                    {bullet}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <button
-              {...editable("deals.topDealButtonLabel", "text", "Top-Deal Button")}
-              className="premium-button premium-button-shine group mt-6 inline-flex min-h-11 items-center gap-3 rounded-lg bg-[var(--site-accent)] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]"
-              style={textStyleFor(config, "deals.topDealButtonLabel")}
-            >
-              {config.deals.topDealButtonLabel}
-              <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
-            </button>
+        {publicDeals.length ? (
+          <div
+            ref={topDealRef}
+            className={`grid gap-5 ${publicDeals.length > 1 ? "@min-[900px]:grid-cols-2" : ""}`}
+          >
+            {publicDeals.map((deal, index) => (
+              <MicrositeDealBanner
+                key={deal.id || `deal-${index}`}
+                deal={deal}
+                config={config}
+                active={topDealActive}
+                primary={isMicrositeTopDeal(deal)}
+                wide={publicDeals.length > 1 && isMicrositeTopDeal(deal)}
+              />
+            ))}
           </div>
-        </div>
         ) : null}
 
         <div
@@ -1892,13 +1863,13 @@ function DealsSection({
 
               <div className="premium-stamp-rewards mt-5 grid grid-cols-1 gap-3 @min-[640px]:mt-7 @min-[640px]:grid-cols-2 @min-[900px]:grid-cols-3">
                 {stampMilestoneCards.map((card) => {
-                  const unlocked = activeStamp >= card.stamp
+                  const unlocked = card.stamp === null || activeStamp >= card.stamp
 
                   return (
                     <div
                       key={card.id}
-                      data-reward-stamp={card.stamp}
-                      data-current-reward={activeStamp === card.stamp}
+                      data-reward-stamp={card.stamp ?? undefined}
+                      data-current-reward={card.stamp !== null && activeStamp === card.stamp}
                       className={`premium-stamp-reward relative flex min-h-[104px] w-full items-center gap-3 rounded-[1rem] border bg-white px-3 py-3 shadow-[0_14px_28px_rgba(120,72,0,.07)] transition-[opacity,transform,box-shadow,border-color] duration-300 ${
                         card.tone === "emerald"
                           ? "border-emerald-200"
@@ -1923,16 +1894,16 @@ function DealsSection({
                       />
                     ) : (
                       <ThemeIcon
-                        id={card.id === "welcome" ? "stamps.welcomeBonus.icon" : `stamps.reward.${card.stamp}.icon`}
+                        id={card.id.startsWith("welcome-") ? "stamps.welcomeBonus.icon" : `stamps.reward.${card.stamp}.icon`}
                         name={card.iconName}
                         config={config}
-                        label={card.id === "welcome" ? "Willkommensbonus Icon" : `${card.eyebrow} Icon`}
+                        label={card.id.startsWith("welcome-") ? "Willkommensbonus Icon" : `${card.eyebrow} Icon`}
                         className={`premium-stamp-reward-icon grid size-12 shrink-0 place-items-center rounded-xl border shadow-sm ${
                           card.tone === "emerald"
                             ? "premium-stamp-welcome-icon border-emerald-200 bg-emerald-50 text-emerald-600"
                             : "border-amber-200 bg-amber-50 text-[var(--site-accent)]"
                         }`}
-                        iconClassName={card.id === "welcome" ? "size-7" : "size-6"}
+                        iconClassName={card.id.startsWith("welcome-") ? "size-7" : "size-6"}
                       />
                     )}
                     <div className="min-w-0">
@@ -1944,21 +1915,19 @@ function DealsSection({
                         {card.eyebrow}
                       </p>
                       <p
-                        {...editable(card.titleId, "text", card.eyebrow)}
                         className={`mt-1 font-black leading-tight tracking-[-0.035em] text-zinc-950 ${
                           card.tone === "emerald" ? "text-[13px]" : "text-[15px]"
                         }`}
                         style={textStyleFor(config, card.titleId)}
                       >
-                        {textValue(config, card.titleId, card.titleFallback)}
+                        {card.titleFallback}
                       </p>
-                      {card.textId && card.textFallback ? (
+                      {card.textFallback ? (
                         <p
-                          {...editable(card.textId, "text", "Willkommensbonus Text")}
                           className="mt-1 text-[11px] leading-4 text-zinc-500"
                           style={textStyleFor(config, card.textId)}
                         >
-                          {textValue(config, card.textId, card.textFallback)}
+                          {card.textFallback}
                         </p>
                       ) : null}
                     </div>
@@ -1989,6 +1958,137 @@ function DealsSection({
   )
 }
 
+function MicrositeDealBanner({
+  deal,
+  config,
+  active,
+  primary = false,
+  wide = false,
+}: {
+  deal: Deal
+  config: MicrositeConfig
+  active: boolean
+  primary?: boolean
+  wide?: boolean
+}) {
+  const isTopDeal = isMicrositeTopDeal(deal)
+  const title = micrositeDealTitle(deal, config.language)
+  const description = micrositeDealDescription(deal, config.language)
+  const details = micrositeDealDetails(deal, config.language)
+  const dealLabel = micrositeDealTypeLabel(deal, config.language)
+  const articleClassName = isTopDeal
+    ? `premium-topdeal relative min-h-full overflow-hidden rounded-[1.6rem] bg-[#121212] text-white shadow-[0_30px_80px_rgba(15,23,42,.22)] ${wide ? "@min-[900px]:col-span-2" : ""} ${active ? "is-active" : ""}`
+    : `premium-reveal premium-deal-secondary relative min-h-full overflow-hidden rounded-[1.15rem] border border-[var(--site-border)] bg-[var(--site-surface)] text-[var(--site-text)] shadow-[0_16px_36px_rgba(15,23,42,.08)] ${active ? "is-active" : ""}`
+
+  return (
+    <article className={articleClassName}>
+      {isTopDeal ? (
+        <>
+          <BrandedImage
+            src={config.deals.topDealImageUrl}
+            alt={`${title} – ${siteCopy(config, "Vorteilsbild", "Benefit image")}`}
+            editableId={primary ? "deals.topDealImageUrl" : undefined}
+            editableLabel="Vorteilsbild"
+            className="premium-topdeal-image absolute inset-y-0 right-0 h-full w-full object-cover object-center @min-[640px]:w-[68%]"
+            style={imageStyleFor(config, "deals.topDealImageUrl")}
+          />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#121212_0%,#121212_36%,rgba(18,18,18,.93)_43%,rgba(18,18,18,.16)_73%)]" />
+          {primary ? (
+            <span
+              {...editable("deals.topDealImageUrl", "image", "Vorteilsbild")}
+              aria-hidden="true"
+              className="absolute inset-y-0 right-0 z-[20] min-w-[140px] w-[58%]"
+            />
+          ) : null}
+        </>
+      ) : (
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 w-1 bg-[var(--site-accent)]"
+        />
+      )}
+      <div
+        className={
+          isTopDeal
+            ? "relative z-[3] flex min-h-full flex-col p-5 @min-[640px]:p-7 @min-[1024px]:min-h-[310px] @min-[1024px]:p-8"
+            : "relative z-[3] flex min-h-[132px] flex-col justify-center p-4 pl-5 @min-[640px]:min-h-[148px] @min-[640px]:p-5 @min-[640px]:pl-6"
+        }
+      >
+        <p
+          className={
+            isTopDeal
+              ? "inline-flex w-fit rounded-full border border-[var(--site-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--site-accent)]"
+              : "inline-flex w-fit rounded-full bg-[color-mix(in_srgb,var(--site-accent)_10%,transparent)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--site-accent)]"
+          }
+        >
+          {dealLabel}
+        </p>
+        <h3
+          className={
+            isTopDeal
+              ? "mt-4 max-w-md text-[clamp(2.2rem,5cqw,3.5rem)] font-black leading-none tracking-[-0.04em]"
+              : "mt-2 max-w-xl text-xl font-black leading-tight tracking-[-0.03em] @min-[640px]:text-2xl"
+          }
+        >
+          {title}
+        </h3>
+        <p
+          className={
+            isTopDeal
+              ? "mt-3 max-w-xl text-sm text-zinc-100"
+              : "mt-2 max-w-2xl text-xs leading-5 text-[var(--site-muted)] @min-[640px]:text-sm"
+          }
+        >
+          {description}
+        </p>
+        {details.length ? (
+          <ul
+            className={
+              isTopDeal
+                ? "mt-5 space-y-2 text-sm"
+                : "mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-[var(--site-muted)]"
+            }
+          >
+            {details.map((detail, index) => (
+              <li
+                key={`${detail}-${index}`}
+                className="flex items-start gap-2"
+              >
+                {isTopDeal ? (
+                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-emerald-500 text-white shadow-[0_8px_18px_-10px_#10b981]">
+                    <Check className="size-3" strokeWidth={3} aria-hidden="true" />
+                  </span>
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="mt-[0.35rem] size-1.5 shrink-0 rounded-full bg-[var(--site-accent)]"
+                  />
+                )}
+                <span>{detail}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <button
+          {...(primary ? editable("deals.topDealButtonLabel", "text", "Vorteil Button") : {})}
+          className={
+            isTopDeal
+              ? "premium-button premium-button-shine group mt-6 inline-flex min-h-11 w-fit items-center gap-3 rounded-lg bg-[var(--site-accent)] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]"
+              : "premium-button group mt-4 inline-flex min-h-9 w-fit items-center gap-2 rounded-lg border border-[var(--site-accent)] bg-transparent px-3.5 py-2 text-xs font-semibold text-[var(--site-accent)] transition duration-300 hover:-translate-y-0.5 hover:bg-[color-mix(in_srgb,var(--site-accent)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)] focus-visible:ring-offset-2"
+          }
+          style={isTopDeal ? textStyleFor(config, "deals.topDealButtonLabel") : undefined}
+        >
+          {config.deals.topDealButtonLabel}
+          <ArrowRight
+            className={`${isTopDeal ? "size-4" : "size-3.5"} transition-transform duration-300 group-hover:translate-x-1`}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+    </article>
+  )
+}
+
 function BenefitsEcosystemSection({
   partner,
   config,
@@ -2014,7 +2114,7 @@ function BenefitsEcosystemSection({
     {
       id: "deals.benefit.0",
       icon: "gift",
-      title: siteCopy(config, "Exklusive Partner Deals", "Exclusive partner deals"),
+      title: siteCopy(config, "Exklusive Partnervorteile", "Exclusive partner benefits"),
       text: siteCopy(config, "Nur für Mitglieder", "Only for members"),
       featured: true,
     },
@@ -2047,7 +2147,7 @@ function BenefitsEcosystemSection({
       id: "content.ecosystem.favorites",
       icon: "heart",
       title: siteCopy(config, "Favoriten merken", "Save favorites"),
-      text: siteCopy(config, "Lieblingspartner, Deals und Belohnungen immer griffbereit.", "Keep favorite partners, deals and rewards close at hand."),
+      text: siteCopy(config, "Lieblingspartner, Vorteile und Belohnungen immer griffbereit.", "Keep favorite partners, benefits and rewards close at hand."),
     },
   ]
 
@@ -2079,8 +2179,8 @@ function BenefitsEcosystemSection({
               "content.ecosystemText",
               siteCopy(
                 config,
-                "Deals, Treue und Belohnungen direkt in der App.",
-                "Deals, loyalty and rewards directly in the app.",
+                "Vorteile, Treue und Belohnungen direkt in der App.",
+                "Benefits, loyalty and rewards directly in the app.",
               ),
             )}
           </p>
@@ -2174,14 +2274,18 @@ function AppScreenShowcase({
     )
   const activeDeals = partner.deals.filter((deal) => deal.active !== false)
   const activeDeal = activeDeals[0]
-  const dealName =
-    activeDeal?.reward_item ||
-    config.deals.topDealHeadline ||
-    siteCopy(config, "2 für 1 Vorteil", "2-for-1 benefit")
-  const dealDescription =
-    activeDeal?.customer_description ||
-    config.deals.topDealDescription ||
-    siteCopy(config, "Deinen Vorteil direkt in der App auswählen.", "Select your benefit directly in the app.")
+  const dealName = activeDeal
+    ? micrositeDealTitle(activeDeal, config.language)
+    : config.deals.topDealHeadline ||
+      siteCopy(config, "Aktueller Vorteil", "Current benefit")
+  const dealDescription = activeDeal
+    ? micrositeDealDescription(activeDeal, config.language)
+    : config.deals.topDealDescription ||
+      siteCopy(
+        config,
+        "Details zum aktuellen Vorteil findest du in der Benefitsi-App.",
+        "Find the current benefit details in the Benefitsi app.",
+      )
   const savingsLabel = activeDeal?.estimated_savings
     ? siteCopy(config, "ca. " + formatPrice(activeDeal.estimated_savings, "EUR") + " sparen", "save about " + formatPrice(activeDeal.estimated_savings, "EUR"))
     : siteCopy(config, "Direkt sparen", "Save instantly")
@@ -2363,10 +2467,7 @@ function AppScreenShowcase({
               </div>
 
               <div className="mt-2 rounded-[1rem] border border-[#e1e5eb] bg-white p-2.5 shadow-[0_5px_14px_rgba(23,32,51,.08)]">
-                <span className="inline-flex rounded-full border border-[#b8e3f9] bg-[#e8f7ff] px-2 py-1 text-[5.5px] font-black text-[#078dcc]">
-                  {siteCopy(config, "Top-Vorteil", "Top benefit")}
-                </span>
-                <div className="mt-2 flex items-start gap-2">
+                <div className="flex items-start gap-2">
                   <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#dff2ff] text-[#0a9fe1]">
                     <Utensils className="size-4" strokeWidth={2.2} aria-hidden="true" />
                   </span>
@@ -3158,9 +3259,9 @@ function FaqSection({ config }: { config: MicrositeConfig }) {
   const faqItems = config.language === "en"
     ? [
         { question: "How does the stamp card work?", answer: "Check in with the Benefitsi app after your visit to collect stamps automatically. When you reach a reward, it unlocks in the app." },
-        { question: "Which benefits are included with Premium?", answer: "Premium members receive additional deals, exclusive rewards and special offers from participating local partners." },
-        { question: "How do I use a 2-for-1 deal?", answer: "Activate the benefit in the app before ordering, then show the active benefit when you pay." },
-        { question: "Do I need the Benefitsi app?", answer: "Yes. Deals, stamps and rewards are collected and redeemed digitally in the app." },
+        { question: "Which benefits are included with Premium?", answer: "Premium members receive additional benefits, exclusive rewards and special offers from participating local partners." },
+        { question: "How do I use a 2-for-1 benefit?", answer: "Activate the benefit in the app before ordering, then show the active benefit when you pay." },
+        { question: "Do I need the Benefitsi app?", answer: "Yes. Benefits, stamps and rewards are collected and redeemed digitally in the app." },
         { question: "Can I order online?", answer: "If the partner offers online ordering, you will find the relevant button on the microsite or in the Benefitsi app." },
         { question: "Does it cost anything to participate?", answer: "Many benefits are free to use. Some premium benefits are reserved for Benefitsi Premium members." },
       ]
@@ -3353,7 +3454,7 @@ function FooterSection({
         <FooterLinkColumn
           title={siteCopy(config, "Entdecken", "Explore")}
           links={[
-            { label: siteCopy(config, "Deals & Vorteile", "Deals & benefits"), href: "#deals" },
+            { label: siteCopy(config, "Vorteile & Aktionen", "Benefits & campaigns"), href: "#deals" },
             { label: siteCopy(config, "Stempelkarte", "Stamp card"), href: "#stempelkarte" },
             { label: siteCopy(config, "Speisekarte", "Menu"), href: "#speisekarte" },
           ]}
@@ -4624,37 +4725,26 @@ function micrositeMenuItemsForPartner(
   })
 }
 
-function rewardLabelForStamp(
-  milestones: PartnerRewardMilestone[],
-  stamp: number,
-  isMainReward: boolean,
-  language: MicrositeConfig["language"] = "de",
-) {
-  const exact = milestones.find((milestone) => milestone.required_stamps === stamp)
-  const fallbackMain = milestones.find((milestone) => milestone.required_stamps)
-  const milestone = exact || (isMainReward ? fallbackMain : null)
+function micrositeRewardIconName(value: string) {
+  const lower = value.toLowerCase()
 
-  return translateRewardLabel(
-    milestone?.title ||
-    milestone?.reward_item ||
-    milestone?.customer_description ||
-    (isMainReward ? (language === "en" ? "Main reward" : "Hauptbelohnung") : "Bonus"),
-    language,
-  )
+  if (/stempel|stamp/.test(lower)) {
+    return "star"
+  }
+
+  if (/rabatt|discount|%|€|euro/.test(lower)) {
+    return "percent"
+  }
+
+  return "gift"
 }
 
 function rewardImageForStamp(
   partner: PartnerWithDeals,
   config: MicrositeConfig,
-  stamp: number,
-  isMainReward: boolean,
+  milestone: PartnerRewardMilestone,
 ) {
-  const rewardLabel = rewardLabelForStamp(
-    partner.reward_milestones,
-    stamp,
-    isMainReward,
-    config.language,
-  ).toLowerCase()
+  const rewardLabel = micrositeStampRewardTitle(milestone, config.language).toLowerCase()
   const menuItems = menuItemsForPartner(partner)
   const isDoenerReward = /döner|doener|doner|kebab/.test(rewardLabel)
   const isDrinkReward = /getränk|drink|ayran|cola|wasser|saft|limonade/.test(
@@ -4713,51 +4803,6 @@ function rewardImageForStamp(
   }
 
   return ""
-}
-
-function translateRewardLabel(
-  value: string,
-  language: MicrositeConfig["language"] = "de",
-) {
-  const normalized = value.trim()
-  const lower = normalized.toLowerCase()
-  if (language === "en") {
-    const englishReplacements: Array<[RegExp, string]> = [
-      [/^gratis\s+d[oö]ner$/, "Free döner"],
-      [/^gratis\s+getr[aä]nk$/, "Free drink"],
-      [/^gratis\s+ayran$/, "Free ayran"],
-      [/^gratis\s+pizza$/, "Free pizza"],
-      [/^gratis\s+dessert$/, "Free dessert"],
-      [/^hauptbelohnung$/, "Main reward"],
-    ]
-
-    for (const [pattern, replacement] of englishReplacements) {
-      if (pattern.test(lower)) return replacement
-    }
-
-    return normalized
-  }
-  const replacements: Array<[RegExp, string]> = [
-    [/^free\s+d[oö]ner$/, "Gratis Döner"],
-    [/^free\s+drink$/, "Gratis Getränk"],
-    [/^free\s+ayran$/, "Gratis Ayran"],
-    [/^free\s+pizza$/, "Gratis Pizza"],
-    [/^free\s+dessert$/, "Gratis Dessert"],
-    [/^bonus$/, "Bonus"],
-    [/^main\s+reward$/, "Hauptbelohnung"],
-  ]
-
-  for (const [pattern, replacement] of replacements) {
-    if (pattern.test(lower)) {
-      return replacement
-    }
-  }
-
-  if (lower.startsWith("free ")) {
-    return `Gratis ${normalized.slice(5)}`
-  }
-
-  return normalized
 }
 
 function menuFiltersForItems(

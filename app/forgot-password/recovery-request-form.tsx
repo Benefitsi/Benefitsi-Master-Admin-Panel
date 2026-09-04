@@ -5,7 +5,7 @@ import { CheckCircle2 } from "lucide-react"
 import { LoadingSpinner } from "@/components/loading-ui"
 import { createClient } from "@/lib/supabase/client"
 import {
-  resetPasswordPathForPortal,
+  recoveryCallbackUrl,
   type AuthPortal,
 } from "@/lib/auth-recovery"
 
@@ -32,10 +32,7 @@ export function RecoveryRequestForm({
 
     try {
       const supabase = createClient()
-      const redirectTo = new URL(
-        resetPasswordPathForPortal(portal),
-        window.location.origin,
-      ).toString()
+      const redirectTo = recoveryCallbackUrl(window.location.origin, portal)
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo,
       })

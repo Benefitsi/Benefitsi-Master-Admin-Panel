@@ -47,7 +47,7 @@ export default async function SystemPage() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <OverviewCard
           title="Benefitsi App"
-          description="Mobile user app for deals, stamps, rewards, and challenges."
+          description="Mobile user app for benefits, stamps, rewards, and challenges."
           href={appUrl || undefined}
           status={appUrl ? "Linked" : "App link coming soon"}
           icon={
@@ -93,7 +93,7 @@ export default async function SystemPage() {
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           <Responsibility
             title="Benefitsi App"
-            text="Mobile app, user account, deals, stamps, rewards, and scanning."
+            text="Mobile app, user account, benefits, stamps, rewards, and scanning."
           />
           <Responsibility
             title="Benefitsi Admin"

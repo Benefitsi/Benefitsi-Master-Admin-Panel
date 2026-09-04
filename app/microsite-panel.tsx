@@ -151,13 +151,13 @@ const builderTranslations: Record<string, string> = {
   "Partnerprofil → Öffnungszeiten": "Partner profile -> Opening hours",
   "Startbild URL": "Hero image URL",
   "Neues Startbild hochladen": "Upload new hero image",
-  "Deals & Vorteile": "Deals & benefits",
+  "Vorteile & Aktionen": "Benefits & campaigns",
   "Beschreibung": "Description",
   "Intro-Grafik URL": "Intro image URL",
   "Neue Intro-Grafik hochladen": "Upload new intro image",
-  "Top-Deal Überschrift": "Top deal headline",
-  "Top-Deal Bild URL": "Top deal image URL",
-  "Neues Top-Deal Bild hochladen": "Upload new top deal image",
+  "Vorteil Überschrift": "Benefit headline",
+  "Vorteil Bild URL": "Benefit image URL",
+  "Neues Vorteil Bild hochladen": "Upload new benefit image",
   "Slogan": "Slogan",
   "Weitere Bereiche": "More sections",
   "Speisekarte Überschrift": "Menu headline",
@@ -270,16 +270,16 @@ const builderTranslations: Record<string, string> = {
     "Title, description, schema, and indexing have been reviewed.",
   "Partner-spezifischer Titel ist aussagekräftig gepflegt.":
     "A meaningful partner-specific title is set.",
-  "Meta-Beschreibung nennt Partner, Ort, Deals und Speisekarte ausreichend.":
-    "The meta description adequately covers the partner, location, deals, and menu.",
+  "Meta-Beschreibung nennt Partner, Ort, Vorteile und Speisekarte ausreichend.":
+    "The meta description adequately covers the partner, location, benefits, and menu.",
   "Öffentliche Live-Seiten dürfen nicht versehentlich auf noindex stehen.":
     "Public live pages must not accidentally be set to noindex.",
   "Restaurant, Menu, FAQ und Breadcrumb JSON-LD sind systemisch aktiv.":
     "Restaurant, menu, FAQ, and breadcrumb JSON-LD are enabled.",
   "Builder-/Preview-Seiten sind von Indexierung ausgeschlossen.":
     "Builder and preview pages are excluded from indexing.",
-  "Desktop-Navigation, Hero, Deals, Speisekarte, Kontakt und Footer wurden geprüft.":
-    "Desktop navigation, hero, deals, menu, contact area, and footer have been reviewed.",
+  "Desktop-Navigation, Hero, Vorteile, Speisekarte, Kontakt und Footer wurden geprüft.":
+    "Desktop navigation, hero, benefits, menu, contact area, and footer have been reviewed.",
   "Mobile Ansicht wurde im Builder geprüft und freigegeben.":
     "The mobile view has been reviewed and approved in the builder.",
   "Desktop- und Mobilvorschau sind im Builder verfügbar und müssen separat freigegeben werden.":
@@ -333,8 +333,8 @@ const builderTranslations: Record<string, string> = {
   "Restaurant Premium": "Restaurant Premium",
   "Local Restaurant": "Local Restaurant",
   "Clean Food Page": "Clean Food Page",
-  "Emotionaler Hero, Deals, Stempelkarte, App-Banner und starke lokale Story.":
-    "Emotional hero, deals, stamp card, app banner, and a strong local story.",
+  "Emotionaler Hero, Vorteile, Stempelkarte, App-Banner und starke lokale Story.":
+    "Emotional hero, benefits, stamp card, app banner, and a strong local story.",
   "Ruhiger, regionaler Auftritt für Restaurants, Cafés und lokale Gastgeber.":
     "A calmer regional presentation for restaurants, cafes, and local hosts.",
   "Klarer, reduzierter Aufbau für schnelle Partnerseiten mit wenig Bildmaterial.":
@@ -348,7 +348,7 @@ const builderTranslations: Record<string, string> = {
     "A calm premium wellness direction for massage, spa, and recovery partners.",
   "Kontrastreiche Event-Optik für Kino, Freizeit und erlebnisorientierte Partner.":
     "A high-contrast event look for cinema, activities, and experience-led partners.",
-  "Top-Deal": "Top deal",
+  "Vorteil": "Benefit",
   "Stempelkarte": "Stamp card",
   "Speisekarte": "Menu",
   "Über uns": "About",
@@ -366,9 +366,9 @@ const builderTranslations: Record<string, string> = {
   "E-Mail": "Email",
   "Einträge": "entries",
   "Menüs": "menus",
-  "Prämien": "Rewards",
+  "Belohnungen": "Rewards",
   "Microsite-Bilder": "Microsite images",
-  "Start/Deals/Über uns separat": "Hero/deals/about are managed separately",
+  "Start/Vorteile/Über uns separat": "Hero/benefits/about are managed separately",
   "SEO": "SEO",
   "Title/Description separat": "Title/description managed separately",
   "SEO-Titel und -Beschreibung separat": "SEO title/description managed separately",
@@ -382,7 +382,7 @@ const builderTranslations: Record<string, string> = {
   "Partnerlogo": "Partner logo",
   "Feature-Karte": "Feature card",
   "Startbild": "Hero image",
-  "Deals": "Deals",
+  "Vorteile": "Benefits",
   "Über uns 1": "About image 1",
   "Über uns 2": "About image 2",
   "bereit": "ready",
@@ -510,17 +510,17 @@ const builderTranslations: Record<string, string> = {
   "Nur Bilder, die im aktuellen Template tatsächlich verwendet werden.":
     "Only images that are actually used in the current template.",
   "Marke & Startbereich Bilder": "Brand & hero images",
-  "Deals & Belohnungen Bilder": "Deals & reward images",
+  "Vorteils- und Belohnungsbilder": "Benefit and reward images",
   "Über-uns Bilder": "About images",
   "App & Footer Bilder": "App & footer images",
   "Partner-Badge": "Partner badge",
-  "2für1 Hintergrundbild": "2-for-1 background image",
+  "2 für 1 Hintergrundbild": "2-for-1 background image",
   "Über-uns Hauptbild": "About main image",
   "Über-uns Zutatenbild": "About ingredients image",
   "Über-uns Ortsbild": "About location image",
   "Über-uns Detailbild": "About detail image",
-  "Keine aktiven Deal- oder Belohnungsbilder in diesem Template.":
-    "There are no active deal or reward images in this template.",
+  "Keine aktiven Vorteils- oder Belohnungsbilder in diesem Template.":
+    "There are no active benefit or reward images in this template.",
   "Bilder prüfen, wiederverwenden und die synchronisierten Partnerdaten kontrollieren.":
     "Review and reuse images, then verify synchronized partner data.",
   "Sichtbarkeit & Ausgabe": "Visibility & output",
@@ -561,16 +561,16 @@ const builderTranslations: Record<string, string> = {
   "Partnername": "Partner name",
   "Badge-Icon": "Badge icon",
   "Badge-Text": "Badge text",
-  "Top-Deal Bild": "Top deal image",
-  "Top-Deal Label": "Top deal label",
-  "Top-Deal Beschreibung": "Top deal description",
-  "Top-Deal Button": "Top deal button",
+  "Vorteil Bild": "Benefit image",
+  "Vorteil Label": "Benefit label",
+  "Vorteil Beschreibung": "Benefit description",
+  "Vorteil Button": "Benefit button",
   "Speisekarte Label": "Menu label",
   "Benefit 1 Titel": "Benefit 1 title",
   "Benefit 1 Text": "Benefit 1 text",
   "Benefit 2 Titel": "Benefit 2 title",
   "Benefit 2 Text": "Benefit 2 text",
-  "Willkommensbonus Titel": "Welcome bonus title",
+  "Willkommen Titel": "Welcome title",
   "Kontakt Öffnungszeiten": "Contact opening hours",
   "Footer Vertrauen 1": "Footer trust 1",
   "Footer Vertrauen 2": "Footer trust 2",
@@ -583,12 +583,12 @@ const builderTranslations: Record<string, string> = {
   "Benefit 2 Icon": "Benefit 2 icon",
   "Ort Icon": "Location icon",
   "App-Banner Icon": "App banner icon",
-  "Willkommensbonus Icon": "Welcome bonus icon",
+  "Willkommen Icon": "Welcome icon",
   "Adresse Icon": "Address icon",
   "Telefon Icon": "Phone icon",
   "Benefitsi Footer Logo": "Benefitsi footer logo",
-  "Prämie nach 5 Stempeln": "5-stamp reward",
-  "Prämie nach 10 Stempeln": "10-stamp reward",
+  "Belohnung nach 5 Stempeln": "5-stamp reward",
+  "Belohnung nach 10 Stempeln": "10-stamp reward",
   "Vorlagenschrift": "Template font",
   "Automatische Bildprüfung": "Automated image audit",
   "Bildauflösung zu niedrig": "Low resolution",
@@ -612,8 +612,8 @@ const builderTranslations: Record<string, string> = {
   "Minimalistische Gastronomie": "Minimal food",
   "Beauty-Studio": "Beauty studio",
   "Beauty Noir": "Beauty noir",
-  "Emotional, angebotsorientiert und auf Conversions ausgerichtet.":
-    "Emotional, offer-led, and conversion-focused.",
+  "Emotional, vorteilsorientiert und auf Conversions ausgerichtet.":
+    "Emotional, benefit-led, and conversion-focused.",
   "Warm, regional und erzählerisch.": "Warm, regional, and story-led.",
   "Reduziert, schnell und mit wenig Bildmaterial.": "Reduced, fast, and image-light.",
   "Editorial, hochwertig und serviceorientiert.": "Editorial, premium, and service-led.",
@@ -625,13 +625,13 @@ const builderTranslations: Record<string, string> = {
   "Quadratischer Beitrag": "Square post",
   "Story-Banner": "Story banner",
   "Querformat-Banner": "Landscape banner",
-  "Markantes Angebot": "Bold offer",
+  "Markanter Vorteil": "Bold benefit",
   "Klare Story": "Clean story",
   "Foto im Fokus": "Photo spotlight",
   "Editorial Elegant": "Editorial luxe",
   "Mitternachtsglanz": "Midnight glow",
-  "Großzügiges, angebotsorientiertes Flyer-Layout mit klarem CTA und starkem Startbild.":
-    "Large offer-led flyer layout with a clear CTA and strong hero image.",
+  "Großzügiges, vorteilsorientiertes Flyer-Layout mit klarem CTA und starkem Startbild.":
+    "Large benefit-led flyer layout with a clear CTA and strong hero image.",
   "Luftiges Editorial-Layout mit hochwertigen Abständen für ruhige, vertrauenswürdige Marken.":
     "Airy editorial layout with premium spacing for calm and trusted brands.",
   "Bildbetonte Komposition mit der Botschaft im unteren Drittel.":
@@ -648,14 +648,14 @@ const builderTranslations: Record<string, string> = {
     "Keep the message calm, breathable, and easy to scan from a distance.",
   "Nutze dramatische Kontraste und eine plakatartige, eventorientierte Hierarchie.":
     "Use dramatic contrast and a poster-like, event-driven hierarchy.",
-  "Verbinde ein klares Angebot mit einem hochwertigen lokalen Markenauftritt.":
-    "Balance offer clarity with a polished local-brand presentation.",
+  "Verbinde einen klaren Vorteil mit einem hochwertigen lokalen Markenauftritt.":
+    "Balance benefit clarity with a polished local-brand presentation.",
   "Geteiltes Editorial": "Editorial split",
   "Bildbetont": "Image-led",
   "Fokus im unteren Bereich": "Bottom spotlight",
   "Gerahmtes Editorial": "Framed editorial",
   "Neon-Plakat": "Neon poster",
-  "Angebots-Hierarchie": "Offer stack",
+  "Vorteils-Hierarchie": "Benefit stack",
   "Ideal für Theken-Flyer, Plakate und gedruckte Handzettel.":
     "Ideal for counter flyers, posters, and printable handouts.",
   "Ideal für mobile Storys und vertikale Displays.":
@@ -685,14 +685,14 @@ const builderTranslations: Record<string, string> = {
   "Lokal": "Local",
   "Kontakt Logo (Partnerprofil)": "Contact logo (partner profile)",
   "Startbereich Überschrift": "Hero headline",
-  "Deals-Label": "Deals label",
+  "Vorteils-Label": "Benefits label",
   "Startbereich Slogan": "Hero slogan",
   "Primärer Button": "Primary button",
   "Sekundärer Button": "Secondary button",
-  "Deals Intro Bild": "Deals intro image",
-  "Deals Überschrift": "Deals headline",
-  "Deals Slogan": "Deals slogan",
-  "Deals Beschreibung": "Deals description",
+  "Vorteilsbereich-Introbild": "Benefits intro image",
+  "Vorteils-Überschrift": "Benefits headline",
+  "Vorteils-Slogan": "Benefits slogan",
+  "Vorteilsbeschreibung": "Benefit description",
   "Stempelkarte Überschrift": "Stamp card headline",
   "Stempelkarte Label": "Stamp card label",
   "Stempelkarte Slogan": "Stamp card slogan",
@@ -946,14 +946,14 @@ function translateBuilderText(locale: BuilderLocale, text: string): string {
     return `Service ${serviceTextMatch[1]} text`
   }
 
-  const topDealBulletMatch = repairedText.match(/^Top-Deal Punkt (\d+)$/)
+  const topDealBulletMatch = repairedText.match(/^Vorteil Punkt (\d+)$/)
   if (topDealBulletMatch) {
-    return `Top-deal bullet ${topDealBulletMatch[1]}`
+    return `Benefit bullet ${topDealBulletMatch[1]}`
   }
 
-  const topDealBulletIconMatch = repairedText.match(/^Top-Deal Punkt (\d+) Icon$/)
+  const topDealBulletIconMatch = repairedText.match(/^Vorteil Punkt (\d+) Icon$/)
   if (topDealBulletIconMatch) {
-    return `Top-deal bullet ${topDealBulletIconMatch[1]} icon`
+    return `Benefit bullet ${topDealBulletIconMatch[1]} icon`
   }
 
   const stampMatch = repairedText.match(/^Stempel (\d+)$/)
@@ -1950,7 +1950,7 @@ export function MicrositePanel({
               />
             </ConfigSection>
 
-            <ConfigSection title="Deals & Vorteile">
+            <ConfigSection title="Vorteile & Aktionen">
               <EditorField
                 name="deals_headline"
                 label="Überschrift"
@@ -1986,7 +1986,7 @@ export function MicrositePanel({
               <EditorField
                 name="ecosystem_text"
                 label="App Vorteile Text"
-                value={config.elementText["content.ecosystemText"] || "Eine App für Deals, Treue, Entdeckungen und kleine Erfolge bei jedem Besuch."}
+                value={config.elementText["content.ecosystemText"] || "Eine App für Vorteile, Treue, Entdeckungen und kleine Erfolge bei jedem Besuch."}
                 onChange={(value) =>
                   setConfig((current) =>
                     setElementTextValue(current, "content.ecosystemText", value),
@@ -2559,8 +2559,8 @@ function ReadinessItemRow({
     ["Social Media", `${socialCount} Einträge`, "Partnerprofil"],
     ["Öffnungszeiten", `${partner.opening_hours.length} Einträge`, "Öffnungszeiten"],
     ["Speisekarte", `${partner.menus.length} Menüs`, "Menüs & Artikel"],
-    ["Prämien", `${partner.reward_milestones.length} Prämien`, "Stempelkarte"],
-    ["Microsite-Bilder", "Start/Deals/Über uns separat", "Microsite"],
+    ["Belohnungen", `${partner.reward_milestones.length} Belohnungen`, "Stempelkarte"],
+    ["Microsite-Bilder", "Start/Vorteile/Über uns separat", "Microsite"],
     ["SEO", "SEO-Titel und -Beschreibung separat", "Microsite"],
   ]
 
@@ -2747,7 +2747,7 @@ function AssetReadinessPanel({
     { label: "Partnerlogo", value: partner.logo_url || "", source: "Profil", slot: "branding.logo", minWidth: 512, minHeight: 512, preferredAspect: 1, aspectTolerance: 0.2 },
     { label: "Startbild", value: config.hero.backgroundImageUrl, source: "Microsite", slot: "hero.backgroundImageUrl", minWidth: 1600, minHeight: 1200, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     ...(hasTwoForOneDeal
-      ? [{ label: "2für1 Hintergrundbild", value: config.deals.topDealImageUrl, source: "Microsite", slot: "deals.topDealImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 }]
+      ? [{ label: "2 für 1 Hintergrundbild", value: config.deals.topDealImageUrl, source: "Microsite", slot: "deals.topDealImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 }]
       : []),
     { label: "Über-uns Hintergrundbild (Desktop)", value: config.elementText["content.aboutHeroImageUrl"] || "", source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     { label: "Über-uns linkes Kartenbild", value: config.elementText["content.aboutIngredientImageUrl"] || "", source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 900, minHeight: 1100, preferredAspect: 4 / 5, aspectTolerance: 0.25 },
@@ -2968,12 +2968,12 @@ function CurrentTemplateImagesPanel({
         />
       </ConfigSection>
 
-      <ConfigSection title="Deals & Belohnungen Bilder">
+      <ConfigSection title="Vorteils- und Belohnungsbilder">
         {hasTwoForOneDeal ? (
           <TemplateImageEditor
             groupName="deal-reward-images"
             name="top_deal_image_url"
-            label="2für1 Hintergrundbild"
+            label="2 für 1 Hintergrundbild"
             value={config.deals.topDealImageUrl}
             uploadName="top_deal_file"
             assetListId={assetListId}
@@ -3001,7 +3001,7 @@ function CurrentTemplateImagesPanel({
         })}
         {!hasTwoForOneDeal && !rewardStamps.length ? (
           <p className="rounded-lg bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">
-            Keine aktiven Deal- oder Belohnungsbilder in diesem Template.
+            Keine aktiven Vorteils- oder Belohnungsbilder in diesem Template.
           </p>
         ) : null}
       </ConfigSection>
@@ -4491,7 +4491,7 @@ function getEditableElement(
       ...current,
       hero: { ...current.hero, headline: value },
     })),
-    "deals.label": textElement("Deals-Label", config.deals.label, (current, value) => ({
+    "deals.label": textElement("Vorteils-Label", config.deals.label, (current, value) => ({
       ...current,
       deals: { ...current.deals, label: value },
     })),
@@ -4520,7 +4520,7 @@ function getEditableElement(
       hero: { ...current.hero, secondaryButtonLabel: value },
     })),
     "deals.topDealImageUrl": {
-      label: "Top-Deal Bild",
+      label: "Vorteil Bild",
       kind: "image",
       value: config.deals.topDealImageUrl,
       uploadName: "top_deal_file",
@@ -4529,31 +4529,31 @@ function getEditableElement(
         deals: { ...current.deals, topDealImageUrl: value },
       }),
     },
-    "deals.headline": textElement("Deals Überschrift", config.deals.headline, (current, value) => ({
+    "deals.headline": textElement("Vorteils-Überschrift", config.deals.headline, (current, value) => ({
       ...current,
       deals: { ...current.deals, headline: value },
     })),
-    "deals.slogan": textElement("Deals Slogan", config.deals.slogan, (current, value) => ({
+    "deals.slogan": textElement("Vorteils-Slogan", config.deals.slogan, (current, value) => ({
       ...current,
       deals: { ...current.deals, slogan: value },
     })),
-    "deals.description": textElement("Deals Beschreibung", config.deals.description, (current, value) => ({
+    "deals.description": textElement("Vorteilsbeschreibung", config.deals.description, (current, value) => ({
       ...current,
       deals: { ...current.deals, description: value },
     })),
-    "deals.topDealHeadline": textElement("Top-Deal Überschrift", config.deals.topDealHeadline, (current, value) => ({
+    "deals.topDealHeadline": textElement("Vorteil Überschrift", config.deals.topDealHeadline, (current, value) => ({
       ...current,
       deals: { ...current.deals, topDealHeadline: value },
     })),
-    "deals.topDealLabel": textElement("Top-Deal Label", config.deals.topDealLabel, (current, value) => ({
+    "deals.topDealLabel": textElement("Vorteil Label", config.deals.topDealLabel, (current, value) => ({
       ...current,
       deals: { ...current.deals, topDealLabel: value },
     })),
-    "deals.topDealDescription": textElement("Top-Deal Beschreibung", config.deals.topDealDescription, (current, value) => ({
+    "deals.topDealDescription": textElement("Vorteil Beschreibung", config.deals.topDealDescription, (current, value) => ({
       ...current,
       deals: { ...current.deals, topDealDescription: value },
     })),
-    "deals.topDealButtonLabel": textElement("Top-Deal Button", config.deals.topDealButtonLabel, (current, value) => ({
+    "deals.topDealButtonLabel": textElement("Vorteil Button", config.deals.topDealButtonLabel, (current, value) => ({
       ...current,
       deals: { ...current.deals, topDealButtonLabel: value },
     })),
@@ -4800,7 +4800,7 @@ function getEditableElement(
 
     return {
       id,
-      label: `Top-Deal Punkt ${index + 1}`,
+      label: `Vorteil Punkt ${index + 1}`,
       kind: "text",
       value: bullet,
       update: (current, value) => ({
@@ -4829,7 +4829,7 @@ function getEditableElement(
   const editableTextFallbacks: Record<string, { label: string; fallback: string }> = {
     "deals.benefit.0.title": {
       label: "Benefit 1 Titel",
-      fallback: "Exklusive Partner Deals",
+      fallback: "Exklusive Partnervorteile",
     },
     "deals.benefit.0.text": {
       label: "Benefit 1 Text",
@@ -4852,7 +4852,7 @@ function getEditableElement(
       fallback: "Hauptbelohnung",
     },
     "stamps.welcomeBonus.title": {
-      label: "Willkommensbonus Titel",
+      label: "Willkommen Titel",
       fallback: "Direkt 2 Stempel beim ersten Besuch.",
     },
     "content.aboutSlogan": {
@@ -5052,17 +5052,17 @@ function getEditableElement(
       {
         question: "Welche Vorteile gibt es mit Premium?",
         answer:
-          "Premium-Mitglieder erhalten zusätzliche Deals, exklusive Belohnungen und besondere Aktionen bei teilnehmenden lokalen Partnern.",
+          "Premium-Mitglieder erhalten zusätzliche Vorteile, exklusive Belohnungen und besondere Aktionen bei teilnehmenden lokalen Partnern.",
       },
       {
-        question: "Wie nutze ich den 2 für 1 Deal?",
+        question: "Wie nutze ich den 2 für 1 Vorteil?",
         answer:
           "Aktiviere den Vorteil vor deiner Bestellung in der App. Vor Ort zeigst du den aktiven Vorteil einfach beim Bezahlen vor.",
       },
       {
         question: "Brauche ich die Benefitsi App?",
         answer:
-          "Ja, Deals, Stempel und Belohnungen werden digital in der App gesammelt und eingelöst.",
+          "Ja, Vorteile, Stempel und Belohnungen werden digital in der App gesammelt und eingelöst.",
       },
       {
         question: "Kann ich online bestellen?",
@@ -5118,7 +5118,7 @@ function getEditableElement(
       fallback: "benefitsi",
     },
     "stamps.welcomeBonus.icon": {
-      label: "Willkommensbonus Icon",
+      label: "Willkommen Icon",
       fallback: "check",
     },
     "content.aboutValue.0.icon": {
@@ -5188,7 +5188,7 @@ function getEditableElement(
     return {
       id,
       ...iconOverrideElement(
-        `Top-Deal Punkt ${Number(topDealBulletIconMatch[1]) + 1} Icon`,
+        `Vorteil Punkt ${Number(topDealBulletIconMatch[1]) + 1} Icon`,
         config,
         id,
         "check",
@@ -5928,7 +5928,7 @@ function applyMicrositeLanguage(
   const navigation =
     language === "en"
       ? [
-          { label: "Deals", anchor: "deals" },
+          { label: "Benefits", anchor: "deals" },
           { label: "Stamp Card", anchor: "stempelkarte" },
           { label: copy.menuLabel, anchor: "speisekarte" },
           { label: "About", anchor: "ueber-uns" },
@@ -5936,7 +5936,7 @@ function applyMicrositeLanguage(
           { label: "Contact", anchor: "kontakt" },
         ]
       : [
-          { label: "Deals", anchor: "deals" },
+          { label: "Vorteile", anchor: "deals" },
           { label: "Stempelkarte", anchor: "stempelkarte" },
           { label: copy.menuLabel, anchor: "speisekarte" },
           { label: "Über Uns", anchor: "ueber-uns" },
@@ -5949,14 +5949,14 @@ function applyMicrositeLanguage(
           "content.appKicker": "In the Benefitsi app",
           "content.appBenefit.0": "Check stamp progress anytime",
           "content.appBenefit.1": "Unlock rewards automatically",
-          "content.appBenefit.2": "Use deals quickly and digitally",
+          "content.appBenefit.2": "Use benefits quickly and digitally",
           "content.appQrLabel": "Open app & check in",
           "content.appQrText": "Scan QR code",
           "content.appButtonLabel": "Open app",
           "content.appVisual.0": "Benefitsi App",
           "content.appVisual.1": copy.menuLabel,
           "content.appVisual.2": "Scan & reward",
-          "content.contactSocialText": "Follow us for offers and news.",
+          "content.contactSocialText": "Follow us for benefits and news.",
         }
       : {
           "content.appKicker": "In der Benefitsi App",
@@ -5982,18 +5982,18 @@ function applyMicrositeLanguage(
         language === "en"
           ? "Official Benefitsi Partner"
           : "Offizieller Benefitsi Partner",
-      primaryButtonLabel: language === "en" ? "View deals" : "Deals ansehen",
+          primaryButtonLabel: language === "en" ? "View benefits" : "Vorteile ansehen",
       secondaryButtonLabel:
         language === "en" ? `View ${copy.menuLabel}` : `${copy.menuLabel} ansehen`,
       slogan: copy.heroSlogan,
     },
     deals: {
       ...config.deals,
-      label: language === "en" ? "Deals & Benefits" : "Deals & Vorteile",
+      label: language === "en" ? "Benefits & campaigns" : "Vorteile & Aktionen",
       headline:
         language === "en"
-          ? `Exclusive Benefitsi deals at ${name}`
-          : `Exklusive Benefitsi Deals bei ${name}`,
+          ? `Exclusive Benefitsi benefits at ${name}`
+          : `Exklusive Benefitsi Vorteile bei ${name}`,
       slogan: language === "en" ? "Enjoy more, save more." : "Mehr genießen, mehr sparen!",
       description:
         language === "en"
@@ -6034,16 +6034,16 @@ function applyMicrositeLanguage(
       ...config.seo,
       title:
         language === "en"
-          ? `${name} in ${location} | Deals, stamp card & menu`
-          : `${name} in ${location} | Deals, Stempelkarte & Speisekarte`,
+          ? `${name} in ${location} | Benefits, stamp card & menu`
+          : `${name} in ${location} | Vorteile, Stempelkarte & Speisekarte`,
       description:
         language === "en"
-          ? `${name}: ${location}. Benefitsi deals, stamp card, menu, opening hours and contact at a glance.`
-          : `${name}: ${location}. Benefitsi Deals, Stempelkarte, Speisekarte, Öffnungszeiten und Kontakt auf einen Blick.`,
+          ? `${name}: ${location}. Benefitsi benefits, stamp card, menu, opening hours and contact at a glance.`
+          : `${name}: ${location}. Benefitsi Vorteile, Stempelkarte, Speisekarte, Öffnungszeiten und Kontakt auf einen Blick.`,
       keywords:
         language === "en"
-          ? [name, location, "Benefitsi", "deals", "stamp card", "menu"]
-          : [name, location, "Benefitsi", "Deals", "Stempelkarte", "Speisekarte"],
+          ? [name, location, "Benefitsi", "benefits", "stamp card", "menu"]
+          : [name, location, "Benefitsi", "Vorteile", "Stempelkarte", "Speisekarte"],
     },
     elementText: {
       ...config.elementText,
@@ -6074,7 +6074,7 @@ function englishMicrositeCopyForPartner(
       contactHeadline: "Book your next appointment.",
       appHeadline: "Your benefits and repeat visits in one app",
       appText:
-        "Activate offers, collect loyalty benefits and stay connected with your favorite studio.",
+        "Activate benefits, collect loyalty rewards and stay connected with your favorite studio.",
       footerText: "Modern service, loyal guests and a strong local presence.",
     }
   }
@@ -6090,9 +6090,9 @@ function englishMicrositeCopyForPartner(
       menuDescription:
         "Massages, packages, wellness rituals and premium add-ons can be explored in a calm, high-quality layout.",
       contactHeadline: "Ready to unwind?",
-      appHeadline: "Wellness offers and loyalty benefits in your pocket",
+      appHeadline: "Wellness benefits and loyalty rewards in your pocket",
       appText:
-        "Unlock tailored offers, collect visits and make it easier to come back.",
+        "Unlock tailored benefits, collect visits and make it easier to come back.",
       footerText: "Calm premium storytelling, reliable care and stronger retention for local wellness partners.",
     }
   }
@@ -6102,7 +6102,7 @@ function englishMicrositeCopyForPartner(
       heroSlogan: "Nights out, member perks and local experiences worth repeating.",
       aboutText:
         description ||
-        `${name} turns visits into repeatable experiences with exclusive offers and stronger local discovery in ${location}.`,
+        `${name} turns visits into repeatable experiences with exclusive benefits and stronger local discovery in ${location}.`,
       menuLabel: "Highlights",
       menuHeadline: "Experiences guests should not miss.",
       menuDescription:
@@ -6127,7 +6127,7 @@ function englishMicrositeCopyForPartner(
     contactHeadline: "Ready for your next visit?",
     appHeadline: "All local benefits in your Benefitsi app",
     appText:
-      "Activate deals, collect loyalty stamps and keep your favorite partner one tap away.",
+      "Activate benefits, collect loyalty stamps and keep your favorite partner one tap away.",
     footerText: categoryText
       ? `${categoryText}, loyal guests and one microsite for more repeat visits.`
       : "Local flavor, loyal guests and one microsite for more repeat visits.",

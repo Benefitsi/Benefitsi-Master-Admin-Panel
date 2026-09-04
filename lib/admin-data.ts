@@ -58,6 +58,10 @@ export type Deal = {
   id?: string
   partner_id: string | null
   type: string | null
+  reward_format: string | null
+  trigger_key: string | null
+  campaign_type: string | null
+  activation_mode: string | null
   discount_type: string | null
   premium_only: boolean | null
   benefit_category: string | null
@@ -71,6 +75,10 @@ export type Deal = {
   customer_description: string | null
   staff_instructions: string | null
   terms: string | null
+  public_title: string | null
+  public_subtitle: string | null
+  display_title: string | null
+  display_subtitle: string | null
   trigger_value: number | null
   expiry_days: number | null
   happy_hour_start: string | null

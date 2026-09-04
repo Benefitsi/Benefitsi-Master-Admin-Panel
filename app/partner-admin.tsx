@@ -6,6 +6,7 @@ import {
   useActionState,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -68,7 +69,6 @@ import {
   weekdayOptions,
 } from "@/lib/reward-config"
 import {
-  approveMenu,
   createPartnerCoverUpload,
   deleteDeal,
   deleteMenu,
@@ -79,6 +79,8 @@ import {
   deletePartnerStaff,
   deletePartner,
   deleteRewardMilestone,
+  generateDealCopy,
+  generatePartnerDescription,
   reorderMenuCategories,
   reorderMenuItems,
   saveDeal,
@@ -91,8 +93,15 @@ import {
   savePartner,
   saveRewardMilestone,
   saveWeeklyOpeningHours,
+  rotatePartnerPin,
   type PartnerActionState,
 } from "./partner-actions"
+import type { DealCopyField } from "@/lib/deal-copy"
+import type { DealFormDraft } from "@/lib/deal-form"
+import {
+  benefitTaxonomyLabel,
+  formatBenefitTitle,
+} from "@/lib/benefit-taxonomy"
 import { researchPartner } from "./partner-enrichment-actions"
 import type {
   GeminiProviderWarning,
@@ -237,32 +246,41 @@ const CREATE_NEW_OWNER_VALUE = "__create_new_owner__"
 const dealUiTypeOptions = dealTypeOptions.flatMap((option) =>
   option.value === "comeback"
     ? [
-        { value: DURATION_BONUS_DEAL, label: "Time-based bonus" },
-        { value: COMEBACK_INACTIVE_DEAL, label: "Comeback Deal" },
+        { value: DURATION_BONUS_DEAL, label: "Zeitbonus" },
+        { value: COMEBACK_INACTIVE_DEAL, label: "Comeback-Deal" },
       ]
     : [option],
 )
 
 const durationUnitOptions = [
-  { value: "hours", label: "Hours" },
-  { value: "days", label: "Days" },
-  { value: "weeks", label: "Weeks" },
+  { value: "hours", label: "Stunden" },
+  { value: "days", label: "Tage" },
+  { value: "weeks", label: "Wochen" },
 ] as const
 
 const inactivityUnitOptions = [
-  { value: "days", label: "Days" },
-  { value: "weeks", label: "Weeks" },
-  { value: "months", label: "Months" },
+  { value: "days", label: "Tage" },
+  { value: "weeks", label: "Wochen" },
+  { value: "months", label: "Monate" },
 ] as const
 
 const menuStatusOptions = [
   { value: "published", label: "Published" },
-  { value: "review", label: "Needs review" },
   { value: "draft", label: "Draft" },
   { value: "archived", label: "Archived" },
 ] as const
 
 const menuCurrencyOptions = [{ value: "EUR", label: "EUR (€)" }] as const
+
+const partnerStatusOptions = [
+  { value: "all", label: "All statuses" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+  { value: "paused", label: "Paused" },
+  { value: "draft", label: "Draft" },
+  { value: "pending_verification", label: "Pending verification" },
+  { value: "archived", label: "Archived" },
+] as const
 
 type PartnerWorkspaceProps = {
   partners: PartnerWithDeals[]
@@ -282,6 +300,9 @@ type InitialDealDraft = {
   benefitCategory?: string
   dealType?: string
   discountType?: string
+  displaySubtitle?: string
+  displaySubtitleAuto?: boolean
+  displayTitle?: string
   rewardSummary?: string
   title: string
 }
@@ -349,16 +370,6 @@ type InitialMilestoneDraft = {
   title: string
 }
 
-type PendingMenuReview = {
-  id?: string
-  menuName: string
-  partnerId: string
-  partnerName: string
-  categories: number
-  items: number
-  updatedAt: string | null
-}
-
 type SectionStatusTone = "info" | "recommended" | "required" | "required-subtle"
 
 type SectionStatus = {
@@ -370,7 +381,6 @@ type SectionStatusValue = SectionStatus | SectionStatus[]
 
 type PartnerSettingsTab =
   | "details"
-  | "rewards"
   | "deals"
   | "menu"
   | "access"
@@ -378,7 +388,7 @@ type PartnerSettingsTab =
   | "danger"
 
 function isPartnerSettingsTab(value: string | undefined): value is PartnerSettingsTab {
-  return ["details", "rewards", "deals", "menu", "access", "activity", "danger"].includes(
+  return ["details", "deals", "menu", "access", "activity", "danger"].includes(
     value ?? "",
   )
 }
@@ -446,8 +456,7 @@ const partnerSettingsTabCopy: Record<
   { title: string; description: string }
 > = {
   details: { title: "Partner profile", description: "Business information, contact details, location, branding, and media." },
-  rewards: { title: "Operating hours", description: "Weekly opening schedule, date-specific hour changes, and yearly holiday exceptions." },
-  deals: { title: "Deals and rewards", description: "Customer offers, stamp milestones, eligibility rules, availability, and redemption settings." },
+  deals: { title: "Stamps and Deals", description: "Manage stamp-card rewards alongside customer deals, eligibility rules, availability, and redemption settings." },
   menu: { title: "Menu management", description: "Menu details, categories, items, pricing, images, and display order." },
   access: { title: "Staff access", description: "Manage the staff members who can administer or scan for this partner." },
   activity: { title: "Customer activity", description: "Review stamp-card progress, visits, applied benefits, and redemptions." },
@@ -460,7 +469,7 @@ const createPartnerTabCopy: Record<
 > = {
   profile: { title: "Business profile", description: "Enter the partner's identity, ownership, contact details, and location." },
   operations: { title: "Operations and media", description: "Configure opening hours, holiday closures, branding, and cover images." },
-  offers: { title: "Rewards and deals", description: "Set up stamp-card milestones and optional customer deals." },
+  offers: { title: "Rewards and benefits", description: "Set up stamp-card milestones and optional customer benefits." },
   menu: { title: "Starter menu", description: "Create the initial menu, categories, items, prices, and images." },
   review: { title: "Review and create", description: "Review required sections, then create the partner and all staged content." },
 }
@@ -476,6 +485,10 @@ export function PartnerWorkspace({
   portalMode = false,
 }: PartnerWorkspaceProps) {
   const [query, setQuery] = useState("")
+  const [partnerFilter, setPartnerFilter] = useState<
+    "all" | "active" | "featured"
+  >("all")
+  const [statusFilter, setStatusFilter] = useState("all")
   const [mode, setMode] = useState<"view" | "create">(
     partners.length && (portalMode || initialMode === "view") ? "view" : "create",
   )
@@ -498,67 +511,88 @@ export function PartnerWorkspace({
 
   const partnerCount = partners.length
   const activePartners = partners.filter(isPartnerActive).length
-  const featuredPartners = partners.filter((partner) => partner.is_featured).length
+  const featuredPartners = partners.filter(
+    (partner) => isPartnerActive(partner) && partner.is_featured,
+  ).length
   const dealCount = partners.reduce(
     (count, partner) => count + partner.deals.length,
     0,
   )
-  const pendingMenuReviews = useMemo(
-    () =>
-      partners.flatMap((partner) =>
-        partner.menus
-          .filter((menu) => menu.status === "review")
-          .map((menu) => ({
-            id: menu.id,
-            menuName: menu.name || "Untitled menu",
-            partnerId: partner.id ?? "",
-            partnerName: partner.name || "Untitled partner",
-            categories: menu.categories.length,
-            items: menu.items.length,
-            updatedAt: menu.updated_at,
-          })),
-      ),
-    [partners],
-  )
   const filteredPartners = useMemo(() => {
     const normalized = query.trim().toLowerCase()
 
-    if (!normalized) {
-      return partners
-    }
+    return partners.filter((partner) => {
+      if (partnerFilter === "active" && !isPartnerActive(partner)) return false
+      if (
+        partnerFilter === "featured" &&
+        !(isPartnerActive(partner) && partner.is_featured)
+      ) {
+        return false
+      }
 
-    return partners.filter((partner) =>
-      [
-        partner.name,
-        partner.short_name,
-        partner.city_name,
-        partner.type,
-        partner.status,
-        partner.email,
-        partner.owner_email,
-        ...(partner.category ?? []),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(normalized),
-    )
-  }, [partners, query])
+      const matchesQuery =
+        !normalized ||
+        [
+          partner.name,
+          partner.short_name,
+          partner.city_name,
+          partner.type,
+          partner.status,
+          partner.email,
+          partner.owner_email,
+          ...(partner.category ?? []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(normalized)
+
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active"
+          ? isPartnerActive(partner)
+          : statusFilter === "inactive"
+            ? !isPartnerActive(partner)
+            : partner.status === statusFilter)
+
+      return matchesQuery && matchesStatus
+    })
+  }, [partnerFilter, partners, query, statusFilter])
 
   const selectedPartner =
-    partners.find((partner) => partner.id === selectedId) ??
-    filteredPartners[0] ??
-    partners[0]
+    filteredPartners.find((partner) => partner.id === selectedId) ??
+    filteredPartners[0]
+  const hasActiveFilters =
+    Boolean(query.trim()) ||
+    statusFilter !== "all" ||
+    partnerFilter !== "all"
 
   return (
     <section id="partners" className="partner-management-brand space-y-3">
       <ToastViewport />
-      <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-5">
+      <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
         <LiveMetric label="Partners" value={partnerCount} />
-        <LiveMetric label="Active partners" value={activePartners} />
-        <LiveMetric label="Featured partners" value={featuredPartners} />
-        <LiveMetric label="Deals" value={dealCount} />
-        <LiveMetric label="Menu approvals required" value={pendingMenuReviews.length} />
+        <LiveMetric
+          label="Active partners"
+          value={activePartners}
+          active={partnerFilter === "active"}
+          onClick={() =>
+            setPartnerFilter((current) =>
+              current === "active" ? "all" : "active",
+            )
+          }
+        />
+        <LiveMetric
+          label="Featured partners"
+          value={featuredPartners}
+          active={partnerFilter === "featured"}
+          onClick={() =>
+            setPartnerFilter((current) =>
+              current === "featured" ? "all" : "featured",
+            )
+          }
+        />
+        <LiveMetric label="Benefits" value={dealCount} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]">
@@ -574,7 +608,7 @@ export function PartnerWorkspace({
               {!portalMode ? <button
                 type="button"
                 onClick={startCreatePartner}
-                className="h-9 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white transition hover:bg-teal-800"
+                className="inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-md bg-teal-700 px-3 text-sm font-semibold leading-none text-white transition hover:-translate-y-px hover:bg-teal-800 active:translate-y-0"
               >
                 Add
               </button>
@@ -587,6 +621,42 @@ export function PartnerWorkspace({
               placeholder="Search partners"
               className="mt-3 h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
             />
+            <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <label className="block text-xs font-semibold text-zinc-600">
+                Status
+                <select
+                  aria-label="Status"
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value)}
+                  className="mt-1 h-9 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm font-normal text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                >
+                  {partnerStatusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p
+                aria-live="polite"
+                className="text-xs font-medium text-zinc-500 sm:pb-2 sm:text-right"
+              >
+                {filteredPartners.length} of {partnerCount} partners
+              </p>
+            </div>
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("")
+                  setStatusFilter("all")
+                  setPartnerFilter("all")
+                }}
+                className="mt-2 text-left text-xs font-semibold text-teal-700 underline decoration-teal-300 underline-offset-2 transition hover:text-teal-900"
+              >
+                Reset filters
+              </button>
+            ) : null}
           </div>
 
           <div className="max-h-[calc(100vh-220px)] space-y-1.5 overflow-y-auto p-2">
@@ -613,7 +683,20 @@ export function PartnerWorkspace({
               ))
             ) : (
               <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
-                No partners match your search.
+                <p>No partners match the current filters.</p>
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("")
+                      setStatusFilter("all")
+                      setPartnerFilter("all")
+                    }}
+                    className="mt-2 font-semibold text-teal-700 underline decoration-teal-300 underline-offset-2 transition hover:text-teal-900"
+                  >
+                    Reset filters
+                  </button>
+                ) : null}
               </div>
             )}
           </div>
@@ -639,6 +722,23 @@ export function PartnerWorkspace({
                 onLocationChange={setWorkspaceLocation}
                 portalMode={portalMode}
               />
+          ) : partners.length && hasActiveFilters ? (
+            <EditorShell
+              title="No matching partners"
+              description="Adjust the search or partner filters to select a partner."
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("")
+                  setStatusFilter("all")
+                  setPartnerFilter("all")
+                }}
+                className="inline-flex min-h-10 items-center justify-center rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
+              >
+                Reset filters
+              </button>
+            </EditorShell>
           ) : (
             <EditorShell
               title="No partners yet"
@@ -653,189 +753,44 @@ export function PartnerWorkspace({
   )
 }
 
-function LiveMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="border-b border-zinc-200 px-3 py-2.5 last:border-b-0 sm:border-b-0">
+function LiveMetric({
+  label,
+  value,
+  active = false,
+  onClick,
+}: {
+  label: string
+  value: number
+  active?: boolean
+  onClick?: () => void
+}) {
+  const content = (
+    <>
       <p className="text-xs font-medium text-zinc-500">{label}</p>
       <p className="mt-0.5 text-xl font-semibold tracking-normal text-zinc-950">
         {value}
       </p>
-    </div>
+    </>
   )
-}
+  const className = `border-b border-zinc-200 px-3 py-2.5 last:border-b-0 sm:border-b-0 ${
+    active ? "bg-teal-50 ring-1 ring-inset ring-teal-200" : ""
+  }`
 
-export function PendingMenuReviewPanel({
-  reviews,
-  onSelectPartner,
-}: {
-  reviews: PendingMenuReview[]
-  onSelectPartner: (partnerId: string) => void
-}) {
-  const visibleReviews = reviews.slice(0, 6)
-  const hiddenCount = Math.max(reviews.length - visibleReviews.length, 0)
-
-  if (!reviews.length) {
-    return null
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        aria-label={`${label}: ${value}`}
+        aria-pressed={active}
+        onClick={onClick}
+        className={`${className} block w-full text-left transition hover:bg-zinc-50 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-teal-600`}
+      >
+        {content}
+      </button>
+    )
   }
 
-  return (
-    <div className="rounded-xl border border-zinc-200 bg-white px-3 py-2 shadow-sm">
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="font-semibold text-zinc-900">Menu approvals required</span>
-          <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
-            {reviews.length}
-          </span>
-        </div>
-        <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-          {visibleReviews.map((review) => (
-            <button
-              type="button"
-              key={review.id ?? `${review.partnerId}-${review.menuName}`}
-              onClick={() => onSelectPartner(review.partnerId)}
-              className="max-w-full rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-left text-xs font-medium text-zinc-700 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-900 sm:max-w-72"
-            >
-              <span className="block truncate">{review.partnerName}</span>
-              <span className="block truncate text-zinc-500">
-                {review.menuName} · {review.items} items
-              </span>
-            </button>
-          ))}
-          {hiddenCount ? (
-            <span className="inline-flex h-8 items-center rounded-md border border-zinc-200 bg-zinc-50 px-2.5 text-xs font-medium text-zinc-500">
-              +{hiddenCount} more
-            </span>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export function MenuApprovalWorkspace({
-  partners,
-}: {
-  partners: PartnerWithDeals[]
-}) {
-  const reviews = partners.flatMap((partner) =>
-    partner.menus
-      .filter((menu) => menu.status === "review")
-      .map((menu) => ({ partner, menu })),
-  )
-
-  return (
-    <section className="space-y-4">
-      <ToastViewport />
-      <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-teal-700">Review queue</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-zinc-950">Menu approvals</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600">
-            Preview every submitted menu here. Open its partner menu management page if changes are needed before approval.
-          </p>
-        </div>
-        <span className="inline-flex w-fit rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
-          {reviews.length} awaiting approval
-        </span>
-      </div>
-
-      {reviews.length ? (
-        <div className="space-y-4">
-          {reviews.map(({ partner, menu }) => (
-            <MenuApprovalCard
-              key={menu.id ?? `${partner.id}-${menu.name}`}
-              menu={menu}
-              partner={partner}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-dashed border-zinc-300 bg-white p-10 text-center shadow-sm">
-          <h3 className="text-base font-semibold text-zinc-900">All menus are reviewed</h3>
-          <p className="mt-1 text-sm text-zinc-500">New submissions will appear here when their status is set to Needs review.</p>
-        </div>
-      )}
-    </section>
-  )
-}
-
-function MenuApprovalCard({
-  menu,
-  partner,
-}: {
-  menu: PartnerMenu
-  partner: PartnerWithDeals
-}) {
-  const [state, formAction] = useActionState(approveMenu, initialState)
-  useToastNotification(state)
-  const categories = sortMenuCategories(menu.categories)
-  const sortedItems = sortMenuItems(menu.items)
-  const uncategorizedItems = sortedItems.filter((item) => !item.category_id)
-
-  return (
-    <article className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-      <header className="flex flex-col gap-3 border-b border-zinc-200 bg-zinc-50/70 p-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">{partner.name || "Untitled partner"}</p>
-          <h3 className="mt-1 text-lg font-bold text-zinc-950">{menu.name || "Untitled menu"}</h3>
-          <p className="mt-1 text-sm text-zinc-600">{menu.description || "No description"}</p>
-          <p className="mt-2 text-xs text-zinc-500">
-            {categories.length} categories · {menu.items.length} items · Updated {formatDateTime(menu.updated_at)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/?partner=${encodeURIComponent(partner.id ?? "")}&tab=menu&view=settings`}
-            className="inline-flex h-9 items-center rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
-          >
-            Edit in partner menu
-          </Link>
-          <form action={formAction}>
-            <input type="hidden" name="id" value={menu.id ?? ""} />
-            <SubmitButton label="Approve menu" pendingLabel="Approving..." size="compact" />
-          </form>
-        </div>
-      </header>
-
-      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
-        {categories.map((category) => {
-          const items = sortedItems.filter((item) => item.category_id === category.id)
-          return (
-            <section key={category.id ?? category.name} className="rounded-lg border border-zinc-200 bg-white p-3">
-              <h4 className="font-semibold text-zinc-900">{category.name || "Untitled category"}</h4>
-              {items.length ? (
-                <ul className="mt-2 divide-y divide-zinc-100">
-                  {items.map((item) => (
-                    <li key={item.id ?? item.name} className="flex gap-3 py-2 text-sm">
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-medium text-zinc-800">{item.name || "Untitled item"}</span>
-                        {item.description ? <span className="mt-0.5 block text-xs text-zinc-500">{item.description}</span> : null}
-                      </span>
-                      <span className="shrink-0 font-semibold text-zinc-700">{formatPrice(item.price, item.currency)}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="mt-2 text-xs text-zinc-500">No items in this category.</p>}
-            </section>
-          )
-        })}
-        {uncategorizedItems.length ? (
-          <section className="rounded-lg border border-zinc-200 bg-white p-3">
-            <h4 className="font-semibold text-zinc-900">Other items</h4>
-            <ul className="mt-2 divide-y divide-zinc-100">
-              {uncategorizedItems.map((item) => (
-                <li key={item.id ?? item.name} className="flex gap-3 py-2 text-sm">
-                  <span className="min-w-0 flex-1 font-medium text-zinc-800">{item.name || "Untitled item"}</span>
-                  <span className="shrink-0 font-semibold text-zinc-700">{formatPrice(item.price, item.currency)}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-      </div>
-      <div className="px-4 pb-4"><ActionMessage state={state} /></div>
-    </article>
-  )
+  return <div className={className}>{content}</div>
 }
 
 function PartnerListButton({
@@ -847,9 +802,6 @@ function PartnerListButton({
   selected: boolean
   onSelect: () => void
 }) {
-  const pendingMenuCount = partner.menus.filter(
-    (menu) => menu.status === "review",
-  ).length
   const hasDeals = partner.deals.length > 0
 
   return (
@@ -880,15 +832,12 @@ function PartnerListButton({
             <p className="text-xs font-medium text-zinc-600">
               {partner.deals.length} {partner.deals.length === 1 ? "deal" : "deals"}
             </p>
-            {partner.is_featured ? <FeaturedBadge compact /> : null}
+            {isPartnerActive(partner) && partner.is_featured ? (
+              <FeaturedBadge compact />
+            ) : null}
             {!hasDeals ? (
               <span className="whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                Deal recommended
-              </span>
-            ) : null}
-            {pendingMenuCount ? (
-              <span className="whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                {pendingMenuCount} menu {pendingMenuCount === 1 ? "review" : "reviews"}
+                Benefit recommended
               </span>
             ) : null}
           </div>
@@ -963,8 +912,7 @@ function PartnerDetail({
     hasRequiredFields?: boolean
   }> = [
     { id: "details", label: "Partner Profile", hasRequiredFields: true },
-    { id: "rewards", label: "Operating Hours", hasRequiredFields: true },
-    { id: "deals", label: "Deals & Rewards", hasRequiredFields: true },
+    { id: "deals", label: "Stamps & Deals", hasRequiredFields: true },
     ...(partnerTypeSupportsMenu(partner.type)
       ? [{ id: "menu" as const, label: "Menu Management", hasRequiredFields: true }]
       : []),
@@ -1007,7 +955,7 @@ function PartnerDetail({
               <button
                 type="button"
                 onClick={() => setActiveView("settings")}
-                className={`px-3 py-2 text-sm font-semibold transition ${
+                className={`inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold leading-none transition ${
                   activeView === "settings"
                     ? "bg-teal-700 text-white"
                     : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
@@ -1018,7 +966,7 @@ function PartnerDetail({
               <button
                 type="button"
                 onClick={() => setActiveView("microsite")}
-                className={`px-3 py-2 text-sm font-semibold transition ${
+                className={`inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold leading-none transition ${
                   activeView === "microsite"
                     ? "bg-teal-700 text-white"
                     : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
@@ -1028,7 +976,9 @@ function PartnerDetail({
               </button>
             </div>
             <StatusPill active={isPartnerActive(partner)} />
-            {partner.is_featured ? <FeaturedBadge /> : null}
+            {isPartnerActive(partner) && partner.is_featured ? (
+              <FeaturedBadge />
+            ) : null}
           </div>
         }
       >
@@ -1038,49 +988,49 @@ function PartnerDetail({
               aria-label="Partner settings"
               className="mb-4"
             >
-              <div className="flex w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
-              {settingsTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() =>
-                    {
-                      setTabState({ partnerIdentity, tab: tab.id })
-                      onLocationChange?.({ tab: tab.id, view: "settings" })
-                      rememberWorkspaceLocation({
-                        mode: "view",
-                        partner: partner.id,
-                        tab: tab.id,
-                        view: "settings",
-                      })
-                    }
-                  }
-                  title={tab.label}
-                  aria-current={settingsTab === tab.id ? "page" : undefined}
-                  className={`min-w-0 flex-1 px-1 py-2.5 text-center text-[10px] font-semibold leading-tight transition xl:text-[11px] 2xl:text-xs ${
-                    settingsTab === tab.id
-                      ? tab.id === "danger"
-                        ? "bg-rose-700 text-white"
-                        : "bg-teal-700 text-white"
-                      : tab.id === "danger"
-                        ? "bg-white text-rose-700 hover:bg-rose-50"
-                        : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
-                  }`}
-                >
-                  <span className="inline-flex max-w-full items-start justify-center gap-0.5 whitespace-nowrap">
-                    <span>{tab.label}</span>
-                    {tab.hasRequiredFields ? (
-                      <span
-                        aria-hidden="true"
-                        className="text-sm font-black leading-none text-rose-500"
-                        title="Contains required fields"
-                      >
-                        *
+              <div className="w-full overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
+                <div className="flex min-w-max divide-x divide-zinc-200">
+                  {settingsTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        setTabState({ partnerIdentity, tab: tab.id })
+                        onLocationChange?.({ tab: tab.id, view: "settings" })
+                        rememberWorkspaceLocation({
+                          mode: "view",
+                          partner: partner.id,
+                          tab: tab.id,
+                          view: "settings",
+                        })
+                      }}
+                      title={tab.label}
+                      aria-current={settingsTab === tab.id ? "page" : undefined}
+                      className={`min-h-12 min-w-[8.5rem] flex-1 px-3 py-2.5 text-center text-[11px] font-semibold leading-4 transition whitespace-normal break-words sm:text-xs ${
+                        settingsTab === tab.id
+                          ? tab.id === "danger"
+                            ? "bg-rose-700 text-white"
+                            : "bg-teal-700 text-white"
+                          : tab.id === "danger"
+                            ? "bg-white text-rose-700 hover:bg-rose-50"
+                            : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                      }`}
+                    >
+                      <span className="inline-flex max-w-full items-start justify-center gap-1 whitespace-normal break-words">
+                        <span>{tab.label}</span>
+                        {tab.hasRequiredFields ? (
+                          <span
+                            aria-hidden="true"
+                            className="text-sm font-black leading-none text-rose-500"
+                            title="Contains required fields"
+                          >
+                            *
+                          </span>
+                        ) : null}
                       </span>
-                    ) : null}
-                  </span>
-                </button>
-              ))}
+                    </button>
+                  ))}
+                </div>
               </div>
             </nav>
 
@@ -1115,13 +1065,10 @@ function PartnerDetail({
                 </div>
               </div>
             ) : null}
-            {settingsTab === "rewards" ? (
-              <OpeningHoursPanel partner={partner} embedded />
-            ) : null}
             {settingsTab === "deals" ? (
               <div className="space-y-3">
-                <DealsPanel partner={partner} embedded />
                 <MilestonesPanel partner={partner} embedded />
+                <DealsPanel partner={partner} embedded />
               </div>
             ) : null}
             {settingsTab === "menu" ? <MenuPanel partner={partner} embedded /> : null}
@@ -1205,7 +1152,7 @@ function EditorShell({
   return (
     <div className={flat ? "" : compact ? "overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm" : "rounded-md border border-zinc-200 bg-white shadow-sm"}>
       <div
-        className={`flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${
+        className={`flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${
           flat ? "pb-4" : compact ? "p-3.5" : "p-5"
         } ${
           contentOpen && !flat ? "border-b border-zinc-200" : ""
@@ -1237,7 +1184,7 @@ function EditorShell({
           />
         )}
         {aside ? (
-          <div className="flex shrink-0 flex-wrap gap-2">
+          <div className="flex min-w-0 shrink-0 flex-wrap gap-2">
             {aside}
           </div>
         ) : null}
@@ -1838,6 +1785,12 @@ function PartnerForm({
   portalMode?: boolean
 }) {
   const [state, formAction] = useActionState(savePartner, initialState)
+  const [descriptionState, setDescriptionState] = useState(initialState)
+  const [isGeneratingDescription, startGeneratingDescription] = useTransition()
+  const router = useRouter()
+  const [descriptionDraft, setDescriptionDraft] = useState(
+    () => partner?.description ?? "",
+  )
   const [templateSource, setTemplateSource] =
     useState<PartnerWithDeals | null>(null)
   const [socialHandles, setSocialHandles] = useState<SocialHandleDraft[]>(() =>
@@ -1914,7 +1867,7 @@ function PartnerForm({
   }> = [
     { id: "profile", label: "Business Profile", hasRequiredFields: true },
     { id: "operations", label: "Operations & Media", hasRequiredFields: true },
-    { id: "offers", label: "Rewards & Deals", hasRequiredFields: true },
+    { id: "offers", label: "Rewards & Benefits", hasRequiredFields: true },
     ...(menuSupported
       ? [{ id: "menu" as const, label: "Starter Menu", hasRequiredFields: true }]
       : []),
@@ -1937,6 +1890,7 @@ function PartnerForm({
   const applyTemplate = (source: PartnerWithDeals) => {
     const nextType = normalizePartnerTypeValue(source.type)
     setTemplateSource(source)
+    setDescriptionDraft(source.description ?? "")
     setSelectedPartnerType(nextType)
     setSelectedCategories(
       normalizePartnerCategoriesForType(nextType, source.category),
@@ -1973,6 +1927,8 @@ function PartnerForm({
         .forEach((details) => {
           details.open = false
         })
+
+      router.refresh()
     }
 
     if (!(mode === "create" && state.ok && state.created)) {
@@ -1981,6 +1937,8 @@ function PartnerForm({
 
     const frame = window.requestAnimationFrame(() => {
       setSocialHandles([])
+      setDescriptionDraft("")
+      setDescriptionState(initialState)
       setInitialDeals([])
       setInitialMilestones([createInitialMilestoneDraft()])
       setInitialMenuEnabled(false)
@@ -2002,7 +1960,43 @@ function PartnerForm({
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [mode, state.created, state.ok])
+  }, [mode, router, state])
+
+  const requestDescription = () => {
+    const form = formRef.current
+    if (!form || isGeneratingDescription) return
+
+    // Do not forward the whole partner form here: it can contain large image
+    // files, while the Content-Agent only needs the small public profile facts below.
+    const formData = new FormData()
+    for (const fieldName of ["name", "type", "city_id", "address", "description"]) {
+      const field = form.elements.namedItem(fieldName)
+      if (
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLSelectElement ||
+        field instanceof HTMLTextAreaElement
+      ) {
+        formData.set(fieldName, field.value)
+      }
+    }
+
+    const selectedCityId = String(formData.get("city_id") ?? "")
+    const selectedCity = cityOptions.find((option) => option.value === selectedCityId)
+    formData.set("city_name", selectedCity?.label ?? partner?.city_name ?? "")
+    for (const category of form.querySelectorAll<HTMLInputElement>(
+      'input[name="category"]:checked',
+    )) {
+      formData.append("category", category.value)
+    }
+
+    startGeneratingDescription(async () => {
+      const result = await generatePartnerDescription(initialState, formData)
+      setDescriptionState(result)
+      if (result.ok && result.description) {
+        setDescriptionDraft(result.description)
+      }
+    })
+  }
 
   return (
     <form
@@ -2144,34 +2138,35 @@ function PartnerForm({
 
       {mode === "create" ? (
         <nav aria-label="Add partner steps">
-          <div className="flex w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
-            {createTabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  if (tab.id === "review") {
-                    setReviewSnapshot(
-                      createPartnerReviewSnapshot(formRef.current, {
-                        dealCount: initialDeals.length,
-                        menuCategoryCount: initialMenuCategories.length,
-                        menuEnabled: initialMenuEnabled,
-                        menuItemCount: initialMenuItems.length,
-                        milestoneCount: initialMilestones.length,
-                      }),
-                    )
-                  }
-                  setCreateTab(tab.id)
-                }}
-                title={tab.label}
-                aria-current={createTab === tab.id ? "step" : undefined}
-                className={`min-w-0 flex-1 px-1.5 py-2.5 text-center text-[10px] font-semibold leading-tight transition sm:text-[11px] xl:text-xs ${
-                  createTab === tab.id
-                    ? "bg-teal-700 text-white"
-                    : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
-                }`}
-              >
-                  <span className="inline-flex max-w-full items-start justify-center gap-0.5 whitespace-nowrap">
+          <div className="w-full overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
+            <div className="flex min-w-max divide-x divide-zinc-200">
+              {createTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    if (tab.id === "review") {
+                      setReviewSnapshot(
+                        createPartnerReviewSnapshot(formRef.current, {
+                          dealCount: initialDeals.length,
+                          menuCategoryCount: initialMenuCategories.length,
+                          menuEnabled: initialMenuEnabled,
+                          menuItemCount: initialMenuItems.length,
+                          milestoneCount: initialMilestones.length,
+                        }),
+                      )
+                    }
+                    setCreateTab(tab.id)
+                  }}
+                  title={tab.label}
+                  aria-current={createTab === tab.id ? "step" : undefined}
+                  className={`min-h-12 min-w-[8.5rem] flex-1 px-3 py-2.5 text-center text-[11px] font-semibold leading-4 transition whitespace-normal break-words sm:text-xs ${
+                    createTab === tab.id
+                      ? "bg-teal-700 text-white"
+                      : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                  }`}
+                >
+                  <span className="inline-flex max-w-full items-start justify-center gap-1 whitespace-normal break-words">
                     <span>{tab.label}</span>
                     {tab.hasRequiredFields ? (
                       <span
@@ -2184,7 +2179,8 @@ function PartnerForm({
                     ) : null}
                   </span>
                 </button>
-            ))}
+              ))}
+            </div>
           </div>
         </nav>
       ) : null}
@@ -2355,9 +2351,19 @@ function PartnerForm({
         <TextAreaField
           label="Description"
           name="description"
-          defaultValue={partner?.description ?? templateSource?.description}
+          value={descriptionDraft}
+          onChange={setDescriptionDraft}
           required
+          labelAccessory={
+            <GenerateDescriptionButton
+              pending={isGeneratingDescription}
+              onClick={requestDescription}
+            />
+          }
         />
+        {descriptionState.message ? (
+          <ActionMessage state={descriptionState} toast={false} />
+        ) : null}
         <MultiSelectField
           label="Categories"
           name="category"
@@ -2371,8 +2377,16 @@ function PartnerForm({
         />
       </FormSection>
 
+      {mode === "edit" && partner?.id ? (
+        <OpeningHoursPanel
+          partner={partner}
+          embedded
+          withinPartnerForm
+        />
+      ) : null}
+
       <FormSection
-        title="Contact and Location"
+        title="Contact, Location and Socials"
         defaultOpen={false}
         required={requiredSectionMarker}
       >
@@ -2546,14 +2560,14 @@ function PartnerForm({
           </FormSection>
 
           <FormSection
-            title="Deals"
+            title="Benefits"
             defaultOpen={false}
             status={{ label: "Recommended", tone: "recommended" }}
           >
             {initialDeals.length === 0 ? (
               <WarningNote>
-                At least one deal is recommended, but the partner can be
-                created without deals.
+              At least one benefit is recommended, but the partner can be
+              created without benefits.
               </WarningNote>
             ) : null}
             <InitialDealsEditor
@@ -3095,7 +3109,7 @@ function InitialMilestonesEditor({
           >
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-zinc-900">
-                Milestone {index + 1}
+                Belohnungsstufe {index + 1}
               </p>
               {milestones.length > 1 ? (
                 <button
@@ -3103,7 +3117,7 @@ function InitialMilestonesEditor({
                   onClick={() => onRemove(milestone.id)}
                   className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
                 >
-                  Remove
+                  Entfernen
                 </button>
               ) : null}
             </div>
@@ -3121,7 +3135,7 @@ function InitialMilestonesEditor({
                 required
               />
               <SelectField
-                label="Reward type"
+                label="Belohnungstyp"
                 name={`initial_milestone_${index}_reward_type`}
                 value={milestone.rewardType}
                 options={rewardTypeOptions}
@@ -3142,7 +3156,7 @@ function InitialMilestonesEditor({
               />
               {showsRewardItem ? (
                 <TextField
-                  label="Reward item"
+                  label="Artikelname"
                   name={`initial_milestone_${index}_reward_item`}
                   value={milestone.rewardItem}
                   onChange={(rewardItem) =>
@@ -3292,9 +3306,9 @@ function InitialDealsEditor({
                       toggleDraftId(current, deal.id),
                     )
                   }
-                  title={`Deal ${index + 1}`}
+                  title={`Vorteil ${index + 1}`}
                   rewardSummary={
-                    deal.rewardSummary || deal.title || "Reward not set"
+                    deal.rewardSummary || deal.title || "Vorteil nicht eingerichtet"
                   }
                   actions={
                     <>
@@ -3307,14 +3321,14 @@ function InitialDealsEditor({
                       }
                       className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
                     >
-                      {expanded ? "Collapse" : "Edit"}
+                      {expanded ? "Einklappen" : "Bearbeiten"}
                     </button>
                     <button
                       type="button"
                       onClick={() => onRemove(deal.id)}
                       className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
                     >
-                      Remove
+                      Entfernen
                     </button>
                     </>
                   }
@@ -3370,7 +3384,7 @@ function InitialDealsEditor({
         </div>
       ) : (
         <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
-          No deals staged.
+          No benefits staged.
         </div>
       )}
       <button
@@ -3378,7 +3392,7 @@ function InitialDealsEditor({
         onClick={handleAdd}
         className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
       >
-        Add deal
+        Add benefit
       </button>
     </div>
   )
@@ -3523,7 +3537,7 @@ function InitialMenuEditor({
               required
             />
             <SelectField
-              label="Menu approval status"
+              label="Menu status"
               name="initial_menu_status"
               defaultValue={DEFAULT_MENU_STATUS}
               options={menuStatusOptions}
@@ -4000,8 +4014,8 @@ function DealsPanel({
     <div className="space-y-4">
       {!hasDealRows ? (
         <WarningNote>
-          At least one deal is recommended, but this partner can exist
-          without deals.
+          At least one benefit is recommended, but this partner can exist
+          without benefits.
         </WarningNote>
       ) : null}
       {hasDealRows ? (
@@ -4017,7 +4031,7 @@ function DealsPanel({
         </div>
       ) : (
         <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
-          No deals staged.
+          No benefits staged.
         </div>
       )}
       {partnerId ? (
@@ -4026,13 +4040,14 @@ function DealsPanel({
           onClick={() => setDealEditor({ mode: "create" })}
           className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
         >
-          Add deal
+          Add benefit
         </button>
       ) : null}
       <DealEditorDialog
         editor={dealEditor}
         onClose={() => setDealEditor(null)}
         partnerId={partnerId}
+        partnerName={partner.name ?? ""}
         visits={partner.visits}
       />
     </div>
@@ -4044,7 +4059,7 @@ function DealsPanel({
 
   return (
     <EditorShell
-      title="Deals"
+      title="Benefits"
       description="Configure selectable, automatic, and fallback benefits for the Supabase redemption flow."
       collapsible
       defaultOpen={false}
@@ -4079,7 +4094,7 @@ function DealCardHeader({
   typeLabel?: string
 }) {
   const displayTypeLabel =
-    typeLabel || labelForValue(dealUiTypeOptions, dealType) || "Deal"
+    typeLabel || labelForValue(dealUiTypeOptions, dealType) || "Benefit"
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -4165,6 +4180,7 @@ function dealAudienceValueLabel(audience = "both") {
   if (audience === "premium") return "Premium"
   if (audience === "free") return "Free"
   if (audience === "both") return "Free + Premium"
+  if (audience === "free_trial_only") return "Nur Free-Testphase"
 
   return "Free + Premium"
 }
@@ -4221,8 +4237,8 @@ function NewDealCard({
         }
         expanded={expanded}
         onToggle={() => setExpanded((value) => !value)}
-        title={`Deal ${index + 1}`}
-        rewardSummary={deal.rewardSummary || deal.title || "Reward not set"}
+        title={`Vorteil ${index + 1}`}
+        rewardSummary={deal.rewardSummary || deal.title || "Vorteil nicht eingerichtet"}
         actions={
           <>
           <button
@@ -4230,14 +4246,14 @@ function NewDealCard({
             onClick={() => setExpanded((value) => !value)}
             className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
           >
-            {expanded ? "Collapse" : "Edit"}
+            {expanded ? "Einklappen" : "Bearbeiten"}
           </button>
           <button
             type="button"
             onClick={onRemove}
             className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
           >
-            Remove
+            Entfernen
           </button>
           </>
         }
@@ -4323,7 +4339,7 @@ function DealCard({
         typeLabel={dealCardTypeLabel(deal)}
         expanded={false}
         onToggle={onEdit}
-        title={`Deal ${index + 1}`}
+        title={`Benefit ${index + 1}`}
         rewardSummary={formatDealRewardSummary(deal)}
         actions={
           deal.id ? (
@@ -4354,11 +4370,13 @@ function DealEditorDialog({
   editor,
   onClose,
   partnerId,
+  partnerName,
   visits,
 }: {
   editor: DealEditorState | null
   onClose: () => void
   partnerId: string
+  partnerName: string
   visits: Visit[]
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -4398,10 +4416,10 @@ function DealEditorDialog({
         <header className="flex items-start justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
           <div>
             <h3 id="deal-dialog-title" className="text-lg font-bold tracking-tight text-zinc-950">
-              {deal ? "Edit deal" : "Add deal"}
+              {deal ? "Edit benefit" : "Add benefit"}
             </h3>
             <p className="mt-0.5 text-xs text-zinc-500">
-              Configure the reward and confirm before saving.
+              Configure the benefit and confirm before saving.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -4426,6 +4444,7 @@ function DealEditorDialog({
         <div className="overflow-y-auto p-3 sm:p-4">
           <DealForm
             deal={deal}
+            partnerName={partnerName}
             partnerId={partnerId}
             mode={deal ? "edit" : "create"}
             visits={visits}
@@ -4457,6 +4476,7 @@ function DealFormShell({
 
 function DealForm({
   deal,
+  partnerName = "",
   defaultActive,
   footerAction,
   onCancel,
@@ -4470,6 +4490,7 @@ function DealForm({
   visits = [],
 }: {
   deal?: Deal
+  partnerName?: string
   defaultActive?: boolean
   footerAction?: ReactNode
   onCancel?: () => void
@@ -4507,6 +4528,8 @@ function DealForm({
 
       <DealFields
         deal={deal}
+        dealDraft={state.dealDraft}
+        partnerName={partnerName}
         defaultActive={defaultActive ?? deal?.active ?? true}
         onDraftActiveChange={onDraftActiveChange}
         onDraftMetaChange={onDraftMetaChange}
@@ -4518,8 +4541,8 @@ function DealForm({
       <ActionMessage state={state} />
       <div className="flex flex-wrap gap-2">
         <SubmitButton
-          label={mode === "create" ? "Add deal" : "Save deal"}
-          pendingLabel={mode === "create" ? "Adding deal..." : "Saving deal..."}
+          label={mode === "create" ? "Add benefit" : "Save benefit"}
+          pendingLabel={mode === "create" ? "Adding benefit..." : "Saving benefit..."}
         />
         {mode === "edit" && onCancel ? (
           <button
@@ -4534,9 +4557,9 @@ function DealForm({
       </div>
       <ConfirmDialog
         open={confirmingSave}
-        title={mode === "create" ? "Add this deal?" : "Save changes to this deal?"}
+        title={mode === "create" ? "Add this benefit?" : "Save changes to this benefit?"}
         description="Review the reward, item, eligibility, dates, and limits before confirming."
-        confirmLabel={mode === "create" ? "Add deal" : "Save deal"}
+        confirmLabel={mode === "create" ? "Add benefit" : "Save benefit"}
         onCancel={() => setConfirmingSave(false)}
         onConfirm={() => {
           confirmedSubmitRef.current = true
@@ -4592,78 +4615,75 @@ type DealFormConfig = {
 
 const dealFieldHelp = {
   dealType:
-    "The business trigger or campaign type, such as Happy Hour, Welcome reward, or Streak reward.",
+    "Legt Auslöser oder Kampagne fest, zum Beispiel Happy Hour, Willkommen, Comeback oder Streak.",
   discountType:
-    "What the user receives: percentage discount, fixed € amount, free item, bonus stamp, or 2-for-1.",
+    "Legt fest, was Nutzer erhalten: Prozent- oder €-Rabatt, Gratisartikel, Bonusstempel oder 2 für 1.",
   benefitCategory:
-    "Controls how the benefit is applied: user-selected, automatic background, or fallback if no deal is selected.",
+    "Legt die Aktivierung fest: vor dem Besuch auswählen, automatisch beim Scan oder als Fallback.",
   audience:
-    "Who can use this benefit: free users, premium users, or both.",
+    "Legt fest, wer diesen Vorteil nutzen kann: Free, Premium oder beide.",
   activationRequired:
-    "Whether the user must select this deal before scanning. This is automatically set by benefit category.",
+    "Legt fest, ob der Vorteil vor dem Scan ausgewählt werden muss. Die Einstellung wird aus der Aktivierung abgeleitet.",
   discountValue:
-    "Only used for percent or fixed discounts. Percent means %, fixed means EUR.",
+    "Nur für prozentuale oder feste Rabatte. Prozent bedeutet %, fest bedeutet €.",
   rewardItem:
-    "Name of the free item or reward staff should give, for example Free drink.",
-  benefitCount: "Number of bonus stamps to add. Used for bonus stamp rewards.",
+    "Name des Artikels, den das Personal ausgibt, zum Beispiel Gratisgetränk.",
+  benefitCount: "Anzahl der zusätzlichen Bonusstempel.",
   estimatedSavings:
-    "Approximate money value used for user savings stats and post-scan animation.",
-  expiryDays: "How many days an earned reward remains valid.",
+    "Geschätzter Geldwert für Ersparnisstatistik und Animation nach dem Scan.",
+  expiryDays: "So viele Tage bleibt eine verdiente Belohnung gültig.",
   triggerValue:
-    "The condition threshold, such as streak days or challenge target.",
+    "Schwellenwert für den Auslöser, zum Beispiel Streak-Tage oder Challenge-Ziel.",
   challengeName:
-    "Internal challenge name used to distinguish multiple challenge rewards.",
+    "Interner Name zur Unterscheidung mehrerer Challenges.",
   durationValue:
-    "Reward users who return within this configured duration.",
+    "Belohnt Nutzer, die innerhalb dieses Zeitraums zurückkehren.",
   inactivityValue:
-    "Reward inactive users who have not returned for this configured time period.",
-  stockTotal: "Total available stock for a limited deal drop.",
-  stockRemaining: "How many redemptions are still available.",
+    "Belohnt inaktive Nutzer, die innerhalb dieses Zeitraums nicht zurückgekehrt sind.",
+  stockTotal: "Gesamtzahl verfügbarer Einlösungen für diesen Deal Drop.",
+  stockRemaining: "So viele Einlösungen sind noch verfügbar.",
   reserveOnSelection:
-    "If enabled, stock is temporarily reserved when the user selects the deal.",
-  validWindow: "Date/time range when this deal can be used.",
-  happyHour: "Daily time window when the Happy Hour deal is available.",
+    "Reserviert das Kontingent vorübergehend, wenn ein Nutzer den Vorteil auswählt.",
+  validWindow: "Zeitraum, in dem dieser Vorteil genutzt werden kann.",
+  happyHour: "Tägliches Zeitfenster, in dem die Happy Hour verfügbar ist.",
   happyHourWeekdays:
-    "Choose the days when this Happy Hour is available. If no days are selected, this Happy Hour applies every day.",
-  cooldownHours:
-    "Minimum time before the same user can use this deal again.",
-  maxRedemptionsGlobal:
-    "Maximum total times this deal can be redeemed by all users.",
-  maxRedemptionsPerUser:
-    "Maximum times each user can redeem this deal.",
+    "Wähle die Tage für diese Happy Hour. Ohne Auswahl gilt sie täglich.",
+  cooldownHours: "Mindestzeit, bevor derselbe Nutzer den Vorteil erneut nutzen kann.",
+  maxRedemptionsGlobal: "Maximale Gesamtzahl aller Einlösungen.",
+  maxRedemptionsPerUser: "Maximale Einlösungen pro Nutzer.",
   selectionExpiryMinutes:
-    "How long the selected deal remains valid before the QR scan.",
-  minSpend: "Minimum order value required to use this deal.",
-  maxDiscountAmount: "Maximum discount cap for percentage discounts.",
+    "So lange bleibt ein ausgewählter Vorteil vor dem QR-Scan gültig.",
+  minSpend: "Erforderlicher Mindestbestellwert für diesen Vorteil.",
+  maxDiscountAmount: "Maximaler Rabattbetrag bei prozentualen Rabatten.",
   rewardTrackTarget:
-    "Which reward track this applies to: base, premium, or all eligible.",
-  timezone: "Timezone used for time-based deals like Happy Hour.",
-  weekdays: "Days of week when this deal is available.",
+    "Für welchen Stempelkartenpfad dies gilt: Basis, Premium oder alle berechtigten Nutzer.",
+  timezone: "Zeitzone für zeitbasierte Vorteile wie Happy Hour.",
+  weekdays: "Wochentage, an denen dieser Vorteil verfügbar ist.",
   staffInstructions:
-    "Shown to scanner/order staff so they know what to give or apply.",
-  customerDescription: "Shown to users in the app.",
-  terms: "Fine print or conditions for this deal.",
+    "Wird dem Scan- und Kassenpersonal angezeigt.",
+  customerDescription: "Wird Nutzern in der App und auf der Partnerseite angezeigt.",
+  terms: "Bedingungen für diesen Vorteil.",
 } as const
 
 const dealExplanations: Record<string, DealTypeExplanation> = {
   two_for_one: {
     shortDescription:
-      "User selects this before visiting to get two items for the price of one.",
+      "Nutzer wählen den Vorteil vor dem Besuch aus und erhalten zwei Artikel zum Preis von einem.",
     description:
-      "A direct selectable deal where the user gets two items for the price of one. The user must select this before the QR scan. Only one direct deal can be used per visit.",
+      "Ein direkt auswählbarer Vorteil: Nutzer erhalten zwei Artikel zum Preis von einem. Die Auswahl erfolgt vor dem QR-Scan; pro Besuch ist nur ein direkter Vorteil möglich.",
     recommendedSetup: [
-      "Reward/effect type: 2-for-1",
-      "Benefit category: User selects before visit",
-      "Activation required: Yes",
+      "Belohnungsformat: 2 für 1",
+      "Aktivierung: Vor dem Besuch auswählen",
+      "Aktivierung erforderlich: Ja",
     ],
     requiredFields: [
-      "Audience",
-      "Customer description",
-      "Staff instructions",
-      "Estimated savings",
-      "Optional expiry or limits",
+      "Zielgruppe",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
+      "Geschätzte Ersparnis",
+      "Optionale Gültigkeit oder Limits",
     ],
-    example: "Buy one döner, get one döner free.",
+    example: "Zwei Pizzen erhalten, eine bezahlen.",
     autoSet: [
       "type = two_for_one",
       "discount_type = 2for1",
@@ -4673,21 +4693,21 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   welcome: {
     shortDescription:
-      "First-visit reward. Can be selectable or automatic depending on reward type.",
+      "Vorteil für den ersten Besuch. Je nach Belohnungsformat direkt auswählbar oder automatisch.",
     description:
-      "A reward for a user’s first visit or first qualifying interaction with a partner. It can either be a selectable direct reward or an automatic bonus stamp.",
+      "Vorteil für den ersten Besuch oder die erste qualifizierte Interaktion. Der Auslöser heißt Willkommen; das Belohnungsformat bestimmt die konkrete Ausgabe.",
     recommendedSetup: [
-      "If the reward is a bonus stamp: automatic background, no activation",
-      "If the reward is a free item, discount, or 2-for-1: user selects before visit",
+      "Bonusstempel: automatisch beim Scan, keine Aktivierung",
+      "Gratisartikel, Rabatt oder 2 für 1: vor dem Besuch auswählen",
     ],
     requiredFields: [
-      "Reward/effect type",
-      "Audience",
-      "Customer description",
-      "Staff instructions",
-      "Reward item, discount value, or bonus stamp count depending on reward type",
+      "Belohnungsformat",
+      "Zielgruppe",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
+      "Artikel, Rabattwert oder Anzahl Bonusstempel – abhängig vom Belohnungsformat",
     ],
-    example: "First visit: free drink or First visit: +1 bonus stamp.",
+    example: "Erster Besuch: Gratisgetränk oder +1 Bonusstempel.",
     autoSet: [
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
@@ -4695,71 +4715,71 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   comeback: {
     shortDescription:
-      "Reward for returning within a configured duration.",
+      "Zeitbonus für die Rückkehr innerhalb eines definierten Zeitraums.",
     description:
-      "Reward users who return within a configured duration. It can be automatic, such as +1 bonus stamp, or selectable, such as a free item.",
+      "Belohnt Nutzer, die innerhalb eines festgelegten Zeitraums zurückkehren. Der Zeitbonus ist ein eigener automatischer Auslöser.",
     recommendedSetup: [
-      "If the reward is a bonus stamp: automatic background, no activation",
-      "If the reward is a free item, discount, or 2-for-1: user selects before visit",
+      "Bonusstempel: automatisch beim Scan, keine Aktivierung",
+      "Direkte Vorteile: vor dem Besuch auswählen",
     ],
     requiredFields: [
-      "Reward/effect type",
-      "Duration value and unit",
-      "Expiry days if the reward expires",
-      "Customer description",
-      "Staff instructions",
+      "Belohnungsformat",
+      "Zeitraum und Einheit",
+      "Gültigkeitstage bei Ablauf",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
     ],
-    example: "Come back within 72 hours and get +1 bonus stamp.",
+    example: "Innerhalb von 72 Stunden zurückkehren und +1 Bonusstempel erhalten.",
     autoSet: [
       "metadata.bonus_mode = duration_bonus",
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
     ],
-    important: "Save backend type as comeback, not duration_bonus.",
+    important: "Im Backend bleibt der Typ comeback; duration_bonus wird nicht als Typ gespeichert.",
   },
   comeback_inactive: {
     shortDescription:
-      "Reward inactive users who have not returned for a configured time period.",
+      "Reaktiviert Nutzer, die für einen definierten Zeitraum nicht zurückgekehrt sind.",
     description:
-      "Reward inactive users who have not returned for a configured time period. Useful for reactivation campaigns.",
+      "Eine Reaktivierungskampagne für inaktive Nutzer. Der Auslöser heißt Comeback; das Belohnungsformat bestimmt die konkrete Ausgabe.",
     recommendedSetup: [
-      "Configure inactivity and optional visit-count filters",
-      "Use the candidate preview to confirm matching users",
-      "Bonus stamp rewards apply automatically; item, discount, and 2-for-1 rewards are selectable",
+      "Inaktivitätszeitraum und optionale Besuchsfilter festlegen",
+      "Vorschau nutzen, um passende Nutzer zu prüfen",
+      "Bonusstempel sind automatisch; Artikel, Rabatt und 2 für 1 werden vorher ausgewählt",
     ],
     requiredFields: [
-      "Inactivity period value and unit",
-      "Reward/effect type",
-      "Candidate filters if needed",
-      "Customer description",
-      "Staff instructions",
+      "Inaktivitätszeitraum und Einheit",
+      "Belohnungsformat",
+      "Optionale Kandidatenfilter",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
     ],
-    example: "Users inactive for 3 weeks get a free drink.",
+    example: "Nutzer ohne Besuch seit drei Wochen erhalten ein Gratisgetränk.",
     autoSet: [
       "type = comeback",
       "metadata.bonus_mode = comeback_inactive",
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
     ],
-    important: "Saved with backend type comeback and metadata.bonus_mode = comeback_inactive.",
+    important: "Wird mit Backend-Typ comeback und metadata.bonus_mode = comeback_inactive gespeichert.",
   },
   happy_hour: {
-    shortDescription: "Available only during the configured time window.",
+    shortDescription: "Nur im festgelegten Zeitfenster verfügbar.",
     description:
-      "A time-limited direct deal that is available only during a specific time window. The user selects it before the QR scan, and it is revalidated during redemption.",
+      "Eine zeitlich begrenzte Kampagne. Nutzer wählen den Vorteil vor dem QR-Scan aus; bei der Einlösung wird das Zeitfenster erneut geprüft.",
     recommendedSetup: [
-      "Benefit category: User selects before visit",
-      "Activation required: Yes",
+      "Aktivierung: Vor dem Besuch auswählen",
+      "Aktivierung erforderlich: Ja",
     ],
     requiredFields: [
-      "Happy hour start",
-      "Happy hour end",
-      "Reward/effect type",
-      "Discount value or reward item depending on reward type",
-      "Customer description",
-      "Staff instructions",
+      "Beginn der Happy Hour",
+      "Ende der Happy Hour",
+      "Belohnungsformat",
+      "Rabattwert oder Artikel – abhängig vom Belohnungsformat",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
     ],
-    example: "10% off between 15:00 and 18:00.",
+    example: "10 % Rabatt zwischen 15:00 und 18:00 Uhr.",
     autoSet: [
       "type = happy_hour",
       "benefit_category = direct_selectable",
@@ -4768,49 +4788,49 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   permanent_discount: {
     shortDescription:
-      "Applies automatically only when no direct deal is selected.",
+      "Gilt automatisch nur, wenn kein direkter Vorteil ausgewählt wurde.",
     description:
-      "An automatic fallback discount. It applies only if the user did not select another direct deal. It does not stack with selected direct deals.",
+      "Ein Dauerrabatt als automatischer Fallback. Er gilt nur, wenn kein anderer direkter Vorteil ausgewählt wurde und ist nicht kombinierbar.",
     recommendedSetup: [
-      "Reward/effect type: Percentage discount or Fixed € discount",
-      "Benefit category: Applies only if no selected deal",
-      "Activation required: No",
+      "Belohnungsformat: Prozentualer oder fester €-Rabatt",
+      "Aktivierung: Automatisch als Fallback",
+      "Aktivierung erforderlich: Nein",
     ],
     requiredFields: [
-      "Discount value",
-      "Audience",
-      "Customer description",
-      "Staff instructions",
-      "Estimated savings",
+      "Rabattwert",
+      "Zielgruppe",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
+      "Geschätzte Ersparnis",
     ],
     example:
-      "Premium users always get 5% off if they do not use another deal.",
+      "Premium-Nutzer erhalten immer 5 % Rabatt, wenn sie keinen anderen Vorteil nutzen.",
     autoSet: [
       "type = permanent_discount",
       "benefit_category = automatic_fallback",
       "activation_required = false",
     ],
-    important: "Display this as Permanent fallback discount, not just Permanent discount.",
+    important: "Als Dauerrabatt anzeigen.",
   },
   limited_drop: {
-    shortDescription: "Limited by time or stock. User selects before visiting.",
+    shortDescription: "Zeitlich oder mengenmäßig begrenzt. Vor dem Besuch auswählen.",
     description:
-      "A limited-time or limited-stock direct deal. The user must select it before the QR scan. It can expire or sell out.",
+      "Ein zeitlich oder mengenmäßig begrenzter direkter Vorteil. Nutzer wählen ihn vor dem QR-Scan aus. Er kann ablaufen oder ausverkauft sein.",
     recommendedSetup: [
-      "Benefit category: User selects before visit",
-      "Activation required: Yes",
+      "Aktivierung: Vor dem Besuch auswählen",
+      "Aktivierung erforderlich: Ja",
     ],
     requiredFields: [
-      "Reward/effect type",
-      "Stock total",
-      "Stock remaining",
-      "Valid from",
-      "Valid until",
-      "Customer description",
-      "Staff instructions",
-      "Estimated savings",
+      "Belohnungsformat",
+      "Gesamtkontingent",
+      "Verbleibendes Kontingent",
+      "Gültig ab",
+      "Gültig bis",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
+      "Geschätzte Ersparnis",
     ],
-    example: "Only 50 free drinks available today.",
+    example: "Heute sind nur 50 Gratisgetränke verfügbar.",
     autoSet: [
       "type = limited_drop",
       "benefit_category = direct_selectable",
@@ -4819,21 +4839,21 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   birthday: {
     shortDescription:
-      "Birthday reward. Can be selectable or automatic depending on reward type.",
+      "Vorteil zum Geburtstag. Je nach Belohnungsformat direkt auswählbar oder automatisch.",
     description:
-      "A birthday reward. It can be a selectable direct reward or an automatic bonus stamp.",
+      "Ein Auslöser zum Geburtstag. Der Auslöser heißt Geburtstag; das Belohnungsformat bestimmt die konkrete Ausgabe.",
     recommendedSetup: [
-      "If the reward is a bonus stamp: automatic background, no activation",
-      "If the reward is a free item, discount, or 2-for-1: user selects before visit",
+      "Bonusstempel: automatisch beim Scan, keine Aktivierung",
+      "Gratisartikel, Rabatt oder 2 für 1: vor dem Besuch auswählen",
     ],
     requiredFields: [
-      "Reward/effect type",
-      "Audience",
-      "Reward item, discount value, or bonus stamp count depending on reward type",
-      "Customer description",
-      "Staff instructions",
+      "Belohnungsformat",
+      "Zielgruppe",
+      "Artikel, Rabattwert oder Anzahl Bonusstempel – abhängig vom Belohnungsformat",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
     ],
-    example: "Birthday week: free dessert.",
+    example: "Geburtstagswoche: Gratisdessert.",
     autoSet: [
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
@@ -4841,121 +4861,121 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   free_item: {
     shortDescription:
-      "User selects this before visiting to receive a specific free item.",
+      "Nutzer wählen diesen Vorteil vor dem Besuch aus und erhalten einen bestimmten Gratisartikel.",
     description:
-      "A direct selectable deal where the user receives a specific free item. This requires the item name, not a discount value.",
+      "Ein direkt auswählbarer Vorteil mit einem bestimmten Gratisartikel. Erfordert den Artikelnamen, keinen Rabattwert.",
     recommendedSetup: [
-      "Reward/effect type: Free item",
-      "Benefit category: User selects before visit",
-      "Activation required: Yes",
+      "Belohnungsformat: Gratisartikel",
+      "Aktivierung: Vor dem Besuch auswählen",
+      "Aktivierung erforderlich: Ja",
     ],
     requiredFields: [
-      "Free item name",
-      "Customer description",
-      "Staff instructions",
-      "Estimated savings",
+      "Artikelname",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
+      "Geschätzte Ersparnis",
     ],
-    example: "Free drink with your order.",
+    example: "Gratisgetränk zur Bestellung.",
     autoSet: [
       "type = free_item",
       "discount_type = item",
       "benefit_category = direct_selectable",
       "activation_required = true",
     ],
-    important: "Hide discount value for this deal type. Require reward_item.",
+    important: "Keinen Rabattwert anzeigen. reward_item ist erforderlich.",
   },
   discount: {
     shortDescription:
-      "User selects this before visiting. Does not stack with other direct deals.",
+      "Nutzer wählen diesen Vorteil vor dem Besuch aus. Nicht mit anderen direkten Vorteilen kombinierbar.",
     description:
-      "A normal discount deal that the user selects before visiting. This can be a percentage or fixed currency amount. It does not stack with other direct deals.",
+      "Ein regulärer Rabatt, den Nutzer vor dem Besuch auswählen. Er kann prozentual oder als fester Betrag gelten und ist nicht kombinierbar.",
     recommendedSetup: [
-      "Reward/effect type: Percentage discount or Fixed € discount",
-      "Benefit category: User selects before visit",
-      "Activation required: Yes",
+      "Belohnungsformat: Prozentualer oder fester €-Rabatt",
+      "Aktivierung: Vor dem Besuch auswählen",
+      "Aktivierung erforderlich: Ja",
     ],
     requiredFields: [
-      "Discount value",
-      "Audience",
-      "Customer description",
-      "Staff instructions",
-      "Estimated savings",
+      "Rabattwert",
+      "Zielgruppe",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
+      "Geschätzte Ersparnis",
     ],
-    example: "10% off or €5 off.",
+    example: "10 % Rabatt oder 5 € Rabatt.",
     autoSet: [
       "type = discount",
       "benefit_category = direct_selectable",
       "activation_required = true",
     ],
-    important: "Display this as Selectable discount, not just Discount.",
+    important: "Als Rabatt anzeigen.",
   },
   bonus_stamp: {
     shortDescription:
-      "Adds extra stamps automatically during scan if eligible.",
+      "Fügt beim Scan automatisch Zusatzstempel hinzu, wenn die Person berechtigt ist.",
     description:
-      "An automatic background reward that adds extra stamps during redemption if eligible. Users do not select this manually.",
+      "Ein automatischer Vorteil, der bei der Einlösung Zusatzstempel hinzufügt. Nutzer wählen ihn nicht manuell aus.",
     recommendedSetup: [
-      "Reward/effect type: Bonus stamp",
-      "Benefit category: Applies automatically during scan",
-      "Activation required: No",
+      "Belohnungsformat: Bonusstempel",
+      "Aktivierung: Automatisch beim Scan",
+      "Aktivierung erforderlich: Nein",
     ],
     requiredFields: [
-      "Number of bonus stamps",
-      "Audience",
-      "Customer description",
-      "Optional staff instructions",
+      "Anzahl Bonusstempel",
+      "Zielgruppe",
+      "Kundenbeschreibung",
+      "Optionale Mitarbeiterhinweise",
     ],
-    example: "+1 bonus stamp today.",
+    example: "+1 Bonusstempel heute.",
     autoSet: [
       "type = bonus_stamp",
       "discount_type = bonus_stamp",
       "benefit_category = automatic_background",
       "activation_required = false",
     ],
-    important: "Hide discount value. Require benefit_count.",
+    important: "Keinen Rabattwert anzeigen. benefit_count ist erforderlich.",
   },
   streak: {
-    shortDescription: "Reward based on the user's streak with this partner.",
+    shortDescription: "Bonus auf Basis einer Besuchsserie bei diesem Partner.",
     description:
-      "A reward based on the user’s streak with a partner. The reward can be a bonus stamp, free item, fixed discount, percentage discount, or 2-for-1.",
+      "Ein Streak auf Basis einer Besuchsserie. Die Belohnung kann Bonusstempel, Gratisartikel, festen oder prozentualen Rabatt oder 2 für 1 enthalten.",
     recommendedSetup: [
-      "Trigger value is required",
-      "Bonus stamp rewards apply automatically",
-      "Free item, discount, and 2-for-1 rewards are selected before visit",
+      "Auslöserwert ist erforderlich",
+      "Bonusstempel werden automatisch angewendet",
+      "Gratisartikel, Rabatt und 2 für 1 werden vor dem Besuch ausgewählt",
     ],
     requiredFields: [
-      "Trigger value",
-      "Reward/effect type",
-      "Benefit count, reward item, or discount value depending on reward type",
-      "Expiry days if the earned reward expires",
-      "Customer description",
-      "Staff instructions",
+      "Auslöserwert",
+      "Belohnungsformat",
+      "Anzahl, Artikel oder Rabattwert – abhängig vom Belohnungsformat",
+      "Gültigkeitstage bei Ablauf",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
     ],
-    example: "3-day streak: free drink or 5-day streak: +1 bonus stamp.",
+    example: "3-Tage-Streak: Gratisgetränk oder 5-Tage-Streak: +1 Bonusstempel.",
     autoSet: [
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
     ],
   },
   challenge: {
-    shortDescription: "Reward connected to a challenge or goal.",
+    shortDescription: "Bonus für eine Challenge oder ein Ziel.",
     description:
-      "A reward connected to a challenge or goal. Depending on the reward effect, it can be automatic or selectable.",
+      "Eine Challenge für eine Aufgabe oder ein Ziel. Je nach Belohnungsformat erfolgt die Belohnung automatisch oder wird vorher ausgewählt.",
     recommendedSetup: [
-      "Challenge name identifies this challenge internally",
-      "Bonus stamp rewards apply automatically",
-      "Free item, discount, and 2-for-1 rewards are selected before visit",
-      "Trigger value can be used as the challenge target",
+      "Der Challenge-Name unterscheidet Challenges intern",
+      "Bonusstempel werden automatisch angewendet",
+      "Gratisartikel, Rabatt und 2 für 1 werden vor dem Besuch ausgewählt",
+      "Der Auslöserwert kann als Challenge-Ziel dienen",
     ],
     requiredFields: [
-      "Challenge name",
-      "Reward/effect type",
-      "Trigger value if used as the challenge target",
-      "Benefit count, reward item, or discount value depending on reward type",
-      "Customer description",
-      "Staff instructions",
+      "Challenge-Name",
+      "Belohnungsformat",
+      "Auslöserwert bei Nutzung als Challenge-Ziel",
+      "Anzahl, Artikel oder Rabattwert – abhängig vom Belohnungsformat",
+      "Kundenbeschreibung",
+      "Mitarbeiterhinweise",
     ],
-    example: "Complete 3 visits this week and get a free drink.",
+    example: "Drei Besuche in dieser Woche abschließen und ein Gratisgetränk erhalten.",
     autoSet: [
       "metadata.challenge_name stores the internal challenge name",
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
@@ -5269,15 +5289,15 @@ function buildDealValidationMessages({
   const parsedTriggerValue = parseOptionalNumberInput(triggerValue)
 
   if (discountType === "percent" && !parsedDiscountValue) {
-    messages.discountValue = "Enter a percentage between 1 and 100."
+    messages.discountValue = "Bitte einen Prozentsatz zwischen 1 und 100 eingeben."
   }
 
   if (discountType === "fixed" && !parsedDiscountValue) {
-    messages.discountValue = "Enter an amount greater than 0."
+    messages.discountValue = "Bitte einen Betrag größer als 0 eingeben."
   }
 
   if (discountType === "percent" && parsedDiscountValue && parsedDiscountValue > 100) {
-    messages.discountValue = "Enter a percentage between 1 and 100."
+    messages.discountValue = "Bitte einen Prozentsatz zwischen 1 und 100 eingeben."
   }
 
   const parsedMinSpend = parseOptionalNumberInput(minSpend)
@@ -5288,48 +5308,48 @@ function buildDealValidationMessages({
     parsedMinSpend < parsedDiscountValue
   ) {
     messages.minSpend =
-      "Minimum spend is less than the discount amount — users may get more off than they spend."
+      "Der Mindestbestellwert ist kleiner als der Rabattwert – Nutzer könnten mehr Rabatt erhalten als sie ausgeben."
   }
 
   if ((discountType === "item" || discountType === "2for1") && !rewardItem.trim()) {
     messages.rewardItem =
       discountType === "2for1"
-        ? "Enter the item included in the 2-for-1 deal."
-        : "Enter the free item name."
+        ? "Bitte den Artikel für 2 für 1 eingeben."
+        : "Bitte den Namen des Gratisartikels eingeben."
   }
 
   if (discountType === "bonus_stamp" && !parsedBenefitCount) {
-    messages.benefitCount = "Enter at least 1 bonus stamp."
+    messages.benefitCount = "Bitte mindestens 1 Bonusstempel eingeben."
   }
 
   if (type === "happy_hour" && !happyHourStart) {
-    messages.happyHourStart = "Enter a start time."
+    messages.happyHourStart = "Bitte eine Startzeit eingeben."
   }
 
   if (type === "happy_hour" && !happyHourEnd) {
-    messages.happyHourEnd = "Enter an end time."
+    messages.happyHourEnd = "Bitte eine Endzeit eingeben."
   }
 
   if (
     (type === "streak" || type === "challenge") &&
     !parsedTriggerValue
   ) {
-    messages.triggerValue = "Enter a trigger value greater than 0."
+    messages.triggerValue = "Bitte einen Auslöserwert größer als 0 eingeben."
   }
 
   if (type === "challenge" && !challengeName.trim()) {
-    messages.challengeName = "Enter a challenge name."
+    messages.challengeName = "Bitte einen Challenge-Namen eingeben."
   }
 
   if (
     (type === DURATION_BONUS_DEAL || type === "comeback") &&
     !parsedDurationValue
   ) {
-    messages.durationValue = "Enter a duration greater than 0."
+    messages.durationValue = "Bitte einen Zeitraum größer als 0 eingeben."
   }
 
   if (type === COMEBACK_INACTIVE_DEAL && !parsedInactivityValue) {
-    messages.inactivityValue = "Enter an inactivity period greater than 0."
+    messages.inactivityValue = "Bitte einen Inaktivitätszeitraum größer als 0 eingeben."
   }
 
   if (
@@ -5337,11 +5357,11 @@ function buildDealValidationMessages({
     parsedMaxVisitCount !== null &&
     parsedMaxVisitCount < parsedMinVisitCount
   ) {
-    messages.visitCountRange = "Maximum visits must be at least minimum visits."
+    messages.visitCountRange = "Die maximale Besuchszahl muss mindestens der minimalen Besuchszahl entsprechen."
   }
 
   if (type === "limited_drop" && !endsAt) {
-    messages.endsAt = "Limited Deal Drops must have an end time."
+    messages.endsAt = "Deal Drops benötigen eine Endzeit."
   }
 
   return messages
@@ -5354,27 +5374,29 @@ function formatDraftRewardSummary(
   benefitCount: number | null,
 ) {
   if (discountType === "percent") {
-    return discountValue !== null ? `${discountValue}% off` : "percentage off"
+    return discountValue !== null ? `${discountValue} % Rabatt` : "Prozentualer Rabatt"
   }
 
   if (discountType === "fixed") {
-    return discountValue !== null ? `€${discountValue} off` : "fixed € off"
+    return discountValue !== null ? `${discountValue} € Rabatt` : "Fester €-Rabatt"
   }
 
   if (discountType === "item") {
-    return rewardItem.trim() || "Free item"
+    const item = normalizeRewardItem(rewardItem)
+    return item ? `Gratis ${item}` : "Gratisartikel"
   }
 
   if (discountType === "bonus_stamp") {
     const count = benefitCount ?? 1
-    return `+${count} bonus ${count === 1 ? "stamp" : "stamps"}`
+    return `+${count} Bonusstempel`
   }
 
   if (discountType === "2for1") {
-    return rewardItem.trim() ? `2-for-1 ${rewardItem.trim()}` : "2-for-1"
+    const item = normalizeRewardItem(rewardItem)
+    return item ? `2 für 1 ${item}` : "2 für 1"
   }
 
-  return "No direct reward"
+  return "Kein direkter Vorteil"
 }
 
 function defaultDealDraftTitle() {
@@ -5402,7 +5424,7 @@ function formatDealDisplayName({
   benefitCount: number | null
   typeLabel?: string
 }) {
-  const label = typeLabel || labelForValue(dealUiTypeOptions, type) || "Deal"
+  const label = typeLabel || labelForValue(dealUiTypeOptions, type) || "Vorteil"
   const reward = formatDraftRewardSummary(
     discountType,
     discountValue,
@@ -5410,11 +5432,64 @@ function formatDealDisplayName({
     benefitCount,
   )
 
-  return reward === "No direct reward" ? label : `${reward} - ${label}`
+  // The reward format is the public title. Appending the technical trigger
+  // created divergent labels such as "10 % Rabatt – Rabatt".
+  return reward === "Kein direkter Vorteil" ? label : reward
+}
+
+function formatDealPublicSubtitle(discountType: string, rewardItem: string) {
+  if (discountType === "2for1") {
+    return "Zwei bekommen, eins bezahlen."
+  }
+
+  if (discountType === "item") {
+    const item = normalizeRewardItem(rewardItem)
+    return item ? `Gratis ${item}` : "Gratisartikel"
+  }
+
+  if (discountType === "bonus_stamp") {
+    return "Bonus auf deine Stempelkarte"
+  }
+
+  return ""
+}
+
+function formatDealPublicTitle({
+  type,
+  discountType,
+  discountValue,
+  rewardItem,
+  benefitCount,
+  benefitCategory,
+}: {
+  type: string
+  discountType: string
+  discountValue: number | null
+  rewardItem: string
+  benefitCount: number | null
+  benefitCategory?: string | null
+}) {
+  return formatBenefitTitle({
+    type,
+    discount_type: discountType,
+    discount_value: discountValue,
+    reward_item: rewardItem,
+    benefit_count: benefitCount,
+    benefit_category: benefitCategory,
+  }, "de")
+}
+
+function normalizeRewardItem(value: string | null | undefined) {
+  return (value?.trim() || "")
+    .replace(/^(?:Gratisartikel|Free item)\s*[:\-–]?\s*/i, "")
+    .replace(/^(?:Gratis|Free)\s+/i, "")
+    .trim()
 }
 
 function DealFields({
   deal,
+  dealDraft,
+  partnerName = "",
   prefix = "",
   defaultActive,
   onDraftActiveChange,
@@ -5425,6 +5500,8 @@ function DealFields({
   useBrowserValidation = true,
 }: {
   deal?: Deal
+  dealDraft?: DealFormDraft
+  partnerName?: string
   prefix?: string
   defaultActive: boolean
   onDraftActiveChange?: (active: boolean) => void
@@ -5434,18 +5511,23 @@ function DealFields({
   visits?: Visit[]
   useBrowserValidation?: boolean
 }) {
-  const initialDealType = dealUiTypeForDeal(deal)
+  const initialDealType = dealDraft?.dealConcept || dealUiTypeForDeal(deal)
   const initialBackendDealType = backendDealTypeForUi(initialDealType)
   const dealMetadata = metadataObject(deal?.metadata)
   const initialDiscountType =
-    normalizeDiscountTypeForUi(initialBackendDealType, deal?.discount_type) ||
+    normalizeDiscountTypeForUi(
+      initialBackendDealType,
+      dealDraft?.discountType || deal?.discount_type,
+    ) ||
     defaultDiscountTypeForDealType(initialBackendDealType, "")
   const [selectedDealType, setSelectedDealType] = useState(initialDealType)
   const [selectedDiscountType, setSelectedDiscountType] =
     useState(initialDiscountType)
   const [selectedBenefitCategory, setSelectedBenefitCategory] = useState(
-    deal?.benefit_category ??
-      inferBenefitCategory(initialBackendDealType, initialDiscountType),
+    dealDraft
+      ? inferBenefitCategory(initialBackendDealType, initialDiscountType)
+      : deal?.benefit_category ??
+        inferBenefitCategory(initialBackendDealType, initialDiscountType),
   )
   const [dealDropStockTotal, setDealDropStockTotal] = useState(
     formatTextInputValue(deal?.stock_total),
@@ -5457,25 +5539,39 @@ function DealFields({
     deal?.stock_remaining !== null && deal?.stock_remaining !== undefined,
   )
   const [selectedAudience, setSelectedAudience] = useState(
-    normalizeAudienceForEditor(deal?.audience),
+    normalizeAudienceForEditor(dealDraft?.audience || deal?.audience),
   )
   const [active, setActive] = useState(defaultActive)
   const [discountValue, setDiscountValue] = useState(
     formatTextInputValue(deal?.discount_value),
   )
-  const [rewardItem, setRewardItem] = useState(deal?.reward_item ?? "")
-  const [rewardItemDirty, setRewardItemDirty] = useState(false)
+  const [rewardItem, setRewardItem] = useState(
+    dealDraft?.rewardItem ?? deal?.reward_item ?? "",
+  )
+  const [rewardItemDirty, setRewardItemDirty] = useState(Boolean(dealDraft))
   const [customerDescription, setCustomerDescription] = useState(
-    deal?.customer_description ?? "",
+    dealDraft?.customerDescription ?? deal?.customer_description ?? "",
   )
   const [customerDescriptionDirty, setCustomerDescriptionDirty] =
-    useState(false)
+    useState(Boolean(dealDraft))
   const [staffInstructions, setStaffInstructions] = useState(
-    deal?.staff_instructions ?? "",
+    dealDraft?.staffInstructions ?? deal?.staff_instructions ?? "",
   )
-  const [staffInstructionsDirty, setStaffInstructionsDirty] = useState(false)
-  const [terms, setTerms] = useState(deal?.terms ?? "")
-  const [termsDirty, setTermsDirty] = useState(false)
+  const [staffInstructionsDirty, setStaffInstructionsDirty] = useState(
+    Boolean(dealDraft),
+  )
+  const [terms, setTerms] = useState(dealDraft?.terms ?? deal?.terms ?? "")
+  const [termsDirty, setTermsDirty] = useState(Boolean(dealDraft))
+  const [displayTitle, setDisplayTitle] = useState(
+    dealDraft?.displayTitle ?? deal?.public_title ?? deal?.display_title ?? "",
+  )
+  const [displaySubtitle, setDisplaySubtitle] = useState(
+    dealDraft?.displaySubtitle ?? deal?.public_subtitle ?? deal?.display_subtitle ?? "",
+  )
+  const [displaySubtitleAuto, setDisplaySubtitleAuto] = useState(
+    dealDraft?.displaySubtitleAuto ??
+      (deal?.public_subtitle ?? deal?.display_subtitle) == null,
+  )
   const [estimatedSavings, setEstimatedSavings] = useState(
     formatTextInputValue(deal?.estimated_savings),
   )
@@ -5541,6 +5637,45 @@ function DealFields({
   const [allowFreeTrial, setAllowFreeTrial] = useState(
     deal?.allow_free_trial ?? false,
   )
+  useEffect(() => {
+    if (!dealDraft) return
+
+    const nextDealType = dealDraft.dealConcept || initialDealType
+    const nextBackendDealType = backendDealTypeForUi(nextDealType)
+    const nextDiscountType =
+      normalizeDiscountTypeForUi(
+        nextBackendDealType,
+        dealDraft.discountType,
+      ) || defaultDiscountTypeForDealType(nextBackendDealType, "")
+    const nextConfig = getDealFormConfig({
+      type: nextDealType,
+      discountType: nextDiscountType,
+      benefitCategory:
+        deal?.benefit_category ??
+        inferBenefitCategory(nextBackendDealType, nextDiscountType),
+    })
+    const frame = window.requestAnimationFrame(() => {
+      setSelectedDealType(nextDealType)
+      setSelectedDiscountType(nextDiscountType)
+      setSelectedBenefitCategory(nextConfig.autoValues.benefitCategory)
+      setSelectedAudience(
+        normalizeAudienceForEditor(dealDraft.audience || DEFAULT_AUDIENCE),
+      )
+      setRewardItem(dealDraft.rewardItem)
+      setRewardItemDirty(true)
+      setCustomerDescription(dealDraft.customerDescription)
+      setCustomerDescriptionDirty(true)
+      setStaffInstructions(dealDraft.staffInstructions)
+      setStaffInstructionsDirty(true)
+      setTerms(dealDraft.terms)
+      setTermsDirty(true)
+      setDisplayTitle(dealDraft.displayTitle)
+      setDisplaySubtitle(dealDraft.displaySubtitle)
+      setDisplaySubtitleAuto(dealDraft.displaySubtitleAuto)
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [deal, dealDraft, initialDealType])
   const config = getDealFormConfig({
     type: selectedDealType,
     discountType: selectedDiscountType,
@@ -5548,7 +5683,7 @@ function DealFields({
   })
   const selectedBackendDealType = backendDealTypeForUi(selectedDealType)
   const selectedDealTypeLabel =
-    labelForValue(dealUiTypeOptions, selectedDealType) || "Deal"
+    labelForValue(dealUiTypeOptions, selectedDealType) || "Benefit"
   const benefitCategory = config.autoValues.benefitCategory
   const activationRequired = config.autoValues.activationRequired
   const isLimitedDrop = selectedBackendDealType === "limited_drop"
@@ -5629,6 +5764,46 @@ function DealFields({
         benefitCount: parseOptionalNumberInput(benefitCountText),
       }),
     )
+  }
+
+  const [dealCopyState, setDealCopyState] = useState<PartnerActionState>(initialState)
+  const [isGeneratingDealCopy, startGeneratingDealCopy] = useTransition()
+  const requestDealCopy = (field: DealCopyField) => {
+    if (isGeneratingDealCopy || !partnerName.trim()) return
+
+    const formData = new FormData()
+    formData.set("field", field)
+    formData.set("partner_name", partnerName)
+    formData.set("deal_concept", selectedDealType)
+    formData.set("discount_type", selectedDiscountType)
+    formData.set("audience", selectedAudience)
+    formData.set("reward_item", rewardItem)
+    formData.set(
+      "current_text",
+      field === "customer_description"
+        ? customerDescription
+        : field === "staff_instructions"
+          ? staffInstructions
+          : terms,
+    )
+
+    startGeneratingDealCopy(async () => {
+      const result = await generateDealCopy(initialState, formData)
+      setDealCopyState(result)
+
+      if (!result.ok || !result.description) return
+
+      if (field === "customer_description") {
+        setCustomerDescription(result.description)
+        setCustomerDescriptionDirty(true)
+      } else if (field === "staff_instructions") {
+        setStaffInstructions(result.description)
+        setStaffInstructionsDirty(true)
+      } else {
+        setTerms(result.description)
+        setTermsDirty(true)
+      }
+    })
   }
 
   const applyConfigSideEffects = (nextConfig: DealFormConfig) => {
@@ -5732,6 +5907,19 @@ function DealFields({
     emitDraftTitle({ discountType: nextDiscountType })
   }
 
+  const generatedDisplayTitle = formatDealPublicTitle({
+    type: selectedDealType,
+    discountType: selectedDiscountType,
+    discountValue: parseOptionalNumberInput(discountValue),
+    rewardItem,
+    benefitCount: parseOptionalNumberInput(benefitCount),
+    benefitCategory,
+  })
+  const generatedDisplaySubtitle = formatDealPublicSubtitle(
+    selectedDiscountType,
+    rewardItem,
+  )
+
   return (
     <div className="space-y-4">
       <input
@@ -5804,13 +5992,13 @@ function DealFields({
         </>
       ) : null}
       <FormSection
-        title="Basics"
+        title="Grundlagen"
         compact
         required="subtle"
       >
         <FieldGrid compact>
           <SelectField
-            label="Deal type"
+            label="Auslöser oder Kampagne"
             name={`${prefix}deal_concept`}
             value={selectedDealType}
             options={withCurrentOption(
@@ -5821,7 +6009,7 @@ function DealFields({
             required={useBrowserValidation}
           />
           <SelectField
-            label="Reward/effect type"
+            label="Belohnungsformat"
             name={`${prefix}discount_type`}
             value={selectedDiscountType}
             options={withCurrentOption(
@@ -5835,7 +6023,7 @@ function DealFields({
             required={useBrowserValidation}
           />
           <SelectField
-            label="Audience"
+            label="Zielgruppe"
             name={`${prefix}audience`}
             value={selectedAudience}
             options={audienceOptions}
@@ -5846,7 +6034,7 @@ function DealFields({
             required
           />
           <CheckboxField
-            label="Active"
+            label="Aktiv"
             name={`${prefix}active`}
             checked={active}
             onChange={(checked) => {
@@ -5861,7 +6049,7 @@ function DealFields({
         />
         {dealDropSoldOut ? (
           <WarningNote>
-            This Deal Drop is sold out and users cannot redeem it.
+            Dieser Deal Drop ist ausverkauft und kann nicht mehr eingelöst werden.
           </WarningNote>
         ) : null}
         <input
@@ -5876,18 +6064,80 @@ function DealFields({
         />
       </FormSection>
 
+      <FormSection title="Öffentliche Darstellung" compact>
+        <p className="text-xs leading-5 text-zinc-500">
+          Diese Texte sehen Nutzer in der App und auf der öffentlichen Partnerseite. Die technischen Deal-Felder bleiben davon getrennt.
+        </p>
+        <FieldGrid compact>
+          <TextField
+            label="Anzeigetitel"
+            name={`${prefix}display_title`}
+            placeholder="z. B. 2 für 1 ausgewählter Artikel"
+            value={displayTitle}
+            onChange={(value) => {
+              setDisplayTitle(value)
+              onDraftMetaChange?.({ displayTitle: value })
+            }}
+            hint="Optional. Leer verwendet den typbasierten Fallback."
+          />
+          <div className="space-y-2">
+            <TextField
+              label="Anzeigebeschreibung / Unterzeile"
+              name={`${prefix}display_subtitle`}
+              placeholder={generatedDisplaySubtitle || "Zwei bekommen, eins bezahlen"}
+              value={displaySubtitle}
+              maxLength={adminTextLimits.longText}
+              onChange={(value) => {
+                setDisplaySubtitle(value)
+                onDraftMetaChange?.({ displaySubtitle: value })
+              }}
+              hint={
+                displaySubtitleAuto
+                  ? "Automatische Unterzeile ist aktiv. Deaktiviere sie, um einen eigenen Text oder keinen Text zu verwenden."
+                  : "Leer speichern blendet die Unterzeile aus."
+              }
+            />
+            <CheckboxField
+              label="Automatische Unterzeile verwenden"
+              name={`${prefix}display_subtitle_auto`}
+              checked={displaySubtitleAuto}
+              onChange={(checked) => {
+                setDisplaySubtitleAuto(checked)
+                onDraftMetaChange?.({ displaySubtitleAuto: checked })
+              }}
+              hint="Bei Aktivierung wird display_subtitle als null gespeichert."
+            />
+          </div>
+        </FieldGrid>
+        <div className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2.5 text-sm text-teal-950">
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-teal-700">
+            Vorschau
+          </p>
+          <p className="mt-1 font-semibold">{displayTitle.trim() || generatedDisplayTitle}</p>
+          {displaySubtitleAuto ? (
+            generatedDisplaySubtitle ? (
+              <p className="mt-0.5 text-xs text-teal-800">{generatedDisplaySubtitle}</p>
+            ) : null
+          ) : displaySubtitle.trim() ? (
+            <p className="mt-0.5 text-xs text-teal-800">{displaySubtitle.trim()}</p>
+          ) : (
+            <p className="mt-0.5 text-xs italic text-teal-700">Keine Unterzeile</p>
+          )}
+        </div>
+      </FormSection>
+
       {hasRewardDetails ? (
         <FormSection
-          title="Reward details"
+          title="Belohnungsdetails"
           compact
           required={rewardDetailsRequired ? "subtle" : undefined}
         >
           <FieldGrid compact>
             {config.visibleFields.has("challengeName") ? (
               <TextField
-                label="Challenge name"
+                label="Challenge-Name"
                 name={`${prefix}challenge_name`}
-                placeholder="3 visits this week"
+                placeholder="3 Besuche diese Woche"
                 value={challengeName}
                 onChange={(value) => {
                   setChallengeName(value)
@@ -5913,7 +6163,7 @@ function DealFields({
             {config.visibleFields.has("durationConfig") ? (
               <>
                 <TextField
-                  label="Duration value"
+                  label="Zeitraum"
                   name={`${prefix}duration_value`}
                   type="number"
                   min={1}
@@ -5927,7 +6177,7 @@ function DealFields({
                   warning={validationMessages.durationValue}
                 />
                 <SelectField
-                  label="Duration unit"
+                  label="Zeiteinheit"
                   name={`${prefix}duration_unit`}
                   value={durationUnit}
                   options={durationUnitOptions}
@@ -5965,9 +6215,9 @@ function DealFields({
             ) : null}
             {config.visibleFields.has("rewardItem") ? (
               <TextField
-                label={selectedDiscountType === "2for1" ? "Item name" : "Free item name"}
+                label={selectedDiscountType === "2for1" ? "Artikelname" : "Name des Gratisartikels"}
                 name={`${prefix}reward_item`}
-                placeholder="Free drink"
+                placeholder="z. B. Getränk"
                 value={rewardItem}
                 onChange={(value) => {
                   setRewardItemDirty(true)
@@ -5976,8 +6226,8 @@ function DealFields({
                 }}
                 hint={
                   selectedDiscountType === "2for1"
-                    ? "Example: Burger, coffee, or main course."
-                    : "Example: Free drink."
+                    ? "Zum Beispiel Burger, Kaffee oder Hauptgericht."
+                    : "Zum Beispiel Gratisgetränk."
                 }
                 required={
                   useBrowserValidation &&
@@ -5988,7 +6238,7 @@ function DealFields({
             ) : null}
             {config.visibleFields.has("benefitCount") ? (
               <TextField
-                label="Number of bonus stamps"
+                label="Anzahl Bonusstempel"
                 name={`${prefix}benefit_count`}
                 type="number"
                 min={1}
@@ -5998,7 +6248,7 @@ function DealFields({
                   setBenefitCount(value)
                   emitDraftTitle({ benefitCountText: value })
                 }}
-                hint="Example: 1 adds one extra stamp."
+                hint="Zum Beispiel: 1 fügt einen zusätzlichen Stempel hinzu."
                 required={
                   useBrowserValidation &&
                   config.requiredFields.has("benefitCount")
@@ -6008,26 +6258,26 @@ function DealFields({
             ) : null}
             {config.visibleFields.has("estimatedSavings") ? (
               <TextField
-                label="Estimated savings (€)"
+                label="Geschätzte Ersparnis (€)"
                 name={`${prefix}estimated_savings`}
                 type="number"
                 step="any"
                 min={0}
                 value={estimatedSavings}
                 onChange={setEstimatedSavings}
-                hint="Used for savings stats and animations."
+                hint="Wird für Ersparnisstatistiken und Animationen verwendet."
                 recommended={isLimitedDrop}
               />
             ) : null}
             {config.visibleFields.has("happyHour") ? (
               <>
                 <TextField
-                  label="Happy hour start"
+                  label="Beginn der Happy Hour"
                   name={`${prefix}happy_hour_start`}
                   type="time"
                   value={happyHourStart}
                   onChange={setHappyHourStart}
-                  hint="Daily start time."
+                  hint="Tägliche Startzeit."
                   required={
                     useBrowserValidation &&
                     config.requiredFields.has("happyHour")
@@ -6035,12 +6285,12 @@ function DealFields({
                   warning={validationMessages.happyHourStart}
                 />
                 <TextField
-                  label="Happy hour end"
+                  label="Ende der Happy Hour"
                   name={`${prefix}happy_hour_end`}
                   type="time"
                   value={happyHourEnd}
                   onChange={setHappyHourEnd}
-                  hint="Daily end time."
+                  hint="Tägliche Endzeit."
                   required={
                     useBrowserValidation &&
                     config.requiredFields.has("happyHour")
@@ -6048,7 +6298,7 @@ function DealFields({
                   warning={validationMessages.happyHourEnd}
                 />
                 <WeekdayChipField
-                  label="Happy Hour weekdays"
+                  label="Wochentage der Happy Hour"
                   name={`${prefix}valid_weekdays`}
                   defaultValues={deal?.valid_weekdays}
                   hint={dealFieldHelp.happyHourWeekdays}
@@ -6057,13 +6307,13 @@ function DealFields({
             ) : null}
             {config.visibleFields.has("triggerValue") ? (
               <TextField
-                label="Trigger value"
+                label="Auslöserwert"
                 name={`${prefix}trigger_value`}
                 type="number"
                 min={1}
                 value={triggerValue}
                 onChange={setTriggerValue}
-                hint="Example: 3 for a 3-day streak."
+                hint="Zum Beispiel: 3 für einen 3-Tage-Streak."
                 required={
                   useBrowserValidation &&
                   config.requiredFields.has("triggerValue")
@@ -6073,19 +6323,19 @@ function DealFields({
             ) : null}
             {config.visibleFields.has("expiryDays") ? (
               <TextField
-                label="Expiry days"
+                label="Gültigkeitstage"
                 name={`${prefix}expiry_days`}
                 type="number"
                 min={0}
                 value={expiryDays}
                 onChange={setExpiryDays}
-                hint="Optional expiry after reward is earned."
+                hint="Optionale Gültigkeit nach dem Erhalt der Belohnung."
               />
             ) : null}
             {config.visibleFields.has("limitedWindow") ? (
               <>
                 <TextField
-                  label="Valid from"
+                  label="Gültig ab"
                   name={`${prefix}starts_at`}
                   type="datetime-local"
                   value={startsAt}
@@ -6093,7 +6343,7 @@ function DealFields({
                   hint={dealFieldHelp.validWindow}
                 />
                 <TextField
-                  label="Valid until"
+                  label="Gültig bis"
                   name={`${prefix}ends_at`}
                   type="datetime-local"
                   value={endsAt}
@@ -6105,11 +6355,11 @@ function DealFields({
             ) : null}
             {showsAllowFreeTrial ? (
               <CheckboxField
-                label="Allow free user trial"
+                label="Free-Testeinlösung erlauben"
                 name={`${prefix}allow_free_trial`}
                 checked={allowFreeTrial}
                 onChange={setAllowFreeTrial}
-                hint="Free users can redeem this once using their global 2-for-1 trial."
+                hint="Free-Nutzer können diesen Vorteil einmal mit ihrer globalen 2-für-1-Testeinlösung nutzen."
               />
             ) : null}
           </FieldGrid>
@@ -6137,10 +6387,10 @@ function DealFields({
       ) : null}
 
       {isLimitedDrop ? (
-        <FormSection title="Deal Drop inventory" compact required="subtle">
+        <FormSection title="Deal-Drop-Kontingent" compact required="subtle">
           <FieldGrid compact>
             <TextField
-              label="Stock total"
+              label="Gesamtkontingent"
               name={`${prefix}stock_total`}
               type="number"
               min={0}
@@ -6152,7 +6402,7 @@ function DealFields({
               required={useBrowserValidation}
             />
             <TextField
-              label="Stock remaining"
+              label="Verbleibendes Kontingent"
               name={`${prefix}stock_remaining`}
               type="number"
               min={0}
@@ -6166,16 +6416,25 @@ function DealFields({
           </FieldGrid>
           {dealDropSoldOut ? (
             <p className="text-xs font-semibold text-amber-700">
-              This Deal Drop is currently sold out.
+              Dieser Deal Drop ist aktuell ausverkauft.
             </p>
           ) : null}
         </FormSection>
       ) : null}
 
-      <FormSection title="Customer and staff copy" compact>
+      <FormSection title="Kundentext und Mitarbeiterhinweise" compact>
         <TextAreaField
-          label="Customer description"
+          label="Kundenbeschreibung"
           name={`${prefix}customer_description`}
+          labelAccessory={
+            partnerName ? (
+              <ContentAgentSuggestionButton
+                fieldLabel="Kundenbeschreibung"
+                pending={isGeneratingDealCopy}
+                onClick={() => requestDealCopy("customer_description")}
+              />
+            ) : null
+          }
           value={customerDescription}
           onChange={(value) => {
             setCustomerDescription(value)
@@ -6184,8 +6443,17 @@ function DealFields({
           showCharacterCount={false}
         />
         <TextAreaField
-          label="Staff instructions"
+          label="Mitarbeiterhinweise"
           name={`${prefix}staff_instructions`}
+          labelAccessory={
+            partnerName ? (
+              <ContentAgentSuggestionButton
+                fieldLabel="Mitarbeiterhinweise"
+                pending={isGeneratingDealCopy}
+                onClick={() => requestDealCopy("staff_instructions")}
+              />
+            ) : null
+          }
           value={staffInstructions}
           onChange={(value) => {
             setStaffInstructions(value)
@@ -6194,8 +6462,17 @@ function DealFields({
           showCharacterCount={false}
         />
         <TextAreaField
-          label="Terms"
+          label="Bedingungen"
           name={`${prefix}terms`}
+          labelAccessory={
+            partnerName ? (
+              <ContentAgentSuggestionButton
+                fieldLabel="Bedingungen"
+                pending={isGeneratingDealCopy}
+                onClick={() => requestDealCopy("terms")}
+              />
+            ) : null
+          }
           value={terms}
           onChange={(value) => {
             setTerms(value)
@@ -6203,16 +6480,19 @@ function DealFields({
           }}
           showCharacterCount={false}
         />
+        {dealCopyState.message ? (
+          <ActionMessage state={dealCopyState} toast={false} />
+        ) : null}
       </FormSection>
 
       {isLimitedDrop ? (
-        <FormSection title="Deal Drop card image" compact>
+        <FormSection title="Deal-Drop-Kartenbild" compact>
           <p className="text-xs leading-5 text-zinc-500">
-            Upload a highlight image for the deal card (710×400px).
+            Lade ein Highlight-Bild für die Vorteilskarte hoch (710×400 px).
           </p>
           <MediaUploadField
             key={`deal-drop-image-${deal?.id ?? "new"}`}
-            label="Deal Drop card image (710×400)"
+            label="Deal-Drop-Kartenbild (710×400)"
             fileName={`${prefix}deal_drop_image_file`}
             existingName={`${prefix}existing_deal_drop_image_url`}
             removeName={`${prefix}remove_deal_drop_image`}
@@ -6246,7 +6526,7 @@ function DealFields({
           {!isLimitedDrop ? (
             <>
               <TextField
-                label="Valid from"
+                label="Gültig ab"
                 name={`${prefix}valid_from`}
                 type="datetime-local"
                 value={validFrom}
@@ -6254,7 +6534,7 @@ function DealFields({
                 hint={dealFieldHelp.validWindow}
               />
               <TextField
-                label="Valid until"
+                label="Gültig bis"
                 name={`${prefix}valid_until`}
                 type="datetime-local"
                 value={validUntil}
@@ -6266,7 +6546,7 @@ function DealFields({
           {!isWelcomeDeal ? (
             <>
               <TextField
-                label="Max redemptions global"
+                label="Maximale Einlösungen insgesamt"
                 name={`${prefix}max_redemptions_global`}
                 type="number"
                 min={0}
@@ -6274,7 +6554,7 @@ function DealFields({
                 hint={dealFieldHelp.maxRedemptionsGlobal}
               />
               <TextField
-                label="Max redemptions per user"
+                label="Maximale Einlösungen pro Nutzer"
                 name={`${prefix}max_redemptions_per_user`}
                 type="number"
                 min={0}
@@ -6282,7 +6562,7 @@ function DealFields({
                 hint={dealFieldHelp.maxRedemptionsPerUser}
               />
               <TextField
-                label="Cooldown hours"
+                label="Wartezeit in Stunden"
                 name={`${prefix}cooldown_hours`}
                 type="number"
                 min={0}
@@ -6292,7 +6572,7 @@ function DealFields({
             </>
           ) : null}
           <TextField
-            label="Minimum spend"
+            label="Mindestbestellwert"
             name={`${prefix}min_spend`}
             type="number"
             step="any"
@@ -6303,7 +6583,7 @@ function DealFields({
             warning={validationMessages.minSpend}
           />
           <TextField
-            label="Max discount amount"
+            label="Maximaler Rabattbetrag"
             name={`${prefix}max_discount_amount`}
             type="number"
             step="any"
@@ -6312,21 +6592,21 @@ function DealFields({
             hint={dealFieldHelp.maxDiscountAmount}
           />
           <TextField
-            label="Timezone"
+            label="Zeitzone"
             name={`${prefix}timezone`}
             defaultValue={deal?.timezone ?? DEFAULT_TIMEZONE}
             hint={dealFieldHelp.timezone}
           />
           {isLimitedDrop ? (
             <WeekdayChipField
-              label="Valid weekdays"
+              label="Gültige Wochentage"
               name={`${prefix}valid_weekdays`}
               defaultValues={deal?.valid_weekdays}
               hint={dealFieldHelp.weekdays}
             />
           ) : !isHappyHour ? (
             <MultiSelectField
-              label="Weekdays"
+              label="Wochentage"
               name={`${prefix}weekdays`}
               defaultValues={deal?.weekdays}
               options={withCurrentOptions(weekdayOptions, deal?.weekdays)}
@@ -6375,12 +6655,12 @@ function DealDropPreviewCard({
   const accessLabel = formatPreviewAccessLabel(audience, trialEligible)
 
   return (
-    <FormSection title="Live preview" defaultOpen={false} compact>
+    <FormSection title="Live-Vorschau" defaultOpen={false} compact>
       <div className="max-w-md rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
         {soldOut ? (
           <div className="mb-3">
             <WarningNote>
-              This Deal Drop is sold out and users cannot redeem it.
+              Dieser Deal Drop ist ausverkauft und kann nicht mehr eingelöst werden.
             </WarningNote>
           </div>
         ) : null}
@@ -6393,13 +6673,13 @@ function DealDropPreviewCard({
         </h4>
         <p className="mt-1 text-sm leading-6 text-zinc-600">{description}</p>
         <div className="mt-4 grid gap-2 text-sm text-zinc-700 sm:grid-cols-2">
-          <Info label="Stock" value={stockState} />
+          <Info label="Kontingent" value={stockState} />
           <Info label="Countdown" value={countdownState} />
           <Info
-            label="Estimated savings"
+            label="Geschätzte Ersparnis"
             value={formatSavingsPreview(discountType, estimatedSavings)}
           />
-          <Info label="Expiry" value={expiryInfo} />
+          <Info label="Gültigkeit" value={expiryInfo} />
         </div>
       </div>
     </FormSection>
@@ -6647,7 +6927,7 @@ function MilestoneForm({
             required
           />
           <SelectField
-            label="Reward type"
+            label="Belohnungstyp"
             name="reward_type"
             value={rewardType}
             options={withCurrentOption(rewardTypeOptions, milestone?.reward_type)}
@@ -6662,7 +6942,7 @@ function MilestoneForm({
           />
           {showsRewardItem ? (
             <TextField
-              label="Reward item"
+              label="Artikelname"
               name="reward_item"
               defaultValue={milestone?.reward_item}
               required
@@ -6964,9 +7244,11 @@ function PartnerStaffForm({
 function OpeningHoursPanel({
   partner,
   embedded = false,
+  withinPartnerForm = false,
 }: {
   partner: PartnerWithDeals
   embedded?: boolean
+  withinPartnerForm?: boolean
 }) {
   const partnerId = partner.id ?? ""
   const hoursByWeekday = new Map(
@@ -6980,6 +7262,7 @@ function OpeningHoursPanel({
       </InfoNote>
       {partnerId ? (
         <WeeklyOpeningHoursForm
+          embedded={withinPartnerForm}
           holidays={partner.holidays}
           hoursByWeekday={hoursByWeekday}
           partnerId={partnerId}
@@ -7009,10 +7292,12 @@ function OpeningHoursPanel({
 }
 
 function WeeklyOpeningHoursForm({
+  embedded = false,
   holidays,
   hoursByWeekday,
   partnerId,
 }: {
+  embedded?: boolean
   holidays: PartnerHoliday[]
   hoursByWeekday: Map<number | null, PartnerOpeningHour>
   partnerId: string
@@ -7022,11 +7307,66 @@ function WeeklyOpeningHoursForm({
     initialState,
   )
   const formRef = useActionSuccess(state)
+  const embeddedFieldsRef = useRef<HTMLDivElement>(null)
+
+  const saveEmbeddedHours = () => {
+    const container = embeddedFieldsRef.current
+
+    if (!container) {
+      return
+    }
+
+    const formData = new FormData()
+    formData.set("partner_id", partnerId)
+
+    container
+      .querySelectorAll<HTMLInputElement>("[data-opening-hours-name]")
+      .forEach((input) => {
+        const name = input.dataset.openingHoursName
+
+        if (
+          !name ||
+          input.disabled ||
+          ((input.type === "checkbox" || input.type === "radio") &&
+            !input.checked)
+        ) {
+          return
+        }
+
+        formData.append(name, input.value)
+      })
+
+    formAction(formData)
+  }
+
+  const fields = (
+    <WeeklyHoursFields
+      embedded={embedded}
+      holidays={holidays}
+      hoursByWeekday={hoursByWeekday}
+    />
+  )
+
+  if (embedded) {
+    return (
+      <div ref={embeddedFieldsRef} className="space-y-4">
+        {fields}
+        <ActionMessage state={state} />
+        <button
+          type="button"
+          onClick={saveEmbeddedHours}
+          className="h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
+        >
+          Save operating hours
+        </button>
+      </div>
+    )
+  }
 
   return (
     <form ref={formRef} action={formAction} className="space-y-4">
       <input type="hidden" name="partner_id" value={partnerId} />
-      <WeeklyHoursFields holidays={holidays} hoursByWeekday={hoursByWeekday} />
+      {fields}
       <ActionMessage state={state} />
       <SubmitButton
         label="Save operating hours"
@@ -7037,12 +7377,17 @@ function WeeklyOpeningHoursForm({
 }
 
 function WeeklyHoursFields({
+  embedded = false,
   holidays = [],
   hoursByWeekday = new Map(),
 }: {
+  embedded?: boolean
   holidays?: PartnerHoliday[]
   hoursByWeekday?: Map<number | null, PartnerOpeningHour>
 }) {
+  const fieldName = (name: string) => (embedded ? undefined : name)
+  const fieldDataName = (name: string) =>
+    embedded ? { "data-opening-hours-name": name } : {}
   const [bulkOpenTime, setBulkOpenTime] = useState("09:00")
   const [bulkCloseTime, setBulkCloseTime] = useState("18:00")
   const [bulkApplied, setBulkApplied] = useState(false)
@@ -7184,16 +7529,51 @@ function WeeklyHoursFields({
           </button>
         </div>
         <div className="p-3 sm:p-4">
-          <input type="hidden" name="holiday_count" value={holidayRows.length} />
+          <input
+            type="hidden"
+            name={fieldName("holiday_count")}
+            value={holidayRows.length}
+            {...fieldDataName("holiday_count")}
+          />
           {holidayRows.map((holiday, index) => (
             <div key={`holiday-fields-${holiday.id}`}>
-              <input type="hidden" name={`holiday_${index}_date`} value={holiday.date} />
-              <input type="hidden" name={`holiday_${index}_label`} value={holiday.label} />
-              <input type="hidden" name={`holiday_${index}_kind`} value={holiday.kind} />
-              <input type="hidden" name={`holiday_${index}_opens_at`} value={holiday.opensAt} />
-              <input type="hidden" name={`holiday_${index}_closes_at`} value={holiday.closesAt} />
+              <input
+                type="hidden"
+                name={fieldName(`holiday_${index}_date`)}
+                value={holiday.date}
+                {...fieldDataName(`holiday_${index}_date`)}
+              />
+              <input
+                type="hidden"
+                name={fieldName(`holiday_${index}_label`)}
+                value={holiday.label}
+                {...fieldDataName(`holiday_${index}_label`)}
+              />
+              <input
+                type="hidden"
+                name={fieldName(`holiday_${index}_kind`)}
+                value={holiday.kind}
+                {...fieldDataName(`holiday_${index}_kind`)}
+              />
+              <input
+                type="hidden"
+                name={fieldName(`holiday_${index}_opens_at`)}
+                value={holiday.opensAt}
+                {...fieldDataName(`holiday_${index}_opens_at`)}
+              />
+              <input
+                type="hidden"
+                name={fieldName(`holiday_${index}_closes_at`)}
+                value={holiday.closesAt}
+                {...fieldDataName(`holiday_${index}_closes_at`)}
+              />
               {holiday.repeatsYearly ? (
-                <input type="hidden" name={`holiday_${index}_repeats_yearly`} value="on" />
+                <input
+                  type="hidden"
+                  name={fieldName(`holiday_${index}_repeats_yearly`)}
+                  value="on"
+                  {...fieldDataName(`holiday_${index}_repeats_yearly`)}
+                />
               ) : null}
             </div>
           ))}
@@ -7282,7 +7662,8 @@ function WeeklyHoursFields({
                 <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
                   <input
                     type="checkbox"
-                    name={`is_closed_${day.value}`}
+                    name={fieldName(`is_closed_${day.value}`)}
+                    {...fieldDataName(`is_closed_${day.value}`)}
                     checked={hour.isClosed}
                     onChange={(event) => {
                       const isClosed = event.target.checked
@@ -7299,7 +7680,8 @@ function WeeklyHoursFields({
                 </label>
                 <input
                   aria-label={`${day.label} opening time`}
-                  name={`opens_at_${day.value}`}
+                  name={fieldName(`opens_at_${day.value}`)}
+                  {...fieldDataName(`opens_at_${day.value}`)}
                   type="time"
                   required={!hour.isClosed}
                   value={hour.isClosed ? "" : hour.opensAt}
@@ -7311,7 +7693,8 @@ function WeeklyHoursFields({
                 />
                 <input
                   aria-label={`${day.label} closing time`}
-                  name={`closes_at_${day.value}`}
+                  name={fieldName(`closes_at_${day.value}`)}
+                  {...fieldDataName(`closes_at_${day.value}`)}
                   type="time"
                   required={!hour.isClosed}
                   value={hour.isClosed ? "" : hour.closesAt}
@@ -7321,7 +7704,12 @@ function WeeklyHoursFields({
                   }
                   className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                 />
-                <input type="hidden" name={`label_${day.value}`} value={hour.label} />
+                <input
+                  type="hidden"
+                  name={fieldName(`label_${day.value}`)}
+                  value={hour.label}
+                  {...fieldDataName(`label_${day.value}`)}
+                />
               </div>
             )
           })}
@@ -7868,7 +8256,7 @@ function MenuCard({
       <section className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4">
         <div>
           <h3 className="text-base font-semibold text-zinc-950">Menu details</h3>
-          <p className="mt-1 text-sm text-zinc-600">Update the menu name, description, or approval status here.</p>
+          <p className="mt-1 text-sm text-zinc-600">Update the menu name, description, or status here.</p>
         </div>
         <div className="mt-4">
           <MenuForm menu={menu} partnerId={partnerId} />
@@ -8074,11 +8462,13 @@ function MenuForm({
   onSaved?: () => void
   partnerId: string
 }) {
-  const [status, setStatus] = useState(menu?.status ?? DEFAULT_MENU_STATUS)
+  const normalizedMenuStatus =
+    menu?.status === "review" ? DEFAULT_MENU_STATUS : menu?.status ?? DEFAULT_MENU_STATUS
+  const [status, setStatus] = useState(normalizedMenuStatus)
   const initialMenuValues = {
     name: (menu?.name ?? "Speisekarte").trim(),
     description: (menu?.description ?? "").trim(),
-    status: menu?.status ?? DEFAULT_MENU_STATUS,
+    status: normalizedMenuStatus,
   }
   const savedMenuValuesRef = useRef(initialMenuValues)
   const submittedMenuValuesRef = useRef(initialMenuValues)
@@ -8194,7 +8584,7 @@ function MenuForm({
           name="status"
           value={status}
           onChange={setStatus}
-          options={withCurrentOption(menuStatusOptions, menu?.status)}
+          options={menuStatusOptions}
           required
         />
       </FieldGrid>
@@ -9633,7 +10023,7 @@ function RedemptionHistoryPanel({
                                   )}
                                 />
                                 <Info
-                                  label="Reward item"
+                                  label="Artikelname"
                                   value={benefit.reward_item || "Not set"}
                                 />
                                 <Info
@@ -9894,6 +10284,8 @@ function DeletePartnerForm({
 }) {
   const [state, formAction] = useActionState(deletePartner, initialState)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deletePassword, setDeletePassword] = useState("")
+  const [deletePasswordError, setDeletePasswordError] = useState("")
   const formRef = useRef<HTMLFormElement>(null)
   const confirmedSubmitRef = useRef(false)
   const { language } = useAdminLanguage()
@@ -9922,6 +10314,7 @@ function DeletePartnerForm({
       className="space-y-3"
     >
       <input type="hidden" name="id" value={partner.id ?? ""} />
+      <input type="hidden" name="delete_password" value={deletePassword} />
       <ActionMessage state={state} />
       <SubmitButton
         label="Delete partner"
@@ -9938,13 +10331,41 @@ function DeletePartnerForm({
         }
         confirmLabel="Delete partner"
         tone="danger"
-        onCancel={() => setConfirmingDelete(false)}
+        onCancel={() => {
+          setConfirmingDelete(false)
+          setDeletePassword("")
+          setDeletePasswordError("")
+        }}
         onConfirm={() => {
+          if (!deletePassword.trim()) {
+            setDeletePasswordError("Enter your admin password to continue.")
+            return
+          }
+
           confirmedSubmitRef.current = true
           setConfirmingDelete(false)
           formRef.current?.requestSubmit()
         }}
-      />
+      >
+        <label className="mt-4 block space-y-2 text-sm">
+          <span className="font-medium text-zinc-800">Admin password</span>
+          <input
+            type="password"
+            value={deletePassword}
+            onChange={(event) => {
+              setDeletePassword(event.target.value)
+              if (deletePasswordError) setDeletePasswordError("")
+            }}
+            autoComplete="current-password"
+            className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-rose-600 focus:ring-2 focus:ring-rose-100"
+          />
+          {deletePasswordError ? (
+            <span className="block text-xs font-medium text-rose-700">
+              {deletePasswordError}
+            </span>
+          ) : null}
+        </label>
+      </ConfirmDialog>
     </form>
   )
 }
@@ -10020,7 +10441,7 @@ function DeleteMilestoneForm({
         if (
           !window.confirm(
             language === "de"
-              ? "Diese Prämienstufe löschen?"
+              ? "Diese Belohnungsstufe löschen?"
               : "Delete this milestone?",
           )
         ) {
@@ -10104,8 +10525,8 @@ function FormSection({
       {collapsible ? (
         <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
           <summary className="cursor-pointer list-none px-3 outline-none transition hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-200 [&::-webkit-details-marker]:hidden sm:px-4">
-            <span className={`flex items-center gap-2 ${compact ? "min-h-10" : "min-h-11"}`}>
-              <span className="text-sm font-semibold tracking-normal text-zinc-900">
+            <span className={`flex min-w-0 flex-wrap items-center gap-2 ${compact ? "min-h-10" : "min-h-11"}`}>
+              <span className="min-w-0 break-words text-sm font-semibold tracking-normal text-zinc-900">
                 {title}
               </span>
               {sectionStatus ? <SectionStatusList status={sectionStatus} /> : null}
@@ -10113,7 +10534,7 @@ function FormSection({
                 aria-hidden="true"
                 viewBox="0 0 20 20"
                 fill="none"
-                className={`ml-auto size-4 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
+                className={`ml-auto size-4 shrink-0 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
               >
                 <path
                   d="m5 7.5 5 5 5-5"
@@ -10135,8 +10556,8 @@ function FormSection({
         </details>
       ) : (
         <>
-          <div className={`flex items-center gap-2 px-3 sm:px-4 ${compact ? "min-h-10" : "min-h-11"}`}>
-            <span className="text-sm font-semibold text-zinc-900">
+          <div className={`flex min-w-0 flex-wrap items-center gap-2 px-3 sm:px-4 ${compact ? "min-h-10" : "min-h-11"}`}>
+            <span className="min-w-0 break-words text-sm font-semibold text-zinc-900">
               {title}
             </span>
             {sectionStatus ? <SectionStatusList status={sectionStatus} /> : null}
@@ -10208,7 +10629,7 @@ function FieldGrid({
 }) {
   return (
     <div
-      className={`grid md:grid-cols-2 2xl:grid-cols-3 ${
+      className={`grid min-w-0 md:grid-cols-2 2xl:grid-cols-3 [&>*]:min-w-0 ${
         compact ? "gap-2.5" : "gap-3"
       }`}
     >
@@ -10397,7 +10818,7 @@ function TextField({
     value === undefined ? uncontrolledLength : measureCharacterCount(value)
 
   return (
-    <label className="block space-y-1.5 text-sm">
+    <label className="block min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} recommended={recommended} />
       <div
         className={`flex h-9 w-full items-center rounded-lg border border-zinc-300 bg-white text-sm text-zinc-950 transition focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100 ${
@@ -10464,7 +10885,7 @@ function SelectField({
   onChange?: (value: string) => void
 }) {
   return (
-    <label className="block space-y-1.5 text-sm">
+    <label className="block min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
       <select
         name={name}
@@ -10549,7 +10970,7 @@ function MultiSelectField({
   }, [open])
 
   return (
-    <div className="space-y-1.5 text-sm">
+    <div className="min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
       <details
         ref={detailsRef}
@@ -11712,18 +12133,76 @@ function PartnerPinDisplay({
   partnerId?: string | null
   pin?: number | string | null
 }) {
+  const [state, formAction] = useActionState(rotatePartnerPin, initialState)
+  const [confirmingRotation, setConfirmingRotation] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+  const confirmedRotationRef = useRef(false)
+  const router = useRouter()
   const generatedPin = partnerId ? derivePartnerPin(partnerId) : null
+  const displayedPin =
+    mode === "edit" ? state.partnerPin ?? pin ?? generatedPin : null
+
+  useEffect(() => {
+    if (state.ok) {
+      router.refresh()
+    }
+  }, [router, state.ok])
 
   return (
-    <ReadOnlyField
-      label="Partner PIN"
-      value={mode === "edit" ? pin ?? generatedPin : "Generated automatically on creation"}
-      hint={
-        mode === "edit"
-          ? "Automatically generated from the permanent partner record and kept read-only."
-          : "Auto-generated when the partner is created and kept read-only here."
-      }
-    />
+    <div className="space-y-2">
+      <ReadOnlyField
+        label="Partner PIN"
+        value={
+          mode === "edit"
+            ? displayedPin
+            : "Generated automatically on creation"
+        }
+        hint={
+          mode === "edit"
+            ? "Automatically generated from the permanent partner record. Rotate it here when the partner needs a new PIN."
+            : "Auto-generated when the partner is created and kept read-only here."
+        }
+      />
+      {mode === "edit" && partnerId ? (
+        <>
+          <form
+            ref={formRef}
+            action={formAction}
+            onSubmit={(event) => {
+              if (confirmedRotationRef.current) {
+                confirmedRotationRef.current = false
+                return
+              }
+
+              event.preventDefault()
+              setConfirmingRotation(true)
+            }}
+            className="flex flex-wrap items-center gap-2"
+          >
+            <input type="hidden" name="id" value={partnerId} />
+            <ActionMessage state={state} />
+            <SubmitButton
+              label="Rotate partner PIN"
+              pendingLabel="Rotating partner PIN..."
+              size="compact"
+              tone="outline"
+            />
+          </form>
+          <ConfirmDialog
+            open={confirmingRotation}
+            title="Rotate partner PIN?"
+            description="The current PIN will stop working and a new PIN will be generated for this partner."
+            confirmLabel="Rotate PIN"
+            onCancel={() => setConfirmingRotation(false)}
+            onConfirm={() => {
+              confirmedRotationRef.current = true
+              setConfirmingRotation(false)
+              formRef.current?.requestSubmit()
+            }}
+          />
+        </>
+      ) : null}
+    </div>
   )
 }
 
@@ -11749,6 +12228,7 @@ function TextAreaField({
   maxLength,
   showCharacterCount = true,
   onChange,
+  labelAccessory,
 }: {
   label: string
   name: string
@@ -11760,7 +12240,10 @@ function TextAreaField({
   maxLength?: number
   showCharacterCount?: boolean
   onChange?: (value: string) => void
+  labelAccessory?: ReactNode
 }) {
+  const generatedId = useId()
+  const inputId = `text-area-${generatedId.replace(/:/g, "")}`
   const resolvedMaxLength =
     typeof maxLength === "number" ? maxLength : inferTextFieldMaxLength(name)
   const [uncontrolledLength, setUncontrolledLength] = useState(() =>
@@ -11770,9 +12253,15 @@ function TextAreaField({
     value === undefined ? uncontrolledLength : measureCharacterCount(value)
 
   return (
-    <label className="block space-y-1.5 text-sm">
-      <FieldLabel label={label} required={required} />
+    <div className="block min-w-0 space-y-1.5 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <label htmlFor={inputId}>
+          <FieldLabel label={label} required={required} />
+        </label>
+        {labelAccessory}
+      </div>
       <textarea
+        id={inputId}
         name={name}
         rows={3}
         required={required}
@@ -11793,7 +12282,7 @@ function TextAreaField({
         currentLength={currentLength}
         maxLength={showCharacterCount ? resolvedMaxLength : undefined}
       />
-    </label>
+    </div>
   )
 }
 
@@ -11969,6 +12458,87 @@ function IconDeleteSubmitButton({
   )
 }
 
+function GenerateDescriptionButton({
+  onClick,
+  pending,
+}: {
+  onClick: () => void
+  pending: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={pending}
+      aria-busy={pending}
+      title="Generate with Content-Agent"
+      className="inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold leading-none text-teal-800 transition hover:-translate-y-px hover:bg-teal-100 active:translate-y-0 disabled:cursor-wait disabled:opacity-60"
+    >
+      {pending ? (
+        <LoadingSpinner className="size-3.5" />
+      ) : (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="size-3.5"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        >
+          <path d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4L12 3Z" />
+          <path d="m19 14 .7 2.3L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14Z" />
+        </svg>
+      )}
+      <span>{pending ? "Generating..." : "Generate with Content-Agent"}</span>
+    </button>
+  )
+}
+
+function ContentAgentSuggestionButton({
+  fieldLabel,
+  onClick,
+  pending,
+}: {
+  fieldLabel: string
+  onClick: () => void
+  pending: boolean
+}) {
+  const label = `Vorschlag mit Content-Agent für ${fieldLabel}`
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={pending}
+      aria-label={label}
+      title={label}
+      aria-busy={pending}
+      className="inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold leading-none text-teal-800 transition hover:-translate-y-px hover:bg-teal-100 active:translate-y-0 disabled:cursor-wait disabled:opacity-60"
+    >
+      {pending ? (
+        <LoadingSpinner className="size-3.5" />
+      ) : (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="size-3.5"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        >
+          <path d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4L12 3Z" />
+          <path d="m19 14 .7 2.3L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14Z" />
+        </svg>
+      )}
+      <span>Content-Agent</span>
+    </button>
+  )
+}
+
 function SubmitButton({
   disabled = false,
   label,
@@ -12014,7 +12584,7 @@ function SubmitButton({
       disabled={disabled || pending}
       aria-busy={isActivePending}
       value={value}
-      className={`${sizeClasses} inline-flex items-center justify-center gap-2 rounded-md font-semibold transition disabled:cursor-not-allowed ${toneClasses}`}
+      className={`${sizeClasses} inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold leading-none transition active:translate-y-px disabled:cursor-not-allowed ${toneClasses}`}
     >
       {isActivePending ? <LoadingSpinner className={size === "tiny" ? "size-3" : "size-4"} /> : null}
       {isActivePending ? pendingLabel : label}
@@ -12030,6 +12600,7 @@ function ConfirmDialog({
   tone = "default",
   onCancel,
   onConfirm,
+  children,
 }: {
   open: boolean
   title: string
@@ -12038,6 +12609,7 @@ function ConfirmDialog({
   tone?: "default" | "danger"
   onCancel: () => void
   onConfirm: () => void
+  children?: ReactNode
 }) {
   if (!open) {
     return null
@@ -12067,6 +12639,7 @@ function ConfirmDialog({
         >
           {description}
         </p>
+        {children}
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
@@ -12315,7 +12888,7 @@ function dealCardTypeLabel(deal: Deal) {
     }
   }
 
-  return labelForValue(dealUiTypeOptions, dealUiTypeForDeal(deal)) || "Deal"
+  return benefitTaxonomyLabel(deal, "de")
 }
 
 function metadataObject(value: unknown): Record<string, unknown> {
@@ -12731,21 +13304,21 @@ function formatDealDropRewardTitle(
   const item = rewardItem.trim()
 
   if (discountType === "item") {
-    return item ? `Free ${item}` : "Free item"
+    return item ? `Gratis ${item}` : "Gratisartikel"
   }
 
   if (discountType === "percent") {
-    return discountValue !== null ? `${discountValue}% off` : "Percent discount"
+    return discountValue !== null ? `${discountValue} % Rabatt` : "Prozentualer Rabatt"
   }
 
   if (discountType === "fixed") {
     return discountValue !== null
-      ? `€${discountValue} off`
-      : "Fixed discount"
+      ? `${discountValue} € Rabatt`
+      : "Fester Rabatt"
   }
 
   if (normalizeDiscountTypeForUi("limited_drop", discountType) === "2for1") {
-    return "2-for-1"
+    return item ? `2 für 1 ${item}` : "2 für 1"
   }
 
   return "Deal Drop"
@@ -12753,10 +13326,10 @@ function formatDealDropRewardTitle(
 
 function formatDealDropRewardText(discountType: string) {
   if (discountType === "item") {
-    return "Free reward item"
+    return "Gratisartikel"
   }
 
-  return labelForValue(discountTypeOptions, discountType) || "Reward preview"
+  return labelForValue(discountTypeOptions, discountType) || "Vorteilsvorschau"
 }
 
 function formatDealDropStockState(
@@ -13161,30 +13734,30 @@ function formatRewardValue(
   const label = labelForValue(discountTypeOptions, discountType)
 
   if (discountValue === null || discountValue === undefined) {
-    return label || "Not set"
+    return label || "Nicht festgelegt"
   }
 
   if (discountType === "percent") {
-    return `${discountValue}% off`
+    return `${discountValue} % Rabatt`
   }
 
   if (discountType === "fixed") {
-    return `€${discountValue} off`
+    return `${discountValue} € Rabatt`
   }
 
   if (discountType === "bonus_stamp") {
-    return `+${discountValue} bonus ${discountValue === 1 ? "stamp" : "stamps"}`
+    return `+${discountValue} Bonusstempel`
   }
 
-  return `${label || "Value"} ${discountValue}`
+  return `${label || "Wert"} ${discountValue}`
 }
 
 function formatBenefitCategory(value?: string | null) {
   const labels: Record<string, string> = {
-    direct_selectable: "Selectable deal",
-    automatic_background: "Automatic benefit",
-    automatic_fallback: "Fallback benefit",
-    base_stamp: "Base stamp",
+    direct_selectable: "Vor dem Besuch auswählen",
+    automatic_background: "Automatisch beim Scan",
+    automatic_fallback: "Automatisch als Fallback",
+    base_stamp: "Basisstempel",
   }
 
   return formatTechnicalLabel(value, labels)
@@ -13192,10 +13765,10 @@ function formatBenefitCategory(value?: string | null) {
 
 function formatBenefitSource(value?: string | null) {
   const labels: Record<string, string> = {
-    base_stamp: "Base stamp",
-    selected_direct_deal: "Selected direct deal source",
-    fallback_deal: "Fallback deal",
-    reward_milestone: "Reward milestone",
+    base_stamp: "Basisstempel",
+    selected_direct_deal: "Ausgewählter direkter Vorteil",
+    fallback_deal: "Fallback-Vorteil",
+    reward_milestone: "Stempelbelohnung",
   }
 
   return formatTechnicalLabel(value, labels)
@@ -13206,7 +13779,7 @@ function formatTechnicalLabel(
   labels: Record<string, string>,
 ) {
   if (!value) {
-    return "Not set"
+    return "Nicht festgelegt"
   }
 
   return (

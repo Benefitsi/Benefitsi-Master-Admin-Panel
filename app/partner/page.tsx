@@ -100,7 +100,7 @@ export default async function PartnerDashboardPage({
             Your partner microsites
           </h1>
           <p className="mt-2 text-sm text-zinc-600">
-            Open the microsite editor for shops linked to your account. Owners can also manage their partner profile, offers, menu, and opening hours.
+            Open the microsite editor for shops linked to your account. Owners can also manage their partner profile, benefits, menu, and opening hours.
           </p>
         </section>
 

@@ -7,14 +7,14 @@ import {
 } from "../app/admin-language.tsx"
 
 test("uses natural German terms for reward types", () => {
-  assert.equal(translateValue("Reward type", "de"), "Prämientyp")
+  assert.equal(translateValue("Reward type", "de"), "Belohnungstyp")
   assert.equal(translateValue("Item", "de"), "Artikel")
-  assert.equal(translateValue("Reward item", "de"), "Prämienartikel")
+  assert.equal(translateValue("Reward item", "de"), "Artikelname")
   assert.equal(translateValue("Fixed amount", "de"), "Fester Betrag")
   assert.equal(translateValue("Bonus stamp", "de"), "Bonusstempel")
   assert.equal(
     translateValue("Permanent fallback discount", "de"),
-    "Automatischer Basisrabatt",
+    "Dauerrabatt",
   )
 })
 
@@ -24,31 +24,46 @@ test("keeps partner dashboard singular and plural labels unambiguous", () => {
   assert.equal(translateValue("Partnerbetrieb", "en"), "Partner location")
 })
 
-test("uses precise reward terminology in the reward type selector", async () => {
-  const { dealTypeOptions, rewardTypeOptions } = await import("../lib/reward-config.ts")
+test("uses the canonical German benefit taxonomy in the admin selector", async () => {
+  const {
+    benefitCategoryOptions,
+    dealTypeOptions,
+    discountTypeOptions,
+    rewardTypeOptions,
+  } = await import("../lib/reward-config.ts")
   const itemOption = rewardTypeOptions.find((option) => option.value === "item")
-  const timeBasedBonus = dealTypeOptions.find(
-    (option) => option.value === "comeback",
-  )
-  const limitedDealDrop = dealTypeOptions.find(
-    (option) => option.value === "limited_drop",
-  )
 
-  assert.equal(itemOption?.label, "Reward item")
-  assert.equal(translateValue(itemOption?.label ?? "", "de"), "Prämienartikel")
-  assert.equal(timeBasedBonus?.label, "Time-based bonus")
-  assert.equal(translateValue(timeBasedBonus?.label ?? "", "de"), "Zeitbonus")
-  assert.equal(limitedDealDrop?.label, "Limited deal drop")
+  assert.equal(itemOption?.label, "Gratisartikel")
   assert.equal(
-    translateValue(limitedDealDrop?.label ?? "", "de"),
-    "Limitierter Deal Drop",
+    dealTypeOptions.find((option) => option.value === "two_for_one")?.label,
+    "2 für 1",
+  )
+  assert.equal(
+    dealTypeOptions.find((option) => option.value === "comeback")?.label,
+    "Comeback-Deal",
+  )
+  assert.equal(
+    dealTypeOptions.find((option) => option.value === "permanent_discount")?.label,
+    "Dauerrabatt",
+  )
+  assert.equal(
+    dealTypeOptions.find((option) => option.value === "limited_drop")?.label,
+    "Deal Drop",
+  )
+  assert.equal(
+    discountTypeOptions.find((option) => option.value === "item")?.label,
+    "Gratisartikel",
+  )
+  assert.equal(
+    benefitCategoryOptions.find((option) => option.value === "direct_selectable")?.label,
+    "Vor dem Besuch auswählen",
   )
 })
 
 test("keeps the original language stable across repeated language switches", () => {
   assert.equal(isTranslationVariant("5 Stempel –", "5 stamps -"), true)
   assert.equal(
-    isTranslationVariant("Prämienartikel", "Reward item"),
+    isTranslationVariant("Artikelname", "Reward item"),
     true,
   )
   assert.equal(
@@ -91,8 +106,8 @@ test("translates generated reward and schedule labels", () => {
   assert.equal(translateValue(" stamps -", "de"), " Stempel –")
   assert.equal(translateValue("1 Stempel", "en"), "1 stamp")
   assert.equal(translateValue("5 Stempel", "en"), "5 stamps")
-  assert.equal(translateValue("2 milestones", "de"), "2 Prämienstufen")
-  assert.equal(translateValue("2 Prämienstufen", "en"), "2 milestones")
+  assert.equal(translateValue("2 milestones", "de"), "2 Belohnungsstufen")
+  assert.equal(translateValue("2 Belohnungsstufen", "en"), "2 milestones")
   assert.equal(
     translateValue("Annweiler am Trifels - Food & Drink", "de"),
     "Annweiler am Trifels – Gastronomie",
@@ -141,7 +156,7 @@ test("translates generated reward and schedule labels", () => {
 
 test("preserves whitespace and supports switching back to English", () => {
   assert.equal(translateValue("  Item  ", "de"), "  Artikel  ")
-  assert.equal(translateValue("Prämienartikel", "en"), "Reward item")
+  assert.equal(translateValue("Artikelname", "en"), "Reward item")
   assert.equal(translateValue("24 / 120 characters", "de"), "24 / 120 Zeichen")
   assert.equal(translateValue("24 / 120 Zeichen", "en"), "24 / 120 characters")
   assert.equal(translateValue("24 Dec 2026", "de"), "24. Dez. 2026")
@@ -175,11 +190,8 @@ test("translates complete admin workflows in both directions", () => {
   assert.equal(translateValue("Partner management", "de"), "Partnerverwaltung")
   assert.equal(translateValue("Partnerverwaltung", "en"), "Partner management")
   assert.equal(translateValue("Select...", "de"), "Bitte auswählen ...")
-  assert.equal(translateValue("Add deal", "de"), "Deal hinzufügen")
-  assert.equal(
-    translateValue("Review submitted partner menus before publishing", "de"),
-    "Eingereichte Partnermenüs vor der Veröffentlichung prüfen",
-  )
+  assert.equal(translateValue("Add deal", "de"), "Vorteil hinzufügen")
+  assert.equal(translateValue("Menu status", "de"), "Menüstatus")
   assert.equal(
     translateValue("Benefitsi-Systeme öffnen", "en"),
     "Open Benefitsi systems",
@@ -230,7 +242,7 @@ test("translates import, image editing, login, and empty-state copy", () => {
   )
   assert.equal(
     translateValue("No stamp-card milestones configured yet.", "de"),
-    "Noch keine Stempelkarten-Prämien eingerichtet.",
+    "Noch keine Stempelbelohnungen eingerichtet.",
   )
   assert.equal(translateValue("User", "de"), "Nutzer")
   assert.equal(translateValue("User ID", "de"), "Nutzer-ID")
@@ -243,13 +255,13 @@ test("translates import, image editing, login, and empty-state copy", () => {
   )
   assert.equal(translateValue("Indian", "de"), "Indisch")
   assert.equal(translateValue("Indisch", "en"), "Indian")
-  assert.equal(translateValue("Deal Drop inventory", "de"), "Deal-Drop-Kontingent")
+  assert.equal(translateValue("Deal Drop inventory", "de"), "Deal Drop-Kontingent")
   assert.equal(translateValue("Challenge name", "de"), "Name der Challenge")
   assert.equal(translateValue("Comeback Deal", "de"), "Comeback-Deal")
-  assert.equal(translateValue("Selectable deal", "de"), "Auswählbarer Deal")
+  assert.equal(translateValue("Selectable deal", "de"), "Auswählbarer Vorteil")
   assert.equal(
     translateValue("Selected direct deal source", "de"),
-    "Ausgewählter direkter Deal",
+    "Ausgewählter direkter Vorteil",
   )
   assert.equal(translateValue("3 visits this week", "de"), "3 Besuche diese Woche")
   assert.equal(translateValue("7/7 days open", "de"), "7 von 7 Tagen geöffnet")

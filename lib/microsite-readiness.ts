@@ -88,20 +88,20 @@ export function createMicrositeReadinessReport(
     ),
     recommended("coordinates", "Google-Maps-Koordinaten", "Koordinaten verbessern Maps, Route und strukturierte Daten.", Boolean(partner.coordinates), "SEO & LLM"),
     recommended("microsite-hero", "Hero-Bild", "Hero nutzt ein microsite-spezifisches Kampagnenbild.", Boolean(config.hero.backgroundImageUrl), "Assets"),
-    recommended("microsite-deals-image", "Deals-Bild", "Deals & Vorteile haben ein eigenes Bild.", Boolean(config.deals.illustrationUrl), "Assets"),
-    recommended("top-deal-image", "Top-Deal-Bild", "Top-Deal hat ein eigenes, emotionales Bild.", !hasActiveDeal || Boolean(config.deals.topDealImageUrl), "Assets"),
+    recommended("microsite-deals-image", "Vorteilsbereich-Bild", "Vorteile und Aktionen haben ein eigenes Bild.", Boolean(config.deals.illustrationUrl), "Assets"),
+    recommended("top-deal-image", "Vorteilsbild", "Der aktuelle Vorteil hat ein eigenes, emotionales Bild.", !hasActiveDeal || Boolean(config.deals.topDealImageUrl), "Assets"),
     recommended("asset-review", "Assets geprüft", "Microsite-Bilder/Fallbacks wurden für diesen Partner bewusst geprüft.", assetReviewDone, "Assets"),
     recommended("about-images", "Über-uns-Bilder", "Über-uns-Bereich hat mindestens zwei austauschbare Bilder.", micrositeImages.length >= 2, "Assets"),
     recommended("menu-images", "Menübilder", "Mindestens einige Speisen haben Bilder; ohne Bild werden Platzhalter genutzt.", menuItems.length === 0 || menuItemsWithImage.length >= 1, "Assets"),
     recommended("seo-review", "SEO/LLM geprüft", "Title, Description, Schema und Indexierung wurden bewusst geprüft.", seoReviewDone, "SEO & LLM"),
     recommended("seo-title", "SEO-Titel", "Partner-spezifischer Titel ist aussagekräftig gepflegt.", hasSeoTitle, "SEO & LLM"),
-    recommended("seo-description", "SEO-Beschreibung", "Meta-Beschreibung nennt Partner, Ort, Deals und Speisekarte ausreichend.", hasSeoDescription, "SEO & LLM"),
+    recommended("seo-description", "SEO-Beschreibung", "Meta-Beschreibung nennt Partner, Ort, Vorteile und Speisekarte ausreichend.", hasSeoDescription, "SEO & LLM"),
     recommended("seo-keywords", "SEO/LLM-Suchbegriffe", "Mindestens zwei relevante Begriffe helfen interner Suche und KI-Systemen.", hasSeoKeywords, "SEO & LLM"),
     recommended("public-indexing", "Indexierung aktiv", "Öffentliche Live-Seiten dürfen nicht versehentlich auf noindex stehen.", !config.seo.noIndex, "SEO & LLM"),
     recommended("structured-data", "Strukturierte Daten", "Restaurant, Menu, FAQ und Breadcrumb JSON-LD sind systemisch aktiv.", true, "SEO & LLM"),
     recommended("preview-noindex", "Vorschau noindex", "Builder-/Preview-Seiten sind von Indexierung ausgeschlossen.", true, "SEO & LLM"),
     recommended("faq", "FAQ vorhanden", "FAQ ist sichtbar und als FAQPage für Suchsysteme strukturiert.", true, "SEO & LLM"),
-    recommended("desktop-qa-done", "Desktopprüfung abgeschlossen", "Desktop-Navigation, Hero, Deals, Speisekarte, Kontakt und Footer wurden geprüft.", desktopQaDone, "Mobile"),
+    recommended("desktop-qa-done", "Desktopprüfung abgeschlossen", "Desktop-Navigation, Hero, Vorteile, Speisekarte, Kontakt und Footer wurden geprüft.", desktopQaDone, "Mobile"),
     recommended("mobile-qa-done", "Mobilprüfung abgeschlossen", "Mobile Ansicht wurde im Builder geprüft und freigegeben.", mobileQaDone, "Mobile"),
     recommended("responsive", "Responsives Layout", "Desktop- und Mobilvorschau sind im Builder verfügbar und müssen separat freigegeben werden.", true, "Mobile"),
     recommended("mobile-actions", "Mobile Kontaktaktionen", "Route/Anrufen/Karte sind mobil vorgesehen.", Boolean(partner.phone || partner.address), "Mobile"),
@@ -149,8 +149,8 @@ export const micrositeReadinessEnglishTranslations: Readonly<Record<string, stri
   "Leistungsübersicht vorhanden": "Service overview available",
   "Google-Maps-Koordinaten": "Google Maps coordinates",
   "Hero-Bild": "Hero image",
-  "Deals-Bild": "Deals image",
-  "Top-Deal-Bild": "Top-deal image",
+  "Vorteilsbereich-Bild": "Benefits area image",
+  Vorteilsbild: "Benefit image",
   "Assets geprüft": "Assets reviewed",
   "Über-uns-Bilder": "About-us images",
   Menübilder: "Menu images",
@@ -191,10 +191,10 @@ export const micrositeReadinessEnglishTranslations: Readonly<Record<string, stri
     "Coordinates improve maps, directions, and structured data.",
   "Hero nutzt ein microsite-spezifisches Kampagnenbild.":
     "The hero uses a microsite-specific campaign image.",
-  "Deals & Vorteile haben ein eigenes Bild.":
-    "Deals and benefits have a dedicated image.",
-  "Top-Deal hat ein eigenes, emotionales Bild.":
-    "The top deal has a dedicated promotional image.",
+  "Vorteile und Aktionen haben ein eigenes Bild.":
+    "Benefits and campaigns have a dedicated image.",
+  "Der aktuelle Vorteil hat ein eigenes, emotionales Bild.":
+    "The current benefit has a dedicated promotional image.",
   "Microsite-Bilder/Fallbacks wurden für diesen Partner bewusst geprüft.":
     "Microsite images and fallbacks have been reviewed for this partner.",
   "Über-uns-Bereich hat mindestens zwei austauschbare Bilder.":
@@ -205,8 +205,8 @@ export const micrositeReadinessEnglishTranslations: Readonly<Record<string, stri
     "Title, description, schema, and indexing have been reviewed.",
   "Partner-spezifischer Titel ist aussagekräftig gepflegt.":
     "A meaningful partner-specific title is set.",
-  "Meta-Beschreibung nennt Partner, Ort, Deals und Speisekarte ausreichend.":
-    "The meta description adequately covers the partner, location, deals, and menu.",
+  "Meta-Beschreibung nennt Partner, Ort, Vorteile und Speisekarte ausreichend.":
+    "The meta description adequately covers the partner, location, benefits, and menu.",
   "Mindestens zwei relevante Begriffe helfen interner Suche und KI-Systemen.":
     "Relevant keywords help internal search and AI systems.",
   "Öffentliche Live-Seiten dürfen nicht versehentlich auf noindex stehen.":
@@ -217,8 +217,8 @@ export const micrositeReadinessEnglishTranslations: Readonly<Record<string, stri
     "Builder and preview pages are excluded from indexing.",
   "FAQ ist sichtbar und als FAQPage für Suchsysteme strukturiert.":
     "The FAQ is visible and structured as an FAQPage for search systems.",
-  "Desktop-Navigation, Hero, Deals, Speisekarte, Kontakt und Footer wurden geprüft.":
-    "Desktop navigation, hero, deals, menu, contact area, and footer have been reviewed.",
+  "Desktop-Navigation, Hero, Vorteile, Speisekarte, Kontakt und Footer wurden geprüft.":
+    "Desktop navigation, benefits, menu, contact area, and footer have been reviewed.",
   "Mobile Ansicht wurde im Builder geprüft und freigegeben.":
     "The mobile view has been reviewed and approved in the builder.",
   "Desktop- und Mobilvorschau sind im Builder verfügbar und müssen separat freigegeben werden.":

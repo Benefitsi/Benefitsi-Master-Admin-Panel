@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     default: "Benefitsi Admin",
     template: "%s | Benefitsi Admin",
   },
-  description: "Manage Benefitsi partners, deals, rewards, and menus.",
+  description: "Manage Benefitsi partners, benefits, rewards, and menus.",
   robots: {
     index: false,
     follow: false,
@@ -54,7 +54,7 @@ export default function RootLayout({
             __html: `<!--
 THESIS: Partner identity becomes a responsive benefit card; refuse the generic full-bleed restaurant hero.
 OWN-WORLD: Three logo-derived colors, soft atmospheric fields, crisp white surfaces, compact iconography, and image-led depth.
-STORY: Recognize the partner, confirm place and availability, see the benefit, then explore deals, services, story, and contact.
+STORY: Recognize the partner, confirm place and availability, see the benefit, then explore benefits, services, story, and contact.
 FIRST VIEWPORT: Partner copy and actions sit left of a large interactive image on desktop, stack above it on mobile, and resolve into four responsive benefit rows.
 FORM: User-pinned responsive partner-card reference, first and binding direction; seed pinned-reference-20260814.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md

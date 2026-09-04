@@ -1,11 +1,25 @@
 "use server"
 
-import { randomUUID } from "node:crypto"
+import { randomInt, randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import sharp from "sharp"
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js"
-import { requireAdmin } from "@/lib/admin"
+import { requireAdmin, verifyAdminPassword } from "@/lib/admin"
+import {
+  isDealCopyField,
+} from "@/lib/deal-copy"
+import {
+  parseContentDraftResponse,
+  type ContentDraftTask,
+} from "@/lib/content-agent"
+import {
+  discountTypeUsesRewardItem,
+  isForbiddenPublicDealTitle,
+  readDealFormDraft,
+  readDealPublicDisplayValues,
+  type DealFormDraft,
+} from "@/lib/deal-form"
 import {
   canManagePartner,
   getPartnerPortalSession,
@@ -35,6 +49,10 @@ import {
   DEFAULT_TIMEZONE,
   MAX_STAMP_CARD_STAMPS,
   activationRequiredForCategory,
+  canonicalActivationMode,
+  canonicalCampaignType,
+  canonicalRewardFormat,
+  canonicalTriggerKey,
   isAudience,
   isDealType,
   isDiscountType,
@@ -43,6 +61,10 @@ import {
   isRewardType,
   normalizeBenefitCategory,
 } from "@/lib/reward-config"
+import {
+  partnerUpdateMissingMessage,
+  partnerUpdateWasApplied,
+} from "@/lib/partner-save"
 import * as menuImport from "@/lib/menu-import.js"
 import * as menuZipImport from "@/lib/menu-zip-import.js"
 
@@ -61,11 +83,79 @@ const DURATION_BONUS_DEAL = "duration_bonus"
 const COMEBACK_INACTIVE_DEAL = "comeback_inactive"
 const DURATION_BONUS_MODE = "duration_bonus"
 const COMEBACK_INACTIVE_MODE = "comeback_inactive"
+const CONTENT_AGENT_PROFILE = "benefitsi-content"
+
+type ContentDraftBridgePayload = Record<string, unknown>
+
+async function requestContentDraft(
+  task: ContentDraftTask,
+  payload: ContentDraftBridgePayload,
+) {
+  const bridgeUrl = process.env.M1_BRIDGE_URL?.trim()
+  const bridgeSecret = process.env.M1_BRIDGE_SECRET?.trim()
+
+  if (!bridgeUrl || !bridgeSecret) {
+    throw new Error("Content-Agent is unavailable: The Hermes/M1 bridge is not configured.")
+  }
+
+  let endpoint: URL
+  try {
+    endpoint = new URL("/hermes", bridgeUrl)
+  } catch {
+    throw new Error("Content-Agent is unavailable: The Hermes bridge URL is invalid.")
+  }
+
+  if (
+    endpoint.protocol !== "https:" &&
+    endpoint.hostname !== "localhost" &&
+    endpoint.hostname !== "127.0.0.1"
+  ) {
+    throw new Error("Content-Agent is unavailable: The Hermes bridge must use HTTPS.")
+  }
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${bridgeSecret}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "content-draft",
+      profile: "benefitsi-content",
+      task,
+      payload,
+    }),
+    signal: AbortSignal.timeout(60_000),
+  })
+
+  if (!response.ok) {
+    throw new Error("The Content-Agent could not create a draft right now. Please try again later.")
+  }
+
+  const body = (await response.json().catch(() => null)) as {
+    response?: unknown
+    profile?: unknown
+    task?: unknown
+  } | null
+
+  if (body?.profile !== CONTENT_AGENT_PROFILE || body.task !== task) {
+    throw new Error("The Content-Agent returned an invalid response.")
+  }
+
+  try {
+    return parseContentDraftResponse(body.response, task)
+  } catch {
+    throw new Error("The Content-Agent returned an invalid draft.")
+  }
+}
 
 export type PartnerActionState = {
   message: string
   ok: boolean
+  description?: string
+  dealDraft?: DealFormDraft
   partnerId?: string
+  partnerPin?: number
   created?: boolean
   menuCategory?: {
     id: string
@@ -145,6 +235,10 @@ type PartnerMediaFormValues = {
 type ParsedDeal = {
   partner_id: string
   type: string
+  reward_format: string | null
+  trigger_key: string | null
+  campaign_type: string | null
+  activation_mode: string | null
   discount_type: string
   premium_only: boolean
   benefit_category: string
@@ -158,6 +252,10 @@ type ParsedDeal = {
   customer_description: string | null
   staff_instructions: string | null
   terms: string | null
+  public_title: string | null
+  public_subtitle: string | null
+  display_title: string | null
+  display_subtitle: string | null
   trigger_value: number | null
   expiry_days: number | null
   happy_hour_start: string | null
@@ -589,6 +687,19 @@ export async function savePartner(
       return { ok: false, message: result.error.message }
     }
 
+    if (!partnerUpdateWasApplied(result.data)) {
+      if (!isUpdate) {
+        await rollbackCreatedPartner(supabase, partnerId)
+      }
+      await cleanupUploadedFiles(supabase, uploadedPaths)
+      return {
+        ok: false,
+        message: isUpdate
+          ? partnerUpdateMissingMessage
+          : "Partner could not be created because no database row was returned.",
+      }
+    }
+
     const partnerSocials = parsePartnerSocials(formData)
     const partnerSocialValidation = validatePartnerSocials(partnerSocials)
 
@@ -740,18 +851,18 @@ export async function savePartner(
 
       if (initialDealError) {
         warnings.push(
-          `Partner was created, but deals were skipped: ${initialDealError}`,
+          `Partner was created, but benefits were skipped: ${initialDealError}`,
         )
       } else if (initialDealPriorityError) {
         warnings.push(
-          `Partner was created, but deals were skipped: ${initialDealPriorityError}`,
+          `Partner was created, but benefits were skipped: ${initialDealPriorityError}`,
         )
       } else if (initialDeals.length > 0) {
         const dealMessage = await insertDeals(supabase, initialDeals)
 
         if (dealMessage) {
           warnings.push(
-            `Partner was created, but deals could not be added: ${dealMessage}`,
+            `Partner was created, but benefits could not be added: ${dealMessage}`,
           )
         }
       }
@@ -781,15 +892,135 @@ export async function savePartner(
   }
 }
 
+export async function generatePartnerDescription(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  await requireAdmin()
+
+  const name = stringValue(formData, "name")
+  if (!name) {
+    return { ok: false, message: "Partner name is required before asking the Content-Agent." }
+  }
+
+  const textValidation = validateTextLengthRules([
+    ["Partner name", name, adminTextLimits.shortText],
+    ["Partner type", stringValue(formData, "type"), adminTextLimits.shortText],
+    ["Partner city", stringValue(formData, "city_name"), adminTextLimits.shortText],
+  ])
+
+  if (textValidation) {
+    return { ok: false, message: textValidation }
+  }
+
+  try {
+    const description = await requestContentDraft("partner_description", {
+      name,
+      type: stringValue(formData, "type"),
+      city: stringValue(formData, "city_name"),
+      categories: listValue(formData, "category"),
+    })
+
+    return {
+      ok: true,
+      description,
+      message: "The Content-Agent inserted a draft. Please review it before saving.",
+    }
+  } catch (error) {
+    console.error(
+      "Content-Agent partner description request failed:",
+      error instanceof Error ? error.message : "unknown error",
+    )
+    return {
+      ok: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "The Content-Agent could not be reached right now. Please check the Hermes/M1 bridge.",
+    }
+  }
+}
+
+export async function generateDealCopy(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  await requireAdmin()
+
+  const field = stringValue(formData, "field")
+  if (!isDealCopyField(field)) {
+    return { ok: false, message: "This deal field is not approved for the Content-Agent." }
+  }
+
+  const partnerName = stringValue(formData, "partner_name")
+  if (!partnerName) {
+    return { ok: false, message: "A partner name is required before asking the Content-Agent." }
+  }
+
+  const textValidation = validateTextLengthRules([
+    ["Partner name", partnerName, adminTextLimits.shortText],
+    ["Deal concept", stringValue(formData, "deal_concept"), adminTextLimits.shortText],
+    ["Discount type", stringValue(formData, "discount_type"), adminTextLimits.shortText],
+    ["Audience", stringValue(formData, "audience"), adminTextLimits.shortText],
+    ["Reward item", stringValue(formData, "reward_item"), adminTextLimits.shortText],
+    ["Current text", stringValue(formData, "current_text"), adminTextLimits.longText],
+  ])
+
+  if (textValidation) {
+    return { ok: false, message: textValidation }
+  }
+
+  try {
+    const task: ContentDraftTask =
+      field === "staff_instructions" ? "staff_instructions" : "deal_copy"
+    const description = await requestContentDraft(task, {
+      field,
+      partnerName,
+      dealConcept: stringValue(formData, "deal_concept"),
+      discountType: stringValue(formData, "discount_type"),
+      audience: stringValue(formData, "audience"),
+      rewardItem: stringValue(formData, "reward_item"),
+      currentText: stringValue(formData, "current_text"),
+    })
+
+    return {
+      ok: true,
+      description,
+      message: "The Content-Agent inserted a draft. Please review it before saving.",
+    }
+  } catch (error) {
+    console.error(
+      "Content-Agent deal copy request failed:",
+      error instanceof Error ? error.message : "unknown error",
+    )
+    return {
+      ok: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "The Content-Agent could not be reached right now. Please check the Hermes/M1 bridge.",
+    }
+  }
+}
+
 export async function deletePartner(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
+  const { supabase, adminSession } = await requireAdmin()
   const id = stringValue(formData, "id")
+  const deletePassword = stringValue(formData, "delete_password")
 
   if (!id) {
     return { ok: false, message: "Partner id is required." }
+  }
+
+  if (!deletePassword) {
+    return { ok: false, message: "Admin password is required to delete a partner." }
+  }
+
+  if (!(await verifyAdminPassword(adminSession, deletePassword))) {
+    return { ok: false, message: "Admin password verification failed." }
   }
 
   const cleanupResult = await collectPartnerDeletionMediaUrls(supabase, id)
@@ -858,7 +1089,7 @@ export async function deletePartner(
         supabase.from("redemption_reversals").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove deal redemptions.",
+      message: "Unable to remove benefit redemptions.",
       run: () => supabase.from("deal_redemptions").delete().eq("partner_id", id),
     },
     {
@@ -870,7 +1101,7 @@ export async function deletePartner(
       run: () => supabase.from("visits").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove deal selections.",
+      message: "Unable to remove benefit selections.",
       run: () => supabase.from("deal_selections").delete().eq("partner_id", id),
     },
     {
@@ -944,7 +1175,7 @@ export async function deletePartner(
       run: () => supabase.from("microsites").delete().eq("partner_id", id),
     },
     {
-      message: "Unable to remove partner deals.",
+      message: "Unable to remove partner benefits.",
       run: () => supabase.from("deals").delete().eq("partner_id", id),
     },
     {
@@ -970,6 +1201,53 @@ export async function deletePartner(
   return { ok: true, message: "Partner and all attached data removed." }
 }
 
+export async function rotatePartnerPin(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+
+  if (!id) {
+    return { ok: false, message: "Partner id is required." }
+  }
+
+  const pin = randomInt(1000, 10000)
+  const result = await supabase
+    .from("partners")
+    .update({ pin })
+    .eq("id", id)
+    .select("id, pin")
+    .maybeSingle()
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  if (!result.data) {
+    return {
+      ok: false,
+      message: "Partner PIN could not be rotated because the partner was not found.",
+    }
+  }
+
+  revalidatePath("/")
+
+  return {
+    ok: true,
+    partnerPin: typeof result.data.pin === "number" ? result.data.pin : pin,
+    message: "Partner PIN rotated.",
+  }
+}
+
+function dealSaveFailure(formData: FormData, message: string): PartnerActionState {
+  return {
+    ok: false,
+    message,
+    dealDraft: readDealFormDraft(formData),
+  }
+}
+
 export async function saveDeal(
   _prevState: PartnerActionState,
   formData: FormData,
@@ -980,7 +1258,7 @@ export async function saveDeal(
     id,
     stringValue(formData, "partner_id"),
   )
-  if (!access.ok) return { ok: false, message: access.message }
+  if (!access.ok) return dealSaveFailure(formData, access.message)
   const { supabase } = access
   const now = new Date().toISOString()
   let payload: ParsedDeal
@@ -989,11 +1267,10 @@ export async function saveDeal(
     payload = parseDealPayload(formData, "", stringValue(formData, "partner_id"))
     payload.partner_id = access.partnerId
   } catch (error) {
-    return {
-      ok: false,
-      message:
-        error instanceof Error ? error.message : "Unable to parse deal form.",
-    }
+    return dealSaveFailure(
+      formData,
+      error instanceof Error ? error.message : "Unable to parse benefit form.",
+    )
   }
 
   if (id) {
@@ -1006,14 +1283,14 @@ export async function saveDeal(
     )
 
     if (preservationMessage) {
-      return { ok: false, message: preservationMessage }
+      return dealSaveFailure(formData, preservationMessage)
     }
   }
 
   const validationMessage = validateDealPayload(payload)
 
   if (validationMessage) {
-    return { ok: false, message: validationMessage }
+    return dealSaveFailure(formData, validationMessage)
   }
 
   const priorityMessage = await validateUniqueAutomaticDealPriority(
@@ -1023,7 +1300,7 @@ export async function saveDeal(
   )
 
   if (priorityMessage) {
-    return { ok: false, message: priorityMessage }
+    return dealSaveFailure(formData, priorityMessage)
   }
 
   // Handle deal drop card image
@@ -1041,7 +1318,7 @@ export async function saveDeal(
     const mediaError = validateMediaFile(dealDropImageFile)
 
     if (mediaError) {
-      return { ok: false, message: mediaError }
+      return dealSaveFailure(formData, mediaError)
     }
 
     const dealId = id || "new"
@@ -1077,7 +1354,7 @@ export async function saveDeal(
     : await insertDeals(supabase, [mutationPayload])
 
   if (mutationMessage) {
-    return { ok: false, message: mutationMessage }
+    return dealSaveFailure(formData, mutationMessage)
   }
 
   // Clean up replaced or removed deal drop images.
@@ -1098,7 +1375,7 @@ export async function saveDeal(
 
   return {
     ok: true,
-    message: id ? "Deal updated." : "Deal added.",
+    message: id ? "Benefit updated." : "Benefit added.",
   }
 }
 
@@ -1375,9 +1652,6 @@ export async function saveMenu(
   const now = new Date().toISOString()
   const payload = parseMenuPayload(formData)
   payload.partner_id = access.partnerId
-  if (!access.portalSession.isAdmin && payload.status === "published") {
-    payload.status = "review"
-  }
   const validationMessage = validateMenuPayload(payload)
   const importFiles = id ? [] : fileValues(formData, "menu_file")
   const expectedImportFileCount = id
@@ -1463,7 +1737,6 @@ export async function saveMenu(
     }
 
     revalidatePath("/")
-    revalidatePath("/menu-approvals")
     return {
       ...importResult,
       menuId,
@@ -1472,7 +1745,6 @@ export async function saveMenu(
   }
 
   revalidatePath("/")
-  revalidatePath("/menu-approvals")
 
   return {
     ok: true,
@@ -1547,32 +1819,6 @@ export async function reorderMenuItems(
   revalidatePath("/")
 
   return { ok: true, message: "Item order saved." }
-}
-
-export async function approveMenu(
-  _prevState: PartnerActionState,
-  formData: FormData,
-): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
-  const id = stringValue(formData, "id")
-
-  if (!id) {
-    return { ok: false, message: "Menu id is required." }
-  }
-
-  const result = await supabase
-    .from("menus")
-    .update({ status: "published", updated_at: new Date().toISOString() })
-    .eq("id", id)
-
-  if (result.error) {
-    return { ok: false, message: result.error.message }
-  }
-
-  revalidatePath("/")
-  revalidatePath("/menu-approvals")
-
-  return { ok: true, message: "Menu approved and published." }
 }
 
 export async function deleteMenu(
@@ -1955,7 +2201,6 @@ export async function saveMenuCategoryImage(
       after(() => cleanupPublicMediaUrls(supabase, [previousImageUrl]))
     }
     revalidatePath("/")
-    revalidatePath("/menu-approvals")
     return {
       ok: true,
       message: "Menu category image uploaded.",
@@ -2022,7 +2267,6 @@ export async function saveMenuItemImage(
       after(() => cleanupPublicMediaUrls(supabase, [previousImageUrl]))
     }
     revalidatePath("/")
-    revalidatePath("/menu-approvals")
     return {
       ok: true,
       message: "Menu item image uploaded.",
@@ -2272,7 +2516,6 @@ async function importMenuIntoMenu(
     : "No menu files were imported."
 
   revalidatePath("/")
-  revalidatePath("/menu-approvals")
   return {
     ok: batch.successes.length > 0,
     issues: details.length > 0,
@@ -2561,7 +2804,6 @@ async function saveImportedMenuCategories(
   }
 
   revalidatePath("/")
-  revalidatePath("/menu-approvals")
   return {
     ok: true,
     message: `${importMode === "replace" ? "Replaced the menu with" : "Appended"} ${imported.length} categories and ${itemCount} items.`,
@@ -2619,7 +2861,7 @@ export async function deleteDeal(
   const { supabase } = access
 
   if (!id) {
-    return { ok: false, message: "Deal id is required." }
+    return { ok: false, message: "Benefit id is required." }
   }
 
   const result = await supabase.from("deals").delete().eq("id", id)
@@ -2630,7 +2872,7 @@ export async function deleteDeal(
 
   revalidatePath("/")
 
-  return { ok: true, message: "Deal removed." }
+  return { ok: true, message: "Benefit removed." }
 }
 
 async function collectPartnerDeletionMediaUrls(
@@ -2976,7 +3218,7 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     is_featured: checkboxValue(formData, "is_featured"),
     stamp_target: stampTarget,
     loves: isUpdate ? integerValue(formData, "existing_loves") ?? 0 : 0,
-    pin: null,
+    ...(isUpdate ? {} : { pin: null }),
     address: stringValue(formData, "address"),
     phone: stringValue(formData, "phone"),
     website: stringValue(formData, "website"),
@@ -3751,7 +3993,7 @@ async function insertDeals(
   deals: Array<ParsedDeal & { created_at?: string; updated_at?: string }>,
 ) {
   return await mutateDealPayloadWithSchemaRetry(
-    deals.map((deal) => ({ ...deal })),
+    deals.map((deal) => withDefaultDealCopy({ ...deal })),
     (payload) => supabase.from("deals").insert(payload),
   )
 }
@@ -3761,8 +4003,9 @@ async function updateDeal(
   id: string,
   deal: ParsedDeal & { created_at?: string; updated_at?: string },
 ) {
-  return await mutateDealPayloadWithSchemaRetry({ ...deal }, (payload) =>
-    supabase.from("deals").update(payload).eq("id", id),
+  return await mutateDealPayloadWithSchemaRetry(
+    withDefaultDealCopy({ ...deal }),
+    (payload) => supabase.from("deals").update(payload).eq("id", id),
   )
 }
 
@@ -3880,7 +4123,7 @@ function parseDealPayload(
   const endsAt = nullableStringValue(formData, `${prefix}ends_at`)
   const usesDiscountValue =
     discountType === "fixed" || discountType === "percent"
-  const usesRewardItem = discountType === "item"
+  const usesRewardItem = discountTypeUsesRewardItem(discountType)
   const usesBenefitCount = discountType === "bonus_stamp"
   const usesHappyHour = type === "happy_hour"
   const usesTriggerValue =
@@ -3913,6 +4156,10 @@ function parseDealPayload(
     isLimitedDrop &&
     discountType === "2for1" &&
     checkboxValue(formData, `${prefix}allow_free_trial`)
+  const { displayTitle, displaySubtitle } = readDealPublicDisplayValues(
+    formData,
+    prefix,
+  )
   const baseMetadata = jsonValue(formData, `${prefix}metadata`)
   const metadata = buildDealMetadata(
     formData,
@@ -3925,6 +4172,12 @@ function parseDealPayload(
   const payload: ParsedDeal = {
     partner_id: partnerId,
     type,
+    reward_format: canonicalRewardFormat(type, discountType),
+    trigger_key: canonicalTriggerKey(type, dealConcept),
+    campaign_type: canonicalCampaignType(type),
+    activation_mode: canonicalActivationMode(
+      isLimitedDrop ? "direct_selectable" : benefitCategory,
+    ),
     discount_type: discountType,
     premium_only: audience === "premium",
     benefit_category: isLimitedDrop ? "direct_selectable" : benefitCategory,
@@ -3953,6 +4206,10 @@ function parseDealPayload(
       `${prefix}staff_instructions`,
     ),
     terms: nullableStringValue(formData, `${prefix}terms`),
+    public_title: displayTitle,
+    public_subtitle: displaySubtitle,
+    display_title: displayTitle,
+    display_subtitle: displaySubtitle,
     trigger_value: triggerValue,
     expiry_days:
       type === "streak" || type === "comeback"
@@ -4228,7 +4485,7 @@ async function preserveExistingDealCopy(
   }
 
   if (
-    payload.discount_type === "item" &&
+    discountTypeUsesRewardItem(payload.discount_type) &&
     !dealCopyFieldChanged(formData, prefix, "reward_item", current.reward_item)
   ) {
     payload.reward_item = current.reward_item
@@ -4292,15 +4549,19 @@ function normalizeDealDiscountType(type: string, discountType: string) {
 
 function validateDealPayload(payload: ParsedDeal) {
   if (!payload.partner_id) {
-    return "A deal must be attached to a partner."
+    return "A benefit must be attached to a partner."
   }
 
   if (!isDealType(payload.type)) {
-    return "Deal type is required."
+    return "Reward format is required."
   }
 
   if (!isDiscountType(payload.discount_type)) {
     return "Discount type is required."
+  }
+
+  if (isForbiddenPublicDealTitle(payload.public_title)) {
+    return "Der öffentliche Anzeigetext enthält einen veralteten Begriff. Bitte verwende Vorteil oder einen konkreten Vorteilstitel."
   }
 
   if (!isAudience(payload.audience)) {
@@ -4309,6 +4570,8 @@ function validateDealPayload(payload: ParsedDeal) {
 
   const challengeName = metadataRecord(payload.metadata).challenge_name
   const textValidation = validateTextLengthRules([
+    ["Public title", payload.public_title, adminTextLimits.shortText],
+    ["Public subtitle", payload.public_subtitle, adminTextLimits.longText],
     ["Reward item", payload.reward_item, adminTextLimits.shortText],
     [
       "Customer description",
@@ -4367,12 +4630,12 @@ function validateDealPayload(payload: ParsedDeal) {
     payload.type === "two_for_one" &&
     payload.discount_type !== "2for1"
   ) {
-    return "2-for-1 deals must use the 2-for-1 reward type."
+    return "2-for-1 benefits must use the 2-for-1 reward type."
   }
 
   if (payload.type === "permanent_discount") {
     if (payload.benefit_category !== "automatic_fallback") {
-      return "Permanent fallback discounts must apply only if no selected deal."
+      return "Permanent fallback discounts must apply only if no selected benefit."
     }
 
     if (payload.activation_required) {
@@ -4406,20 +4669,20 @@ function validateDealPayload(payload: ParsedDeal) {
       payload.benefit_category !== "automatic_background" ||
       payload.activation_required)
   ) {
-    return "Automatic bonus stamp deals must use bonus stamp, apply automatically, and not require activation."
+    return "Automatic bonus stamp benefits must use bonus stamp, apply automatically, and not require activation."
   }
 
   if (payload.type === "free_item" && payload.discount_type !== "item") {
-    return "Free item deals must use the free item reward type."
+    return "Free item benefits must use the free item reward type."
   }
 
   if (payload.type === "happy_hour") {
     if (payload.benefit_category !== "direct_selectable") {
-      return "Happy Hour deals must be selected before visit."
+      return "Happy Hour benefits must be selected before visit."
     }
 
     if (payload.discount_type === "bonus_stamp") {
-      return "Happy Hour deals cannot use automatic bonus stamps."
+      return "Happy Hour benefits cannot use automatic bonus stamps."
     }
 
     if (
@@ -4440,15 +4703,13 @@ function validateDealPayload(payload: ParsedDeal) {
     payload.discount_type === "bonus_stamp" &&
     (!payload.benefit_count || payload.benefit_count < 1)
   ) {
-    return "Bonus stamp deals require a benefit count."
+    return "Bonus stamp benefits require a benefit count."
   }
 
-  if (payload.discount_type === "item" && !payload.reward_item) {
-    return "Item rewards require a reward item."
-  }
-
-  if (payload.discount_type === "2for1" && !payload.reward_item) {
-    return "2-for-1 rewards require an item name."
+  if (discountTypeUsesRewardItem(payload.discount_type) && !payload.reward_item) {
+    return payload.discount_type === "2for1"
+      ? "2-for-1 benefits require an item name."
+      : "Item rewards require a reward item."
   }
 
   if (
@@ -4471,14 +4732,14 @@ function validateDealPayload(payload: ParsedDeal) {
     payload.type === "happy_hour" &&
     (!payload.happy_hour_start || !payload.happy_hour_end)
   ) {
-    return "Happy hour deals require start and end times."
+    return "Happy Hour benefits require start and end times."
   }
 
   if (
     payload.type === "streak" &&
     (!payload.trigger_value || payload.trigger_value <= 0)
   ) {
-    return "Streak deals require a trigger value greater than 0."
+    return "Streak benefits require a trigger value greater than 0."
   }
 
   if (payload.type === "challenge") {
@@ -4486,11 +4747,11 @@ function validateDealPayload(payload: ParsedDeal) {
     const challengeName = metadata.challenge_name
 
     if (typeof challengeName !== "string" || !challengeName.trim()) {
-      return "Challenge rewards require a challenge name."
+      return "Challenge benefits require a challenge name."
     }
 
     if (!payload.trigger_value || payload.trigger_value <= 0) {
-      return "Challenge rewards require a trigger value greater than 0."
+      return "Challenge benefits require a trigger value greater than 0."
     }
   }
 
@@ -4510,21 +4771,21 @@ function validateDealPayload(payload: ParsedDeal) {
           : null
 
       if (!payload.trigger_value || payload.trigger_value <= 0) {
-        return "Comeback Deals require an inactivity period greater than 0."
+        return "Comeback benefits require an inactivity period greater than 0."
       }
 
       if (
         typeof inactivityUnit !== "string" ||
         !["days", "weeks", "months"].includes(inactivityUnit)
       ) {
-        return "Comeback Deals require days, weeks, or months as the inactivity unit."
+        return "Comeback benefits require days, weeks, or months as the inactivity unit."
       }
 
       if (
         (minVisitCount !== null && minVisitCount < 0) ||
         (maxVisitCount !== null && maxVisitCount < 0)
       ) {
-        return "Comeback Deal visit filters cannot be negative."
+        return "Comeback benefit visit filters cannot be negative."
       }
 
       if (
@@ -4538,14 +4799,14 @@ function validateDealPayload(payload: ParsedDeal) {
       const durationUnit = metadata.duration_unit
 
       if (!payload.trigger_value || payload.trigger_value <= 0) {
-        return "Duration Bonus deals require a duration greater than 0."
+        return "Time bonuses require a duration greater than 0."
       }
 
       if (
         typeof durationUnit !== "string" ||
         !["hours", "days", "weeks"].includes(durationUnit)
       ) {
-        return "Duration Bonus deals require hours, days, or weeks as the duration unit."
+        return "Time bonuses require hours, days, or weeks as the duration unit."
       }
     }
   }
@@ -4599,6 +4860,111 @@ function validateDealPayload(payload: ParsedDeal) {
   return null
 }
 
+function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
+  const reward = describeDealReward(
+    payload.discount_type,
+    payload.discount_value,
+    payload.reward_item,
+    payload.benefit_count,
+  )
+  const timeWindow = dealTimeWindow(payload)
+  const isAutomatic =
+    payload.benefit_category === "automatic_background" ||
+    payload.benefit_category === "automatic_fallback" ||
+    payload.discount_type === "bonus_stamp"
+  const comebackIsTimeBonus =
+    metadataRecord(payload.metadata).bonus_mode === "duration_bonus" ||
+    payload.trigger_key === "time_bonus"
+
+  const customerDescription = (() => {
+    switch (payload.type) {
+      case "two_for_one":
+        return `Aktiviere 2 für 1: Erhalte zwei ${payload.reward_item || "ausgewählte Produkte"} zum Preis von einem.`
+      case "free_item":
+        return `Aktiviere den Vorteil und erhalte ${reward} gratis.`
+      case "bonus_stamp":
+        return `Erhalte ${reward} nach einem qualifizierten Besuch automatisch.`
+      case "happy_hour":
+        return timeWindow
+          ? `Happy Hour: ${reward} von ${timeWindow}.`
+          : `Happy Hour: ${reward}.`
+      case "welcome":
+        return isAutomatic
+          ? `Willkommensbonus: Erhalte ${reward} bei deinem ersten qualifizierten Besuch automatisch.`
+          : `Willkommensdeal: Erhalte ${reward} bei deinem ersten qualifizierten Besuch.`
+      case "streak":
+        return `Nach ${payload.trigger_value ?? 3} qualifizierten Besuchen erhältst du ${reward}.`
+      case "challenge":
+        return `Schließe die Challenge ab und erhalte ${reward}.`
+      case "comeback":
+        return comebackIsTimeBonus
+          ? `Zeitbonus: Erhalte ${reward} bei einer schnellen Rückkehr.`
+          : isAutomatic
+            ? `Comeback-Bonus: Erhalte ${reward} bei einem berechtigten Besuch automatisch.`
+            : `Comeback-Deal: Erhalte ${reward} bei einem berechtigten Besuch.`
+      case "limited_drop":
+        return `Deal Drop: Erhalte ${reward}, solange das Kontingent reicht.`
+      default:
+        return `Aktiviere den Vorteil und erhalte ${reward}.`
+    }
+  })()
+
+  const staffInstructions = (() => {
+    switch (payload.type) {
+      case "two_for_one":
+        return `1 ${payload.reward_item || "Produkt"} berechnen und ein gleichwertiges oder günstigeres zweites Produkt gratis ausgeben. Keine Stempel für diesen Vorteil.`
+      case "free_item":
+        return `Aktivierten Vorteil prüfen und ${reward} kostenlos zum aktuellen Bon hinzufügen.`
+      case "bonus_stamp":
+        return "Keine manuelle Kassenaktion. Bonusstempel nach bestätigtem Scan automatisch gutschreiben."
+      case "happy_hour":
+        return timeWindow
+          ? `Aktivierten Vorteil im Rahmen der Happy Hour prüfen und ${reward} im Zeitraum ${timeWindow} anwenden.`
+          : `Aktivierten Vorteil im Rahmen der Happy Hour prüfen und ${reward} anwenden.`
+      case "welcome":
+        return `Berechtigung im Scan prüfen und ${reward} einmalig auf den aktuellen Bon anwenden.`
+      case "streak":
+        return `Streak im Kundenkonto prüfen und ${reward} nach der Einlösung kostenlos ausgeben.`
+      case "challenge":
+        return `Aktive Challenge und Berechtigung prüfen; ${reward} exakt einmal am aktuellen Bon anwenden.`
+      case "comeback":
+        return `Comeback-Berechtigung im Scan prüfen und ${reward} am aktuellen Bon anwenden.`
+      case "limited_drop":
+        return `Reservierte Deal-Drop-Auswahl prüfen und ${reward} entsprechend der Anzeige einlösen.`
+      default:
+        return `Aktivierten Vorteil und Berechtigung im Scan prüfen; ${reward} am aktuellen Bon anwenden.`
+    }
+  })()
+
+  const terms = (() => {
+    switch (payload.type) {
+      case "two_for_one":
+        return "Gilt für zwei gleiche oder gleichwertige Produkte. Keine Stempel für diesen Vorteil. Nicht mit anderen Vorteilen kombinierbar."
+      case "free_item":
+        return "Nur zusammen mit dem angegebenen Hauptprodukt einlösbar. Nicht mit anderen Vorteilen kombinierbar."
+      case "bonus_stamp":
+        return "Nur für qualifizierte Besuche. Nicht mit anderen Bonusstempeln kombinierbar."
+      case "happy_hour":
+        return timeWindow
+          ? `Nur von ${timeWindow} gültig. Nicht mit anderen Vorteilen kombinierbar.`
+          : "Nur im konfigurierten Happy-Hour-Zeitraum gültig. Nicht mit anderen Vorteilen kombinierbar."
+      case "welcome":
+        return "Einmal pro Nutzerkonto einlösbar. Nicht mit anderen Willkommensdeals oder Willkommensboni kombinierbar."
+      case "limited_drop":
+        return "Nur solange das Kontingent reicht. Nicht mit anderen Vorteilen kombinierbar."
+      default:
+        return "Einmal pro Besuch einlösbar, sofern nicht anders angegeben. Nicht mit anderen Vorteilen kombinierbar."
+    }
+  })()
+
+  return {
+    ...payload,
+    customer_description: nonEmptyCopy(payload.customer_description, customerDescription),
+    staff_instructions: nonEmptyCopy(payload.staff_instructions, staffInstructions),
+    terms: nonEmptyCopy(payload.terms, terms),
+  }
+}
+
 function withDefaultMilestoneCopy(payload: ParsedMilestone): ParsedMilestone {
   const reward = describeDealReward(
     payload.reward_type,
@@ -4606,19 +4972,49 @@ function withDefaultMilestoneCopy(payload: ParsedMilestone): ParsedMilestone {
     payload.reward_item,
     payload.reward_type === "bonus_stamp" ? payload.discount_value : null,
   )
+  const requiredStamps = payload.required_stamps ?? "dem erforderlichen"
+  const staffInstructions = (() => {
+    switch (payload.reward_type) {
+      case "bonus_stamp":
+        return "Keine manuelle Kassenaktion. Bonusstempel nach Erreichen des Stempelziels automatisch gutschreiben."
+      case "item":
+        return `${reward} nach Prüfung des Stempelziels kostenlos ausgeben. Extras und Upgrades separat berechnen.`
+      case "percent":
+      case "fixed":
+        return `${reward} nach Prüfung des Stempelziels auf den berechtigten Bon anwenden.`
+      case "2for1":
+        return "Nach Prüfung des Stempelziels ein gleichwertiges oder günstigeres zweites Produkt gratis ausgeben."
+      default:
+        return `Stempelziel prüfen und ${reward} entsprechend der Anzeige einlösen.`
+    }
+  })()
 
   return {
     ...payload,
-    customer_description:
-      payload.customer_description ||
-      `Reach ${payload.required_stamps ?? "the required"} stamps to receive ${reward}.`,
-    staff_instructions:
-      payload.staff_instructions ||
-      `Verify the milestone reward in the app, then apply ${reward}.`,
-    terms:
-      payload.terms ||
-      "Subject to availability. Cannot be combined with other offers unless stated.",
+    customer_description: nonEmptyCopy(
+      payload.customer_description,
+      `Sammle ${requiredStamps} Stempel und erhalte ${reward}.`,
+    ),
+    staff_instructions: nonEmptyCopy(
+      payload.staff_instructions,
+      staffInstructions,
+    ),
+    terms: nonEmptyCopy(
+      payload.terms,
+      "Nach Erreichen des Stempelziels einlösbar. Nicht mit anderen Vorteilen kombinierbar, sofern nicht anders angegeben.",
+    ),
   }
+}
+
+function nonEmptyCopy(value: string | null, fallback: string) {
+  return value?.trim() ? value : fallback
+}
+
+function dealTimeWindow(payload: ParsedDeal) {
+  const start = payload.happy_hour_start?.slice(0, 5)
+  const end = payload.happy_hour_end?.slice(0, 5)
+
+  return start && end ? `${start} bis ${end} Uhr` : null
 }
 
 function describeDealReward(
@@ -4628,28 +5024,28 @@ function describeDealReward(
   benefitCount: number | null,
 ) {
   if (discountType === "percent") {
-    return discountValue !== null ? `${discountValue}% off` : "a percentage discount"
+    return discountValue !== null ? `${discountValue} % Rabatt` : "einen prozentualen Rabatt"
   }
 
   if (discountType === "fixed") {
-    return discountValue !== null ? `€${discountValue} off` : "a fixed discount"
+    return discountValue !== null ? `${discountValue} € Rabatt` : "einen festen Rabatt"
   }
 
   if (discountType === "item") {
-    return rewardItem || "a free item"
+    return rewardItem || "einen Gratisartikel"
   }
 
   if (discountType === "bonus_stamp") {
     const count = benefitCount ?? 1
 
-    return `+${count} bonus ${count === 1 ? "stamp" : "stamps"}`
+    return `+${count} Bonusstempel`
   }
 
   if (discountType === "2for1") {
-    return "a 2-for-1 reward"
+    return "den Vorteil 2 für 1"
   }
 
-  return "the configured reward"
+  return "den konfigurierten Vorteil"
 }
 
 const automaticBenefitCategories = [
@@ -4675,7 +5071,7 @@ function validateUniqueInitialAutomaticDealPriorities(deals: ParsedDeal[]) {
     }
 
     if (usedPriorities.has(deal.priority)) {
-      return `Automatic deals cannot share priority ${deal.priority}.`
+      return `Automatic benefits cannot share priority ${deal.priority}.`
     }
 
     usedPriorities.add(deal.priority)
@@ -4715,7 +5111,7 @@ async function validateUniqueAutomaticDealPriority(
   }
 
   if (result.data?.length) {
-    return `Another automatic deal already uses priority ${payload.priority}.`
+    return `Another automatic benefit already uses priority ${payload.priority}.`
   }
 
   return null
@@ -5298,7 +5694,7 @@ function validateMenuPayload(payload: ParsedMenu) {
     return "Menu name is required."
   }
 
-  if (!["draft", "review", "published", "archived"].includes(payload.status)) {
+  if (!["draft", "published", "archived"].includes(payload.status)) {
     return "Choose a valid menu status."
   }
 
@@ -5874,6 +6270,8 @@ function buildPartnerSocialUrl(platform: string, handle: string) {
       return `https://www.tiktok.com/@${normalizedHandle}`
     case "x":
       return `https://x.com/${normalizedHandle}`
+    case "youtube":
+      return `https://www.youtube.com/@${normalizedHandle}`
     default:
       return ""
   }

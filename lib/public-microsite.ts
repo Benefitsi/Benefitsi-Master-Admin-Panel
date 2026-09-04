@@ -16,11 +16,20 @@ import {
   type MicrositeVersion,
   type PartnerMicrosite,
 } from "./microsites"
+import { normalizePublicHttpUrl } from "./microsite-personalization"
 
 export type PublishedMicrositePage = {
   partner: PartnerWithDeals
   config: MicrositeConfig
 }
+
+const PUBLIC_DEAL_COLUMNS =
+  "id,partner_id,type,reward_format,trigger_key,campaign_type,activation_mode,discount_type,premium_only,benefit_category,audience,activation_required,allow_free_trial,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,public_title,public_subtitle,display_title,display_subtitle,trigger_value,expiry_days,happy_hour_start,happy_hour_end,timezone,cooldown_hours,valid_from,valid_until,max_redemptions_global,max_redemptions_per_user,stock_total,stock_remaining,selection_expires_minutes,priority,min_spend,max_discount_amount,reward_track_target,weekdays,reserve_on_selection,metadata,created_at,updated_at"
+
+// Keep a projection without the additive public-copy fields so a microsite
+// can continue serving legacy deals during a staggered database rollout.
+const PUBLIC_DEAL_COLUMNS_LEGACY =
+  "id,partner_id,type,discount_type,premium_only,benefit_category,audience,activation_required,allow_free_trial,active,discount_value,reward_item,benefit_count,estimated_savings,customer_description,terms,trigger_value,expiry_days,happy_hour_start,happy_hour_end,timezone,cooldown_hours,valid_from,valid_until,max_redemptions_global,max_redemptions_per_user,stock_total,stock_remaining,selection_expires_minutes,priority,min_spend,max_discount_amount,reward_track_target,weekdays,reserve_on_selection,metadata,created_at,updated_at"
 
 export async function getPublishedMicrositePage(
   supabase: SupabaseClient,
@@ -68,13 +77,13 @@ export async function getPublishedMicrositePage(
         .maybeSingle(),
       supabase
         .from("deals")
-        .select("id,partner_id,active,reward_item,customer_description,terms")
+        .select(PUBLIC_DEAL_COLUMNS)
         .eq("partner_id", microsite.partner_id)
         .eq("active", true),
       supabase
         .from("partner_reward_milestones")
         .select(
-          "id,partner_id,required_stamps,title,reward_item,customer_description,active",
+          "id,partner_id,required_stamps,reward_type,reward_item,discount_type,discount_value,estimated_savings,title,customer_description,terms,audience,active,reward_track_target",
         )
         .eq("partner_id", microsite.partner_id)
         .eq("active", true),
@@ -96,9 +105,33 @@ export async function getPublishedMicrositePage(
         .order("created_at"),
     ])
 
+  let publicDealsData = dealsResult.data
+  let publicDealsError = dealsResult.error
+  if (dealsResult.error && isMissingPublicDealCanonicalColumn(dealsResult.error)) {
+    const legacyDealsResult = await supabase
+      .from("deals")
+      .select(PUBLIC_DEAL_COLUMNS_LEGACY)
+      .eq("partner_id", microsite.partner_id)
+      .eq("active", true)
+
+    publicDealsData = (legacyDealsResult.data ?? []).map((deal) => ({
+      ...deal,
+      reward_format: null,
+      trigger_key: null,
+      campaign_type: null,
+      activation_mode: null,
+      public_title: null,
+      public_subtitle: null,
+      display_title: null,
+      display_subtitle: null,
+    }))
+    publicDealsError = legacyDealsResult.error
+  }
+
   if (
     partnerResult.error ||
     versionResult.error ||
+    publicDealsError ||
     !partnerResult.data ||
     !versionResult.data
   ) {
@@ -148,7 +181,7 @@ export async function getPublishedMicrositePage(
   }
   const annotatedPartner: PartnerWithDeals = {
     ...partner,
-    deals: (dealsResult.data ?? []) as Deal[],
+    deals: (publicDealsData ?? []) as Deal[],
     holidays: [],
     socials: (socialsResult.data ?? []) as PartnerSocial[],
     reward_milestones:
@@ -186,6 +219,34 @@ export async function getPublishedMicrositePage(
   }
 }
 
+export function isMissingPublicDealCanonicalColumn(error: unknown) {
+  const record = error && typeof error === "object"
+    ? error as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown }
+    : {}
+  const message = [record.message, record.details, record.hint, record.code]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .toLowerCase()
+  const looksLikeMissingColumn =
+    (message.includes("column") || message.includes("schema cache") || message.includes("pgrst") || message.includes("42703")) &&
+    (message.includes("does not exist") ||
+      message.includes("not found") ||
+      message.includes("schema cache") ||
+      message.includes("42703") ||
+      message.includes("pgrst"))
+
+  return looksLikeMissingColumn && [
+    "display_title",
+    "display_subtitle",
+    "reward_format",
+    "trigger_key",
+    "campaign_type",
+    "activation_mode",
+    "public_title",
+    "public_subtitle",
+  ].some((column) => message.includes(column))
+}
+
 function sanitizePartnerForPublicMicrosite(
   partner: PartnerWithDeals,
   config: MicrositeConfig,
@@ -202,6 +263,10 @@ function sanitizePartnerForPublicMicrosite(
     reward_milestones: partner.reward_milestones.map((milestone) => ({
       ...milestone,
       staff_instructions: null,
+    })),
+    socials: partner.socials.map((social) => ({
+      ...social,
+      url: normalizePublicHttpUrl(social.url) || null,
     })),
     staff: [],
     stamp_progress: [],
@@ -400,7 +465,12 @@ function isVisibilityKey(key: string) {
 }
 
 function isSafePublicLink(value: string) {
-  return /^(https?:\/\/|mailto:|tel:|\/|#)/i.test(value.trim())
+  const trimmed = value.trim()
+
+  return (
+    /^(mailto:|tel:|\/|#)/i.test(trimmed) ||
+    Boolean(normalizePublicHttpUrl(trimmed))
+  )
 }
 
 function isSafePublicAsset(value: string) {

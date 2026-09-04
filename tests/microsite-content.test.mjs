@@ -1,0 +1,412 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+
+import {
+  getMicrositePublicDeals,
+  getMicrositeStampDeals,
+  getMicrositeStampRewards,
+  getMicrositeWelcomeDeals,
+  micrositeDealDetails,
+  micrositeDealTypeLabel,
+  micrositeDealTitle,
+  micrositeStampRewardDescription,
+  micrositeStampRewardTitle,
+  micrositeWelcomeTitle,
+} from "../lib/microsite-content.ts"
+import { isMicrositeTopDeal } from "../lib/microsite-deals.ts"
+
+const now = Date.parse("2026-08-31T12:00:00.000Z")
+
+test("selects all available public deals but keeps stamp and lifecycle rewards in the stamp section", () => {
+  const deals = [
+    { id: "two-for-one", type: "two_for_one", active: true, stock_remaining: null },
+    {
+      id: "fixed-discount",
+      type: "discount",
+      discount_type: "fixed",
+      active: true,
+      stock_remaining: null,
+    },
+    { id: "welcome", type: "welcome", active: true },
+    { id: "bonus-stamp", type: "bonus_stamp", active: true },
+    { id: "inactive", type: "discount", active: false },
+    { id: "sold-out", type: "discount", active: true, stock_remaining: 0 },
+    {
+      id: "expired",
+      type: "discount",
+      active: true,
+      valid_until: "2026-08-30T23:59:59.000Z",
+    },
+    {
+      id: "future",
+      type: "discount",
+      active: true,
+      valid_from: "2026-09-01T00:00:00.000Z",
+    },
+  ]
+
+  assert.deepEqual(
+    getMicrositePublicDeals(deals, now).map((deal) => deal.id),
+    ["two-for-one", "fixed-discount"],
+  )
+  assert.deepEqual(
+    getMicrositeWelcomeDeals(deals, now).map((deal) => deal.id),
+    ["welcome"],
+  )
+  assert.deepEqual(
+    getMicrositeStampDeals(deals, now).map((deal) => deal.id),
+    ["bonus-stamp"],
+  )
+})
+
+test("puts only the stored two-for-one deal first and keeps the app type label for other deals", () => {
+  const deals = [
+    { id: "happy-hour", type: "happy_hour", active: true },
+    { id: "two-for-one", type: "two_for_one", active: true },
+    {
+      id: "happy-hour-two-for-one",
+      type: "happy_hour",
+      discount_type: "2for1",
+      active: true,
+    },
+  ]
+
+  assert.deepEqual(
+    getMicrositePublicDeals(deals).map((deal) => deal.id),
+    ["two-for-one", "happy-hour", "happy-hour-two-for-one"],
+  )
+  assert.equal(isMicrositeTopDeal(deals[1]), true)
+  assert.equal(isMicrositeTopDeal(deals[2]), false)
+  assert.equal(micrositeDealTypeLabel(deals[0]), "Happy Hour")
+  assert.equal(micrositeDealTypeLabel(deals[1]), "2 für 1")
+})
+
+test("uses canonical public labels for reward formats and lifecycle triggers", () => {
+  assert.equal(
+    micrositeDealTypeLabel({ type: "welcome", discount_type: "item" }),
+    "Willkommensdeal",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({ type: "welcome", discount_type: "bonus_stamp" }),
+    "Willkommensbonus",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({
+      type: "comeback",
+      discount_type: "item",
+      metadata: { bonus_mode: "comeback_inactive" },
+    }),
+    "Comeback-Deal",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({
+      type: "comeback",
+      discount_type: "bonus_stamp",
+      metadata: { bonus_mode: "comeback_inactive" },
+    }),
+    "Comeback-Bonus",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({ type: "permanent_discount" }),
+    "Dauerrabatt",
+  )
+  assert.equal(micrositeDealTypeLabel({ type: "streak" }), "Streak")
+  assert.equal(micrositeDealTypeLabel({ type: "challenge" }), "Challenge")
+})
+
+test("formats the stored deal value and minimum spend for the microsite", () => {
+  const deal = {
+    type: "discount",
+    discount_type: "fixed",
+    discount_value: 10,
+    min_spend: 50,
+    customer_description: "10 € Rabatt ab 50 € Einkaufswert.",
+    terms: "Nur auf einen Einkauf ab 50 €.",
+  }
+
+  assert.equal(micrositeDealTitle(deal), "10 € Rabatt ab 50 € Einkaufswert")
+  assert.deepEqual(micrositeDealDetails(deal), [
+    "Nur auf einen Einkauf ab 50 €.",
+    "Ab 50 € Einkaufswert",
+  ])
+})
+
+test("uses the stored happy-hour weekdays instead of contradictory free-text schedule terms", () => {
+  assert.deepEqual(
+    micrositeDealDetails({
+      type: "happy_hour",
+      terms:
+        "Täglich von 16:00 bis 18:00 Uhr gültig. Nicht mit anderen Deals kombinierbar.",
+      min_spend: null,
+      happy_hour_start: "16:00:00",
+      happy_hour_end: "18:00:00",
+      valid_weekdays: [6, 7],
+      weekdays: null,
+    }),
+    ["Sa-So 16:00-18:00", "Nicht mit anderen Deals kombinierbar."],
+  )
+})
+
+test("keeps every active base and premium milestone, including equal stamp targets", () => {
+  const milestones = getMicrositeStampRewards([
+    {
+      id: "premium-10",
+      required_stamps: 10,
+      reward_track_target: "premium",
+      active: true,
+    },
+    {
+      id: "base-10",
+      required_stamps: 10,
+      reward_track_target: "base",
+      active: true,
+    },
+    {
+      id: "base-5",
+      required_stamps: 5,
+      reward_track_target: "base",
+      active: true,
+    },
+    {
+      id: "inactive-5",
+      required_stamps: 5,
+      reward_track_target: "base",
+      active: false,
+    },
+  ])
+
+  assert.deepEqual(
+    milestones.map((milestone) => milestone.id),
+    ["base-5", "base-10", "premium-10"],
+  )
+})
+
+test("uses the real welcome and stamp reward values instead of generic copy", () => {
+  assert.equal(
+    micrositeWelcomeTitle({
+      type: "welcome",
+      discount_type: "bonus_stamp",
+      benefit_count: 2,
+    }),
+    "Direkt 2 Stempel beim ersten Besuch.",
+  )
+  assert.equal(
+    micrositeStampRewardTitle({
+      reward_type: "fixed",
+      discount_type: "fixed",
+      discount_value: 15,
+      title: null,
+      reward_item: null,
+    }),
+    "15 € Rabatt",
+  )
+  assert.equal(
+    micrositeStampRewardDescription({
+      required_stamps: 5,
+      reward_type: "fixed",
+      discount_type: "fixed",
+      discount_value: 5,
+      title: "5 EUR Rabatt",
+      reward_item: null,
+      customer_description:
+        "Nach 6 Stempeln gibt es 5 EUR Rabatt auf die Bestellung.",
+      terms: "Mindestbon 12 EUR.",
+    }),
+    "",
+  )
+})
+
+test("microsite public titles reject legacy aliases and stay concrete", () => {
+  assert.equal(
+    micrositeDealTitle({
+      type: "two_for_one",
+      discount_type: "2for1",
+      discount_value: null,
+      reward_item: "Pizza",
+      benefit_count: null,
+      customer_description: "",
+      min_spend: null,
+      display_title: "Top Deal Pizza",
+    }),
+    "2 für 1 Pizza",
+  )
+  assert.equal(
+    micrositeDealTitle({
+      type: "free_item",
+      discount_type: "item",
+      discount_value: null,
+      reward_item: "Ayran",
+      benefit_count: null,
+      customer_description: "",
+      min_spend: null,
+      display_title: "Gratisartikel",
+    }),
+    "Gratis Ayran",
+  )
+  assert.equal(
+    micrositeDealTitle({
+      type: "free_item",
+      discount_type: "item",
+      discount_value: null,
+      reward_item: "Ayran",
+      benefit_count: null,
+      customer_description: "",
+      min_spend: null,
+      display_title: "Ayran",
+    }),
+    "Gratis Ayran",
+  )
+  assert.equal(
+    micrositeDealTitle({
+      type: "free_item",
+      discount_type: "item",
+      discount_value: null,
+      reward_item: "Ayran",
+      benefit_count: null,
+      customer_description: "",
+      min_spend: null,
+      display_title: "Reward",
+    }),
+    "Gratis Ayran",
+  )
+  assert.equal(
+    micrositeDealTitle({
+      type: "discount",
+      discount_type: "percent",
+      discount_value: 15,
+      reward_item: null,
+      benefit_count: null,
+      customer_description: "",
+      min_spend: null,
+      display_title: "Rabatt",
+    }),
+    "15 % Rabatt",
+  )
+})
+
+test("stamp reward titles use the canonical German term", () => {
+  assert.equal(
+    micrositeStampRewardTitle({
+      reward_type: "stamp_reward",
+      discount_type: null,
+      discount_value: null,
+      reward_item: null,
+      title: "Stamp Reward",
+      customer_description: null,
+    }),
+    "Stempelbelohnung",
+  )
+  assert.equal(
+    micrositeStampRewardTitle({
+      reward_type: "item",
+      discount_type: "item",
+      discount_value: null,
+      reward_item: "Ayran",
+      title: "Reward",
+      customer_description: null,
+    }),
+    "Gratis Ayran",
+  )
+  assert.equal(
+    micrositeStampRewardTitle({
+      reward_type: "item",
+      discount_type: "item",
+      discount_value: null,
+      reward_item: "Ayran",
+      title: null,
+      customer_description: null,
+    }),
+    "Gratis Ayran",
+  )
+  assert.equal(
+    micrositeStampRewardTitle({
+      reward_type: "2for1",
+      discount_type: "2for1",
+      discount_value: null,
+      reward_item: "Pizza",
+      title: null,
+      customer_description: null,
+    }),
+    "2 für 1 Pizza",
+  )
+})
+
+test("microsite labels preserve trigger, reward format, and activation semantics", () => {
+  assert.equal(
+    micrositeDealTypeLabel({
+      type: "welcome",
+      discount_type: "percent",
+      reward_format: "discount",
+      activation_mode: "direct_selectable",
+    }),
+    "Willkommensdeal",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({
+      type: "welcome",
+      discount_type: "bonus_stamp",
+      reward_format: "bonus_stamp",
+      activation_mode: "automatic_background",
+    }),
+    "Willkommensbonus",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({
+      type: "comeback",
+      trigger_key: "time_bonus",
+      reward_format: "bonus_stamp",
+      activation_mode: "automatic_background",
+    }),
+    "Zeitbonus",
+  )
+  assert.equal(
+    micrositeDealTypeLabel({
+      type: "comeback",
+      metadata: { bonus_mode: "comeback_inactive" },
+      reward_format: "discount",
+      discount_type: "percent",
+      activation_mode: "direct_selectable",
+    }),
+    "Comeback-Deal",
+  )
+})
+
+test("microsite titles reject every retired public alias before rendering", () => {
+  for (const display_title of [
+    "2-für-1-Deal",
+    "Rabattvorteil",
+    "Dauervorteil",
+    "Automatischer Basisrabatt",
+    "Bonus-Stempel",
+    "Streak Bonus",
+    "Time-based bonus",
+    "Selectable discount",
+  ]) {
+    assert.equal(
+      micrositeDealTitle({
+        type: "discount",
+        discount_type: "percent",
+        discount_value: 15,
+        reward_item: null,
+        benefit_count: null,
+        customer_description: "",
+        min_spend: null,
+        display_title,
+      }),
+      "15 % Rabatt",
+    )
+  }
+
+  assert.equal(
+    micrositeDealTitle({
+      type: "welcome",
+      discount_type: "percent",
+      discount_value: 20,
+      reward_item: null,
+      benefit_count: null,
+      customer_description: "",
+      min_spend: null,
+    }),
+    "Willkommensdeal: 20 % Rabatt",
+  )
+})

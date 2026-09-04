@@ -187,13 +187,20 @@ type PartnerSeed = {
 }
 
 const defaultNavigation = [
-  { label: "Deals", anchor: "deals" },
+  { label: "Vorteile", anchor: "deals" },
   { label: "Stempelkarte", anchor: "stempelkarte" },
   { label: "Speisekarte", anchor: "speisekarte" },
   { label: "Über Uns", anchor: "ueber-uns" },
   { label: "Benefitsi-App", anchor: "app" },
   { label: "Kontakt", anchor: "kontakt" },
 ]
+
+const defaultTopDealHeadline = "Aktueller Vorteil"
+const defaultTopDealDescription =
+  "Entdecke den aktuellen Vorteil in der Benefitsi-App."
+const legacyDefaultTopDealHeadline = "2 für 1 Döner"
+const legacyDefaultTopDealDescription =
+  "Zwei Döner genießen – nur einen bezahlen!"
 
 export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeConfig {
   const name = partner.name?.trim() || partner.short_name?.trim() || "Restaurant"
@@ -230,26 +237,26 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       openingText: micrositeOpeningText(partner),
       backgroundImageUrl: backgroundImage,
       badgeText: "Offizieller Benefitsi Partner",
-      primaryButtonLabel: "Deals ansehen",
+      primaryButtonLabel: "Vorteile ansehen",
       secondaryButtonLabel: `${defaults.menuLabel} ansehen`,
       services: defaults.services,
     },
     deals: {
-      label: "Deals & Vorteile",
-      headline: `Exklusive Benefitsi Deals bei ${partner.short_name || name}`,
+      label: "Vorteile & Aktionen",
+      headline: `Exklusive Benefitsi Vorteile bei ${partner.short_name || name}`,
       slogan: "Mehr genießen, mehr sparen!",
       description:
         "Entdecke die besten Vorteile und belohne dich bei jedem Besuch.",
       illustrationUrl:
         partner.discover_card_image_url || partner.feature_card_url || backgroundImage,
-      topDealLabel: "Top Deal",
-      topDealHeadline: "2 für 1 Döner",
-      topDealDescription: "Zwei Döner genießen – nur einen bezahlen!",
+      topDealLabel: "Vorteil",
+      topDealHeadline: defaultTopDealHeadline,
+      topDealDescription: defaultTopDealDescription,
       topDealImageUrl:
         partner.discover_card_image_url || partner.feature_card_url || backgroundImage,
       topDealBullets: [
-        "Gültig für alle Döner",
-        "Täglich einlösbar",
+        "Gültig gemäß Vorteilsbedingungen",
+        "In der Benefitsi-App auswählen",
         `Nur in ${location}`,
       ],
       topDealButtonLabel: "Vorteil in der App aktivieren",
@@ -275,9 +282,9 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       footerText: defaults.footerText,
     },
     seo: {
-      title: `${name} in ${location} | Deals, Stempelkarte & Speisekarte`,
-      description: `${name}: ${location}. Benefitsi Deals, Stempelkarte, Speisekarte, Öffnungszeiten und Kontakt auf einen Blick.`,
-      keywords: [name, location, "Benefitsi", "Deals", "Stempelkarte", "Speisekarte"],
+      title: `${name} in ${location} | Vorteile, Stempelkarte & Speisekarte`,
+      description: `${name}: ${location}. Benefitsi Vorteile, Stempelkarte, Speisekarte, Öffnungszeiten und Kontakt auf einen Blick.`,
+      keywords: [name, location, "Benefitsi", "Vorteile", "Stempelkarte", "Speisekarte"],
       ogImageUrl: backgroundImage,
       noIndex: false,
     },
@@ -393,17 +400,19 @@ export function resolveMicrositeConfig(
         deals.illustrationUrl,
         fallback.deals.illustrationUrl,
       ),
-      topDealLabel: safeString(
+      topDealLabel: normalizeLegacyTopDealLabel(
         deals.topDealLabel,
         fallback.deals.topDealLabel,
       ),
-      topDealHeadline: safeString(
+      topDealHeadline: normalizeLegacyTopDealCopy(
         deals.topDealHeadline,
         fallback.deals.topDealHeadline,
+        legacyDefaultTopDealHeadline,
       ),
-      topDealDescription: safeString(
+      topDealDescription: normalizeLegacyTopDealCopy(
         deals.topDealDescription,
         fallback.deals.topDealDescription,
+        legacyDefaultTopDealDescription,
       ),
       topDealImageUrl: safeString(
         deals.topDealImageUrl,
@@ -662,6 +671,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function safeString(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback
+}
+
+function normalizeLegacyTopDealCopy(
+  value: unknown,
+  fallback: string,
+  legacyValue: string,
+) {
+  const candidate = safeString(value, fallback)
+  return candidate === legacyValue ? fallback : candidate
+}
+
+function normalizeLegacyTopDealLabel(value: unknown, fallback: string) {
+  const normalized = safeString(value, fallback)
+
+  return /^(?:top[- ]?deal|top[- ]?vorteil|hauptdeal|daily deal)$/i.test(
+    normalized,
+  )
+    ? fallback
+    : normalized
 }
 
 function safeLocationString(value: unknown, fallback: string) {
