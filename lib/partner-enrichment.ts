@@ -696,10 +696,10 @@ function openStreetMapCategories(
     .split(/[;,]/)
     .map((value) => value.trim())
   const aliases: Record<string, string> = {
-    restaurant: "Restaurant", cafe: "Cafe", coffee_shop: "Cafe", fast_food: "Imbiss",
+    restaurant: "Restaurant", cafe: "Cafe", coffee_shop: "Cafe", fast_food: "Snack Bar",
     pizza: "Pizza", burger: "Burger", sushi: "Sushi", thai: "Thai", chinese: "Chinese",
-    indian: "Inder", greek: "Grieche", kebab: "Döner", doner: "Döner", shawarma: "Shawarma",
-    falafel: "Falafel", ice_cream: "Eis", butcher: "Metzgerei",
+    indian: "Indian", greek: "Greek", kebab: "Doner Kebab", doner: "Doner Kebab", shawarma: "Doner Kebab",
+    falafel: "Falafel", ice_cream: "Ice Cream", butcher: "Butcher",
   }
   return dedupeBy(values.flatMap((value) => {
     const mapped = aliases[value.toLocaleLowerCase().replace(/\s+/g, "_")]

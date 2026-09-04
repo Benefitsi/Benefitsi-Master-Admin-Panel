@@ -22,6 +22,11 @@ import {
   type PartnerMediaSpec,
 } from "@/lib/partner-config"
 import {
+  isKnownPartnerType,
+  isPartnerCategoryAllowedForType,
+  normalizePartnerCategoriesForType,
+} from "@/lib/partner-categories"
+import {
   DEFAULT_AUDIENCE,
   DEFAULT_DEAL_DROP_PRIORITY,
   DEFAULT_DEAL_DROP_WEEKDAYS,
@@ -2751,8 +2756,23 @@ function validatePartnerForm(
     }
   }
 
-  if (listValue(formData, "category").length === 0) {
+  const partnerType = normalizePartnerTypeValue(stringValue(formData, "type"))
+  const selectedCategories = listValue(formData, "category")
+
+  if (selectedCategories.length === 0) {
     return "Please select at least one category."
+  }
+
+  const invalidCategories = selectedCategories.filter(
+    (category) => !isPartnerCategoryAllowedForType(partnerType, category),
+  )
+
+  if (invalidCategories.length > 0) {
+    if (isKnownPartnerType(partnerType)) {
+      return `Choose valid categories for partner type ${partnerType}.`
+    }
+
+    return "Choose valid categories."
   }
 
   if (!parseCoordinates(stringValue(formData, "coordinates"))) {
@@ -2937,6 +2957,10 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     positiveIntegerValue(formData, "existing_stamp_target") ??
     MAX_STAMP_CARD_STAMPS
   const partnerType = normalizePartnerTypeValue(stringValue(formData, "type"))
+  const normalizedCategories = normalizePartnerCategoriesForType(
+    partnerType,
+    listValue(formData, "category"),
+  )
 
   return {
     owner_id: stringValue(formData, "owner_id"),
@@ -2946,7 +2970,7 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     subdomain,
     short_name: stringValue(formData, "short_name") || createShortName(name),
     description: stringValue(formData, "description"),
-    category: listValue(formData, "category"),
+    category: normalizedCategories,
     type: partnerType,
     status: active ? "active" : isUpdate ? "paused" : "draft",
     is_featured: checkboxValue(formData, "is_featured"),
