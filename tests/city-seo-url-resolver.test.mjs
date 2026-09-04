@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { mock, test } from "node:test";
+
+mock.module("server-only", { namedExports: {} });
 
 const { getCitySeoUrl, resolveCitySeoOpportunity } = await import("../lib/city-agent/seo-url-resolver.ts");
 

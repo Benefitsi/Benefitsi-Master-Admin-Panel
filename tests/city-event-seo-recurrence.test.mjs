@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import test from "node:test";
+import { mock, test } from "node:test";
+
+mock.module("server-only", { namedExports: {} });
 
 const { recurringScheduleIsCurrent, evaluateEventRecurrence } = await import("../lib/city-agent/event-seo-audit.ts");
 
