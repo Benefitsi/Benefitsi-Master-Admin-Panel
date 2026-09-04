@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { requireAdmin } from "@/lib/admin"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { notifyCityPublicRevalidation, notifyPartnerPublicRevalidation, notifyPublicRevalidation } from "@/lib/public-revalidation"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -159,6 +160,24 @@ function invalidRedirect(path: string): never {
   redirect(`${path}?error=validation`)
 }
 
+async function notifyEditorialScope(formData: FormData) {
+  const scope = text(formData, "scope", 20)
+  const admin = createAdminClient()
+  if (scope === "global") {
+    await notifyPublicRevalidation({ resource: "global_editorial" })
+    return
+  }
+  if (scope === "city") {
+    const cityId = text(formData, "cityId", 80)
+    if (cityId) await notifyCityPublicRevalidation(admin, cityId, "editorial")
+    return
+  }
+  if (scope === "partner") {
+    const partnerId = text(formData, "partnerId", 80)
+    if (partnerId) await notifyPartnerPublicRevalidation(admin, partnerId)
+  }
+}
+
 export async function createEditorialPost(formData: FormData) {
   await requireAdmin()
   const payload = buildPayload(formData)
@@ -170,6 +189,7 @@ export async function createEditorialPost(formData: FormData) {
     redirect(`/editorial/new?error=${error}`)
   }
 
+  await notifyEditorialScope(formData)
   revalidatePath("/editorial")
   redirect("/editorial?success=created")
 }
@@ -190,6 +210,7 @@ export async function updateEditorialPost(formData: FormData) {
     redirect(`/editorial/${encodeURIComponent(postId)}?error=${error}`)
   }
 
+  await notifyEditorialScope(formData)
   revalidatePath("/editorial")
   redirect("/editorial?success=saved")
 }
@@ -210,6 +231,14 @@ export async function archiveEditorialPost(formData: FormData) {
 
   if (result.error) redirect("/editorial?error=archive")
 
+  const post = await createAdminClient().from("editorial_posts").select("scope,city_id,partner_id").eq("id", postId).maybeSingle()
+  if (!post.error && post.data) {
+    const scopeFormData = new FormData()
+    scopeFormData.set("scope", typeof post.data.scope === "string" ? post.data.scope : "")
+    if (typeof post.data.city_id === "string") scopeFormData.set("cityId", post.data.city_id)
+    if (typeof post.data.partner_id === "string") scopeFormData.set("partnerId", post.data.partner_id)
+    await notifyEditorialScope(scopeFormData)
+  }
   revalidatePath("/editorial")
   redirect("/editorial?success=archived")
 }

@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto"
 import { runNextCityAgentJob } from "@/lib/city-agent/runner"
+import { recoverStaleCityAgentRuns } from "@/lib/city-agent/operations"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
@@ -25,11 +26,48 @@ async function run(request: Request) {
   const cityId = typeof body.cityId === "string" ? body.cityId : url.searchParams.get("cityId") ?? undefined
   const agentProfile = typeof body.agentProfile === "string" ? body.agentProfile : url.searchParams.get("agentProfile") ?? undefined
   const maxSourcesValue = Number(body.maxSources ?? url.searchParams.get("maxSources") ?? 10)
-  const dryRun = body.dryRun !== false && url.searchParams.get("dryRun") !== "false"
+  const dryRunQuery = url.searchParams.get("dryRun")
+  const dryRun = typeof body.dryRun === "boolean"
+    ? body.dryRun
+    : dryRunQuery === null
+      ? false
+      : dryRunQuery !== "false"
+  const requestedMaxJobs = Number(body.maxJobs ?? url.searchParams.get("maxJobs") ?? process.env.CITY_AGENT_WORKER_MAX_JOBS ?? 2)
+  const maxJobs = Number.isFinite(requestedMaxJobs)
+    ? Math.max(1, Math.min(Math.trunc(requestedMaxJobs), 4))
+    : 2
 
   try {
-    const summary = await runNextCityAgentJob({ cityId, agentProfile, maxSources: maxSourcesValue, dryRun })
-    return Response.json({ ok: true, summary }, { headers: { "Cache-Control": "no-store" } })
+    const stale = await recoverStaleCityAgentRuns({ maxRuns: 20 })
+    const jobs: Awaited<ReturnType<typeof runNextCityAgentJob>>[] = []
+    const errors: string[] = []
+
+    for (let index = 0; index < maxJobs; index += 1) {
+      try {
+        const summary = await runNextCityAgentJob({ cityId, agentProfile, maxSources: maxSourcesValue, dryRun })
+        if (!summary.claimed) break
+        jobs.push(summary)
+      } catch (error) {
+        // Keep draining independent queue items. A failed invocation remains
+        // lease-protected and is recovered by the next tick if necessary.
+        errors.push(error instanceof Error ? error.message.slice(0, 500) : "worker_failed")
+      }
+    }
+
+    return Response.json(
+      {
+        ok: errors.length === 0,
+        status: errors.length ? "partial" : "succeeded",
+        staleRunsRecovered: stale.recoveredCount,
+        staleRunErrors: stale.errors,
+        jobsProcessed: jobs.length,
+        jobs,
+        errors,
+        dryRun,
+        maxJobs,
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    )
   } catch (error) {
     console.error("City-Agent worker failed:", error)
     return Response.json({ ok: false, error: "worker_failed" }, { status: 500, headers: { "Cache-Control": "no-store" } })

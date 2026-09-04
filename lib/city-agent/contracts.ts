@@ -201,6 +201,9 @@ export type CityAgentRunSummary = {
   moduleKey?: CityAgentModuleKey
   shadow?: boolean
   findingCount?: number
+  editorialDraftCreatedCount?: number
+  editorialDraftUpdatedCount?: number
+  editorialDraftSkippedCount?: number
   desiredCadenceMinutes?: number
   actualTrigger?: string
   changeCounts?: Record<string, number>

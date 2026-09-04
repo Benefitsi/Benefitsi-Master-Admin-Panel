@@ -48,14 +48,14 @@ export default async function CityMemoryStampsPage({
         assignment.cityId === city.id &&
         assignment.entityType === "COLLECTION" &&
         assignment.entityKey === slot.id &&
-        assignment.role === "CARD",
+        assignment.role === "MEMORY_STAMP_ARTWORK",
       ),
     ) ?? null
     const assignment = asset?.assignments.find((candidate) =>
       candidate.cityId === city.id &&
       candidate.entityType === "COLLECTION" &&
       candidate.entityKey === slot.id &&
-      candidate.role === "CARD",
+      candidate.role === "MEMORY_STAMP_ARTWORK",
     ) ?? null
 
     return { ...slot, asset, assignment }
@@ -85,7 +85,7 @@ export default async function CityMemoryStampsPage({
           <a href={publicUrl} target="_blank" rel="noreferrer" className={secondaryButton}>
             Öffentliche Memory-Seite ↗
           </a>
-          <Link href={`/media?city=${encodeURIComponent(city.slug)}&entityType=COLLECTION&role=CARD`} className={secondaryButton}>
+          <Link href={`/media?city=${encodeURIComponent(city.slug)}&entityType=COLLECTION&role=MEMORY_STAMP_ARTWORK`} className={secondaryButton}>
             In Media Library öffnen
           </Link>
         </div>

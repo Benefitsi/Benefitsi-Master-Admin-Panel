@@ -80,8 +80,20 @@ export type AutomationData = {
   cityAgentSchedulerJobLinks: CityAgentSchedulerJobLinkSummary[]
   cityAgentShadowWindows: CityAgentShadowWindowSummary[]
   cityAgentHealthChecks: CityAgentHealthCheckSummary[]
+  editorialPosts: CityAgentEditorialPostSummary[]
   migrationReady: boolean
   warnings: string[]
+}
+
+export type CityAgentEditorialPostSummary = {
+  id: string
+  cityId: string
+  cityName: string | null
+  title: string
+  status: string
+  eyebrow: string
+  sourceCount: number
+  updatedAt: string | null
 }
 
 export type CityAgentSourceSummary = {

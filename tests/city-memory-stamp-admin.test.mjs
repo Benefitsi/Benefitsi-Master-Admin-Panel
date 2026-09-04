@@ -34,10 +34,26 @@ test("memory admin uses the shared media library contract", async () => {
   assert.match(manager, /\/api\/media/)
   assert.match(manager, /\/assignments/)
   assert.match(manager, /entityType: "COLLECTION"/)
-  assert.match(manager, /role: "CARD"/)
+  assert.match(manager, /role: "MEMORY_STAMP_ARTWORK"/)
+  assert.match(manager, /object-contain/)
   assert.match(manager, /status.*DRAFT|DRAFT.*status/)
   assert.match(route, /PENDING_PLACE_RELATION/)
   assert.match(route, /publish|review/i)
   assert.match(assetRoute, /pending_place_relation/)
   assert.match(assignmentRoute, /isPendingCityMemorySlot/)
+})
+
+test("memory artwork has a dedicated media role and keeps draft assets private", async () => {
+  const [contracts, manager, route] = await Promise.all([
+    read("lib/city-media/contracts.ts"),
+    read("components/city-memory/memory-stamp-manager.tsx"),
+    read("app/api/city-pages/[citySlug]/memory-stamps/route.ts"),
+  ])
+
+  assert.match(contracts, /"MEMORY_STAMP_ARTWORK"/)
+  assert.match(manager, /status", "DRAFT"/)
+  assert.match(manager, /role: "MEMORY_STAMP_ARTWORK"/)
+  assert.match(route, /\.eq\("role", "MEMORY_STAMP_ARTWORK"\)/)
+  assert.match(route, /action === "archive" \? "ARCHIVE" : "UPDATE_METADATA"/)
+  assert.doesNotMatch(route, /MEMORY_\$\{action/)
 })

@@ -28,7 +28,8 @@ test("stale-run recovery is conditional, audited and retried through the queue",
   assert.match(source, /protected_action_executed: false/);
 });
 
-test("Vercel cron invokes one authenticated operations tick", async () => {
+test("Vercel cron invokes authenticated daily operations jobs", async () => {
   const config = JSON.parse(await readFile(vercel, "utf8"));
-  assert.deepEqual(config.crons, [{ path: "/api/automation/tick", schedule: "10 4 * * *" }]);
+  assert.ok(config.crons.some((cron) => cron.path === "/api/automation/tick" && cron.schedule === "10 4 * * *"));
+  assert.ok(config.crons.some((cron) => cron.path === "/api/automation/worker" && cron.schedule === "30 4 * * *"));
 });

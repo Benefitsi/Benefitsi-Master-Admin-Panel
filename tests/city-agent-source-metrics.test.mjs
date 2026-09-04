@@ -57,5 +57,6 @@ test("natural scheduler jobs are distinguished from explicit manual runs", async
   assert.match(runner, /jobInput\.schedulerRunId/);
   assert.match(runner, /trigger:\s*runTrigger/);
   assert.match(tick, /dryRun:\s*false/);
-  assert.match(worker, /const dryRun\s*=\s*body\.dryRun/);
+  assert.match(worker, /typeof body\.dryRun === "boolean"/);
+  assert.match(worker, /dryRunQuery === null/);
 });

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { AdminShell } from "@/app/admin-shell"
 import {
   enqueueCityScan,
@@ -21,6 +22,7 @@ import {
   type CityAgentProposalSummary,
   type CityAgentBaselineSummary,
   type CityAgentControlSummary,
+  type CityAgentEditorialPostSummary,
   type CityAgentFindingSummary,
   type CityAgentRunSummary,
   type CityAgentScheduleSummary,
@@ -84,6 +86,9 @@ export default async function AutomationPage({
   )
   const cityAgentSchedulerJobLinks = data.cityAgentSchedulerJobLinks.filter(
     (link) => !query.city || link.cityId === query.city,
+  )
+  const editorialPosts = data.editorialPosts.filter(
+    (post) => !query.city || post.cityId === query.city,
   )
   const adminName =
     adminSession.profile?.display_name ||
@@ -156,6 +161,7 @@ export default async function AutomationPage({
         runs={cityAgentRuns}
         schedulerRuns={cityAgentSchedulerRuns}
         schedulerJobLinks={cityAgentSchedulerJobLinks}
+        editorialPosts={editorialPosts}
       />
 
       <section className="grid overflow-hidden rounded-3xl border border-[#061829]/10 bg-white sm:grid-cols-4">
@@ -312,6 +318,7 @@ function CityAgentControlCenter({
   runs,
   schedulerRuns,
   schedulerJobLinks,
+  editorialPosts,
 }: {
   controls: CityAgentControlSummary[]
   schedules: CityAgentScheduleSummary[]
@@ -322,6 +329,7 @@ function CityAgentControlCenter({
   runs: CityAgentRunSummary[]
   schedulerRuns: CityAgentSchedulerRunSummary[]
   schedulerJobLinks: CityAgentSchedulerJobLinkSummary[]
+  editorialPosts: CityAgentEditorialPostSummary[]
 }) {
   const sourceFailures = findings.filter((finding) => finding.findingType === "SOURCE_FAILURE").length
   const qaIssues = findings.filter((finding) => finding.findingType === "QA_ISSUE").length
@@ -338,6 +346,8 @@ function CityAgentControlCenter({
   const seoChanceCount = proposals.filter((proposal) => proposal.seoDecision === "PURSUE_NOW" || proposal.seoDecision === "IMPROVE_EXISTING").length
   const sourceProblemCount = findings.filter((finding) => finding.findingType === "SOURCE_FAILURE").length
   const autoDoneCount = findings.filter((finding) => !finding.attentionRequired).length
+  const automaticDrafts = editorialPosts.filter((post) => post.eyebrow === "Automatisch recherchierter Entwurf" && ["draft", "needs_review"].includes(post.status))
+  const draftsAwaitingReview = automaticDrafts.filter((post) => post.status === "needs_review").length
   const shadowStart = controls.map((control) => control.shadowWindowStartedAt).filter(Boolean).sort()[0] ?? null
   const scheduleMatrix = schedules.filter((schedule) => schedule.enabled).map((schedule) => {
     const control = controls.find((candidate) => candidate.cityId === schedule.cityId)
@@ -417,6 +427,27 @@ function CityAgentControlCenter({
         <QueueBucket label="Beobachten" value={watchCount} tone="slate" />
         <QueueBucket label="Quellenprobleme" value={sourceProblemCount} tone="amber" />
         <QueueBucket label="SEO-Chancen" value={seoChanceCount} tone="blue" />
+      </div>
+
+      <div className="border-t border-[#061829]/10 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-[#0b75d9]">Automatische Redaktion</p>
+            <h3 className="mt-1 font-black">Quellengebundene Blog-Entwürfe</h3>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-700">Keine Veröffentlichung</span>
+            <Link href="/editorial" className="rounded-full border border-[#118cff]/25 px-3 py-1.5 text-xs font-black text-[#0b75d9] hover:bg-[#f3f8ff]">Entwürfe prüfen →</Link>
+          </div>
+        </div>
+        <p className="mt-2 max-w-3xl text-xs leading-5 text-[#617080]">
+          Der Agent erstellt aus verifizierten Quellen wiederholbar Entwürfe. Ein Qualitäts-Gate prüft Quellenbeleg, Titel, Teaser, strukturierte Absätze und Kontext-Link; unsichere Entwürfe werden verworfen. Bestehende menschliche oder veröffentlichte Beiträge bleiben geschützt. Im aktuellen SHADOW-/PRELAUNCH-Modus bleibt jede Veröffentlichung gesperrt.
+        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <ControlMetric label="Automatische Entwürfe" value={automaticDrafts.length} />
+          <ControlMetric label="Zur Prüfung markiert" value={draftsAwaitingReview} alert />
+          <ControlMetric label="Quellenbelege" value={automaticDrafts.reduce((total, post) => total + post.sourceCount, 0)} />
+        </div>
       </div>
 
       <div className="border-t border-[#061829]/10 p-5">

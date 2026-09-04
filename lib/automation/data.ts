@@ -381,6 +381,23 @@ function normalizeCityAgentAudit(row: Row) {
   }
 }
 
+function normalizeEditorialPost(row: Row, cityNames: Map<string, string>) {
+  const cityId = text(row.city_id) ?? ""
+  const sourceCount = Array.isArray(row.sources)
+    ? row.sources.filter((source) => Boolean(source) && typeof source === "object" && !Array.isArray(source)).length
+    : 0
+  return {
+    id: text(row.id) ?? "",
+    cityId,
+    cityName: cityNames.get(cityId) ?? null,
+    title: text(row.title) ?? "Unbenannter Entwurf",
+    status: text(row.status) ?? "draft",
+    eyebrow: text(row.eyebrow) ?? "Magazin",
+    sourceCount,
+    updatedAt: text(row.updated_at),
+  }
+}
+
 export async function loadAutomationData(): Promise<AutomationData> {
   const admin = createAdminClient()
   const citiesResult = await admin.from("cities").select("id,name").order("name")
@@ -393,7 +410,7 @@ export async function loadAutomationData(): Promise<AutomationData> {
     name: text(city.name) ?? "Unbekannte Stadt",
   }))
   const cityNames = new Map(cities.map((city) => [city.id, city.name]))
-  const [jobsResult, auditResult, sourcesResult, runsResult, proposalsResult, cityAgentAuditResult, controlsResult, schedulesResult, findingsResult, baselinesResult, schedulerRunsResult, shadowWindowsResult, healthChecksResult, schedulerJobLinksResult] = await Promise.all([
+  const [jobsResult, auditResult, sourcesResult, runsResult, proposalsResult, cityAgentAuditResult, controlsResult, schedulesResult, findingsResult, baselinesResult, schedulerRunsResult, shadowWindowsResult, healthChecksResult, schedulerJobLinksResult, editorialPostsResult] = await Promise.all([
     admin
       .from("automation_jobs")
       .select("*")
@@ -464,6 +481,12 @@ export async function loadAutomationData(): Promise<AutomationData> {
       .select("scheduler_job_id,scheduler_run_id,schedule_id,city_id,module_key,scheduled_for,queued_at,worker_job_id,agent_run_id,agent_type,started_at,finished_at,result,error_summary")
       .order("scheduled_for", { ascending: false })
       .limit(1000),
+    admin
+      .from("editorial_posts")
+      .select("id,city_id,title,status,eyebrow,sources,updated_at")
+      .eq("scope", "city")
+      .order("updated_at", { ascending: false })
+      .limit(300),
   ])
 
   if (jobsResult.error || auditResult.error) {
@@ -483,6 +506,7 @@ export async function loadAutomationData(): Promise<AutomationData> {
       cityAgentSchedulerJobLinks: [],
       cityAgentShadowWindows: [],
       cityAgentHealthChecks: [],
+      editorialPosts: [],
       migrationReady: false,
       warnings: [
         "Die Automations-Migration ist noch nicht verfügbar. Es wurden keine Ersatzdaten angezeigt.",
@@ -491,7 +515,7 @@ export async function loadAutomationData(): Promise<AutomationData> {
   }
 
   const warnings: string[] = []
-  if (sourcesResult.error || runsResult.error || proposalsResult.error || cityAgentAuditResult.error || controlsResult.error || schedulesResult.error || findingsResult.error || baselinesResult.error || schedulerRunsResult.error || shadowWindowsResult.error || healthChecksResult.error || schedulerJobLinksResult.error) {
+  if (sourcesResult.error || runsResult.error || proposalsResult.error || cityAgentAuditResult.error || controlsResult.error || schedulesResult.error || findingsResult.error || baselinesResult.error || schedulerRunsResult.error || shadowWindowsResult.error || healthChecksResult.error || schedulerJobLinksResult.error || editorialPostsResult.error) {
     warnings.push("Die City-Agent-Migration ist noch nicht vollständig verfügbar. Queue-Daten werden trotzdem angezeigt.")
   }
 
@@ -519,6 +543,7 @@ export async function loadAutomationData(): Promise<AutomationData> {
     cityAgentSchedulerJobLinks: schedulerJobLinksResult.error ? [] : rows(schedulerJobLinksResult.data).map((row) => normalizeCityAgentSchedulerJobLink(row, cityNames)),
     cityAgentShadowWindows: shadowWindowsResult.error ? [] : rows(shadowWindowsResult.data).map((row) => normalizeShadowWindow(row, cityNames)),
     cityAgentHealthChecks: healthChecksResult.error ? [] : rows(healthChecksResult.data).map((row) => normalizeHealthCheck(row, cityNames)),
+    editorialPosts: editorialPostsResult.error ? [] : rows(editorialPostsResult.data).map((row) => normalizeEditorialPost(row, cityNames)),
     migrationReady: true,
     warnings,
   }

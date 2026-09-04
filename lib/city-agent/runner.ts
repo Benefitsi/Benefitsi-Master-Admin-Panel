@@ -31,6 +31,7 @@ import {
   sourceContentType,
 } from "./sources"
 import { createSourceFetchMetrics } from "./source-metrics"
+import { buildEditorialDraft, editorialDraftKey, evaluateEditorialDraft, type EditorialDraftInput } from "./editorial-automation"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type SupabaseClient = ReturnType<typeof createAdminClient>
@@ -135,11 +136,16 @@ function runTrigger(options: RunnerOptions, jobInput: Record<string, unknown>) {
 async function updateSchedulerJobLink(
   supabase: SupabaseClient,
   jobInput: Record<string, unknown>,
+  workerJobId: string,
   patch: Record<string, unknown>,
 ) {
   const schedulerJobId = typeof jobInput.schedulerJobId === "string" ? jobInput.schedulerJobId : null
-  if (!schedulerJobId) return
-  const result = await supabase.from("city_agent_scheduler_job_links").update({ ...patch, updated_at: new Date().toISOString() }).eq("scheduler_job_id", schedulerJobId)
+  const query = supabase
+    .from("city_agent_scheduler_job_links")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+  const result = schedulerJobId
+    ? await query.eq("scheduler_job_id", schedulerJobId)
+    : await query.eq("worker_job_id", workerJobId)
   if (result.error) throw new Error(`Scheduler-Agent-Verknüpfung konnte nicht aktualisiert werden: ${result.error.message}`)
 }
 
@@ -275,7 +281,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
   const claimedJobInput = safeObject(job.input)
   const cityId = job.city_id
   if (!cityId) {
-    await updateSchedulerJobLink(supabase, claimedJobInput, { finished_at: new Date().toISOString(), result: "FAILED", error_summary: "Job enthält keine Stadt." })
+    await updateSchedulerJobLink(supabase, claimedJobInput, job.id, { finished_at: new Date().toISOString(), result: "FAILED", error_summary: "Job enthält keine Stadt." })
     await failJob(supabase, job.id, agentProfile, "city_missing")
     return {
       claimed: true,
@@ -294,7 +300,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
 
   const cityResult = await supabase.from("cities").select("id,slug,name").eq("id", cityId).maybeSingle()
   if (cityResult.error || !cityResult.data) {
-    await updateSchedulerJobLink(supabase, claimedJobInput, { finished_at: new Date().toISOString(), result: "FAILED", error_summary: "Stadt konnte nicht geladen werden." })
+    await updateSchedulerJobLink(supabase, claimedJobInput, job.id, { finished_at: new Date().toISOString(), result: "FAILED", error_summary: "Stadt konnte nicht geladen werden." })
     await failJob(supabase, job.id, agentProfile, "city_not_found")
     return {
       claimed: true,
@@ -325,12 +331,12 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
     .eq("city_id", cityId)
     .maybeSingle()
   if (controlResult.error) {
-    await updateSchedulerJobLink(supabase, claimedJobInput, { finished_at: new Date().toISOString(), result: "FAILED", error_summary: controlResult.error.message })
+    await updateSchedulerJobLink(supabase, claimedJobInput, job.id, { finished_at: new Date().toISOString(), result: "FAILED", error_summary: controlResult.error.message })
     await failJob(supabase, job.id, agentProfile, "city_agent_control_load_failed")
     throw new Error(`City-Agent-Control konnte nicht geladen werden: ${controlResult.error.message}`)
   }
   if (!controlResult.data) {
-    await updateSchedulerJobLink(supabase, claimedJobInput, { finished_at: new Date().toISOString(), result: "FAILED", error_summary: "Für diese Stadt ist kein City-Agent-Control hinterlegt." })
+    await updateSchedulerJobLink(supabase, claimedJobInput, job.id, { finished_at: new Date().toISOString(), result: "FAILED", error_summary: "Für diese Stadt ist kein City-Agent-Control hinterlegt." })
     await failJob(supabase, job.id, agentProfile, "city_agent_control_missing")
     return {
       claimed: true,
@@ -361,12 +367,12 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
   const isShadow = operatingMode === "SHADOW" || options.dryRun !== false
   const baselineRequested = options.baseline === true || jobInput.baseline === true || moduleKey === "full_city_audit"
   const sourceLimit = boundedSources(options.maxSources, baselineRequested ? MAX_BASELINE_SOURCES : MAX_SOURCES)
-  await updateSchedulerJobLink(supabase, jobInput, {
+  await updateSchedulerJobLink(supabase, jobInput, job.id, {
     worker_job_id: job.id,
     agent_type: moduleKey ?? (typeof jobInput.moduleKey === "string" ? jobInput.moduleKey : job.agent_profile ?? "city_scan"),
   })
   if (operatingMode === "DISABLED") {
-    await updateSchedulerJobLink(supabase, jobInput, { finished_at: new Date().toISOString(), result: "FAILED", error_summary: "City-Agent ist für diese Stadt deaktiviert." })
+    await updateSchedulerJobLink(supabase, jobInput, job.id, { finished_at: new Date().toISOString(), result: "FAILED", error_summary: "City-Agent ist für diese Stadt deaktiviert." })
     await failJob(supabase, job.id, agentProfile, "city_agent_disabled")
     return {
       claimed: true,
@@ -415,7 +421,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
   }
 
   const runId = runInsert.data.id as string
-  await updateSchedulerJobLink(supabase, jobInput, { agent_run_id: runId, started_at: now.toISOString() })
+  await updateSchedulerJobLink(supabase, jobInput, job.id, { agent_run_id: runId, started_at: now.toISOString() })
   await addAudit(supabase, runId, "created", { jobId: job.id, citySlug, dryRun: isShadow, operatingMode, moduleKey: moduleKey ?? null }, agentProfile)
   await addAudit(supabase, runId, "started", { maxSources: sourceLimit, operatingMode, moduleKey: moduleKey ?? null, baseline: baselineRequested }, agentProfile)
   if (isShadow) {
@@ -450,7 +456,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
     .limit(sourceLimit * 2)
   if (sourcesResult.error) {
     await supabase.from("city_agent_runs").update({ status: "failed", error_code: "sources_load_failed", error_summary: sourcesResult.error.message, finished_at: now.toISOString(), updated_at: now.toISOString() }).eq("id", runId)
-    await updateSchedulerJobLink(supabase, jobInput, { finished_at: new Date().toISOString(), result: "FAILED", error_summary: sourcesResult.error.message })
+    await updateSchedulerJobLink(supabase, jobInput, job.id, { finished_at: new Date().toISOString(), result: "FAILED", error_summary: sourcesResult.error.message })
     await failJob(supabase, job.id, agentProfile, "sources_load_failed")
     throw new Error(`City-Agent-Quellen konnten nicht geladen werden: ${sourcesResult.error.message}`)
   }
@@ -487,6 +493,11 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
   let sourceFetchAttempts = 0
   let sourceFetchSuccesses = 0
   let sourceFetchFailures = 0
+  const editorialDraftCandidates: EditorialDraftInput[] = []
+  const editorialDraftCandidateKeys = new Set<string>()
+  let editorialDraftCreatedCount = 0
+  let editorialDraftUpdatedCount = 0
+  let editorialDraftSkippedCount = 0
 
   for (const source of dueSources) {
     sourceFetchAttempts += 1
@@ -657,6 +668,29 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
           proposalPayloadValue.seoResolution = seoResolution
           if (resolvedContentId) proposalPayloadValue.contentId = resolvedContentId
         }
+        const editorialModule = ["editorial", "event", "news", "discovery", "route"].includes(moduleKey ?? "")
+        const editorialContent = ["city_event", "city_place", "city_route", "city_guide", "city_newsletter"].includes(contentType)
+        if (editorialModule && editorialContent) {
+          const editorialCandidate: EditorialDraftInput = {
+            cityId,
+            citySlug,
+            cityName: safeText(cityResult.data.name, 120),
+            contentType,
+            sourceSlug: source.slug,
+            sourceUrl: facts.finalUrl,
+            sourceTitle: facts.title,
+            sourceText: facts.textPreview,
+            dateMentions: facts.dateMentions,
+            retrievedAt: facts.retrievedAt,
+            sourceTrustTier: trustTierForSource(source),
+            canonicalUrl: seoResolution?.canonicalUrl ?? null,
+          }
+          const candidateKey = editorialDraftKey(editorialCandidate)
+          if (!editorialDraftCandidateKeys.has(candidateKey)) {
+            editorialDraftCandidateKeys.add(candidateKey)
+            editorialDraftCandidates.push(editorialCandidate)
+          }
+        }
         const baseScore = scoreProposalQuality({
           source,
           operation,
@@ -767,6 +801,137 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
         }
       }
     }
+  }
+
+  for (const candidate of editorialDraftCandidates) {
+    const draftKey = editorialDraftKey(candidate)
+    const draft = buildEditorialDraft(candidate)
+    if (!draft) {
+      editorialDraftSkippedCount += 1
+      sourceWarnings.push(`${candidate.sourceSlug}: Editorial-Entwurf wegen unvollständiger oder unsicherer Quellenbelege übersprungen`)
+      await addAudit(supabase, runId, "editorial_draft_skipped", {
+        draftKey,
+        sourceSlug: candidate.sourceSlug,
+        reason: "INSUFFICIENT_OR_UNSAFE_EVIDENCE",
+        protected_action_executed: false,
+      }, agentProfile)
+      continue
+    }
+    const editorialQuality = evaluateEditorialDraft(draft)
+    if (editorialQuality.status === "REJECTED") {
+      editorialDraftSkippedCount += 1
+      sourceWarnings.push(`${candidate.sourceSlug}: Editorial-Entwurf wegen Qualitätsprüfung übersprungen`)
+      await addAudit(supabase, runId, "editorial_draft_skipped", {
+        draftKey,
+        sourceSlug: candidate.sourceSlug,
+        reason: "EDITORIAL_QUALITY_GATE",
+        qualityStatus: editorialQuality.status,
+        qualityScore: editorialQuality.score,
+        qualityIssues: editorialQuality.issues,
+        protected_action_executed: false,
+      }, agentProfile)
+      continue
+    }
+
+    const existingResult = await supabase
+      .from("editorial_posts")
+      .select("id,status,eyebrow")
+      .eq("scope", "city")
+      .eq("city_id", cityId)
+      .eq("slug", draft.slug)
+      .maybeSingle()
+    if (existingResult.error) {
+      errors.push(`editorial: ${existingResult.error.message}`.slice(0, 500))
+      await addAudit(supabase, runId, "editorial_draft_failed", {
+        draftKey,
+        sourceSlug: candidate.sourceSlug,
+        error: existingResult.error.message.slice(0, 300),
+        protected_action_executed: false,
+      }, agentProfile)
+      continue
+    }
+
+    const existing = existingResult.data as { id?: string; status?: string; eyebrow?: string } | null
+    if (!existing?.id) {
+      const insertResult = await supabase.from("editorial_posts").insert(draft)
+      if (insertResult.error) {
+        errors.push(`editorial: ${insertResult.error.message}`.slice(0, 500))
+        await addAudit(supabase, runId, "editorial_draft_failed", {
+          draftKey,
+          sourceSlug: candidate.sourceSlug,
+          error: insertResult.error.message.slice(0, 300),
+          protected_action_executed: false,
+        }, agentProfile)
+      } else {
+        editorialDraftCreatedCount += 1
+        await addAudit(supabase, runId, "editorial_draft_created", {
+          draftKey,
+          sourceSlug: candidate.sourceSlug,
+          sourceUrl: candidate.sourceUrl,
+          status: "draft",
+          qualityStatus: editorialQuality.status,
+          qualityScore: editorialQuality.score,
+          qualityIssues: editorialQuality.issues,
+          protected_action_executed: false,
+        }, agentProfile)
+      }
+      continue
+    }
+
+    if (existing.eyebrow === "Automatisch recherchierter Entwurf" && existing.status === "draft") {
+      const updateResult = await supabase.from("editorial_posts").update({
+        title: draft.title,
+        excerpt: draft.excerpt,
+        category: draft.category,
+        audience: draft.audience,
+        content: draft.content,
+        sources: draft.sources,
+        related_links: draft.related_links,
+        updated_at: draft.updated_at,
+      }).eq("id", existing.id)
+      if (updateResult.error) {
+        errors.push(`editorial: ${updateResult.error.message}`.slice(0, 500))
+        await addAudit(supabase, runId, "editorial_draft_failed", {
+          draftKey,
+          sourceSlug: candidate.sourceSlug,
+          error: updateResult.error.message.slice(0, 300),
+          protected_action_executed: false,
+        }, agentProfile)
+      } else {
+        editorialDraftUpdatedCount += 1
+        await addAudit(supabase, runId, "editorial_draft_updated", {
+          draftKey,
+          sourceSlug: candidate.sourceSlug,
+          sourceUrl: candidate.sourceUrl,
+          status: "draft",
+          qualityStatus: editorialQuality.status,
+          qualityScore: editorialQuality.score,
+          qualityIssues: editorialQuality.issues,
+          protected_action_executed: false,
+        }, agentProfile)
+      }
+      continue
+    }
+
+    editorialDraftSkippedCount += 1
+    sourceWarnings.push(`${candidate.sourceSlug}: bestehender redaktioneller Inhalt wurde nicht überschrieben`)
+    await addAudit(supabase, runId, "editorial_draft_skipped", {
+      draftKey,
+      sourceSlug: candidate.sourceSlug,
+      reason: "EXISTING_HUMAN_OR_PUBLISHED_CONTENT_PROTECTED",
+      existingStatus: existing.status ?? null,
+      protected_action_executed: false,
+    }, agentProfile)
+  }
+
+  if (editorialDraftCandidates.length > 0 || editorialDraftCreatedCount > 0 || editorialDraftUpdatedCount > 0 || editorialDraftSkippedCount > 0) {
+    await addAudit(supabase, runId, "editorial_drafts_completed", {
+      candidates: editorialDraftCandidates.length,
+      created: editorialDraftCreatedCount,
+      updated: editorialDraftUpdatedCount,
+      skipped: editorialDraftSkippedCount,
+      protected_action_executed: false,
+    }, agentProfile)
   }
 
   const shouldAuditBusinesses = baselineRequested || moduleKey === "business" || moduleKey === "freshness" || (moduleKey as string | undefined) === "full_city_audit"
@@ -929,7 +1094,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
   const status = errors.length ? (snapshotCount || eventSeoAudit?.checked || businessAudit?.checked || freshnessAudit?.checked ? "partial" : "failed") : "succeeded"
   const finishedAt = new Date().toISOString()
   const sourceFetchMetrics = createSourceFetchMetrics(sourceFetchAttempts, sourceFetchSuccesses, sourceFetchFailures)
-  await supabase.from("city_agent_runs").update({ status, source_count: dueSources.length, snapshot_count: snapshotCount, proposal_count: proposalCount, stale_count: staleCount, error_code: errors.length ? "source_errors" : null, error_summary: errors.length ? errors.join(" | ").slice(0, 2_000) : null, metadata: { autoPublishedCount, reviewCandidateCount: reviewCandidates.length, findingCount, operatingMode, moduleKey: moduleKey ?? null, shadow: isShadow, changeCounts, sourceWarnings: sourceWarnings.slice(0, 20), sourceFetchMetrics, business: businessSummary(businessAudit), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, current: eventSeoAudit.current, stale: eventSeoAudit.stale, expired: eventSeoAudit.expired, missingCanonical: eventSeoAudit.missingCanonical, thin: eventSeoAudit.thin, duplicateTitles: eventSeoAudit.duplicateTitles, recurrence: eventSeoAudit.recurrence } : null, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown, byEntity: freshnessAudit.byEntity, eventRecurrence: freshnessAudit.eventRecurrence, serviceFacts: freshnessAudit.serviceFacts } : null }, finished_at: finishedAt, updated_at: finishedAt }).eq("id", runId)
+  await supabase.from("city_agent_runs").update({ status, source_count: dueSources.length, snapshot_count: snapshotCount, proposal_count: proposalCount, stale_count: staleCount, error_code: errors.length ? "source_errors" : null, error_summary: errors.length ? errors.join(" | ").slice(0, 2_000) : null, metadata: { autoPublishedCount, reviewCandidateCount: reviewCandidates.length, findingCount, editorialDrafts: { candidates: editorialDraftCandidates.length, created: editorialDraftCreatedCount, updated: editorialDraftUpdatedCount, skipped: editorialDraftSkippedCount }, operatingMode, moduleKey: moduleKey ?? null, shadow: isShadow, changeCounts, sourceWarnings: sourceWarnings.slice(0, 20), sourceFetchMetrics, business: businessSummary(businessAudit), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, current: eventSeoAudit.current, stale: eventSeoAudit.stale, expired: eventSeoAudit.expired, missingCanonical: eventSeoAudit.missingCanonical, thin: eventSeoAudit.thin, duplicateTitles: eventSeoAudit.duplicateTitles, recurrence: eventSeoAudit.recurrence } : null, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown, byEntity: freshnessAudit.byEntity, eventRecurrence: freshnessAudit.eventRecurrence, serviceFacts: freshnessAudit.serviceFacts } : null }, finished_at: finishedAt, updated_at: finishedAt }).eq("id", runId)
   if (moduleKey) {
     await supabase.from("city_agent_schedules").update({
       last_run_id: runId,
@@ -960,7 +1125,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
       content_changed: changeCounts.CONTENT_CHANGED ?? 0,
       unchanged: (changeCounts.NO_CHANGE ?? 0) + (changeCounts.UNCHANGED ?? 0),
       source_recovered: changeCounts.SOURCE_RECOVERED ?? 0,
-      summary: { counts, changeCounts, sourceWarnings: sourceWarnings.slice(0, 20), sourceCount: dueSources.length, sourceFetchMetrics, proposalCount, findingCount, operatingMode, shadow: isShadow, business: businessSummary(businessAudit), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, current: eventSeoAudit.current, stale: eventSeoAudit.stale, expired: eventSeoAudit.expired, missingCanonical: eventSeoAudit.missingCanonical, thin: eventSeoAudit.thin, duplicateTitles: eventSeoAudit.duplicateTitles, recurrence: eventSeoAudit.recurrence } : null, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown, byEntity: freshnessAudit.byEntity, eventRecurrence: freshnessAudit.eventRecurrence, serviceFacts: freshnessAudit.serviceFacts, samples: freshnessAudit.samples } : null },
+      summary: { counts, changeCounts, sourceWarnings: sourceWarnings.slice(0, 20), sourceCount: dueSources.length, sourceFetchMetrics, proposalCount, findingCount, editorialDrafts: { candidates: editorialDraftCandidates.length, created: editorialDraftCreatedCount, updated: editorialDraftUpdatedCount, skipped: editorialDraftSkippedCount }, operatingMode, shadow: isShadow, business: businessSummary(businessAudit), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, current: eventSeoAudit.current, stale: eventSeoAudit.stale, expired: eventSeoAudit.expired, missingCanonical: eventSeoAudit.missingCanonical, thin: eventSeoAudit.thin, duplicateTitles: eventSeoAudit.duplicateTitles, recurrence: eventSeoAudit.recurrence } : null, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown, byEntity: freshnessAudit.byEntity, eventRecurrence: freshnessAudit.eventRecurrence, serviceFacts: freshnessAudit.serviceFacts, samples: freshnessAudit.samples } : null },
       updated_at: finishedAt,
     }).eq("id", baselineId)
     await addAudit(supabase, runId, "baseline_completed", { baselineId, counts, protected_action_executed: false }, agentProfile)
@@ -972,11 +1137,11 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
       supabase,
       job.id,
       agentProfile,
-      { runId, cityId, citySlug, sourceCount: dueSources.length, sourceFetchMetrics, snapshotCount, proposalCount, autoPublishedCount, findingCount, operatingMode, moduleKey: moduleKey ?? null, shadow: isShadow, errors: errors.slice(0, 10), warnings: sourceWarnings.slice(0, 10), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, findings: eventSeoAudit.findings.length } : null, protected_action_executed: false },
+      { runId, cityId, citySlug, sourceCount: dueSources.length, sourceFetchMetrics, snapshotCount, proposalCount, autoPublishedCount, findingCount, editorialDrafts: { candidates: editorialDraftCandidates.length, created: editorialDraftCreatedCount, updated: editorialDraftUpdatedCount, skipped: editorialDraftSkippedCount }, operatingMode, moduleKey: moduleKey ?? null, shadow: isShadow, errors: errors.slice(0, 10), warnings: sourceWarnings.slice(0, 10), eventSeo: eventSeoAudit ? { checked: eventSeoAudit.checked, findings: eventSeoAudit.findings.length } : null, protected_action_executed: false },
       autoPublishedCount ? `${autoPublishedCount} City-Vorschläge wurden nach Ben-Policy veröffentlicht.` : proposalCount ? `${proposalCount} belegte Vorschläge warten auf Prüfung.` : null,
     )
   }
 
-  await updateSchedulerJobLink(supabase, jobInput, { agent_run_id: runId, started_at: now.toISOString(), finished_at: finishedAt, result: schedulerResult(status), error_summary: errors.length ? errors.join(" | ").slice(0, 2_000) : null })
-  return { claimed: true, jobId: job.id, runId, cityId, citySlug, provider: provider.name, sourceCount: dueSources.length, snapshotCount, proposalCount, autoPublishedCount, staleCount, errorCount: errors.length, status, errors, operatingMode, moduleKey, shadow: isShadow, findingCount, changeCounts, business: businessSummary(businessAudit) ?? undefined, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown } : undefined }
+  await updateSchedulerJobLink(supabase, jobInput, job.id, { agent_run_id: runId, started_at: now.toISOString(), finished_at: finishedAt, result: schedulerResult(status), error_summary: errors.length ? errors.join(" | ").slice(0, 2_000) : null })
+  return { claimed: true, jobId: job.id, runId, cityId, citySlug, provider: provider.name, sourceCount: dueSources.length, snapshotCount, proposalCount, autoPublishedCount, staleCount, errorCount: errors.length, status, errors, operatingMode, moduleKey, shadow: isShadow, findingCount, editorialDraftCreatedCount, editorialDraftUpdatedCount, editorialDraftSkippedCount, changeCounts, business: businessSummary(businessAudit) ?? undefined, freshness: freshnessAudit ? { checked: freshnessAudit.checked, current: freshnessAudit.current, due: freshnessAudit.due, stale: freshnessAudit.stale, unknown: freshnessAudit.unknown } : undefined }
 }

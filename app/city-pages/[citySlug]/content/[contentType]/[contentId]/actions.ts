@@ -22,6 +22,7 @@ import {
   type CityContentType,
 } from "@/lib/city-operations/contracts"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { notifyPublicRevalidation, type PublicRevalidationResource } from "@/lib/public-revalidation"
 import { parseLocalizedDecimal } from "@/lib/city-pages/number-inputs"
 import { validateCityContentCrossFields } from "@/lib/city-pages/content-validation"
 
@@ -1007,5 +1008,16 @@ export async function restoreCityContentField(formData: FormData) {
   revalidatePath(`/city-pages/${citySlug}`)
   revalidatePath(targetPath)
   revalidatePath("/city-operations")
+  const resourceByContentType: Record<string, PublicRevalidationResource> = {
+    events: "event",
+    places: "place",
+    routes: "route",
+    guides: "guide",
+    benefits: "benefit",
+  }
+  await notifyPublicRevalidation({
+    resource: resourceByContentType[contentType] ?? "city",
+    citySlug,
+  })
   redirect(`${targetPath}?success=restored`)
 }

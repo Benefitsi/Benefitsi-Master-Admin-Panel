@@ -11,6 +11,7 @@ import {
 } from "@/lib/city-pages/field-controls"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { parseBoundedDecimalInput } from "@/lib/city-pages/number-inputs"
+import { notifyPublicRevalidation } from "@/lib/public-revalidation"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -231,5 +232,6 @@ export async function updateCityPageProfile(formData: FormData) {
   revalidatePath("/city-pages")
   revalidatePath(`/city-pages/${slug}`)
   revalidatePath(`/stadt/${slug}`)
+  await notifyPublicRevalidation({ resource: "city", citySlug: slug })
   redirect(`/city-pages/${encodeURIComponent(slug)}?success=profile_saved`)
 }

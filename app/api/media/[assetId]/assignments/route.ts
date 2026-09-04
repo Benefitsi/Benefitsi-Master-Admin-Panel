@@ -7,6 +7,7 @@ import {
 } from "@/lib/city-media/contracts"
 import { cleanText, isUuid, writeMediaAudit } from "@/lib/city-media/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { notifyPublicRevalidation } from "@/lib/public-revalidation"
 
 export const runtime = "nodejs"
 
@@ -37,7 +38,7 @@ export async function POST(
   if (assetResult.data.city_id && assetResult.data.city_id !== cityId) return NextResponse.json({ error: "asset_city_mismatch" }, { status: 409 })
   if (
     entityType === "COLLECTION" &&
-    role === "CARD" &&
+    role === "MEMORY_STAMP_ARTWORK" &&
     entityKey &&
     isPendingCityMemorySlot(cityResult.data.slug, entityKey) &&
     ["REVIEW", "PUBLISHED"].includes(String(assetResult.data.status))
@@ -114,6 +115,10 @@ export async function POST(
     role,
     previousState: existingResult.data,
     nextState: result.data,
+  })
+  await notifyPublicRevalidation({
+    resource: role === "MEMORY_STAMP_ARTWORK" ? "memory" : "media",
+    citySlug: cityResult.data.slug,
   })
   return NextResponse.json({ assignment: result.data })
 }

@@ -6,6 +6,7 @@ import {
   useActionState,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -71,6 +72,7 @@ import {
   deletePartnerStaff,
   deletePartner,
   deleteRewardMilestone,
+  generatePartnerDescription,
   reorderMenuCategories,
   reorderMenuItems,
   saveDeal,
@@ -83,6 +85,7 @@ import {
   savePartner,
   saveRewardMilestone,
   saveWeeklyOpeningHours,
+  rotatePartnerPin,
   type PartnerActionState,
 } from "./partner-actions"
 import { MicrositePanel } from "./microsite-panel"
@@ -424,9 +427,9 @@ const partnerSettingsTabCopy: Record<
   PartnerSettingsTab,
   { title: string; description: string }
 > = {
-  details: { title: "Partner profile", description: "Business information, contact details, location, branding, and media." },
+  details: { title: "Partner profile", description: "Business information, opening hours, contact details, location, branding, and media." },
   rewards: { title: "Hours and loyalty rewards", description: "Opening schedule, holiday closures, and stamp-card milestones." },
-  deals: { title: "Deals and offers", description: "Customer offers, eligibility rules, availability, and redemption settings." },
+  deals: { title: "Stamps and Deals", description: "Stamp-card rewards, customer offers, eligibility rules, availability, and redemption settings." },
   menu: { title: "Menu management", description: "Menu details, categories, items, pricing, images, and display order." },
   access: { title: "Staff access", description: "Manage the staff members who can administer or scan for this partner." },
   activity: { title: "Customer activity", description: "Review stamp-card progress, visits, applied benefits, and redemptions." },
@@ -439,7 +442,7 @@ const createPartnerTabCopy: Record<
 > = {
   profile: { title: "Business profile", description: "Enter the partner's identity, ownership, contact details, and location." },
   operations: { title: "Operations and media", description: "Configure opening hours, holiday closures, branding, and cover images." },
-  offers: { title: "Rewards and deals", description: "Set up stamp-card milestones and optional customer deals." },
+  offers: { title: "Stamps and Deals", description: "Set up stamp-card milestones and optional customer deals." },
   menu: { title: "Starter menu", description: "Create the initial menu, categories, items, prices, and images." },
   review: { title: "Review and create", description: "Review required sections, then create the partner and all staged content." },
 }
@@ -535,7 +538,11 @@ export function PartnerWorkspace({
         <LiveMetric label="Active partners" value={activePartners} />
         <LiveMetric label="Featured partners" value={featuredPartners} />
         <LiveMetric label="Deals" value={dealCount} />
-        <LiveMetric label="Menu approvals required" value={pendingMenuReviews.length} />
+        <LiveMetric
+          href="/menu-approvals"
+          label="Menu approvals required"
+          value={pendingMenuReviews.length}
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]">
@@ -551,7 +558,7 @@ export function PartnerWorkspace({
               <button
                 type="button"
                 onClick={startCreatePartner}
-                className="h-9 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white transition hover:bg-teal-800"
+                className="inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-md bg-teal-700 px-3 text-sm font-semibold leading-none text-white transition hover:-translate-y-px hover:bg-teal-800 active:translate-y-0"
               >
                 Add
               </button>
@@ -628,15 +635,38 @@ export function PartnerWorkspace({
   )
 }
 
-function LiveMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="border-b border-zinc-200 px-3 py-2.5 last:border-b-0 sm:border-b-0">
+function LiveMetric({
+  label,
+  value,
+  href,
+}: {
+  label: string
+  value: number
+  href?: string
+}) {
+  const content = (
+    <>
       <p className="text-xs font-medium text-zinc-500">{label}</p>
       <p className="mt-0.5 text-xl font-semibold tracking-normal text-zinc-950">
         {value}
       </p>
-    </div>
+    </>
   )
+  const className = "border-b border-zinc-200 px-3 py-2.5 last:border-b-0 sm:border-b-0"
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        aria-label={`${label}: ${value}`}
+        className={`${className} block transition hover:bg-zinc-50 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-teal-600`}
+      >
+        {content}
+      </Link>
+    )
+  }
+
+  return <div className={className}>{content}</div>
 }
 
 export function PendingMenuReviewPanel({
@@ -922,17 +952,18 @@ function PartnerDetail({
   const requestedTab =
     tabState.partnerIdentity === partnerIdentity ? tabState.tab : "details"
   const settingsTab =
-    requestedTab === "menu" && !partnerTypeSupportsMenu(partner.type)
-      ? "details"
-      : requestedTab
+    requestedTab === "rewards"
+      ? "deals"
+      : requestedTab === "menu" && !partnerTypeSupportsMenu(partner.type)
+        ? "details"
+        : requestedTab
   const settingsTabs: Array<{
     id: PartnerSettingsTab
     label: string
     hasRequiredFields?: boolean
   }> = [
     { id: "details", label: "Partner Profile", hasRequiredFields: true },
-    { id: "rewards", label: "Hours & Rewards", hasRequiredFields: true },
-    { id: "deals", label: "Deals & Offers", hasRequiredFields: true },
+    { id: "deals", label: "Stamps & Deals", hasRequiredFields: true },
     ...(partnerTypeSupportsMenu(partner.type)
       ? [{ id: "menu" as const, label: "Menu Management", hasRequiredFields: true }]
       : []),
@@ -971,7 +1002,7 @@ function PartnerDetail({
               <button
                 type="button"
                 onClick={() => setActiveView("settings")}
-                className={`px-3 py-2 text-sm font-semibold transition ${
+                className={`inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold leading-none transition ${
                   activeView === "settings"
                     ? "bg-teal-700 text-white"
                     : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
@@ -982,7 +1013,7 @@ function PartnerDetail({
               <button
                 type="button"
                 onClick={() => setActiveView("microsite")}
-                className={`px-3 py-2 text-sm font-semibold transition ${
+                className={`inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold leading-none transition ${
                   activeView === "microsite"
                     ? "bg-teal-700 text-white"
                     : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
@@ -1002,49 +1033,49 @@ function PartnerDetail({
               aria-label="Partner settings"
               className="mb-4"
             >
-              <div className="flex w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
-              {settingsTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() =>
-                    {
-                      setTabState({ partnerIdentity, tab: tab.id })
-                      onLocationChange?.({ tab: tab.id, view: "settings" })
-                      rememberWorkspaceLocation({
-                        mode: "view",
-                        partner: partner.id,
-                        tab: tab.id,
-                        view: "settings",
-                      })
-                    }
-                  }
-                  title={tab.label}
-                  aria-current={settingsTab === tab.id ? "page" : undefined}
-                  className={`min-w-0 flex-1 px-1 py-2.5 text-center text-[10px] font-semibold leading-tight transition xl:text-[11px] 2xl:text-xs ${
-                    settingsTab === tab.id
-                      ? tab.id === "danger"
-                        ? "bg-rose-700 text-white"
-                        : "bg-teal-700 text-white"
-                      : tab.id === "danger"
-                        ? "bg-white text-rose-700 hover:bg-rose-50"
-                        : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
-                  }`}
-                >
-                  <span className="inline-flex max-w-full items-start justify-center gap-0.5 whitespace-nowrap">
-                    <span>{tab.label}</span>
-                    {tab.hasRequiredFields ? (
-                      <span
-                        aria-hidden="true"
-                        className="text-sm font-black leading-none text-rose-500"
-                        title="Contains required fields"
-                      >
-                        *
+              <div className="w-full overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
+                <div className="flex min-w-max divide-x divide-zinc-200">
+                  {settingsTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        setTabState({ partnerIdentity, tab: tab.id })
+                        onLocationChange?.({ tab: tab.id, view: "settings" })
+                        rememberWorkspaceLocation({
+                          mode: "view",
+                          partner: partner.id,
+                          tab: tab.id,
+                          view: "settings",
+                        })
+                      }}
+                      title={tab.label}
+                      aria-current={settingsTab === tab.id ? "page" : undefined}
+                      className={`min-h-12 min-w-[8.5rem] flex-1 px-3 py-2.5 text-center text-[11px] font-semibold leading-4 transition whitespace-normal break-words sm:text-xs ${
+                        settingsTab === tab.id
+                          ? tab.id === "danger"
+                            ? "bg-rose-700 text-white"
+                            : "bg-teal-700 text-white"
+                          : tab.id === "danger"
+                            ? "bg-white text-rose-700 hover:bg-rose-50"
+                            : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                      }`}
+                    >
+                      <span className="inline-flex max-w-full items-start justify-center gap-1 whitespace-normal break-words">
+                        <span>{tab.label}</span>
+                        {tab.hasRequiredFields ? (
+                          <span
+                            aria-hidden="true"
+                            className="text-sm font-black leading-none text-rose-500"
+                            title="Contains required fields"
+                          >
+                            *
+                          </span>
+                        ) : null}
                       </span>
-                    ) : null}
-                  </span>
-                </button>
-              ))}
+                    </button>
+                  ))}
+                </div>
               </div>
             </nav>
 
@@ -1078,13 +1109,12 @@ function PartnerDetail({
                 </div>
               </div>
             ) : null}
-            {settingsTab === "rewards" ? (
+            {settingsTab === "deals" ? (
               <div className="space-y-3">
-                <OpeningHoursPanel partner={partner} embedded />
                 <MilestonesPanel partner={partner} embedded />
+                <DealsPanel partner={partner} embedded />
               </div>
             ) : null}
-            {settingsTab === "deals" ? <DealsPanel partner={partner} embedded /> : null}
             {settingsTab === "menu" ? <MenuPanel partner={partner} embedded /> : null}
             {settingsTab === "access" ? (
               <PartnerStaffPanel partner={partner} users={owners} embedded />
@@ -1165,7 +1195,7 @@ function EditorShell({
   return (
     <div className={flat ? "" : compact ? "overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm" : "rounded-md border border-zinc-200 bg-white shadow-sm"}>
       <div
-        className={`flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${
+        className={`flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${
           flat ? "pb-4" : compact ? "p-3.5" : "p-5"
         } ${
           contentOpen && !flat ? "border-b border-zinc-200" : ""
@@ -1197,7 +1227,7 @@ function EditorShell({
           />
         )}
         {aside ? (
-          <div className="flex shrink-0 flex-wrap gap-2">
+          <div className="flex min-w-0 shrink-0 flex-wrap gap-2">
             {aside}
           </div>
         ) : null}
@@ -1247,6 +1277,12 @@ function PartnerForm({
   partners?: PartnerWithDeals[]
 }) {
   const [state, formAction] = useActionState(savePartner, initialState)
+  const [descriptionState, setDescriptionState] = useState(initialState)
+  const [isGeneratingDescription, startGeneratingDescription] = useTransition()
+  const router = useRouter()
+  const [descriptionDraft, setDescriptionDraft] = useState(
+    () => partner?.description ?? "",
+  )
   const [templateSource, setTemplateSource] =
     useState<PartnerWithDeals | null>(null)
   const [socialHandles, setSocialHandles] = useState<SocialHandleDraft[]>(() =>
@@ -1301,7 +1337,7 @@ function PartnerForm({
   }> = [
     { id: "profile", label: "Business Profile", hasRequiredFields: true },
     { id: "operations", label: "Operations & Media", hasRequiredFields: true },
-    { id: "offers", label: "Rewards & Deals", hasRequiredFields: true },
+    { id: "offers", label: "Stamps & Deals", hasRequiredFields: true },
     ...(menuSupported
       ? [{ id: "menu" as const, label: "Starter Menu", hasRequiredFields: true }]
       : []),
@@ -1321,6 +1357,7 @@ function PartnerForm({
   const applyTemplate = (source: PartnerWithDeals) => {
     const nextType = normalizePartnerTypeValue(source.type)
     setTemplateSource(source)
+    setDescriptionDraft(source.description ?? "")
     setSelectedPartnerType(nextType)
     setSocialHandles(socialDraftsFromPartner(source.socials))
     setInitialMilestones(
@@ -1354,6 +1391,8 @@ function PartnerForm({
         .forEach((details) => {
           details.open = false
         })
+
+      router.refresh()
     }
 
     if (!(mode === "create" && state.ok && state.created)) {
@@ -1362,6 +1401,8 @@ function PartnerForm({
 
     const frame = window.requestAnimationFrame(() => {
       setSocialHandles([])
+      setDescriptionDraft("")
+      setDescriptionState(initialState)
       setInitialDeals([])
       setInitialMilestones([createInitialMilestoneDraft()])
       setInitialMenuEnabled(false)
@@ -1378,7 +1419,43 @@ function PartnerForm({
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [mode, state.created, state.ok])
+  }, [mode, router, state])
+
+  const requestDescription = () => {
+    const form = formRef.current
+    if (!form || isGeneratingDescription) return
+
+    // Do not forward the whole partner form here: it can contain large image
+    // files, while Ben only needs the small public profile facts below.
+    const formData = new FormData()
+    for (const fieldName of ["name", "type", "city_id", "address", "description"]) {
+      const field = form.elements.namedItem(fieldName)
+      if (
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLSelectElement ||
+        field instanceof HTMLTextAreaElement
+      ) {
+        formData.set(fieldName, field.value)
+      }
+    }
+
+    const selectedCityId = String(formData.get("city_id") ?? "")
+    const selectedCity = cityOptions.find((option) => option.value === selectedCityId)
+    formData.set("city_name", selectedCity?.label ?? partner?.city_name ?? "")
+    for (const category of form.querySelectorAll<HTMLInputElement>(
+      'input[name="category"]:checked',
+    )) {
+      formData.append("category", category.value)
+    }
+
+    startGeneratingDescription(async () => {
+      const result = await generatePartnerDescription(initialState, formData)
+      setDescriptionState(result)
+      if (result.ok && result.description) {
+        setDescriptionDraft(result.description)
+      }
+    })
+  }
 
   return (
     <form
@@ -1478,7 +1555,6 @@ function PartnerForm({
         name="existing_subdomain"
         value={partner?.subdomain ?? ""}
       />
-      <input type="hidden" name="existing_pin" value={partner?.pin ?? ""} />
       <input type="hidden" name="existing_loves" value={partner?.loves ?? 0} />
       <input
         type="hidden"
@@ -1494,34 +1570,35 @@ function PartnerForm({
 
       {mode === "create" ? (
         <nav aria-label="Add partner steps">
-          <div className="flex w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
-            {createTabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  if (tab.id === "review") {
-                    setReviewSnapshot(
-                      createPartnerReviewSnapshot(formRef.current, {
-                        dealCount: initialDeals.length,
-                        menuCategoryCount: initialMenuCategories.length,
-                        menuEnabled: initialMenuEnabled,
-                        menuItemCount: initialMenuItems.length,
-                        milestoneCount: initialMilestones.length,
-                      }),
-                    )
-                  }
-                  setCreateTab(tab.id)
-                }}
-                title={tab.label}
-                aria-current={createTab === tab.id ? "step" : undefined}
-                className={`min-w-0 flex-1 px-1.5 py-2.5 text-center text-[10px] font-semibold leading-tight transition sm:text-[11px] xl:text-xs ${
-                  createTab === tab.id
-                    ? "bg-teal-700 text-white"
-                    : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
-                }`}
-              >
-                  <span className="inline-flex max-w-full items-start justify-center gap-0.5 whitespace-nowrap">
+          <div className="w-full overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
+            <div className="flex min-w-max divide-x divide-zinc-200">
+              {createTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    if (tab.id === "review") {
+                      setReviewSnapshot(
+                        createPartnerReviewSnapshot(formRef.current, {
+                          dealCount: initialDeals.length,
+                          menuCategoryCount: initialMenuCategories.length,
+                          menuEnabled: initialMenuEnabled,
+                          menuItemCount: initialMenuItems.length,
+                          milestoneCount: initialMilestones.length,
+                        }),
+                      )
+                    }
+                    setCreateTab(tab.id)
+                  }}
+                  title={tab.label}
+                  aria-current={createTab === tab.id ? "step" : undefined}
+                  className={`min-h-12 min-w-[8.5rem] flex-1 px-3 py-2.5 text-center text-[11px] font-semibold leading-4 transition whitespace-normal break-words sm:text-xs ${
+                    createTab === tab.id
+                      ? "bg-teal-700 text-white"
+                      : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                  }`}
+                >
+                  <span className="inline-flex max-w-full items-start justify-center gap-1 whitespace-normal break-words">
                     <span>{tab.label}</span>
                     {tab.hasRequiredFields ? (
                       <span
@@ -1534,7 +1611,8 @@ function PartnerForm({
                     ) : null}
                   </span>
                 </button>
-            ))}
+              ))}
+            </div>
           </div>
         </nav>
       ) : null}
@@ -1633,9 +1711,19 @@ function PartnerForm({
         <TextAreaField
           label="Description"
           name="description"
-          defaultValue={partner?.description ?? templateSource?.description}
+          value={descriptionDraft}
+          onChange={setDescriptionDraft}
           required
+          labelAccessory={
+            <GenerateDescriptionButton
+              pending={isGeneratingDescription}
+              onClick={requestDescription}
+            />
+          }
         />
+        {descriptionState.message ? (
+          <ActionMessage state={descriptionState} toast={false} />
+        ) : null}
         <MultiSelectField
           label="Categories"
           name="category"
@@ -1645,8 +1733,16 @@ function PartnerForm({
         />
       </FormSection>
 
+      {mode === "edit" && partner?.id ? (
+        <OpeningHoursPanel
+          partner={partner}
+          embedded
+          withinPartnerForm
+        />
+      ) : null}
+
       <FormSection
-        title="Contact and Location"
+        title="Contact, Location and Socials"
         defaultOpen={false}
         required={requiredSectionMarker}
       >
@@ -6113,9 +6209,11 @@ function PartnerStaffForm({
 function OpeningHoursPanel({
   partner,
   embedded = false,
+  withinPartnerForm = false,
 }: {
   partner: PartnerWithDeals
   embedded?: boolean
+  withinPartnerForm?: boolean
 }) {
   const partnerId = partner.id ?? ""
   const hoursByWeekday = new Map(
@@ -6129,6 +6227,7 @@ function OpeningHoursPanel({
       </InfoNote>
       {partnerId ? (
         <WeeklyOpeningHoursForm
+          embedded={withinPartnerForm}
           holidays={partner.holidays}
           hoursByWeekday={hoursByWeekday}
           partnerId={partnerId}
@@ -6158,10 +6257,12 @@ function OpeningHoursPanel({
 }
 
 function WeeklyOpeningHoursForm({
+  embedded = false,
   holidays,
   hoursByWeekday,
   partnerId,
 }: {
+  embedded?: boolean
   holidays: PartnerHoliday[]
   hoursByWeekday: Map<number | null, PartnerOpeningHour>
   partnerId: string
@@ -6171,11 +6272,66 @@ function WeeklyOpeningHoursForm({
     initialState,
   )
   const formRef = useActionSuccess(state)
+  const embeddedFieldsRef = useRef<HTMLDivElement>(null)
+
+  const saveEmbeddedHours = () => {
+    const container = embeddedFieldsRef.current
+
+    if (!container) {
+      return
+    }
+
+    const formData = new FormData()
+    formData.set("partner_id", partnerId)
+
+    container
+      .querySelectorAll<HTMLInputElement>("[data-opening-hours-name]")
+      .forEach((input) => {
+        const name = input.dataset.openingHoursName
+
+        if (
+          !name ||
+          input.disabled ||
+          ((input.type === "checkbox" || input.type === "radio") &&
+            !input.checked)
+        ) {
+          return
+        }
+
+        formData.append(name, input.value)
+      })
+
+    formAction(formData)
+  }
+
+  const fields = (
+    <WeeklyHoursFields
+      embedded={embedded}
+      holidays={holidays}
+      hoursByWeekday={hoursByWeekday}
+    />
+  )
+
+  if (embedded) {
+    return (
+      <div ref={embeddedFieldsRef} className="space-y-4">
+        {fields}
+        <ActionMessage state={state} />
+        <button
+          type="button"
+          onClick={saveEmbeddedHours}
+          className="h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
+        >
+          Save operating hours
+        </button>
+      </div>
+    )
+  }
 
   return (
     <form ref={formRef} action={formAction} className="space-y-4">
       <input type="hidden" name="partner_id" value={partnerId} />
-      <WeeklyHoursFields holidays={holidays} hoursByWeekday={hoursByWeekday} />
+      {fields}
       <ActionMessage state={state} />
       <SubmitButton
         label="Save operating hours"
@@ -6186,12 +6342,17 @@ function WeeklyOpeningHoursForm({
 }
 
 function WeeklyHoursFields({
+  embedded = false,
   holidays = [],
   hoursByWeekday = new Map(),
 }: {
+  embedded?: boolean
   holidays?: PartnerHoliday[]
   hoursByWeekday?: Map<number | null, PartnerOpeningHour>
 }) {
+  const fieldName = (name: string) => (embedded ? undefined : name)
+  const fieldDataName = (name: string) =>
+    embedded ? { "data-opening-hours-name": name } : {}
   const [bulkOpenTime, setBulkOpenTime] = useState("09:00")
   const [bulkCloseTime, setBulkCloseTime] = useState("18:00")
   const [bulkApplied, setBulkApplied] = useState(false)
@@ -6341,7 +6502,12 @@ function WeeklyHoursFields({
           </p>
         </div>
         <div className="p-3 sm:p-4">
-        <input type="hidden" name="holiday_count" value={holidayRows.length} />
+        <input
+          type="hidden"
+          name={fieldName("holiday_count")}
+          value={holidayRows.length}
+          {...fieldDataName("holiday_count")}
+        />
         <div className="grid gap-3 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(14rem,1.2fr)_auto] lg:items-start">
           <label className="space-y-2 text-sm">
             <span className="font-medium text-zinc-700">Date</span>
@@ -6396,13 +6562,15 @@ function WeeklyHoursFields({
                   <div className="min-w-0">
                     <input
                       type="hidden"
-                      name={`holiday_${index}_date`}
+                      name={fieldName(`holiday_${index}_date`)}
                       value={holiday.date}
+                      {...fieldDataName(`holiday_${index}_date`)}
                     />
                     <input
                       type="hidden"
-                      name={`holiday_${index}_label`}
+                      name={fieldName(`holiday_${index}_label`)}
                       value={holiday.label}
+                      {...fieldDataName(`holiday_${index}_label`)}
                     />
                     <p className="text-sm font-semibold text-zinc-900">
                       {formatHolidayDateLabel(holiday.date)}
@@ -6447,7 +6615,8 @@ function WeeklyHoursFields({
                 <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
                   <input
                     type="checkbox"
-                    name={`is_closed_${day.value}`}
+                    name={fieldName(`is_closed_${day.value}`)}
+                    {...fieldDataName(`is_closed_${day.value}`)}
                     checked={hour.isClosed}
                     onChange={(event) => {
                       const isClosed = event.target.checked
@@ -6464,9 +6633,10 @@ function WeeklyHoursFields({
                 </label>
                 <input
                   aria-label={`${day.label} opening time`}
-                  name={`opens_at_${day.value}`}
+                  name={fieldName(`opens_at_${day.value}`)}
+                  {...fieldDataName(`opens_at_${day.value}`)}
                   type="time"
-                  required={!hour.isClosed}
+                  required={!embedded && !hour.isClosed}
                   value={hour.isClosed ? "" : hour.opensAt}
                   disabled={hour.isClosed}
                   onChange={(event) =>
@@ -6476,9 +6646,10 @@ function WeeklyHoursFields({
                 />
                 <input
                   aria-label={`${day.label} closing time`}
-                  name={`closes_at_${day.value}`}
+                  name={fieldName(`closes_at_${day.value}`)}
+                  {...fieldDataName(`closes_at_${day.value}`)}
                   type="time"
-                  required={!hour.isClosed}
+                  required={!embedded && !hour.isClosed}
                   value={hour.isClosed ? "" : hour.closesAt}
                   disabled={hour.isClosed}
                   onChange={(event) =>
@@ -6486,7 +6657,12 @@ function WeeklyHoursFields({
                   }
                   className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                 />
-                <input type="hidden" name={`label_${day.value}`} value={hour.label} />
+                <input
+                  type="hidden"
+                  name={fieldName(`label_${day.value}`)}
+                  value={hour.label}
+                  {...fieldDataName(`label_${day.value}`)}
+                />
               </div>
             )
           })}
@@ -8852,6 +9028,8 @@ function DeletePartnerForm({
 }) {
   const [state, formAction] = useActionState(deletePartner, initialState)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deletePassword, setDeletePassword] = useState("")
+  const [deletePasswordError, setDeletePasswordError] = useState("")
   const formRef = useRef<HTMLFormElement>(null)
   const confirmedSubmitRef = useRef(false)
   const { language } = useAdminLanguage()
@@ -8880,6 +9058,7 @@ function DeletePartnerForm({
       className="space-y-3"
     >
       <input type="hidden" name="id" value={partner.id ?? ""} />
+      <input type="hidden" name="delete_password" value={deletePassword} />
       <ActionMessage state={state} />
       <SubmitButton
         label="Delete partner"
@@ -8896,13 +9075,41 @@ function DeletePartnerForm({
         }
         confirmLabel="Delete partner"
         tone="danger"
-        onCancel={() => setConfirmingDelete(false)}
+        onCancel={() => {
+          setConfirmingDelete(false)
+          setDeletePassword("")
+          setDeletePasswordError("")
+        }}
         onConfirm={() => {
+          if (!deletePassword.trim()) {
+            setDeletePasswordError("Enter your admin password to continue.")
+            return
+          }
+
           confirmedSubmitRef.current = true
           setConfirmingDelete(false)
           formRef.current?.requestSubmit()
         }}
-      />
+      >
+        <label className="mt-4 block space-y-2 text-sm">
+          <span className="font-medium text-zinc-800">Admin password</span>
+          <input
+            type="password"
+            value={deletePassword}
+            onChange={(event) => {
+              setDeletePassword(event.target.value)
+              if (deletePasswordError) setDeletePasswordError("")
+            }}
+            autoComplete="current-password"
+            className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-rose-600 focus:ring-2 focus:ring-rose-100"
+          />
+          {deletePasswordError ? (
+            <span className="block text-xs font-medium text-rose-700">
+              {deletePasswordError}
+            </span>
+          ) : null}
+        </label>
+      </ConfirmDialog>
     </form>
   )
 }
@@ -9046,8 +9253,8 @@ function FormSection({
       {collapsible ? (
         <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
           <summary className="cursor-pointer list-none px-3 outline-none transition hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-200 [&::-webkit-details-marker]:hidden sm:px-4">
-            <span className={`flex items-center gap-2 ${compact ? "min-h-10" : "min-h-11"}`}>
-              <span className="text-sm font-semibold tracking-normal text-zinc-900">
+            <span className={`flex min-w-0 flex-wrap items-center gap-2 ${compact ? "min-h-10" : "min-h-11"}`}>
+              <span className="min-w-0 break-words text-sm font-semibold tracking-normal text-zinc-900">
                 {title}
               </span>
               {sectionStatus ? <SectionStatusList status={sectionStatus} /> : null}
@@ -9055,7 +9262,7 @@ function FormSection({
                 aria-hidden="true"
                 viewBox="0 0 20 20"
                 fill="none"
-                className={`ml-auto size-4 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
+                className={`ml-auto size-4 shrink-0 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
               >
                 <path
                   d="m5 7.5 5 5 5-5"
@@ -9077,8 +9284,8 @@ function FormSection({
         </details>
       ) : (
         <>
-          <div className={`flex items-center gap-2 px-3 sm:px-4 ${compact ? "min-h-10" : "min-h-11"}`}>
-            <span className="text-sm font-semibold text-zinc-900">
+          <div className={`flex min-w-0 flex-wrap items-center gap-2 px-3 sm:px-4 ${compact ? "min-h-10" : "min-h-11"}`}>
+            <span className="min-w-0 break-words text-sm font-semibold text-zinc-900">
               {title}
             </span>
             {sectionStatus ? <SectionStatusList status={sectionStatus} /> : null}
@@ -9150,7 +9357,7 @@ function FieldGrid({
 }) {
   return (
     <div
-      className={`grid md:grid-cols-2 2xl:grid-cols-3 ${
+      className={`grid min-w-0 md:grid-cols-2 2xl:grid-cols-3 [&>*]:min-w-0 ${
         compact ? "gap-2.5" : "gap-3"
       }`}
     >
@@ -9339,7 +9546,7 @@ function TextField({
     value === undefined ? uncontrolledLength : measureCharacterCount(value)
 
   return (
-    <label className="block space-y-1.5 text-sm">
+    <label className="block min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} recommended={recommended} />
       <div
         className={`flex h-9 w-full items-center rounded-lg border border-zinc-300 bg-white text-sm text-zinc-950 transition focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100 ${
@@ -9406,7 +9613,7 @@ function SelectField({
   onChange?: (value: string) => void
 }) {
   return (
-    <label className="block space-y-1.5 text-sm">
+    <label className="block min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
       <select
         name={name}
@@ -9484,7 +9691,7 @@ function MultiSelectField({
   }, [open])
 
   return (
-    <div className="space-y-1.5 text-sm">
+    <div className="min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
       <details
         ref={detailsRef}
@@ -10630,18 +10837,76 @@ function PartnerPinDisplay({
   partnerId?: string | null
   pin?: number | string | null
 }) {
+  const [state, formAction] = useActionState(rotatePartnerPin, initialState)
+  const [confirmingRotation, setConfirmingRotation] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+  const confirmedRotationRef = useRef(false)
+  const router = useRouter()
   const generatedPin = partnerId ? derivePartnerPin(partnerId) : null
+  const displayedPin =
+    mode === "edit" ? state.partnerPin ?? pin ?? generatedPin : null
+
+  useEffect(() => {
+    if (state.ok) {
+      router.refresh()
+    }
+  }, [router, state.ok])
 
   return (
-    <ReadOnlyField
-      label="Partner PIN"
-      value={mode === "edit" ? pin ?? generatedPin : "Generated automatically on creation"}
-      hint={
-        mode === "edit"
-          ? "Automatically generated from the permanent partner record and kept read-only."
-          : "Auto-generated when the partner is created and kept read-only here."
-      }
-    />
+    <div className="space-y-2">
+      <ReadOnlyField
+        label="Partner PIN"
+        value={
+          mode === "edit"
+            ? displayedPin
+            : "Generated automatically on creation"
+        }
+        hint={
+          mode === "edit"
+            ? "Automatically generated from the permanent partner record. Rotate it here when the partner needs a new PIN."
+            : "Auto-generated when the partner is created and kept read-only here."
+        }
+      />
+      {mode === "edit" && partnerId ? (
+        <>
+          <form
+            ref={formRef}
+            action={formAction}
+            onSubmit={(event) => {
+              if (confirmedRotationRef.current) {
+                confirmedRotationRef.current = false
+                return
+              }
+
+              event.preventDefault()
+              setConfirmingRotation(true)
+            }}
+            className="flex flex-wrap items-center gap-2"
+          >
+            <input type="hidden" name="id" value={partnerId} />
+            <ActionMessage state={state} />
+            <SubmitButton
+              label="Rotate partner PIN"
+              pendingLabel="Rotating partner PIN..."
+              size="compact"
+              tone="outline"
+            />
+          </form>
+          <ConfirmDialog
+            open={confirmingRotation}
+            title="Rotate partner PIN?"
+            description="The current PIN will stop working and a new PIN will be generated for this partner."
+            confirmLabel="Rotate PIN"
+            onCancel={() => setConfirmingRotation(false)}
+            onConfirm={() => {
+              confirmedRotationRef.current = true
+              setConfirmingRotation(false)
+              formRef.current?.requestSubmit()
+            }}
+          />
+        </>
+      ) : null}
+    </div>
   )
 }
 
@@ -10667,6 +10932,7 @@ function TextAreaField({
   maxLength,
   showCharacterCount = true,
   onChange,
+  labelAccessory,
 }: {
   label: string
   name: string
@@ -10678,7 +10944,10 @@ function TextAreaField({
   maxLength?: number
   showCharacterCount?: boolean
   onChange?: (value: string) => void
+  labelAccessory?: ReactNode
 }) {
+  const generatedId = useId()
+  const inputId = `text-area-${generatedId.replace(/:/g, "")}`
   const resolvedMaxLength =
     typeof maxLength === "number" ? maxLength : inferTextFieldMaxLength(name)
   const [uncontrolledLength, setUncontrolledLength] = useState(() =>
@@ -10688,9 +10957,15 @@ function TextAreaField({
     value === undefined ? uncontrolledLength : measureCharacterCount(value)
 
   return (
-    <label className="block space-y-1.5 text-sm">
-      <FieldLabel label={label} required={required} />
+    <div className="block min-w-0 space-y-1.5 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <label htmlFor={inputId}>
+          <FieldLabel label={label} required={required} />
+        </label>
+        {labelAccessory}
+      </div>
       <textarea
+        id={inputId}
         name={name}
         rows={3}
         required={required}
@@ -10711,7 +10986,7 @@ function TextAreaField({
         currentLength={currentLength}
         maxLength={showCharacterCount ? resolvedMaxLength : undefined}
       />
-    </label>
+    </div>
   )
 }
 
@@ -10887,6 +11162,44 @@ function IconDeleteSubmitButton({
   )
 }
 
+function GenerateDescriptionButton({
+  onClick,
+  pending,
+}: {
+  onClick: () => void
+  pending: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={pending}
+      aria-busy={pending}
+      title="Generate with Ben"
+      className="inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold leading-none text-teal-800 transition hover:-translate-y-px hover:bg-teal-100 active:translate-y-0 disabled:cursor-wait disabled:opacity-60"
+    >
+      {pending ? (
+        <LoadingSpinner className="size-3.5" />
+      ) : (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="size-3.5"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        >
+          <path d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4L12 3Z" />
+          <path d="m19 14 .7 2.3L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14Z" />
+        </svg>
+      )}
+      <span>{pending ? "Generating..." : "Generate with Ben"}</span>
+    </button>
+  )
+}
+
 function SubmitButton({
   disabled = false,
   label,
@@ -10932,7 +11245,7 @@ function SubmitButton({
       disabled={disabled || pending}
       aria-busy={isActivePending}
       value={value}
-      className={`${sizeClasses} inline-flex items-center justify-center gap-2 rounded-md font-semibold transition disabled:cursor-not-allowed ${toneClasses}`}
+      className={`${sizeClasses} inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold leading-none transition active:translate-y-px disabled:cursor-not-allowed ${toneClasses}`}
     >
       {isActivePending ? <LoadingSpinner className={size === "tiny" ? "size-3" : "size-4"} /> : null}
       {isActivePending ? pendingLabel : label}
@@ -10948,6 +11261,7 @@ function ConfirmDialog({
   tone = "default",
   onCancel,
   onConfirm,
+  children,
 }: {
   open: boolean
   title: string
@@ -10956,6 +11270,7 @@ function ConfirmDialog({
   tone?: "default" | "danger"
   onCancel: () => void
   onConfirm: () => void
+  children?: ReactNode
 }) {
   if (!open) {
     return null
@@ -10985,6 +11300,7 @@ function ConfirmDialog({
         >
           {description}
         </p>
+        {children}
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"

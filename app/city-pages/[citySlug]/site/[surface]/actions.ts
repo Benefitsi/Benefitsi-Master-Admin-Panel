@@ -18,6 +18,7 @@ import {
   resolveFieldControl,
 } from "@/lib/city-pages/field-controls"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { notifyPublicRevalidation } from "@/lib/public-revalidation"
 
 type CitySurfaceEditor = NonNullable<Awaited<ReturnType<typeof loadCitySurfaceEditor>>>
 
@@ -187,6 +188,7 @@ export async function saveCitySurface(formData: FormData) {
   revalidatePath(`/city-pages/${citySlug}`)
   revalidatePath(`/city-pages/${citySlug}/site/${surface}`)
   revalidatePath(`/stadt/${citySlug}`)
+  await notifyPublicRevalidation({ resource: "city", citySlug })
   redirect(`${targetPath}&success=surface_saved`)
 }
 

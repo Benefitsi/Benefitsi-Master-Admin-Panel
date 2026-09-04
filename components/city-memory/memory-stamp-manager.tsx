@@ -51,14 +51,14 @@ export function CityMemoryStampManager({ cityId, cityName, citySlug, initialSlot
           assignment.cityId === cityId &&
           assignment.entityType === "COLLECTION" &&
           assignment.entityKey === slot.id &&
-          assignment.role === "CARD",
+          assignment.role === "MEMORY_STAMP_ARTWORK",
         ),
       ) ?? null
       const assignment = asset?.assignments.find((candidate) =>
         candidate.cityId === cityId &&
         candidate.entityType === "COLLECTION" &&
         candidate.entityKey === slot.id &&
-        candidate.role === "CARD",
+        candidate.role === "MEMORY_STAMP_ARTWORK",
       ) ?? null
       return { ...slot, asset, assignment }
     }))
@@ -93,7 +93,7 @@ export function CityMemoryStampManager({ cityId, cityName, citySlug, initialSlot
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           entityType: "COLLECTION",
-          role: "CARD",
+          role: "MEMORY_STAMP_ARTWORK",
           cityId,
           entityKey: slot.id,
           sortOrder: slot.number,
@@ -216,7 +216,7 @@ function MemoryStampSlotCard({
   return (
     <article className={`overflow-hidden rounded-3xl border bg-white shadow-[0_12px_35px_rgba(6,24,41,.05)] ${pending ? "border-dashed border-[#c7d0c9]" : "border-[#061829]/10"}`}>
       <div className="relative aspect-[1.55] overflow-hidden bg-[#edf2ef]">
-        {asset ? <img src={asset.publicUrl} alt={asset.altText ?? ""} className="size-full object-cover" /> : <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_35%_28%,#fffdf8_0%,#f5ead8_56%,#e3c89e_100%)] text-[#9a6f32]"><StampIcon className="size-14" /></div>}
+        {asset ? <img src={asset.publicUrl} alt={asset.altText ?? ""} className="size-full object-contain p-2" /> : <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_35%_28%,#fffdf8_0%,#f5ead8_56%,#e3c89e_100%)] text-[#9a6f32]"><StampIcon className="size-14" /></div>}
         <div className="absolute left-3 top-3 rounded-full border border-white/70 bg-white/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[.12em] text-[#061829]">{slot.cityCode} · {String(slot.number).padStart(2, "0")}</div>
         <span className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-black ${pending ? "bg-[#f0f2ef]/95 text-[#6f7b74]" : asset?.status === "PUBLISHED" ? "bg-emerald-100/95 text-emerald-800" : "bg-amber-100/95 text-amber-900"}`}>
           {pending ? "Bald verfügbar" : asset ? statusLabels[asset.status] : "Kein Bild"}

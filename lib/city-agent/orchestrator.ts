@@ -9,6 +9,7 @@ import {
   type CityAgentSourceRow,
 } from "./contracts"
 import { getCityAgentModule, sourceBelongsToModule } from "./modules"
+import { decideAutonomousAction } from "./autonomy-policy"
 
 export type CityAgentControlSnapshot = {
   cityId: string
@@ -16,6 +17,8 @@ export type CityAgentControlSnapshot = {
   operatingMode: CityAgentOperatingMode
   timezone: string
   autoPublishEnabled: boolean
+  /** Safe default: callers must explicitly prove that prelaunch is over. */
+  prelaunch?: boolean
   lastFullCheckAt: string | null
   nextFullCheckAt: string | null
   pausedReason: string | null
@@ -62,7 +65,7 @@ export function classifySource(source: Pick<CityAgentSourceRow, "trust_level" | 
 }
 
 export function shouldAutoPublish(input: {
-  control: Pick<CityAgentControlSnapshot, "operatingMode" | "autoPublishEnabled">
+  control: Pick<CityAgentControlSnapshot, "operatingMode" | "autoPublishEnabled"> & { prelaunch?: boolean }
   fieldMode: "AUTO" | "MANUAL" | "LOCKED"
   source: Pick<CityAgentSourceRow, "trust_level" | "trust_tier">
   confidence: number
@@ -71,14 +74,24 @@ export function shouldAutoPublish(input: {
   moduleKey: CityAgentModuleKey
 }) {
   const definition = getCityAgentModule(input.moduleKey)
+  const decision = decideAutonomousAction({
+    operatingMode: input.control.operatingMode,
+    autoPublishEnabled: input.control.autoPublishEnabled,
+    prelaunch: input.control.prelaunch !== false,
+    fieldMode: input.fieldMode,
+    sourceTrustTier: trustTierForSource(input.source),
+    confidence: input.confidence,
+    risk: input.risk,
+    contentType: input.contentType,
+    operation: "update",
+    fields: ["seo_title"],
+    entityExists: true,
+    evidenceCount: 2,
+    hasConflict: false,
+  })
   return input.control.operatingMode === "GUARDED_AUTO"
-    && input.control.autoPublishEnabled
-    && input.fieldMode === "AUTO"
-    && trustTierForSource(input.source) === "A"
-    && input.confidence >= 0.98
-    && input.risk === "low"
+    && decision.decision === "AUTO"
     && Boolean(definition?.publishableInGuardedAuto)
-    && input.contentType !== "city_event"
 }
 
 export function controlledDecision(input: {

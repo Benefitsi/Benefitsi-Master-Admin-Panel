@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation"
+import { createClient as createAuthClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
+import { getSupabaseConfig } from "@/lib/supabase/config"
 
 export type AdminProfile = {
   id?: string | null
@@ -64,6 +66,32 @@ export async function requireAdmin() {
     supabase,
     adminSession,
   }
+}
+
+export async function verifyAdminPassword(
+  adminSession: AdminSession,
+  password: string,
+) {
+  const email = adminSession.user.email?.trim()
+  const config = getSupabaseConfig()
+
+  if (!email || !password || !config.isConfigured) {
+    return false
+  }
+
+  const verifier = createAuthClient(config.url, config.publishableKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  })
+  const { data, error } = await verifier.auth.signInWithPassword({
+    email,
+    password,
+  })
+
+  return !error && data.user?.id === adminSession.user.id
 }
 
 export function isAdminProfile(profile: AdminProfile | null) {

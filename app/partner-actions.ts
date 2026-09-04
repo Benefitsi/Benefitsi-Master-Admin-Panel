@@ -1,11 +1,15 @@
 "use server"
 
-import { randomUUID } from "node:crypto"
+import { randomInt, randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import sharp from "sharp"
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { requireAdmin } from "@/lib/admin"
+import { requireAdmin, verifyAdminPassword } from "@/lib/admin"
+import {
+  buildBenDescriptionPrompt,
+  parseBenDescriptionResponse,
+} from "@/lib/partner-description"
 import {
   DEFAULT_MENU_STATUS,
   adminTextLimits,
@@ -31,6 +35,11 @@ import {
   isRewardType,
   normalizeBenefitCategory,
 } from "@/lib/reward-config"
+import {
+  partnerUpdateMissingMessage,
+  partnerUpdateWasApplied,
+} from "@/lib/partner-save"
+import { notifyPartnerPublicRevalidation } from "@/lib/public-revalidation"
 import * as menuImport from "@/lib/menu-import.js"
 import * as menuZipImport from "@/lib/menu-zip-import.js"
 
@@ -50,10 +59,36 @@ const COMEBACK_INACTIVE_DEAL = "comeback_inactive"
 const DURATION_BONUS_MODE = "duration_bonus"
 const COMEBACK_INACTIVE_MODE = "comeback_inactive"
 
+function schedulePartnerPublicRevalidation(
+  supabase: SupabaseClient,
+  partnerId: string,
+) {
+  if (!partnerId) return
+  after(() => notifyPartnerPublicRevalidation(supabase, partnerId).then(() => undefined))
+}
+
+async function partnerIdForMenu(supabase: SupabaseClient, menuId: string) {
+  const menu = await supabase.from("menus").select("partner_id").eq("id", menuId).maybeSingle()
+  return menu.error || typeof menu.data?.partner_id !== "string" ? null : menu.data.partner_id
+}
+
+function scheduleMenuPublicRevalidation(
+  supabase: SupabaseClient,
+  menuId: string,
+) {
+  if (!menuId) return
+  after(async () => {
+    const partnerId = await partnerIdForMenu(supabase, menuId)
+    if (partnerId) await notifyPartnerPublicRevalidation(supabase, partnerId)
+  })
+}
+
 export type PartnerActionState = {
   message: string
   ok: boolean
+  description?: string
   partnerId?: string
+  partnerPin?: number
   created?: boolean
   menuCategory?: {
     id: string
@@ -368,6 +403,19 @@ export async function savePartner(
       return { ok: false, message: result.error.message }
     }
 
+    if (!partnerUpdateWasApplied(result.data)) {
+      if (!isUpdate) {
+        await rollbackCreatedPartner(supabase, partnerId)
+      }
+      await cleanupUploadedFiles(supabase, uploadedPaths)
+      return {
+        ok: false,
+        message: isUpdate
+          ? partnerUpdateMissingMessage
+          : "Partner could not be created because no database row was returned.",
+      }
+    }
+
     const partnerSocials = parsePartnerSocials(formData)
     const partnerSocialValidation = validatePartnerSocials(partnerSocials)
 
@@ -535,6 +583,7 @@ export async function savePartner(
     }
 
     revalidatePath("/")
+    schedulePartnerPublicRevalidation(supabase, partnerId)
 
     return {
       ok: true,
@@ -558,15 +607,119 @@ export async function savePartner(
   }
 }
 
+export async function generatePartnerDescription(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  await requireAdmin()
+
+  const name = stringValue(formData, "name")
+  if (!name) {
+    return { ok: false, message: "Partner name is required before asking Ben." }
+  }
+
+  const textValidation = validateTextLengthRules([
+    ["Partner name", name, adminTextLimits.shortText],
+    ["Partner type", stringValue(formData, "type"), adminTextLimits.shortText],
+    ["Partner city", stringValue(formData, "city_name"), adminTextLimits.shortText],
+    ["Address", stringValue(formData, "address"), adminTextLimits.mediumText],
+  ])
+
+  if (textValidation) {
+    return { ok: false, message: textValidation }
+  }
+
+  const bridgeUrl = process.env.M1_BRIDGE_URL?.trim()
+  const bridgeSecret = process.env.M1_BRIDGE_SECRET?.trim()
+
+  if (!bridgeUrl || !bridgeSecret) {
+    return {
+      ok: false,
+      message: "Ben is unavailable: The Hermes/M1 bridge is not configured.",
+    }
+  }
+
+  let endpoint: URL
+  try {
+    endpoint = new URL("/hermes", bridgeUrl)
+  } catch {
+    return { ok: false, message: "Ben is unavailable: The Hermes bridge URL is invalid." }
+  }
+
+  if (
+    endpoint.protocol !== "https:" &&
+    endpoint.hostname !== "localhost" &&
+    endpoint.hostname !== "127.0.0.1"
+  ) {
+    return { ok: false, message: "Ben is unavailable: The Hermes bridge must use HTTPS." }
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${bridgeSecret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "partner-description",
+        profile: "ben",
+        message: buildBenDescriptionPrompt({
+          name,
+          type: stringValue(formData, "type"),
+          city: stringValue(formData, "city_name"),
+          categories: listValue(formData, "category"),
+          address: stringValue(formData, "address"),
+          currentDescription: stringValue(formData, "description"),
+        }),
+      }),
+      signal: AbortSignal.timeout(60_000),
+    })
+
+    if (!response.ok) {
+      return { ok: false, message: "Ben could not create a draft right now. Please try again later." }
+    }
+
+    const body = (await response.json().catch(() => null)) as {
+      response?: unknown
+    } | null
+    const description = parseBenDescriptionResponse(body?.response)
+
+    return {
+      ok: true,
+      description,
+      message: "Ben has inserted a draft. Please review it before saving.",
+    }
+  } catch (error) {
+    console.error(
+      "Ben partner description request failed:",
+      error instanceof Error ? error.message : "unknown error",
+    )
+    return {
+      ok: false,
+      message: "Ben could not be reached right now. Please check the Hermes/M1 bridge.",
+    }
+  }
+}
+
 export async function deletePartner(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
+  const { supabase, adminSession } = await requireAdmin()
   const id = stringValue(formData, "id")
+  const deletePassword = stringValue(formData, "delete_password")
 
   if (!id) {
     return { ok: false, message: "Partner id is required." }
+  }
+
+  if (!deletePassword) {
+    return { ok: false, message: "Admin password is required to delete a partner." }
+  }
+
+  if (!(await verifyAdminPassword(adminSession, deletePassword))) {
+    return { ok: false, message: "Admin password verification failed." }
   }
 
   const cleanupResult = await collectPartnerDeletionMediaUrls(supabase, id)
@@ -747,6 +900,43 @@ export async function deletePartner(
   return { ok: true, message: "Partner and all attached data removed." }
 }
 
+export async function rotatePartnerPin(
+  _prevState: PartnerActionState,
+  formData: FormData,
+): Promise<PartnerActionState> {
+  const { supabase } = await requireAdmin()
+  const id = stringValue(formData, "id")
+
+  if (!id) {
+    return { ok: false, message: "Partner id is required." }
+  }
+
+  const pin = randomInt(1000, 10000)
+  const result = await supabase
+    .from("partners")
+    .update({ pin })
+    .eq("id", id)
+    .select("id, pin")
+    .maybeSingle()
+
+  if (result.error) {
+    return { ok: false, message: result.error.message }
+  }
+
+  if (!result.data) {
+    return { ok: false, message: "Partner PIN could not be rotated because the partner was not found." }
+  }
+
+  revalidatePath("/")
+  schedulePartnerPublicRevalidation(supabase, id)
+
+  return {
+    ok: true,
+    partnerPin: typeof result.data.pin === "number" ? result.data.pin : pin,
+    message: "Partner PIN rotated.",
+  }
+}
+
 export async function saveDeal(
   _prevState: PartnerActionState,
   formData: FormData,
@@ -865,6 +1055,7 @@ export async function saveDeal(
   }
 
   revalidatePath("/")
+  schedulePartnerPublicRevalidation(supabase, payload.partner_id)
 
   return {
     ok: true,
@@ -903,6 +1094,7 @@ export async function saveRewardMilestone(
   }
 
   revalidatePath("/")
+  schedulePartnerPublicRevalidation(supabase, payload.partner_id)
 
   return {
     ok: true,
@@ -1014,6 +1206,7 @@ export async function saveOpeningHour(
   }
 
   revalidatePath("/")
+  schedulePartnerPublicRevalidation(supabase, payload.partner_id)
 
   return {
     ok: true,
@@ -1032,6 +1225,11 @@ export async function deleteOpeningHour(
     return { ok: false, message: "Opening hour id is required." }
   }
 
+  const existingResult = await supabase
+    .from("partner_opening_hours")
+    .select("partner_id")
+    .eq("id", id)
+    .maybeSingle()
   const result = await supabase.from("partner_opening_hours").delete().eq("id", id)
 
   if (result.error) {
@@ -1039,6 +1237,9 @@ export async function deleteOpeningHour(
   }
 
   revalidatePath("/")
+  if (!existingResult.error && typeof existingResult.data?.partner_id === "string") {
+    schedulePartnerPublicRevalidation(supabase, existingResult.data.partner_id)
+  }
 
   return { ok: true, message: "Opening hours removed." }
 }
@@ -1099,6 +1300,7 @@ export async function saveWeeklyOpeningHours(
 
   if (holidayMessage) {
     revalidatePath("/")
+    schedulePartnerPublicRevalidation(supabase, partnerId)
     return {
       ok: false,
       message: `Weekly hours saved, but holiday closures could not be updated: ${holidayMessage}`,
@@ -1106,6 +1308,7 @@ export async function saveWeeklyOpeningHours(
   }
 
   revalidatePath("/")
+  schedulePartnerPublicRevalidation(supabase, partnerId)
 
   return { ok: true, message: "Operating hours and holiday closures saved." }
 }
@@ -1204,6 +1407,7 @@ export async function saveMenu(
 
     revalidatePath("/")
     revalidatePath("/menu-approvals")
+    schedulePartnerPublicRevalidation(supabase, payload.partner_id)
     return {
       ...importResult,
       menuId,
@@ -1213,6 +1417,7 @@ export async function saveMenu(
 
   revalidatePath("/")
   revalidatePath("/menu-approvals")
+  schedulePartnerPublicRevalidation(supabase, payload.partner_id)
 
   return {
     ok: true,
@@ -1249,6 +1454,7 @@ export async function reorderMenuCategories(
   }
 
   revalidatePath("/")
+  scheduleMenuPublicRevalidation(supabase, menuId)
 
   return { ok: true, message: "Category order saved." }
 }
@@ -1281,6 +1487,7 @@ export async function reorderMenuItems(
   }
 
   revalidatePath("/")
+  scheduleMenuPublicRevalidation(supabase, menuId)
 
   return { ok: true, message: "Item order saved." }
 }
@@ -1307,6 +1514,7 @@ export async function approveMenu(
 
   revalidatePath("/")
   revalidatePath("/menu-approvals")
+  scheduleMenuPublicRevalidation(supabase, id)
 
   return { ok: true, message: "Menu approved and published." }
 }
@@ -1320,6 +1528,16 @@ export async function deleteMenu(
 
   if (!id) {
     return { ok: false, message: "Menu id is required." }
+  }
+
+  const ownerResult = await supabase
+    .from("menus")
+    .select("partner_id")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (ownerResult.error) {
+    return { ok: false, message: ownerResult.error.message }
   }
 
   const [itemMediaResult, categoryMediaResult] = await Promise.all([
@@ -1367,6 +1585,9 @@ export async function deleteMenu(
   }
 
   revalidatePath("/")
+  if (typeof ownerResult.data?.partner_id === "string") {
+    schedulePartnerPublicRevalidation(supabase, ownerResult.data.partner_id)
+  }
 
   return { ok: true, message: "Menu removed." }
 }
@@ -1452,6 +1673,10 @@ export async function saveMenuCategory(
   if (oldImageUrlsToCleanup.length) {
     after(() => cleanupPublicMediaUrls(supabase, oldImageUrlsToCleanup))
   }
+  scheduleMenuPublicRevalidation(
+    supabase,
+    typeof result.data?.menu_id === "string" ? result.data.menu_id : menuId,
+  )
 
   return {
     ok: true,
@@ -1474,7 +1699,7 @@ export async function deleteMenuCategory(
   const [existingResult, itemMediaResult] = await Promise.all([
     supabase
       .from("menu_categories")
-      .select("image_url")
+      .select("image_url,menu_id")
       .eq("id", id)
       .maybeSingle(),
     supabase
@@ -1515,6 +1740,9 @@ export async function deleteMenuCategory(
   ])
   if (imageUrls.length) {
     after(() => cleanupPublicMediaUrls(supabase, imageUrls))
+  }
+  if (typeof existingResult.data?.menu_id === "string") {
+    scheduleMenuPublicRevalidation(supabase, existingResult.data.menu_id)
   }
 
   return {
@@ -1615,6 +1843,10 @@ export async function saveMenuItem(
   if (oldImageUrlsToCleanup.length) {
     after(() => cleanupPublicMediaUrls(supabase, oldImageUrlsToCleanup))
   }
+  scheduleMenuPublicRevalidation(
+    supabase,
+    typeof result.data?.menu_id === "string" ? result.data.menu_id : menuId,
+  )
 
   return {
     ok: true,
@@ -1673,6 +1905,7 @@ export async function saveMenuCategoryImage(
     }
     revalidatePath("/")
     revalidatePath("/menu-approvals")
+    scheduleMenuPublicRevalidation(supabase, menuId)
     return {
       ok: true,
       message: "Menu category image uploaded.",
@@ -1704,7 +1937,7 @@ export async function saveMenuItemImage(
 
   const existingResult = await supabase
     .from("menu_items")
-    .select("image_url")
+    .select("image_url,menu_id")
     .eq("id", id)
     .eq("menu_id", menuId)
     .maybeSingle()
@@ -1737,6 +1970,7 @@ export async function saveMenuItemImage(
     }
     revalidatePath("/")
     revalidatePath("/menu-approvals")
+    scheduleMenuPublicRevalidation(supabase, menuId)
     return {
       ok: true,
       message: "Menu item image uploaded.",
@@ -1764,7 +1998,7 @@ export async function deleteMenuItem(
 
   const existingResult = await supabase
     .from("menu_items")
-    .select("image_url")
+    .select("image_url,menu_id")
     .eq("id", id)
     .maybeSingle()
 
@@ -1785,6 +2019,9 @@ export async function deleteMenuItem(
 
   if (imageUrl) {
     after(() => cleanupPublicMediaUrls(supabase, [imageUrl]))
+  }
+  if (typeof existingResult.data?.menu_id === "string") {
+    scheduleMenuPublicRevalidation(supabase, existingResult.data.menu_id)
   }
 
   return { ok: true, message: "Menu item removed.", deletedId: id }
@@ -1857,6 +2094,9 @@ export async function duplicateMenuCategory(
   }
 
   revalidatePath("/")
+  if (typeof category.menu_id === "string") {
+    scheduleMenuPublicRevalidation(supabase, category.menu_id)
+  }
   return {
     ok: true,
     message: `Category duplicated with ${itemCopies.length} ${itemCopies.length === 1 ? "item" : "items"}.`,
@@ -1906,7 +2146,9 @@ async function importMenuIntoMenu(
     return zipImportPreviewState(prepared.zipPreview)
   }
   if (importMode === "update_addons") {
-    return updateImportedMenuAddons(supabase, menuId, prepared)
+    const result = await updateImportedMenuAddons(supabase, menuId, prepared)
+    if (result.ok) scheduleMenuPublicRevalidation(supabase, menuId)
+    return result
   }
   const uploadedImageUrls = new Set<string>()
   const imageCopyPromises = new Map<string, Promise<string>>()
@@ -1975,6 +2217,9 @@ async function importMenuIntoMenu(
 
   revalidatePath("/")
   revalidatePath("/menu-approvals")
+  if (batch.successes.length > 0) {
+    scheduleMenuPublicRevalidation(supabase, menuId)
+  }
   return {
     ok: batch.successes.length > 0,
     issues: details.length > 0,
@@ -2321,6 +2566,11 @@ export async function deleteDeal(
     return { ok: false, message: "Deal id is required." }
   }
 
+  const existingResult = await supabase
+    .from("deals")
+    .select("partner_id")
+    .eq("id", id)
+    .maybeSingle()
   const result = await supabase.from("deals").delete().eq("id", id)
 
   if (result.error) {
@@ -2328,6 +2578,9 @@ export async function deleteDeal(
   }
 
   revalidatePath("/")
+  if (!existingResult.error && typeof existingResult.data?.partner_id === "string") {
+    schedulePartnerPublicRevalidation(supabase, existingResult.data.partner_id)
+  }
 
   return { ok: true, message: "Deal removed." }
 }
@@ -2640,7 +2893,6 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     is_featured: checkboxValue(formData, "is_featured"),
     stamp_target: stampTarget,
     loves: isUpdate ? integerValue(formData, "existing_loves") ?? 0 : 0,
-    pin: null,
     address: stringValue(formData, "address"),
     phone: stringValue(formData, "phone"),
     website: stringValue(formData, "website"),
@@ -2648,7 +2900,7 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     is_active: active,
     email: stringValue(formData, "email"),
     updated_at: now,
-    ...(isUpdate ? {} : { created_at: now }),
+    ...(isUpdate ? {} : { created_at: now, pin: null }),
   }
 }
 
@@ -5388,6 +5640,8 @@ function buildPartnerSocialUrl(platform: string, handle: string) {
       return `https://www.tiktok.com/@${normalizedHandle}`
     case "x":
       return `https://x.com/${normalizedHandle}`
+    case "youtube":
+      return `https://www.youtube.com/@${normalizedHandle}`
     default:
       return ""
   }

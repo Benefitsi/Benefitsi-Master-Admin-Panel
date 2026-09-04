@@ -3,6 +3,7 @@ import { inflateRawSync, inflateSync } from "node:zlib"
 import {
   cityAgentContentTypes,
   type CityAgentDiff,
+  type CityAgentContentType,
   type CityAgentDraftReference,
   type CityAgentReviewDecision,
   type CityAgentSourceFacts,
@@ -703,7 +704,9 @@ export function nextSourceCheckAt(source: Pick<CityAgentSourceRow, "cadence">, n
   return new Date(now.getTime() + hours * 60 * 60 * 1000).toISOString()
 }
 
-export function sourceContentType(source: Pick<CityAgentSourceRow, "parser_config">) {
+export function sourceContentType(source: Pick<CityAgentSourceRow, "parser_config">): CityAgentContentType {
   const candidate = source.parser_config.contentType
-  return typeof candidate === "string" && cityAgentContentTypes.includes(candidate as (typeof cityAgentContentTypes)[number]) ? candidate : "city_guide"
+  return typeof candidate === "string" && cityAgentContentTypes.includes(candidate as (typeof cityAgentContentTypes)[number])
+    ? candidate as CityAgentContentType
+    : "city_guide"
 }

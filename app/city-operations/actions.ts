@@ -10,6 +10,7 @@ import {
 } from "@/lib/city-operations/contracts"
 import { loadCityReviewDetail } from "@/lib/city-operations/data"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { notifyPublicRevalidation, type PublicRevalidationResource } from "@/lib/public-revalidation"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -159,6 +160,17 @@ export async function publishCityContent(formData: FormData) {
   revalidatePath("/city-operations")
   revalidatePath(detailPath(identifiers.contentType, identifiers.contentId))
   revalidatePath(`/stadt/${detail.record.citySlug}`)
+  const resourceByContentType: Record<string, PublicRevalidationResource> = {
+    events: "event",
+    places: "place",
+    routes: "route",
+    guides: "guide",
+    benefits: "benefit",
+  }
+  await notifyPublicRevalidation({
+    resource: resourceByContentType[identifiers.contentType] ?? "city",
+    citySlug: detail.record.citySlug,
+  })
   redirect(
     `${detailPath(identifiers.contentType, identifiers.contentId)}?success=human_published`,
   )

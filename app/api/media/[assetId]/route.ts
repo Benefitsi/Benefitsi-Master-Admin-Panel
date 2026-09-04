@@ -11,6 +11,7 @@ import {
   writeMediaAudit,
 } from "@/lib/city-media/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { notifyCityPublicRevalidation } from "@/lib/public-revalidation"
 
 export const runtime = "nodejs"
 
@@ -83,6 +84,9 @@ export async function PATCH(
     previousState: existingResult.data,
     nextState: result.data,
   })
+  if (typeof existingResult.data.city_id === "string") {
+    await notifyCityPublicRevalidation(admin, existingResult.data.city_id, "media")
+  }
   return NextResponse.json({ asset: result.data })
 }
 
@@ -135,5 +139,8 @@ export async function DELETE(
     previousState: assetResult.data,
     nextState: { status: "DELETED", storageCleanupWarning },
   })
+  if (typeof assetResult.data.city_id === "string") {
+    await notifyCityPublicRevalidation(admin, assetResult.data.city_id, "media")
+  }
   return NextResponse.json({ ok: true, storageCleanupWarning })
 }

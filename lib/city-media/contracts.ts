@@ -38,6 +38,7 @@ export type CityMediaEntityType = (typeof mediaEntityTypes)[number]
 export const mediaRoles = [
   "HERO",
   "CARD",
+  "MEMORY_STAMP_ARTWORK",
   "GALLERY",
   "THUMBNAIL",
   "OG",
@@ -153,6 +154,7 @@ export const entityTypeLabels: Record<CityMediaEntityType, string> = {
 export const roleLabels: Record<CityMediaRole, string> = {
   HERO: "Hero",
   CARD: "Card",
+  MEMORY_STAMP_ARTWORK: "Memory-Stamp-Artwork",
   GALLERY: "Galerie",
   THUMBNAIL: "Thumbnail",
   OG: "Open Graph",

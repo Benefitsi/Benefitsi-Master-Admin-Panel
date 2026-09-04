@@ -97,7 +97,6 @@ test("daily automation tick fails closed and only schedules deduplicated city sc
   assert.match(route, /timingSafeEqual/)
   assert.match(route, /schedule_due_city_scans/)
   assert.doesNotMatch(route, /claim_automation_job|complete_automation_job/)
-  assert.deepEqual(vercel.crons, [
-    { path: "/api/automation/tick", schedule: "10 4 * * *" },
-  ])
+  assert.ok(vercel.crons.some((cron) => cron.path === "/api/automation/tick" && cron.schedule === "10 4 * * *"))
+  assert.ok(vercel.crons.some((cron) => cron.path === "/api/automation/worker" && cron.schedule === "30 4 * * *"))
 })

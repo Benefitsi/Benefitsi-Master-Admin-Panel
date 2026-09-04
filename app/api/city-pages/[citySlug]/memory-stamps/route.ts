@@ -13,6 +13,7 @@ import {
   writeMediaAudit,
 } from "@/lib/city-media/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { notifyPublicRevalidation } from "@/lib/public-revalidation"
 
 export const runtime = "nodejs"
 
@@ -51,7 +52,7 @@ export async function PATCH(
     .eq("city_id", cityResult.data.id)
     .eq("entity_type", "COLLECTION")
     .eq("entity_key", memoryId)
-    .eq("role", "CARD")
+    .eq("role", "MEMORY_STAMP_ARTWORK")
     .maybeSingle()
   if (assignmentResult.error || !assignmentResult.data) {
     return NextResponse.json({ error: "memory_asset_not_found" }, { status: 404 })
@@ -119,13 +120,15 @@ export async function PATCH(
     cityId: cityResult.data.id,
     mediaAssetId: existingResult.data.id,
     assignmentId: assignmentResult.data.id,
-    action: `MEMORY_${action.toUpperCase()}`,
+    action: action === "archive" ? "ARCHIVE" : "UPDATE_METADATA",
     entityType: "COLLECTION",
     entityKey: memoryId,
-    role: "CARD",
+    role: "MEMORY_STAMP_ARTWORK",
     previousState: existingResult.data,
     nextState: result.data,
   })
+
+  await notifyPublicRevalidation({ resource: "memory", citySlug })
 
   return NextResponse.json({ asset: result.data, slotStatus: slot.status })
 }
