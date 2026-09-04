@@ -497,6 +497,9 @@ export function PartnerWorkspace({
   portalMode = false,
 }: PartnerWorkspaceProps) {
   const [query, setQuery] = useState("")
+  const [partnerFilter, setPartnerFilter] = useState<
+    "all" | "active" | "featured"
+  >("all")
   const [mode, setMode] = useState<"view" | "create">(
     partners.length && (portalMode || initialMode === "view") ? "view" : "create",
   )
@@ -519,7 +522,9 @@ export function PartnerWorkspace({
 
   const partnerCount = partners.length
   const activePartners = partners.filter(isPartnerActive).length
-  const featuredPartners = partners.filter((partner) => partner.is_featured).length
+  const featuredPartners = partners.filter(
+    (partner) => isPartnerActive(partner) && partner.is_featured,
+  ).length
   const dealCount = partners.reduce(
     (count, partner) => count + partner.deals.length,
     0,
@@ -527,12 +532,18 @@ export function PartnerWorkspace({
   const filteredPartners = useMemo(() => {
     const normalized = query.trim().toLowerCase()
 
-    if (!normalized) {
-      return partners
-    }
+    return partners.filter((partner) => {
+      if (partnerFilter === "active" && !isPartnerActive(partner)) return false
+      if (
+        partnerFilter === "featured" &&
+        !(isPartnerActive(partner) && partner.is_featured)
+      ) {
+        return false
+      }
 
-    return partners.filter((partner) =>
-      [
+      if (!normalized) return true
+
+      return [
         partner.name,
         partner.short_name,
         partner.city_name,
@@ -545,22 +556,42 @@ export function PartnerWorkspace({
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
-        .includes(normalized),
-    )
-  }, [partners, query])
+        .includes(normalized)
+    })
+  }, [partnerFilter, partners, query])
 
   const selectedPartner =
-    partners.find((partner) => partner.id === selectedId) ??
+    filteredPartners.find((partner) => partner.id === selectedId) ??
     filteredPartners[0] ??
-    partners[0]
+    (partnerFilter === "all"
+      ? partners.find((partner) => partner.id === selectedId) ?? partners[0]
+      : undefined)
 
   return (
     <section id="partners" className="partner-management-brand space-y-3">
       <ToastViewport />
       <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
         <LiveMetric label="Partners" value={partnerCount} />
-        <LiveMetric label="Active partners" value={activePartners} />
-        <LiveMetric label="Featured partners" value={featuredPartners} />
+        <LiveMetric
+          label="Active partners"
+          value={activePartners}
+          active={partnerFilter === "active"}
+          onClick={() =>
+            setPartnerFilter((current) =>
+              current === "active" ? "all" : "active",
+            )
+          }
+        />
+        <LiveMetric
+          label="Featured partners"
+          value={featuredPartners}
+          active={partnerFilter === "featured"}
+          onClick={() =>
+            setPartnerFilter((current) =>
+              current === "featured" ? "all" : "featured",
+            )
+          }
+        />
         <LiveMetric label="Benefits" value={dealCount} />
       </div>
 
@@ -656,15 +687,44 @@ export function PartnerWorkspace({
   )
 }
 
-function LiveMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="border-b border-zinc-200 px-3 py-2.5 last:border-b-0 sm:border-b-0">
+function LiveMetric({
+  label,
+  value,
+  active = false,
+  onClick,
+}: {
+  label: string
+  value: number
+  active?: boolean
+  onClick?: () => void
+}) {
+  const content = (
+    <>
       <p className="text-xs font-medium text-zinc-500">{label}</p>
       <p className="mt-0.5 text-xl font-semibold tracking-normal text-zinc-950">
         {value}
       </p>
-    </div>
+    </>
   )
+  const className = `border-b border-zinc-200 px-3 py-2.5 last:border-b-0 sm:border-b-0 ${
+    active ? "bg-teal-50 ring-1 ring-inset ring-teal-200" : ""
+  }`
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        aria-label={`${label}: ${value}`}
+        aria-pressed={active}
+        onClick={onClick}
+        className={`${className} block w-full text-left transition hover:bg-zinc-50 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-teal-600`}
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return <div className={className}>{content}</div>
 }
 
 function PartnerListButton({
@@ -706,7 +766,9 @@ function PartnerListButton({
             <p className="text-xs font-medium text-zinc-600">
               {partner.deals.length} {partner.deals.length === 1 ? "deal" : "deals"}
             </p>
-            {partner.is_featured ? <FeaturedBadge compact /> : null}
+            {isPartnerActive(partner) && partner.is_featured ? (
+              <FeaturedBadge compact />
+            ) : null}
             {!hasDeals ? (
               <span className="whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
                 Benefit recommended
@@ -848,7 +910,9 @@ function PartnerDetail({
               </button>
             </div>
             <StatusPill active={isPartnerActive(partner)} />
-            {partner.is_featured ? <FeaturedBadge /> : null}
+            {isPartnerActive(partner) && partner.is_featured ? (
+              <FeaturedBadge />
+            ) : null}
           </div>
         }
       >

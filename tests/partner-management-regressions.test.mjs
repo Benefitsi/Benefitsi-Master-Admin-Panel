@@ -72,6 +72,18 @@ test("partner editor keeps localized labels inside responsive controls and expos
   assert.match(code, /\[&>\*\]:min-w-0/)
 })
 
+test("active and featured partner metrics filter the list, with featured limited to active partners", async () => {
+  const code = await readFile(adminUrl, "utf8")
+
+  assert.match(code, /const \[partnerFilter, setPartnerFilter\]/)
+  assert.match(code, /label="Active partners"[\s\S]*active=\{partnerFilter === "active"\}[\s\S]*onClick=/)
+  assert.match(code, /label="Featured partners"[\s\S]*active=\{partnerFilter === "featured"\}[\s\S]*onClick=/)
+  assert.match(code, /partnerFilter === "active" && !isPartnerActive\(partner\)/)
+  assert.match(code, /partnerFilter === "featured"[\s\S]*isPartnerActive\(partner\) && partner\.is_featured/)
+  assert.match(code, /isPartnerActive\(partner\) && partner\.is_featured/)
+  assert.match(code, /aria-pressed=\{active\}/)
+})
+
 test("2-for-1 deal drafts retain the entered item and basics", async () => {
   const { discountTypeUsesRewardItem, readDealFormDraft } = await import(
     "../lib/deal-form.ts"
