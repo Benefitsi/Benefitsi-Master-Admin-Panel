@@ -33,7 +33,8 @@ test("renders admin-backed deals and stamp rewards as responsive collections", a
   assert.match(source, /getMicrositeStampDeals/)
   assert.match(source, /getMicrositeWelcomeDeals/)
   assert.match(source, /getMicrositeStampRewards/)
-  assert.match(source, /publicDeals\.map/)
+  assert.match(source, /partitionMicrositePublicDeals\(publicDeals\)/)
+  assert.match(source, /secondaryDeals\.map/)
   assert.match(source, /@min-\[900px\]:grid-cols-2/)
   assert.match(source, /stampDeals\.map/)
   assert.match(source, /stampRewards\.map/)
@@ -47,10 +48,11 @@ test("keeps secondary deal banners compact next to the top deal", async () => {
   assert.match(source, /premium-deal-secondary/)
   assert.match(
     source,
-    /wide=\{publicDeals\.length > 1 && isMicrositeTopDeal\(deal\)\}/,
+    /secondaryDeals\.length > 1 \? "@min-\[900px\]:grid-cols-2" : ""/,
   )
-  assert.match(source, /isTopDeal \?/)
-  assert.match(source, /const articleClassName = isTopDeal\s+\? `premium-topdeal/)
+  assert.match(source, /const isFeaturedDeal = primary/)
+  assert.match(source, /const articleClassName = isFeaturedDeal\s+\? `premium-topdeal/)
+  assert.match(source, /if \(!featuredDeal && !hasLoyaltyContent\) return null/)
 })
 
 test("keeps dark mode polished and uses the official social glyphs", async () => {

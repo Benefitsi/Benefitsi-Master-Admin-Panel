@@ -29,7 +29,7 @@ import {
   micrositeReadinessEnglishTranslations,
   type MicrositeReadinessReport,
 } from "@/lib/microsite-readiness"
-import { micrositeTemplatePresets } from "@/lib/microsite-templates"
+import { applyMicrositeTemplatePreset, micrositeTemplateDescription, micrositeTemplatePresets, templateDefaults } from "@/lib/microsite-templates"
 import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
 import { PrintableStudioPanel } from "@/components/microsite/printable-studio-panel"
 import { LoadingSpinner } from "@/components/loading-ui"
@@ -45,6 +45,7 @@ import {
 import { useAdminLanguage } from "./admin-language"
 import {
   defaultMicrositeCopyForPartner,
+  defaultMicrositeTemplateForPartner,
   inferMicrositePartnerProfile,
   partnerSocialLabel,
   partnerSocialUrl,
@@ -1686,7 +1687,7 @@ export function MicrositePanel({
             {tr(activeTemplatePreset.name)}
           </h2>
           <p className="mt-1 text-sm text-zinc-500">
-            {tr(activeTemplatePreset.description)}
+            {micrositeTemplateDescription(config.template, builderLocale)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -1883,6 +1884,19 @@ export function MicrositePanel({
             description="Marke und Startbereich des aktuellen Templates."
           >
 
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+            <label htmlFor="microsite-template" className="text-xs font-bold text-zinc-700">{builderLocale === "en" ? "Partner template" : "Partnervorlage"}</label>
+            <select id="microsite-template" value={config.template}
+              onChange={(event) => {
+                const preset = micrositeTemplatePresets.find((item) => item.id === event.target.value)
+                if (preset) setConfig((current) => applyMicrositeTemplatePreset(current, preset.id, partner))
+              }}
+              className="mt-2 min-h-11 w-full rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-teal-600">
+              {micrositeTemplatePresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}{preset.id === defaultMicrositeTemplateForPartner(partner) ? (builderLocale === "en" ? " · Recommended" : " · Empfohlen") : ""}</option>)}
+            </select>
+            <p className="mt-2 text-xs leading-5 text-zinc-500">{builderLocale === "en" ? "Changes the draft layout and default copy. Your custom text and images are kept. Food & Drink remains available as the original template." : "Ändert Layout und Standardtexte im Entwurf. Eigene Texte und Bilder bleiben erhalten. Food & Drink bleibt als Originalvorlage verfügbar."}</p>
+          </div>
+
           <div data-builder-section="brand">
           <ConfigSection title="Marke">
             <PaletteControl
@@ -1976,20 +1990,20 @@ export function MicrositePanel({
               <EditorField
                 name="ecosystem_headline"
                 label="App Vorteile Überschrift"
-                value={config.elementText["content.ecosystemHeadline"] || "Mehr als nur Stempel."}
+                value={config.template === "restaurant-premium" ? config.elementText["content.ecosystemHeadline"] || "Mehr als nur Stempel." : config.content.appHeadline}
                 onChange={(value) =>
                   setConfig((current) =>
-                    setElementTextValue(current, "content.ecosystemHeadline", value),
+                    current.template === "restaurant-premium" ? setElementTextValue(current, "content.ecosystemHeadline", value) : { ...current, content: { ...current.content, appHeadline: value } },
                   )
                 }
               />
               <EditorField
                 name="ecosystem_text"
                 label="App Vorteile Text"
-                value={config.elementText["content.ecosystemText"] || "Eine App für Vorteile, Treue, Entdeckungen und kleine Erfolge bei jedem Besuch."}
+                value={config.template === "restaurant-premium" ? config.elementText["content.ecosystemText"] || "Eine App für Vorteile, Treue, Entdeckungen und kleine Erfolge bei jedem Besuch." : config.content.appText}
                 onChange={(value) =>
                   setConfig((current) =>
-                    setElementTextValue(current, "content.ecosystemText", value),
+                    current.template === "restaurant-premium" ? setElementTextValue(current, "content.ecosystemText", value) : { ...current, content: { ...current.content, appText: value } },
                   )
                 }
                 multiline
@@ -1998,7 +2012,7 @@ export function MicrositePanel({
 
             <SocialMediaPanel partner={partner} config={config} setConfig={setConfig} />
 
-            <ConfigSection title="Speisekarte">
+            <ConfigSection title={config.content.menuLabel}>
               <EditorField
                 name="menu_headline"
                 label="Speisekarte Überschrift"
@@ -5919,6 +5933,10 @@ function applyMicrositeLanguage(
   partner: PartnerWithDeals,
   language: MicrositeConfig["language"],
 ): MicrositeConfig {
+  if (config.template !== "restaurant-premium") {
+    const translated = templateDefaults(partner, config.template, language)
+    return { ...config, language, navigation: translated.navigation, hero: { ...config.hero, slogan: translated.hero.slogan, primaryButtonLabel: translated.hero.primaryButtonLabel, secondaryButtonLabel: translated.hero.secondaryButtonLabel, services: translated.hero.services }, content: translated.content, seo: { ...config.seo, title: translated.seo.title, description: translated.seo.description, keywords: translated.seo.keywords } }
+  }
   const name = partner.short_name?.trim() || partner.name?.trim() || config.hero.headline
   const location = config.hero.locationText
   const copy =

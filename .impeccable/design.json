@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-14T16:03:04.0502314+08:00",
+  "title": "Design System: Benefitsi Partner Microsite",
+  "extensions": {
+    "colorMeta": {
+      "partner-primary": {
+        "role": "primary",
+        "displayName": "Partner Signal",
+        "canonical": "#f97316",
+        "tonalRamp": ["#431407", "#7c2d12", "#c2410c", "#f97316", "#fb923c", "#fdba74", "#fed7aa", "#fff7ed"]
+      },
+      "partner-secondary": {
+        "role": "secondary",
+        "displayName": "Partner Ink",
+        "canonical": "#172554",
+        "tonalRamp": ["#020617", "#0f172a", "#172554", "#1e3a8a", "#3152b3", "#6481d4", "#b8c5ee", "#eff3ff"]
+      },
+      "partner-tertiary": {
+        "role": "tertiary",
+        "displayName": "Partner Highlight",
+        "canonical": "#14b8a6",
+        "tonalRamp": ["#042f2e", "#115e59", "#0f766e", "#14b8a6", "#2dd4bf", "#5eead4", "#99f6e4", "#f0fdfa"]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Warm Paper",
+        "canonical": "#fffdf8",
+        "tonalRamp": ["#1c1917", "#44403c", "#78716c", "#a8a29e", "#d6d3d1", "#e7e5e4", "#f5f5f4", "#fffdf8"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Clean Surface",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#18181b", "#3f3f46", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7", "#f4f4f5", "#ffffff"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Near-Black Ink",
+        "canonical": "#18181b",
+        "tonalRamp": ["#09090b", "#18181b", "#27272a", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#f4f4f5"]
+      },
+      "muted-ink": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#52525b",
+        "tonalRamp": ["#18181b", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#f4f4f5"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Partner Display", "purpose": "Partner names and quote reveals." },
+      "headline": { "displayName": "Section Headline", "purpose": "Section-level messages and focal card titles." },
+      "body": { "displayName": "Body", "purpose": "Descriptions and longer supporting copy." },
+      "label": { "displayName": "Action Label", "purpose": "Buttons, badges, status, and compact metadata." }
+    },
+    "shadows": [
+      { "name": "hero-atmosphere", "value": "0 28px 80px -35px rgba(15,23,42,.28)", "purpose": "Outer partner card." },
+      { "name": "floating-badge", "value": "0 16px 38px rgba(0,0,0,.18)", "purpose": "Badges over photography." },
+      { "name": "quiet-card", "value": "0 24px 64px rgba(15,23,42,.07)", "purpose": "Supporting cards over warm paper." }
+    ],
+    "motion": [
+      { "name": "state-transition", "value": "300ms ease", "purpose": "Button, icon, and hover state transitions." },
+      { "name": "scroll-reveal", "value": "IntersectionObserver + transform/opacity", "purpose": "One-time section and text reveal as content enters view." },
+      { "name": "parallax", "value": "requestAnimationFrame, clamped to 54px", "purpose": "Image and about-banner depth tied to scroll position." },
+      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce", "purpose": "Removes transforms, typing delay, and hidden reveal states." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "520px" },
+      { "name": "small", "value": "640px" },
+      { "name": "tablet", "value": "760px" },
+      { "name": "wide", "value": "1024px" },
+      { "name": "desktop-nav", "value": "1180px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main partner action, using the energetic theme role.",
+      "html": "<button class=\"ds-btn-primary\">Deals ansehen <svg aria-hidden=\"true\" viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M7 17 17 7M7 7h10v10\"/></svg></button>",
+      "css": ".ds-btn-primary { min-height: 48px; border: 0; border-radius: 12px; padding: 14px 24px; background: #f97316; color: #fff; font: 800 14px/1.25 Satoshi, sans-serif; transition: transform 300ms ease, filter 300ms ease; } .ds-btn-primary:hover { transform: translateY(-4px); filter: brightness(.96); } .ds-btn-primary:focus-visible { outline: 3px solid #14b8a6; outline-offset: 3px; } .ds-btn-primary:active { transform: translateY(-1px); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A quiet secondary action beside the main partner action.",
+      "html": "<button class=\"ds-btn-secondary\">Speisekarte ansehen</button>",
+      "css": ".ds-btn-secondary { min-height: 48px; border: 1px solid rgba(23,37,84,.12); border-radius: 12px; padding: 14px 24px; background: #fff; color: #172554; font: 800 14px/1.25 Satoshi, sans-serif; transition: transform 300ms ease, border-color 300ms ease; } .ds-btn-secondary:hover { transform: translateY(-4px); border-color: #14b8a6; } .ds-btn-secondary:focus-visible { outline: 3px solid #14b8a6; outline-offset: 3px; }"
+    },
+    {
+      "name": "Trust Badge",
+      "kind": "chip",
+      "description": "Compact Benefitsi or partner-status context over copy or photography.",
+      "html": "<span class=\"ds-trust-badge\">Offizieller Benefitsi Partner</span>",
+      "css": ".ds-trust-badge { display: inline-flex; align-items: center; width: fit-content; border: 1px solid rgba(255,255,255,.8); border-radius: 12px; padding: 8px 12px; background: rgba(255,255,255,.92); color: #18181b; box-shadow: 0 16px 38px rgba(15,23,42,.11); font: 800 13px/1.25 Satoshi, sans-serif; }"
+    },
+    {
+      "name": "Feature Card",
+      "kind": "card",
+      "refersTo": "feature-card",
+      "description": "A responsive service benefit with an icon, title, and one short explanation.",
+      "html": "<article class=\"ds-feature-card\"><span class=\"ds-feature-icon\"><svg aria-hidden=\"true\" viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m20 6-11 11-5-5\"/></svg></span><div><strong>Frische Auswahl</strong><p>Sorgfältig ausgewählt und persönlich.</p></div></article>",
+      "css": ".ds-feature-card { display: flex; gap: 12px; align-items: flex-start; border: 1px solid rgba(23,37,84,.08); border-radius: 16px; padding: 20px; background: #fff; color: #172554; box-shadow: 0 24px 64px rgba(15,23,42,.07); font-family: Satoshi, sans-serif; } .ds-feature-card strong { display: block; font-size: 14px; } .ds-feature-card p { margin: 5px 0 0; color: #52525b; font-size: 12px; line-height: 1.55; } .ds-feature-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 9999px; background: #fff7ed; color: #f97316; }"
+    },
+    {
+      "name": "Navigation Capsule",
+      "kind": "nav",
+      "description": "Desktop partner navigation with a compact, translucent surface.",
+      "html": "<nav class=\"ds-nav\"><a href=\"#deals\">Deals</a><a href=\"#about\">Über uns</a><a href=\"#contact\">Kontakt</a></nav>",
+      "css": ".ds-nav { display: inline-flex; gap: 2px; border: 1px solid rgba(23,37,84,.09); border-radius: 9999px; padding: 4px; background: rgba(255,255,255,.78); font: 800 12px/1.25 Satoshi, sans-serif; } .ds-nav a { border-radius: 9999px; padding: 8px 12px; color: #18181b; text-decoration: none; transition: background 200ms ease, color 200ms ease; } .ds-nav a:hover { background: #fff7ed; color: #f97316; } .ds-nav a:focus-visible { outline: 2px solid #14b8a6; outline-offset: 1px; }"
+    },
+    {
+      "name": "Palette Field",
+      "kind": "input",
+      "description": "Manual theme input used when automatic logo extraction is disabled.",
+      "html": "<label class=\"ds-field\">Primärfarbe<input type=\"color\" value=\"#f97316\"></label>",
+      "css": ".ds-field { display: grid; gap: 8px; color: #18181b; font: 800 13px/1.25 Satoshi, sans-serif; } .ds-field input { width: 100%; height: 44px; border: 1px solid #d4d4d8; border-radius: 12px; padding: 4px; background: #fff; } .ds-field input:focus-visible { outline: 3px solid #14b8a6; outline-offset: 2px; border-color: #f97316; } .ds-field input:disabled { opacity: .58; cursor: not-allowed; }"
+    },
+    {
+      "name": "Quote Panel",
+      "kind": "custom",
+      "description": "A partner-authored statement revealed on scroll against the dark theme role.",
+      "html": "<blockquote class=\"ds-quote\">Jeder Besuch soll sich persönlich und besonders anfühlen.</blockquote>",
+      "css": ".ds-quote { margin: 0; max-width: 24ch; padding: 64px 32px; background: #172554; color: #fff; font: 900 clamp(32px,5vw,64px)/1.08 Satoshi, sans-serif; letter-spacing: -.04em; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Partner Spotlight",
+    "overview": "The partner owns the stage: real business imagery, name, location, availability, and next actions resolve into one responsive benefit card. Benefitsi is the trust and loyalty layer. The atmosphere is professional and approachable, with white surfaces over softly tinted fields and motion that supports discovery without becoming a prerequisite for reading.",
+    "keyCharacteristics": [
+      "Partner photography is the primary visual material.",
+      "A three-color identity controls action, contrast, and highlight roles.",
+      "Compact rounded controls sit inside restrained glass and paper surfaces.",
+      "Motion is responsive to scroll, pointer, and reduced-motion preferences."
+    ],
+    "rules": [
+      { "name": "The Three-Color Rule", "body": "Every partner theme has exactly primary, secondary, and tertiary roles; automatic extraction and manual selection feed the same roles.", "section": "colors" },
+      { "name": "The Contrast Before Fidelity Rule", "body": "A logo color may be tuned or replaced when it cannot support readable text or a distinct three-color palette.", "section": "colors" },
+      { "name": "The Forty-Thousandths Rule", "body": "Tight display tracking stops at -0.04em; supporting text uses natural or nearly natural tracking.", "section": "typography" },
+      { "name": "The Image Carries Depth Rule", "body": "Use real partner imagery, crop, overlap, and restrained ambient shadow before adding decorative effects.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do derive or manually set all three partner color roles together.",
+      "Do use real partner photography as the focal material and provide a professional fallback palette when extraction fails.",
+      "Do keep important text and actions available before animation begins.",
+      "Do use icons from the established Lucide and React Icons libraries with consistent stroke weight and sizing.",
+      "Do test desktop, tablet, mobile, keyboard focus, and reduced-motion behavior."
+    ],
+    "donts": [
+      "Don't introduce alternate page templates; the Standard template is the single durable system.",
+      "Don't use section eyebrows, emoji, Unicode glyphs, gradient text, or hard offset shadows as decoration.",
+      "Don't tighten display tracking beyond -0.04em.",
+      "Don't let automatic logo extraction create low-contrast text or indistinguishable theme roles.",
+      "Don't hide content permanently when observers, scripts, or animation preferences are unavailable."
+    ]
+  }
+}

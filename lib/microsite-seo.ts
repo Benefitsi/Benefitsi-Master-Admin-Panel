@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { categoryMicrositeThemes, categoryTemplateForPartner, categoryThemeContent } from "./microsite-category-themes"
 import type { MenuItem, PartnerWithDeals } from "./admin-data"
 import type { MicrositeConfig } from "./microsites"
 import {
@@ -38,6 +39,22 @@ export const defaultMicrositeFaqItems = [
       "Viele Vorteile sind kostenlos nutzbar. Manche Premium-Vorteile sind Benefitsi Premium-Mitgliedern vorbehalten.",
   },
 ]
+
+export function micrositeFaqItemsForPartner(partner: Pick<PartnerWithDeals, "type" | "category">, config: MicrositeConfig) {
+  if (config.template === "restaurant-premium") return defaultMicrositeFaqItems
+  const copy = categoryThemeContent(partner, config.template, config.language)
+  return config.language === "en" ? [
+    { question: "What should I know before visiting?", answer: copy.note },
+    { question: "How do I check prices and availability?", answer: "Use the contact details or the partner website to confirm the current selection, prices and availability directly with the team." },
+    { question: "How do I use my Benefitsi benefits?", answer: "Open this partner in the Benefitsi app, choose an available benefit and check its conditions before your visit. Follow the instructions in the app to redeem it." },
+    { question: "Are loyalty rewards available?", answer: "The partner's currently available loyalty rewards and the stamps needed for each reward are shown in the Benefitsi app." },
+  ] : [
+    { question: "Was sollte ich vor meinem Besuch wissen?", answer: copy.note },
+    { question: "Wie erfahre ich Preise und Verfügbarkeit?", answer: "Nutze die Kontaktdaten oder die Partnerwebsite, um die aktuelle Auswahl, Preise und Verfügbarkeit direkt mit dem Team zu klären." },
+    { question: "Wie nutze ich meine Benefitsi Vorteile?", answer: "Öffne diesen Partner in der Benefitsi-App, wähle einen verfügbaren Vorteil und prüfe vor deinem Besuch die Bedingungen. Folge zum Einlösen den Hinweisen in der App." },
+    { question: "Gibt es Treuebelohnungen?", answer: "Die aktuell verfügbaren Treuebelohnungen des Partners und die jeweils benötigten Stempel findest du in der Benefitsi-App." },
+  ]
+}
 
 export function createMicrositeMetadata({
   partner,
@@ -174,10 +191,15 @@ export function createMicrositeStructuredData({
       businessType === "Restaurant" ? cuisineForPartner(partner) : undefined,
     openingHoursSpecification: openingHoursForSchema(partner),
     sameAs: sameAs.length ? sameAs : undefined,
-    hasMenu: menuItems.length ? { "@id": `${canonical}#menu` } : undefined,
+    hasMenu: businessType === "Restaurant" && menuItems.length ? { "@id": `${canonical}#menu` } : undefined,
+    hasOfferCatalog: businessType !== "Restaurant" && menuItems.length ? {
+      "@type": "OfferCatalog",
+      name: config.content.menuLabel,
+      itemListElement: menuItems.map((item) => ({ "@type": "Offer", itemOffered: { "@type": "Service", name: item.name, description: item.description || undefined } })),
+    } : undefined,
   })
 
-  const menu = menuItems.length
+  const menu = businessType === "Restaurant" && menuItems.length
     ? compactJsonLd({
         "@type": "Menu",
         "@id": `${canonical}#menu`,
@@ -190,7 +212,7 @@ export function createMicrositeStructuredData({
   const faq = compactJsonLd({
     "@type": "FAQPage",
     "@id": `${canonical}#faq`,
-    mainEntity: defaultMicrositeFaqItems.map((item) => ({
+    mainEntity: micrositeFaqItemsForPartner(partner, config).map((item) => ({
       "@type": "Question",
       name: item.question,
       acceptedAnswer: {
@@ -363,6 +385,9 @@ function schemaBusinessType(
   config: MicrositeConfig,
 ) {
   void config
+  const categoryTemplate = categoryTemplateForPartner(partner)
+  if (categoryTemplate && categoryTemplate !== "restaurant-premium") return categoryMicrositeThemes[categoryTemplate].schema
+  if (categoryTemplate === "restaurant-premium") return "Restaurant"
   const profile = inferMicrositePartnerProfile(partner)
 
   if (profile === "salon") {

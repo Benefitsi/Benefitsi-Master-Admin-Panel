@@ -4,7 +4,21 @@ import {
   getPartnerCategoriesForType,
   normalizePartnerCategoriesForType,
   isPartnerCategoryAllowedForType,
+  partnerTypeOptions,
 } from "../lib/partner-categories.ts"
+
+test("partner types and category dropdown values are alphabetical", () => {
+  const labels = partnerTypeOptions.map((option) => option.label)
+  assert.deepEqual(labels, [...labels].sort((a, b) => a.localeCompare(b, "en")))
+
+  for (const type of partnerTypeOptions) {
+    const categories = getPartnerCategoriesForType(type.value)
+    assert.deepEqual(
+      categories,
+      [...categories].sort((a, b) => a.localeCompare(b, "en")),
+    )
+  }
+})
 
 test("food partner categories use canonical English labels", () => {
   const foodCategories = getPartnerCategoriesForType("Food & Drink")

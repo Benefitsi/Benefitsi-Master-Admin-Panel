@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import type { SupabaseClient } from "@supabase/supabase-js"
+import sharp from "sharp"
 import {
   resolveMicrositeConfig,
   type MicrositeConfig,
@@ -1019,11 +1020,35 @@ async function uploadMicrositeAssetFile(
     }
   }
 
-  const extension = fileExtension(value)
-  const path = `microsites/${partnerId}/${slot}-${randomUUID()}.${extension}`
+  let optimized: Buffer
+  try {
+    optimized = await sharp(Buffer.from(await value.arrayBuffer()))
+      .rotate()
+      .resize({
+        width: 1920,
+        height: 1920,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .webp({ quality: 82, effort: 4 })
+      .toBuffer()
+  } catch (error) {
+    return {
+      ok: false,
+      state: {
+        ok: false,
+        message:
+          error instanceof Error
+            ? `${value.name}: Das Bild konnte nicht optimiert werden (${error.message}).`
+            : `${value.name}: Das Bild konnte nicht optimiert werden.`,
+      },
+    }
+  }
+
+  const path = `microsites/${partnerId}/${slot}-${randomUUID()}.webp`
   const upload = await supabase.storage
     .from(MICROSITE_ASSET_BUCKET)
-    .upload(path, value, { contentType: value.type, upsert: false })
+    .upload(path, optimized, { contentType: "image/webp", upsert: false })
 
   if (upload.error) {
     return { ok: false, state: { ok: false, message: upload.error.message } }
@@ -1237,13 +1262,3 @@ function slugify(value: string) {
     .replace(/(^-|-$)/g, "")
 }
 
-function fileExtension(file: File) {
-  const providedExtension = file.name.split(".").pop()?.toLowerCase()
-  const safeExtension = providedExtension?.replace(/[^a-z0-9]/g, "")
-
-  if (safeExtension) {
-    return safeExtension
-  }
-
-  return file.type === "image/svg+xml" ? "svg" : "jpg"
-}

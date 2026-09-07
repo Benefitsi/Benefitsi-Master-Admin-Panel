@@ -77,7 +77,9 @@ import {
   micrositeWelcomeStampCount,
   micrositeWelcomeTitle,
 } from "@/lib/microsite-content"
-import { isMicrositeTopDeal } from "@/lib/microsite-deals"
+import {
+  partitionMicrositePublicDeals,
+} from "@/lib/microsite-deals"
 import type { MicrositeConfig, MicrositeElementStyle } from "@/lib/microsites"
 import { defaultMicrositeFaqItems } from "@/lib/microsite-seo"
 import {
@@ -210,6 +212,20 @@ function siteCopy(config: MicrositeConfig, german: string, english: string) {
   return config.language === "en" ? english : german
 }
 
+function hasMicrositeBenefitContent(
+  partner: PartnerWithDeals,
+  config: MicrositeConfig,
+) {
+  if (getMicrositePublicDeals(partner.deals).length > 0) return true
+  if (getMicrositeStampRewards(partner.reward_milestones).length > 0) return true
+  if (config.template !== "restaurant-premium") return false
+
+  return (
+    getMicrositeWelcomeDeals(partner.deals).length > 0 ||
+    getMicrositeStampDeals(partner.deals).length > 0
+  )
+}
+
 export function RestaurantPremiumMicrosite({
   partner,
   config,
@@ -249,7 +265,7 @@ export function RestaurantPremiumMicrosite({
         config={config}
         theme={theme}
       />
-      <HeroSection config={config} template={config.template} />
+      <HeroSection partner={partner} config={config} template={config.template} />
       <DealsSection partner={partner} config={config} template={config.template} />
       <PartnerSocialFeed partner={partner} config={config} />
       <MenuSection partner={partner} config={config} template={config.template} />
@@ -484,20 +500,21 @@ function MicrositeThemeCss() {
           display: block;
           inset: 0 auto 0 0;
           height: auto;
-          width: 70%;
+          width: 72%;
           background: linear-gradient(
             90deg,
-            rgba(249, 252, 255, .84) 0%,
-            rgba(247, 251, 255, .70) 78%,
-            rgba(246, 250, 255, .54) 84%,
-            rgba(244, 249, 254, .32) 90%,
-            rgba(242, 248, 255, .14) 95%,
+            rgba(249, 252, 255, .88) 0%,
+            rgba(249, 252, 255, .82) 28%,
+            rgba(247, 251, 255, .68) 52%,
+            rgba(246, 250, 255, .46) 70%,
+            rgba(244, 249, 254, .25) 84%,
+            rgba(242, 248, 255, .10) 93%,
             rgba(242, 248, 255, 0) 100%
           );
-          -webkit-backdrop-filter: blur(20px) saturate(118%);
-          backdrop-filter: blur(20px) saturate(118%);
-          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 78%, rgba(0,0,0,.94) 84%, rgba(0,0,0,.68) 90%, rgba(0,0,0,.3) 96%, transparent 100%);
-          mask-image: linear-gradient(90deg, #000 0%, #000 78%, rgba(0,0,0,.94) 84%, rgba(0,0,0,.68) 90%, rgba(0,0,0,.3) 96%, transparent 100%);
+          -webkit-backdrop-filter: blur(16px) saturate(112%);
+          backdrop-filter: blur(16px) saturate(112%);
+          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 42%, rgba(0,0,0,.88) 62%, rgba(0,0,0,.56) 78%, rgba(0,0,0,.22) 91%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 42%, rgba(0,0,0,.88) 62%, rgba(0,0,0,.56) 78%, rgba(0,0,0,.22) 91%, transparent 100%);
         }
 
         .premium-hero-badge {
@@ -522,18 +539,19 @@ function MicrositeThemeCss() {
 
       @container (min-width: 1024px) {
         .premium-hero-glass {
-          width: 59%;
+          width: 64%;
           background: linear-gradient(
             90deg,
-            rgba(249, 252, 255, .88) 0%,
-            rgba(247, 251, 255, .72) 78%,
-            rgba(246, 250, 255, .56) 84%,
-            rgba(244, 249, 254, .34) 90%,
-            rgba(242, 248, 255, .14) 95%,
+            rgba(249, 252, 255, .90) 0%,
+            rgba(249, 252, 255, .84) 30%,
+            rgba(247, 251, 255, .70) 52%,
+            rgba(246, 250, 255, .48) 70%,
+            rgba(244, 249, 254, .26) 84%,
+            rgba(242, 248, 255, .10) 93%,
             rgba(242, 248, 255, 0) 100%
           );
-          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 78%, rgba(0,0,0,.94) 84%, rgba(0,0,0,.68) 90%, rgba(0,0,0,.3) 96%, transparent 100%);
-          mask-image: linear-gradient(90deg, #000 0%, #000 78%, rgba(0,0,0,.94) 84%, rgba(0,0,0,.68) 90%, rgba(0,0,0,.3) 96%, transparent 100%);
+          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 42%, rgba(0,0,0,.88) 62%, rgba(0,0,0,.56) 78%, rgba(0,0,0,.22) 91%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 42%, rgba(0,0,0,.88) 62%, rgba(0,0,0,.56) 78%, rgba(0,0,0,.22) 91%, transparent 100%);
         }
 
         .premium-hero-badge {
@@ -1060,7 +1078,7 @@ function MicrositeThemeCss() {
       }
 
       .premium-microsite-dark .premium-hero-glass {
-        background: linear-gradient(90deg, rgba(16,18,22,.90), rgba(16,18,22,.68) 78%, rgba(16,18,22,.52) 84%, rgba(16,18,22,.30) 90%, rgba(16,18,22,.12) 95%, transparent 100%);
+        background: linear-gradient(90deg, rgba(16,18,22,.92), rgba(16,18,22,.84) 30%, rgba(16,18,22,.68) 52%, rgba(16,18,22,.46) 70%, rgba(16,18,22,.24) 84%, rgba(16,18,22,.09) 93%, transparent 100%);
       }
 
       .premium-microsite-dark .premium-feature-row {
@@ -1335,7 +1353,10 @@ function SiteHeader({
 }) {
   const navStyle = config.elementStyles["navigation.group"] ?? {}
   const [menuOpen, setMenuOpen] = useState(false)
-  const navLinks = config.navigation.links
+  const hasBenefits = hasMicrositeBenefitContent(partner, config)
+  const navLinks = config.navigation.links.filter(
+    (link) => hasBenefits || !["deals", "stempelkarte"].includes(link.anchor),
+  )
 
   return (
     <header
@@ -1374,10 +1395,10 @@ function SiteHeader({
         </nav>
         <div className="hidden items-center gap-3 @min-[1180px]:flex">
           <a
-            href="#deals"
+            href={hasBenefits ? "#deals" : "#speisekarte"}
             className="premium-button group inline-flex min-h-11 items-center justify-center gap-3 rounded-xl bg-[var(--site-accent)] px-5 py-3 text-sm font-black text-white shadow-[0_16px_30px_-18px_var(--site-accent)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105"
           >
-            {config.hero.primaryButtonLabel}
+            {hasBenefits ? config.hero.primaryButtonLabel : config.hero.secondaryButtonLabel}
             <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
           </a>
         </div>
@@ -1443,13 +1464,16 @@ function NavigationLink({
 }
 
 function HeroSection({
+  partner,
   config,
   template,
 }: {
+  partner: PartnerWithDeals
   config: MicrositeConfig
   template: MicrositeConfig["template"]
 }) {
   void template
+  const hasBenefits = hasMicrositeBenefitContent(partner, config)
   const featureDescriptions = [
     "Schnell und unkompliziert für deinen Besuch.",
     "Sorgfältig ausgewählt und persönlich.",
@@ -1517,7 +1541,7 @@ function HeroSection({
           </div>
 
           <div className="mt-6 flex flex-col gap-2.5 @min-[520px]:flex-row @min-[1024px]:gap-3">
-            <HeroButton id="hero.primaryButtonLabel" primary label={config.hero.primaryButtonLabel} config={config} />
+            {hasBenefits ? <HeroButton id="hero.primaryButtonLabel" primary label={config.hero.primaryButtonLabel} config={config} /> : null}
             <HeroButton id="hero.secondaryButtonLabel" label={config.hero.secondaryButtonLabel} config={config} />
           </div>
         </div>
@@ -1563,15 +1587,20 @@ function DealsSection({
   partner,
   config,
   template,
+  showEcosystem = true,
+  showLoyalty = true,
 }: {
   partner: PartnerWithDeals
   config: MicrositeConfig
   template: MicrositeConfig["template"]
+  showEcosystem?: boolean
+  showLoyalty?: boolean
 }) {
   const publicDeals = getMicrositePublicDeals(partner.deals)
   const welcomeDeals = getMicrositeWelcomeDeals(partner.deals)
   const stampDeals = getMicrositeStampDeals(partner.deals)
   const stampRewards = getMicrositeStampRewards(partner.reward_milestones)
+  const { featuredDeal, secondaryDeals } = partitionMicrositePublicDeals(publicDeals)
   const stampCount = Math.max(
     10,
     ...stampRewards
@@ -1708,6 +1737,10 @@ function DealsSection({
       }
     }),
   ]
+  const hasLoyaltyContent = showLoyalty && stampMilestoneCards.length > 0
+
+  if (!featuredDeal && !hasLoyaltyContent) return null
+
   return (
     <section id="deals" className={`${restaurantSectionClass(template, "deals")} scroll-mt-24 px-5 pb-10 @min-[640px]:px-8 @min-[1024px]:px-10`}>
       <div className="mx-auto flex max-w-6xl flex-col gap-8 @min-[900px]:gap-10">
@@ -1737,25 +1770,30 @@ function DealsSection({
           </div>
         </div>
 
-        {publicDeals.length ? (
-          <div
-            ref={topDealRef}
-            className={`grid gap-5 ${publicDeals.length > 1 ? "@min-[900px]:grid-cols-2" : ""}`}
-          >
-            {publicDeals.map((deal, index) => (
-              <MicrositeDealBanner
-                key={deal.id || `deal-${index}`}
-                deal={deal}
-                config={config}
-                active={topDealActive}
-                primary={isMicrositeTopDeal(deal)}
-                wide={publicDeals.length > 1 && isMicrositeTopDeal(deal)}
-              />
-            ))}
+        {featuredDeal ? (
+          <div ref={topDealRef} className="grid gap-5">
+            <MicrositeDealBanner
+              deal={featuredDeal}
+              config={config}
+              active={topDealActive}
+              primary
+            />
+            {secondaryDeals.length ? (
+              <div className={`grid gap-5 ${secondaryDeals.length > 1 ? "@min-[900px]:grid-cols-2" : ""}`}>
+                {secondaryDeals.map((deal, index) => (
+                  <MicrositeDealBanner
+                    key={deal.id || `deal-${index}`}
+                    deal={deal}
+                    config={config}
+                    active={topDealActive}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
-        <div
+        {showLoyalty ? <div
           id="stempelkarte"
           className="premium-stamp-story relative scroll-mt-24"
         >
@@ -1952,7 +1990,8 @@ function DealsSection({
           </div>
         </div>
 
-        <BenefitsEcosystemSection partner={partner} config={config} />
+        : <p id="stempelkarte" className="text-sm leading-7 text-zinc-600">{siteCopy(config, "Aktuelle Vorteile und verfügbare Treuebelohnungen findest du in der Benefitsi-App.", "Find current benefits and available loyalty rewards in the Benefitsi app.")}</p>}
+        {showEcosystem ? <BenefitsEcosystemSection partner={partner} config={config} /> : null}
       </div>
     </section>
   )
@@ -1963,26 +2002,24 @@ function MicrositeDealBanner({
   config,
   active,
   primary = false,
-  wide = false,
 }: {
   deal: Deal
   config: MicrositeConfig
   active: boolean
   primary?: boolean
-  wide?: boolean
 }) {
-  const isTopDeal = isMicrositeTopDeal(deal)
+  const isFeaturedDeal = primary
   const title = micrositeDealTitle(deal, config.language)
   const description = micrositeDealDescription(deal, config.language)
   const details = micrositeDealDetails(deal, config.language)
   const dealLabel = micrositeDealTypeLabel(deal, config.language)
-  const articleClassName = isTopDeal
-    ? `premium-topdeal relative min-h-full overflow-hidden rounded-[1.6rem] bg-[#121212] text-white shadow-[0_30px_80px_rgba(15,23,42,.22)] ${wide ? "@min-[900px]:col-span-2" : ""} ${active ? "is-active" : ""}`
+  const articleClassName = isFeaturedDeal
+    ? `premium-topdeal relative min-h-full overflow-hidden rounded-[1.6rem] bg-[#121212] text-white shadow-[0_30px_80px_rgba(15,23,42,.22)] ${active ? "is-active" : ""}`
     : `premium-reveal premium-deal-secondary relative min-h-full overflow-hidden rounded-[1.15rem] border border-[var(--site-border)] bg-[var(--site-surface)] text-[var(--site-text)] shadow-[0_16px_36px_rgba(15,23,42,.08)] ${active ? "is-active" : ""}`
 
   return (
     <article className={articleClassName}>
-      {isTopDeal ? (
+      {isFeaturedDeal ? (
         <>
           <BrandedImage
             src={config.deals.topDealImageUrl}
@@ -2009,14 +2046,14 @@ function MicrositeDealBanner({
       )}
       <div
         className={
-          isTopDeal
+          isFeaturedDeal
             ? "relative z-[3] flex min-h-full flex-col p-5 @min-[640px]:p-7 @min-[1024px]:min-h-[310px] @min-[1024px]:p-8"
             : "relative z-[3] flex min-h-[132px] flex-col justify-center p-4 pl-5 @min-[640px]:min-h-[148px] @min-[640px]:p-5 @min-[640px]:pl-6"
         }
       >
         <p
           className={
-            isTopDeal
+            isFeaturedDeal
               ? "inline-flex w-fit rounded-full border border-[var(--site-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--site-accent)]"
               : "inline-flex w-fit rounded-full bg-[color-mix(in_srgb,var(--site-accent)_10%,transparent)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--site-accent)]"
           }
@@ -2025,7 +2062,7 @@ function MicrositeDealBanner({
         </p>
         <h3
           className={
-            isTopDeal
+            isFeaturedDeal
               ? "mt-4 max-w-md text-[clamp(2.2rem,5cqw,3.5rem)] font-black leading-none tracking-[-0.04em]"
               : "mt-2 max-w-xl text-xl font-black leading-tight tracking-[-0.03em] @min-[640px]:text-2xl"
           }
@@ -2034,7 +2071,7 @@ function MicrositeDealBanner({
         </h3>
         <p
           className={
-            isTopDeal
+            isFeaturedDeal
               ? "mt-3 max-w-xl text-sm text-zinc-100"
               : "mt-2 max-w-2xl text-xs leading-5 text-[var(--site-muted)] @min-[640px]:text-sm"
           }
@@ -2044,7 +2081,7 @@ function MicrositeDealBanner({
         {details.length ? (
           <ul
             className={
-              isTopDeal
+              isFeaturedDeal
                 ? "mt-5 space-y-2 text-sm"
                 : "mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-[var(--site-muted)]"
             }
@@ -2054,7 +2091,7 @@ function MicrositeDealBanner({
                 key={`${detail}-${index}`}
                 className="flex items-start gap-2"
               >
-                {isTopDeal ? (
+                {isFeaturedDeal ? (
                   <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-emerald-500 text-white shadow-[0_8px_18px_-10px_#10b981]">
                     <Check className="size-3" strokeWidth={3} aria-hidden="true" />
                   </span>
@@ -2072,15 +2109,15 @@ function MicrositeDealBanner({
         <button
           {...(primary ? editable("deals.topDealButtonLabel", "text", "Vorteil Button") : {})}
           className={
-            isTopDeal
+            isFeaturedDeal
               ? "premium-button premium-button-shine group mt-6 inline-flex min-h-11 w-fit items-center gap-3 rounded-lg bg-[var(--site-accent)] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]"
               : "premium-button group mt-4 inline-flex min-h-9 w-fit items-center gap-2 rounded-lg border border-[var(--site-accent)] bg-transparent px-3.5 py-2 text-xs font-semibold text-[var(--site-accent)] transition duration-300 hover:-translate-y-0.5 hover:bg-[color-mix(in_srgb,var(--site-accent)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)] focus-visible:ring-offset-2"
           }
-          style={isTopDeal ? textStyleFor(config, "deals.topDealButtonLabel") : undefined}
+          style={isFeaturedDeal ? textStyleFor(config, "deals.topDealButtonLabel") : undefined}
         >
           {config.deals.topDealButtonLabel}
           <ArrowRight
-            className={`${isTopDeal ? "size-4" : "size-3.5"} transition-transform duration-300 group-hover:translate-x-1`}
+            className={`${isFeaturedDeal ? "size-4" : "size-3.5"} transition-transform duration-300 group-hover:translate-x-1`}
             aria-hidden="true"
           />
         </button>
@@ -3401,12 +3438,23 @@ function AboutValueCard({
 }
 
 function FooterSection({
+  partner,
   config,
 }: {
   partner: PartnerWithDeals
   config: MicrositeConfig
 }) {
   const footerLogoUrl = textValue(config, "footer.benefitsiLogo", "")
+  const hasBenefits = hasMicrositeBenefitContent(partner, config)
+  const exploreLinks = [
+    ...(hasBenefits
+      ? [
+          { label: siteCopy(config, "Vorteile & Aktionen", "Benefits & campaigns"), href: "#deals" },
+          { label: siteCopy(config, "Stempelkarte", "Stamp card"), href: "#stempelkarte" },
+        ]
+      : []),
+    { label: siteCopy(config, "Speisekarte", "Menu"), href: "#speisekarte" },
+  ]
 
   return (
     <footer id="footer" className="mt-10 scroll-mt-24 bg-[#efe8df] px-5 pb-6 pt-0 text-sm text-zinc-600 @min-[480px]:rounded-b-[1.6rem] @min-[640px]:mt-16 @min-[640px]:px-8 @min-[1024px]:px-10">
@@ -3453,11 +3501,7 @@ function FooterSection({
 
         <FooterLinkColumn
           title={siteCopy(config, "Entdecken", "Explore")}
-          links={[
-            { label: siteCopy(config, "Vorteile & Aktionen", "Benefits & campaigns"), href: "#deals" },
-            { label: siteCopy(config, "Stempelkarte", "Stamp card"), href: "#stempelkarte" },
-            { label: siteCopy(config, "Speisekarte", "Menu"), href: "#speisekarte" },
-          ]}
+          links={exploreLinks}
         />
         <FooterLinkColumn
           title={siteCopy(config, "Der Partner", "The partner")}
@@ -4880,4 +4924,12 @@ function formatAddonDescription(value: string) {
     .replace(/^Size\s*\(Required\)$/i, "Größe (Pflichtauswahl)")
     .replace(/^Size$/i, "Größe")
     .replace(/\bRequired\b/gi, "Pflichtauswahl")
+}
+
+// Shared infrastructure; the original food page keeps its composition and defaults.
+export {
+  MicrositeThemeCss, PremiumMotionEffects, SiteHeader, DealsSection, FaqSection,
+  PartnerSocialFeed, AppDownloadQrPopup, useResolvedPalette, micrositeThemeVars,
+  restaurantTheme, editable, textStyleFor, textValue, imageStyleFor,
+  micrositeMenuItemsForPartner, appDownloadUrlForPartner,
 }

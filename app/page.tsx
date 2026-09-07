@@ -6,6 +6,7 @@ import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { PartnerWorkspace } from "./partner-admin"
 import { AdminShell } from "./admin-shell"
+import { DashboardAutoRefresh } from "./dashboard-auto-refresh"
 
 export const dynamic = "force-dynamic"
 
@@ -52,6 +53,7 @@ export default async function DashboardPage({
       micrositeCount={dashboard.partners.length}
       canAccessPartnerPanel={Boolean(portalSession?.partnerIds.length)}
     >
+      <DashboardAutoRefresh />
       {dashboard.errors.length > 0 ? (
         <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-semibold">Supabase returned warnings</p>

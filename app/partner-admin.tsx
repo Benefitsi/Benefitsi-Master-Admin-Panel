@@ -427,6 +427,7 @@ type CreatePartnerReviewSnapshot = {
   milestoneCount: number
   dealCount: number
   menuStatus: "Set" | "Incomplete" | "Not set"
+  menuSupported: boolean
   logoSet: boolean
   featureCardSet: boolean
   discoveryImageSet: boolean
@@ -1821,6 +1822,8 @@ function PartnerForm({
   const [confirmingSave, setConfirmingSave] = useState(false)
   const [selectedOwnerId, setSelectedOwnerId] = useState(partner?.owner_id ?? "")
   const [validationMessage, setValidationMessage] = useState("")
+  const [dismissedActionState, setDismissedActionState] =
+    useState<PartnerActionState | null>(null)
   const [formVersion, setFormVersion] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
   const confirmedSubmitRef = useRef(false)
@@ -2008,6 +2011,7 @@ function PartnerForm({
       noValidate
       onInput={() => {
         if (validationMessage) setValidationMessage("")
+        if (!state.ok && state.message) setDismissedActionState(state)
       }}
       onSubmit={(event) => {
         const submitter = (event.nativeEvent as SubmitEvent).submitter
@@ -2206,7 +2210,7 @@ function PartnerForm({
           {validationMessage}
         </div>
       ) : null}
-      <ActionMessage state={state} />
+      {dismissedActionState !== state ? <ActionMessage state={state} /> : null}
 
       <div
         data-create-tab="profile"
@@ -2308,6 +2312,14 @@ function PartnerForm({
             defaultValue={partner?.city_id ?? templateSource?.city_id}
             options={cityOptions.length ? cityOptions : emptyCityOptions}
             required
+          />
+          <TextField
+            label="Partner email"
+            name="email"
+            type="email"
+            defaultValue={partner?.email ?? templateSource?.email}
+            hint="The shop's public contact email. This is separate from the partner owner account."
+            showCharacterCount={false}
           />
           {!portalMode ? (
             <>
@@ -2852,6 +2864,7 @@ function createPartnerReviewSnapshot(
     milestoneCount: staged.milestoneCount,
     dealCount: staged.dealCount,
     menuStatus,
+    menuSupported: partnerTypeSupportsMenu(value("type")),
     logoSet: mediaIsSet("existing_logo_url", "logo_file"),
     featureCardSet: mediaIsSet("existing_feature_card_url", "feature_card_file"),
     discoveryImageSet: mediaIsSet(
@@ -2965,7 +2978,9 @@ function CreatePartnerReview({
             <ReviewStatus label="Social profiles" value={snapshot.socialCount ? `${snapshot.socialCount} set` : "Not set"} ready={snapshot.socialCount > 0} optional />
             <ReviewStatus label="Rewards" value={snapshot.milestoneCount ? `${snapshot.milestoneCount} milestone${snapshot.milestoneCount === 1 ? "" : "s"}` : "Not set"} ready={snapshot.milestoneCount > 0} optional />
             <ReviewStatus label="Deals" value={snapshot.dealCount ? `${snapshot.dealCount} deal${snapshot.dealCount === 1 ? "" : "s"}` : "Not set"} ready={snapshot.dealCount > 0} optional />
-            <ReviewStatus label="Menu" value={snapshot.menuStatus} ready={snapshot.menuStatus === "Set"} optional={snapshot.menuStatus === "Not set"} />
+            {snapshot.menuSupported ? (
+              <ReviewStatus label="Menu" value={snapshot.menuStatus} ready={snapshot.menuStatus === "Set"} optional={snapshot.menuStatus === "Not set"} />
+            ) : null}
           </div>
           <div
             className={`mt-5 rounded-lg border px-3 py-3 text-sm font-medium ${
@@ -7251,9 +7266,13 @@ function OpeningHoursPanel({
   withinPartnerForm?: boolean
 }) {
   const partnerId = partner.id ?? ""
-  const hoursByWeekday = new Map(
-    partner.opening_hours.map((hour) => [hour.weekday, hour] as const),
-  )
+  const hoursByWeekday = new Map<number | null, PartnerOpeningHour[]>()
+  for (const hour of partner.opening_hours) {
+    hoursByWeekday.set(hour.weekday, [
+      ...(hoursByWeekday.get(hour.weekday) ?? []),
+      hour,
+    ])
+  }
 
   const content = (
     <div className="space-y-4">
@@ -7273,7 +7292,7 @@ function OpeningHoursPanel({
 
   if (embedded) {
     return (
-      <FormSection title="Operating hours" required="subtle">
+      <FormSection title="Operating hours" required="subtle" defaultOpen={false}>
         {content}
       </FormSection>
     )
@@ -7299,7 +7318,7 @@ function WeeklyOpeningHoursForm({
 }: {
   embedded?: boolean
   holidays: PartnerHoliday[]
-  hoursByWeekday: Map<number | null, PartnerOpeningHour>
+  hoursByWeekday: Map<number | null, PartnerOpeningHour[]>
   partnerId: string
 }) {
   const [state, formAction] = useActionState(
@@ -7383,7 +7402,7 @@ function WeeklyHoursFields({
 }: {
   embedded?: boolean
   holidays?: PartnerHoliday[]
-  hoursByWeekday?: Map<number | null, PartnerOpeningHour>
+  hoursByWeekday?: Map<number | null, PartnerOpeningHour[]>
 }) {
   const fieldName = (name: string) => (embedded ? undefined : name)
   const fieldDataName = (name: string) =>
@@ -7409,20 +7428,27 @@ function WeeklyHoursFields({
   const [weeklyHours, setWeeklyHours] = useState(() =>
     Object.fromEntries(
       openingWeekdayOptions.map((day) => {
-        const hour = hoursByWeekday.get(Number(day.value))
-        const isClosed = hour?.is_closed ?? false
+        const existingHours = [...(hoursByWeekday.get(Number(day.value)) ?? [])].sort(
+          (first, second) => (first.sort_order ?? 0) - (second.sort_order ?? 0),
+        )
+        const isClosed = existingHours.some((hour) => hour.is_closed)
+        const openRanges = existingHours.filter(
+          (hour) => !hour.is_closed && hour.opens_at && hour.closes_at,
+        )
 
         return [
           day.value,
           {
-            closesAt: isClosed
-              ? ""
-              : formatTimeInput(hour?.closes_at) || "18:00",
             isClosed,
-            label: hour?.label ?? "",
-            opensAt: isClosed
-              ? ""
-              : formatTimeInput(hour?.opens_at) || "09:00",
+            label: existingHours[0]?.label ?? "",
+            ranges: isClosed
+              ? [{ opensAt: "09:00", closesAt: "18:00" }]
+              : openRanges.length
+                ? openRanges.map((hour) => ({
+                    opensAt: formatTimeInput(hour.opens_at),
+                    closesAt: formatTimeInput(hour.closes_at),
+                  }))
+                : [{ opensAt: "09:00", closesAt: "18:00" }],
           },
         ]
       }),
@@ -7440,6 +7466,21 @@ function WeeklyHoursFields({
       },
     }))
   }
+  const updateWeeklyRange = (
+    weekday: string,
+    rangeIndex: number,
+    update: Partial<{ opensAt: string; closesAt: string }>,
+  ) => {
+    setWeeklyHours((current) => ({
+      ...current,
+      [weekday]: {
+        ...current[weekday],
+        ranges: current[weekday].ranges.map((range, index) =>
+          index === rangeIndex ? { ...range, ...update } : range,
+        ),
+      },
+    }))
+  }
   const applyBulkTime = () => {
     setWeeklyHours((current) =>
       Object.fromEntries(
@@ -7449,8 +7490,7 @@ function WeeklyHoursFields({
             ? hour
             : {
                 ...hour,
-                closesAt: bulkCloseTime,
-                opensAt: bulkOpenTime,
+                ranges: [{ closesAt: bulkCloseTime, opensAt: bulkOpenTime }],
               },
         ]),
       ),
@@ -7642,21 +7682,15 @@ function WeeklyHoursFields({
         ) : null}
         </div>
       </section>
-      <div className="order-2 overflow-x-auto rounded-md border border-zinc-200 bg-white">
-        <div className="min-w-[34rem] divide-y divide-zinc-100">
-          <div className="grid grid-cols-[8rem_7rem_1fr_1fr] items-center gap-3 bg-zinc-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
-            <span>Day</span>
-            <span>Status</span>
-            <span>Opens</span>
-            <span>Closes</span>
-          </div>
+      <div className="order-2 overflow-hidden rounded-md border border-zinc-200 bg-white">
+        <div className="divide-y divide-zinc-100">
           {openingWeekdayOptions.map((day) => {
             const hour = weeklyHours[day.value]
 
             return (
               <div
                 key={day.value}
-                className="grid grid-cols-[8rem_7rem_1fr_1fr] items-center gap-3 px-3 py-3 text-sm"
+                className="grid gap-3 px-3 py-3 text-sm md:grid-cols-[8rem_7rem_1fr] md:items-start"
               >
                 <p className="font-semibold text-zinc-900">{day.label}</p>
                 <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
@@ -7665,45 +7699,81 @@ function WeeklyHoursFields({
                     name={fieldName(`is_closed_${day.value}`)}
                     {...fieldDataName(`is_closed_${day.value}`)}
                     checked={hour.isClosed}
-                    onChange={(event) => {
-                      const isClosed = event.target.checked
-
-                      updateWeeklyHour(day.value, {
-                        closesAt: isClosed ? "" : hour.closesAt,
-                        isClosed,
-                        opensAt: isClosed ? "" : hour.opensAt,
-                      })
-                    }}
+                    onChange={(event) =>
+                      updateWeeklyHour(day.value, { isClosed: event.target.checked })
+                    }
                     className="size-4 rounded border-zinc-300 accent-teal-700"
                   />
                   Closed
                 </label>
-                <input
-                  aria-label={`${day.label} opening time`}
-                  name={fieldName(`opens_at_${day.value}`)}
-                  {...fieldDataName(`opens_at_${day.value}`)}
-                  type="time"
-                  required={!hour.isClosed}
-                  value={hour.isClosed ? "" : hour.opensAt}
-                  disabled={hour.isClosed}
-                  onChange={(event) =>
-                    updateWeeklyHour(day.value, { opensAt: event.target.value })
-                  }
-                  className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-                />
-                <input
-                  aria-label={`${day.label} closing time`}
-                  name={fieldName(`closes_at_${day.value}`)}
-                  {...fieldDataName(`closes_at_${day.value}`)}
-                  type="time"
-                  required={!hour.isClosed}
-                  value={hour.isClosed ? "" : hour.closesAt}
-                  disabled={hour.isClosed}
-                  onChange={(event) =>
-                    updateWeeklyHour(day.value, { closesAt: event.target.value })
-                  }
-                  className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-                />
+                <div className="space-y-2">
+                  <input
+                    type="hidden"
+                    name={fieldName(`slot_count_${day.value}`)}
+                    value={hour.ranges.length}
+                    {...fieldDataName(`slot_count_${day.value}`)}
+                  />
+                  {hour.ranges.map((range, rangeIndex) => {
+                    const suffix = rangeIndex === 0 ? "" : `_${rangeIndex}`
+                    return (
+                      <div key={`${day.value}-${rangeIndex}`} className="flex flex-wrap items-center gap-2">
+                        <input
+                          aria-label={`${day.label} opening time ${rangeIndex + 1}`}
+                          name={fieldName(`opens_at_${day.value}${suffix}`)}
+                          {...fieldDataName(`opens_at_${day.value}${suffix}`)}
+                          type="time"
+                          required={!hour.isClosed}
+                          value={hour.isClosed ? "" : range.opensAt}
+                          disabled={hour.isClosed}
+                          onChange={(event) =>
+                            updateWeeklyRange(day.value, rangeIndex, { opensAt: event.target.value })
+                          }
+                          className="h-10 min-w-32 flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                        />
+                        <span className="text-xs font-medium text-zinc-400">to</span>
+                        <input
+                          aria-label={`${day.label} closing time ${rangeIndex + 1}`}
+                          name={fieldName(`closes_at_${day.value}${suffix}`)}
+                          {...fieldDataName(`closes_at_${day.value}${suffix}`)}
+                          type="time"
+                          required={!hour.isClosed}
+                          value={hour.isClosed ? "" : range.closesAt}
+                          disabled={hour.isClosed}
+                          onChange={(event) =>
+                            updateWeeklyRange(day.value, rangeIndex, { closesAt: event.target.value })
+                          }
+                          className="h-10 min-w-32 flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                        />
+                        {rangeIndex > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateWeeklyHour(day.value, {
+                                ranges: hour.ranges.filter((_, index) => index !== rangeIndex),
+                              })
+                            }
+                            className="h-9 rounded-md border border-zinc-300 px-2.5 text-xs font-semibold text-zinc-600 hover:border-rose-300 hover:text-rose-700"
+                          >
+                            Remove
+                          </button>
+                        ) : null}
+                      </div>
+                    )
+                  })}
+                  {!hour.isClosed && hour.ranges.length < 3 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateWeeklyHour(day.value, {
+                          ranges: [...hour.ranges, { opensAt: "", closesAt: "" }],
+                        })
+                      }
+                      className="text-xs font-semibold text-teal-700 hover:text-teal-900"
+                    >
+                      + Add another time range
+                    </button>
+                  ) : null}
+                </div>
                 <input
                   type="hidden"
                   name={fieldName(`label_${day.value}`)}
@@ -11975,10 +12045,6 @@ async function resizeImageFile(file: File, spec: PartnerMediaSpec, crop: ImageCr
     throw new Error(`Unable to read the dimensions for "${file.name}".`)
   }
 
-  if (sourceWidth === spec.width && sourceHeight === spec.height && crop.zoom === 1 && crop.x === 0 && crop.y === 0) {
-    return file
-  }
-
   const canvas = document.createElement("canvas")
   const context = canvas.getContext("2d")
 
@@ -12021,12 +12087,11 @@ async function resizeImageFile(file: File, spec: PartnerMediaSpec, crop: ImageCr
     spec.height,
   )
 
-  const contentType = resizedImageType(file)
+  const contentType = "image/webp"
   const blob = await canvasToBlob(canvas, contentType)
-  const extension = contentType === "image/jpeg" ? "jpg" : "png"
   const resizedName = replaceFileExtension(
     file.name,
-    `${spec.width}x${spec.height}.${extension}`,
+    `${spec.width}x${spec.height}.webp`,
   )
 
   return new File([blob], resizedName, {
@@ -12063,13 +12128,9 @@ function canvasToBlob(canvas: HTMLCanvasElement, contentType: string) {
         }
       },
       contentType,
-      0.92,
+      0.82,
     )
   })
-}
-
-function resizedImageType(file: File) {
-  return file.type === "image/jpeg" ? "image/jpeg" : "image/png"
 }
 
 function isSupportedImageFile(file: File) {

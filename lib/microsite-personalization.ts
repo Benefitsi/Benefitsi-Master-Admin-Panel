@@ -1,6 +1,7 @@
 import type { PartnerWithDeals } from "./admin-data"
+import { categoryMicrositeThemes, categoryTemplateForPartner, categoryThemeContent, type PartnerTemplateId } from "./microsite-category-themes"
 
-export type MicrositeTemplateId = "restaurant-premium"
+export type MicrositeTemplateId = PartnerTemplateId
 
 export type PrintableFormatId =
   | "flyer-a5"
@@ -47,6 +48,11 @@ export function inferMicrositePartnerProfile(
     "name" | "short_name" | "type" | "category" | "description"
   >,
 ): MicrositePartnerProfile {
+  const categoryTemplate = categoryTemplateForPartner(partner)
+  if (categoryTemplate === "restaurant-premium") return "restaurant"
+  if (categoryTemplate === "salon-studio") return "salon"
+  if (categoryTemplate === "wellness-retreat") return "wellness"
+  if (categoryTemplate === "cinema-showcase") return "cinema"
   const haystack = [
     partner.name,
     partner.short_name,
@@ -122,12 +128,34 @@ export function inferMicrositePartnerProfile(
 }
 
 export function defaultMicrositeTemplateForPartner(partner: PartnerSeed): MicrositeTemplateId {
-  void partner
+  const categoryTemplate = categoryTemplateForPartner(partner)
+  if (categoryTemplate) return categoryTemplate
+  const profile = inferMicrositePartnerProfile(partner)
+  if (profile === "salon") return "salon-studio"
+  if (profile === "wellness") return "wellness-retreat"
+  if (profile === "cinema") return "activities-explore"
   return "restaurant-premium"
 }
 
-export function defaultMicrositeCopyForPartner(partner: PartnerSeed) {
-  const profile = inferMicrositePartnerProfile(partner)
+export function defaultMicrositeCopyForPartner(partner: PartnerSeed, templateOverride?: MicrositeTemplateId, language: "de" | "en" = "de") {
+  const template = templateOverride ?? defaultMicrositeTemplateForPartner(partner)
+  if (template !== "restaurant-premium") {
+    const copy = categoryThemeContent(partner, template, language)
+    const en = language === "en"
+    const name = partner.short_name?.trim() || partner.name?.trim() || "Partner"
+    return {
+      heroSlogan: copy.slogan,
+      aboutText: partner.description?.trim() || `${name}. ${copy.introduction}`,
+      menuLabel: copy.label, menuHeadline: copy.headline, menuDescription: copy.note,
+      contactHeadline: copy.action,
+      appHeadline: en ? "Your benefits. With you on every visit." : "Deine Vorteile. Bei jedem Besuch dabei.",
+      appText: "Entdecke aktuelle Vorteile und verfügbare Treuebelohnungen in der Benefitsi-App.",
+      footerText: en ? `Discover ${name}. Plan a visit. Enjoy your benefits.` : `${name} entdecken. Besuche planen. Vorteile nutzen.`,
+      services: [{ label: copy.label, icon: copy.theme.icon }, { label: en ? "Contact" : "Kontakt", icon: "phone" }, { label: en ? "Benefits" : "Vorteile", icon: "gift" }],
+      printHeadline: `${name} x Benefitsi`, printSubheadline: copy.slogan, printNote: `${name} entdecken`,
+    }
+  }
+  const profile = templateOverride === "restaurant-premium" ? "restaurant" : inferMicrositePartnerProfile(partner)
   const name = partner.short_name?.trim() || partner.name?.trim() || "Partner"
   const place = micrositePlaceLabel(partner)
   const description = partner.description?.trim()
@@ -340,7 +368,7 @@ export function sanitizePrintableTemplateId(
 }
 
 function isTemplateId(value: unknown): value is MicrositeTemplateId {
-  return value === "restaurant-premium"
+  return value === "restaurant-premium" || (typeof value === "string" && Object.hasOwn(categoryMicrositeThemes, value))
 }
 
 function isPrintableFormatId(value: unknown): value is PrintableFormatId {

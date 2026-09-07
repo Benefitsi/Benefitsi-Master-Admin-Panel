@@ -19,6 +19,20 @@ export function isMicrositeTopDeal(deal: Pick<Deal, "type">) {
   return deal.type?.trim().toLowerCase() === "two_for_one"
 }
 
+export function partitionMicrositePublicDeals(deals: Deal[]) {
+  if (!deals.length) {
+    return { featuredDeal: undefined, secondaryDeals: [] }
+  }
+
+  const featuredIndex = deals.findIndex(isMicrositeTopDeal)
+  const resolvedIndex = featuredIndex >= 0 ? featuredIndex : 0
+
+  return {
+    featuredDeal: deals[resolvedIndex],
+    secondaryDeals: deals.filter((_, index) => index !== resolvedIndex),
+  }
+}
+
 export function isMicrositeTwoForOneDeal(deal: Deal) {
   if (!isMicrositeDealAvailable(deal)) return false
 
