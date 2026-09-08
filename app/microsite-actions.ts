@@ -107,7 +107,7 @@ async function persistMicrositeVersion(
   const { supabase } = access
   const partnerResult = await supabase
     .from("partners")
-    .select("*")
+    .select("id,name,slug,subdomain,short_name,description,category,type,logo_url,feature_card_url,discover_card_image_url,cover_urls,address,phone,website,email")
     .eq("id", partnerId)
     .maybeSingle()
 
@@ -253,17 +253,19 @@ async function persistMicrositeVersion(
   const previewSlug = microsite.slug || partner.slug || partnerId
 
   try {
-    revalidatePath("/")
-    revalidatePath("/partner")
-    revalidatePath(`/microsite-builder/${previewSlug}`)
-    revalidatePath(`/partner/microsite-builder/${previewSlug}`)
-    revalidatePath(`/microsite-preview/${previewSlug}`)
-    revalidatePath(`/partner/microsite-preview/${previewSlug}`)
-    revalidatePath("/microsite-preview/[partner]", "page")
-    revalidatePath("/partner/microsite-preview/[partner]", "page")
-
+    // Draft previews are client-synchronised and both builder routes are
+    // force-dynamic, so there is no cache to invalidate on every autosave-like
+    // draft save. Publishing is the state change that needs cache invalidation.
     if (intent === "publish") {
-      revalidatePath(`/partner/${previewSlug}`)
+      for (const path of [
+        `/microsite-preview/${previewSlug}`,
+        `/partner/microsite-preview/${previewSlug}`,
+        "/",
+        "/partner",
+        `/partner/${previewSlug}`,
+      ]) {
+        revalidatePath(path)
+      }
     }
   } catch (error) {
     // The database write has already succeeded. A cache invalidation failure
@@ -431,7 +433,7 @@ async function findOrCreateMicrosite(
 > {
   const existing = await supabase
     .from("microsites")
-    .select("*")
+    .select("id,partner_id,slug,subdomain,canonical_url,status,published_version_id,created_at,updated_at")
     .eq("partner_id", partner.id)
     .maybeSingle()
 
@@ -460,7 +462,7 @@ async function findOrCreateMicrosite(
       subdomain: partner.subdomain || slug,
       status: "draft",
     })
-    .select("*")
+    .select("id,partner_id,slug,subdomain,canonical_url,status,published_version_id,created_at,updated_at")
     .single()
 
   if (inserted.error) {
@@ -955,6 +957,7 @@ function isSupportedAssetLibraryTarget(target: string) {
       "hero.backgroundImageUrl",
       "deals.topDealImageUrl",
       "content.aboutHeroImageUrl",
+      "content.wellnessHeroDetailImageUrl",
       "content.aboutIngredientImageUrl",
       "content.aboutLocationImageUrl",
       "content.aboutPrepImageUrl",
@@ -1025,12 +1028,15 @@ async function uploadMicrositeAssetFile(
     optimized = await sharp(Buffer.from(await value.arrayBuffer()))
       .rotate()
       .resize({
-        width: 1920,
-        height: 1920,
+        // Hero media can span the full desktop canvas. Keep enough source detail
+        // for high-density displays instead of turning a quality upload into a
+        // soft 1920px image before it reaches the microsite.
+        width: 2880,
+        height: 2880,
         fit: "inside",
         withoutEnlargement: true,
       })
-      .webp({ quality: 82, effort: 4 })
+      .webp({ quality: 90, effort: 5 })
       .toBuffer()
   } catch (error) {
     return {

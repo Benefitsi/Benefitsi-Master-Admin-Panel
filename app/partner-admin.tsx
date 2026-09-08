@@ -1924,13 +1924,10 @@ function PartnerForm({
   }
 
   useEffect(() => {
-    if (state.ok) {
-      formRef.current
-        ?.querySelectorAll<HTMLDetailsElement>("details[open]")
-        .forEach((details) => {
-          details.open = false
-        })
-
+    if (state.ok && mode === "create" && state.created) {
+      // A newly created partner needs the server-rendered list to include it.
+      // Existing partner edits stay mounted so open sections and local input
+      // state are preserved instead of being collapsed by a full refresh.
       router.refresh()
     }
 

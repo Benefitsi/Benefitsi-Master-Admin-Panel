@@ -100,6 +100,7 @@ export type MicrositeConfig = {
     partnerDataReviewDone: boolean
     seoReviewDone: boolean
     publishReviewDone: boolean
+    mockDealsPreview: boolean
     lastQaAt: string
     versionNote: string
   }
@@ -299,6 +300,7 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed, template = de
       partnerDataReviewDone: false,
       seoReviewDone: false,
       publishReviewDone: false,
+      mockDealsPreview: false,
       lastQaAt: "",
       versionNote: "",
     },
@@ -364,9 +366,9 @@ export function resolveMicrositeConfig(
         branding.accentTertiary,
         fallback.branding.accentTertiary,
       ),
-      // Partner profile media is the source of truth for the partner logo.
-      // This prevents old microsite drafts/localStorage from freezing outdated logos.
-      logoUrl: fallback.branding.logoUrl,
+      // Keep the partner profile as the default, while allowing a microsite-specific
+      // logo override from the builder when a partner needs a lockup for this page.
+      logoUrl: safeString(branding.logoUrl, fallback.branding.logoUrl),
       partnerBadgeUrl: safeString(
         branding.partnerBadgeUrl,
         fallback.branding.partnerBadgeUrl,
@@ -487,6 +489,7 @@ export function resolveMicrositeConfig(
       partnerDataReviewDone: typeof builder.partnerDataReviewDone === "boolean" ? builder.partnerDataReviewDone : fallback.builder.partnerDataReviewDone,
       seoReviewDone: typeof builder.seoReviewDone === "boolean" ? builder.seoReviewDone : fallback.builder.seoReviewDone,
       publishReviewDone: typeof builder.publishReviewDone === "boolean" ? builder.publishReviewDone : fallback.builder.publishReviewDone,
+      mockDealsPreview: typeof builder.mockDealsPreview === "boolean" ? builder.mockDealsPreview : fallback.builder.mockDealsPreview,
       lastQaAt: safeString(builder.lastQaAt, fallback.builder.lastQaAt),
       versionNote: safeString(builder.versionNote, fallback.builder.versionNote),
     },

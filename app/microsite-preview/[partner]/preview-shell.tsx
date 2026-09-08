@@ -116,7 +116,15 @@ export function MicrositePreviewShell({
         </div>
       </div>
       <div className={isMobile ? "mx-auto w-full min-w-0 max-w-[390px]" : "min-w-0"}>
-        <MicrositeRenderer partner={partner} config={displayedConfig} />
+        <MicrositeRenderer
+          partner={partner}
+          config={displayedConfig}
+          showMockDeals={
+            useBuilderDraft &&
+            displayedConfig.template !== "restaurant-premium" &&
+            displayedConfig.builder.mockDealsPreview
+          }
+        />
       </div>
     </main>
   )

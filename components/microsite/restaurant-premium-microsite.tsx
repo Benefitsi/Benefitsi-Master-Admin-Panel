@@ -350,8 +350,8 @@ function MicrositeThemeCss() {
         height: 270px;
         width: 100%;
         background: linear-gradient(180deg, transparent 0%, rgba(249,252,255,.32) 28%, rgba(244,248,252,.94) 73%, var(--site-bg) 100%);
-        -webkit-backdrop-filter: blur(8px) saturate(112%);
-        backdrop-filter: blur(8px) saturate(112%);
+        -webkit-backdrop-filter: blur(3px) saturate(108%);
+        backdrop-filter: blur(3px) saturate(108%);
         -webkit-mask-image: linear-gradient(180deg, transparent, #000 34%, #000 100%);
         mask-image: linear-gradient(180deg, transparent, #000 34%, #000 100%);
       }
@@ -511,8 +511,8 @@ function MicrositeThemeCss() {
             rgba(242, 248, 255, .10) 93%,
             rgba(242, 248, 255, 0) 100%
           );
-          -webkit-backdrop-filter: blur(16px) saturate(112%);
-          backdrop-filter: blur(16px) saturate(112%);
+          -webkit-backdrop-filter: blur(4px) saturate(108%);
+          backdrop-filter: blur(4px) saturate(108%);
           -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 42%, rgba(0,0,0,.88) 62%, rgba(0,0,0,.56) 78%, rgba(0,0,0,.22) 91%, transparent 100%);
           mask-image: linear-gradient(90deg, #000 0%, #000 42%, rgba(0,0,0,.88) 62%, rgba(0,0,0,.56) 78%, rgba(0,0,0,.22) 91%, transparent 100%);
         }
@@ -903,12 +903,10 @@ function MicrositeThemeCss() {
       @keyframes premium-hero-image-focus {
         from {
           opacity: .54;
-          filter: blur(10px) saturate(.72) brightness(.9);
           clip-path: inset(2.5% 2.5% 2.5% 2.5% round 1.75rem);
         }
         to {
           opacity: 1;
-          filter: blur(0) saturate(1) brightness(1);
           clip-path: inset(0 0 0 0 round 0);
         }
       }
@@ -940,8 +938,8 @@ function MicrositeThemeCss() {
       }
 
       @keyframes premium-hero-image-drift {
-        from { transform: scale(1.018) translate3d(-.35%, 0, 0); }
-        to { transform: scale(1.052) translate3d(.45%, -.3%, 0); }
+        from { transform: scale(1.008) translate3d(-.2%, 0, 0); }
+        to { transform: scale(1.025) translate3d(.25%, -.2%, 0); }
       }
 
       @keyframes premium-liquid-glint {
@@ -1858,12 +1856,12 @@ function DealsSection({
                           className={`premium-stamp-circle relative z-[2] grid size-10 place-items-center rounded-full border bg-white text-sm font-semibold tabular-nums transition-[transform,background-color,border-color,color] duration-300 ${
                             completed
                               ? highlighted
-                                ? "border-2 text-[var(--site-accent)] shadow-[0_10px_22px_-14px_var(--site-accent)]"
+                                ? "border-2 text-[var(--site-accent)] shadow-[0_6px_14px_-12px_var(--site-accent)]"
                                 : "border-2 border-emerald-500 text-emerald-700 shadow-[0_8px_18px_-14px_#059669]"
                               : highlighted
                                 ? "border-2 border-[var(--site-accent)] text-[var(--site-accent)]"
                                 : "border-zinc-200 text-zinc-500"
-                          } ${current ? "scale-110" : ""}`}
+                          } ${current ? "scale-[1.04]" : ""}`}
                         >
                           <span
                             {...editable(`stamps.number.${number}`, "text", `Stempel ${number}`)}
@@ -1883,7 +1881,7 @@ function DealsSection({
                           {highlighted ? (
                             <span
                               aria-hidden="true"
-                              className={`premium-stamp-gift pointer-events-none absolute -bottom-1 -right-1 z-20 grid size-[18px] place-items-center rounded-full border-2 border-white shadow-[0_4px_10px_-4px_rgba(120,72,0,.65)] ${
+                              className={`premium-stamp-gift pointer-events-none absolute -bottom-1 -right-1 z-20 grid size-[18px] place-items-center rounded-full border-2 border-white shadow-[0_3px_8px_-5px_rgba(120,72,0,.42)] ${
                                 completed
                                   ? "bg-[var(--site-accent)] text-white"
                                   : "bg-[color-mix(in_srgb,var(--site-accent)_12%,white)] text-[var(--site-accent)]"
@@ -1918,7 +1916,7 @@ function DealsSection({
                           : "opacity-65"
                       } ${
                         activeStamp === card.stamp
-                          ? "-translate-y-1 border-[var(--site-accent)] shadow-[0_20px_42px_-16px_var(--site-accent)]"
+                          ? "-translate-y-0.5 border-[var(--site-accent)] shadow-[0_14px_30px_-20px_var(--site-accent)]"
                           : ""
                       }`}
                     >
@@ -3123,7 +3121,10 @@ function AboutContactSection({
           </div>
 
           <div className="premium-about-photos relative mt-7 grid grid-cols-2 gap-3 @min-[1024px]:mt-0 @min-[1024px]:block @min-[1024px]:min-h-[400px]">
-            <figure className="relative w-full -rotate-3 rounded-2xl bg-white p-1.5 shadow-[0_22px_46px_rgba(15,23,42,.20)] @min-[1024px]:absolute @min-[1024px]:left-2 @min-[1024px]:top-[155px] @min-[1024px]:w-[44%]">
+            <figure
+              {...editable("content.aboutIngredientImageUrl", "image", "Über uns linkes Kartenbild")}
+              className="relative w-full -rotate-3 rounded-2xl bg-white p-1.5 shadow-[0_22px_46px_rgba(15,23,42,.20)] @min-[1024px]:absolute @min-[1024px]:left-2 @min-[1024px]:top-[155px] @min-[1024px]:w-[44%]"
+            >
               <BrandedImage
                 src={aboutIngredientImage}
                 alt={siteCopy(config, "Bild zu Qualität und Zutaten", "Quality and ingredients image")}
@@ -3133,7 +3134,10 @@ function AboutContactSection({
                 style={imageStyleFor(config, "content.aboutIngredientImageUrl")}
               />
             </figure>
-            <figure className="relative w-full rotate-2 rounded-2xl bg-white p-1.5 shadow-[0_22px_46px_rgba(15,23,42,.20)] @min-[1024px]:absolute @min-[1024px]:right-5 @min-[1024px]:top-[164px] @min-[1024px]:w-[44%]">
+            <figure
+              {...editable("content.aboutLocationImageUrl", "image", "Über uns rechtes Kartenbild")}
+              className="relative w-full rotate-2 rounded-2xl bg-white p-1.5 shadow-[0_22px_46px_rgba(15,23,42,.20)] @min-[1024px]:absolute @min-[1024px]:right-5 @min-[1024px]:top-[164px] @min-[1024px]:w-[44%]"
+            >
               <BrandedImage
                 src={aboutLocationImage}
                 alt={siteCopy(config, "Bild zum Standort", "Location image")}
@@ -3608,6 +3612,7 @@ function BrandedImage({
         {...attrs}
         src={src}
         alt={alt}
+        draggable={false}
         decoding="async"
         fetchPriority={priority ? "high" : "auto"}
         onError={() => setFailedSrc(src)}
@@ -3630,6 +3635,7 @@ function BrandedImage({
       <img
         src={BENEFITSI_ICON_SRC}
         alt=""
+        draggable={false}
         className="relative z-[1] h-auto min-w-8 w-[30%] max-w-24 object-contain opacity-[.18] saturate-75"
       />
     </div>

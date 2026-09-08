@@ -663,6 +663,7 @@ export async function savePartner(
       mediaValues,
       partnerId,
       basePayload.slug,
+      isUpdate,
     )
 
     uploadedPaths.push(...media.uploadedPaths)
@@ -3235,8 +3236,11 @@ async function resolvePartnerMedia(
   mediaValues: PartnerMediaFormValues,
   partnerId: string,
   slug: string,
+  isUpdate: boolean,
 ) {
   const uploadTime = Date.now()
+  const preserveExistingMedia = (url: string) =>
+    isUpdate && Boolean(url) && !mediaValues.removedMediaUrls.includes(url)
   const [logoUpload, featureUpload, discoverUpload, coverUploads, existingCoverUploads] =
     await Promise.all([
       mediaValues.logoFile
@@ -3246,7 +3250,9 @@ async function resolvePartnerMedia(
             partnerMediaSpecs.logo,
             `${partnerId}/logo-${uploadTime}-${safeFileName(mediaValues.logoFile.name)}`,
           )
-        : copyExternalPartnerImage(
+        : preserveExistingMedia(mediaValues.existingLogoUrl)
+          ? Promise.resolve(null)
+          : copyExternalPartnerImage(
             supabase,
             mediaValues.existingLogoUrl,
             partnerMediaSpecs.logo,
@@ -3260,7 +3266,9 @@ async function resolvePartnerMedia(
             partnerMediaSpecs.feature,
             `${partnerId}/feature-${uploadTime}-${safeFileName(mediaValues.featureFile.name)}`,
           )
-        : copyExternalPartnerImage(
+        : preserveExistingMedia(mediaValues.existingFeatureCardUrl)
+          ? Promise.resolve(null)
+          : copyExternalPartnerImage(
             supabase,
             mediaValues.existingFeatureCardUrl,
             partnerMediaSpecs.feature,
@@ -3274,7 +3282,9 @@ async function resolvePartnerMedia(
             partnerMediaSpecs.discover,
             `${partnerId}/discover-${uploadTime}-${safeFileName(mediaValues.discoverFile.name)}`,
           )
-        : copyExternalPartnerImage(
+        : preserveExistingMedia(mediaValues.existingDiscoverCardUrl)
+          ? Promise.resolve(null)
+          : copyExternalPartnerImage(
             supabase,
             mediaValues.existingDiscoverCardUrl,
             partnerMediaSpecs.discover,
@@ -3290,12 +3300,14 @@ async function resolvePartnerMedia(
         ),
       )),
       Promise.all(mediaValues.existingCoverUrls.map((url, index) =>
-        copyExternalPartnerImage(
-          supabase,
-          url,
-          partnerMediaSpecs.cover,
-          `${partnerId}/covers/${slug}-${uploadTime}-online-${index}`,
-        ),
+        preserveExistingMedia(url)
+          ? Promise.resolve(null)
+          : copyExternalPartnerImage(
+              supabase,
+              url,
+              partnerMediaSpecs.cover,
+              `${partnerId}/covers/${slug}-${uploadTime}-online-${index}`,
+            ),
       )),
     ])
   const uploadedPaths: UploadedStoragePath[] = [

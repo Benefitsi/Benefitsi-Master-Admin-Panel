@@ -17,7 +17,6 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react"
-import { useRouter } from "next/navigation"
 import type { PartnerWithDeals } from "@/lib/admin-data"
 import {
   createDefaultMicrositeConfig,
@@ -1027,13 +1026,16 @@ export function MicrositePanel({
   fullscreen?: boolean
   previewBasePath?: string
 }) {
-  const router = useRouter()
   const initialConfig = resolveMicrositeConfig(
     partner.microsite?.draftVersion?.config ??
       partner.microsite?.publishedVersion?.config,
     partner,
   )
   const [config, setConfig] = useState<MicrositeConfig>(initialConfig)
+  const isOriginalFoodTemplate = config.template === "restaurant-premium"
+  const contentSectionLabel = isOriginalFoodTemplate
+    ? "Speisekarte"
+    : config.content.menuLabel || "Leistungen"
   const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop")
   const [previewZoom, setPreviewZoom] = useState(fullscreen ? 0.85 : 1)
   const [selectedElementId, setSelectedElementId] = useState("hero.headline")
@@ -1383,7 +1385,6 @@ export function MicrositePanel({
             previewStorageKey,
             JSON.stringify(savedConfig),
           )
-          router.refresh()
           inlineTextOverridesRef.current = {}
 
           if (inlineTextOverridesInputRef.current) {
@@ -1404,7 +1405,7 @@ export function MicrositePanel({
         cancelled = true
       }
     }
-  }, [partner, previewStorageKey, router, state.config, state.ok])
+  }, [partner, previewStorageKey, state.config, state.ok])
 
   useEffect(() => {
     const applySharedConfig = (serializedConfig: string | null) => {
@@ -1675,7 +1676,7 @@ export function MicrositePanel({
       }}
     >
     <section
-      className={`${fullscreen ? "overflow-visible" : "overflow-hidden"} rounded-md border border-zinc-200 bg-white shadow-sm`}
+      className="overflow-visible rounded-md border border-zinc-200 bg-white shadow-sm"
     >
       <header className="border-b border-zinc-200 bg-white">
         <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
@@ -1795,12 +1796,12 @@ export function MicrositePanel({
         action={formAction}
         onSubmit={handleSaveSubmit}
         aria-busy={pending}
-        className={`grid min-w-0 max-w-full grid-cols-1 gap-0 transition-[grid-template-columns] duration-200 ${
+        className={`grid min-w-0 max-w-full grid-cols-1 gap-0 transition-[grid-template-columns] duration-200 lg:items-start ${
           useViewportShell
             ? "min-h-[calc(100vh-8rem)] overflow-visible lg:grid-cols-[var(--editor-panel-width)_minmax(0,1fr)]"
             : editorPanelOpen
-              ? "overflow-hidden lg:grid-cols-[330px_minmax(0,1fr)]"
-              : "overflow-hidden lg:grid-cols-[56px_minmax(0,1fr)]"
+              ? "overflow-visible lg:grid-cols-[330px_minmax(0,1fr)]"
+              : "overflow-visible lg:grid-cols-[56px_minmax(0,1fr)]"
         } ${!fullscreen ? (editorPanelOpen ? "lg:grid-cols-[330px_minmax(0,1fr)]" : "lg:grid-cols-[56px_minmax(0,1fr)]") : ""}`}
         style={
           fullscreen
@@ -1828,7 +1829,7 @@ export function MicrositePanel({
 
         <aside
           ref={sidebarRef}
-            className={`relative w-full min-w-0 max-w-full self-start touch-pan-y overflow-x-hidden border-zinc-200 bg-white [scrollbar-width:thin] ${
+            className={`relative w-full min-w-0 max-w-full self-start touch-pan-y overflow-x-hidden border-zinc-200 bg-white [scrollbar-width:thin] lg:!sticky lg:!self-start lg:z-20 ${
             fullscreen
               ? "h-[min(72dvh,720px)] min-h-0 overflow-y-auto overscroll-y-contain border-b [scrollbar-gutter:stable] lg:sticky lg:top-20 lg:h-[calc(100dvh-5rem)] lg:max-h-[calc(100dvh-5rem)] lg:border-b-0 lg:border-r"
               : inlineSidebarClasses
@@ -1914,27 +1915,71 @@ export function MicrositePanel({
 
           <div data-builder-section="hero">
           <ConfigSection title="Startbereich">
-            <SourceLockedField
-              label="Überschrift"
-              value={config.hero.headline}
-              source="Partnerprofil → Name"
-            />
+            {isOriginalFoodTemplate ? (
+              <SourceLockedField
+                label="Überschrift"
+                value={config.hero.headline}
+                source="Partnerprofil → Name"
+              />
+            ) : (
+              <EditorField
+                name="hero_headline"
+                label="Überschrift"
+                value={config.hero.headline}
+                onChange={(value) => updateHero(setConfig, "headline", value)}
+              />
+            )}
             <EditorField
               name="hero_slogan"
               label="Slogan"
               value={config.hero.slogan}
               onChange={(value) => updateHero(setConfig, "slogan", value)}
             />
-            <SourceLockedField
-              label="Ort"
-              value={config.hero.locationText}
-              source="Partnerprofil → Stadt/Adresse"
-            />
-            <SourceLockedField
-              label="Öffnungszeiten"
-              value={config.hero.openingText}
-              source="Partnerprofil → Öffnungszeiten"
-            />
+            {!isOriginalFoodTemplate ? (
+              <>
+                <EditorField
+                  name="category_hero_kicker"
+                  label="Hero Kicker"
+                  value={textValueForBuilder(config, "category.heroKicker", "")}
+                  onChange={(value) => setConfig((current) => setElementTextValue(current, "category.heroKicker", value))}
+                />
+                <EditorField
+                  name="category_hero_action"
+                  label="Hero Aktion"
+                  value={textValueForBuilder(config, "category.heroAction", "")}
+                  onChange={(value) => setConfig((current) => setElementTextValue(current, "category.heroAction", value))}
+                />
+              </>
+            ) : null}
+            {isOriginalFoodTemplate ? (
+              <>
+                <SourceLockedField
+                  label="Ort"
+                  value={config.hero.locationText}
+                  source="Partnerprofil → Stadt/Adresse"
+                />
+                <SourceLockedField
+                  label="Öffnungszeiten"
+                  value={config.hero.openingText}
+                  source="Partnerprofil → Öffnungszeiten"
+                />
+              </>
+            ) : (
+              <>
+                <EditorField
+                  name="hero_location"
+                  label="Ort"
+                  value={config.hero.locationText}
+                  onChange={(value) => updateHero(setConfig, "locationText", value)}
+                />
+                <EditorField
+                  name="hero_opening"
+                  label="Öffnungszeiten"
+                  value={config.hero.openingText}
+                  onChange={(value) => updateHero(setConfig, "openingText", value)}
+                />
+              </>
+            )}
           </ConfigSection>
           </div>
 
@@ -1946,7 +1991,7 @@ export function MicrositePanel({
           >
 
           <div data-builder-section="content" className="space-y-2">
-            <ConfigSection title="Partner-Zitat">
+            {isOriginalFoodTemplate ? <ConfigSection title="Partner-Zitat">
               <EditorField
                 name="quote_text"
                 label="Partner-Zitat"
@@ -1962,9 +2007,58 @@ export function MicrositePanel({
                   updateContent(setConfig, "quoteAttribution", value)
                 }
               />
-            </ConfigSection>
+            </ConfigSection> : (
+              <ConfigSection title="Planungsbereich">
+                <EditorField
+                  name="category_plan_headline"
+                  label="Planungsbereich Überschrift"
+                  value={textValueForBuilder(config, "category.planHeadline", "")}
+                  onChange={(value) => setConfig((current) => setElementTextValue(current, "category.planHeadline", value))}
+                />
+                <EditorField
+                  name="category_plan_text"
+                  label="Planungsbereich Beschreibung"
+                  value={textValueForBuilder(config, "category.planText", "")}
+                  onChange={(value) => setConfig((current) => setElementTextValue(current, "category.planText", value))}
+                  multiline
+                />
+                {[0, 1, 2].map((index) => (
+                  <EditorField
+                    key={index}
+                    name={`category_plan_step_${index + 1}`}
+                    label={`Planung Schritt ${index + 1}`}
+                    value={textValueForBuilder(config, `category.planStep.${index}`, "")}
+                    onChange={(value) => setConfig((current) => setElementTextValue(current, `category.planStep.${index}`, value))}
+                  />
+                ))}
+              </ConfigSection>
+            )}
 
             <ConfigSection title="Vorteile & Aktionen">
+              {!isOriginalFoodTemplate ? (
+                <label className="flex items-start justify-between gap-3 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2.5 text-xs text-zinc-700">
+                  <span>
+                    <span className="block font-bold">Mock-Vorteile in der Vorschau</span>
+                    <span className="mt-0.5 block leading-5 text-zinc-500">
+                      Nur im Builder anzeigen, wenn noch keine echten Vorteile gepflegt sind. Auf der veröffentlichten Microsite erscheinen sie nie.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={config.builder.mockDealsPreview}
+                    onChange={(event) =>
+                      setConfig((current) => ({
+                        ...current,
+                        builder: {
+                          ...current.builder,
+                          mockDealsPreview: event.target.checked,
+                        },
+                      }))
+                    }
+                    className="mt-0.5 size-4 shrink-0 accent-teal-700"
+                  />
+                </label>
+              ) : null}
               <EditorField
                 name="deals_headline"
                 label="Überschrift"
@@ -2012,26 +2106,21 @@ export function MicrositePanel({
 
             <SocialMediaPanel partner={partner} config={config} setConfig={setConfig} />
 
-            <ConfigSection title={config.content.menuLabel}>
+            <ConfigSection title={contentSectionLabel}>
               <EditorField
                 name="menu_headline"
-                label="Speisekarte Überschrift"
+                label={`${contentSectionLabel} Überschrift`}
                 value={config.content.menuHeadline}
                 onChange={(value) => updateContent(setConfig, "menuHeadline", value)}
               />
               <EditorField
                 name="menu_description"
-                label="Speisekarte Beschreibung"
+                label={`${contentSectionLabel} Beschreibung`}
                 value={config.content.menuDescription}
                 onChange={(value) =>
                   updateContent(setConfig, "menuDescription", value)
                 }
                 multiline
-              />
-              <MenuImagesEditor
-                partner={partner}
-                config={config}
-                setConfig={setConfig}
               />
             </ConfigSection>
 
@@ -2283,6 +2372,7 @@ export function MicrositePanel({
                 partner={partner}
                 config={config}
                 showAppDownloadPopup={false}
+                showMockDeals={!isOriginalFoodTemplate && config.builder.mockDealsPreview}
               />
             </div>
           </div>
@@ -2757,16 +2847,31 @@ function AssetReadinessPanel({
         .filter((stamp) => stamp > 0),
     ),
   ).sort((first, second) => first - second)
-  const rows: AssetQualityTarget[] = [
-    { label: "Partnerlogo", value: partner.logo_url || "", source: "Profil", slot: "branding.logo", minWidth: 512, minHeight: 512, preferredAspect: 1, aspectTolerance: 0.2 },
+  const isCategoryTemplate = config.template !== "restaurant-premium"
+  const isWellnessTemplate = config.template === "wellness-retreat" || config.template === "salon-studio"
+  const categoryStoryImage = config.elementText["content.aboutHeroImageUrl"] || partner.cover_urls?.find((url) => url !== config.hero.backgroundImageUrl) || ""
+  const foodAboutHeroImage = config.elementText["content.aboutHeroImageUrl"] || config.deals.topDealImageUrl || config.hero.backgroundImageUrl || ""
+  const foodAboutIngredientImage = config.elementText["content.aboutIngredientImageUrl"] || config.deals.illustrationUrl || config.hero.backgroundImageUrl || ""
+  const foodAboutLocationImage = config.elementText["content.aboutLocationImageUrl"] || config.hero.backgroundImageUrl || ""
+  const foodAboutPrepImage = config.elementText["content.aboutPrepImageUrl"] || config.hero.backgroundImageUrl || ""
+  const categoryRows: AssetQualityTarget[] = [
+    { label: "Partnerlogo", value: config.branding.logoUrl || partner.logo_url || "", source: "Microsite", slot: "branding.logo", minWidth: 512, minHeight: 512, preferredAspect: 1, aspectTolerance: 0.2 },
+    { label: "Startbild", value: config.hero.backgroundImageUrl, source: "Microsite", slot: "hero.backgroundImageUrl", minWidth: 1600, minHeight: 1200, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Über-uns Bild", value: categoryStoryImage, source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    ...(isWellnessTemplate && config.elementText["content.wellnessHeroDetailImageUrl"]
+      ? [{ label: "Wellness Hero Detailbild", value: config.elementText["content.wellnessHeroDetailImageUrl"], source: "Microsite" as const, slot: "content.wellnessHeroDetailImageUrl", minWidth: 900, minHeight: 1100, preferredAspect: 4 / 5, aspectTolerance: 0.25 }]
+      : []),
+  ]
+  const foodRows: AssetQualityTarget[] = [
+    { label: "Partnerlogo", value: config.branding.logoUrl || partner.logo_url || "", source: config.branding.logoUrl ? "Microsite" : "Profil", slot: "branding.logo", minWidth: 512, minHeight: 512, preferredAspect: 1, aspectTolerance: 0.2 },
     { label: "Startbild", value: config.hero.backgroundImageUrl, source: "Microsite", slot: "hero.backgroundImageUrl", minWidth: 1600, minHeight: 1200, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     ...(hasTwoForOneDeal
       ? [{ label: "2 für 1 Hintergrundbild", value: config.deals.topDealImageUrl, source: "Microsite", slot: "deals.topDealImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 }]
       : []),
-    { label: "Über-uns Hintergrundbild (Desktop)", value: config.elementText["content.aboutHeroImageUrl"] || "", source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
-    { label: "Über-uns linkes Kartenbild", value: config.elementText["content.aboutIngredientImageUrl"] || "", source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 900, minHeight: 1100, preferredAspect: 4 / 5, aspectTolerance: 0.25 },
-    { label: "Über-uns rechtes Kartenbild", value: config.elementText["content.aboutLocationImageUrl"] || "", source: "Microsite", slot: "content.aboutLocationImageUrl", minWidth: 900, minHeight: 1100, preferredAspect: 4 / 5, aspectTolerance: 0.25 },
-    { label: "Über-uns unteres Overlaybild (Desktop)", value: config.elementText["content.aboutPrepImageUrl"] || "", source: "Microsite", slot: "content.aboutPrepImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Über-uns Hintergrundbild (Desktop)", value: foodAboutHeroImage, source: "Microsite", slot: "content.aboutHeroImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
+    { label: "Über-uns linkes Kartenbild", value: foodAboutIngredientImage, source: "Microsite", slot: "content.aboutIngredientImageUrl", minWidth: 900, minHeight: 1100, preferredAspect: 4 / 5, aspectTolerance: 0.25 },
+    { label: "Über-uns rechtes Kartenbild", value: foodAboutLocationImage, source: "Microsite", slot: "content.aboutLocationImageUrl", minWidth: 900, minHeight: 1100, preferredAspect: 4 / 5, aspectTolerance: 0.25 },
+    { label: "Über-uns unteres Overlaybild (Desktop)", value: foodAboutPrepImage, source: "Microsite", slot: "content.aboutPrepImageUrl", minWidth: 1200, minHeight: 900, preferredAspect: 4 / 3, aspectTolerance: 0.35 },
     ...rewardStamps.map((stamp) => ({
       label: `${stamp} Stempel Belohnungsbild`,
       value: config.elementText[`stamps.reward.${stamp}.image`] || "",
@@ -2780,6 +2885,7 @@ function AssetReadinessPanel({
     { label: "Bild im Telefon-Mockup", value: config.elementText["content.appPhoneScreenshotUrl"] || "/partner-details-page.jpg", source: "Microsite", slot: "content.appPhoneScreenshotUrl", minWidth: 720, minHeight: 1400, preferredAspect: 9 / 20, aspectTolerance: 0.12 },
     { label: "Benefitsi Footer Logo", value: config.elementText["footer.benefitsiLogo"] || "/benefitsi-logo-on-light.svg", source: "Microsite", slot: "footer.benefitsiLogo", minWidth: 256, minHeight: 64, preferredAspect: 4, aspectTolerance: 1.5 },
   ]
+  const rows: AssetQualityTarget[] = isCategoryTemplate ? categoryRows : foodRows
   const assetTargets = [
     ...rows
       .filter((row) => row.slot !== "branding.logo")
@@ -2966,10 +3072,32 @@ function CurrentTemplateImagesPanel({
         .filter((stamp) => stamp > 0),
     ),
   ).sort((first, second) => first - second)
+  const isCategoryTemplate = config.template !== "restaurant-premium"
+  const isWellnessTemplate = config.template === "wellness-retreat" || config.template === "salon-studio"
+  const categoryStoryImage = config.elementText["content.aboutHeroImageUrl"] || partner.cover_urls?.find((url) => url !== config.hero.backgroundImageUrl) || ""
+  const foodAboutHeroImage = config.elementText["content.aboutHeroImageUrl"] || config.deals.topDealImageUrl || config.hero.backgroundImageUrl || ""
+  const foodAboutIngredientImage = config.elementText["content.aboutIngredientImageUrl"] || config.deals.illustrationUrl || config.hero.backgroundImageUrl || ""
+  const foodAboutLocationImage = config.elementText["content.aboutLocationImageUrl"] || config.hero.backgroundImageUrl || ""
+  const foodAboutPrepImage = config.elementText["content.aboutPrepImageUrl"] || config.hero.backgroundImageUrl || ""
 
   return (
     <>
       <ConfigSection title="Marke & Startbereich Bilder">
+        <TemplateImageEditor
+          groupName="brand-hero-images"
+          name="logo_url"
+          label="Partnerlogo"
+          value={config.branding.logoUrl || partner.logo_url || ""}
+          uploadName="logo_file"
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) => ({
+              ...current,
+              branding: { ...current.branding, logoUrl: value },
+            }))
+          }
+        />
         <TemplateImageEditor
           groupName="brand-hero-images"
           name="hero_image_url"
@@ -2982,8 +3110,16 @@ function CurrentTemplateImagesPanel({
         />
       </ConfigSection>
 
-      <ConfigSection title="Vorteils- und Belohnungsbilder">
-        {hasTwoForOneDeal ? (
+      <ConfigSection title={isCategoryTemplate ? `${config.content.menuLabel || "Leistungs"} Bilder` : "Vorteils- und Belohnungsbilder"}>
+        {isCategoryTemplate ? (
+          <MenuImagesEditor
+            partner={partner}
+            config={config}
+            setConfig={setConfig}
+            sectionLabel={config.content.menuLabel || "Leistungen"}
+          />
+        ) : null}
+        {!isCategoryTemplate && hasTwoForOneDeal ? (
           <TemplateImageEditor
             groupName="deal-reward-images"
             name="top_deal_image_url"
@@ -2995,7 +3131,7 @@ function CurrentTemplateImagesPanel({
             onChange={(value) => updateDeals(setConfig, "topDealImageUrl", value)}
           />
         ) : null}
-        {rewardStamps.map((stamp) => {
+        {!isCategoryTemplate && rewardStamps.map((stamp) => {
           const imageId = `stamps.reward.${stamp}.image`
           return (
             <TemplateImageEditor
@@ -3013,19 +3149,45 @@ function CurrentTemplateImagesPanel({
             />
           )
         })}
-        {!hasTwoForOneDeal && !rewardStamps.length ? (
+        {!isCategoryTemplate && !hasTwoForOneDeal && !rewardStamps.length ? (
           <p className="rounded-lg bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">
             Keine aktiven Vorteils- oder Belohnungsbilder in diesem Template.
           </p>
         ) : null}
       </ConfigSection>
 
+      {!isCategoryTemplate ? <ConfigSection title="Speisekartenbilder">
+        <MenuImagesEditor
+          partner={partner}
+          config={config}
+          setConfig={setConfig}
+          sectionLabel={config.content.menuLabel || "Speisekarte"}
+        />
+      </ConfigSection> : null}
+
+      {isWellnessTemplate ? <ConfigSection title="Wellness Hero Bild">
+        <TemplateImageEditor
+          groupName="wellness-hero-images"
+          name="wellness_hero_detail_image_url"
+          label="Hero Detailbild"
+          value={config.elementText["content.wellnessHeroDetailImageUrl"] || ""}
+          uploadName={genericElementUploadName("content.wellnessHeroDetailImageUrl")}
+          assetListId={assetListId}
+          assetChoices={assetChoices}
+          onChange={(value) =>
+            setConfig((current) =>
+              setElementTextValue(current, "content.wellnessHeroDetailImageUrl", value),
+            )
+          }
+        />
+      </ConfigSection> : null}
+
       <ConfigSection title="Über-uns Bilder">
         <TemplateImageEditor
           groupName="about-images"
           name="about_hero_image_url"
-          label="Über-uns Hintergrundbild (Desktop)"
-          value={config.elementText["content.aboutHeroImageUrl"] || ""}
+          label={isCategoryTemplate ? "Über-uns Bild" : "Über-uns Hintergrundbild (Desktop)"}
+          value={isCategoryTemplate ? categoryStoryImage : foodAboutHeroImage}
           uploadName="about_hero_file"
           assetListId={assetListId}
           assetChoices={assetChoices}
@@ -3035,11 +3197,11 @@ function CurrentTemplateImagesPanel({
             )
           }
         />
-        <TemplateImageEditor
+        {!isCategoryTemplate ? <TemplateImageEditor
           groupName="about-images"
           name="about_ingredient_image_url"
           label="Über-uns linkes Kartenbild"
-          value={config.elementText["content.aboutIngredientImageUrl"] || ""}
+          value={foodAboutIngredientImage}
           uploadName="about_ingredient_file"
           assetListId={assetListId}
           assetChoices={assetChoices}
@@ -3048,12 +3210,12 @@ function CurrentTemplateImagesPanel({
               setElementTextValue(current, "content.aboutIngredientImageUrl", value),
             )
           }
-        />
-        <TemplateImageEditor
+        /> : null}
+        {!isCategoryTemplate ? <TemplateImageEditor
           groupName="about-images"
           name="about_location_image_url"
           label="Über-uns rechtes Kartenbild"
-          value={config.elementText["content.aboutLocationImageUrl"] || ""}
+          value={foodAboutLocationImage}
           uploadName="about_location_file"
           assetListId={assetListId}
           assetChoices={assetChoices}
@@ -3062,12 +3224,12 @@ function CurrentTemplateImagesPanel({
               setElementTextValue(current, "content.aboutLocationImageUrl", value),
             )
           }
-        />
-        <TemplateImageEditor
+        /> : null}
+        {!isCategoryTemplate ? <TemplateImageEditor
           groupName="about-images"
           name="about_prep_image_url"
           label="Über-uns unteres Overlaybild (Desktop)"
-          value={config.elementText["content.aboutPrepImageUrl"] || ""}
+          value={foodAboutPrepImage}
           uploadName="about_prep_file"
           assetListId={assetListId}
           assetChoices={assetChoices}
@@ -3076,10 +3238,10 @@ function CurrentTemplateImagesPanel({
               setElementTextValue(current, "content.aboutPrepImageUrl", value),
             )
           }
-        />
+        /> : null}
       </ConfigSection>
 
-      <ConfigSection title="App & Footer Bilder">
+      {!isCategoryTemplate ? <ConfigSection title="App & Footer Bilder">
         <TemplateImageEditor
           groupName="app-footer-images"
           name="app_phone_screenshot_url"
@@ -3108,7 +3270,7 @@ function CurrentTemplateImagesPanel({
             )
           }
         />
-      </ConfigSection>
+      </ConfigSection> : null}
     </>
   )
 }
@@ -3210,10 +3372,12 @@ function MenuImagesEditor({
   partner,
   config,
   setConfig,
+  sectionLabel = "Speisekarte",
 }: {
   partner: PartnerWithDeals
   config: MicrositeConfig
   setConfig: Dispatch<SetStateAction<MicrositeConfig>>
+  sectionLabel?: string
 }) {
   const { tr } = useBuilderI18n()
   const assetListId = `microsite-assets-${partner.id || "new"}`
@@ -3228,7 +3392,7 @@ function MenuImagesEditor({
   if (!items.length) {
     return (
       <p className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-600">
-        {tr("Sobald im Admin eine Speisekarte gepflegt ist, erscheinen hier automatisch die beliebtesten Gerichte.")}
+        {tr(`Sobald im Admin ${sectionLabel} gepflegt ist, erscheinen hier automatisch die wichtigsten Einträge.`)}
       </p>
     )
   }
@@ -3244,12 +3408,12 @@ function MenuImagesEditor({
     <div className="space-y-3">
       <p className="text-xs leading-5 text-zinc-600">
         {tr(
-          "Die ersten sechs Gerichte bilden die Microsite-Vorschau. Das erste Bild wird groß dargestellt.",
+          `Die ersten sechs Einträge bilden die Microsite-Vorschau für ${sectionLabel}. Das erste Bild wird groß dargestellt.`,
         )}
       </p>
 
       <label className="block space-y-1.5 text-xs font-bold text-zinc-700">
-        {tr("Angezeigtes Hauptgericht")}
+        {tr(`Angezeigtes Hauptelement aus ${sectionLabel}`)}
         <select
           value={micrositeMenuItemKey(featuredItem)}
           onChange={(event) =>
@@ -3265,12 +3429,12 @@ function MenuImagesEditor({
         >
           {allItems.map((item) => (
             <option key={micrositeMenuItemKey(item)} value={micrositeMenuItemKey(item)}>
-              {micrositeMenuItemDisplayName(item.name) || tr("Gericht")}
+              {micrositeMenuItemDisplayName(item.name) || tr(sectionLabel === "Speisekarte" ? "Gericht" : "Eintrag")}
             </option>
           ))}
         </select>
         <span className="block font-normal leading-5 text-zinc-500">
-          {tr("Wähle das Gericht für die große Karte aus.")}
+          {tr("Wähle den Eintrag für die große Karte aus.")}
         </span>
       </label>
 
@@ -3295,7 +3459,7 @@ function MenuImagesEditor({
         <div className="space-y-3 p-3">
           <div className="flex min-h-10 items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3">
             <span className="min-w-0 truncate text-xs font-black text-zinc-900">
-              {micrositeMenuItemDisplayName(featuredItem.name) || tr("Gericht")}
+              {micrositeMenuItemDisplayName(featuredItem.name) || tr(sectionLabel === "Speisekarte" ? "Gericht" : "Eintrag")}
             </span>
             <label className="flex shrink-0 items-center gap-2 text-xs font-bold text-zinc-700">
               {tr("Bild anzeigen")}
@@ -3387,7 +3551,7 @@ function MenuImagesEditor({
                 )}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-black text-zinc-900">
-                    {micrositeMenuItemDisplayName(item.name) || tr("Gericht")}
+                    {micrositeMenuItemDisplayName(item.name) || tr(sectionLabel === "Speisekarte" ? "Gericht" : "Eintrag")}
                   </span>
                   <span className="mt-0.5 block text-xs font-medium text-zinc-500">
                     {tr("Kleines Menübild")}
@@ -3489,6 +3653,7 @@ function isRenderedMicrositeImageSlot(
       "branding.logo",
       "hero.backgroundImageUrl",
       "content.aboutHeroImageUrl",
+      "content.wellnessHeroDetailImageUrl",
       "content.aboutIngredientImageUrl",
       "content.aboutLocationImageUrl",
       "content.aboutPrepImageUrl",
@@ -4463,15 +4628,22 @@ function getEditableElement(
   config: MicrositeConfig,
   partner?: PartnerWithDeals,
 ): EditableElement | null {
+  const contentLabel = config.template === "restaurant-premium"
+    ? "Speisekarte"
+    : config.content.menuLabel || "Leistungsbereich"
   const simpleElements: Record<
     string,
     Omit<EditableElement, "id" | "value"> & { value: string }
   > = {
     "branding.logo": {
-      label: "Logo (Partnerprofil)",
-      kind: "group",
+      label: "Partnerlogo",
+      kind: "image",
       value: config.branding.logoUrl,
-      update: (current) => current,
+      uploadName: "logo_file",
+      update: (current, value) => ({
+        ...current,
+        branding: { ...current.branding, logoUrl: value },
+      }),
     },
     "footer.logo": {
       label: "Footer Logo (Partnerprofil)",
@@ -4583,15 +4755,15 @@ function getEditableElement(
       ...current,
       stamps: { ...current.stamps, slogan: value },
     })),
-    "content.menuLabel": textElement("Speisekarte Label", config.content.menuLabel, (current, value) => ({
+    "content.menuLabel": textElement(`${contentLabel} Label`, config.content.menuLabel, (current, value) => ({
       ...current,
       content: { ...current.content, menuLabel: value },
     })),
-    "content.menuHeadline": textElement("Speisekarte Überschrift", config.content.menuHeadline, (current, value) => ({
+    "content.menuHeadline": textElement(`${contentLabel} Überschrift`, config.content.menuHeadline, (current, value) => ({
       ...current,
       content: { ...current.content, menuHeadline: value },
     })),
-    "content.menuDescription": textElement("Speisekarte Beschreibung", config.content.menuDescription, (current, value) => ({
+    "content.menuDescription": textElement(`${contentLabel} Beschreibung`, config.content.menuDescription, (current, value) => ({
       ...current,
       content: { ...current.content, menuDescription: value },
     })),
@@ -4619,6 +4791,13 @@ function getEditableElement(
           "content.aboutHeroImageUrl": value,
         },
       }),
+    },
+    "content.wellnessHeroDetailImageUrl": {
+      label: "Wellness Hero Detailbild",
+      kind: "image",
+      value: config.elementText["content.wellnessHeroDetailImageUrl"] || "",
+      uploadName: genericElementUploadName("content.wellnessHeroDetailImageUrl"),
+      update: (current, value) => setElementTextValue(current, "content.wellnessHeroDetailImageUrl", value),
     },
     "content.aboutIngredientImageUrl": {
       label: "Über uns linkes Kartenbild",
@@ -4683,6 +4862,28 @@ function getEditableElement(
 
   if (simpleElements[id]) {
     return { id, ...simpleElements[id] }
+  }
+
+  if (id.startsWith("category.")) {
+    const categoryLabels: Record<string, string> = {
+      "category.heroKicker": "Hero Kicker",
+      "category.heroAction": "Hero Aktion",
+      "category.planHeadline": "Planungsbereich Überschrift",
+      "category.planText": "Planungsbereich Beschreibung",
+      "category.planStep.0": "Planung Schritt 1",
+      "category.planStep.1": "Planung Schritt 2",
+      "category.planStep.2": "Planung Schritt 3",
+      "category.faqHeadline": "FAQ Überschrift",
+    }
+    return {
+      id,
+      ...textOverrideElement(
+        categoryLabels[id] || "Kategorie Text",
+        config,
+        id,
+        categoryTextFallback(config, id),
+      ),
+    }
   }
 
   if (/^content\.menuItem\.[a-z0-9_-]+\.imageUrl$/.test(id)) {
@@ -5306,6 +5507,8 @@ function applyAssetToSlot(
   url: string,
 ): MicrositeConfig {
   switch (slot) {
+    case "branding.logo":
+      return { ...config, branding: { ...config.branding, logoUrl: url } }
     case "branding.partnerBadge":
       return { ...config, branding: { ...config.branding, partnerBadgeUrl: url } }
     case "hero.backgroundImageUrl":
@@ -5378,6 +5581,52 @@ function setElementTextValue(
     ...config,
     elementText: nextElementText,
   }
+}
+
+function textValueForBuilder(config: MicrositeConfig, id: string, fallback: string) {
+  return config.elementText[id] || fallback || categoryTextFallback(config, id)
+}
+
+function categoryTextFallback(config: MicrositeConfig, id: string) {
+  const template = config.template
+  const family = ["salon-studio", "wellness-retreat"].includes(template)
+    ? "wellness"
+    : ["services-local", "hotel-stay", "car-care", "mobility-service"].includes(template)
+      ? "services"
+      : "activities"
+  const copy = {
+    activities: {
+      "category.heroKicker": config.language === "en" ? "Local experiences" : "Erlebnisse vor Ort",
+      "category.heroAction": config.language === "en" ? "Enquire about an experience" : "Erlebnis anfragen",
+      "category.planHeadline": config.language === "en" ? "Turn free time into a good plan." : "Aus freier Zeit wird ein guter Plan.",
+      "category.planText": config.language === "en" ? "Keep the details, times and requirements clear so you can look forward to the moment." : "Details, Zeiten und Voraussetzungen bleiben klar, damit du dich auf den Moment freuen kannst.",
+      "category.planStep.0": config.language === "en" ? "Choose an experience and group size" : "Erlebnis und Gruppengröße wählen",
+      "category.planStep.1": config.language === "en" ? "Check requirements and duration" : "Voraussetzungen und Dauer prüfen",
+      "category.planStep.2": config.language === "en" ? "Book a time with the venue" : "Termin beim Anbieter buchen",
+      "category.faqHeadline": config.language === "en" ? "Before you visit" : "Vor deinem Besuch",
+    },
+    wellness: {
+      "category.heroKicker": config.language === "en" ? "Time for yourself" : "Zeit für dich",
+      "category.heroAction": config.language === "en" ? "Enquire about a visit" : "Auszeit anfragen",
+      "category.planHeadline": config.language === "en" ? "Arrive slowly. Breathe deeply." : "Langsam ankommen. Tief durchatmen.",
+      "category.planText": config.language === "en" ? "A calm sequence for people who want to make space for their visit." : "Eine ruhige Abfolge für Menschen, die ihrem Besuch bewusst Raum geben möchten.",
+      "category.planStep.0": config.language === "en" ? "Choose a treatment" : "Behandlung auswählen",
+      "category.planStep.1": config.language === "en" ? "Discuss duration and preferences" : "Dauer und Wünsche klären",
+      "category.planStep.2": config.language === "en" ? "Arrange your visit" : "Auszeit vereinbaren",
+      "category.faqHeadline": config.language === "en" ? "Before you visit" : "Vor deinem Besuch",
+    },
+    services: {
+      "category.heroKicker": config.language === "en" ? "Local and reliable" : "Lokal & verlässlich",
+      "category.heroAction": config.language === "en" ? "Enquire about a service" : "Service anfragen",
+      "category.planHeadline": config.language === "en" ? "Clarity for the next step." : "Klarheit für den nächsten Schritt.",
+      "category.planText": config.language === "en" ? "A clear selection, direct enquiries and practical information in one place." : "Eine übersichtliche Auswahl, klare Anfragen und alle praktischen Informationen an einem Ort.",
+      "category.planStep.0": config.language === "en" ? "Choose a service" : "Leistung auswählen",
+      "category.planStep.1": config.language === "en" ? "Discuss details and price" : "Details und Preis klären",
+      "category.planStep.2": config.language === "en" ? "Arrange the next step" : "Nächsten Schritt vereinbaren",
+      "category.faqHeadline": config.language === "en" ? "Before you visit" : "Vor deinem Besuch",
+    },
+  } as const
+  return copy[family][id as keyof (typeof copy)[typeof family]] || ""
 }
 
 function socialEnabledValue(
