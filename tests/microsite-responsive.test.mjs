@@ -6,6 +6,8 @@ const componentUrl = new URL(
   "../components/microsite/restaurant-premium-microsite.tsx",
   import.meta.url,
 )
+const micrositeActionsUrl = new URL("../app/microsite-actions.ts", import.meta.url)
+const builderUrl = new URL("../app/microsite-panel.tsx", import.meta.url)
 
 test("keeps the microsite mobile layout requirements in place", async () => {
   const source = await readFile(componentUrl, "utf8")
@@ -33,7 +35,8 @@ test("renders admin-backed deals and stamp rewards as responsive collections", a
   assert.match(source, /getMicrositeStampDeals/)
   assert.match(source, /getMicrositeWelcomeDeals/)
   assert.match(source, /getMicrositeStampRewards/)
-  assert.match(source, /publicDeals\.map/)
+  assert.match(source, /partitionMicrositePublicDeals\(publicDeals\)/)
+  assert.match(source, /secondaryDeals\.map/)
   assert.match(source, /@min-\[900px\]:grid-cols-2/)
   assert.match(source, /stampDeals\.map/)
   assert.match(source, /stampRewards\.map/)
@@ -47,10 +50,11 @@ test("keeps secondary deal banners compact next to the top deal", async () => {
   assert.match(source, /premium-deal-secondary/)
   assert.match(
     source,
-    /wide=\{publicDeals\.length > 1 && isMicrositeTopDeal\(deal\)\}/,
+    /secondaryDeals\.length > 1 \? "@min-\[900px\]:grid-cols-2" : ""/,
   )
-  assert.match(source, /isTopDeal \?/)
-  assert.match(source, /const articleClassName = isTopDeal\s+\? `premium-topdeal/)
+  assert.match(source, /const isFeaturedDeal = primary/)
+  assert.match(source, /const articleClassName = isFeaturedDeal\s+\? `premium-topdeal/)
+  assert.match(source, /if \(!featuredDeal && !hasLoyaltyContent\) return null/)
 })
 
 test("keeps dark mode polished and uses the official social glyphs", async () => {
@@ -65,4 +69,24 @@ test("keeps dark mode polished and uses the official social glyphs", async () =>
     source,
     /return <FaTiktok aria-hidden="true" className=\{sizeClassName\} \/>/,
   )
+})
+
+test("keeps hero photos sharp and gives the final stamp a restrained emphasis", async () => {
+  const source = await readFile(componentUrl, "utf8")
+  const actionsSource = await readFile(micrositeActionsUrl, "utf8")
+
+  assert.doesNotMatch(source, /premium-hero-image-focus[\s\S]{0,500}filter: blur/)
+  assert.match(source, /scale-\[1\.04\]/)
+  assert.match(source, /shadow-\[0_14px_30px_-20px_var\(--site-accent\)\]/)
+  assert.match(actionsSource, /width: 2880/)
+  assert.match(actionsSource, /height: 2880/)
+  assert.match(actionsSource, /webp\(\{ quality: 90, effort: 5 \}\)/)
+})
+
+test("keeps the editor sidebar pinned beside a long live preview on desktop", async () => {
+  const source = await readFile(builderUrl, "utf8")
+
+  assert.match(source, /lg:items-start/)
+  assert.match(source, /lg:!sticky lg:!self-start lg:z-20/)
+  assert.match(source, /lg:top-20 lg:h-\[calc\(100dvh-5rem\)\]/)
 })

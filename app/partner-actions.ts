@@ -28,7 +28,6 @@ import {
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import {
-  DEFAULT_MENU_STATUS,
   adminTextLimits,
   MAX_PARTNER_SOCIALS,
   isPartnerSocialPlatform,
@@ -666,6 +665,7 @@ export async function savePartner(
       mediaValues,
       partnerId,
       basePayload.slug,
+      isUpdate,
     )
 
     uploadedPaths.push(...media.uploadedPaths)
@@ -715,11 +715,12 @@ export async function savePartner(
       return { ok: false, message: partnerSocialValidation }
     }
 
-    const socialSyncMessage = await replacePartnerSocials(
-      supabase,
-      partnerId,
-      partnerSocials,
-    )
+    const [socialSyncMessage, ownerWarning] = await Promise.all([
+      replacePartnerSocials(supabase, partnerId, partnerSocials),
+      portalSession.isAdmin
+        ? markOwnerAsPartner(supabase, payload.owner_id)
+        : Promise.resolve(null),
+    ])
 
     if (socialSyncMessage) {
       if (!isUpdate) {
@@ -747,9 +748,6 @@ export async function savePartner(
     }
 
     const warnings: string[] = []
-    const ownerWarning = portalSession.isAdmin
-      ? await markOwnerAsPartner(supabase, payload.owner_id)
-      : null
 
     if (ownerWarning) {
       warnings.push(ownerWarning)
@@ -3227,9 +3225,7 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     website: stringValue(formData, "website"),
     coordinates: coordinates ? JSON.stringify(coordinates) : null,
     is_active: active,
-    email:
-      nullableStringValue(formData, "email") ??
-      (isUpdate ? nullableStringValue(formData, "existing_partner_email") : null),
+    email: nullableStringValue(formData, "email"),
     updated_at: now,
     ...(isUpdate ? {} : { created_at: now }),
   }
@@ -3240,8 +3236,11 @@ async function resolvePartnerMedia(
   mediaValues: PartnerMediaFormValues,
   partnerId: string,
   slug: string,
+  isUpdate: boolean,
 ) {
   const uploadTime = Date.now()
+  const preserveExistingMedia = (url: string) =>
+    isUpdate && Boolean(url) && !mediaValues.removedMediaUrls.includes(url)
   const [logoUpload, featureUpload, discoverUpload, coverUploads, existingCoverUploads] =
     await Promise.all([
       mediaValues.logoFile
@@ -3251,7 +3250,9 @@ async function resolvePartnerMedia(
             partnerMediaSpecs.logo,
             `${partnerId}/logo-${uploadTime}-${safeFileName(mediaValues.logoFile.name)}`,
           )
-        : copyExternalPartnerImage(
+        : preserveExistingMedia(mediaValues.existingLogoUrl)
+          ? Promise.resolve(null)
+          : copyExternalPartnerImage(
             supabase,
             mediaValues.existingLogoUrl,
             partnerMediaSpecs.logo,
@@ -3265,7 +3266,9 @@ async function resolvePartnerMedia(
             partnerMediaSpecs.feature,
             `${partnerId}/feature-${uploadTime}-${safeFileName(mediaValues.featureFile.name)}`,
           )
-        : copyExternalPartnerImage(
+        : preserveExistingMedia(mediaValues.existingFeatureCardUrl)
+          ? Promise.resolve(null)
+          : copyExternalPartnerImage(
             supabase,
             mediaValues.existingFeatureCardUrl,
             partnerMediaSpecs.feature,
@@ -3279,7 +3282,9 @@ async function resolvePartnerMedia(
             partnerMediaSpecs.discover,
             `${partnerId}/discover-${uploadTime}-${safeFileName(mediaValues.discoverFile.name)}`,
           )
-        : copyExternalPartnerImage(
+        : preserveExistingMedia(mediaValues.existingDiscoverCardUrl)
+          ? Promise.resolve(null)
+          : copyExternalPartnerImage(
             supabase,
             mediaValues.existingDiscoverCardUrl,
             partnerMediaSpecs.discover,
@@ -3295,12 +3300,14 @@ async function resolvePartnerMedia(
         ),
       )),
       Promise.all(mediaValues.existingCoverUrls.map((url, index) =>
-        copyExternalPartnerImage(
-          supabase,
-          url,
-          partnerMediaSpecs.cover,
-          `${partnerId}/covers/${slug}-${uploadTime}-online-${index}`,
-        ),
+        preserveExistingMedia(url)
+          ? Promise.resolve(null)
+          : copyExternalPartnerImage(
+              supabase,
+              url,
+              partnerMediaSpecs.cover,
+              `${partnerId}/covers/${slug}-${uploadTime}-online-${index}`,
+            ),
       )),
     ])
   const uploadedPaths: UploadedStoragePath[] = [
@@ -3361,9 +3368,10 @@ async function uploadPartnerFile(
   path: string,
 ) {
   const preparedFile = await preparePartnerUploadFile(file, spec)
+  const uploadPath = `${path.replace(/\.[^./]+$/, "")}.webp`
   const { data, error } = await supabase.storage
     .from(PARTNER_MEDIA_BUCKET)
-    .upload(path, preparedFile, {
+    .upload(uploadPath, preparedFile, {
       cacheControl: "31536000",
       contentType:
         partnerMediaContentType(preparedFile) ?? "application/octet-stream",
@@ -3427,10 +3435,6 @@ async function preparePartnerUploadFile(
   }
 
   const input = Buffer.from(await file.arrayBuffer())
-  const outputFormat = contentType === "image/jpeg" ? "jpeg" : "png"
-  const outputExtension = outputFormat === "jpeg" ? "jpg" : "png"
-  const outputType = outputFormat === "jpeg" ? "image/jpeg" : "image/png"
-
   try {
     const resized = await sharp(input)
       .rotate()
@@ -3438,14 +3442,14 @@ async function preparePartnerUploadFile(
         fit: "cover",
         position: "center",
       })
-      .toFormat(outputFormat, outputFormat === "jpeg" ? { quality: 92 } : {})
+      .webp({ quality: 82, effort: 4 })
       .toBuffer()
 
     return new File(
       [new Uint8Array(resized)],
-      replaceFileExtension(file.name, `${spec.width}x${spec.height}.${outputExtension}`),
+      replaceFileExtension(file.name, `${spec.width}x${spec.height}.webp`),
       {
-        type: outputType,
+        type: "image/webp",
         lastModified: Date.now(),
       },
     )
@@ -5489,22 +5493,39 @@ function parseWeeklyOpeningHourRows(
   formData: FormData,
   partnerId: string,
 ): ParsedOpeningHour[] {
-  return openingWeekdays.map((weekday) => {
+  return openingWeekdays.flatMap((weekday): ParsedOpeningHour[] => {
     const isClosed = checkboxValue(formData, `is_closed_${weekday}`)
+    const label = nullableStringValue(formData, `label_${weekday}`)
 
-    return {
-      partner_id: partnerId,
-      weekday,
-      opens_at: isClosed
-        ? null
-        : nullableStringValue(formData, `opens_at_${weekday}`),
-      closes_at: isClosed
-        ? null
-        : nullableStringValue(formData, `closes_at_${weekday}`),
-      label: nullableStringValue(formData, `label_${weekday}`),
-      is_closed: isClosed,
-      sort_order: weekday,
+    if (isClosed) {
+      return [{
+        partner_id: partnerId,
+        weekday,
+        opens_at: null,
+        closes_at: null,
+        label,
+        is_closed: true,
+        sort_order: weekday * 10,
+      }]
     }
+
+    const slotCount = Math.min(
+      3,
+      Math.max(1, integerValue(formData, `slot_count_${weekday}`) ?? 1),
+    )
+
+    return Array.from({ length: slotCount }, (_, index) => {
+      const suffix = index === 0 ? "" : `_${index}`
+      return {
+        partner_id: partnerId,
+        weekday,
+        opens_at: nullableStringValue(formData, `opens_at_${weekday}${suffix}`),
+        closes_at: nullableStringValue(formData, `closes_at_${weekday}${suffix}`),
+        label,
+        is_closed: false,
+        sort_order: weekday * 10 + index,
+      }
+    })
   })
 }
 
@@ -5524,6 +5545,33 @@ function validateOpeningHourRows(rows: ParsedOpeningHour[]) {
 
     if (labelValidation) {
       return labelValidation
+    }
+
+    if (
+      !row.is_closed &&
+      row.opens_at &&
+      row.closes_at &&
+      row.closes_at <= row.opens_at
+    ) {
+      return `${weekdayName(row.weekday)} closing time must be after its opening time.`
+    }
+  }
+
+  for (const weekday of openingWeekdays) {
+    const ranges = rows
+      .filter(
+        (row) =>
+          row.weekday === weekday &&
+          !row.is_closed &&
+          row.opens_at &&
+          row.closes_at,
+      )
+      .sort((first, second) => first.opens_at!.localeCompare(second.opens_at!))
+
+    for (let index = 1; index < ranges.length; index += 1) {
+      if (ranges[index].opens_at! < ranges[index - 1].closes_at!) {
+        return `${weekdayName(weekday)} time ranges must not overlap.`
+      }
     }
   }
 
@@ -5684,7 +5732,7 @@ function parseMenuPayload(
     partner_id: partnerId,
     name: stringValue(formData, `${prefix}name`) || "Speisekarte",
     description: nullableStringValue(formData, `${prefix}description`),
-    status: stringValue(formData, `${prefix}status`) || DEFAULT_MENU_STATUS,
+    status: "published",
   }
 }
 
@@ -5695,10 +5743,6 @@ function validateMenuPayload(payload: ParsedMenu) {
 
   if (!payload.name) {
     return "Menu name is required."
-  }
-
-  if (!["draft", "published", "archived"].includes(payload.status)) {
-    return "Choose a valid menu status."
   }
 
   const textValidation = validateTextLengthRules([

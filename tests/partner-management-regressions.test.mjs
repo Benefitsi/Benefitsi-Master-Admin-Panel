@@ -229,6 +229,17 @@ test("partner settings embed hours and combine stamps with deals", async () => {
   assert.match(code, /<DealsPanel partner=\{partner\} embedded \/>/)
   assert.match(code, /<MilestonesPanel partner=\{partner\} embedded \/>/)
   assert.doesNotMatch(code, /\{ id: "rewards", label: "Operating Hours"/)
+  assert.match(code, /title="Operating hours" required="subtle" defaultOpen=\{false\}/)
+  assert.match(code, /slot_count_\$\{day\.value\}/)
+  assert.match(code, /Add another time range/)
+})
+
+test("partner contact email stays separate from owner selection and review hides unsupported menus", async () => {
+  const code = await readFile(adminUrl, "utf8")
+
+  assert.match(code, /label="Partner email"[\s\S]*?name="email"/)
+  assert.match(code, /This is separate from the partner owner account/)
+  assert.match(code, /snapshot\.menuSupported \? \(/)
 })
 
 test("partner deletion reauthenticates and partner PIN can be rotated", async () => {

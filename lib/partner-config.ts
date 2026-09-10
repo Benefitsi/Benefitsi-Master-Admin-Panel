@@ -15,10 +15,10 @@ export const partnerMediaSpecs = {
     label: "Logo",
     width: 380,
     height: 380,
-    previewAspectWidth: 1170,
-    previewAspectHeight: 1200,
+    previewAspectWidth: 1,
+    previewAspectHeight: 1,
     previewMaxWidth: 260,
-    previewFit: "contain",
+    previewFit: "cover",
   },
   feature: {
     label: "Feature",

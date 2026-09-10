@@ -33,7 +33,6 @@ import type {
   Visit,
 } from "@/lib/admin-data"
 import {
-  DEFAULT_MENU_STATUS,
   adminTextLimits,
   MAX_PARTNER_SOCIALS,
   partnerMediaSpecs,
@@ -154,7 +153,7 @@ function ToastViewport() {
       const detail = (event as CustomEvent<Omit<ActionToast, "id">>).detail
       window.clearTimeout(timeoutId)
       setToast({ ...detail, id: Date.now() })
-      timeoutId = window.setTimeout(() => setToast(null), 3600)
+      timeoutId = window.setTimeout(() => setToast(null), 2800)
     }
 
     window.addEventListener(toastEventName, showToast)
@@ -170,21 +169,36 @@ function ToastViewport() {
     <div
       key={toast.id}
       role={toast.ok ? "status" : "alert"}
-      className={`fixed right-4 top-4 z-[100] flex max-w-sm items-start gap-3 rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl animate-in fade-in slide-in-from-top-2 ${
+      className={`pointer-events-none fixed right-3 bottom-3 z-[100] flex max-w-[min(20rem,calc(100vw-1.5rem))] items-start gap-2 rounded-lg border px-3 py-2 text-xs font-semibold shadow-[0_12px_28px_rgba(15,23,42,.14)] animate-in fade-in slide-in-from-bottom-2 sm:right-4 sm:bottom-4 ${
         toast.ok
-          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-          : "border-rose-200 bg-rose-50 text-rose-800"
+          ? "border-emerald-200/90 bg-emerald-50/95 text-emerald-900"
+          : "border-rose-200/90 bg-rose-50/95 text-rose-800"
       }`}
     >
-      <span aria-hidden="true" className="text-base leading-5">
-        {toast.ok ? "✓" : "!"}
+      <span
+        aria-hidden="true"
+        className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border ${
+          toast.ok
+            ? "border-emerald-300 bg-emerald-100 text-emerald-700"
+            : "border-rose-300 bg-rose-100 text-rose-700"
+        }`}
+      >
+        {toast.ok ? (
+          <svg viewBox="0 0 16 16" className="size-2.5" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <path d="m3.25 8.25 3 3 6.5-6.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 16 16" className="size-2.5" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <path d="M8 4.25v4.5M8 11.5h.01" strokeLinecap="round" />
+          </svg>
+        )}
       </span>
-      <span className="leading-5">{toast.message}</span>
+      <span className="min-w-0 flex-1 leading-4">{toast.message}</span>
       <button
         type="button"
         onClick={() => setToast(null)}
         aria-label="Dismiss notification"
-        className="ml-2 text-lg leading-5 opacity-60 transition hover:opacity-100"
+        className="pointer-events-auto grid size-5 shrink-0 place-items-center rounded text-sm leading-none opacity-55 transition hover:bg-black/5 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-current"
       >
         ×
       </button>
@@ -262,12 +276,6 @@ const inactivityUnitOptions = [
   { value: "days", label: "Tage" },
   { value: "weeks", label: "Wochen" },
   { value: "months", label: "Monate" },
-] as const
-
-const menuStatusOptions = [
-  { value: "published", label: "Published" },
-  { value: "draft", label: "Draft" },
-  { value: "archived", label: "Archived" },
 ] as const
 
 const menuCurrencyOptions = [{ value: "EUR", label: "EUR (€)" }] as const
@@ -427,6 +435,7 @@ type CreatePartnerReviewSnapshot = {
   milestoneCount: number
   dealCount: number
   menuStatus: "Set" | "Incomplete" | "Not set"
+  menuSupported: boolean
   logoSet: boolean
   featureCardSet: boolean
   discoveryImageSet: boolean
@@ -596,7 +605,7 @@ export function PartnerWorkspace({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]">
-        <aside className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+        <aside className="self-start overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]">
           <div className="border-b border-zinc-200 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -659,7 +668,7 @@ export function PartnerWorkspace({
             ) : null}
           </div>
 
-          <div className="max-h-[calc(100vh-220px)] space-y-1.5 overflow-y-auto p-2">
+          <div className="max-h-[calc(100vh-220px)] space-y-1.5 overflow-y-auto p-2 xl:max-h-[calc(100vh-12rem)]">
             {filteredPartners.length ? (
               filteredPartners.map((partner) => (
                 <PartnerListButton
@@ -1784,7 +1793,8 @@ function PartnerForm({
   partners?: PartnerWithDeals[]
   portalMode?: boolean
 }) {
-  const [state, formAction] = useActionState(savePartner, initialState)
+  const [state, setState] = useState(initialState)
+  const [isSaving, setIsSaving] = useState(false)
   const [descriptionState, setDescriptionState] = useState(initialState)
   const [isGeneratingDescription, startGeneratingDescription] = useTransition()
   const router = useRouter()
@@ -1818,13 +1828,13 @@ function PartnerForm({
   const [createTab, setCreateTab] = useState<CreatePartnerTab>("profile")
   const [reviewSnapshot, setReviewSnapshot] =
     useState<CreatePartnerReviewSnapshot | null>(null)
-  const [confirmingSave, setConfirmingSave] = useState(false)
   const [selectedOwnerId, setSelectedOwnerId] = useState(partner?.owner_id ?? "")
   const [validationMessage, setValidationMessage] = useState("")
+  const [dismissedActionState, setDismissedActionState] =
+    useState<PartnerActionState | null>(null)
   const [formVersion, setFormVersion] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
-  const confirmedSubmitRef = useRef(false)
-  const pendingSubmitterRef = useRef<HTMLButtonElement | null>(null)
+  const mountedRef = useRef(true)
   const partnerTypeDefault = normalizePartnerTypeValue(partner?.type)
   const [selectedPartnerType, setSelectedPartnerType] =
     useState(partnerTypeDefault)
@@ -1875,6 +1885,45 @@ function PartnerForm({
   ]
   const activeCreateTabCopy = createPartnerTabCopy[createTab]
   const requiredSectionMarker: boolean | "subtle" = "subtle"
+
+  useEffect(() => () => {
+    mountedRef.current = false
+  }, [])
+
+  const submitPartnerInBackground = useCallback((formData: FormData) => {
+    if (isSaving) return
+
+    setState(initialState)
+    setIsSaving(true)
+    dispatchActionToast({
+      ok: true,
+      message: mode === "create"
+        ? "Partner creation started in the background."
+        : "Partner save started in the background.",
+    })
+
+    void savePartner(initialState, formData).then(
+      (result) => {
+        dispatchActionToast(result)
+        if (result.ok) router.refresh()
+        if (!mountedRef.current) return
+        setState(result)
+        setIsSaving(false)
+      },
+      () => {
+        const result = {
+          ok: false,
+          message: mode === "create"
+            ? "Unable to create the partner."
+            : "Unable to save the partner.",
+        } satisfies PartnerActionState
+        dispatchActionToast(result)
+        if (!mountedRef.current) return
+        setState(result)
+        setIsSaving(false)
+      },
+    )
+  }, [isSaving, mode, router])
   const handlePartnerTypeChange = (nextType: string) => {
     setSelectedPartnerType(nextType)
     setSelectedCategories((current) =>
@@ -1921,16 +1970,6 @@ function PartnerForm({
   }
 
   useEffect(() => {
-    if (state.ok) {
-      formRef.current
-        ?.querySelectorAll<HTMLDetailsElement>("details[open]")
-        .forEach((details) => {
-          details.open = false
-        })
-
-      router.refresh()
-    }
-
     if (!(mode === "create" && state.ok && state.created)) {
       return
     }
@@ -2003,17 +2042,13 @@ function PartnerForm({
       id={formId}
       key={formVersion}
       ref={formRef}
-      action={formAction}
       className="space-y-3"
       noValidate
       onInput={() => {
         if (validationMessage) setValidationMessage("")
+        if (!state.ok && state.message) setDismissedActionState(state)
       }}
       onSubmit={(event) => {
-        const submitter = (event.nativeEvent as SubmitEvent).submitter
-        pendingSubmitterRef.current =
-          submitter instanceof HTMLButtonElement ? submitter : null
-
         const form = event.currentTarget
         const invalidField = Array.from(form.elements).find(
           (element): element is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement =>
@@ -2026,7 +2061,6 @@ function PartnerForm({
 
         if (invalidField) {
           event.preventDefault()
-          pendingSubmitterRef.current = null
           const invalidTab = invalidField
             .closest<HTMLElement>("[data-create-tab]")
             ?.dataset.createTab as CreatePartnerTab | undefined
@@ -2072,7 +2106,6 @@ function PartnerForm({
 
           if (hasExistingOwner === hasNewOwnerEmail) {
             event.preventDefault()
-            pendingSubmitterRef.current = null
             setCreateTab("profile")
             setValidationMessage(
               "Choose an existing partner owner or enter a new owner email, but not both.",
@@ -2083,7 +2116,6 @@ function PartnerForm({
 
         if (mode === "create" && new FormData(form).getAll("category").length === 0) {
           event.preventDefault()
-          pendingSubmitterRef.current = null
           setCreateTab("profile")
           setValidationMessage(
             "Please select at least one category in Business Profile before creating the partner.",
@@ -2096,18 +2128,8 @@ function PartnerForm({
           return
         }
 
-        if (mode !== "edit") {
-          return
-        }
-
-        if (confirmedSubmitRef.current) {
-          confirmedSubmitRef.current = false
-          pendingSubmitterRef.current = null
-          return
-        }
-
         event.preventDefault()
-        setConfirmingSave(true)
+        submitPartnerInBackground(new FormData(form))
       }}
     >
       <input type="hidden" name="id" value={partner?.id ?? ""} />
@@ -2116,11 +2138,6 @@ function PartnerForm({
     type="hidden"
     name="existing_subdomain"
     value={partner?.subdomain ?? ""}
-  />
-  <input
-    type="hidden"
-    name="existing_partner_email"
-    value={partner?.email ?? ""}
   />
   <input type="hidden" name="existing_pin" value={partner?.pin ?? ""} />
       <input type="hidden" name="existing_loves" value={partner?.loves ?? 0} />
@@ -2206,7 +2223,7 @@ function PartnerForm({
           {validationMessage}
         </div>
       ) : null}
-      <ActionMessage state={state} />
+      {dismissedActionState !== state ? <ActionMessage state={state} toast={false} /> : null}
 
       <div
         data-create-tab="profile"
@@ -2308,6 +2325,14 @@ function PartnerForm({
             defaultValue={partner?.city_id ?? templateSource?.city_id}
             options={cityOptions.length ? cityOptions : emptyCityOptions}
             required
+          />
+          <TextField
+            label="Partner email"
+            name="email"
+            type="email"
+            defaultValue={partner?.email ?? templateSource?.email}
+            hint="The shop's public contact email. This is separate from the partner owner account."
+            showCharacterCount={false}
           />
           {!portalMode ? (
             <>
@@ -2752,6 +2777,7 @@ function PartnerForm({
       {mode === "create" ? (
         <div className="flex flex-col gap-2 sm:flex-row">
           <SubmitButton
+            pendingOverride={isSaving}
             label="Add partner"
             pendingLabel="Adding partner..."
           />
@@ -2760,22 +2786,15 @@ function PartnerForm({
       </div>
       {mode === "edit" ? (
         <div className="flex justify-end border-t border-zinc-200 pt-3">
-          <SubmitButton label="Save partner" pendingLabel="Saving partner..." size="compact" />
+          <SubmitButton
+            pendingOverride={isSaving}
+            label="Save partner"
+            pendingLabel="Saving partner..."
+            size="compact"
+          />
         </div>
       ) : null}
       </div>
-      <ConfirmDialog
-        open={confirmingSave}
-        title="Save partner changes?"
-        description={`This will update ${partner?.name || "this partner"} with the current form values.`}
-        confirmLabel="Save changes"
-        onCancel={() => setConfirmingSave(false)}
-        onConfirm={() => {
-          confirmedSubmitRef.current = true
-          setConfirmingSave(false)
-          formRef.current?.requestSubmit(pendingSubmitterRef.current ?? undefined)
-        }}
-      />
     </form>
   )
 }
@@ -2852,6 +2871,7 @@ function createPartnerReviewSnapshot(
     milestoneCount: staged.milestoneCount,
     dealCount: staged.dealCount,
     menuStatus,
+    menuSupported: partnerTypeSupportsMenu(value("type")),
     logoSet: mediaIsSet("existing_logo_url", "logo_file"),
     featureCardSet: mediaIsSet("existing_feature_card_url", "feature_card_file"),
     discoveryImageSet: mediaIsSet(
@@ -2965,7 +2985,9 @@ function CreatePartnerReview({
             <ReviewStatus label="Social profiles" value={snapshot.socialCount ? `${snapshot.socialCount} set` : "Not set"} ready={snapshot.socialCount > 0} optional />
             <ReviewStatus label="Rewards" value={snapshot.milestoneCount ? `${snapshot.milestoneCount} milestone${snapshot.milestoneCount === 1 ? "" : "s"}` : "Not set"} ready={snapshot.milestoneCount > 0} optional />
             <ReviewStatus label="Deals" value={snapshot.dealCount ? `${snapshot.dealCount} deal${snapshot.dealCount === 1 ? "" : "s"}` : "Not set"} ready={snapshot.dealCount > 0} optional />
-            <ReviewStatus label="Menu" value={snapshot.menuStatus} ready={snapshot.menuStatus === "Set"} optional={snapshot.menuStatus === "Not set"} />
+            {snapshot.menuSupported ? (
+              <ReviewStatus label="Menu" value={snapshot.menuStatus} ready={snapshot.menuStatus === "Set"} optional={snapshot.menuStatus === "Not set"} />
+            ) : null}
           </div>
           <div
             className={`mt-5 rounded-lg border px-3 py-3 text-sm font-medium ${
@@ -3536,13 +3558,6 @@ function InitialMenuEditor({
               onChange={onNameChange}
               required
             />
-            <SelectField
-              label="Menu status"
-              name="initial_menu_status"
-              defaultValue={DEFAULT_MENU_STATUS}
-              options={menuStatusOptions}
-              required
-            />
           </FieldGrid>
           <TextAreaField
             label="Menu description"
@@ -3556,7 +3571,7 @@ function InitialMenuEditor({
               Import menu <span className="font-normal text-zinc-500">(optional)</span>
             </label>
             <p className="text-xs leading-5 text-zinc-500">
-              Select one or more menu JSON files and an optional assets manifest together. CSV remains supported. The menu name and status above remain required.
+              Select one or more menu JSON files and an optional assets manifest together. CSV remains supported. The menu name above is required; menus are always published.
             </p>
             <input
               id="initial-menu-import"
@@ -7017,7 +7032,7 @@ function MilestoneForm({
           />
         </FieldGrid>
       </FormSection>
-      <ActionMessage state={state} />
+      <ActionMessage state={state} toast={false} />
       <SubmitButton
         label={mode === "create" ? "Add milestone" : "Save milestone"}
         pendingLabel={
@@ -7251,9 +7266,13 @@ function OpeningHoursPanel({
   withinPartnerForm?: boolean
 }) {
   const partnerId = partner.id ?? ""
-  const hoursByWeekday = new Map(
-    partner.opening_hours.map((hour) => [hour.weekday, hour] as const),
-  )
+  const hoursByWeekday = new Map<number | null, PartnerOpeningHour[]>()
+  for (const hour of partner.opening_hours) {
+    hoursByWeekday.set(hour.weekday, [
+      ...(hoursByWeekday.get(hour.weekday) ?? []),
+      hour,
+    ])
+  }
 
   const content = (
     <div className="space-y-4">
@@ -7273,7 +7292,7 @@ function OpeningHoursPanel({
 
   if (embedded) {
     return (
-      <FormSection title="Operating hours" required="subtle">
+      <FormSection title="Operating hours" required="subtle" defaultOpen={false}>
         {content}
       </FormSection>
     )
@@ -7299,7 +7318,7 @@ function WeeklyOpeningHoursForm({
 }: {
   embedded?: boolean
   holidays: PartnerHoliday[]
-  hoursByWeekday: Map<number | null, PartnerOpeningHour>
+  hoursByWeekday: Map<number | null, PartnerOpeningHour[]>
   partnerId: string
 }) {
   const [state, formAction] = useActionState(
@@ -7383,7 +7402,7 @@ function WeeklyHoursFields({
 }: {
   embedded?: boolean
   holidays?: PartnerHoliday[]
-  hoursByWeekday?: Map<number | null, PartnerOpeningHour>
+  hoursByWeekday?: Map<number | null, PartnerOpeningHour[]>
 }) {
   const fieldName = (name: string) => (embedded ? undefined : name)
   const fieldDataName = (name: string) =>
@@ -7409,20 +7428,27 @@ function WeeklyHoursFields({
   const [weeklyHours, setWeeklyHours] = useState(() =>
     Object.fromEntries(
       openingWeekdayOptions.map((day) => {
-        const hour = hoursByWeekday.get(Number(day.value))
-        const isClosed = hour?.is_closed ?? false
+        const existingHours = [...(hoursByWeekday.get(Number(day.value)) ?? [])].sort(
+          (first, second) => (first.sort_order ?? 0) - (second.sort_order ?? 0),
+        )
+        const isClosed = existingHours.some((hour) => hour.is_closed)
+        const openRanges = existingHours.filter(
+          (hour) => !hour.is_closed && hour.opens_at && hour.closes_at,
+        )
 
         return [
           day.value,
           {
-            closesAt: isClosed
-              ? ""
-              : formatTimeInput(hour?.closes_at) || "18:00",
             isClosed,
-            label: hour?.label ?? "",
-            opensAt: isClosed
-              ? ""
-              : formatTimeInput(hour?.opens_at) || "09:00",
+            label: existingHours[0]?.label ?? "",
+            ranges: isClosed
+              ? [{ opensAt: "09:00", closesAt: "18:00" }]
+              : openRanges.length
+                ? openRanges.map((hour) => ({
+                    opensAt: formatTimeInput(hour.opens_at),
+                    closesAt: formatTimeInput(hour.closes_at),
+                  }))
+                : [{ opensAt: "09:00", closesAt: "18:00" }],
           },
         ]
       }),
@@ -7440,6 +7466,21 @@ function WeeklyHoursFields({
       },
     }))
   }
+  const updateWeeklyRange = (
+    weekday: string,
+    rangeIndex: number,
+    update: Partial<{ opensAt: string; closesAt: string }>,
+  ) => {
+    setWeeklyHours((current) => ({
+      ...current,
+      [weekday]: {
+        ...current[weekday],
+        ranges: current[weekday].ranges.map((range, index) =>
+          index === rangeIndex ? { ...range, ...update } : range,
+        ),
+      },
+    }))
+  }
   const applyBulkTime = () => {
     setWeeklyHours((current) =>
       Object.fromEntries(
@@ -7449,8 +7490,7 @@ function WeeklyHoursFields({
             ? hour
             : {
                 ...hour,
-                closesAt: bulkCloseTime,
-                opensAt: bulkOpenTime,
+                ranges: [{ closesAt: bulkCloseTime, opensAt: bulkOpenTime }],
               },
         ]),
       ),
@@ -7642,21 +7682,15 @@ function WeeklyHoursFields({
         ) : null}
         </div>
       </section>
-      <div className="order-2 overflow-x-auto rounded-md border border-zinc-200 bg-white">
-        <div className="min-w-[34rem] divide-y divide-zinc-100">
-          <div className="grid grid-cols-[8rem_7rem_1fr_1fr] items-center gap-3 bg-zinc-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
-            <span>Day</span>
-            <span>Status</span>
-            <span>Opens</span>
-            <span>Closes</span>
-          </div>
+      <div className="order-2 overflow-hidden rounded-md border border-zinc-200 bg-white">
+        <div className="divide-y divide-zinc-100">
           {openingWeekdayOptions.map((day) => {
             const hour = weeklyHours[day.value]
 
             return (
               <div
                 key={day.value}
-                className="grid grid-cols-[8rem_7rem_1fr_1fr] items-center gap-3 px-3 py-3 text-sm"
+                className="grid gap-3 px-3 py-3 text-sm md:grid-cols-[8rem_7rem_1fr] md:items-start"
               >
                 <p className="font-semibold text-zinc-900">{day.label}</p>
                 <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
@@ -7665,45 +7699,81 @@ function WeeklyHoursFields({
                     name={fieldName(`is_closed_${day.value}`)}
                     {...fieldDataName(`is_closed_${day.value}`)}
                     checked={hour.isClosed}
-                    onChange={(event) => {
-                      const isClosed = event.target.checked
-
-                      updateWeeklyHour(day.value, {
-                        closesAt: isClosed ? "" : hour.closesAt,
-                        isClosed,
-                        opensAt: isClosed ? "" : hour.opensAt,
-                      })
-                    }}
+                    onChange={(event) =>
+                      updateWeeklyHour(day.value, { isClosed: event.target.checked })
+                    }
                     className="size-4 rounded border-zinc-300 accent-teal-700"
                   />
                   Closed
                 </label>
-                <input
-                  aria-label={`${day.label} opening time`}
-                  name={fieldName(`opens_at_${day.value}`)}
-                  {...fieldDataName(`opens_at_${day.value}`)}
-                  type="time"
-                  required={!hour.isClosed}
-                  value={hour.isClosed ? "" : hour.opensAt}
-                  disabled={hour.isClosed}
-                  onChange={(event) =>
-                    updateWeeklyHour(day.value, { opensAt: event.target.value })
-                  }
-                  className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-                />
-                <input
-                  aria-label={`${day.label} closing time`}
-                  name={fieldName(`closes_at_${day.value}`)}
-                  {...fieldDataName(`closes_at_${day.value}`)}
-                  type="time"
-                  required={!hour.isClosed}
-                  value={hour.isClosed ? "" : hour.closesAt}
-                  disabled={hour.isClosed}
-                  onChange={(event) =>
-                    updateWeeklyHour(day.value, { closesAt: event.target.value })
-                  }
-                  className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-                />
+                <div className="space-y-2">
+                  <input
+                    type="hidden"
+                    name={fieldName(`slot_count_${day.value}`)}
+                    value={hour.ranges.length}
+                    {...fieldDataName(`slot_count_${day.value}`)}
+                  />
+                  {hour.ranges.map((range, rangeIndex) => {
+                    const suffix = rangeIndex === 0 ? "" : `_${rangeIndex}`
+                    return (
+                      <div key={`${day.value}-${rangeIndex}`} className="flex flex-wrap items-center gap-2">
+                        <input
+                          aria-label={`${day.label} opening time ${rangeIndex + 1}`}
+                          name={fieldName(`opens_at_${day.value}${suffix}`)}
+                          {...fieldDataName(`opens_at_${day.value}${suffix}`)}
+                          type="time"
+                          required={!hour.isClosed}
+                          value={hour.isClosed ? "" : range.opensAt}
+                          disabled={hour.isClosed}
+                          onChange={(event) =>
+                            updateWeeklyRange(day.value, rangeIndex, { opensAt: event.target.value })
+                          }
+                          className="h-10 min-w-32 flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                        />
+                        <span className="text-xs font-medium text-zinc-400">to</span>
+                        <input
+                          aria-label={`${day.label} closing time ${rangeIndex + 1}`}
+                          name={fieldName(`closes_at_${day.value}${suffix}`)}
+                          {...fieldDataName(`closes_at_${day.value}${suffix}`)}
+                          type="time"
+                          required={!hour.isClosed}
+                          value={hour.isClosed ? "" : range.closesAt}
+                          disabled={hour.isClosed}
+                          onChange={(event) =>
+                            updateWeeklyRange(day.value, rangeIndex, { closesAt: event.target.value })
+                          }
+                          className="h-10 min-w-32 flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                        />
+                        {rangeIndex > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateWeeklyHour(day.value, {
+                                ranges: hour.ranges.filter((_, index) => index !== rangeIndex),
+                              })
+                            }
+                            className="h-9 rounded-md border border-zinc-300 px-2.5 text-xs font-semibold text-zinc-600 hover:border-rose-300 hover:text-rose-700"
+                          >
+                            Remove
+                          </button>
+                        ) : null}
+                      </div>
+                    )
+                  })}
+                  {!hour.isClosed && hour.ranges.length < 3 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateWeeklyHour(day.value, {
+                          ranges: [...hour.ranges, { opensAt: "", closesAt: "" }],
+                        })
+                      }
+                      className="text-xs font-semibold text-teal-700 hover:text-teal-900"
+                    >
+                      + Add another time range
+                    </button>
+                  ) : null}
+                </div>
                 <input
                   type="hidden"
                   name={fieldName(`label_${day.value}`)}
@@ -8256,7 +8326,7 @@ function MenuCard({
       <section className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4">
         <div>
           <h3 className="text-base font-semibold text-zinc-950">Menu details</h3>
-          <p className="mt-1 text-sm text-zinc-600">Update the menu name, description, or status here.</p>
+          <p className="mt-1 text-sm text-zinc-600">Update the menu name or description. Menus are always published.</p>
         </div>
         <div className="mt-4">
           <MenuForm menu={menu} partnerId={partnerId} />
@@ -8462,49 +8532,31 @@ function MenuForm({
   onSaved?: () => void
   partnerId: string
 }) {
-  const normalizedMenuStatus =
-    menu?.status === "review" ? DEFAULT_MENU_STATUS : menu?.status ?? DEFAULT_MENU_STATUS
-  const [status, setStatus] = useState(normalizedMenuStatus)
   const initialMenuValues = {
     name: (menu?.name ?? "Speisekarte").trim(),
     description: (menu?.description ?? "").trim(),
-    status: normalizedMenuStatus,
   }
   const savedMenuValuesRef = useRef(initialMenuValues)
   const submittedMenuValuesRef = useRef(initialMenuValues)
+  const mountedRef = useRef(true)
+  const [state, setState] = useState(initialState)
+  const [isSaving, setIsSaving] = useState(false)
   const [hasMenuChanges, setHasMenuChanges] = useState(false)
+  const router = useRouter()
   const nextMenuFileInputId = useRef(1)
   const selectedMenuFilesRef = useRef<File[]>([])
   const [menuFileSelections, setMenuFileSelections] = useState<
     Array<{ id: number; files: File[] }>
   >([{ id: 0, files: [] }])
-  const saveMenuWithSelectedFiles = useCallback(
-    async (previousState: PartnerActionState, formData: FormData) => {
-      formData.delete("menu_file")
-      selectedMenuFilesRef.current.forEach((file) =>
-        formData.append("menu_file", file),
-      )
-      formData.set(
-        "expected_menu_file_count",
-        String(selectedMenuFilesRef.current.length),
-      )
-      return saveMenu(previousState, formData)
-    },
-    [],
-  )
-  const [state, formAction] = useActionState(
-    saveMenuWithSelectedFiles,
-    initialState,
-  )
-  const formRef = useActionSuccess(state, () => {
-    savedMenuValuesRef.current = submittedMenuValuesRef.current
-    setHasMenuChanges(false)
-    onSaved?.()
-  })
+  const formRef = useRef<HTMLFormElement>(null)
   const selectedMenuFiles = menuFileSelections.flatMap(
     (selection) => selection.files,
   )
   const activeMenuFileInput = menuFileSelections.at(-1)
+
+  useEffect(() => () => {
+    mountedRef.current = false
+  }, [])
 
   function retainNewMenuFileSelection(
     inputId: number,
@@ -8539,7 +8591,6 @@ function MenuForm({
     return {
       name: String(values.get("name") ?? "").trim(),
       description: String(values.get("description") ?? "").trim(),
-      status: String(values.get("status") ?? ""),
     }
   }
 
@@ -8548,19 +8599,59 @@ function MenuForm({
     const saved = savedMenuValuesRef.current
     setHasMenuChanges(
       current.name !== saved.name ||
-      current.description !== saved.description ||
-      current.status !== saved.status,
+      current.description !== saved.description,
     )
   }
 
   return (
     <form
       ref={formRef}
-      action={formAction}
       className="space-y-4"
       onChange={(event) => updateMenuDirtyState(event.currentTarget)}
-      onSubmitCapture={(event) => {
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (isSaving) return
+
+        const formData = new FormData(event.currentTarget)
+        formData.delete("menu_file")
+        selectedMenuFilesRef.current.forEach((file) => formData.append("menu_file", file))
         submittedMenuValuesRef.current = currentMenuValues(event.currentTarget)
+        formData.set("expected_menu_file_count", String(selectedMenuFilesRef.current.length))
+        setState(initialState)
+        setIsSaving(true)
+        dispatchActionToast({
+          ok: true,
+          message: menu
+            ? "Menu save started in the background."
+            : "Menu creation started in the background.",
+        })
+
+        void saveMenu(initialState, formData).then(
+          (result) => {
+            dispatchActionToast(result)
+            if (result.ok) {
+              savedMenuValuesRef.current = submittedMenuValuesRef.current
+              router.refresh()
+            }
+            if (!mountedRef.current) return
+            setState(result)
+            setIsSaving(false)
+            if (result.ok) {
+              setHasMenuChanges(false)
+              onSaved?.()
+            }
+          },
+          () => {
+            const result = {
+              ok: false,
+              message: "Unable to save the menu.",
+            } satisfies PartnerActionState
+            dispatchActionToast(result)
+            if (!mountedRef.current) return
+            setState(result)
+            setIsSaving(false)
+          },
+        )
       }}
     >
       <input type="hidden" name="id" value={menu?.id ?? ""} />
@@ -8579,14 +8670,6 @@ function MenuForm({
           defaultValue={menu?.name ?? "Speisekarte"}
           required
         />
-        <SelectField
-          label="Status"
-          name="status"
-          value={status}
-          onChange={setStatus}
-          options={menuStatusOptions}
-          required
-        />
       </FieldGrid>
       <TextAreaField
         label="Description"
@@ -8599,7 +8682,7 @@ function MenuForm({
             Import menu <span className="font-normal text-zinc-500">(optional)</span>
           </label>
           <p className="text-xs leading-5 text-zinc-500">
-            Select a ZIP or one or more menu JSON files with an optional assets manifest, or CSV. Name and status are still required.
+            Select a ZIP or one or more menu JSON files with an optional assets manifest, or CSV. The menu name is required; menus are always published.
           </p>
           {menuFileSelections.map((selection, index) => {
             const isActiveInput = index === menuFileSelections.length - 1
@@ -8656,8 +8739,9 @@ function MenuForm({
         </div>
       ) : null}
       <ImportPreview preview={state.importPreview} />
-      <ActionMessage state={state} />
+      <ActionMessage state={state} toast={false} />
       <SubmitButton
+        pendingOverride={isSaving}
         disabled={Boolean(menu && !hasMenuChanges)}
         label={state.importPreview?.ready ? "Confirm ZIP import" : menu ? "Save menu" : "Add menu"}
         pendingLabel={state.importPreview?.ready ? "Importing ZIP..." : menu ? "Saving menu..." : "Adding menu..."}
@@ -11291,7 +11375,7 @@ function MediaUploadField({
       {selectedPreview ? (
         <div className="grid gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2 sm:grid-cols-3">
           {[
-            { label: "Zoom", value: cropZoom, min: 1, max: 3, step: 0.05, key: "zoom" },
+            { label: "Zoom", value: cropZoom, min: 0.5, max: 3, step: 0.05, key: "zoom" },
             { label: "Horizontal crop", value: cropX, min: -100, max: 100, step: 1, key: "x" },
             { label: "Vertical crop", value: cropY, min: -100, max: 100, step: 1, key: "y" },
           ].map((control) => (
@@ -11975,10 +12059,6 @@ async function resizeImageFile(file: File, spec: PartnerMediaSpec, crop: ImageCr
     throw new Error(`Unable to read the dimensions for "${file.name}".`)
   }
 
-  if (sourceWidth === spec.width && sourceHeight === spec.height && crop.zoom === 1 && crop.x === 0 && crop.y === 0) {
-    return file
-  }
-
   const canvas = document.createElement("canvas")
   const context = canvas.getContext("2d")
 
@@ -11988,6 +12068,8 @@ async function resizeImageFile(file: File, spec: PartnerMediaSpec, crop: ImageCr
 
   canvas.width = spec.width
   canvas.height = spec.height
+  context.fillStyle = "#ffffff"
+  context.fillRect(0, 0, spec.width, spec.height)
 
   const sourceRatio = sourceWidth / sourceHeight
   const targetRatio = spec.width / spec.height
@@ -12021,12 +12103,11 @@ async function resizeImageFile(file: File, spec: PartnerMediaSpec, crop: ImageCr
     spec.height,
   )
 
-  const contentType = resizedImageType(file)
+  const contentType = "image/webp"
   const blob = await canvasToBlob(canvas, contentType)
-  const extension = contentType === "image/jpeg" ? "jpg" : "png"
   const resizedName = replaceFileExtension(
     file.name,
-    `${spec.width}x${spec.height}.${extension}`,
+    `${spec.width}x${spec.height}.webp`,
   )
 
   return new File([blob], resizedName, {
@@ -12063,13 +12144,9 @@ function canvasToBlob(canvas: HTMLCanvasElement, contentType: string) {
         }
       },
       contentType,
-      0.92,
+      0.82,
     )
   })
-}
-
-function resizedImageType(file: File) {
-  return file.type === "image/jpeg" ? "image/jpeg" : "image/png"
 }
 
 function isSupportedImageFile(file: File) {

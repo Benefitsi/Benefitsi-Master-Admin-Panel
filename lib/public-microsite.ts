@@ -299,6 +299,7 @@ function sanitizeMicrositeConfig(config: MicrositeConfig): MicrositeConfig {
       partnerDataReviewDone: false,
       seoReviewDone: false,
       publishReviewDone: false,
+      mockDealsPreview: false,
       lastQaAt: "",
       versionNote: "",
     },

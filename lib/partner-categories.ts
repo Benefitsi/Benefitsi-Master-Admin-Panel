@@ -1,8 +1,8 @@
 export const partnerTypeOptions = [
+  { value: "Activities", label: "Activities" },
   { value: "Food & Drink", label: "Food & Drink" },
   { value: "Services", label: "Services" },
   { value: "Wellness", label: "Wellness" },
-  { value: "Activities", label: "Activities" },
 ] as const
 
 type KnownPartnerType = "Food & Drink" | "Services" | "Wellness" | "Activities"
@@ -133,7 +133,12 @@ for (const category of canonicalCategorySet) {
   canonicalCategoryByAlias.set(category.toLowerCase(), category)
 }
 
-export const allPartnerCategories: string[] = Array.from(canonicalCategorySet)
+const alphabetical = (first: string, second: string) =>
+  first.localeCompare(second, "en", { sensitivity: "base" })
+
+export const allPartnerCategories: string[] = Array.from(canonicalCategorySet).sort(
+  alphabetical,
+)
 
 export const allPartnerCategoryOptions = allPartnerCategories.map((category) => ({
   value: category,
@@ -160,9 +165,9 @@ export function getPartnerCategoriesForType(partnerType?: string | null): string
   const normalizedType = normalizePartnerTypeForCategories(partnerType)
 
   if (normalizedType in partnerCategoriesByType) {
-    return [
-      ...partnerCategoriesByType[normalizedType as KnownPartnerType],
-    ]
+    return [...partnerCategoriesByType[normalizedType as KnownPartnerType]].sort(
+      alphabetical,
+    )
   }
 
   return allPartnerCategories

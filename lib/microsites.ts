@@ -1,3 +1,4 @@
+import { categoryMicrositeThemes } from "./microsite-category-themes"
 import {
   defaultMicrositeCopyForPartner,
   defaultMicrositeTemplateForPartner,
@@ -99,6 +100,7 @@ export type MicrositeConfig = {
     partnerDataReviewDone: boolean
     seoReviewDone: boolean
     publishReviewDone: boolean
+    mockDealsPreview: boolean
     lastQaAt: string
     versionNote: string
   }
@@ -202,33 +204,34 @@ const legacyDefaultTopDealHeadline = "2 für 1 Döner"
 const legacyDefaultTopDealDescription =
   "Zwei Döner genießen – nur einen bezahlen!"
 
-export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeConfig {
-  const name = partner.name?.trim() || partner.short_name?.trim() || "Restaurant"
+export function createDefaultMicrositeConfig(partner: PartnerSeed, template = defaultMicrositeTemplateForPartner(partner), language: MicrositeLanguage = "de"): MicrositeConfig {
+  const categoryTheme = template === "restaurant-premium" ? undefined : categoryMicrositeThemes[template]
+  const en = language === "en" && Boolean(categoryTheme)
+  const name = partner.name?.trim() || partner.short_name?.trim() || (categoryTheme ? "Partner" : "Restaurant")
   const location = micrositeLocationText(partner)
   const backgroundImage =
     partner.cover_urls?.[0] ||
     partner.discover_card_image_url ||
     partner.feature_card_url ||
     "/upload-image.jpg"
-  const defaults = defaultMicrositeCopyForPartner(partner)
-  const defaultTemplate = defaultMicrositeTemplateForPartner(partner)
+  const defaults = defaultMicrositeCopyForPartner(partner, template, language)
 
   return {
-    template: defaultTemplate,
-    language: "de",
+    template,
+    language,
     appearance: {
       mode: "light",
     },
     branding: {
       paletteMode: "auto",
-      accent: "#118cff",
-      accentSecondary: "#061829",
-      accentTertiary: "#17d4d7",
+      accent: categoryTheme?.accent ?? "#118cff",
+      accentSecondary: categoryTheme?.secondary ?? "#061829",
+      accentTertiary: categoryTheme?.accent ?? "#17d4d7",
       logoUrl: partner.logo_url || "",
       partnerBadgeUrl: "",
     },
     navigation: {
-      links: defaultNavigation,
+      links: defaultNavigation.map((link) => ({ ...link, label: link.anchor === "speisekarte" ? defaults.menuLabel : en ? ({ deals: "Benefits", stempelkarte: "Loyalty", "ueber-uns": "About", app: "Benefitsi App", kontakt: "Contact" }[link.anchor] || link.label) : link.label })),
     },
     hero: {
       headline: name,
@@ -237,16 +240,15 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       openingText: micrositeOpeningText(partner),
       backgroundImageUrl: backgroundImage,
       badgeText: "Offizieller Benefitsi Partner",
-      primaryButtonLabel: "Vorteile ansehen",
-      secondaryButtonLabel: `${defaults.menuLabel} ansehen`,
+      primaryButtonLabel: en ? "View benefits" : "Vorteile ansehen",
+      secondaryButtonLabel: en ? `View ${defaults.menuLabel}` : `${defaults.menuLabel} ansehen`,
       services: defaults.services,
     },
     deals: {
-      label: "Vorteile & Aktionen",
-      headline: `Exklusive Benefitsi Vorteile bei ${partner.short_name || name}`,
-      slogan: "Mehr genießen, mehr sparen!",
-      description:
-        "Entdecke die besten Vorteile und belohne dich bei jedem Besuch.",
+      label: en ? "Benefits & offers" : "Vorteile & Aktionen",
+      headline: en ? `Your Benefitsi benefits at ${partner.short_name || name}` : `Exklusive Benefitsi Vorteile bei ${partner.short_name || name}`,
+      slogan: en ? "More to look forward to on every visit." : categoryTheme ? "Bei jedem Besuch mehr entdecken." : "Mehr genießen, mehr sparen!",
+      description: en ? "Explore current offers and available rewards for your next visit." : "Entdecke die besten Vorteile und belohne dich bei jedem Besuch.",
       illustrationUrl:
         partner.discover_card_image_url || partner.feature_card_url || backgroundImage,
       topDealLabel: "Vorteil",
@@ -262,16 +264,16 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       topDealButtonLabel: "Vorteil in der App aktivieren",
     },
     stamps: {
-      label: "Stempelkarte",
-      headline: "Stempel sammeln. Belohnung genießen.",
-      slogan: "Ihre Treue wird belohnt!",
+      label: en ? "Loyalty" : "Stempelkarte",
+      headline: en ? "Collect stamps. Enjoy your rewards." : "Stempel sammeln. Belohnung genießen.",
+      slogan: en ? "Your loyalty is rewarded." : "Ihre Treue wird belohnt!",
     },
     content: {
       menuLabel: defaults.menuLabel,
       menuHeadline: defaults.menuHeadline,
       menuDescription: defaults.menuDescription,
       aboutLabel: "Über uns",
-      aboutHeadline: `${partner.short_name || name} auf einen Blick`,
+      aboutHeadline: en ? `${partner.short_name || name} at a glance` : `${partner.short_name || name} auf einen Blick`,
       aboutText: defaults.aboutText,
       quoteText: `Was uns wichtig ist: Jeder Besuch bei ${partner.short_name || name} soll sich persönlich, unkompliziert und besonders anfühlen.`,
       quoteAttribution: partner.short_name || name,
@@ -282,9 +284,9 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       footerText: defaults.footerText,
     },
     seo: {
-      title: `${name} in ${location} | Vorteile, Stempelkarte & Speisekarte`,
-      description: `${name}: ${location}. Benefitsi Vorteile, Stempelkarte, Speisekarte, Öffnungszeiten und Kontakt auf einen Blick.`,
-      keywords: [name, location, "Benefitsi", "Vorteile", "Stempelkarte", "Speisekarte"],
+      title: en ? `${name} in ${location} | Benefits & ${defaults.menuLabel}` : `${name} in ${location} | Vorteile, Stempelkarte & ${defaults.menuLabel}`,
+      description: en ? `${name}: ${location}. Benefitsi benefits, ${defaults.menuLabel}, opening hours and contact details.` : `${name}: ${location}. Benefitsi Vorteile, Stempelkarte, ${defaults.menuLabel}, Öffnungszeiten und Kontakt auf einen Blick.`,
+      keywords: [name, location, "Benefitsi", "Vorteile", "Stempelkarte", defaults.menuLabel],
       ogImageUrl: backgroundImage,
       noIndex: false,
     },
@@ -298,6 +300,7 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed): MicrositeCon
       partnerDataReviewDone: false,
       seoReviewDone: false,
       publishReviewDone: false,
+      mockDealsPreview: false,
       lastQaAt: "",
       versionNote: "",
     },
@@ -318,7 +321,7 @@ export function resolveMicrositeConfig(
   config: unknown,
   partner: PartnerSeed,
 ): MicrositeConfig {
-  const fallback = createDefaultMicrositeConfig(partner)
+  const fallback = createDefaultMicrositeConfig(partner, isRecord(config) ? sanitizeTemplateId(config.template, defaultMicrositeTemplateForPartner(partner)) : undefined, isRecord(config) && config.language === "en" ? "en" : "de")
 
   if (!isRecord(config)) {
     return fallback
@@ -343,6 +346,10 @@ export function resolveMicrositeConfig(
     ...fallback,
     template: sanitizeTemplateId(config.template, fallback.template),
     language: sanitizeMicrositeLanguage(config.language, fallback.language),
+    navigation: { links: fallback.navigation.links.map((link) => {
+      const saved = isRecord(config.navigation) && Array.isArray(config.navigation.links) ? config.navigation.links.find((item: unknown) => isRecord(item) && item.anchor === link.anchor) : undefined
+      return { ...link, label: isRecord(saved) ? safeString(saved.label, link.label) : link.label }
+    }) },
     appearance: {
       ...fallback.appearance,
       mode: appearance.mode === "dark" ? "dark" : "light",
@@ -359,9 +366,9 @@ export function resolveMicrositeConfig(
         branding.accentTertiary,
         fallback.branding.accentTertiary,
       ),
-      // Partner profile media is the source of truth for the partner logo.
-      // This prevents old microsite drafts/localStorage from freezing outdated logos.
-      logoUrl: fallback.branding.logoUrl,
+      // Keep the partner profile as the default, while allowing a microsite-specific
+      // logo override from the builder when a partner needs a lockup for this page.
+      logoUrl: safeString(branding.logoUrl, fallback.branding.logoUrl),
       partnerBadgeUrl: safeString(
         branding.partnerBadgeUrl,
         fallback.branding.partnerBadgeUrl,
@@ -482,6 +489,7 @@ export function resolveMicrositeConfig(
       partnerDataReviewDone: typeof builder.partnerDataReviewDone === "boolean" ? builder.partnerDataReviewDone : fallback.builder.partnerDataReviewDone,
       seoReviewDone: typeof builder.seoReviewDone === "boolean" ? builder.seoReviewDone : fallback.builder.seoReviewDone,
       publishReviewDone: typeof builder.publishReviewDone === "boolean" ? builder.publishReviewDone : fallback.builder.publishReviewDone,
+      mockDealsPreview: typeof builder.mockDealsPreview === "boolean" ? builder.mockDealsPreview : fallback.builder.mockDealsPreview,
       lastQaAt: safeString(builder.lastQaAt, fallback.builder.lastQaAt),
       versionNote: safeString(builder.versionNote, fallback.builder.versionNote),
     },
