@@ -28,7 +28,6 @@ import {
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import {
-  DEFAULT_MENU_STATUS,
   adminTextLimits,
   MAX_PARTNER_SOCIALS,
   isPartnerSocialPlatform,
@@ -3223,9 +3222,7 @@ function parsePartnerPayload(formData: FormData, isUpdate: boolean) {
     website: stringValue(formData, "website"),
     coordinates: coordinates ? JSON.stringify(coordinates) : null,
     is_active: active,
-    email:
-      nullableStringValue(formData, "email") ??
-      (isUpdate ? nullableStringValue(formData, "existing_partner_email") : null),
+    email: nullableStringValue(formData, "email"),
     updated_at: now,
     ...(isUpdate ? {} : { created_at: now }),
   }
@@ -5732,7 +5729,7 @@ function parseMenuPayload(
     partner_id: partnerId,
     name: stringValue(formData, `${prefix}name`) || "Speisekarte",
     description: nullableStringValue(formData, `${prefix}description`),
-    status: stringValue(formData, `${prefix}status`) || DEFAULT_MENU_STATUS,
+    status: "published",
   }
 }
 
@@ -5743,10 +5740,6 @@ function validateMenuPayload(payload: ParsedMenu) {
 
   if (!payload.name) {
     return "Menu name is required."
-  }
-
-  if (!["draft", "published", "archived"].includes(payload.status)) {
-    return "Choose a valid menu status."
   }
 
   const textValidation = validateTextLengthRules([

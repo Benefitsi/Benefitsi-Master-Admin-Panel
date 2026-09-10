@@ -33,7 +33,6 @@ import type {
   Visit,
 } from "@/lib/admin-data"
 import {
-  DEFAULT_MENU_STATUS,
   adminTextLimits,
   MAX_PARTNER_SOCIALS,
   partnerMediaSpecs,
@@ -262,12 +261,6 @@ const inactivityUnitOptions = [
   { value: "days", label: "Tage" },
   { value: "weeks", label: "Wochen" },
   { value: "months", label: "Monate" },
-] as const
-
-const menuStatusOptions = [
-  { value: "published", label: "Published" },
-  { value: "draft", label: "Draft" },
-  { value: "archived", label: "Archived" },
 ] as const
 
 const menuCurrencyOptions = [{ value: "EUR", label: "EUR (€)" }] as const
@@ -597,7 +590,7 @@ export function PartnerWorkspace({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]">
-        <aside className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+        <aside className="self-start overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]">
           <div className="border-b border-zinc-200 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -660,7 +653,7 @@ export function PartnerWorkspace({
             ) : null}
           </div>
 
-          <div className="max-h-[calc(100vh-220px)] space-y-1.5 overflow-y-auto p-2">
+          <div className="max-h-[calc(100vh-220px)] space-y-1.5 overflow-y-auto p-2 xl:max-h-[calc(100vh-12rem)]">
             {filteredPartners.length ? (
               filteredPartners.map((partner) => (
                 <PartnerListButton
@@ -1785,7 +1778,8 @@ function PartnerForm({
   partners?: PartnerWithDeals[]
   portalMode?: boolean
 }) {
-  const [state, formAction] = useActionState(savePartner, initialState)
+  const [state, setState] = useState(initialState)
+  const [isSaving, setIsSaving] = useState(false)
   const [descriptionState, setDescriptionState] = useState(initialState)
   const [isGeneratingDescription, startGeneratingDescription] = useTransition()
   const router = useRouter()
@@ -1819,15 +1813,13 @@ function PartnerForm({
   const [createTab, setCreateTab] = useState<CreatePartnerTab>("profile")
   const [reviewSnapshot, setReviewSnapshot] =
     useState<CreatePartnerReviewSnapshot | null>(null)
-  const [confirmingSave, setConfirmingSave] = useState(false)
   const [selectedOwnerId, setSelectedOwnerId] = useState(partner?.owner_id ?? "")
   const [validationMessage, setValidationMessage] = useState("")
   const [dismissedActionState, setDismissedActionState] =
     useState<PartnerActionState | null>(null)
   const [formVersion, setFormVersion] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
-  const confirmedSubmitRef = useRef(false)
-  const pendingSubmitterRef = useRef<HTMLButtonElement | null>(null)
+  const mountedRef = useRef(true)
   const partnerTypeDefault = normalizePartnerTypeValue(partner?.type)
   const [selectedPartnerType, setSelectedPartnerType] =
     useState(partnerTypeDefault)
@@ -1878,6 +1870,45 @@ function PartnerForm({
   ]
   const activeCreateTabCopy = createPartnerTabCopy[createTab]
   const requiredSectionMarker: boolean | "subtle" = "subtle"
+
+  useEffect(() => () => {
+    mountedRef.current = false
+  }, [])
+
+  const submitPartnerInBackground = useCallback((formData: FormData) => {
+    if (isSaving) return
+
+    setState(initialState)
+    setIsSaving(true)
+    dispatchActionToast({
+      ok: true,
+      message: mode === "create"
+        ? "Partner creation started in the background."
+        : "Partner save started in the background.",
+    })
+
+    void savePartner(initialState, formData).then(
+      (result) => {
+        dispatchActionToast(result)
+        if (result.ok) router.refresh()
+        if (!mountedRef.current) return
+        setState(result)
+        setIsSaving(false)
+      },
+      () => {
+        const result = {
+          ok: false,
+          message: mode === "create"
+            ? "Unable to create the partner."
+            : "Unable to save the partner.",
+        } satisfies PartnerActionState
+        dispatchActionToast(result)
+        if (!mountedRef.current) return
+        setState(result)
+        setIsSaving(false)
+      },
+    )
+  }, [isSaving, mode, router])
   const handlePartnerTypeChange = (nextType: string) => {
     setSelectedPartnerType(nextType)
     setSelectedCategories((current) =>
@@ -1924,13 +1955,6 @@ function PartnerForm({
   }
 
   useEffect(() => {
-    if (state.ok && mode === "create" && state.created) {
-      // A newly created partner needs the server-rendered list to include it.
-      // Existing partner edits stay mounted so open sections and local input
-      // state are preserved instead of being collapsed by a full refresh.
-      router.refresh()
-    }
-
     if (!(mode === "create" && state.ok && state.created)) {
       return
     }
@@ -2003,7 +2027,6 @@ function PartnerForm({
       id={formId}
       key={formVersion}
       ref={formRef}
-      action={formAction}
       className="space-y-3"
       noValidate
       onInput={() => {
@@ -2011,10 +2034,6 @@ function PartnerForm({
         if (!state.ok && state.message) setDismissedActionState(state)
       }}
       onSubmit={(event) => {
-        const submitter = (event.nativeEvent as SubmitEvent).submitter
-        pendingSubmitterRef.current =
-          submitter instanceof HTMLButtonElement ? submitter : null
-
         const form = event.currentTarget
         const invalidField = Array.from(form.elements).find(
           (element): element is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement =>
@@ -2027,7 +2046,6 @@ function PartnerForm({
 
         if (invalidField) {
           event.preventDefault()
-          pendingSubmitterRef.current = null
           const invalidTab = invalidField
             .closest<HTMLElement>("[data-create-tab]")
             ?.dataset.createTab as CreatePartnerTab | undefined
@@ -2073,7 +2091,6 @@ function PartnerForm({
 
           if (hasExistingOwner === hasNewOwnerEmail) {
             event.preventDefault()
-            pendingSubmitterRef.current = null
             setCreateTab("profile")
             setValidationMessage(
               "Choose an existing partner owner or enter a new owner email, but not both.",
@@ -2084,7 +2101,6 @@ function PartnerForm({
 
         if (mode === "create" && new FormData(form).getAll("category").length === 0) {
           event.preventDefault()
-          pendingSubmitterRef.current = null
           setCreateTab("profile")
           setValidationMessage(
             "Please select at least one category in Business Profile before creating the partner.",
@@ -2097,18 +2113,8 @@ function PartnerForm({
           return
         }
 
-        if (mode !== "edit") {
-          return
-        }
-
-        if (confirmedSubmitRef.current) {
-          confirmedSubmitRef.current = false
-          pendingSubmitterRef.current = null
-          return
-        }
-
         event.preventDefault()
-        setConfirmingSave(true)
+        submitPartnerInBackground(new FormData(form))
       }}
     >
       <input type="hidden" name="id" value={partner?.id ?? ""} />
@@ -2117,11 +2123,6 @@ function PartnerForm({
     type="hidden"
     name="existing_subdomain"
     value={partner?.subdomain ?? ""}
-  />
-  <input
-    type="hidden"
-    name="existing_partner_email"
-    value={partner?.email ?? ""}
   />
   <input type="hidden" name="existing_pin" value={partner?.pin ?? ""} />
       <input type="hidden" name="existing_loves" value={partner?.loves ?? 0} />
@@ -2207,7 +2208,7 @@ function PartnerForm({
           {validationMessage}
         </div>
       ) : null}
-      {dismissedActionState !== state ? <ActionMessage state={state} /> : null}
+      {dismissedActionState !== state ? <ActionMessage state={state} toast={false} /> : null}
 
       <div
         data-create-tab="profile"
@@ -2761,6 +2762,7 @@ function PartnerForm({
       {mode === "create" ? (
         <div className="flex flex-col gap-2 sm:flex-row">
           <SubmitButton
+            pendingOverride={isSaving}
             label="Add partner"
             pendingLabel="Adding partner..."
           />
@@ -2769,22 +2771,15 @@ function PartnerForm({
       </div>
       {mode === "edit" ? (
         <div className="flex justify-end border-t border-zinc-200 pt-3">
-          <SubmitButton label="Save partner" pendingLabel="Saving partner..." size="compact" />
+          <SubmitButton
+            pendingOverride={isSaving}
+            label="Save partner"
+            pendingLabel="Saving partner..."
+            size="compact"
+          />
         </div>
       ) : null}
       </div>
-      <ConfirmDialog
-        open={confirmingSave}
-        title="Save partner changes?"
-        description={`This will update ${partner?.name || "this partner"} with the current form values.`}
-        confirmLabel="Save changes"
-        onCancel={() => setConfirmingSave(false)}
-        onConfirm={() => {
-          confirmedSubmitRef.current = true
-          setConfirmingSave(false)
-          formRef.current?.requestSubmit(pendingSubmitterRef.current ?? undefined)
-        }}
-      />
     </form>
   )
 }
@@ -3548,13 +3543,6 @@ function InitialMenuEditor({
               onChange={onNameChange}
               required
             />
-            <SelectField
-              label="Menu status"
-              name="initial_menu_status"
-              defaultValue={DEFAULT_MENU_STATUS}
-              options={menuStatusOptions}
-              required
-            />
           </FieldGrid>
           <TextAreaField
             label="Menu description"
@@ -3568,7 +3556,7 @@ function InitialMenuEditor({
               Import menu <span className="font-normal text-zinc-500">(optional)</span>
             </label>
             <p className="text-xs leading-5 text-zinc-500">
-              Select one or more menu JSON files and an optional assets manifest together. CSV remains supported. The menu name and status above remain required.
+              Select one or more menu JSON files and an optional assets manifest together. CSV remains supported. The menu name above is required; menus are always published.
             </p>
             <input
               id="initial-menu-import"
@@ -7029,7 +7017,7 @@ function MilestoneForm({
           />
         </FieldGrid>
       </FormSection>
-      <ActionMessage state={state} />
+      <ActionMessage state={state} toast={false} />
       <SubmitButton
         label={mode === "create" ? "Add milestone" : "Save milestone"}
         pendingLabel={
@@ -8323,7 +8311,7 @@ function MenuCard({
       <section className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4">
         <div>
           <h3 className="text-base font-semibold text-zinc-950">Menu details</h3>
-          <p className="mt-1 text-sm text-zinc-600">Update the menu name, description, or status here.</p>
+          <p className="mt-1 text-sm text-zinc-600">Update the menu name or description. Menus are always published.</p>
         </div>
         <div className="mt-4">
           <MenuForm menu={menu} partnerId={partnerId} />
@@ -8529,49 +8517,31 @@ function MenuForm({
   onSaved?: () => void
   partnerId: string
 }) {
-  const normalizedMenuStatus =
-    menu?.status === "review" ? DEFAULT_MENU_STATUS : menu?.status ?? DEFAULT_MENU_STATUS
-  const [status, setStatus] = useState(normalizedMenuStatus)
   const initialMenuValues = {
     name: (menu?.name ?? "Speisekarte").trim(),
     description: (menu?.description ?? "").trim(),
-    status: normalizedMenuStatus,
   }
   const savedMenuValuesRef = useRef(initialMenuValues)
   const submittedMenuValuesRef = useRef(initialMenuValues)
+  const mountedRef = useRef(true)
+  const [state, setState] = useState(initialState)
+  const [isSaving, setIsSaving] = useState(false)
   const [hasMenuChanges, setHasMenuChanges] = useState(false)
+  const router = useRouter()
   const nextMenuFileInputId = useRef(1)
   const selectedMenuFilesRef = useRef<File[]>([])
   const [menuFileSelections, setMenuFileSelections] = useState<
     Array<{ id: number; files: File[] }>
   >([{ id: 0, files: [] }])
-  const saveMenuWithSelectedFiles = useCallback(
-    async (previousState: PartnerActionState, formData: FormData) => {
-      formData.delete("menu_file")
-      selectedMenuFilesRef.current.forEach((file) =>
-        formData.append("menu_file", file),
-      )
-      formData.set(
-        "expected_menu_file_count",
-        String(selectedMenuFilesRef.current.length),
-      )
-      return saveMenu(previousState, formData)
-    },
-    [],
-  )
-  const [state, formAction] = useActionState(
-    saveMenuWithSelectedFiles,
-    initialState,
-  )
-  const formRef = useActionSuccess(state, () => {
-    savedMenuValuesRef.current = submittedMenuValuesRef.current
-    setHasMenuChanges(false)
-    onSaved?.()
-  })
+  const formRef = useRef<HTMLFormElement>(null)
   const selectedMenuFiles = menuFileSelections.flatMap(
     (selection) => selection.files,
   )
   const activeMenuFileInput = menuFileSelections.at(-1)
+
+  useEffect(() => () => {
+    mountedRef.current = false
+  }, [])
 
   function retainNewMenuFileSelection(
     inputId: number,
@@ -8606,7 +8576,6 @@ function MenuForm({
     return {
       name: String(values.get("name") ?? "").trim(),
       description: String(values.get("description") ?? "").trim(),
-      status: String(values.get("status") ?? ""),
     }
   }
 
@@ -8615,19 +8584,59 @@ function MenuForm({
     const saved = savedMenuValuesRef.current
     setHasMenuChanges(
       current.name !== saved.name ||
-      current.description !== saved.description ||
-      current.status !== saved.status,
+      current.description !== saved.description,
     )
   }
 
   return (
     <form
       ref={formRef}
-      action={formAction}
       className="space-y-4"
       onChange={(event) => updateMenuDirtyState(event.currentTarget)}
-      onSubmitCapture={(event) => {
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (isSaving) return
+
+        const formData = new FormData(event.currentTarget)
+        formData.delete("menu_file")
+        selectedMenuFilesRef.current.forEach((file) => formData.append("menu_file", file))
         submittedMenuValuesRef.current = currentMenuValues(event.currentTarget)
+        formData.set("expected_menu_file_count", String(selectedMenuFilesRef.current.length))
+        setState(initialState)
+        setIsSaving(true)
+        dispatchActionToast({
+          ok: true,
+          message: menu
+            ? "Menu save started in the background."
+            : "Menu creation started in the background.",
+        })
+
+        void saveMenu(initialState, formData).then(
+          (result) => {
+            dispatchActionToast(result)
+            if (result.ok) {
+              savedMenuValuesRef.current = submittedMenuValuesRef.current
+              router.refresh()
+            }
+            if (!mountedRef.current) return
+            setState(result)
+            setIsSaving(false)
+            if (result.ok) {
+              setHasMenuChanges(false)
+              onSaved?.()
+            }
+          },
+          () => {
+            const result = {
+              ok: false,
+              message: "Unable to save the menu.",
+            } satisfies PartnerActionState
+            dispatchActionToast(result)
+            if (!mountedRef.current) return
+            setState(result)
+            setIsSaving(false)
+          },
+        )
       }}
     >
       <input type="hidden" name="id" value={menu?.id ?? ""} />
@@ -8646,14 +8655,6 @@ function MenuForm({
           defaultValue={menu?.name ?? "Speisekarte"}
           required
         />
-        <SelectField
-          label="Status"
-          name="status"
-          value={status}
-          onChange={setStatus}
-          options={menuStatusOptions}
-          required
-        />
       </FieldGrid>
       <TextAreaField
         label="Description"
@@ -8666,7 +8667,7 @@ function MenuForm({
             Import menu <span className="font-normal text-zinc-500">(optional)</span>
           </label>
           <p className="text-xs leading-5 text-zinc-500">
-            Select a ZIP or one or more menu JSON files with an optional assets manifest, or CSV. Name and status are still required.
+            Select a ZIP or one or more menu JSON files with an optional assets manifest, or CSV. The menu name is required; menus are always published.
           </p>
           {menuFileSelections.map((selection, index) => {
             const isActiveInput = index === menuFileSelections.length - 1
@@ -8723,8 +8724,9 @@ function MenuForm({
         </div>
       ) : null}
       <ImportPreview preview={state.importPreview} />
-      <ActionMessage state={state} />
+      <ActionMessage state={state} toast={false} />
       <SubmitButton
+        pendingOverride={isSaving}
         disabled={Boolean(menu && !hasMenuChanges)}
         label={state.importPreview?.ready ? "Confirm ZIP import" : menu ? "Save menu" : "Add menu"}
         pendingLabel={state.importPreview?.ready ? "Importing ZIP..." : menu ? "Saving menu..." : "Adding menu..."}
@@ -11358,7 +11360,7 @@ function MediaUploadField({
       {selectedPreview ? (
         <div className="grid gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2 sm:grid-cols-3">
           {[
-            { label: "Zoom", value: cropZoom, min: 1, max: 3, step: 0.05, key: "zoom" },
+            { label: "Zoom", value: cropZoom, min: 0.5, max: 3, step: 0.05, key: "zoom" },
             { label: "Horizontal crop", value: cropX, min: -100, max: 100, step: 1, key: "x" },
             { label: "Vertical crop", value: cropY, min: -100, max: 100, step: 1, key: "y" },
           ].map((control) => (
@@ -12051,6 +12053,8 @@ async function resizeImageFile(file: File, spec: PartnerMediaSpec, crop: ImageCr
 
   canvas.width = spec.width
   canvas.height = spec.height
+  context.fillStyle = "#ffffff"
+  context.fillRect(0, 0, spec.width, spec.height)
 
   const sourceRatio = sourceWidth / sourceHeight
   const targetRatio = spec.width / spec.height
