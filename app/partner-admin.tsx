@@ -153,7 +153,7 @@ function ToastViewport() {
       const detail = (event as CustomEvent<Omit<ActionToast, "id">>).detail
       window.clearTimeout(timeoutId)
       setToast({ ...detail, id: Date.now() })
-      timeoutId = window.setTimeout(() => setToast(null), 3600)
+      timeoutId = window.setTimeout(() => setToast(null), 2800)
     }
 
     window.addEventListener(toastEventName, showToast)
@@ -169,21 +169,36 @@ function ToastViewport() {
     <div
       key={toast.id}
       role={toast.ok ? "status" : "alert"}
-      className={`fixed right-4 top-4 z-[100] flex max-w-sm items-start gap-3 rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl animate-in fade-in slide-in-from-top-2 ${
+      className={`pointer-events-none fixed right-3 bottom-3 z-[100] flex max-w-[min(20rem,calc(100vw-1.5rem))] items-start gap-2 rounded-lg border px-3 py-2 text-xs font-semibold shadow-[0_12px_28px_rgba(15,23,42,.14)] animate-in fade-in slide-in-from-bottom-2 sm:right-4 sm:bottom-4 ${
         toast.ok
-          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-          : "border-rose-200 bg-rose-50 text-rose-800"
+          ? "border-emerald-200/90 bg-emerald-50/95 text-emerald-900"
+          : "border-rose-200/90 bg-rose-50/95 text-rose-800"
       }`}
     >
-      <span aria-hidden="true" className="text-base leading-5">
-        {toast.ok ? "✓" : "!"}
+      <span
+        aria-hidden="true"
+        className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border ${
+          toast.ok
+            ? "border-emerald-300 bg-emerald-100 text-emerald-700"
+            : "border-rose-300 bg-rose-100 text-rose-700"
+        }`}
+      >
+        {toast.ok ? (
+          <svg viewBox="0 0 16 16" className="size-2.5" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <path d="m3.25 8.25 3 3 6.5-6.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 16 16" className="size-2.5" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <path d="M8 4.25v4.5M8 11.5h.01" strokeLinecap="round" />
+          </svg>
+        )}
       </span>
-      <span className="leading-5">{toast.message}</span>
+      <span className="min-w-0 flex-1 leading-4">{toast.message}</span>
       <button
         type="button"
         onClick={() => setToast(null)}
         aria-label="Dismiss notification"
-        className="ml-2 text-lg leading-5 opacity-60 transition hover:opacity-100"
+        className="pointer-events-auto grid size-5 shrink-0 place-items-center rounded text-sm leading-none opacity-55 transition hover:bg-black/5 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-current"
       >
         ×
       </button>
