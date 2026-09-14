@@ -240,6 +240,15 @@ test("partner settings separate stamps, deals, streaks, and challenges", async (
   assert.match(code, /Add another time range/)
 })
 
+test("configured stamp cards stay expanded in the priority section", async () => {
+  const code = await readFile(adminUrl, "utf8")
+
+  assert.match(
+    code,
+    /title="Stempelkarte"\s+defaultOpen=\{true\}/,
+  )
+})
+
 test("partner contact email stays separate from owner selection and review hides unsupported menus", async () => {
   const code = await readFile(adminUrl, "utf8")
 

@@ -6824,7 +6824,7 @@ function MilestonesPanel({
     return (
       <FormSection
         title="Stempelkarte"
-        defaultOpen={partner.reward_milestones.length === 0}
+        defaultOpen={true}
         status={milestoneStatus}
       >
         {content}
