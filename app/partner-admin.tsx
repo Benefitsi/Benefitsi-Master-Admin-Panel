@@ -453,7 +453,7 @@ type MenuCategoryEditorState =
   | { mode: "edit"; category: MenuCategory }
 
 type DealEditorState =
-  | { mode: "create" }
+  | { mode: "create"; dealType?: string }
   | { mode: "edit"; deal: Deal }
 
 type MilestoneEditorState =
@@ -465,7 +465,7 @@ const partnerSettingsTabCopy: Record<
   { title: string; description: string }
 > = {
   details: { title: "Partner profile", description: "Business information, contact details, location, branding, and media." },
-  deals: { title: "Stamps and Deals", description: "Manage stamp-card rewards alongside customer deals, eligibility rules, availability, and redemption settings." },
+  deals: { title: "Stamps and benefits", description: "Manage stamp-card rewards, customer deals, streaks, and challenges in separate sections." },
   menu: { title: "Menu management", description: "Menu details, categories, items, pricing, images, and display order." },
   access: { title: "Staff access", description: "Manage the staff members who can administer or scan for this partner." },
   activity: { title: "Customer activity", description: "Review stamp-card progress, visits, applied benefits, and redemptions." },
@@ -1075,10 +1075,7 @@ function PartnerDetail({
               </div>
             ) : null}
             {settingsTab === "deals" ? (
-              <div className="space-y-3">
-                <MilestonesPanel partner={partner} embedded />
-                <DealsPanel partner={partner} embedded />
-              </div>
+              <BenefitsPanel partner={partner} />
             ) : null}
             {settingsTab === "menu" ? <MenuPanel partner={partner} embedded /> : null}
             {settingsTab === "access" ? (
@@ -4004,17 +4001,71 @@ function InitialMenuEditor({
   )
 }
 
+type BenefitSection = "deals" | "streaks" | "challenges"
+
+const benefitSectionCopy: Record<
+  BenefitSection,
+  { title: string; empty: string; addLabel: string; dealType?: string; defaultOpen: boolean }
+> = {
+  deals: {
+    title: "Deals",
+    empty: "Noch keine Deals eingerichtet.",
+    addLabel: "Deal hinzufügen",
+    defaultOpen: true,
+  },
+  streaks: {
+    title: "Streaks",
+    empty: "Noch keine Streaks eingerichtet.",
+    addLabel: "Streak hinzufügen",
+    dealType: "streak",
+    defaultOpen: false,
+  },
+  challenges: {
+    title: "Challenges",
+    empty: "Noch keine Challenges eingerichtet.",
+    addLabel: "Challenge hinzufügen",
+    dealType: "challenge",
+    defaultOpen: false,
+  },
+}
+
+function benefitSectionForDeal(deal: Pick<Deal, "type" | "trigger_key">): BenefitSection {
+  const trigger = deal.trigger_key || deal.type
+  if (trigger === "streak") return "streaks"
+  if (trigger === "challenge") return "challenges"
+  return "deals"
+}
+
+function BenefitsPanel({ partner }: { partner: PartnerWithDeals }) {
+  return (
+    <div className="space-y-3">
+      <MilestonesPanel partner={partner} embedded />
+      <DealsPanel partner={partner} embedded section="deals" />
+      <div className="grid gap-3 lg:grid-cols-2">
+        <DealsPanel partner={partner} embedded section="streaks" />
+        <DealsPanel partner={partner} embedded section="challenges" />
+      </div>
+    </div>
+  )
+}
+
 function DealsPanel({
   partner,
   embedded = false,
+  section = "deals",
 }: {
   partner: PartnerWithDeals
   embedded?: boolean
+  section?: BenefitSection
 }) {
   const [dealEditor, setDealEditor] = useState<DealEditorState | null>(null)
   const partnerId = partner.id ?? ""
-  const hasDealRows = partner.deals.length > 0
-  const dealCount = partner.deals.length
+  const sectionConfig = benefitSectionCopy[section]
+  const deals = partner.deals.filter(
+    (deal) => benefitSectionForDeal(deal) === section,
+  )
+  const hasDealRows = deals.length > 0
+  const dealCount = deals.length
   const dealStatus: SectionStatusValue = hasDealRows
     ? [
         { label: "Recommended", tone: "recommended" },
@@ -4035,7 +4086,7 @@ function DealsPanel({
       ) : null}
       {hasDealRows ? (
         <div className="space-y-3">
-          {partner.deals.map((deal, index) => (
+          {deals.map((deal, index) => (
             <DealCard
               key={deal.id ?? `${deal.partner_id}-${deal.type}`}
               deal={deal}
@@ -4046,16 +4097,18 @@ function DealsPanel({
         </div>
       ) : (
         <div className="rounded-md border border-dashed border-zinc-300 p-5 text-center text-sm text-zinc-600">
-          No benefits staged.
+          {sectionConfig.empty}
         </div>
       )}
       {partnerId ? (
         <button
           type="button"
-          onClick={() => setDealEditor({ mode: "create" })}
+          onClick={() =>
+            setDealEditor({ mode: "create", dealType: sectionConfig.dealType })
+          }
           className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
         >
-          Add benefit
+          {sectionConfig.addLabel}
         </button>
       ) : null}
       <DealEditorDialog
@@ -4069,12 +4122,20 @@ function DealsPanel({
   )
 
   if (embedded) {
-    return content
+    return (
+      <FormSection
+        title={sectionConfig.title}
+        defaultOpen={sectionConfig.defaultOpen || !hasDealRows}
+        status={dealStatus}
+      >
+        {content}
+      </FormSection>
+    )
   }
 
   return (
     <EditorShell
-      title="Benefits"
+      title={sectionConfig.title}
       description="Configure selectable, automatic, and fallback benefits for the Supabase redemption flow."
       collapsible
       defaultOpen={false}
@@ -4412,6 +4473,7 @@ function DealEditorDialog({
 
   if (!editor || !partnerId) return null
   const deal = editor.mode === "edit" ? editor.deal : undefined
+  const defaultDealType = editor.mode === "create" ? editor.dealType : undefined
 
   return (
     <div
@@ -4431,7 +4493,7 @@ function DealEditorDialog({
         <header className="flex items-start justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
           <div>
             <h3 id="deal-dialog-title" className="text-lg font-bold tracking-tight text-zinc-950">
-              {deal ? "Edit benefit" : "Add benefit"}
+              {deal ? "Edit benefit" : defaultDealType === "streak" ? "Add streak" : defaultDealType === "challenge" ? "Add challenge" : "Add deal"}
             </h3>
             <p className="mt-0.5 text-xs text-zinc-500">
               Configure the benefit and confirm before saving.
@@ -4459,6 +4521,7 @@ function DealEditorDialog({
         <div className="overflow-y-auto p-3 sm:p-4">
           <DealForm
             deal={deal}
+            defaultDealType={defaultDealType}
             partnerName={partnerName}
             partnerId={partnerId}
             mode={deal ? "edit" : "create"}
@@ -4491,6 +4554,7 @@ function DealFormShell({
 
 function DealForm({
   deal,
+  defaultDealType,
   partnerName = "",
   defaultActive,
   footerAction,
@@ -4505,6 +4569,7 @@ function DealForm({
   visits = [],
 }: {
   deal?: Deal
+  defaultDealType?: string
   partnerName?: string
   defaultActive?: boolean
   footerAction?: ReactNode
@@ -4543,6 +4608,7 @@ function DealForm({
 
       <DealFields
         deal={deal}
+        defaultDealType={defaultDealType}
         dealDraft={state.dealDraft}
         partnerName={partnerName}
         defaultActive={defaultActive ?? deal?.active ?? true}
@@ -5504,6 +5570,7 @@ function normalizeRewardItem(value: string | null | undefined) {
 function DealFields({
   deal,
   dealDraft,
+  defaultDealType,
   partnerName = "",
   prefix = "",
   defaultActive,
@@ -5516,6 +5583,7 @@ function DealFields({
 }: {
   deal?: Deal
   dealDraft?: DealFormDraft
+  defaultDealType?: string
   partnerName?: string
   prefix?: string
   defaultActive: boolean
@@ -5526,7 +5594,9 @@ function DealFields({
   visits?: Visit[]
   useBrowserValidation?: boolean
 }) {
-  const initialDealType = dealDraft?.dealConcept || dealUiTypeForDeal(deal)
+  const initialDealType =
+    dealDraft?.dealConcept ||
+    (deal ? dealUiTypeForDeal(deal) : defaultDealType || "discount")
   const initialBackendDealType = backendDealTypeForUi(initialDealType)
   const dealMetadata = metadataObject(deal?.metadata)
   const initialDiscountType =
@@ -6753,7 +6823,7 @@ function MilestonesPanel({
   if (embedded) {
     return (
       <FormSection
-        title="Stamp-card milestones"
+        title="Stempelkarte"
         defaultOpen={partner.reward_milestones.length === 0}
         status={milestoneStatus}
       >

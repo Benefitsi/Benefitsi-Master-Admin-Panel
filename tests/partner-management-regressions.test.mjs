@@ -219,15 +219,21 @@ test("partner socials support YouTube and five profiles", async () => {
   )
 })
 
-test("partner settings embed hours and combine stamps with deals", async () => {
+test("partner settings separate stamps, deals, streaks, and challenges", async () => {
   const code = await readFile(adminUrl, "utf8")
 
   assert.match(
     code,
     /<OpeningHoursPanel[\s\S]*?partner=\{partner\}[\s\S]*?withinPartnerForm[\s\S]*?Contact, Location and Socials/,
   )
-  assert.match(code, /<DealsPanel partner=\{partner\} embedded \/>/)
-  assert.match(code, /<MilestonesPanel partner=\{partner\} embedded \/>/)
+  assert.match(code, /<BenefitsPanel partner=\{partner\} \/>/)
+  assert.match(code, /title="Stempelkarte"/)
+  assert.match(code, /title:\s*"Deals"/)
+  assert.match(code, /title:\s*"Streaks"/)
+  assert.match(code, /title:\s*"Challenges"/)
+  assert.match(code, /section="deals"/)
+  assert.match(code, /section="streaks"/)
+  assert.match(code, /section="challenges"/)
   assert.doesNotMatch(code, /\{ id: "rewards", label: "Operating Hours"/)
   assert.match(code, /title="Operating hours" required="subtle" defaultOpen=\{false\}/)
   assert.match(code, /slot_count_\$\{day\.value\}/)
