@@ -235,7 +235,7 @@ const emptyCityOptions = [
   },
 ]
 
-const partnerMediaAccept = "image/png,image/jpeg,image/webp,image/svg+xml"
+const partnerMediaAccept = "image/avif,image/png,image/jpeg,image/webp,image/svg+xml,.avif,.aviff,.png,.jpg,.jpeg,.webp,.svg"
 const uploadPlaceholderSrc = "/upload-image.jpg"
 const maxCoverPhotos = 5
 const stampProgressDisplayLimit = 20
@@ -289,6 +289,16 @@ const partnerStatusOptions = [
   { value: "pending_verification", label: "Pending verification" },
   { value: "archived", label: "Archived" },
 ] as const
+
+const partnerSortOptions = [
+  { value: "name", label: "Name (A–Z)" },
+  { value: "city", label: "City (A–Z)" },
+  { value: "status", label: "Status" },
+  { value: "benefits", label: "Most benefits" },
+  { value: "recent", label: "Recently updated" },
+] as const
+
+type PartnerSort = (typeof partnerSortOptions)[number]["value"]
 
 type PartnerWorkspaceProps = {
   partners: PartnerWithDeals[]
@@ -498,6 +508,7 @@ export function PartnerWorkspace({
     "all" | "active" | "featured"
   >("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [partnerSort, setPartnerSort] = useState<PartnerSort>("name")
   const [mode, setMode] = useState<"view" | "create">(
     partners.length && (portalMode || initialMode === "view") ? "view" : "create",
   )
@@ -565,8 +576,25 @@ export function PartnerWorkspace({
             : partner.status === statusFilter)
 
       return matchesQuery && matchesStatus
+    }).sort((left, right) => {
+      const compareText = (a: string | null | undefined, b: string | null | undefined) =>
+        (a ?? "").localeCompare(b ?? "", undefined, { sensitivity: "base" })
+
+      if (partnerSort === "city") {
+        return compareText(left.city_name ?? left.city_id, right.city_name ?? right.city_id) || compareText(left.name, right.name)
+      }
+      if (partnerSort === "status") {
+        return compareText(left.status, right.status) || compareText(left.name, right.name)
+      }
+      if (partnerSort === "benefits") {
+        return right.deals.length - left.deals.length || compareText(left.name, right.name)
+      }
+      if (partnerSort === "recent") {
+        return String(right.updated_at ?? right.created_at ?? "").localeCompare(String(left.updated_at ?? left.created_at ?? "")) || compareText(left.name, right.name)
+      }
+      return compareText(left.name, right.name)
     })
-  }, [partnerFilter, partners, query, statusFilter])
+  }, [partnerFilter, partnerSort, partners, query, statusFilter])
 
   const selectedPartner =
     filteredPartners.find((partner) => partner.id === selectedId) ??
@@ -630,7 +658,7 @@ export function PartnerWorkspace({
               placeholder="Search partners"
               className="mt-3 h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
             />
-            <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <label className="block text-xs font-semibold text-zinc-600">
                 Status
                 <select
@@ -646,9 +674,21 @@ export function PartnerWorkspace({
                   ))}
                 </select>
               </label>
+              <label className="block text-xs font-semibold text-zinc-600">
+                Sort by
+                <select
+                  value={partnerSort}
+                  onChange={(event) => setPartnerSort(event.target.value as PartnerSort)}
+                  className="mt-1 h-9 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm font-normal text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                >
+                  {partnerSortOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
               <p
                 aria-live="polite"
-                className="text-xs font-medium text-zinc-500 sm:pb-2 sm:text-right"
+                className="text-xs font-medium text-zinc-500 sm:col-span-2 sm:text-right"
               >
                 {filteredPartners.length} of {partnerCount} partners
               </p>
@@ -720,8 +760,8 @@ export function PartnerWorkspace({
               <PartnerForm cities={cities} owners={owners} mode="create" partners={partners} />
             </EditorShell>
           ) : selectedPartner ? (
-              <PartnerDetail
-                key={selectedPartner.id ?? selectedPartner.name ?? "partner"}
+            <PartnerDetail
+                key={`${selectedPartner.id ?? selectedPartner.name ?? "partner"}-${selectedPartner.updated_at ?? ""}`}
                 cities={cities}
                 owners={owners}
                 onDeleted={startCreatePartner}
@@ -1830,10 +1870,12 @@ function PartnerForm({
     useState<CreatePartnerReviewSnapshot | null>(null)
   const [selectedOwnerId, setSelectedOwnerId] = useState(partner?.owner_id ?? "")
   const [validationMessage, setValidationMessage] = useState("")
+  const [isDirty, setIsDirty] = useState(false)
   const [dismissedActionState, setDismissedActionState] =
     useState<PartnerActionState | null>(null)
   const [formVersion, setFormVersion] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
+  const initialFormSignatureRef = useRef("")
   const mountedRef = useRef(true)
   const partnerTypeDefault = normalizePartnerTypeValue(partner?.type)
   const [selectedPartnerType, setSelectedPartnerType] =
@@ -1890,6 +1932,53 @@ function PartnerForm({
     mountedRef.current = false
   }, [])
 
+  const refreshDirtyState = useCallback(() => {
+    const form = formRef.current
+    if (!form || mode !== "edit") return
+    setIsDirty(formDataSignature(new FormData(form)) !== initialFormSignatureRef.current)
+  }, [mode])
+
+  useEffect(() => {
+    if (!formRef.current) return
+
+    const form = formRef.current
+    if (mode === "edit") {
+      initialFormSignatureRef.current = formDataSignature(new FormData(form))
+    }
+
+    const keepOneSectionOpen = (event: Event) => {
+      const section = event.target
+      if (!(section instanceof HTMLDetailsElement) || !section.open) return
+      form
+        .querySelectorAll<HTMLDetailsElement>("details[data-partner-accordion-section][open]")
+        .forEach((other) => {
+          if (other !== section) other.open = false
+        })
+    }
+
+    const initiallyOpen = Array.from(
+      form.querySelectorAll<HTMLDetailsElement>("details[data-partner-accordion-section][open]"),
+    )
+    initiallyOpen.slice(1).forEach((section) => {
+      section.open = false
+    })
+
+    const observer = new MutationObserver(() => {
+      if (mode === "edit") refreshDirtyState()
+    })
+    observer.observe(form, {
+      attributes: true,
+      attributeFilter: ["checked", "value"],
+      childList: true,
+      subtree: true,
+    })
+    form.addEventListener("toggle", keepOneSectionOpen, true)
+    return () => {
+      observer.disconnect()
+      form.removeEventListener("toggle", keepOneSectionOpen, true)
+    }
+  }, [mode, partner?.id, refreshDirtyState])
+
   const submitPartnerInBackground = useCallback((formData: FormData) => {
     if (isSaving) return
 
@@ -1905,7 +1994,11 @@ function PartnerForm({
     void savePartner(initialState, formData).then(
       (result) => {
         dispatchActionToast(result)
-        if (result.ok) router.refresh()
+        if (result.ok) {
+          initialFormSignatureRef.current = formDataSignature(formData)
+          setIsDirty(false)
+          router.refresh()
+        }
         if (!mountedRef.current) return
         setState(result)
         setIsSaving(false)
@@ -2047,7 +2140,9 @@ function PartnerForm({
       onInput={() => {
         if (validationMessage) setValidationMessage("")
         if (!state.ok && state.message) setDismissedActionState(state)
+        refreshDirtyState()
       }}
+      onChange={refreshDirtyState}
       onSubmit={(event) => {
         const form = event.currentTarget
         const invalidField = Array.from(form.elements).find(
@@ -2788,6 +2883,7 @@ function PartnerForm({
         <div className="flex justify-end border-t border-zinc-200 pt-3">
           <SubmitButton
             pendingOverride={isSaving}
+            disabled={!isDirty}
             label="Save partner"
             pendingLabel="Saving partner..."
             size="compact"
@@ -10607,7 +10703,11 @@ function FormSection({
       }`}
     >
       {collapsible ? (
-        <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+        <details
+          data-partner-accordion-section
+          open={open}
+          onToggle={(event) => setOpen(event.currentTarget.open)}
+        >
           <summary className="cursor-pointer list-none px-3 outline-none transition hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-200 [&::-webkit-details-marker]:hidden sm:px-4">
             <span className={`flex min-w-0 flex-wrap items-center gap-2 ${compact ? "min-h-10" : "min-h-11"}`}>
               <span className="min-w-0 break-words text-sm font-semibold tracking-normal text-zinc-900">
@@ -11239,6 +11339,8 @@ function MediaUploadField({
   const [cropZoom, setCropZoom] = useState(1)
   const [cropX, setCropX] = useState(0)
   const [cropY, setCropY] = useState(0)
+  const [hasTransparentLogo, setHasTransparentLogo] = useState(false)
+  const [logoBackgroundColor, setLogoBackgroundColor] = useState("#ffffff")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const selectedPreviewsRef = useRef<ImagePreview[]>([])
   const hasSelectedPreviews = selectedPreviews.length > 0
@@ -11259,6 +11361,7 @@ function MediaUploadField({
 
     setSelectedFiles([])
     setSourceFiles([])
+    setHasTransparentLogo(false)
     setSelectedPreviews((current) => {
       revokeImagePreviews(current)
       return []
@@ -11275,13 +11378,23 @@ function MediaUploadField({
     })
   }
 
-  const applyCrop = async (zoom: number, x: number, y: number) => {
+  const applyCrop = async (
+    zoom: number,
+    x: number,
+    y: number,
+    backgroundColor = logoBackgroundColor,
+  ) => {
     if (!sourceFiles.length || !fileInputRef.current) return
     setIsProcessing(true)
     setUploadError("")
     setUploadMessage("Applying crop...")
     try {
-      const resizedFiles = await resizeImageFiles(sourceFiles, spec, { zoom, x, y })
+      const resizedFiles = await resizeImageFiles(
+        sourceFiles,
+        spec,
+        { zoom, x, y },
+        spec.label === "Logo" && hasTransparentLogo ? backgroundColor : undefined,
+      )
       const previews = createImagePreviews(resizedFiles)
       replaceFileInputFiles(fileInputRef.current, resizedFiles)
       replaceSelectedMedia(resizedFiles, previews)
@@ -11403,6 +11516,25 @@ function MediaUploadField({
           ))}
         </div>
       ) : null}
+      {spec.label === "Logo" && hasTransparentLogo && selectedPreview ? (
+        <label className="flex items-center justify-between gap-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-950">
+          <span>Transparent PNG background</span>
+          <span className="flex items-center gap-2">
+            <input
+              aria-label="Logo background color"
+              type="color"
+              value={logoBackgroundColor}
+              onChange={(event) => {
+                const nextColor = event.target.value
+                setLogoBackgroundColor(nextColor)
+                void applyCrop(cropZoom, cropX, cropY, nextColor)
+              }}
+              className="size-8 cursor-pointer rounded border border-sky-200 bg-white p-0.5"
+            />
+            <span>{logoBackgroundColor.toUpperCase()}</span>
+          </span>
+        </label>
+      ) : null}
       <div className="mt-auto space-y-2">
         <input
           ref={fileInputRef}
@@ -11426,10 +11558,20 @@ function MediaUploadField({
 
             try {
               setSourceFiles(files)
+              const transparentLogo =
+                spec.label === "Logo" && Boolean(files[0])
+                  ? await isTransparentPng(files[0])
+                  : false
+              setHasTransparentLogo(transparentLogo)
               setCropZoom(1)
               setCropX(0)
               setCropY(0)
-              const resizedFiles = await resizeImageFiles(files, spec, { zoom: 1, x: 0, y: 0 })
+              const resizedFiles = await resizeImageFiles(
+                files,
+                spec,
+                { zoom: 1, x: 0, y: 0 },
+                transparentLogo ? logoBackgroundColor : undefined,
+              )
               const previews = createImagePreviews(resizedFiles)
               replaceFileInputFiles(input, resizedFiles)
               replaceSelectedMedia(resizedFiles, previews)
@@ -11440,6 +11582,7 @@ function MediaUploadField({
             } catch (error) {
               input.value = ""
               setSelectedFiles([])
+              setHasTransparentLogo(false)
               setSelectedPreviews((current) => {
                 revokeImagePreviews(current)
                 return []
@@ -12036,19 +12179,25 @@ async function resizeImageFiles(
   files: File[],
   spec: PartnerMediaSpec,
   crop: ImageCrop = { zoom: 1, x: 0, y: 0 },
+  backgroundColor?: string,
 ) {
   const resizedFiles: File[] = []
 
   for (const file of files) {
-    resizedFiles.push(await resizeImageFile(file, spec, crop))
+    resizedFiles.push(await resizeImageFile(file, spec, crop, backgroundColor))
   }
 
   return resizedFiles
 }
 
-async function resizeImageFile(file: File, spec: PartnerMediaSpec, crop: ImageCrop) {
+async function resizeImageFile(
+  file: File,
+  spec: PartnerMediaSpec,
+  crop: ImageCrop,
+  backgroundColor = "#ffffff",
+) {
   if (!isSupportedImageFile(file)) {
-    throw new Error(`"${file.name}" must be a PNG, JPEG, WebP, or SVG image.`)
+    throw new Error(`"${file.name}" must be an AVIF, PNG, JPEG, WebP, or SVG image.`)
   }
 
   const image = await loadImage(file)
@@ -12068,8 +12217,10 @@ async function resizeImageFile(file: File, spec: PartnerMediaSpec, crop: ImageCr
 
   canvas.width = spec.width
   canvas.height = spec.height
-  context.fillStyle = "#ffffff"
-  context.fillRect(0, 0, spec.width, spec.height)
+  if (backgroundColor) {
+    context.fillStyle = backgroundColor
+    context.fillRect(0, 0, spec.width, spec.height)
+  }
 
   const sourceRatio = sourceWidth / sourceHeight
   const targetRatio = spec.width / spec.height
@@ -12151,6 +12302,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, contentType: string) {
 
 function isSupportedImageFile(file: File) {
   if (
+    file.type === "image/avif" ||
     file.type === "image/png" ||
     file.type === "image/jpeg" ||
     file.type === "image/webp" ||
@@ -12163,9 +12315,45 @@ function isSupportedImageFile(file: File) {
     return false
   }
 
-  return ["png", "jpg", "jpeg", "webp", "svg"].includes(
+  return ["avif", "aviff", "png", "jpg", "jpeg", "webp", "svg"].includes(
     file.name.split(".").pop()?.toLowerCase() ?? "",
   )
+}
+
+function formDataSignature(formData: FormData) {
+  return Array.from(formData.entries())
+    .map(([key, value]) =>
+      value instanceof File
+        ? `${key}=file:${value.name}:${value.type}:${value.size}:${value.lastModified}`
+        : `${key}=${value}`,
+    )
+    .sort()
+    .join("\u001f")
+}
+
+async function isTransparentPng(file: File) {
+  const isPng = file.type === "image/png" || /\.png$/i.test(file.name)
+  if (!isPng) return false
+
+  const image = await loadImage(file)
+  const canvas = document.createElement("canvas")
+  const context = canvas.getContext("2d", { willReadFrequently: true })
+  if (!context) return false
+
+  // Sampling keeps this check quick even for large source artwork while still
+  // detecting the transparent canvas used by typical logo exports.
+  const maxDimension = 128
+  const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight))
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+  context.drawImage(image, 0, 0, canvas.width, canvas.height)
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+
+  for (let index = 3; index < pixels.length; index += 4) {
+    if (pixels[index] < 255) return true
+  }
+
+  return false
 }
 
 function replaceFileExtension(fileName: string, suffix: string) {

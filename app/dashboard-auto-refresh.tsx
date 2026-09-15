@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 const FALLBACK_REFRESH_MS = 45_000
 const REFRESH_DEBOUNCE_MS = 500
 
-export function DashboardAutoRefresh() {
+export function PanelDataAutoRefresh() {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const refreshTimer = useRef<number | null>(null)
@@ -53,3 +53,7 @@ export function DashboardAutoRefresh() {
 
   return null
 }
+
+// Kept as a named alias for the admin page while the same live-data bridge is
+// also used by the partner portal.
+export const DashboardAutoRefresh = PanelDataAutoRefresh
