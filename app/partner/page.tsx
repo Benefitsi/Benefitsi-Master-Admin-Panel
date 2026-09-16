@@ -5,6 +5,7 @@ import { PartnerWorkspace } from "@/app/partner-admin"
 import { BrandLogo } from "@/components/brand-logo"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { AdminLanguageControl, AdminLanguageProvider } from "@/app/admin-language"
+import { PanelDataAutoRefresh } from "@/app/dashboard-auto-refresh"
 import { getDashboardData, type PartnerWithDeals } from "@/lib/admin-data"
 import {
   filterPartnersForManagement,
@@ -67,6 +68,7 @@ export default async function PartnerDashboardPage({
   return (
     <AdminLanguageProvider>
     <main className="min-h-screen bg-[#f7f6f1] text-[#061829]">
+      <PanelDataAutoRefresh />
       <div className="mx-auto max-w-6xl px-5 py-6 lg:px-8">
         <header className="flex flex-col gap-4 rounded-2xl border border-[#061829]/10 bg-white px-5 py-5 shadow-[0_18px_48px_rgba(6,24,41,.05)] sm:flex-row sm:items-center sm:justify-between">
           <div>

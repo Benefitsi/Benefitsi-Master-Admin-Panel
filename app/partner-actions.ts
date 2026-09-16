@@ -383,6 +383,7 @@ type ParsedInitialMenuItem = ParsedMenuItem & {
 const MAX_COVERS = 5
 const MAX_PARTNER_MEDIA_BYTES = 10 * 1024 * 1024
 const ALLOWED_PARTNER_MEDIA_TYPES = new Set([
+  "image/avif",
   "image/png",
   "image/jpeg",
   "image/webp",
@@ -555,7 +556,7 @@ export async function createPartnerCoverUpload(
   const { supabase } = access
 
   if (!ALLOWED_PARTNER_MEDIA_TYPES.has(contentType)) {
-    return { ok: false, message: "Cover photos must be PNG, JPEG, WebP, or SVG images." }
+    return { ok: false, message: "Cover photos must be AVIF, PNG, JPEG, WebP, or SVG images." }
   }
 
   if (!Number.isFinite(size) || size <= 0 || size > MAX_PARTNER_MEDIA_BYTES) {
@@ -3431,7 +3432,7 @@ async function preparePartnerUploadFile(
   const contentType = partnerMediaContentType(file)
 
   if (!contentType) {
-    throw new Error(`"${file.name}" must be a PNG, JPEG, WebP, or SVG image.`)
+    throw new Error(`"${file.name}" must be an AVIF, PNG, JPEG, WebP, or SVG image.`)
   }
 
   const input = Buffer.from(await file.arrayBuffer())
@@ -6532,7 +6533,7 @@ function validateMediaFile(file: File) {
   const contentType = partnerMediaContentType(file)
 
   if (!contentType || !ALLOWED_PARTNER_MEDIA_TYPES.has(contentType)) {
-    return `"${file.name}" must be a PNG, JPEG, WebP, or SVG image.`
+    return `"${file.name}" must be an AVIF, PNG, JPEG, WebP, or SVG image.`
   }
 
   if (file.size > MAX_PARTNER_MEDIA_BYTES) {
@@ -6554,6 +6555,9 @@ function partnerMediaContentType(file: File) {
   const extension = file.name.split(".").pop()?.toLowerCase()
 
   switch (extension) {
+    case "avif":
+    case "aviff":
+      return "image/avif"
     case "png":
       return "image/png"
     case "jpg":
