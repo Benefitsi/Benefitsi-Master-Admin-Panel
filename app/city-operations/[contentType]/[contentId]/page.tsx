@@ -5,6 +5,7 @@ import {
   publishCityContent,
   rejectCityReview,
   requestCityReviewCorrection,
+  resolveCityClubSourceReview,
 } from "@/app/city-operations/actions"
 import {
   IssueList,
@@ -16,6 +17,8 @@ import {
   canPublishReview,
   contentTypeLabel,
   isCityContentType,
+  isPublishedCityReview,
+  pendingClubSourceReviews,
 } from "@/lib/city-operations/contracts"
 import { loadCityReviewDetail } from "@/lib/city-operations/data"
 
@@ -29,6 +32,7 @@ type DetailParams = {
 type DetailSearchParams = {
   error?: string
   success?: string
+  warning?: string
 }
 
 export default async function CityReviewDetailPage({
@@ -48,6 +52,8 @@ export default async function CityReviewDetailPage({
 
   const record = detail.record
   const publishable = canPublishReview(record)
+  const published = isPublishedCityReview(record)
+  const sourceReviews = pendingClubSourceReviews(record)
   const adminName =
     adminSession.profile?.display_name ||
     adminSession.profile?.email ||
@@ -69,7 +75,11 @@ export default async function CityReviewDetailPage({
 
       {feedback.error ? (
         <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900">
-          {feedback.error === "note"
+          {feedback.error === "source_review_note"
+            ? "Bitte beschreiben, was anhand der Quelle geprüft wurde. Die Notiz darf höchstens 2.000 Zeichen enthalten."
+            : feedback.error?.startsWith("source_review")
+              ? "Die Quellenmeldung konnte nicht quittiert werden. Der Stand kann sich geändert haben; bitte neu laden und die konkrete Meldung erneut prüfen."
+              : feedback.error === "note"
             ? "Für Korrektur oder Ablehnung ist eine Begründung erforderlich."
             : feedback.error === "publish_gate"
               ? "Veröffentlichung blockiert: Die Agent-Prüfung erfüllt noch nicht alle Sicherheitsregeln."
@@ -79,6 +89,11 @@ export default async function CityReviewDetailPage({
       {feedback.success ? (
         <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
           Die Review-Aktion wurde gespeichert und protokolliert.
+        </div>
+      ) : null}
+      {feedback.warning?.startsWith("refresh_") ? (
+        <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950">
+          Die Veröffentlichung ist gespeichert. Die öffentliche Ansicht konnte noch nicht aktualisiert werden; bitte dort erneut prüfen.
         </div>
       ) : null}
       {detail.warnings.map((warning) => (
@@ -93,7 +108,7 @@ export default async function CityReviewDetailPage({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
-                  Entwurf
+                  {published ? "Veröffentlichter Inhalt" : "Entwurf"}
                 </p>
                 <h2 className="mt-1 text-xl font-black tracking-[-0.025em]">
                   Inhalt prüfen
@@ -169,6 +184,28 @@ export default async function CityReviewDetailPage({
 
             {record.reviewId ? (
               <div className="mt-5 space-y-4">
+                {sourceReviews.map((issue) => (
+                  <form key={issue.receiptKey} action={resolveCityClubSourceReview} className="space-y-3 rounded-xl border border-white/20 p-3">
+                    <HiddenReviewFields record={record} />
+                    <input type="hidden" name="receiptKey" value={issue.receiptKey} />
+                    <input type="hidden" name="sourceSha256" value={issue.sourceSha256} />
+                    <input type="hidden" name="expectedUpdatedAt" value={record.updatedAt || ""} />
+                    <p className="text-sm font-bold">Quellenänderung prüfen</p>
+                    <p className="text-xs leading-5 text-white/70">
+                      {issue.message} Die Quittierung bestätigt nur diese Quellenmeldung. Profilangaben und Veröffentlichungsstatus bleiben unverändert.
+                    </p>
+                    {issue.sourceUrl ? <a href={issue.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-sm font-bold text-[#17d4d7]">Quelle vergleichen ↗</a> : null}
+                    <p className="text-xs text-white/60">Quellenabruf: {formatDate(issue.checkedAt || null)}</p>
+                    <label className="block text-sm font-semibold">
+                      Was wurde geprüft?
+                      <textarea name="note" required maxLength={2000} rows={3} className="mt-2 w-full rounded-xl border border-white/20 bg-white/8 px-3 py-2 text-sm" />
+                    </label>
+                    <PendingSubmitButton pendingLabel="Wird quittiert …" className="min-h-11 w-full rounded-xl bg-white px-4 text-sm font-black text-[#061829]">
+                      Quellenänderung geprüft
+                    </PendingSubmitButton>
+                  </form>
+                ))}
+                {!published && record.stage !== "archived" ? <>
                 <ReviewForm
                   record={record}
                   action={requestCityReviewCorrection}
@@ -185,7 +222,10 @@ export default async function CityReviewDetailPage({
                   placeholder="Warum soll dieser Inhalt nicht verwendet werden?"
                   buttonClass="border border-white/25 bg-transparent text-white hover:bg-white/10"
                 />
-                {publishable ? (
+                </> : null}
+                {published ? (
+                  <p className="rounded-xl bg-white/12 p-3 text-sm font-bold">Bereits veröffentlicht. Offene Quellenmeldungen können getrennt geprüft werden.</p>
+                ) : publishable ? (
                   <form action={publishCityContent}>
                     <HiddenReviewFields record={record} />
                     <input type="hidden" name="note" value="Manuell im Städte-Review freigegeben." />
@@ -204,7 +244,7 @@ export default async function CityReviewDetailPage({
                     Veröffentlichung blockiert
                   </div>
                 )}
-                {!publishable ? (
+                {!publishable && !published ? (
                   <p className="text-xs leading-5 text-white/55">
                     Erforderlich: verifizierte HTTPS-Quelle, frische Prüfung,
                     Agent-Urteil „bestanden“ und keine blockierenden Fehler.
@@ -231,7 +271,7 @@ export default async function CityReviewDetailPage({
                 {detail.audit.map((entry) => (
                   <li key={entry.id}>
                     <p className="text-sm font-black text-[#061829]">
-                      {auditLabel(entry.action)}
+                      {entry.details.operation === "club_source_review_resolved" ? "Vereinsquelle geprüft" : auditLabel(entry.action)}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-[#617080]">
                       {entry.actorProfile || entry.actorType} · {formatDate(entry.createdAt)}
