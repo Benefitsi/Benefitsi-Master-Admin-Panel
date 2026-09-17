@@ -91,6 +91,9 @@ export default async function CityPageDetail({
           Alle Städteseiten
         </Link>
         <div className="flex flex-wrap gap-2">
+          <Link href={`/city-pages/${city.slug}/discovery`} className={secondaryButton}>
+            Startseitenbilder
+          </Link>
           <a
             href={publicUrl}
             target="_blank"
