@@ -37,6 +37,8 @@ export type CityReviewIssue = {
   status?: string
   sourceUrl?: string
   checkedAt?: string
+  receiptKey?: string
+  sourceSha256?: string
 }
 
 export type CityReviewRecord = {
@@ -194,6 +196,12 @@ export function normalizeIssues(value: unknown): CityReviewIssue[] {
               status: cleanText(source.status, 40) || undefined,
               sourceUrl: cleanHttpsUrl(source.source_url),
               checkedAt: cleanText(source.checked_at, 80) || undefined,
+              ...(typeof source.receipt_key === "string" && source.receipt_key.length <= 300
+                ? { receiptKey: source.receipt_key }
+                : {}),
+              ...(typeof source.source_sha256 === "string" && /^[a-f0-9]{64}$/.test(source.source_sha256)
+                ? { sourceSha256: source.source_sha256 }
+                : {}),
             }
           : {}),
       },
@@ -207,6 +215,21 @@ export function isOpenClubReviewIssue(issue: CityReviewIssue) {
       issue.kind === "club_profile_proposal") &&
     issue.status === "needs_review"
   )
+}
+
+export function pendingClubSourceReviews(
+  record: Pick<CityReviewRecord, "contentType" | "stage" | "issues">,
+) {
+  if (record.contentType !== "clubs" || !["agent_draft", "ready_for_human", "published"].includes(record.stage)) return []
+  return record.issues.filter((issue) => issue.kind === "club_source_change" &&
+    issue.status === "needs_review" && Boolean(issue.receiptKey) &&
+    Boolean(issue.sourceSha256) && issue.receiptKey?.endsWith(`:${issue.sourceSha256}`))
+}
+
+export function isPublishedCityReview(
+  record: Pick<CityReviewRecord, "stage" | "contentStatus">,
+) {
+  return record.stage === "published" && record.contentStatus === "active"
 }
 
 export function pendingClubReviewLabel(
