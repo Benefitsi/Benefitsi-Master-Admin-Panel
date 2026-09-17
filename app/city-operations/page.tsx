@@ -7,6 +7,7 @@ import {
   cityContentTypes,
   contentTypeLabel,
   filterCityReviewRecords,
+  isOpenCityReview,
   stageLabel,
   type CityReviewStage,
 } from "@/lib/city-operations/contracts"
@@ -71,7 +72,7 @@ export default async function CityOperationsPage({
     adminSession.user.email ||
     "Admin"
   const openCount = data.records.filter(
-    (record) => !["published", "rejected", "archived"].includes(record.stage),
+    isOpenCityReview,
   ).length
   const blockingCount = data.records.filter((record) =>
     record.issues.some((issue) => issue.severity === "blocking"),
@@ -155,6 +156,7 @@ export default async function CityOperationsPage({
             </FilterSelect>
             <FilterSelect name="stage" label="Status" value={params.stage}>
               <option value="">Alle Status</option>
+              <option value="open">Offene Prüfungen</option>
               {stages.map((stage) => (
                 <option key={stage} value={stage}>
                   {stageLabel(stage)}

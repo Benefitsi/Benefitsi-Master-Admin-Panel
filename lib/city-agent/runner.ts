@@ -14,6 +14,10 @@ import {
   reviewCityAgentProposalsThroughHermes,
   sourceContentType,
 } from "./sources"
+import {
+  AUTOMATIC_SOURCE_OWNER_FILTER,
+  selectDueAutomaticSources,
+} from "./source-selection"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type SupabaseClient = ReturnType<typeof createAdminClient>
@@ -217,6 +221,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
     .select("id,city_id,slug,url,source_type,trust_level,cadence,next_check_at,parser_config,content_scope,active")
     .eq("city_id", cityId)
     .eq("active", true)
+    .or(AUTOMATIC_SOURCE_OWNER_FILTER)
     .order("next_check_at", { ascending: true, nullsFirst: true })
     .limit(boundedSources(options.maxSources) * 2)
   if (sourcesResult.error) {
@@ -225,9 +230,11 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
     throw new Error(`City-Agent-Quellen konnten nicht geladen werden: ${sourcesResult.error.message}`)
   }
 
-  const dueSources = ((sourcesResult.data ?? []) as CityAgentSourceRow[])
-    .filter((source) => !source.next_check_at || new Date(source.next_check_at).getTime() <= now.getTime())
-    .slice(0, boundedSources(options.maxSources))
+  const dueSources = selectDueAutomaticSources(
+    (sourcesResult.data ?? []) as CityAgentSourceRow[],
+    now,
+    boundedSources(options.maxSources),
+  )
   const provider = createSourceResearchProvider({
     now,
     fetchImpl: options.fetchImpl,

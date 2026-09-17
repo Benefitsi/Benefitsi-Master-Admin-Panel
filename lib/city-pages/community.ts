@@ -1,5 +1,6 @@
 import "server-only"
 
+import { pendingNativeMeetups } from "./community-moderation"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type JsonRow = Record<string, unknown>
@@ -24,6 +25,14 @@ export type CommunitySubmission = {
   description: string
   contactName: string
   contactEmail: string
+  hostUserId: string | null
+  eventEndsAt: string | null
+  capacity: number | null
+  targetAudience: string | null
+  costDescription: string | null
+  activityType: string | null
+  eventTimezone: string | null
+  publishedRecordId: string | null
   eventStartsAt: string | null
   eventLocation: string | null
   sourceUrl: string | null
@@ -33,11 +42,36 @@ export type CommunitySubmission = {
   createdAt: string
   updatedAt: string
   audit: CommunityAuditEntry[]
+  linkedMeetup: NativeCommunityMeetup | null
+}
+
+export type NativeCommunityMeetup = {
+  id: string
+  cityId: string
+  canonicalSlug: string | null
+  title: string
+  description: string
+  hostUserId: string | null
+  hostDisplayName: string | null
+  linkedSubmission: boolean
+  startsAt: string | null
+  endsAt: string | null
+  meetingPoint: string | null
+  capacity: number | null
+  targetAudience: string | null
+  costDescription: string | null
+  activityType: string | null
+  moderationStatus: string
+  lifecycleStatus: string
+  visibility: string
+  locationPrivacy: string | null
+  createdAt: string
 }
 
 export type CityCommunityInbox = {
   city: { id: string; name: string; slug: string } | null
   submissions: CommunitySubmission[]
+  nativeMeetups: NativeCommunityMeetup[]
   warnings: string[]
 }
 
@@ -68,13 +102,13 @@ export async function loadCityCommunityInbox(
     throw new Error(`Stadt konnte nicht geladen werden: ${cityResult.error.message}`)
   }
   if (!cityResult.data) {
-    return { city: null, submissions: [], warnings: [] }
+    return { city: null, submissions: [], nativeMeetups: [], warnings: [] }
   }
 
   const submissionsResult = await admin
     .from("city_community_submissions")
     .select(
-      "id,city_id,public_reference,kind,title,description,contact_name,contact_email,event_starts_at,event_location,source_url,status,review_notes,public_status_message,created_at,updated_at",
+      "id,city_id,public_reference,kind,title,description,contact_name,contact_email,event_starts_at,event_ends_at,event_location,host_user_id,capacity,target_audience,cost_description,activity_type,event_timezone,published_record_id,source_url,status,review_notes,public_status_message,created_at,updated_at",
     )
     .eq("city_id", cityResult.data.id)
     .order("created_at", { ascending: false })
@@ -102,6 +136,41 @@ export async function loadCityCommunityInbox(
   if (auditResult.error) {
     warnings.push("Der Statusverlauf konnte nicht geladen werden.")
   }
+
+  // Query all linked IDs independently of the paginated inbox, so an older
+  // web submission cannot also appear as a new app proposal.
+  const nativeResult = await admin.from("city_meetups")
+    .select("id,city_id,canonical_slug,title,description,host_user_id,start_at,end_at,meeting_point_label,max_participants,age_range,cost_description,activity_type,moderation_status,lifecycle_status,visibility,location_privacy,created_at")
+    .eq("city_id", cityResult.data.id)
+    .in("moderation_status", ["PENDING", "FLAGGED"])
+    .order("created_at", { ascending: true })
+    .limit(250)
+  const nativeIds = rows(nativeResult.data).map(row => String(row.id))
+  const linksResult = nativeIds.length ? await admin.from("city_community_submissions")
+    .select("published_record_id").eq("city_id", cityResult.data.id)
+    .in("published_record_id", nativeIds) : {data: [], error: null}
+  if (nativeResult.error) warnings.push("Die App-Treffen konnten nicht geladen werden. Die Einreichungen bleiben verfügbar.")
+  if (linksResult.error) warnings.push("Die Zuordnung zu Einreichungen konnte nicht geprüft werden. App-Treffen werden bis zur nächsten erfolgreichen Prüfung ausgeblendet, um doppelte Moderation zu vermeiden.")
+  const nativeRows = nativeResult.error || linksResult.error ? [] : rows(nativeResult.data)
+  const hostIds = [...new Set(nativeRows.map(row => text(row.host_user_id)).filter((id): id is string => Boolean(id)))]
+  const hostsResult = hostIds.length ? await admin.from("users").select("id,display_name").in("id", hostIds) : {data: [], error: null}
+  if (hostsResult.error) warnings.push("Öffentliche Gastgebernamen konnten nicht geladen werden. Es werden keine Ersatzidentitäten erzeugt.")
+  const hostNames = new Map(rows(hostsResult.data).map(row => [String(row.id), text(row.display_name)]))
+  const linkedRecordIds = new Set(rows(linksResult.data).map(row => String(row.published_record_id)))
+  const allPendingMeetups: NativeCommunityMeetup[] = nativeRows.map(row => ({
+    id: String(row.id), cityId: String(row.city_id), canonicalSlug: text(row.canonical_slug),
+    title: String(row.title), description: String(row.description ?? ""),
+    linkedSubmission: linkedRecordIds.has(String(row.id)),
+    hostUserId: text(row.host_user_id), hostDisplayName: hostNames.get(String(row.host_user_id)) ?? null,
+    startsAt: text(row.start_at), endsAt: text(row.end_at), meetingPoint: text(row.meeting_point_label),
+    capacity: typeof row.max_participants === "number" ? row.max_participants : null,
+    targetAudience: text(row.age_range), costDescription: text(row.cost_description), activityType: text(row.activity_type),
+    moderationStatus: String(row.moderation_status), lifecycleStatus: String(row.lifecycle_status),
+    visibility: String(row.visibility), locationPrivacy: text(row.location_privacy), createdAt: String(row.created_at),
+  }))
+  const displayedLinkedIds = submissionRows.map(row => text(row.published_record_id)).filter((id): id is string => Boolean(id))
+  const nativeMeetups = pendingNativeMeetups(allPendingMeetups, displayedLinkedIds)
+  const pendingById = new Map(allPendingMeetups.map(meetup => [meetup.id, meetup]))
 
   const auditBySubmission = new Map<string, CommunityAuditEntry[]>()
   for (const row of rows(auditResult.data)) {
@@ -136,6 +205,14 @@ export async function loadCityCommunityInbox(
       contactName: String(row.contact_name),
       contactEmail: String(row.contact_email),
       eventStartsAt: text(row.event_starts_at),
+      hostUserId: text(row.host_user_id),
+      eventEndsAt: text(row.event_ends_at),
+      capacity: typeof row.capacity === "number" ? row.capacity : null,
+      targetAudience: text(row.target_audience),
+      costDescription: text(row.cost_description),
+      activityType: text(row.activity_type),
+      eventTimezone: text(row.event_timezone),
+      publishedRecordId: text(row.published_record_id),
       eventLocation: text(row.event_location),
       sourceUrl: text(row.source_url),
       status: String(row.status),
@@ -144,7 +221,9 @@ export async function loadCityCommunityInbox(
       createdAt: String(row.created_at),
       updatedAt: String(row.updated_at),
       audit: auditBySubmission.get(String(row.id)) ?? [],
+      linkedMeetup: pendingById.get(String(row.published_record_id)) ?? null,
     })),
+    nativeMeetups,
     warnings,
   }
 }

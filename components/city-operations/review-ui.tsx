@@ -1,6 +1,7 @@
 import Link from "next/link"
 import {
   contentTypeLabel,
+  pendingClubReviewLabel,
   stageLabel,
   type CityReviewIssue,
   type CityReviewRecord,
@@ -9,25 +10,29 @@ import {
 export function ReviewStatus({
   record,
 }: {
-  record: Pick<CityReviewRecord, "stage" | "issues">
+  record: Pick<CityReviewRecord, "contentType" | "stage" | "issues">
 }) {
   const blocking = record.issues.filter(
     (issue) => issue.severity === "blocking",
   ).length
+  const clubReview = pendingClubReviewLabel(record)
   const tone =
-    record.stage === "published"
-      ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
-      : blocking > 0 || record.stage === "correction_requested"
-        ? "bg-amber-50 text-amber-900 ring-amber-200"
-        : record.stage === "ready_for_human"
-          ? "bg-sky-50 text-sky-800 ring-sky-200"
-          : "bg-zinc-100 text-zinc-700 ring-zinc-200"
+    clubReview
+      ? "bg-amber-50 text-amber-900 ring-amber-200"
+      : record.stage === "published"
+        ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
+        : blocking > 0 || record.stage === "correction_requested"
+          ? "bg-amber-50 text-amber-900 ring-amber-200"
+          : record.stage === "ready_for_human"
+            ? "bg-sky-50 text-sky-800 ring-sky-200"
+            : "bg-zinc-100 text-zinc-700 ring-zinc-200"
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${tone}`}
     >
       {stageLabel(record.stage)}
+      {clubReview ? ` · ${clubReview}` : ""}
       {blocking > 0 ? ` · ${blocking} blockierend` : ""}
     </span>
   )
@@ -80,6 +85,15 @@ export function IssueList({ issues }: { issues: CityReviewIssue[] }) {
           }`}
         >
           <div className="flex flex-wrap items-center gap-2">
+            {issue.kind === "club_source_change" ? (
+              <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs font-black text-amber-950 ring-1 ring-inset ring-amber-300">
+                Quellenänderung
+              </span>
+            ) : issue.kind === "club_profile_proposal" ? (
+              <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs font-black text-amber-950 ring-1 ring-inset ring-amber-300">
+                Profilvorschlag
+              </span>
+            ) : null}
             <span className="text-xs font-black uppercase tracking-[0.12em]">
               {issue.severity === "blocking"
                 ? "Blockierend"
@@ -92,6 +106,16 @@ export function IssueList({ issues }: { issues: CityReviewIssue[] }) {
           <p className="mt-2 text-sm font-semibold leading-6 text-[#061829]">
             {issue.message}
           </p>
+          {issue.sourceUrl ? (
+            <a
+              href={issue.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex min-h-11 items-center text-sm font-black text-[#0b75d9] hover:underline"
+            >
+              Geänderte Quelle öffnen ↗
+            </a>
+          ) : null}
           {issue.suggestion ? (
             <p className="mt-2 text-sm leading-6 text-[#526170]">
               Vorschlag: {issue.suggestion}
