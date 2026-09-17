@@ -33,6 +33,10 @@ export type CityReviewIssue = {
   suggestion?: string
   actual?: string
   expected?: string
+  kind?: "club_source_change" | "club_profile_proposal"
+  status?: string
+  sourceUrl?: string
+  checkedAt?: string
 }
 
 export type CityReviewRecord = {
@@ -134,34 +138,99 @@ function cleanText(value: unknown, maxLength = 1000) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : ""
 }
 
+function cleanHttpsUrl(value: unknown) {
+  const raw = cleanText(value, 2000)
+  if (!raw) return undefined
+  try {
+    const url = new URL(raw)
+    return url.protocol === "https:" ? url.toString() : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export function normalizeIssues(value: unknown): CityReviewIssue[] {
   if (!Array.isArray(value)) return []
 
-  return value.slice(0, 30).flatMap((item) => {
+  return value.slice(0, 100).flatMap((item) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) return []
 
     const source = item as Record<string, unknown>
     const message = cleanText(source.message, 1200)
     if (!message) return []
 
+    const rawKind = cleanText(source.kind, 80)
+    const kind =
+      rawKind === "club_source_change" || rawKind === "club_profile_proposal"
+        ? rawKind
+        : undefined
+
     const rawSeverity = cleanText(source.severity, 20)
     const severity: CityReviewIssue["severity"] =
       rawSeverity === "blocking" || rawSeverity === "warning"
         ? rawSeverity
-        : "info"
+        : kind
+          ? "warning"
+          : "info"
 
     return [
       {
-        code: cleanText(source.code, 80) || "review_issue",
-        field: cleanText(source.field, 80) || "content",
+        code: cleanText(source.code, 80) || kind || "review_issue",
+        field:
+          cleanText(source.field, 80) ||
+          (kind === "club_source_change"
+            ? "source"
+            : kind === "club_profile_proposal"
+              ? "profile"
+              : "content"),
         severity,
         message,
         suggestion: cleanText(source.suggestion, 1200) || undefined,
         actual: cleanText(source.actual, 500) || undefined,
         expected: cleanText(source.expected, 500) || undefined,
+        ...(kind
+          ? {
+              kind,
+              status: cleanText(source.status, 40) || undefined,
+              sourceUrl: cleanHttpsUrl(source.source_url),
+              checkedAt: cleanText(source.checked_at, 80) || undefined,
+            }
+          : {}),
       },
     ]
   })
+}
+
+export function isOpenClubReviewIssue(issue: CityReviewIssue) {
+  return (
+    (issue.kind === "club_source_change" ||
+      issue.kind === "club_profile_proposal") &&
+    issue.status === "needs_review"
+  )
+}
+
+export function pendingClubReviewLabel(
+  record: Pick<CityReviewRecord, "contentType" | "issues">,
+) {
+  if (record.contentType !== "clubs") return null
+  const issue = record.issues.find(isOpenClubReviewIssue)
+  if (issue?.kind === "club_source_change") {
+    return "Vereinsquelle geändert · Prüfung offen"
+  }
+  if (issue?.kind === "club_profile_proposal") {
+    return "Vereinsprofil vorgeschlagen · Prüfung offen"
+  }
+  return null
+}
+
+export function isOpenCityReview(
+  record: Pick<CityReviewRecord, "contentType" | "stage" | "issues">,
+) {
+  return (
+    !["published", "rejected", "archived"].includes(record.stage) ||
+    (record.contentType === "clubs" &&
+      record.issues.some(isOpenClubReviewIssue))
+  )
 }
 
 export function hasBlockingIssues(record: Pick<CityReviewRecord, "issues">) {
@@ -266,10 +335,17 @@ export function filterCityReviewRecords(
     if (filters.contentType && record.contentType !== filters.contentType) {
       return false
     }
-    if (filters.stage && record.stage !== filters.stage) return false
+    if (filters.stage === "open" && !isOpenCityReview(record)) return false
+    if (
+      filters.stage &&
+      filters.stage !== "open" &&
+      record.stage !== filters.stage
+    ) {
+      return false
+    }
     if (
       query &&
-      !`${record.title} ${record.cityName} ${record.description}`
+      !`${record.title} ${record.cityName} ${record.description} ${record.issues.map((issue) => issue.message).join(" ")}`
         .toLocaleLowerCase("de")
         .includes(query)
     ) {
