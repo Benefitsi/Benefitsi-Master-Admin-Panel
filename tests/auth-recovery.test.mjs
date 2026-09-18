@@ -31,6 +31,10 @@ test("keeps admin and partner recovery destinations separate", () => {
     recoveryCallbackUrl("https://admin.example.com", "partner"),
     "https://admin.example.com/auth/confirm?next=%2Freset-password%3Fportal%3Dpartner",
   )
+  assert.equal(
+    recoveryCallbackUrl("https://admin.benefitsi.de", "admin"),
+    "https://benefitsi.de/",
+  )
 })
 
 test("recovery callbacks only redirect to the known internal reset page", () => {
