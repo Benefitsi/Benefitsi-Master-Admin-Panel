@@ -1,5 +1,7 @@
 export type AuthPortal = "admin" | "partner"
 
+export const DEFAULT_ADMIN_EMAIL = "patrick@benefitsi.com"
+
 export function normalizeAuthPortal(value: unknown): AuthPortal {
   return value === "partner" ? "partner" : "admin"
 }
