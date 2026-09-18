@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 
 import {
+  DEFAULT_ADMIN_EMAIL,
   forgotPasswordPathForPortal,
   loginPathForPortal,
   normalizeAuthPortal,
@@ -12,6 +13,17 @@ import {
 } from "../lib/auth-recovery.ts"
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8")
+
+test("uses the canonical Benefitsi account as the default admin identity", async () => {
+  const [adminLogin, recoveryForm] = await Promise.all([
+    read("app/login/login-form.tsx"),
+    read("app/forgot-password/recovery-request-form.tsx"),
+  ])
+
+  assert.equal(DEFAULT_ADMIN_EMAIL, "patrick@benefitsi.com")
+  assert.match(adminLogin, /defaultValue=\{DEFAULT_ADMIN_EMAIL\}/)
+  assert.match(recoveryForm, /portal === "admin" \? DEFAULT_ADMIN_EMAIL : undefined/)
+})
 
 test("keeps admin and partner recovery destinations separate", () => {
   assert.equal(normalizeAuthPortal("partner"), "partner")
