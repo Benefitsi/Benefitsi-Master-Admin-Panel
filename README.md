@@ -93,13 +93,15 @@ Both sign-in pages include a **Forgot password?** link. Supabase Auth sends the
 recovery message through the project's configured SMTP provider (Resend), so no
 Resend API key is exposed to this application.
 
-For production, add these two exact URLs to **Supabase Dashboard > Authentication
-> URL Configuration > Redirect URLs**, replacing the example host with the admin
-panel host:
+Production recovery first uses the allow-listed `https://benefitsi.de/` Site URL.
+The public site's recovery bridge then forwards the single-use response to the
+admin panel. This keeps recovery working while the Supabase Site URL serves the
+public website. Add these two exact URLs to **Supabase Dashboard > Authentication
+> URL Configuration > Redirect URLs** as defense in depth:
 
 ```text
-https://admin.example.com/reset-password?portal=admin
-https://admin.example.com/reset-password?portal=partner
+https://admin.benefitsi.de/auth/confirm?next=/reset-password?portal=admin
+https://admin.benefitsi.de/auth/confirm?next=/reset-password?portal=partner
 ```
 
 Then use `supabase/templates/recovery.html` as the **Reset password** email
