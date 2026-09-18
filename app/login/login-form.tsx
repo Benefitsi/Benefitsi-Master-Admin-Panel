@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useActionState } from "react"
 import { LoadingSpinner } from "@/components/loading-ui"
+import { DEFAULT_ADMIN_EMAIL } from "@/lib/auth-recovery"
 import { login, type LoginActionState } from "./actions"
 
 const initialState: LoginActionState = {
@@ -31,10 +32,11 @@ export function LoginForm({ isConfigured }: LoginFormProps) {
           name="email"
           type="email"
           autoComplete="email"
+          defaultValue={DEFAULT_ADMIN_EMAIL}
           required
           disabled={disabled}
           className="h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-2 focus:ring-[#118cff]/15 disabled:cursor-not-allowed disabled:bg-zinc-100"
-          placeholder="admin@benefitsi.com"
+          placeholder={DEFAULT_ADMIN_EMAIL}
         />
       </div>
 
