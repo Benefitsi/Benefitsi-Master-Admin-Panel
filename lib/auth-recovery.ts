@@ -17,7 +17,12 @@ export function resetPasswordPathForPortal(portal: AuthPortal) {
 }
 
 export function recoveryCallbackUrl(origin: string, portal: AuthPortal) {
-  const callbackUrl = new URL("/auth/confirm", origin)
+  const sourceOrigin = new URL(origin)
+  if (sourceOrigin.hostname === "admin.benefitsi.de") {
+    return "https://benefitsi.de/"
+  }
+
+  const callbackUrl = new URL("/auth/confirm", sourceOrigin.origin)
   callbackUrl.searchParams.set("next", resetPasswordPathForPortal(portal))
   return callbackUrl.toString()
 }
