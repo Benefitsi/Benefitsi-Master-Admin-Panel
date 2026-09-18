@@ -5,6 +5,7 @@ import { CheckCircle2 } from "lucide-react"
 import { LoadingSpinner } from "@/components/loading-ui"
 import { createClient } from "@/lib/supabase/client"
 import {
+  DEFAULT_ADMIN_EMAIL,
   recoveryCallbackUrl,
   type AuthPortal,
 } from "@/lib/auth-recovery"
@@ -87,10 +88,11 @@ export function RecoveryRequestForm({
           name="email"
           type="email"
           autoComplete="email"
+          defaultValue={portal === "admin" ? DEFAULT_ADMIN_EMAIL : undefined}
           required
           disabled={disabled}
           className="h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-2 focus:ring-[#118cff]/15 disabled:cursor-not-allowed disabled:bg-zinc-100"
-          placeholder={portal === "partner" ? "owner@partner.com" : "admin@benefitsi.com"}
+          placeholder={portal === "partner" ? "owner@partner.com" : DEFAULT_ADMIN_EMAIL}
         />
       </div>
 
