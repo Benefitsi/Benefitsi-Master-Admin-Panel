@@ -126,6 +126,15 @@ export function canManagePartner(
   return session.isAdmin || session.ownedPartnerIds.includes(partnerId)
 }
 
+// Match the deployed microsites/microsite_versions admin-only write policies.
+// Partner linkage grants visibility, not draft approval or publication rights.
+export function canEditPartnerMicrosite(
+  session: PartnerPortalSession,
+  partnerId: string | null | undefined,
+) {
+  return Boolean(partnerId && session.isAdmin)
+}
+
 export function filterPartnersForPortal(
   partners: PartnerWithDeals[],
   session: PartnerPortalSession,

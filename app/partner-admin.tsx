@@ -109,6 +109,7 @@ import type {
   PartnerEnrichmentSource,
 } from "@/lib/partner-enrichment"
 import { MicrositePanel } from "./microsite-panel"
+import { MicrositeReadOnlyNotice } from "@/components/microsite-read-only-notice"
 import { useAdminLanguage } from "./admin-language"
 import { LoadingSpinner } from "@/components/loading-ui"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
@@ -309,6 +310,7 @@ type PartnerWorkspaceProps = {
   initialSettingsTab?: string
   initialView?: "settings" | "microsite"
   portalMode?: boolean
+  micrositeEditingEnabled?: boolean
 }
 
 type InitialDealDraft = {
@@ -502,6 +504,7 @@ export function PartnerWorkspace({
   initialSettingsTab,
   initialView = "settings",
   portalMode = false,
+  micrositeEditingEnabled = !portalMode,
 }: PartnerWorkspaceProps) {
   const [query, setQuery] = useState("")
   const [partnerFilter, setPartnerFilter] = useState<
@@ -770,6 +773,7 @@ export function PartnerWorkspace({
                 initialView={workspaceLocation.view}
                 onLocationChange={setWorkspaceLocation}
                 portalMode={portalMode}
+                micrositeEditingEnabled={micrositeEditingEnabled}
               />
           ) : partners.length && hasActiveFilters ? (
             <EditorShell
@@ -905,6 +909,7 @@ function PartnerDetail({
   initialView = "settings",
   onLocationChange,
   portalMode = false,
+  micrositeEditingEnabled = !portalMode,
 }: {
   partner: PartnerWithDeals
   cities: City[]
@@ -917,6 +922,7 @@ function PartnerDetail({
     view: "settings" | "microsite"
   }) => void
   portalMode?: boolean
+  micrositeEditingEnabled?: boolean
 }) {
   const partnerFormId = `partner-form-${partner.id ?? "partner"}`
   const partnerIdentity = partner.id ?? "partner"
@@ -1021,7 +1027,7 @@ function PartnerDetail({
                     : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
                 }`}
               >
-                Microsite builder
+                {micrositeEditingEnabled ? "Microsite builder" : "Microsite preview"}
               </button>
             </div>
             <StatusPill active={isPartnerActive(partner)} />
@@ -1143,6 +1149,8 @@ function PartnerDetail({
             ) : null}
             </section>
           </div>
+        ) : !micrositeEditingEnabled ? (
+          <MicrositeReadOnlyNotice identifier={builderIdentifier} />
         ) : (
           <div className="space-y-5">
             <section className="rounded-md border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900">

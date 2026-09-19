@@ -10,6 +10,14 @@ export function loginPathForPortal(portal: AuthPortal) {
   return portal === "partner" ? "/partner/login" : "/login"
 }
 
+export function loginPathForRequest(pathname: string) {
+  return loginPathForPortal(
+    pathname === "/partner" || pathname.startsWith("/partner/")
+      ? "partner"
+      : "admin",
+  )
+}
+
 export function forgotPasswordPathForPortal(portal: AuthPortal) {
   return portal === "partner" ? "/partner/forgot-password" : "/forgot-password"
 }
@@ -21,7 +29,9 @@ export function resetPasswordPathForPortal(portal: AuthPortal) {
 export function recoveryCallbackUrl(origin: string, portal: AuthPortal) {
   const sourceOrigin = new URL(origin)
   if (sourceOrigin.hostname === "admin.benefitsi.de") {
-    return "https://benefitsi.de/"
+    return portal === "partner"
+      ? "https://benefitsi.de/?portal=partner"
+      : "https://benefitsi.de/"
   }
 
   const callbackUrl = new URL("/auth/confirm", sourceOrigin.origin)

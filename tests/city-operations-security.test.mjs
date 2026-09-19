@@ -235,7 +235,7 @@ test("central place editor validates structured hours and visit facts behind rev
   assert.doesNotMatch(actions, /status\s*=\s*"active"/)
 })
 
-test("community moderation authenticates first, uses an atomic service-role RPC and never publishes content", async () => {
+test("community moderation authenticates first, uses an atomic service-role RPC and distinguishes meetups from editorial drafts", async () => {
   const [migration, actions, page, data] = await Promise.all([
     readFile(communityTrackingMigrationPath, "utf8"),
     readFile(
@@ -259,7 +259,9 @@ test("community moderation authenticates first, uses an atomic service-role RPC 
   assert.ok(actions.indexOf("await requireAdmin()") < actions.indexOf("createAdminClient()"))
   assert.match(actions, /\.rpc\("moderate_city_community_submission"/)
   assert.doesNotMatch(actions, /\.from\("city_events"\)|\.from\("city_places"\)/)
-  assert.match(page, /„Angenommen“ veröffentlicht nichts/)
+  assert.match(page, /submission\.kind === "meetup"/ )
+  assert.match(page, /Annehmen veröffentlicht das Treffen mit dem verifizierten Gastgeberkonto/)
+  assert.match(page, /Events und Orte müssen anschließend als eigener Entwurf durch den Städte-Review/)
   assert.match(data, /contact_name,contact_email/)
   assert.match(data, /city_community_submission_audit/)
 })

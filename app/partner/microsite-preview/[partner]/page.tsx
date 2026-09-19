@@ -46,7 +46,7 @@ export default async function PartnerMicrositePreviewPage({
     !portalSession ||
     (!portalSession.isAdmin && portalSession.partnerIds.length === 0)
   ) {
-    redirect("/login")
+    redirect("/partner/login")
   }
 
   const dashboard = await getDashboardData(supabase)

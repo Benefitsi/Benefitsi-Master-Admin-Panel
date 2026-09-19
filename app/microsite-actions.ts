@@ -11,7 +11,7 @@ import {
 } from "@/lib/microsites"
 import { getDashboardData, type Partner, type PartnerWithDeals } from "@/lib/admin-data"
 import { createMicrositeReadinessReport } from "@/lib/microsite-readiness"
-import { canAccessPartner, getPartnerPortalSession } from "@/lib/partner-portal"
+import { canEditPartnerMicrosite, getPartnerPortalSession } from "@/lib/partner-portal"
 import { createClient } from "@/lib/supabase/server"
 
 export type MicrositeActionState = {
@@ -411,7 +411,7 @@ async function authorizeMicrositeEditor(partnerId: string): Promise<
     }
   }
 
-  if (portalSession.isAdmin || canAccessPartner(portalSession, partnerId)) {
+  if (canEditPartnerMicrosite(portalSession, partnerId)) {
     return { ok: true, supabase }
   }
 
@@ -419,7 +419,7 @@ async function authorizeMicrositeEditor(partnerId: string): Promise<
     ok: false,
     state: {
       ok: false,
-      message: "Dieses Konto hat keinen Zugriff auf diese Partner-Microsite.",
+      message: "Microsite-Änderungen und Veröffentlichungen werden derzeit vom Benefitsi-Team übernommen. Ihr Partnerzugang erlaubt die Vorschau.",
     },
   }
 }
@@ -1267,4 +1267,3 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
 }
-

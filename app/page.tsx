@@ -1,3 +1,5 @@
+import { FounderOverview } from "./founder-overview"
+import { loadFounderOverview } from "@/lib/founder-overview-data"
 import { redirect } from "next/navigation"
 import { getAdminSession } from "@/lib/admin"
 import { getDashboardData } from "@/lib/admin-data"
@@ -30,7 +32,7 @@ export default async function DashboardPage({
 
   const portalSession = await getPartnerPortalSession(supabase)
 
-  const dashboard = await getDashboardData(supabase)
+  const [dashboard, founder] = await Promise.all([getDashboardData(supabase), loadFounderOverview(supabase)])
   const query = await searchParams
   const requestedPartnerId = singleQueryValue(query.partner)
   const requestedMode = singleQueryValue(query.mode)
@@ -49,11 +51,14 @@ export default async function DashboardPage({
 
   return (
     <AdminShell
+      title="Benefitsi Übersicht"
+      subtitle="Betrieb, nächste Schritte und Partner an einem Ort"
       adminName={adminName}
       micrositeCount={dashboard.partners.length}
       canAccessPartnerPanel={Boolean(portalSession?.partnerIds.length)}
     >
       <DashboardAutoRefresh />
+      <FounderOverview snapshot={founder} />
       {dashboard.errors.length > 0 ? (
         <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-semibold">Supabase returned warnings</p>

@@ -35,7 +35,7 @@ export default async function PartnerDashboardPage({
     !portalSession ||
     (!portalSession.isAdmin && portalSession.partnerIds.length === 0)
   ) {
-    redirect("/login")
+    redirect("/partner/login")
   }
 
   const dashboard = await getDashboardData(supabase)
@@ -102,7 +102,7 @@ export default async function PartnerDashboardPage({
             Your partner microsites
           </h1>
           <p className="mt-2 text-sm text-zinc-600">
-            Open the microsite editor for shops linked to your account. Owners can also manage their partner profile, benefits, menu, and opening hours.
+            View the microsites linked to your account. Owners can manage their partner profile, benefits, menu, and opening hours. Microsite changes and publishing are handled by the Benefitsi team.
           </p>
         </section>
 
@@ -128,6 +128,7 @@ export default async function PartnerDashboardPage({
               initialSettingsTab={requestedTab}
               initialView={requestedView === "microsite" ? "microsite" : "settings"}
               portalMode
+              micrositeEditingEnabled={portalSession.isAdmin}
             />
           </section>
         ) : null}
@@ -181,7 +182,7 @@ function MicrositeEditorCards({ partners }: { partners: PartnerWithDeals[] }) {
                 href={`/partner/microsite-builder/${encodeURIComponent(identifier)}`}
                 className="rounded-xl bg-[linear-gradient(135deg,#17d4d7_0%,#118cff_100%)] px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-px active:translate-y-0 active:scale-[.98]"
               >
-                Edit microsite
+                Microsite ansehen
               </Link>
               <Link
                 href={`/partner/microsite-preview/${encodeURIComponent(identifier)}`}

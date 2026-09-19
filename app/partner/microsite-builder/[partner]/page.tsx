@@ -3,10 +3,12 @@ import { notFound, redirect } from "next/navigation"
 import { signOutPartner } from "../../actions"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { MicrositePanel } from "@/app/microsite-panel"
+import { MicrositeReadOnlyNotice } from "@/components/microsite-read-only-notice"
 import { AdminLanguageControl, AdminLanguageProvider } from "@/app/admin-language"
 import { getDashboardData } from "@/lib/admin-data"
 import {
   canAccessPartner,
+  canEditPartnerMicrosite,
   filterPartnersForPortal,
   getPartnerPortalSession,
 } from "@/lib/partner-portal"
@@ -33,7 +35,7 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
     !portalSession ||
     (!portalSession.isAdmin && portalSession.partnerIds.length === 0)
   ) {
-    redirect("/login")
+    redirect("/partner/login")
   }
 
   const { partner: identifier } = await params
@@ -95,12 +97,12 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
       </header>
 
       <section className="mx-auto w-full max-w-[1800px] min-w-0 p-3 sm:p-5">
-        <MicrositePanel
+        {canEditPartnerMicrosite(portalSession, partner.id) ? <MicrositePanel
           key={`${partner.id ?? partner.name ?? "microsite"}-${partner.microsite?.draftVersion?.id ?? partner.microsite?.publishedVersion?.id ?? "new"}`}
           partner={partner}
           fullscreen
           previewBasePath="/partner/microsite-preview"
-        />
+        /> : <MicrositeReadOnlyNotice identifier={previewIdentifier} />}
       </section>
     </main>
     </AdminLanguageProvider>
