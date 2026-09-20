@@ -113,12 +113,13 @@ test("central city editor keeps edits behind review and validates relations", as
   assert.match(source, /const \{ adminSession, supabase \} = await requireAdmin\(\)/)
   assert.match(source, /\.eq\("city_id", cityId\)/)
   assert.match(source, /\.eq\("partner_id", partnerId\)/)
-  assert.match(source, /intent === "review" \? "needs_review" : "draft"/)
-  assert.match(source, /source_verified: false/)
-  assert.match(source, /end_time_verified: false/)
-  assert.match(source, /enqueue_automation_job/)
-  assert.match(source, /if \(auditResult\.error\)/)
-  assert.match(source, /if \(queueResult\.error\)/)
+  // Transaction/rollback and source-gate behavior is exercised in the canonical
+  // PostgreSQL suite; the editor must enter through that single boundary.
+  assert.match(source, /rpc\("save_city_content_draft_atomic"/)
+  assert.match(source, /p_intent: intent/)
+  assert.match(source, /p_actor_id: adminSession\.user\.id/)
+  assert.match(source, /p_expected_updated_at:/)
+  assert.doesNotMatch(source, /\.(insert|update|upsert)\(/)
   assert.doesNotMatch(source, /status\s*=\s*"active"/)
 })
 
@@ -148,12 +149,13 @@ test("central event editor persists schedules behind the event review gate", asy
   assert.match(definitions, /kind: "weekdays"/)
   assert.match(definitions, /\.from\("city_event_schedules"\)/)
   assert.match(actions, /storage !== "schedule"/)
-  assert.match(actions, /\.from\("city_event_schedules"\)/)
-  assert.match(actions, /status,/)
+  assert.match(actions, /p_schedule: schedule/)
+  assert.match(actions, /save_city_content_draft_atomic/)
   assert.match(actions, /recurrence_validation/)
   assert.doesNotMatch(actions, /city_event_schedules"[\s\S]{0,500}status: "active"/)
   assert.match(page, /fieldset/)
-  assert.match(page, /schedule_sync/)
+  assert.match(page, /name="expectedUpdatedAt"/)
+  assert.match(page, /content_conflict/)
 })
 
 test("central benefit editor uses the canonical welcome-deal label", async () => {
@@ -196,7 +198,8 @@ test("central event editor captures planning fields without bypassing review", a
   }
   assert.match(actions, /event_price_validation/)
   assert.match(actions, /event_contact_validation/)
-  assert.match(actions, /intent === "review" \? "needs_review" : "draft"/)
+  assert.match(actions, /p_intent: intent/)
+  assert.match(actions, /save_city_content_draft_atomic/)
   assert.doesNotMatch(actions, /status\s*=\s*"active"/)
 })
 
