@@ -43,12 +43,12 @@ function setup(session) {
   }
   const source = readFileSync(new URL("../lib/founder-overview-data.ts", import.meta.url), "utf8")
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText
-  const module = { exports: {} }
+  const loadedModule = { exports: {} }
   new Function("require", "module", "exports", compiled)((name) => {
     assert.ok(Object.hasOwn(modules, name), `Unexpected dependency: ${name}`)
     return modules[name]
-  }, module, module.exports)
-  return { events, run: () => module.exports.loadFounderOverview(client) }
+  }, loadedModule, loadedModule.exports)
+  return { events, run: () => loadedModule.exports.loadFounderOverview(client) }
 }
 
 test("missing and partner sessions cannot read founder data or construct the privileged client", async () => {

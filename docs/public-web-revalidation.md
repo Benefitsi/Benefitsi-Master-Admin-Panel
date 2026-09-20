@@ -12,6 +12,8 @@ The public Web application owns cache tag definitions. Both its partner loader a
 4. Deploy the matching Admin producer; run synthetic publication/draft/withdrawal/retry acceptance before promoting.
 5. Verify deployment identities, secret separation, reachability and actual public rendering. The paired BEN61 contract now renders the supported Admin configuration; other templates and unsupported edits remain publication blockers.
 
+When the paired Web Preview uses Vercel Deployment Protection, provision a dedicated Web-project automation bypass and set it only on the matching Admin Preview branch as `BENEFITSI_WEB_PROTECTION_BYPASS_SECRET`. The server helper sends it in `x-vercel-protection-bypass` only when `VERCEL_ENV=preview` and the configured target is a `*.vercel.app` host. It is never a URL parameter and is not sent to production or custom domains. The application Bearer secret is still required. Revoke the temporary project bypass after acceptance; do not disable project-wide protection.
+
 Admin commits a public state before delivery. It makes at most two attempts per slug with a 2.5-second request timeout. A renamed microsite and canonical partner can require two distinct slugs. Failed delivery is a separate pending result, not a failed DB save. The editor can repeat just the cache update after reload. This is explicit retry, not a durable delivery queue. The unchanged cache TTL provides eventual refresh; do not promise immediate withdrawal if delivery failed.
 
 Draft/review/approval and discarding a draft never write the parent microsite's public status. Explicit withdrawal archives the parent without deleting its saved versions. Re-publication uses the existing readiness gate.

@@ -35,12 +35,12 @@ function setup(session, overrides = {}, factoryFails = false) {
   }
   const source = readFileSync(new URL("../lib/city-media/inventory-data.ts", import.meta.url), "utf8")
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText
-  const module = { exports: {} }
+  const loadedModule = { exports: {} }
   new Function("require", "module", "exports", "process", compiled)((name) => {
     assert.ok(Object.hasOwn(modules, name), `Unexpected dependency ${name}`)
     return modules[name]
-  }, module, module.exports, { env: {} })
-  return { events, run: () => module.exports.loadMediaInventory(client), privateMarker }
+  }, loadedModule, loadedModule.exports, { env: {} })
+  return { events, run: () => loadedModule.exports.loadMediaInventory(client), privateMarker }
 }
 
 test("missing, partner and non-boolean admin sessions cannot construct a service client or read media", async () => {

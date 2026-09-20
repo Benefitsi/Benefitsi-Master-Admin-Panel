@@ -28,6 +28,14 @@ export async function invalidatePublicPartner(
     }
   } catch { return { ok: false, reason: "invalid_target" } }
 
+  const headers: Record<string, string> = {
+    authorization: `Bearer ${secret}`, "content-type": "application/json",
+  }
+  const previewBypass = process.env.BENEFITSI_WEB_PROTECTION_BYPASS_SECRET?.trim()
+  if (process.env.VERCEL_ENV === "preview" && target.hostname.endsWith(".vercel.app") && previewBypass) {
+    headers["x-vercel-protection-bypass"] = previewBypass
+  }
+
   try {
     const { data, error } = await supabase.from("partners").select("slug,cities(slug)").eq("id", partnerId).maybeSingle()
     if (error || !data || !validSlug(data.slug)) return { ok: false, reason: "lookup_failed" }
@@ -41,7 +49,7 @@ export async function invalidatePublicPartner(
         try {
           const response = await fetch(target, {
             method: "POST", redirect: "error", cache: "no-store",
-            headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
+            headers,
             body: JSON.stringify({ resource: "partner", partnerSlug, ...(citySlug ? { citySlug } : {}) }),
             signal: AbortSignal.timeout(2500),
           })

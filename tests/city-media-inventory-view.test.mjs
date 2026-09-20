@@ -9,13 +9,13 @@ import * as jsxRuntime from "react/jsx-runtime"
 
 const source = readFileSync(new URL("../components/city-media/media-inventory.tsx", import.meta.url), "utf8")
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText
-const module = { exports: {} }
+const loadedModule = { exports: {} }
 new Function("require", "module", "exports", compiled)((name) => {
   if (name === "react/jsx-runtime") return jsxRuntime
   if (name === "@/lib/city-media/inventory") return inventory
   throw new Error(`Unexpected dependency: ${name}`)
-}, module, module.exports)
-const { MediaInventory } = module.exports
+}, loadedModule, loadedModule.exports)
+const { MediaInventory } = loadedModule.exports
 const ok = rows => ({ rows, state: "ok" })
 const data = {
   checkedAt: "2026-09-20T00:00:00Z",

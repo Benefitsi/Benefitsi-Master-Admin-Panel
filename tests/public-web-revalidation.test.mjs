@@ -67,3 +67,33 @@ test("missing configuration is visible and aliases invalidate both exact partner
   assert.deepEqual(await invalidatePublicPartner(f.db, "partner-id"), { ok: false, reason: "not_configured" })
   assert.equal(f.calls.length, 2)
 })
+
+// The actual delivery helper must cross protected Preview infrastructure without
+// exposing the bypass credential to production, custom domains or URL queries.
+test("protected Vercel preview delivers with its server-only automation header", async () => {
+  const f = setup({ endpoint: "https://paired-web-123.vercel.app/api/revalidate" })
+  process.env.VERCEL_ENV = "preview"
+  process.env.BENEFITSI_WEB_PROTECTION_BYPASS_SECRET = "synthetic-preview-bypass"
+  globalThis.fetch = async (url, options) => {
+    f.calls.push({ url: String(url), ...options })
+    return options.headers["x-vercel-protection-bypass"] === "synthetic-preview-bypass"
+      ? new Response('{"ok":true}') : new Response("protected", { status: 401 })
+  }
+  assert.deepEqual(await invalidatePublicPartner(f.db, "partner-id"), { ok: true })
+  assert.equal(f.calls[0].headers.authorization, `Bearer ${secret}`)
+  assert.equal(new URL(f.calls[0].url).search, "")
+})
+test("preview bypass is never sent to production, custom domains, or lookalike hosts", async () => {
+  for (const [environment, endpoint] of [
+    ["production", "https://paired-web-123.vercel.app/api/revalidate"],
+    ["development", "https://paired-web-123.vercel.app/api/revalidate"],
+    ["preview", "https://web.example/api/revalidate"],
+    ["preview", "https://vercel.app.attacker.example/api/revalidate"],
+  ]) {
+    const f = setup({ endpoint })
+    process.env.VERCEL_ENV = environment
+    process.env.BENEFITSI_WEB_PROTECTION_BYPASS_SECRET = "synthetic-preview-bypass"
+    assert.deepEqual(await invalidatePublicPartner(f.db, "partner-id"), { ok: true })
+    assert.equal(f.calls[0].headers["x-vercel-protection-bypass"], undefined)
+  }
+})
