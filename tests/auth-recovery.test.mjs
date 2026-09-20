@@ -105,3 +105,10 @@ test("both login forms expose password recovery and auth routes stay public", as
   assert.match(recoveryTemplate, /href="{{ \.ConfirmationURL }}"/)
   assert.doesNotMatch(recoveryTemplate, /\.SiteURL/)
 })
+
+test("production recovery preserves the partner portal through the public bridge", () => {
+  assert.equal(
+    recoveryCallbackUrl("https://admin.benefitsi.de", "partner"),
+    "https://benefitsi.de/?portal=partner",
+  )
+})

@@ -18,7 +18,7 @@ const staffSession = {
   ownedPartnerIds: ["owned-partner"],
 }
 
-test("linked partner staff can edit their microsite without receiving management access", () => {
+test("linked partner staff can view their microsite without receiving management access", () => {
   assert.equal(canAccessPartner(staffSession, "staff-partner"), true)
   assert.equal(canManagePartner(staffSession, "staff-partner"), false)
   assert.equal(canManagePartner(staffSession, "owned-partner"), true)
@@ -41,4 +41,11 @@ test("portal and management partner lists keep their separate scopes", () => {
     ),
     ["owned-partner"],
   )
+})
+
+test("microsite writes match the current admin-only database contract", () => {
+  assert.equal(partnerPortal.canEditPartnerMicrosite(staffSession, "staff-partner"), false)
+  assert.equal(partnerPortal.canEditPartnerMicrosite(staffSession, "owned-partner"), false)
+  assert.equal(partnerPortal.canEditPartnerMicrosite({ ...staffSession, isAdmin: true }, "other-partner"), true)
+  assert.equal(partnerPortal.canEditPartnerMicrosite({ ...staffSession, isAdmin: true }, ""), false)
 })

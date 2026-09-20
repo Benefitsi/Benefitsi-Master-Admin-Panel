@@ -107,9 +107,16 @@ function AdminShellContent({
 
           <nav aria-label="Admin navigation" className="mt-4 space-y-1 lg:mt-8">
             <AdminNavigationLink
+              href="/"
+              label="Übersicht"
+              active={pathname === "/"}
+              collapsed={collapsed}
+              icon={<CityOperationsIcon className="size-5" />}
+            />
+            <AdminNavigationLink
               href="/#partners"
               label="Partner"
-              active={pathname === "/"}
+              active={false}
               collapsed={collapsed}
               icon={<PartnerIcon className="size-5" />}
             />
@@ -117,6 +124,13 @@ function AdminShellContent({
               href="/city-pages"
               label="Städteseiten"
               active={pathname.startsWith("/city-pages")}
+              collapsed={collapsed}
+              icon={<CityPagesIcon className="size-5" />}
+            />
+            <AdminNavigationLink
+              href="/media"
+              label="Medien"
+              active={pathname.startsWith("/media")}
               collapsed={collapsed}
               icon={<CityPagesIcon className="size-5" />}
             />

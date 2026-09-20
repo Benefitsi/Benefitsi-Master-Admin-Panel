@@ -170,13 +170,17 @@ export async function saveCityContent(formData: FormData) {
   const contentTypeValue = rawText(formData, "contentType", 40)
   const contentIdValue = rawText(formData, "contentId", 80)
   const intent = rawText(formData, "intent", 20)
+  const expectedUpdatedAt = rawText(formData, "expectedUpdatedAt", 80)
 
   if (
     !UUID_PATTERN.test(cityId) ||
     !SLUG_PATTERN.test(citySlug) ||
     !isCityContentType(contentTypeValue) ||
     !["draft", "review"].includes(intent) ||
-    (contentIdValue !== "new" && !UUID_PATTERN.test(contentIdValue))
+    (contentIdValue !== "new" &&
+      (!UUID_PATTERN.test(contentIdValue) ||
+        !expectedUpdatedAt ||
+        Number.isNaN(Date.parse(expectedUpdatedAt))))
   ) {
     redirect("/city-pages?error=content_validation")
   }
@@ -345,197 +349,47 @@ export async function saveCityContent(formData: FormData) {
     }
   }
 
-  const status = intent === "review" ? "needs_review" : "draft"
-  const now = new Date().toISOString()
-  let contentId = contentIdValue
-
-  if (contentIdValue === "new") {
-    const insertResult = await admin
-      .from(definition.table)
-      .insert({ ...payload, city_id: cityId, status, updated_at: now })
-      .select("id")
-      .single()
-
-    if (insertResult.error || !insertResult.data?.id) {
-      redirect(`${targetPath}?error=save_failed`)
-    }
-    contentId = String(insertResult.data.id)
-  } else {
-    const existingResult = await admin
-      .from(definition.table)
-      .select("id")
-      .eq("id", contentIdValue)
-      .eq("city_id", cityId)
-      .maybeSingle()
-
-    if (existingResult.error || !existingResult.data) {
-      redirect(`${targetPath}?error=content_missing`)
-    }
-
-    const updateResult = await admin
-      .from(definition.table)
-      .update({ ...payload, status, updated_at: now })
-      .eq("id", contentIdValue)
-      .eq("city_id", cityId)
-
-    if (updateResult.error) {
-      redirect(`${targetPath}?error=save_failed`)
-    }
-  }
-
-  if (contentType === "events") {
-    const frequency =
-      typeof schedulePayload.recurrence_frequency === "string"
-        ? schedulePayload.recurrence_frequency
-        : ""
-
-    if (frequency) {
-      const scheduleResult = await admin
-        .from("city_event_schedules")
-        .upsert(
-          {
-            city_id: cityId,
-            event_id: contentId,
-            frequency,
-            interval_count:
-              typeof schedulePayload.recurrence_interval_count === "number"
-                ? schedulePayload.recurrence_interval_count
-                : 1,
-            weekdays:
-              frequency === "weekly"
-                ? schedulePayload.recurrence_weekdays
-                : [],
-            month_day:
-              frequency === "monthly"
-                ? schedulePayload.recurrence_month_day
-                : null,
-            start_time: schedulePayload.recurrence_start_time,
-            end_time: schedulePayload.recurrence_end_time,
-            starts_on: schedulePayload.recurrence_starts_on,
-            ends_on: schedulePayload.recurrence_ends_on,
-            exception_dates:
-              schedulePayload.recurrence_exception_dates ?? [],
-            timezone: "Europe/Berlin",
-            display_text: schedulePayload.recurrence_display_text,
-            source_url: payload.source_url,
-            expires_at: payload.expires_at,
-            status,
-            updated_at: now,
-          },
-          { onConflict: "event_id" },
-        )
-
-      if (scheduleResult.error) {
-        redirect(
-          `${editorPath(citySlug, contentType, contentId)}?error=schedule_sync`,
-        )
+  const frequency = schedulePayload.recurrence_frequency
+  const schedule = contentType === "events" && typeof frequency === "string" && frequency
+    ? {
+        frequency,
+        interval_count: schedulePayload.recurrence_interval_count ?? 1,
+        weekdays: frequency === "weekly" ? schedulePayload.recurrence_weekdays : [],
+        month_day: frequency === "monthly" ? schedulePayload.recurrence_month_day : null,
+        start_time: schedulePayload.recurrence_start_time,
+        end_time: schedulePayload.recurrence_end_time,
+        starts_on: schedulePayload.recurrence_starts_on,
+        ends_on: schedulePayload.recurrence_ends_on,
+        exception_dates: schedulePayload.recurrence_exception_dates ?? [],
+        display_text: schedulePayload.recurrence_display_text,
       }
-    } else if (contentIdValue !== "new") {
-      const archiveResult = await admin
-        .from("city_event_schedules")
-        .update({ status: "archived", updated_at: now })
-        .eq("event_id", contentId)
-
-      if (archiveResult.error) {
-        redirect(
-          `${editorPath(citySlug, contentType, contentId)}?error=schedule_sync`,
-        )
-      }
-    }
-  }
-
-  const sourceUrl =
-    typeof payload.source_url === "string" ? payload.source_url : null
+    : null
   const actorProfile =
     adminSession.profile?.display_name ||
     adminSession.profile?.email ||
     adminSession.user.email ||
     "Benefitsi Admin"
-  const reviewResult = await admin
-    .from("city_content_reviews")
-    .upsert(
-      {
-        city_id: cityId,
-        content_type: contentType,
-        content_id: contentId,
-        stage: "agent_draft",
-        verdict: "unreviewed",
-        summary:
-          intent === "review"
-            ? "Manuell bearbeitet und zur erneuten Agent-Prüfung eingereicht."
-            : "Manueller Entwurf. Noch nicht zur Prüfung eingereicht.",
-        issues: [
-          {
-            code: "admin_edit_requires_verification",
-            field: "content",
-            severity: "warning",
-            message:
-              "Der Inhalt wurde manuell geändert und muss erneut durch einen Stadt-Agenten geprüft werden.",
-          },
-        ],
-        source_status: sourceUrl ? "unchecked" : "missing",
-        source_verified: false,
-        source_checked_at: null,
-        end_time_verified: false,
-        agent_profile: null,
-        reviewer_profile: actorProfile,
-        reviewed_by: adminSession.user.id,
-        reviewed_at: null,
-        updated_at: now,
-      },
-      { onConflict: "content_type,content_id" },
-    )
-    .select("id")
-    .single()
 
-  if (reviewResult.error || !reviewResult.data?.id) {
-    redirect(`${editorPath(citySlug, contentType, contentId)}?error=review_sync`)
-  }
-
-  const auditResult = await admin.from("city_content_review_audit").insert({
-    review_id: reviewResult.data.id,
-    city_id: cityId,
-    content_type: contentType,
-    content_id: contentId,
-    action: "draft_discovered",
-    actor_type: "admin",
-    actor_id: adminSession.user.id,
-    actor_profile: actorProfile,
-    details: {
-      source: "central_city_content_editor",
-      intent,
-    },
+  // The database owns the entire transaction, including published snapshot,
+  // recurrence, review, audit and queue. No draft can be partially committed.
+  const saveResult = await admin.rpc("save_city_content_draft_atomic", {
+    p_city_id: cityId,
+    p_content_type: contentType,
+    p_content_id: contentIdValue === "new" ? null : contentIdValue,
+    p_expected_updated_at: contentIdValue === "new" ? null : expectedUpdatedAt,
+    p_payload: payload,
+    p_schedule: schedule,
+    p_intent: intent,
+    p_actor_id: adminSession.user.id,
+    p_actor_profile: actorProfile,
   })
-
-  if (auditResult.error) {
-    redirect(`${editorPath(citySlug, contentType, contentId)}?error=audit_sync`)
+  if (saveResult.error || !saveResult.data?.ok || !saveResult.data?.content_id) {
+    const error = saveResult.error?.message === "content_conflict"
+      ? "content_conflict"
+      : "save_failed"
+    redirect(`${targetPath}?error=${error}`)
   }
-
-  if (intent === "review") {
-    const queueResult = await admin.rpc("enqueue_automation_job", {
-      p_job_type: "content_correction",
-      p_priority: 65,
-      p_city_id: cityId,
-      p_target_type: contentType,
-      p_target_id: contentId,
-      p_human_gate: "none",
-      p_input: {
-        content_type: contentType,
-        content_id: contentId,
-        requested_by: "central_city_content_editor",
-        pii_allowed: false,
-      },
-      p_available_at: now,
-      p_deduplication_key: `content-review:${contentType}:${contentId}:${now.slice(0, 16)}`,
-      p_actor_type: "admin",
-      p_actor_id: adminSession.user.id,
-      p_actor_profile: actorProfile,
-    })
-
-    if (queueResult.error) {
-      redirect(`${editorPath(citySlug, contentType, contentId)}?error=queue_failed`)
-    }
-  }
+  const contentId = String(saveResult.data.content_id)
 
   revalidatePath("/city-pages")
   revalidatePath(`/city-pages/${citySlug}`)

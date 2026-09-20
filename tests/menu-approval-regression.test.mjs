@@ -45,7 +45,7 @@ test("partner menu publication is not forced into review", async () => {
     actions,
     /payload\.status\s*===\s*["']published["'][\s\S]{0,120}payload\.status\s*=\s*["']review["']/,
   )
-  assert.match(admin, /label="Menu status"/)
+  assert.match(admin, /Menus are always published\./)
   assert.doesNotMatch(admin, /label="Menu approval status"/)
   assert.doesNotMatch(admin, /value:\s*["']review["']\s*,\s*label:\s*["']Needs review["']/)
 })

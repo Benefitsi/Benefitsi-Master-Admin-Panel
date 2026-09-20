@@ -147,6 +147,11 @@ export default async function CityContentEditorPage({
             value={definition.contentType}
           />
           <input type="hidden" name="contentId" value={route.contentId} />
+          <input
+            type="hidden"
+            name="expectedUpdatedAt"
+            value={stringValue(record?.updated_at)}
+          />
 
           <div className="border-b border-[#061829]/10 p-5 sm:p-6">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
@@ -595,16 +600,10 @@ function errorMessage(error: string) {
     invalid_deal:
       "Der gewählte Vorteil gehört nicht zum ausgewählten Partner oder ist nicht mehr verfügbar.",
     content_missing: "Der Datensatz wurde nicht gefunden oder gehört zu einer anderen Stadt.",
-    review_sync:
-      "Der Inhalt wurde gespeichert, aber der zentrale Prüfdatensatz konnte nicht aktualisiert werden.",
-    audit_sync:
-      "Der Inhalt und seine Prüfung wurden gespeichert, aber der Audit-Eintrag fehlt. Bitte vor Veröffentlichung prüfen.",
-    queue_failed:
-      "Der Inhalt wurde gespeichert, konnte aber nicht in die Agent-Prüfung eingereiht werden.",
-    schedule_sync:
-      "Der Termin wurde gespeichert, aber die Terminserie konnte nicht vollständig aktualisiert werden.",
+    content_conflict:
+      "Dieser Inhalt wurde zwischenzeitlich geändert. Bitte die aktuelle Version neu laden und deine Änderungen abgleichen. Es wurde nichts gespeichert.",
     save_failed:
-      "Der Inhalt konnte nicht gespeichert werden. Möglicherweise existiert der Slug bereits.",
+      "Das Speichern konnte nicht bestätigt werden. Bitte lade den Inhalt neu und prüfe den Stand, bevor du es erneut versuchst.",
   }[error] || "Die Aktion konnte nicht abgeschlossen werden."
 }
 

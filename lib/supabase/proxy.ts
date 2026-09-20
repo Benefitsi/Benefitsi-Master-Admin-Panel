@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { getSupabaseConfig } from "./config"
+import { loginPathForRequest } from "../auth-recovery"
 
 export async function updateSession(request: NextRequest) {
   const config = getSupabaseConfig()
@@ -54,8 +55,18 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = "/login"
-    return NextResponse.redirect(url)
+    url.pathname = loginPathForRequest(pathname)
+    url.search = ""
+    const redirectResponse = NextResponse.redirect(url)
+    supabaseResponse.cookies.getAll().forEach((cookie) =>
+      redirectResponse.cookies.set(cookie),
+    )
+    for (const name of ["cache-control", "expires", "pragma"]) {
+      const value = supabaseResponse.headers.get(name)
+      if (value) redirectResponse.headers.set(name, value)
+    }
+    redirectResponse.headers.set("Cache-Control", "private, no-store")
+    return redirectResponse
   }
 
   return supabaseResponse

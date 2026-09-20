@@ -1,8 +1,10 @@
+import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import type { Metadata } from "next"
 import { getDashboardData, type PartnerWithDeals } from "@/lib/admin-data"
 import {
   canAccessPartner,
+  canManagePartner,
   filterPartnersForPortal,
   getPartnerPortalSession,
 } from "@/lib/partner-portal"
@@ -46,7 +48,7 @@ export default async function PartnerMicrositePreviewPage({
     !portalSession ||
     (!portalSession.isAdmin && portalSession.partnerIds.length === 0)
   ) {
-    redirect("/login")
+    redirect("/partner/login")
   }
 
   const dashboard = await getDashboardData(supabase)
@@ -57,6 +59,26 @@ export default async function PartnerMicrositePreviewPage({
 
   if (!partner || !canAccessPartner(portalSession, partner.id)) {
     notFound()
+  }
+
+  if (!canManagePartner(portalSession, partner.id)) {
+    return (
+      <main className="min-h-screen bg-[#f7f6f1] px-5 py-12 text-[#061829]">
+        <section className="mx-auto max-w-xl rounded-2xl border border-[#061829]/10 bg-white p-6">
+          <h1 className="text-xl font-bold">Interne Vorschau nicht verfügbar</h1>
+          <p className="mt-3 text-sm leading-6 text-zinc-600">
+            Die interne Microsite-Vorschau ist nur mit dem Inhaberzugang oder
+            für das Benefitsi-Team verfügbar.
+          </p>
+          <Link
+            href="/partner"
+            className="mt-5 inline-flex min-h-10 items-center rounded-lg bg-sky-800 px-4 py-2 text-sm font-medium text-white hover:bg-sky-900"
+          >
+            Zurück zum Partner-Dashboard
+          </Link>
+        </section>
+      </main>
+    )
   }
 
   const configValue = resolveMicrositeConfig(

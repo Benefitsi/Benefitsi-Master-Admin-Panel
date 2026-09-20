@@ -1,3 +1,4 @@
+import { publicMicrositePublishBlockers } from "./public-microsite-contract"
 import type { PartnerWithDeals } from "./admin-data"
 import type { MicrositeConfig } from "./microsites"
 
@@ -71,7 +72,9 @@ export function createMicrositeReadinessReport(
     : menuItems.length > 0 || config.hero.services.length >= 2
   const hasActiveDeal = partner.deals.some((deal) => deal.active !== false)
 
+  const publicBlockers = publicMicrositePublishBlockers(config)
   const items: MicrositeReadinessItem[] = [
+    required("public-contract", "Öffentliche Darstellung kompatibel", publicBlockers.join("; ") || "Template und bearbeitete Felder werden von der öffentlichen Partnerseite unterstützt.", publicBlockers.length === 0, "Publish"),
     recommended("partner-logo", "Partnerlogo", "Logo ist im Partnerprofil gepflegt und wird zentral ausgespielt.", Boolean(partner.logo_url), "Daten"),
     required("partner-name", "Partnername", "Name kommt aus dem Partnerprofil.", Boolean(partner.name), "Daten"),
     recommended("partner-address", "Adresse", "Adresse/Standort ist für Kontakt, Maps und LocalBusiness-Schema vorhanden.", Boolean(partner.address), "Daten"),
@@ -140,6 +143,8 @@ export function createMicrositeReadinessReport(
 }
 
 export const micrositeReadinessEnglishTranslations: Readonly<Record<string, string>> = {
+  "Öffentliche Darstellung kompatibel": "Public page compatibility",
+  "Template und bearbeitete Felder werden von der öffentlichen Partnerseite unterstützt.": "The public partner page supports this template and its edited fields.",
   Partnerlogo: "Partner logo",
   Partnername: "Partner name",
   Adresse: "Address",
