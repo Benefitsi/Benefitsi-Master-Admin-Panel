@@ -14,6 +14,7 @@ function compile(path, boundaries) {
   }, loadedModule, loadedModule.exports)
   return loadedModule.exports
 }
+const guideEditor = compile("../lib/city-pages/guide-editor.ts", {})
 const editor = compile("../lib/city-pages/content-editor.ts", {
   "server-only": {}, "@/lib/supabase/admin": {},
 })
@@ -23,7 +24,7 @@ const content = "b1000000-0000-4000-8000-000000000001"
 const actor = "c1000000-0000-4000-8000-000000000001"
 const revision = "2026-09-12T10:00:00.123456Z"
 
-async function save({ resultError = null, isNew = false, authorized = true, expected = revision, intent = "draft", kind = "places", recurring = false } = {}) {
+async function save({ resultError = null, isNew = false, authorized = true, expected = revision, intent = "draft", kind = "places", recurring = false, fields = {} } = {}) {
   const writes = [], rpcs = [], revalidated = []
   const db = {
     from(table) {
@@ -48,6 +49,7 @@ async function save({ resultError = null, isNew = false, authorized = true, expe
       return { adminSession: { user: { id: actor }, profile: { display_name: "Test admin" } }, supabase: db }
     } },
     "@/lib/city-pages/content-editor": editor,
+    "@/lib/city-pages/guide-editor": guideEditor,
     "@/lib/city-operations/contracts": contracts,
     "@/lib/supabase/admin": { createAdminClient: () => db },
   })
@@ -61,6 +63,7 @@ async function save({ resultError = null, isNew = false, authorized = true, expe
     form.append("recurrence_weekdays", "1")
     form.append("recurrence_weekdays", "3")
   }
+  for (const [key, value] of Object.entries(fields)) form.set(key, value)
   let outcome
   try { await action.saveCityContent(form) } catch (error) { outcome = error.message }
   return { writes, rpcs, revalidated, outcome }
@@ -127,4 +130,48 @@ test("removing recurrence is explicit and an editor intent cannot publish", asyn
   const invalid = await save({ intent: "publish" })
   assert.deepEqual(invalid.rpcs, [])
   assert.deepEqual(invalid.writes, [])
+})
+
+const guideFields = {
+  slug: "wochenende-in-annweiler", title: "Ein Wochenende", category: "guides",
+  blocks: JSON.stringify([{ id: "day-one", blockType: "TEXT", sortOrder: 0, title: "Tag 1", text: "Altstadt entdecken.\n\n[Auskunft](https://example.test/quelle)" }]),
+  source_meta: JSON.stringify({ sourceType: "PRIMARY", sourceUrl: "https://example.test/quelle", lastVerifiedAt: "2026-09-20T00:00:00.000Z", confidence: "high", verificationStatus: "VERIFIED", freshnessTtlDays: 90 }),
+}
+test("complete guide content reaches the draft transaction and evidence cannot self-verify", async () => {
+  const result = await save({ kind: "guides", intent: "review", fields: guideFields })
+  assert.equal(result.rpcs.length, 1)
+  const payload = result.rpcs[0].args.p_payload
+  assert.deepEqual(payload.blocks, [{ id: "day-one", blockType: "TEXT", sortOrder: 0, title: "Tag 1", text: "Altstadt entdecken.\n\n[Auskunft](https://example.test/quelle)" }])
+  assert.equal(payload.source_meta.verificationStatus, "NEEDS_REVIEW")
+  assert.equal(payload.source_meta.lastVerifiedAt, "2026-09-20T00:00:00.000Z")
+  assert.equal(payload.status, undefined)
+  assert.deepEqual(result.writes, [])
+})
+test("malformed blocks and unsafe links never reach the transaction", async () => {
+  for (const blocks of ['{}', '[{"id":"x","blockType":"SCRIPT","sortOrder":0}]', JSON.stringify([{id:"x",blockType:"TEXT",sortOrder:0,text:"[link](javascript:alert(1))"}]), JSON.stringify([{id:"x",blockType:"TEXT",sortOrder:0,text:"x".repeat(20001)}])]) {
+    const result = await save({ kind: "guides", fields: { ...guideFields, blocks } })
+    assert.equal(result.rpcs.length, 0)
+    assert.match(result.outcome, /field_validation/)
+  }
+})
+test("business profiles use ordinary review and cannot assign themselves a partner", async () => {
+  for (const category of ["grocery", "shopping", "health", "service", "food"]) {
+    const result = await save({ fields: { category, partner_id: actor }, intent: "review" })
+    assert.equal(result.rpcs.length, 1, category)
+    assert.equal(result.rpcs[0].args.p_payload.category, category)
+    assert.equal(result.rpcs[0].args.p_payload.partner_id, undefined)
+    assert.equal(result.rpcs[0].args.p_intent, "review")
+  }
+})
+
+test("older guide forms omit new JSON fields instead of clearing existing content", async () => {
+  const result = await save({ kind: "guides", fields: {slug:"existing-guide",title:"Edited title",category:"guides"} })
+  assert.equal(result.rpcs.length,1)
+  assert.equal(Object.hasOwn(result.rpcs[0].args.p_payload,"blocks"),false)
+  assert.equal(Object.hasOwn(result.rpcs[0].args.p_payload,"source_meta"),false)
+})
+test("editor accepts a researched calendar date without inventing a check time", async () => {
+  const meta = JSON.parse(guideFields.source_meta); meta.lastVerifiedAt = "2026-09-20"
+  const result = await save({ kind: "guides", fields: { ...guideFields, source_meta: JSON.stringify(meta) } })
+  assert.equal(result.rpcs[0]?.args.p_payload.source_meta.lastVerifiedAt, "2026-09-20")
 })

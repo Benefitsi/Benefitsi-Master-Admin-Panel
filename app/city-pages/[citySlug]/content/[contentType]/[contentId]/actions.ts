@@ -13,6 +13,8 @@ import {
 } from "@/lib/city-operations/contracts"
 import { createAdminClient } from "@/lib/supabase/admin"
 
+import { parseGuideBlocks, parseGuideSourceEvidence } from "@/lib/city-pages/guide-editor"
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -35,6 +37,8 @@ function parseTags(value: string) {
 }
 
 function parseField(field: EditorField, formData: FormData) {
+  if (field.kind === "guide_blocks") return parseGuideBlocks(formData.get(field.name) ?? "[]")
+  if (field.kind === "guide_sources") return parseGuideSourceEvidence(formData.get(field.name) ?? "{}")
   if (field.kind === "opening_hours") {
     return Array.from({ length: 7 }, (_, index) => index + 1).flatMap(
       (weekday) => {
@@ -203,7 +207,8 @@ export async function saveCityContent(formData: FormData) {
 
   const payload = Object.fromEntries(
     definition.fields
-      .filter((field) => field.storage !== "schedule")
+      .filter((field) => field.storage !== "schedule" &&
+        (!["guide_blocks", "guide_sources"].includes(field.kind) || formData.has(field.name)))
       .map((field) => [field.name, parsedPayload[field.name]]),
   )
   const schedulePayload = Object.fromEntries(
