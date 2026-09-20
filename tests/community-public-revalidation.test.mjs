@@ -86,6 +86,40 @@ function loadWrapper(env, fetcher) {
   return loaded.exports.refreshPublicCity
 }
 
+test('actual City wrapper prefers publisher while preserving both legacy secrets', async () => {
+  const publisher = 'synthetic-publisher-revalidation-secret-only'
+  const legacyWeb = 'synthetic-legacy-web-revalidation-secret-only'
+  const env = { BENEFITSI_PUBLISHER_REVALIDATION_SECRET: `  ${publisher}  `, BENEFITSI_ADMIN_REVALIDATION_SECRET: secret, BENEFITSI_WEB_REVALIDATION_SECRET: legacyWeb, BENEFITSI_WEB_REVALIDATION_URL: endpoint }
+  const calls = []
+  const refresh = loadWrapper(env, async (url, options) => { calls.push({ url, options }); return successfulFetch() })
+  assert.equal(await refresh(input.citySlug, input.cityId), 'ok')
+  assert.equal(calls[0].options.headers.Authorization, `Bearer ${publisher}`)
+  assert.equal(calls[0].url, endpoint)
+  assert.equal(env.BENEFITSI_ADMIN_REVALIDATION_SECRET, secret)
+  assert.equal(env.BENEFITSI_WEB_REVALIDATION_SECRET, legacyWeb)
+})
+
+test('actual City wrapper retains ADMIN then WEB fallbacks when publisher is missing or blank', async () => {
+  const legacyWeb = 'synthetic-legacy-web-revalidation-secret-only'
+  for (const publisher of [undefined, '', ' \t ']) {
+    for (const admin of [secret, undefined, '', ' \t ']) {
+      const calls = []
+      const refresh = loadWrapper({ BENEFITSI_PUBLISHER_REVALIDATION_SECRET: publisher, BENEFITSI_ADMIN_REVALIDATION_SECRET: admin, BENEFITSI_WEB_REVALIDATION_SECRET: ` ${legacyWeb} `, BENEFITSI_WEB_REVALIDATION_URL: endpoint }, async (url, options) => { calls.push({ url, options }); return successfulFetch() })
+      assert.equal(await refresh(input.citySlug, input.cityId), 'ok')
+      assert.equal(calls[0].options.headers.Authorization, `Bearer ${admin === secret ? secret : legacyWeb}`)
+    }
+  }
+})
+
+test('actual City wrapper refuses malformed publisher instead of silently using valid legacy keys', async () => {
+  for (const publisher of ['short', 'synthetic-publisher\nrevalidation-secret-only', 'synthetic-publisher revalidation-secret-only']) {
+    let called = false
+    const refresh = loadWrapper({ BENEFITSI_PUBLISHER_REVALIDATION_SECRET: publisher, BENEFITSI_ADMIN_REVALIDATION_SECRET: secret, BENEFITSI_WEB_REVALIDATION_SECRET: 'synthetic-legacy-web-revalidation-secret-only', BENEFITSI_WEB_REVALIDATION_URL: endpoint }, async () => { called = true; return successfulFetch() })
+    assert.equal(await refresh(input.citySlug, input.cityId), 'not_configured')
+    assert.equal(called, false)
+  }
+})
+
 test('actual City wrapper wires the paired endpoint and preview protection configuration', async () => {
   const calls = []
   const refresh = loadWrapper({ BENEFITSI_ADMIN_REVALIDATION_SECRET: secret, BENEFITSI_WEB_REVALIDATION_URL: endpoint, BENEFITSI_WEB_URL: 'https://wrong.example', VERCEL_ENV: 'preview', BENEFITSI_WEB_PROTECTION_BYPASS_SECRET: bypass }, async (url, options) => { calls.push({ url, options }); return successfulFetch() })

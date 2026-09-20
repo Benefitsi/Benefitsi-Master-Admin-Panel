@@ -15,7 +15,11 @@ export async function invalidatePublicPartner(
   partnerId: string,
   micrositeSlug?: string | null,
 ): Promise<PublicRefreshResult> {
-  const secret = process.env.BENEFITSI_WEB_REVALIDATION_SECRET?.trim()
+  const publisherSecret = process.env.BENEFITSI_PUBLISHER_REVALIDATION_SECRET?.trim()
+  if (publisherSecret && (publisherSecret.length < 32 || !/^[!-~]+$/.test(publisherSecret))) {
+    return { ok: false, reason: "not_configured" }
+  }
+  const secret = publisherSecret || process.env.BENEFITSI_WEB_REVALIDATION_SECRET?.trim()
   const configured = process.env.BENEFITSI_WEB_REVALIDATION_URL?.trim()
   if (!secret || secret.length < 32 || !configured) return { ok: false, reason: "not_configured" }
   let target: URL
