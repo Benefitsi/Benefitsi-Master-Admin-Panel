@@ -9,7 +9,7 @@ Both the City and microsite producers use the exact configured `BENEFITSI_WEB_RE
 ## Deployment order
 
 1. Apply the additive `get_public_microsite_config_v1` database migration in staging, verify its public projection, then deploy the matching Web consumer to a protected preview or staging environment. Keep raw-policy cutover separate until all consumers have been checked.
-2. Configure a new random secret of at least 32 characters as `BENEFITSI_WEB_REVALIDATION_SECRET` in both matching server environments. Never use a `NEXT_PUBLIC_` variable, application login password or service-role key.
+2. For a first setup with no existing callers, configure a random secret of at least 32 characters as `BENEFITSI_WEB_REVALIDATION_SECRET` in both matching server environments. For an existing installation, preserve Web's current credentials and use the additive `BENEFITSI_PUBLISHER_REVALIDATION_SECRET` mapping below instead. Never use a `NEXT_PUBLIC_` variable, application login password or service-role key.
 3. Configure Admin `BENEFITSI_WEB_REVALIDATION_URL` to that exact Web origin's `/api/revalidate`. HTTPS, no credentials, query or fragment; loopback HTTP is available only outside production. Staging must not target production. Requests cannot follow redirects.
 4. Deploy the matching Admin producer; run synthetic publication/draft/withdrawal/retry acceptance before promoting.
 5. Verify deployment identities, secret separation, reachability and actual public rendering. The paired BEN61 contract now renders the supported Admin configuration; other templates and unsupported edits remain publication blockers.
