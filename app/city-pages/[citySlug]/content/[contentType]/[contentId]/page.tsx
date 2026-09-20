@@ -1,3 +1,5 @@
+import { PlaceStoryControl } from "@/components/city-pages/place-story-control"
+import { GuideBlocksControl, GuideSourcesControl } from "@/components/city-pages/guide-content-fields"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -251,6 +253,9 @@ function EditorFieldControl({
   partners: PartnerOption[]
   deals: DealOption[]
 }) {
+  if (field.kind === "place_story") return <PlaceStoryControl value={value} />
+  if (field.kind === "guide_blocks") return <GuideBlocksControl value={value} />
+  if (field.kind === "guide_sources") return <GuideSourcesControl value={value} />
   const id = `field-${field.name}`
   if (field.kind === "opening_hours") {
     return (

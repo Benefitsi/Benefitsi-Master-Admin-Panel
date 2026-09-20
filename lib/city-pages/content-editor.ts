@@ -23,6 +23,9 @@ export type EditorField = {
     | "tags"
     | "weekdays"
     | "opening_hours"
+    | "guide_blocks"
+    | "guide_sources"
+    | "place_story"
     | "checkbox"
     | "partner"
     | "deal"
@@ -36,6 +39,7 @@ export type EditorField = {
   rows?: number
   maxLength?: number
   storage?: "content" | "schedule"
+  preserveWhenMissing?: boolean
 }
 
 export type ContentEditorDefinition = {
@@ -350,10 +354,11 @@ export const cityContentEditorDefinitions: Record<
     contentType: "places",
     table: "city_places",
     singular: "Ort",
-    plural: "Orte & Sehenswürdigkeiten",
-    description: "Sehenswürdigkeiten, Ausflüge, Aktivitäten und wichtige lokale Orte.",
+    plural: "Orte & Betriebsprofile",
+    description: "Orte und öffentlich belegte Betriebsprofile. Ein Verzeichniseintrag ist keine bestätigte Benefitsi-Partnerschaft.",
     titleField: "name",
     fields: [
+      { name: "canonical_slug", label: "Adresse der Ortsseite", kind: "text", maxLength: 120, preserveWhenMissing: true, helper: "Kleine Buchstaben, Zahlen und Bindestriche, z. B. annweiler-trifels. Bestehende Adressen nur bewusst ändern; Veröffentlichung erfolgt nach Prüfung." },
       {
         name: "name",
         label: "Name",
@@ -380,6 +385,11 @@ export const cityContentEditorDefinitions: Record<
           { value: "activity", label: "Aktivität" },
           { value: "family", label: "Familie" },
           { value: "sports", label: "Sport" },
+          { value: "grocery", label: "Lebensmittel & Nahversorgung" },
+          { value: "shopping", label: "Geschäfte & Einzelhandel" },
+          { value: "health", label: "Gesundheit & Apotheke" },
+          { value: "service", label: "Dienstleistungen" },
+          { value: "food", label: "Gastronomie" },
         ],
       },
       {
@@ -393,6 +403,8 @@ export const cityContentEditorDefinitions: Record<
         ],
       },
       { name: "address", label: "Adresse", kind: "text", maxLength: 300 },
+      { name: "location_description", label: "Orientierung vor Ort", kind: "textarea", rows: 3, maxLength: 2000, preserveWhenMissing: true, helper: "Den tatsächlich belegten Einstieg oder Treffpunkt beschreiben." },
+      { name: "story", label: "Hintergründe zum Ort", kind: "place_story", preserveWhenMissing: true },
       {
         name: "latitude",
         label: "Breitengrad",
@@ -764,6 +776,8 @@ export const cityContentEditorDefinitions: Record<
         label: "Guide nach Freigabe sichtbar schalten",
         kind: "checkbox",
       },
+      { name: "blocks", label: "Guide-Inhalt", kind: "guide_blocks" },
+      { name: "source_meta", label: "Quellenprüfung", kind: "guide_sources" },
       ...sourceFields(),
     ],
   },

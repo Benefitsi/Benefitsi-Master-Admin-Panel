@@ -14,6 +14,8 @@ function compile(path, boundaries) {
   }, loadedModule, loadedModule.exports)
   return loadedModule.exports
 }
+const guideEditor = compile("../lib/city-pages/guide-editor.ts", {})
+const placeEditor = compile("../lib/city-pages/place-editor.ts", { "@/lib/city-pages/guide-editor": guideEditor })
 const editor = compile("../lib/city-pages/content-editor.ts", {
   "server-only": {}, "@/lib/supabase/admin": {},
 })
@@ -23,7 +25,7 @@ const content = "b1000000-0000-4000-8000-000000000001"
 const actor = "c1000000-0000-4000-8000-000000000001"
 const revision = "2026-09-12T10:00:00.123456Z"
 
-async function save({ resultError = null, isNew = false, authorized = true, expected = revision, intent = "draft", kind = "places", recurring = false } = {}) {
+async function save({ resultError = null, isNew = false, authorized = true, expected = revision, intent = "draft", kind = "places", recurring = false, fields = {} } = {}) {
   const writes = [], rpcs = [], revalidated = []
   const db = {
     from(table) {
@@ -48,6 +50,8 @@ async function save({ resultError = null, isNew = false, authorized = true, expe
       return { adminSession: { user: { id: actor }, profile: { display_name: "Test admin" } }, supabase: db }
     } },
     "@/lib/city-pages/content-editor": editor,
+    "@/lib/city-pages/guide-editor": guideEditor,
+    "@/lib/city-pages/place-editor": placeEditor,
     "@/lib/city-operations/contracts": contracts,
     "@/lib/supabase/admin": { createAdminClient: () => db },
   })
@@ -61,6 +65,7 @@ async function save({ resultError = null, isNew = false, authorized = true, expe
     form.append("recurrence_weekdays", "1")
     form.append("recurrence_weekdays", "3")
   }
+  for (const [key, value] of Object.entries(fields)) form.set(key, value)
   let outcome
   try { await action.saveCityContent(form) } catch (error) { outcome = error.message }
   return { writes, rpcs, revalidated, outcome }
@@ -78,6 +83,44 @@ test("authenticated editor sends one atomic RPC without direct content/review wr
   assert.equal(result.rpcs[0].args.p_schedule, null)
   assert.match(result.outcome, /success=review_queued$/)
   assert.ok(result.revalidated.length > 0)
+})
+
+test("place story and canonical orientation fields round-trip through the existing draft transaction", async () => {
+  const story = [{ title: "Geschichte", body: "Ein belegter Hintergrund.\n\n[Quelle](https://example.test/quelle)" }, { title: "Besuch", body: "[Anreise](/stadt/annweiler/service/anreise)" }]
+  const result = await save({ fields: { story: JSON.stringify(story), canonical_slug: "annweiler-trifels", location_description: "Am öffentlichen Einstieg.", legacy_ids: JSON.stringify(["osm-node-999"]), partner_id: actor, status: "active" } })
+  assert.equal(result.rpcs.length, 1)
+  assert.deepEqual(result.rpcs[0].args.p_payload.story, story)
+  assert.equal(result.rpcs[0].args.p_payload.canonical_slug, "annweiler-trifels")
+  assert.equal(result.rpcs[0].args.p_payload.location_description, "Am öffentlichen Einstieg.")
+  for (const key of ["legacy_ids", "partner_id", "status"]) assert.equal(Object.hasOwn(result.rpcs[0].args.p_payload, key), false)
+  assert.equal(result.rpcs[0].args.p_intent, "draft")
+  assert.deepEqual(result.writes, [])
+})
+
+test("invalid or oversized place content cannot be silently truncated or reach the transaction", async () => {
+  for (const fields of [
+    { story: '{}' }, { story: '[{"title":"A","body":"B","partner_id":"forged"}]' },
+    { story: JSON.stringify([{ title: "", body: "Body" }]) },
+    { story: JSON.stringify([{ title: "A", body: "[Link](javascript:alert(1))" }]) },
+    { story: JSON.stringify([{ title: "A", body: "<script>alert(1)</script>" }]) },
+    { story: JSON.stringify([{ title: "A", body: "x".repeat(20001) }]) },
+    { story: JSON.stringify(Array.from({ length: 31 }, () => ({ title: "A", body: "B" }))) },
+    { canonical_slug: "Annweiler/Wrong" }, { canonical_slug: "a".repeat(121) },
+    { location_description: "a".repeat(2001) }, { location_description: "<img src=x>" },
+  ]) {
+    const result = await save({ fields })
+    assert.equal(result.rpcs.length, 0, JSON.stringify(fields).slice(0, 100))
+    assert.match(result.outcome, /error=field_validation$/)
+  }
+})
+
+test("older place forms preserve new fields while explicit empty controls clear optional content", async () => {
+  const omitted = await save()
+  for (const key of ["story", "canonical_slug", "location_description", "legacy_ids"]) assert.equal(Object.hasOwn(omitted.rpcs[0].args.p_payload, key), false)
+  const cleared = await save({ fields: { story: "[]", canonical_slug: "", location_description: "" } })
+  assert.deepEqual(cleared.rpcs[0].args.p_payload.story, [])
+  assert.equal(cleared.rpcs[0].args.p_payload.canonical_slug, null)
+  assert.equal(cleared.rpcs[0].args.p_payload.location_description, null)
 })
 
 test("new content uses the ID returned from the transaction", async () => {
@@ -127,4 +170,48 @@ test("removing recurrence is explicit and an editor intent cannot publish", asyn
   const invalid = await save({ intent: "publish" })
   assert.deepEqual(invalid.rpcs, [])
   assert.deepEqual(invalid.writes, [])
+})
+
+const guideFields = {
+  slug: "wochenende-in-annweiler", title: "Ein Wochenende", category: "guides",
+  blocks: JSON.stringify([{ id: "day-one", blockType: "TEXT", sortOrder: 0, title: "Tag 1", text: "Altstadt entdecken.\n\n[Auskunft](https://example.test/quelle)" }]),
+  source_meta: JSON.stringify({ sourceType: "PRIMARY", sourceUrl: "https://example.test/quelle", lastVerifiedAt: "2026-09-20T00:00:00.000Z", confidence: "high", verificationStatus: "VERIFIED", freshnessTtlDays: 90 }),
+}
+test("complete guide content reaches the draft transaction and evidence cannot self-verify", async () => {
+  const result = await save({ kind: "guides", intent: "review", fields: guideFields })
+  assert.equal(result.rpcs.length, 1)
+  const payload = result.rpcs[0].args.p_payload
+  assert.deepEqual(payload.blocks, [{ id: "day-one", blockType: "TEXT", sortOrder: 0, title: "Tag 1", text: "Altstadt entdecken.\n\n[Auskunft](https://example.test/quelle)" }])
+  assert.equal(payload.source_meta.verificationStatus, "NEEDS_REVIEW")
+  assert.equal(payload.source_meta.lastVerifiedAt, "2026-09-20T00:00:00.000Z")
+  assert.equal(payload.status, undefined)
+  assert.deepEqual(result.writes, [])
+})
+test("malformed blocks and unsafe links never reach the transaction", async () => {
+  for (const blocks of ['{}', '[{"id":"x","blockType":"SCRIPT","sortOrder":0}]', JSON.stringify([{id:"x",blockType:"TEXT",sortOrder:0,text:"[link](javascript:alert(1))"}]), JSON.stringify([{id:"x",blockType:"TEXT",sortOrder:0,text:"x".repeat(20001)}])]) {
+    const result = await save({ kind: "guides", fields: { ...guideFields, blocks } })
+    assert.equal(result.rpcs.length, 0)
+    assert.match(result.outcome, /field_validation/)
+  }
+})
+test("business profiles use ordinary review and cannot assign themselves a partner", async () => {
+  for (const category of ["grocery", "shopping", "health", "service", "food"]) {
+    const result = await save({ fields: { category, partner_id: actor }, intent: "review" })
+    assert.equal(result.rpcs.length, 1, category)
+    assert.equal(result.rpcs[0].args.p_payload.category, category)
+    assert.equal(result.rpcs[0].args.p_payload.partner_id, undefined)
+    assert.equal(result.rpcs[0].args.p_intent, "review")
+  }
+})
+
+test("older guide forms omit new JSON fields instead of clearing existing content", async () => {
+  const result = await save({ kind: "guides", fields: {slug:"existing-guide",title:"Edited title",category:"guides"} })
+  assert.equal(result.rpcs.length,1)
+  assert.equal(Object.hasOwn(result.rpcs[0].args.p_payload,"blocks"),false)
+  assert.equal(Object.hasOwn(result.rpcs[0].args.p_payload,"source_meta"),false)
+})
+test("editor accepts a researched calendar date without inventing a check time", async () => {
+  const meta = JSON.parse(guideFields.source_meta); meta.lastVerifiedAt = "2026-09-20"
+  const result = await save({ kind: "guides", fields: { ...guideFields, source_meta: JSON.stringify(meta) } })
+  assert.equal(result.rpcs[0]?.args.p_payload.source_meta.lastVerifiedAt, "2026-09-20")
 })
