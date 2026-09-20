@@ -15,6 +15,7 @@ function compile(path, boundaries) {
   return loadedModule.exports
 }
 const guideEditor = compile("../lib/city-pages/guide-editor.ts", {})
+const placeEditor = compile("../lib/city-pages/place-editor.ts", { "@/lib/city-pages/guide-editor": guideEditor })
 const editor = compile("../lib/city-pages/content-editor.ts", {
   "server-only": {}, "@/lib/supabase/admin": {},
 })
@@ -50,6 +51,7 @@ async function save({ resultError = null, isNew = false, authorized = true, expe
     } },
     "@/lib/city-pages/content-editor": editor,
     "@/lib/city-pages/guide-editor": guideEditor,
+    "@/lib/city-pages/place-editor": placeEditor,
     "@/lib/city-operations/contracts": contracts,
     "@/lib/supabase/admin": { createAdminClient: () => db },
   })
@@ -81,6 +83,44 @@ test("authenticated editor sends one atomic RPC without direct content/review wr
   assert.equal(result.rpcs[0].args.p_schedule, null)
   assert.match(result.outcome, /success=review_queued$/)
   assert.ok(result.revalidated.length > 0)
+})
+
+test("place story and canonical orientation fields round-trip through the existing draft transaction", async () => {
+  const story = [{ title: "Geschichte", body: "Ein belegter Hintergrund.\n\n[Quelle](https://example.test/quelle)" }, { title: "Besuch", body: "[Anreise](/stadt/annweiler/service/anreise)" }]
+  const result = await save({ fields: { story: JSON.stringify(story), canonical_slug: "annweiler-trifels", location_description: "Am öffentlichen Einstieg.", legacy_ids: JSON.stringify(["osm-node-999"]), partner_id: actor, status: "active" } })
+  assert.equal(result.rpcs.length, 1)
+  assert.deepEqual(result.rpcs[0].args.p_payload.story, story)
+  assert.equal(result.rpcs[0].args.p_payload.canonical_slug, "annweiler-trifels")
+  assert.equal(result.rpcs[0].args.p_payload.location_description, "Am öffentlichen Einstieg.")
+  for (const key of ["legacy_ids", "partner_id", "status"]) assert.equal(Object.hasOwn(result.rpcs[0].args.p_payload, key), false)
+  assert.equal(result.rpcs[0].args.p_intent, "draft")
+  assert.deepEqual(result.writes, [])
+})
+
+test("invalid or oversized place content cannot be silently truncated or reach the transaction", async () => {
+  for (const fields of [
+    { story: '{}' }, { story: '[{"title":"A","body":"B","partner_id":"forged"}]' },
+    { story: JSON.stringify([{ title: "", body: "Body" }]) },
+    { story: JSON.stringify([{ title: "A", body: "[Link](javascript:alert(1))" }]) },
+    { story: JSON.stringify([{ title: "A", body: "<script>alert(1)</script>" }]) },
+    { story: JSON.stringify([{ title: "A", body: "x".repeat(20001) }]) },
+    { story: JSON.stringify(Array.from({ length: 31 }, () => ({ title: "A", body: "B" }))) },
+    { canonical_slug: "Annweiler/Wrong" }, { canonical_slug: "a".repeat(121) },
+    { location_description: "a".repeat(2001) }, { location_description: "<img src=x>" },
+  ]) {
+    const result = await save({ fields })
+    assert.equal(result.rpcs.length, 0, JSON.stringify(fields).slice(0, 100))
+    assert.match(result.outcome, /error=field_validation$/)
+  }
+})
+
+test("older place forms preserve new fields while explicit empty controls clear optional content", async () => {
+  const omitted = await save()
+  for (const key of ["story", "canonical_slug", "location_description", "legacy_ids"]) assert.equal(Object.hasOwn(omitted.rpcs[0].args.p_payload, key), false)
+  const cleared = await save({ fields: { story: "[]", canonical_slug: "", location_description: "" } })
+  assert.deepEqual(cleared.rpcs[0].args.p_payload.story, [])
+  assert.equal(cleared.rpcs[0].args.p_payload.canonical_slug, null)
+  assert.equal(cleared.rpcs[0].args.p_payload.location_description, null)
 })
 
 test("new content uses the ID returned from the transaction", async () => {

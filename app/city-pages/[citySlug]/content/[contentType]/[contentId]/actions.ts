@@ -14,6 +14,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin"
 
 import { parseGuideBlocks, parseGuideSourceEvidence } from "@/lib/city-pages/guide-editor"
+import { parsePlaceStory, parsePlaceCanonicalSlug, parsePlaceLocationDescription } from "@/lib/city-pages/place-editor"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -37,6 +38,9 @@ function parseTags(value: string) {
 }
 
 function parseField(field: EditorField, formData: FormData) {
+  if (field.kind === "place_story") return parsePlaceStory(formData.get(field.name) ?? "[]")
+  if (field.name === "canonical_slug") return parsePlaceCanonicalSlug(formData.get(field.name))
+  if (field.name === "location_description") return parsePlaceLocationDescription(formData.get(field.name))
   if (field.kind === "guide_blocks") return parseGuideBlocks(formData.get(field.name) ?? "[]")
   if (field.kind === "guide_sources") return parseGuideSourceEvidence(formData.get(field.name) ?? "{}")
   if (field.kind === "opening_hours") {
@@ -208,6 +212,7 @@ export async function saveCityContent(formData: FormData) {
   const payload = Object.fromEntries(
     definition.fields
       .filter((field) => field.storage !== "schedule" &&
+        (!field.preserveWhenMissing || formData.has(field.name)) &&
         (!["guide_blocks", "guide_sources"].includes(field.kind) || formData.has(field.name)))
       .map((field) => [field.name, parsedPayload[field.name]]),
   )

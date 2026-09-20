@@ -25,6 +25,7 @@ export type EditorField = {
     | "opening_hours"
     | "guide_blocks"
     | "guide_sources"
+    | "place_story"
     | "checkbox"
     | "partner"
     | "deal"
@@ -38,6 +39,7 @@ export type EditorField = {
   rows?: number
   maxLength?: number
   storage?: "content" | "schedule"
+  preserveWhenMissing?: boolean
 }
 
 export type ContentEditorDefinition = {
@@ -356,6 +358,7 @@ export const cityContentEditorDefinitions: Record<
     description: "Orte und öffentlich belegte Betriebsprofile. Ein Verzeichniseintrag ist keine bestätigte Benefitsi-Partnerschaft.",
     titleField: "name",
     fields: [
+      { name: "canonical_slug", label: "Adresse der Ortsseite", kind: "text", maxLength: 120, preserveWhenMissing: true, helper: "Kleine Buchstaben, Zahlen und Bindestriche, z. B. annweiler-trifels. Bestehende Adressen nur bewusst ändern; Veröffentlichung erfolgt nach Prüfung." },
       {
         name: "name",
         label: "Name",
@@ -400,6 +403,8 @@ export const cityContentEditorDefinitions: Record<
         ],
       },
       { name: "address", label: "Adresse", kind: "text", maxLength: 300 },
+      { name: "location_description", label: "Orientierung vor Ort", kind: "textarea", rows: 3, maxLength: 2000, preserveWhenMissing: true, helper: "Den tatsächlich belegten Einstieg oder Treffpunkt beschreiben." },
+      { name: "story", label: "Hintergründe zum Ort", kind: "place_story", preserveWhenMissing: true },
       {
         name: "latitude",
         label: "Breitengrad",

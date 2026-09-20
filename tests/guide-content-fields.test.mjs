@@ -77,3 +77,24 @@ test("undo after moving remaining blocks submits the exact visible order", async
     assert.equal(document.querySelector('[role="status"]'), null)
   } finally { await act(async () => root.unmount()); dom.window.close() }
 })
+
+test("place prose reorders, removes and restores without losing the serialized article", async () => {
+  const placeValidators = compile("../lib/city-pages/place-editor.ts", { "@/lib/city-pages/guide-editor": validators })
+  const { PlaceStoryControl } = compile("../components/city-pages/place-story-control.tsx", {
+    react: React, "react/jsx-runtime": jsx, "@/lib/city-pages/place-editor": placeValidators,
+  })
+  const dom = new JSDOM('<div id="root"></div>')
+  globalThis.window = dom.window; globalThis.document = dom.window.document; globalThis.IS_REACT_ACT_ENVIRONMENT = true
+  const root = createRoot(document.getElementById("root"))
+  const sections = [{title:"Anreise",body:"Mit der Bahn."},{title:"Rundgang",body:"Ein Spaziergang."}]
+  try {
+    await act(async () => root.render(React.createElement("form", {}, React.createElement(PlaceStoryControl, { value: sections }))))
+    await act(async () => document.querySelector('[aria-label="Abschnitt 2 nach oben"]').click())
+    const saved = () => placeValidators.parsePlaceStory(new dom.window.FormData(document.querySelector("form")).get("story"))
+    assert.deepEqual(saved(), [sections[1],sections[0]])
+    await act(async () => [...document.querySelectorAll("button")].find(b=>b.textContent==="Entfernen").click())
+    assert.deepEqual(saved(), [sections[0]])
+    await act(async () => [...document.querySelectorAll("button")].find(b=>b.textContent==="Rückgängig").click())
+    assert.deepEqual(saved(), [sections[1],sections[0]])
+  } finally { await act(async () => root.unmount()); dom.window.close() }
+})
