@@ -13,17 +13,40 @@ import { getDashboardData, type Partner, type PartnerWithDeals } from "@/lib/adm
 import { createMicrositeReadinessReport } from "@/lib/microsite-readiness"
 import { canEditPartnerMicrosite, getPartnerPortalSession } from "@/lib/partner-portal"
 import { createClient } from "@/lib/supabase/server"
+import { createPublicMicrositeSnapshot, publicMicrositePublishBlockers } from "@/lib/public-microsite-contract"
+import { invalidatePublicPartner } from "@/lib/public-web-revalidation"
 
 export type MicrositeActionState = {
   ok: boolean
   message: string
   config?: MicrositeConfig
+  publicRefreshPending?: boolean
+  editorRefreshPending?: boolean
 }
 
 const MICROSITE_ASSET_BUCKET =
   process.env.SUPABASE_PARTNER_MEDIA_BUCKET ?? "partner-assets"
 const MAX_MICROSITE_ASSET_BYTES = 10 * 1024 * 1024
 const MAX_MICROSITE_UPLOAD_BYTES = 20 * 1024 * 1024
+const MAX_PUBLIC_MICROSITE_CONFIG_BYTES = 1024 * 1024
+const PUBLIC_CONFIG_SIZE_MESSAGE = "Die Microsite ist für die Veröffentlichung zu umfangreich. Bitte lange Notizen oder ungenutzte Inhalte kürzen; als Entwurf können sie erhalten bleiben."
+
+function fitsPublicMicrositeDatabaseLimit(value: unknown): boolean {
+  // PostgreSQL checks octet_length(jsonb::text), not compact JSON bytes.
+  // Reserve spaces after separators and up to 400 additional bytes per JS
+  // number for PostgreSQL's expanded decimal notation (including subnormals).
+  // This intentionally errs toward rejecting near-limit publications.
+  let formattingAllowance = 0
+  const serialized = JSON.stringify(value, (_key, item) => {
+    if (typeof item === "number") formattingAllowance += 400
+    else if (Array.isArray(item)) formattingAllowance += item.length
+    else if (item && typeof item === "object") formattingAllowance += 2 * Object.keys(item).length
+    return item
+  })
+  return typeof serialized === "string" &&
+    Buffer.byteLength(serialized, "utf8") + formattingAllowance <= MAX_PUBLIC_MICROSITE_CONFIG_BYTES
+}
+
 const ALLOWED_MICROSITE_ASSET_TYPES = new Set([
   "image/png",
   "image/jpeg",
@@ -105,6 +128,37 @@ async function persistMicrositeVersion(
   }
 
   const { supabase } = access
+
+  if (rawIntent === "withdraw" || rawIntent === "revalidate") {
+    const existing = await supabase.from("microsites").select("id,slug,status").eq("partner_id", partnerId).maybeSingle()
+    if (existing.error || !existing.data) return { ok: false, message: "Die gespeicherte Microsite konnte nicht geladen werden." }
+    if (rawIntent === "withdraw") {
+      const withdrawn = await supabase.from("microsites").update({ status: "archived", updated_at: new Date().toISOString() }).eq("id", existing.data.id)
+      if (withdrawn.error) return { ok: false, message: "Die Veröffentlichung konnte nicht zurückgenommen werden." }
+    }
+    let editorRefreshPending = false
+    try {
+      // Refresh the active server-component props as well as public caches.
+      // The client editor keeps its unsaved config; only publication metadata changes.
+      for (const identifier of new Set([existing.data.slug || partnerId, partnerId])) {
+        revalidatePath(`/microsite-builder/${identifier}`)
+        revalidatePath(`/partner/microsite-builder/${identifier}`)
+      }
+      revalidatePath("/")
+      revalidatePath("/partner")
+    } catch {
+      editorRefreshPending = true
+      console.warn("[microsite:editor-refresh] pending", { operation: rawIntent })
+    }
+    const refresh = await invalidatePublicPartner(supabase, partnerId, existing.data.slug)
+    if (!refresh.ok) console.warn("[microsite:public-refresh] pending", { operation: rawIntent, reason: refresh.reason })
+    return {
+      ok: true, publicRefreshPending: !refresh.ok, editorRefreshPending,
+      message: (!refresh.ok
+        ? "Änderung gespeichert. Die öffentliche Aktualisierung steht noch aus. Bitte erneut anstoßen."
+        : rawIntent === "withdraw" ? "Veröffentlichung zurückgenommen. Die öffentliche Seite wurde aktualisiert." : "Die öffentliche Seite wurde aktualisiert.") + (editorRefreshPending ? " Die Editoranzeige bitte neu laden." : ""),
+    }
+  }
   const partnerResult = await supabase
     .from("partners")
     .select("id,name,slug,subdomain,short_name,description,category,type,logo_url,feature_card_url,discover_card_image_url,cover_urls,address,phone,website,email")
@@ -124,6 +178,18 @@ async function persistMicrositeVersion(
   let config = createConfigFromForm(formData, partner)
 
   if (intent === "publish") {
+    const capabilityBlockers = publicMicrositePublishBlockers(config)
+    if (!fitsPublicMicrositeDatabaseLimit({ ...config, publicSnapshot: createPublicMicrositeSnapshot(config) })) {
+      capabilityBlockers.unshift(PUBLIC_CONFIG_SIZE_MESSAGE)
+    }
+    const requestedConfig = parseJson(stringValue(formData, "existing_config")) as { template?: unknown } | null
+    if (requestedConfig?.template && requestedConfig.template !== config.template) {
+      capabilityBlockers.unshift(`Template „${String(requestedConfig.template)}“: unbekanntes öffentliches Template`)
+    }
+    if (capabilityBlockers.length) return {
+      ok: false, config,
+      message: `Veröffentlichung blockiert: ${capabilityBlockers.join("; ")}. Bitte anpassen oder als Entwurf speichern.`,
+    }
     const readinessPartner = await getFullPartnerForReadiness(
       supabase,
       partnerId,
@@ -158,6 +224,14 @@ async function persistMicrositeVersion(
   }
 
   config = applyUploadedAssets(config, uploadedAssets.urls)
+  const publicSnapshot = intent === "publish" ? createPublicMicrositeSnapshot(config) : null
+  if (intent === "publish" && (!publicSnapshot || publicMicrositePublishBlockers(config).length)) {
+    return { ok: false, config, message: "Veröffentlichung blockiert: Die hochgeladenen Medien benötigen sichere öffentliche URLs ohne Zugangsdaten." }
+  }
+  const storedConfig = publicSnapshot ? { ...config, publicSnapshot } : config
+  if (intent === "publish" && !fitsPublicMicrositeDatabaseLimit(storedConfig)) {
+    return { ok: false, config, message: PUBLIC_CONFIG_SIZE_MESSAGE }
+  }
   const micrositeResult = await findOrCreateMicrosite(supabase, partner)
 
   if (!micrositeResult.ok) {
@@ -188,7 +262,7 @@ async function persistMicrositeVersion(
       id: versionId,
       microsite_id: microsite.id,
       version_number: nextVersion.number,
-      config,
+      config: storedConfig,
       status,
     })
 
@@ -226,12 +300,8 @@ async function persistMicrositeVersion(
           updated_at: new Date().toISOString(),
         }
       : {
-          status:
-            intent === "approve"
-              ? "approved"
-              : intent === "review"
-                ? "review"
-                : "draft",
+          // Version workflow belongs to microsite_versions. Never write the
+          // public status here, including after a concurrent withdrawal.
           updated_at: new Date().toISOString(),
         }
 
@@ -277,12 +347,20 @@ async function persistMicrositeVersion(
     })
   }
 
+  const refresh = intent === "publish"
+    ? await invalidatePublicPartner(supabase, partnerId, microsite.slug)
+    : { ok: true }
+  if (!refresh.ok) console.warn("[microsite:public-refresh] pending", { operation: intent, reason: "delivery_failed" })
+
   return {
     ok: true,
     config,
+    publicRefreshPending: !refresh.ok,
     message:
       intent === "publish"
-        ? "Microsite veröffentlicht. Die Live-Seite nutzt jetzt diese Version."
+        ? refresh.ok
+          ? "Microsite veröffentlicht. Die öffentliche Seite wurde aktualisiert."
+          : "Veröffentlichung gespeichert. Die öffentliche Aktualisierung steht noch aus. Bitte erneut anstoßen."
         : intent === "approve"
           ? "Microsite freigegeben. Sie kann veröffentlicht werden, sobald die finalen Checks passen."
           : intent === "review"
@@ -304,7 +382,7 @@ export async function discardMicrositeDraft(
   const { supabase } = access
   const micrositeResult = await supabase
     .from("microsites")
-    .select("id, slug, published_version_id")
+    .select("id, slug, status, published_version_id")
     .eq("partner_id", partnerId)
     .maybeSingle()
 
@@ -328,7 +406,6 @@ export async function discardMicrositeDraft(
   const statusResult = await supabase
     .from("microsites")
     .update({
-      status: micrositeResult.data.published_version_id ? "published" : "draft",
       updated_at: new Date().toISOString(),
     })
     .eq("id", micrositeResult.data.id)
@@ -346,7 +423,7 @@ export async function discardMicrositeDraft(
 
   return {
     ok: true,
-    message: micrositeResult.data.published_version_id
+    message: micrositeResult.data.status === "published" && micrositeResult.data.published_version_id
       ? "Entwurf verworfen. Die aktuelle Live-Version wurde geladen."
       : "Entwurf verworfen. Die aktuellen Partnerdaten wurden geladen.",
   }

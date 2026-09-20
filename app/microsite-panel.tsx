@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   useContext,
+  useId,
   type Dispatch,
   type CSSProperties,
   type FocusEvent,
@@ -78,6 +79,7 @@ async function saveMicrositeVersionWithFallback(
 ): Promise<MicrositeActionState> {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     return {
+      ...previousState,
       ok: false,
       message:
         "Speichern fehlgeschlagen. Bitte Internetverbindung prüfen und erneut versuchen.",
@@ -89,6 +91,7 @@ async function saveMicrositeVersionWithFallback(
   } catch (error) {
     console.error("[microsite:save] request failed before completion", error)
     return {
+      ...previousState,
       ok: false,
       message:
         "Speichern fehlgeschlagen. Bitte Internetverbindung prüfen, die Seite neu laden und erneut versuchen.",
@@ -1059,6 +1062,8 @@ export function MicrositePanel({
     initialState,
   )
   const [pendingIntent, setPendingIntent] = useState("")
+  const publicActionFormId = useId()
+  const isPublished = partner.microsite?.status === "published" && Boolean(partner.microsite.publishedVersion)
   const [clientSaveError, setClientSaveError] = useState("")
   const renderedAssetLibrary = config.assets.library.filter((asset) =>
     isAvailableMicrositeLibraryAsset(asset, partner),
@@ -1712,8 +1717,8 @@ export function MicrositePanel({
             {tr("Aktuelle Vorschau öffnen")}
           </a>
           <StatusBadge
-            label={partner.microsite?.publishedVersion ? "Live" : "Noch nicht live"}
-            active={Boolean(partner.microsite?.publishedVersion)}
+            label={isPublished ? "Live" : "Noch nicht live"}
+            active={isPublished}
           />
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold tabular-nums ring-1 ring-inset ${
@@ -1791,6 +1796,9 @@ export function MicrositePanel({
           </div>
         ) : null}
       </header>
+      <form id={publicActionFormId} action={formAction} onSubmit={() => setClientSaveError("")}>
+        <input type="hidden" name="partner_id" value={partner.id || ""} />
+      </form>
       <form
         ref={formRef}
         action={formAction}
@@ -2250,6 +2258,28 @@ export function MicrositePanel({
               {pending && pendingIntent === "publish" ? <LoadingSpinner /> : null}
               {pending && pendingIntent === "publish" ? tr("Wird veröffentlicht…") : tr("Veröffentlichen")}
             </button>
+            {state.publicRefreshPending || partner.microsite?.publishedVersion ? (
+              <button type="submit" form={publicActionFormId} name="intent" value="revalidate" disabled={pending}
+                onClick={() => setPendingIntent("revalidate")}
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-amber-700 px-4 text-sm font-semibold text-amber-900 disabled:opacity-60">
+                {state.publicRefreshPending
+                  ? builderLocale === "en" ? "Retry public update" : "Öffentliche Aktualisierung wiederholen"
+                  : builderLocale === "en" ? "Refresh public page" : "Öffentliche Seite aktualisieren"}
+              </button>
+            ) : null}
+            {isPublished ? (
+              <button type="submit" form={publicActionFormId} name="intent" value="withdraw" disabled={pending}
+                onClick={(event) => {
+                  const confirmed = window.confirm(builderLocale === "en"
+                    ? "Withdraw the public microsite? Saved versions remain available."
+                    : "Veröffentlichung der Microsite zurücknehmen? Gespeicherte Versionen bleiben erhalten.")
+                  if (!confirmed) event.preventDefault()
+                  else setPendingIntent("withdraw")
+                }}
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-rose-700 px-4 text-sm font-semibold text-rose-800 disabled:opacity-60">
+                {builderLocale === "en" ? "Withdraw publication" : "Veröffentlichung zurücknehmen"}
+              </button>
+            ) : null}
             {publishBlocked ? (
               <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-800">
                 <p className="text-xs font-black">
@@ -3833,12 +3863,13 @@ function WorkflowPanel({
   previewIdentifier: string
 }) {
   const { tr } = useBuilderI18n()
+  const isPublished = partner.microsite?.status === "published" && Boolean(partner.microsite.publishedVersion)
   const steps = [
     ["1", "Partnerdaten prüfen", report.items.filter((item) => item.area === "Daten" && !item.ok).length === 0],
     ["2", "Assets bereit", report.items.filter((item) => item.area === "Assets" && !item.ok).length === 0],
     ["3", "Mobilprüfung", report.items.filter((item) => item.area === "Mobile" && !item.ok).length === 0],
     ["4", "SEO/LLM-Prüfung", report.items.filter((item) => item.area === "SEO & LLM" && !item.ok).length === 0],
-    ["5", "Live", Boolean(partner.microsite?.publishedVersion)],
+    ["5", "Live", isPublished],
   ] as const
 
   return (
