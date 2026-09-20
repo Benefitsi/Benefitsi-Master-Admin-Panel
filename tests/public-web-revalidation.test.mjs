@@ -13,6 +13,8 @@ const originalEnv = { ...process.env }
 test.afterEach(() => { globalThis.fetch = originalFetch; process.env = { ...originalEnv } })
 
 function setup({ row = { slug: "test-partner", cities: { slug: "annweiler" } }, responses = [new Response('{"ok":true}')], endpoint = "https://web.example/api/revalidate" } = {}) {
+  delete process.env.BENEFITSI_PUBLISHER_REVALIDATION_SECRET
+  delete process.env.BENEFITSI_ADMIN_REVALIDATION_SECRET
   process.env.BENEFITSI_WEB_REVALIDATION_URL = endpoint
   process.env.BENEFITSI_WEB_REVALIDATION_SECRET = secret
   const calls = [], selects = []
@@ -25,6 +27,40 @@ function setup({ row = { slug: "test-partner", cities: { slug: "annweiler" } }, 
   }
   return { db: { from(table) { assert.equal(table, "partners"); return query } }, calls, selects }
 }
+test("publisher credential takes priority without replacing either legacy secret", async () => {
+  const f = setup()
+  const publisher = "synthetic-publisher-revalidation-secret-only"
+  const admin = "synthetic-legacy-admin-revalidation-secret"
+  process.env.BENEFITSI_PUBLISHER_REVALIDATION_SECRET = `  ${publisher}  `
+  process.env.BENEFITSI_ADMIN_REVALIDATION_SECRET = admin
+  assert.deepEqual(await invalidatePublicPartner(f.db, "partner-id"), { ok: true })
+  assert.equal(f.calls[0].headers.authorization, `Bearer ${publisher}`)
+  assert.equal(f.calls[0].url, "https://web.example/api/revalidate")
+  assert.equal(process.env.BENEFITSI_WEB_REVALIDATION_SECRET, secret)
+  assert.equal(process.env.BENEFITSI_ADMIN_REVALIDATION_SECRET, admin)
+})
+test("missing or blank publisher preserves the microsite WEB-only fallback", async () => {
+  for (const publisher of [undefined, "", " \t "]) {
+    const f = setup()
+    if (publisher !== undefined) process.env.BENEFITSI_PUBLISHER_REVALIDATION_SECRET = publisher
+    process.env.BENEFITSI_ADMIN_REVALIDATION_SECRET = "synthetic-legacy-admin-revalidation-secret"
+    assert.deepEqual(await invalidatePublicPartner(f.db, "partner-id"), { ok: true })
+    assert.equal(f.calls[0].headers.authorization, `Bearer ${secret}`)
+    delete process.env.BENEFITSI_WEB_REVALIDATION_SECRET
+    assert.deepEqual(await invalidatePublicPartner(f.db, "partner-id"), { ok: false, reason: "not_configured" })
+    assert.equal(f.calls.length, 1)
+  }
+})
+test("malformed nonblank publisher fails closed before lookup or request despite valid legacy keys", async () => {
+  for (const publisher of ["short", "synthetic-publisher\nrevalidation-secret-only", "synthetic-publisher revalidation-secret-only"]) {
+    const f = setup()
+    process.env.BENEFITSI_PUBLISHER_REVALIDATION_SECRET = publisher
+    process.env.BENEFITSI_ADMIN_REVALIDATION_SECRET = "synthetic-legacy-admin-revalidation-secret"
+    assert.deepEqual(await invalidatePublicPartner(f.db, "partner-id"), { ok: false, reason: "not_configured" })
+    assert.equal(f.calls.length, 0)
+    assert.deepEqual(f.selects, [])
+  }
+})
 test("server-side identity lookup sends only bounded resource slugs, with no arbitrary paths", async () => {
   const f = setup()
   assert.deepEqual(await invalidatePublicPartner(f.db, "partner-id"), { ok: true })
