@@ -128,6 +128,13 @@ function AdminShellContent({
               icon={<CityPagesIcon className="size-5" />}
             />
             <AdminNavigationLink
+              href="/media"
+              label="Medien"
+              active={pathname.startsWith("/media")}
+              collapsed={collapsed}
+              icon={<CityPagesIcon className="size-5" />}
+            />
+            <AdminNavigationLink
               href="/city-operations"
               label="Städte-Review"
               active={pathname.startsWith("/city-operations")}
