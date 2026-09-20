@@ -102,7 +102,7 @@ export default async function PartnerDashboardPage({
             Your partner microsites
           </h1>
           <p className="mt-2 text-sm text-zinc-600">
-            View the microsites linked to your account. Owners can manage their partner profile, benefits, menu, and opening hours. Microsite changes and publishing are handled by the Benefitsi team.
+            View the partner shops linked to your account. Owners can manage their partner profile, benefits, menu, and opening hours. Microsite changes and publishing are handled by the Benefitsi team.
           </p>
         </section>
 
@@ -177,20 +177,12 @@ function MicrositeEditorCards({ partners }: { partners: PartnerWithDeals[] }) {
             <p className="mt-1 text-sm text-zinc-600">
               {partner.city_name || partner.address || "No location set"}
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link
-                href={`/partner/microsite-builder/${encodeURIComponent(identifier)}`}
-                className="rounded-xl bg-[linear-gradient(135deg,#17d4d7_0%,#118cff_100%)] px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-px active:translate-y-0 active:scale-[.98]"
-              >
-                Microsite ansehen
-              </Link>
-              <Link
-                href={`/partner/microsite-preview/${encodeURIComponent(identifier)}`}
-                target="_blank"
-                className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
-              >
-                Open preview
-              </Link>
+            <div className="mt-4 rounded-lg bg-sky-50 p-3 text-sm text-sky-950">
+              <p className="font-semibold">Interne Vorschau nicht verfügbar</p>
+              <p className="mt-1 leading-6">
+                Die interne Microsite-Vorschau ist nur mit dem Inhaberzugang oder
+                für das Benefitsi-Team verfügbar.
+              </p>
             </div>
           </article>
         )
