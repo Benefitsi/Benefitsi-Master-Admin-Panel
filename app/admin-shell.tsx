@@ -163,6 +163,13 @@ function AdminShellContent({
               icon={<AutomationIcon className="size-5" />}
             />
             <AdminNavigationLink
+              href="/agents"
+              label="Agenten"
+              active={pathname.startsWith("/agents")}
+              collapsed={collapsed}
+              icon={<AutomationIcon className="size-5" />}
+            />
+            <AdminNavigationLink
               href="/analytics"
               label="Business Control Center"
               active={pathname.startsWith("/analytics")}
