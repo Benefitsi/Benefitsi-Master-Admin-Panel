@@ -360,6 +360,47 @@ class CollectorTests(unittest.TestCase):
                     self.assertEqual(run_at, expected_run_at)
                     self.assertEqual(status, "ok" if expected_run_at else None)
 
+    def test_ben_run_scan_requests_only_cap_plus_one_entries_and_closes_iterator(self):
+        profile = self.fx.profile("ben")
+        runs = profile / "logs" / "runs"
+        runs.mkdir(parents=True)
+        cap = 3
+
+        class RecordingScandir:
+            def __init__(self):
+                self.requested = 0
+                self.closed = False
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                self.closed = True
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                if self.requested == 10:
+                    raise StopIteration
+                name = f"ignored-{self.requested}"
+                self.requested += 1
+                entry = mock.Mock()
+                entry.name = name
+                return entry
+
+        entries = RecordingScandir()
+        with (
+            mock.patch.object(collect_runtime, "MAX_BEN_RUN_DIRECTORY_ENTRIES", cap),
+            mock.patch.object(collect_runtime.os, "scandir", return_value=entries),
+        ):
+            self.assertEqual(
+                collect_runtime._ben_status(profile, "logs/runs/*-preflight.json"),
+                (None, None),
+            )
+        self.assertEqual(entries.requested, cap + 1)
+        self.assertTrue(entries.closed)
+
     def test_city_partial_report_is_not_mapped_to_failed(self):
         profile = self.fx.profile("city")
         report_dir = profile / "logs/event-publication"

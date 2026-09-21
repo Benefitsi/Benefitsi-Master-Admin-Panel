@@ -422,18 +422,19 @@ def _ben_status(profile_root: Path, pattern: str) -> tuple[str | None, str | Non
     parent = parent.parent
     selected: tuple[str, Path] | None = None
     try:
-        for entry_count, path in enumerate(parent.iterdir(), start=1):
-            if entry_count > MAX_BEN_RUN_DIRECTORY_ENTRIES:
-                return None, None
-            match = BEN_RUN_RE.fullmatch(path.name)
-            if not match or not fnmatch.fnmatchcase(path.name, pattern_path.name):
-                continue
-            safe_path, file_stat = _safe_file(profile_root, str(Path(parent_relative) / path.name))
-            if safe_path is None or file_stat is None or file_stat.st_size > MAX_METADATA_BYTES:
-                continue
-            candidate = (match.group(1), safe_path)
-            if selected is None or candidate[0] > selected[0]:
-                selected = candidate
+        with os.scandir(parent) as entries:
+            for entry_count, entry in enumerate(entries, start=1):
+                if entry_count > MAX_BEN_RUN_DIRECTORY_ENTRIES:
+                    return None, None
+                match = BEN_RUN_RE.fullmatch(entry.name)
+                if not match or not fnmatch.fnmatchcase(entry.name, pattern_path.name):
+                    continue
+                safe_path, file_stat = _safe_file(profile_root, str(Path(parent_relative) / entry.name))
+                if safe_path is None or file_stat is None or file_stat.st_size > MAX_METADATA_BYTES:
+                    continue
+                candidate = (match.group(1), safe_path)
+                if selected is None or candidate[0] > selected[0]:
+                    selected = candidate
     except OSError:
         return None, None
     if selected is None:
