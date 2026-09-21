@@ -79,7 +79,7 @@ test("optional observed context files do not turn the profile into a false warni
   const profile = validSnapshot().profiles[0]
   const result = normalizeRuntimeSnapshot(validSnapshot({ profiles: [{
     ...profile,
-    contextFiles: [{ path: "AGENTS.md", exists: false, chars: null, limit: null, sha256: null, modifiedAt: null, loadedBy: "unknown" }],
+    contextFiles: [{ path: "MEMORY.md", exists: false, chars: null, limit: null, sha256: null, modifiedAt: null, loadedBy: "reference" }],
   }] }), now)
   assert.equal(result.snapshot?.profiles[0].contextHealth, "ok")
 })

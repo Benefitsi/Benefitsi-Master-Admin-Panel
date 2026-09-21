@@ -39,6 +39,7 @@ MAX_SCHEDULES = 16
 MAX_SNAPSHOT_BYTES = 128 * 1024
 MAX_METADATA_BYTES = 256 * 1024
 MAX_CONTEXT_BYTES = 256 * 1024
+MAX_BEN_RUN_DIRECTORY_ENTRIES = 2048
 DEFAULT_MEMORY_CHAR_LIMIT = 2200
 NETWORK_TIMEOUT_SECONDS = 10
 
@@ -61,7 +62,8 @@ SAFE_STATUSES = {
 }
 IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 TIMESTAMP_RE = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$"
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?"
+    r"(?:Z|[+-](?P<offset_hour>\d{2}):(?P<offset_minute>\d{2}))$"
 )
 BEN_RUN_RE = re.compile(r"^(\d{8}T\d{6}Z)-[A-Za-z0-9._-]+-preflight\.json$")
 CRON_DISPLAY_RE = re.compile(
@@ -104,8 +106,16 @@ def _safe_public_value(value: Any, maximum: int) -> str | None:
 
 
 def _valid_timestamp(value: Any) -> str | None:
-    if not isinstance(value, str) or not TIMESTAMP_RE.fullmatch(value):
+    if not isinstance(value, str):
         return None
+    match = TIMESTAMP_RE.fullmatch(value)
+    if not match:
+        return None
+    if match.group("offset_hour") is not None:
+        offset_hour = int(match.group("offset_hour"))
+        offset_minute = int(match.group("offset_minute"))
+        if offset_minute > 59 or offset_hour > 14 or (offset_hour == 14 and offset_minute != 0):
+            return None
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
@@ -410,25 +420,28 @@ def _ben_status(profile_root: Path, pattern: str) -> tuple[str | None, str | Non
     if parent is None:
         return None, None
     parent = parent.parent
+    selected: tuple[str, Path] | None = None
     try:
-        entries = list(parent.iterdir())
+        for entry_count, path in enumerate(parent.iterdir(), start=1):
+            if entry_count > MAX_BEN_RUN_DIRECTORY_ENTRIES:
+                return None, None
+            match = BEN_RUN_RE.fullmatch(path.name)
+            if not match or not fnmatch.fnmatchcase(path.name, pattern_path.name):
+                continue
+            safe_path, file_stat = _safe_file(profile_root, str(Path(parent_relative) / path.name))
+            if safe_path is None or file_stat is None or file_stat.st_size > MAX_METADATA_BYTES:
+                continue
+            candidate = (match.group(1), safe_path)
+            if selected is None or candidate[0] > selected[0]:
+                selected = candidate
     except OSError:
         return None, None
-    candidates: list[tuple[str, Path]] = []
-    for path in entries:
-        match = BEN_RUN_RE.fullmatch(path.name)
-        if not match or not fnmatch.fnmatchcase(path.name, pattern_path.name):
-            continue
-        safe_path, file_stat = _safe_file(profile_root, str(Path(parent_relative) / path.name))
-        if safe_path is None or file_stat is None or file_stat.st_size > MAX_METADATA_BYTES:
-            continue
-        candidates.append((match.group(1), safe_path))
-    if not candidates:
+    if selected is None:
         return None, None
-    encoded_time, selected = max(candidates, key=lambda item: item[0])
+    encoded_time, selected_path = selected
     try:
         run_at = datetime.strptime(encoded_time, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
-        payload = json.loads(selected.read_text(encoding="utf-8"))
+        payload = json.loads(selected_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
         return None, None
     if not isinstance(payload, dict):

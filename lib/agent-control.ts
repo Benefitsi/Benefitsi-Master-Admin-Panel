@@ -171,6 +171,7 @@ function contextHealth(files: AgentContextFile[]): AgentProfile["contextHealth"]
   if (files.length === 0) return "unknown"
   if (files.some(file => file.exists && file.chars !== null && file.limit !== null && file.chars > file.limit)) return "over_limit"
   if (files.some(file => file.loadedBy === "system" && !file.exists)) return "missing"
+  if (files.some(file => file.exists && (file.chars === null || file.sha256 === null))) return "unknown"
   return "ok"
 }
 

@@ -11,6 +11,7 @@ Der Observer erzeugt alle 30 Minuten einen bereinigten Metadaten-Snapshot für d
 - Kontextdateien werden nur unter den fünf Vertragsnamen innerhalb eines echten Profilverzeichnisses gelesen. Symlinks und Traversalpfade werden nicht verfolgt.
 - Fehlende oder fehlerhafte erwartete Cron-/LaunchAgent-Quellen ergeben `automation: "unknown"`. Ein deaktivierter, aber valide konfigurierter Benefitsi-Zeitplan bleibt `scheduled` mit `enabled: false`.
 - `queue_empty` ist ein belegter Leerlauf ohne Modellstart. Ben-Laufzeiten stammen nur aus dem validierten UTC-Zeitstempel des Laufartefakt-Namens. City-Status `partial` mit `technical_ok: true` wird nicht als generischer Absturz dargestellt.
+- Ben-Laufverzeichnisse werden streamend mit höchstens 2.048 Einträgen geprüft. Überschreitet ein Verzeichnis diese Grenze, bleibt der Laufstatus unbekannt; es wird kein beliebiger Teilausschnitt als letzter Lauf verwendet.
 
 ## Lokale Prüfung
 
@@ -18,6 +19,7 @@ Aus dem Admin-Repository:
 
 ```sh
 /Users/patrick/.hermes/hermes-agent/venv/bin/python -m unittest -v ops/agent-runtime/test_collect_runtime.py
+/Users/patrick/.hermes/hermes-agent/venv/bin/python ops/agent-runtime/collector_admin_integration.py
 /Users/patrick/.hermes/hermes-agent/venv/bin/python ops/agent-runtime/collect_runtime.py --dry-run
 plutil -lint ops/agent-runtime/ai.benefitsi.agent-runtime-observer.plist
 ```

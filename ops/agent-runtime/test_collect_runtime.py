@@ -327,7 +327,38 @@ class CollectorTests(unittest.TestCase):
             collect_runtime._valid_timestamp("2026-09-19T23:00:25+14:00"),
             "2026-09-19T23:00:25+14:00",
         )
+        self.assertEqual(
+            collect_runtime._valid_timestamp("2026-09-19T23:00:25-14:00"),
+            "2026-09-19T23:00:25-14:00",
+        )
+        self.assertIsNone(collect_runtime._valid_timestamp("2026-09-19T23:00:25+01:60"))
+        self.assertIsNone(collect_runtime._valid_timestamp("2026-09-19T23:00:25-01:60"))
         self.assertIsNone(collect_runtime._valid_timestamp("2026-09-19T23:00:25-15:00"))
+
+    def test_ben_run_scan_is_bounded_and_selects_latest_only_when_complete(self):
+        profile = self.fx.profile("ben")
+        cap = 3
+        cases = [
+            ("under", ["20260921T190000Z", "20260921T191000Z"], "2026-09-21T19:10:00Z"),
+            ("at", ["20260921T193000Z", "20260921T191000Z", "20260921T192000Z"], "2026-09-21T19:30:00Z"),
+            ("over", ["20260921T194000Z", "20260921T191000Z", "20260921T193000Z", "20260921T192000Z"], None),
+        ]
+        with mock.patch.object(collect_runtime, "MAX_BEN_RUN_DIRECTORY_ENTRIES", cap):
+            for directory_name, timestamps, expected_run_at in cases:
+                with self.subTest(directory_name=directory_name):
+                    runs = profile / "logs" / directory_name
+                    runs.mkdir(parents=True)
+                    for index, timestamp in enumerate(timestamps):
+                        (runs / f"{timestamp}-{index}-preflight.json").write_text(
+                            json.dumps({"status": "ok"}),
+                            encoding="utf-8",
+                        )
+                    run_at, status = collect_runtime._ben_status(
+                        profile,
+                        f"logs/{directory_name}/*-preflight.json",
+                    )
+                    self.assertEqual(run_at, expected_run_at)
+                    self.assertEqual(status, "ok" if expected_run_at else None)
 
     def test_city_partial_report_is_not_mapped_to_failed(self):
         profile = self.fx.profile("city")
