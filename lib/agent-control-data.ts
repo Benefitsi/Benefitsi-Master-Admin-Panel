@@ -2,7 +2,7 @@ import "server-only"
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getAdminSession } from "./admin"
-import { cityDisplayName, normalizeRuntimeSnapshot, type RuntimeSnapshot } from "./agent-control"
+import { cityDisplayName, contractTimestampMs, normalizeRuntimeSnapshot, type RuntimeSnapshot } from "./agent-control"
 import { createAdminClient } from "./supabase/admin"
 
 export type SourceState = "available" | "unavailable"
@@ -145,9 +145,11 @@ function normalizePipeline(value: unknown): PipelineHealth | null {
   if (!isRecord(value) || typeof value.city_id !== "string") return null
   const summary = isRecord(value.summary) ? value.summary : null
   const health = summary && isRecord(summary.health) ? summary.health : null
+  const lastRunOk = nullableBoolean(value.last_run_ok)
+  const summaryTechnical = nullableBoolean(health?.technical_ok)
   return {
     cityId: value.city_id, cityName: cityDisplayName(value.city_id), lastRunAt: nullableDate(value.last_run_at),
-    lastRunOk: nullableBoolean(value.last_run_ok), technicalOk: nullableBoolean(health?.technical_ok),
+    lastRunOk, technicalOk: lastRunOk === false ? false : lastRunOk === true ? summaryTechnical : null,
     editorialReviewPending: nullableBoolean(health?.editorial_review_pending), researchCheckedAt: nullableDate(health?.research_checked_at),
   }
 }
@@ -160,5 +162,5 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
 function nullableText(value: unknown) { return typeof value === "string" && value.length <= 200 ? value : null }
 function nullableBoolean(value: unknown) { return typeof value === "boolean" ? value : null }
 function nullableInteger(value: unknown) { return Number.isSafeInteger(value) && (value as number) >= 0 ? value as number : null }
-function nullableDate(value: unknown) { return typeof value === "string" && Number.isFinite(Date.parse(value)) ? value : null }
-function sameInstant(left: unknown, right: unknown) { return typeof left === "string" && typeof right === "string" && Number.isFinite(Date.parse(left)) && Date.parse(left) === Date.parse(right) }
+function nullableDate(value: unknown) { return typeof value === "string" && contractTimestampMs(value) !== null ? value : null }
+function sameInstant(left: unknown, right: unknown) { const leftMs = contractTimestampMs(left), rightMs = contractTimestampMs(right); return leftMs !== null && rightMs !== null && leftMs === rightMs }

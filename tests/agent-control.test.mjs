@@ -84,6 +84,47 @@ test("optional observed context files do not turn the profile into a false warni
   assert.equal(result.snapshot?.profiles[0].contextHealth, "ok")
 })
 
+test("runtime health requires a recent, plausible timestamp for a successful status", () => {
+  const schedule = validSnapshot().profiles[0].schedules[0]
+  const cases = [
+    { lastRunAt: null, want: "unknown" },
+    { lastRunAt: "2026-09-19T10:29:59Z", want: "unknown" },
+    { lastRunAt: "2026-09-21T10:35:01Z", want: "unknown" },
+    { lastRunAt: "2026-09-21T10:25:00+00:00", want: "ok" },
+  ]
+  for (const { lastRunAt, want } of cases) {
+    const result = normalizeRuntimeSnapshot(validSnapshot({ profiles: [{
+      ...validSnapshot().profiles[0],
+      schedules: [{ ...schedule, lastRunAt, lastStatus: "ok" }],
+    }] }), now)
+    assert.equal(result.snapshot?.profiles[0].runtimeHealth, want)
+  }
+})
+
+test("contract dates require a full ISO timestamp with timezone and a real calendar date", () => {
+  const profile = validSnapshot().profiles[0]
+  for (const invalidDate of ["2026-09-21", "2026-09-21T10:00:00", "2026-02-30T10:00:00Z"]) {
+    const snapshotDate = normalizeRuntimeSnapshot(validSnapshot({ observedAt: invalidDate }), now)
+    assert.equal(snapshotDate.state, "invalid")
+    const scheduleDate = normalizeRuntimeSnapshot(validSnapshot({ profiles: [{
+      ...profile, schedules: [{ ...profile.schedules[0], lastRunAt: invalidDate }],
+    }] }), now)
+    assert.equal(scheduleDate.state, "invalid")
+  }
+})
+
+test("duplicate profile, schedule, and context identities are rejected", () => {
+  const profile = validSnapshot().profiles[0]
+  const duplicateCases = [
+    validSnapshot({ profiles: [profile, { ...profile }] }),
+    validSnapshot({ profiles: [{ ...profile, schedules: [profile.schedules[0], { ...profile.schedules[0] }] }] }),
+    validSnapshot({ profiles: [{ ...profile, contextFiles: [profile.contextFiles[0], { ...profile.contextFiles[0] }] }] }),
+  ]
+  for (const input of duplicateCases) {
+    assert.deepEqual(normalizeRuntimeSnapshot(input, now), { state: "invalid", snapshot: null })
+  }
+})
+
 test("unknown city ids stay explicit instead of inheriting Annweiler's name", () => {
   assert.equal(cityDisplayName("b9e684e4-54b3-41ff-8f97-4426423893c2"), "Annweiler am Trifels")
   assert.equal(cityDisplayName("another-city"), null)

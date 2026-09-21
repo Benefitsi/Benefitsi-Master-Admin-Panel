@@ -96,7 +96,7 @@ function CityCard({ city, data }: { city: CityControl; data: AgentControlData })
 
 function Info({ label, value }: { label: string; value: string | null }) { return <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-1 break-words font-medium text-slate-800">{value ?? "Nicht nachgewiesen"}</dd></div> }
 function automationLabel(value: AgentProfile["automation"]) { return value === "scheduled" ? "Automatisch geplant" : value === "manual" ? "Manuell" : "Planung unbekannt" }
-function runtimeLabel(value: AgentProfile["runtimeHealth"]) { return value === "ok" ? "Technisch erfolgreich" : value === "failed" ? "Technische Prüfung nötig" : "Nicht nachgewiesen" }
+function runtimeLabel(value: AgentProfile["runtimeHealth"]) { return value === "ok" ? "Letzter Lauf aktuell erfolgreich" : value === "failed" ? "Technische Prüfung nötig" : "Kein aktueller Laufnachweis" }
 function loadedByLabel(value: AgentProfile["contextFiles"][number]["loadedBy"]) { return value === "system" ? "automatisch" : value === "reference" ? "bei Bedarf" : "unbekannt" }
 function sizeLabel(chars: number | null, limit: number | null) { return chars === null ? "Größe unbekannt" : `${chars.toLocaleString("de-DE")} Zeichen${limit === null ? "" : ` / Limit ${limit.toLocaleString("de-DE")}`}` }
 function cityTechnicalStatus(pipeline: AgentControlData["pipeline"]["item"], checkedAt: string) {

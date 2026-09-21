@@ -2,9 +2,9 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import ts from "typescript"
-import { cityDisplayName, normalizeRuntimeSnapshot } from "../lib/agent-control.ts"
+import { cityDisplayName, contractTimestampMs, normalizeRuntimeSnapshot } from "../lib/agent-control.ts"
 
-function setup({ session = { isAdmin: true }, failures = [], empty = [], equivalentTimestamp = false } = {}) {
+function setup({ session = { isAdmin: true }, failures = [], empty = [], equivalentTimestamp = false, pipelineContradiction = false, pipelineRunUnknown = false, invalidSourceDate = false } = {}) {
   const events = []
   let releaseAuth
   const auth = session instanceof Promise ? session : Promise.resolve(session)
@@ -18,6 +18,9 @@ function setup({ session = { isAdmin: true }, failures = [], empty = [], equival
     annweiler_event_pipeline_health: { city_id: "b9e684e4-54b3-41ff-8f97-4426423893c2", last_run_at: "2026-09-21T09:00:00Z", last_run_ok: true, summary: { health: { technical_ok: true, editorial_review_pending: true, research_checked_at: "2026-09-21T08:55:00Z" }, raw_log: "private" } },
   }
   if (equivalentTimestamp) rows.benefitsi_agent_runtime_snapshots.observed_at = "2026-09-21T12:00:00+02:00"
+  if (pipelineContradiction) rows.annweiler_event_pipeline_health.last_run_ok = false
+  if (pipelineRunUnknown) rows.annweiler_event_pipeline_health.last_run_ok = null
+  if (invalidSourceDate) rows.city_agent_city_controls[0].last_full_check_at = "2026-09-21"
   const builder = (table) => {
     const data = empty.includes(table) ? (table === "city_agent_city_controls" || table === "city_agent_schedules" ? [] : null) : rows[table]
     const result = failures.includes(table) ? { data: null, error: { message: `secret ${table}` } } : { data, error: null }
@@ -30,7 +33,7 @@ function setup({ session = { isAdmin: true }, failures = [], empty = [], equival
     "server-only": {},
     "./admin": { getAdminSession: async (input) => { assert.equal(input, client); events.push(["auth"]); return auth } },
     "./supabase/admin": { createAdminClient: () => { events.push(["service-created"]); return { from(table) { events.push(["service-table", table]); return builder(table) } } } },
-    "./agent-control": { cityDisplayName, normalizeRuntimeSnapshot },
+    "./agent-control": { cityDisplayName, contractTimestampMs, normalizeRuntimeSnapshot },
   }
   const source = readFileSync(new URL("../lib/agent-control-data.ts", import.meta.url), "utf8")
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText
@@ -74,6 +77,23 @@ test("authentication resolves before service construction and all reads use narr
 test("wrapper and snapshot timestamps compare as instants across ISO offsets", async () => {
   const result = await setup({ equivalentTimestamp: true }).run()
   assert.equal(result.runtime.state, "fresh")
+})
+
+test("pipeline row failure overrides a contradictory positive summary", async () => {
+  const result = await setup({ pipelineContradiction: true }).run()
+  assert.equal(result.pipeline.item.technicalOk, false)
+  assert.equal(result.pipeline.item.lastRunOk, false)
+})
+
+test("missing authoritative pipeline result cannot become a positive technical state", async () => {
+  const result = await setup({ pipelineRunUnknown: true }).run()
+  assert.equal(result.pipeline.item.technicalOk, null)
+  assert.equal(result.pipeline.item.lastRunOk, null)
+})
+
+test("source dates without a timezone-bearing ISO timestamp become unknown", async () => {
+  const result = await setup({ invalidSourceDate: true }).run()
+  assert.equal(result.cities.items[0].lastFullCheckAt, null)
 })
 
 test("each failed or empty source stays unknown while other sources remain visible", async () => {

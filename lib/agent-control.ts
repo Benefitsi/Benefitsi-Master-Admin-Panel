@@ -65,6 +65,22 @@ export function cityDisplayName(cityId: string) {
   return cityId === ANNWEILER_ID ? "Annweiler am Trifels" : null
 }
 
+export function contractTimestampMs(value: unknown): number | null {
+  if (typeof value !== "string") return null
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(Z|([+-])(\d{2}):(\d{2}))$/.exec(value)
+  if (!match) return null
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , , offsetHourText, offsetMinuteText] = match
+  const year = Number(yearText), month = Number(monthText), day = Number(dayText)
+  const hour = Number(hourText), minute = Number(minuteText), second = Number(secondText)
+  const offsetHour = offsetHourText ? Number(offsetHourText) : 0
+  const offsetMinute = offsetMinuteText ? Number(offsetMinuteText) : 0
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > days[month - 1] || hour > 23 || minute > 59 || second > 59 || offsetHour > 14 || offsetMinute > 59 || (offsetHour === 14 && offsetMinute !== 0)) return null
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 export function normalizeRuntimeSnapshot(input: unknown, now = new Date()): RuntimeNormalization {
   if (!isRecord(input) || serializedSize(input) > MAX_SNAPSHOT_BYTES) return invalid()
   if (input.schemaVersion !== 1 || input.hostId !== "m1-benefitsi") return invalid()
@@ -77,9 +93,11 @@ export function normalizeRuntimeSnapshot(input: unknown, now = new Date()): Runt
   if (!Number.isFinite(nowMs) || observedMs > nowMs + MAX_FUTURE_MS) return invalid()
 
   const profiles: AgentProfile[] = []
+  const profileIds = new Set<string>()
   for (const raw of input.profiles) {
-    const profile = normalizeProfile(raw)
-    if (!profile) return invalid()
+    const profile = normalizeProfile(raw, nowMs)
+    if (!profile || profileIds.has(profile.id)) return invalid()
+    profileIds.add(profile.id)
     profiles.push(profile)
   }
 
@@ -89,7 +107,7 @@ export function normalizeRuntimeSnapshot(input: unknown, now = new Date()): Runt
   }
 }
 
-function normalizeProfile(input: unknown): AgentProfile | null {
+function normalizeProfile(input: unknown, nowMs: number): AgentProfile | null {
   if (!isRecord(input) || !Array.isArray(input.contextFiles) || !Array.isArray(input.schedules)) return null
   if (input.contextFiles.length > MAX_CONTEXT_FILES || input.schedules.length > MAX_SCHEDULES) return null
   const id = identifier(input.id, 80)
@@ -102,20 +120,25 @@ function normalizeProfile(input: unknown): AgentProfile | null {
   if (!id || !purpose || !scope || !automation || provider === undefined || model === undefined || citySlug === undefined) return null
 
   const contextFiles: AgentContextFile[] = []
+  const contextPaths = new Set<string>()
   for (const raw of input.contextFiles) {
     const file = normalizeContextFile(raw)
-    if (!file) return null
+    if (!file || contextPaths.has(file.path)) return null
+    contextPaths.add(file.path)
     contextFiles.push(file)
   }
   const schedules: AgentSchedule[] = []
+  const scheduleIds = new Set<string>()
   for (const raw of input.schedules) {
     const schedule = normalizeSchedule(raw)
-    if (!schedule) return null
+    const scheduleId = schedule ? `${schedule.source}\0${schedule.id}` : ""
+    if (!schedule || scheduleIds.has(scheduleId)) return null
+    scheduleIds.add(scheduleId)
     schedules.push(schedule)
   }
   return {
     id, scope, purpose, provider, model, citySlug, automation, contextFiles, schedules,
-    contextHealth: contextHealth(contextFiles), runtimeHealth: runtimeHealth(schedules),
+    contextHealth: contextHealth(contextFiles), runtimeHealth: runtimeHealth(schedules, nowMs),
   }
 }
 
@@ -125,7 +148,7 @@ function normalizeContextFile(input: unknown): AgentContextFile | null {
   const chars = nullableNonNegativeInteger(input.chars)
   const limit = nullableNonNegativeInteger(input.limit)
   const sha256 = input.sha256 === null ? null : typeof input.sha256 === "string" && /^[a-f0-9]{64}$/i.test(input.sha256) ? input.sha256.toLowerCase() : undefined
-  const modifiedAt = input.modifiedAt === null ? null : dateString(input.modifiedAt)
+  const modifiedAt = input.modifiedAt === null ? null : dateString(input.modifiedAt) ?? undefined
   const loadedBy = enumValue(input.loadedBy, ["system", "reference", "unknown"] as const)
   if (!path || chars === undefined || limit === undefined || sha256 === undefined || modifiedAt === undefined || !loadedBy) return null
   if (!input.exists && (chars !== null || sha256 !== null || modifiedAt !== null)) return null
@@ -138,7 +161,7 @@ function normalizeSchedule(input: unknown): AgentSchedule | null {
   const source = enumValue(input.source, ["hermes", "launchd"] as const)
   const enabled = input.enabled === null || typeof input.enabled === "boolean" ? input.enabled : undefined
   const cadence = nullableString(input.cadence, 200)
-  const lastRunAt = input.lastRunAt === null ? null : dateString(input.lastRunAt)
+  const lastRunAt = input.lastRunAt === null ? null : dateString(input.lastRunAt) ?? undefined
   const lastStatus = nullableString(input.lastStatus, 160)
   if (!id || !source || enabled === undefined || cadence === undefined || lastRunAt === undefined || lastStatus === undefined) return null
   return { id, source, enabled, cadence, lastRunAt, lastStatus }
@@ -151,10 +174,18 @@ function contextHealth(files: AgentContextFile[]): AgentProfile["contextHealth"]
   return "ok"
 }
 
-function runtimeHealth(schedules: AgentSchedule[]): AgentProfile["runtimeHealth"] {
-  const statuses = schedules.filter(item => item.enabled === true).map(item => item.lastStatus?.toLowerCase() ?? null)
+function runtimeHealth(schedules: AgentSchedule[], nowMs: number): AgentProfile["runtimeHealth"] {
+  const enabled = schedules.filter(item => item.enabled === true)
+  const statuses = enabled.map(item => item.lastStatus?.toLowerCase() ?? null)
   if (statuses.some(status => status === "error" || status === "failed")) return "failed"
-  if (statuses.length > 0 && statuses.every(status => status === "ok" || status === "succeeded" || status === "queue_empty")) return "ok"
+  const hasRecentSuccess = enabled.length > 0 && enabled.every(item => {
+    const status = item.lastStatus?.toLowerCase()
+    const runMs = contractTimestampMs(item.lastRunAt)
+    if (runMs === null || !["ok", "succeeded", "queue_empty"].includes(status ?? "")) return false
+    const age = nowMs - runMs
+    return age >= -MAX_FUTURE_MS && age <= 48 * 60 * 60 * 1000
+  })
+  if (hasRecentSuccess) return "ok"
   return "unknown"
 }
 
@@ -165,5 +196,5 @@ function shortString(value: unknown, max: number) { return typeof value === "str
 function identifier(value: unknown, max: number) { const text = shortString(value, max); return text && /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(text) ? text : null }
 function nullableString(value: unknown, max: number): string | null | undefined { return value === null ? null : shortString(value, max) ?? undefined }
 function nullableNonNegativeInteger(value: unknown): number | null | undefined { return value === null ? null : Number.isSafeInteger(value) && (value as number) >= 0 ? value as number : undefined }
-function dateString(value: unknown): string | null { return typeof value === "string" && Number.isFinite(Date.parse(value)) ? value : null }
+function dateString(value: unknown): string | null { return typeof value === "string" && contractTimestampMs(value) !== null ? value : null }
 function enumValue<const T extends readonly string[]>(value: unknown, values: T): T[number] | null { return typeof value === "string" && values.includes(value) ? value as T[number] : null }
