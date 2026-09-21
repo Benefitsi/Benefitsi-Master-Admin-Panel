@@ -23,6 +23,13 @@ set search_path = ''
 as $$
 declare
   v_embedded_observed_at timestamptz;
+  v_js_whitespace constant text := ' '
+    || pg_catalog.chr(9) || pg_catalog.chr(10) || pg_catalog.chr(11)
+    || pg_catalog.chr(12) || pg_catalog.chr(13)
+    || U&'\00A0\1680\2000\2001\2002\2003\2004\2005\2006\2007\2008\2009\200A\2028\2029\202F\205F\3000\FEFF';
+  v_timestamp_pattern constant text := '^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(\.[0-9]{1,9})?(Z|([+-])([0-9]{2}):([0-9]{2}))$';
+  v_timestamp_parts text[];
+  v_collector_version_utf16_length integer;
   v_written boolean;
 begin
   if p_host_id is distinct from 'm1-benefitsi' then
@@ -48,17 +55,40 @@ begin
      or p_snapshot -> 'schemaVersion' <> '1'::jsonb
      or p_snapshot ->> 'hostId' is distinct from p_host_id
      or pg_catalog.jsonb_typeof(p_snapshot -> 'collectorVersion') <> 'string'
-     or pg_catalog.length(pg_catalog.btrim(p_snapshot ->> 'collectorVersion')) not between 1 and 80
-     or case
-       when pg_catalog.jsonb_typeof(p_snapshot -> 'profiles') = 'array'
-         then pg_catalog.jsonb_array_length(p_snapshot -> 'profiles') > 64
-       else true
-     end then
+     or pg_catalog.jsonb_typeof(p_snapshot -> 'profiles') <> 'array'
+     or (
+       pg_catalog.jsonb_typeof(p_snapshot -> 'profiles') = 'array'
+       and pg_catalog.jsonb_array_length(p_snapshot -> 'profiles') > 64
+     ) then
     raise exception using errcode = '22023', message = 'agent runtime snapshot contract is invalid';
   end if;
 
-  if pg_catalog.jsonb_typeof(p_snapshot -> 'observedAt') <> 'string'
-     or (p_snapshot ->> 'observedAt') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$' then
+  select pg_catalog.length(p_snapshot ->> 'collectorVersion') + pg_catalog.count(*)
+  into v_collector_version_utf16_length
+  from pg_catalog.unnest(pg_catalog.string_to_array(p_snapshot ->> 'collectorVersion', null)) as codepoint(value)
+  where pg_catalog.octet_length(codepoint.value) = 4;
+
+  if pg_catalog.length(pg_catalog.btrim(p_snapshot ->> 'collectorVersion', v_js_whitespace)) < 1
+     or v_collector_version_utf16_length > 80 then
+    raise exception using errcode = '22023', message = 'agent runtime snapshot contract is invalid';
+  end if;
+
+  if pg_catalog.jsonb_typeof(p_snapshot -> 'observedAt') <> 'string' then
+    raise exception using errcode = '22023', message = 'agent runtime embedded observation time is invalid';
+  end if;
+
+  v_timestamp_parts := pg_catalog.regexp_match(p_snapshot ->> 'observedAt', v_timestamp_pattern);
+
+  if v_timestamp_parts is null
+     or v_timestamp_parts[4]::integer > 23
+     or v_timestamp_parts[5]::integer > 59
+     or v_timestamp_parts[6]::integer > 59
+     or coalesce(v_timestamp_parts[10]::integer, 0) > 14
+     or coalesce(v_timestamp_parts[11]::integer, 0) > 59
+     or (
+       coalesce(v_timestamp_parts[10]::integer, 0) = 14
+       and coalesce(v_timestamp_parts[11]::integer, 0) <> 0
+     ) then
     raise exception using errcode = '22023', message = 'agent runtime embedded observation time is invalid';
   end if;
 
@@ -89,11 +119,36 @@ begin
        or pg_catalog.jsonb_typeof(profile.value -> 'scope') <> 'string'
        or profile.value ->> 'scope' not in ('benefitsi', 'general', 'other', 'unknown')
        or pg_catalog.jsonb_typeof(profile.value -> 'purpose') <> 'string'
-       or pg_catalog.length(pg_catalog.btrim(profile.value ->> 'purpose')) not between 1 and 500
+       or pg_catalog.length(pg_catalog.btrim(profile.value ->> 'purpose', v_js_whitespace)) < 1
+       or pg_catalog.length(profile.value ->> 'purpose') + (
+         select pg_catalog.count(*)
+         from pg_catalog.unnest(pg_catalog.string_to_array(profile.value ->> 'purpose', null)) as codepoint(value)
+         where pg_catalog.octet_length(codepoint.value) = 4
+       ) > 500
        or pg_catalog.jsonb_typeof(profile.value -> 'provider') not in ('string', 'null')
-       or (pg_catalog.jsonb_typeof(profile.value -> 'provider') = 'string' and pg_catalog.length(profile.value ->> 'provider') > 120)
+       or (
+         pg_catalog.jsonb_typeof(profile.value -> 'provider') = 'string'
+         and (
+           pg_catalog.length(pg_catalog.btrim(profile.value ->> 'provider', v_js_whitespace)) < 1
+           or pg_catalog.length(profile.value ->> 'provider') + (
+             select pg_catalog.count(*)
+             from pg_catalog.unnest(pg_catalog.string_to_array(profile.value ->> 'provider', null)) as codepoint(value)
+             where pg_catalog.octet_length(codepoint.value) = 4
+           ) > 120
+         )
+       )
        or pg_catalog.jsonb_typeof(profile.value -> 'model') not in ('string', 'null')
-       or (pg_catalog.jsonb_typeof(profile.value -> 'model') = 'string' and pg_catalog.length(profile.value ->> 'model') > 120)
+       or (
+         pg_catalog.jsonb_typeof(profile.value -> 'model') = 'string'
+         and (
+           pg_catalog.length(pg_catalog.btrim(profile.value ->> 'model', v_js_whitespace)) < 1
+           or pg_catalog.length(profile.value ->> 'model') + (
+             select pg_catalog.count(*)
+             from pg_catalog.unnest(pg_catalog.string_to_array(profile.value ->> 'model', null)) as codepoint(value)
+             where pg_catalog.octet_length(codepoint.value) = 4
+           ) > 120
+         )
+       )
        or pg_catalog.jsonb_typeof(profile.value -> 'citySlug') not in ('string', 'null')
        or (
          pg_catalog.jsonb_typeof(profile.value -> 'citySlug') = 'string'
@@ -126,6 +181,9 @@ begin
     select 1
     from pg_catalog.jsonb_array_elements(p_snapshot -> 'profiles') as profile(value)
     cross join lateral pg_catalog.jsonb_array_elements(profile.value -> 'contextFiles') as context_file(value)
+    left join lateral (
+      select pg_catalog.regexp_match(context_file.value ->> 'modifiedAt', v_timestamp_pattern) as parts
+    ) as modified_at on true
     where pg_catalog.jsonb_typeof(context_file.value) <> 'object'
        or not (context_file.value ?& array['path', 'exists', 'chars', 'limit', 'sha256', 'modifiedAt', 'loadedBy'])
        or context_file.value - array['path', 'exists', 'chars', 'limit', 'sha256', 'modifiedAt', 'loadedBy'] <> '{}'::jsonb
@@ -135,12 +193,18 @@ begin
        or pg_catalog.jsonb_typeof(context_file.value -> 'chars') not in ('number', 'null')
        or (
          pg_catalog.jsonb_typeof(context_file.value -> 'chars') = 'number'
-         and (context_file.value ->> 'chars') !~ '^[0-9]+$'
+         and (
+           (context_file.value ->> 'chars') !~ '^[0-9]+$'
+           or (context_file.value ->> 'chars')::numeric > 9007199254740991
+         )
        )
        or pg_catalog.jsonb_typeof(context_file.value -> 'limit') not in ('number', 'null')
        or (
          pg_catalog.jsonb_typeof(context_file.value -> 'limit') = 'number'
-         and (context_file.value ->> 'limit') !~ '^[0-9]+$'
+         and (
+           (context_file.value ->> 'limit') !~ '^[0-9]+$'
+           or (context_file.value ->> 'limit')::numeric > 9007199254740991
+         )
        )
        or pg_catalog.jsonb_typeof(context_file.value -> 'sha256') not in ('string', 'null')
        or (
@@ -150,7 +214,29 @@ begin
        or pg_catalog.jsonb_typeof(context_file.value -> 'modifiedAt') not in ('string', 'null')
        or (
          pg_catalog.jsonb_typeof(context_file.value -> 'modifiedAt') = 'string'
-         and (context_file.value ->> 'modifiedAt') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$'
+         and (
+           modified_at.parts is null
+           or modified_at.parts[1]::integer < 1
+           or modified_at.parts[2]::integer not between 1 and 12
+           or modified_at.parts[3]::integer < 1
+           or modified_at.parts[3]::integer > case modified_at.parts[2]::integer
+             when 2 then case
+               when modified_at.parts[1]::integer % 4 = 0
+                and (modified_at.parts[1]::integer % 100 <> 0 or modified_at.parts[1]::integer % 400 = 0)
+                 then 29 else 28 end
+             when 4 then 30 when 6 then 30 when 9 then 30 when 11 then 30
+             else 31
+           end
+           or modified_at.parts[4]::integer > 23
+           or modified_at.parts[5]::integer > 59
+           or modified_at.parts[6]::integer > 59
+           or coalesce(modified_at.parts[10]::integer, 0) > 14
+           or coalesce(modified_at.parts[11]::integer, 0) > 59
+           or (
+             coalesce(modified_at.parts[10]::integer, 0) = 14
+             and coalesce(modified_at.parts[11]::integer, 0) <> 0
+           )
+         )
        )
        or pg_catalog.jsonb_typeof(context_file.value -> 'loadedBy') <> 'string'
        or context_file.value ->> 'loadedBy' not in ('system', 'reference', 'unknown')
@@ -181,6 +267,9 @@ begin
     select 1
     from pg_catalog.jsonb_array_elements(p_snapshot -> 'profiles') as profile(value)
     cross join lateral pg_catalog.jsonb_array_elements(profile.value -> 'schedules') as schedule(value)
+    left join lateral (
+      select pg_catalog.regexp_match(schedule.value ->> 'lastRunAt', v_timestamp_pattern) as parts
+    ) as last_run_at on true
     where pg_catalog.jsonb_typeof(schedule.value) <> 'object'
        or not (schedule.value ?& array['id', 'source', 'enabled', 'cadence', 'lastRunAt', 'lastStatus'])
        or schedule.value - array['id', 'source', 'enabled', 'cadence', 'lastRunAt', 'lastStatus'] <> '{}'::jsonb
@@ -192,17 +281,53 @@ begin
        or pg_catalog.jsonb_typeof(schedule.value -> 'cadence') not in ('string', 'null')
        or (
          pg_catalog.jsonb_typeof(schedule.value -> 'cadence') = 'string'
-         and pg_catalog.length(schedule.value ->> 'cadence') > 200
+         and (
+           pg_catalog.length(pg_catalog.btrim(schedule.value ->> 'cadence', v_js_whitespace)) < 1
+           or pg_catalog.length(schedule.value ->> 'cadence') + (
+             select pg_catalog.count(*)
+             from pg_catalog.unnest(pg_catalog.string_to_array(schedule.value ->> 'cadence', null)) as codepoint(value)
+             where pg_catalog.octet_length(codepoint.value) = 4
+           ) > 200
+         )
        )
        or pg_catalog.jsonb_typeof(schedule.value -> 'lastRunAt') not in ('string', 'null')
        or (
          pg_catalog.jsonb_typeof(schedule.value -> 'lastRunAt') = 'string'
-         and (schedule.value ->> 'lastRunAt') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$'
+         and (
+           last_run_at.parts is null
+           or last_run_at.parts[1]::integer < 1
+           or last_run_at.parts[2]::integer not between 1 and 12
+           or last_run_at.parts[3]::integer < 1
+           or last_run_at.parts[3]::integer > case last_run_at.parts[2]::integer
+             when 2 then case
+               when last_run_at.parts[1]::integer % 4 = 0
+                and (last_run_at.parts[1]::integer % 100 <> 0 or last_run_at.parts[1]::integer % 400 = 0)
+                 then 29 else 28 end
+             when 4 then 30 when 6 then 30 when 9 then 30 when 11 then 30
+             else 31
+           end
+           or last_run_at.parts[4]::integer > 23
+           or last_run_at.parts[5]::integer > 59
+           or last_run_at.parts[6]::integer > 59
+           or coalesce(last_run_at.parts[10]::integer, 0) > 14
+           or coalesce(last_run_at.parts[11]::integer, 0) > 59
+           or (
+             coalesce(last_run_at.parts[10]::integer, 0) = 14
+             and coalesce(last_run_at.parts[11]::integer, 0) <> 0
+           )
+         )
        )
        or pg_catalog.jsonb_typeof(schedule.value -> 'lastStatus') not in ('string', 'null')
        or (
          pg_catalog.jsonb_typeof(schedule.value -> 'lastStatus') = 'string'
-         and pg_catalog.length(schedule.value ->> 'lastStatus') > 160
+         and (
+           pg_catalog.length(pg_catalog.btrim(schedule.value ->> 'lastStatus', v_js_whitespace)) < 1
+           or pg_catalog.length(schedule.value ->> 'lastStatus') + (
+             select pg_catalog.count(*)
+             from pg_catalog.unnest(pg_catalog.string_to_array(schedule.value ->> 'lastStatus', null)) as codepoint(value)
+             where pg_catalog.octet_length(codepoint.value) = 4
+           ) > 160
+         )
        )
   ) then
     raise exception using errcode = '22023', message = 'agent runtime schedule contract is invalid';

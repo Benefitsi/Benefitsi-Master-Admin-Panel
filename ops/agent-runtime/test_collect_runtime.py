@@ -309,6 +309,26 @@ class CollectorTests(unittest.TestCase):
         self.assertNotIn(SECRET, json.dumps(result))
         self.assertNotIn(PROMPT, json.dumps(result))
 
+    def test_timestamp_offsets_above_fourteen_hours_are_unknown(self):
+        profile = self.fx.profile("seo")
+        (profile / "cron").mkdir()
+        (profile / "cron/jobs.json").write_text(json.dumps({"jobs": [{
+            "id": "allowed-job",
+            "enabled": True,
+            "schedule": {"display": "15 7 * * * Europe/Berlin"},
+            "last_run_at": "2026-09-19T23:00:25+14:30",
+            "last_status": "ok",
+        }]}), encoding="utf-8")
+        self.fx.write_registry([registry_profile("seo", hermesJobIds=["allowed-job"])])
+
+        schedule = self.fx.collect()["profiles"][0]["schedules"][0]
+        self.assertIsNone(schedule["lastRunAt"])
+        self.assertEqual(
+            collect_runtime._valid_timestamp("2026-09-19T23:00:25+14:00"),
+            "2026-09-19T23:00:25+14:00",
+        )
+        self.assertIsNone(collect_runtime._valid_timestamp("2026-09-19T23:00:25-15:00"))
+
     def test_city_partial_report_is_not_mapped_to_failed(self):
         profile = self.fx.profile("city")
         report_dir = profile / "logs/event-publication"
