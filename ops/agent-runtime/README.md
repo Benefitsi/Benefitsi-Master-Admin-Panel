@@ -5,7 +5,7 @@ Der Observer erzeugt alle 30 Minuten einen bereinigten Metadaten-Snapshot für d
 ## Sicherheitsgrenzen
 
 - Standardmodus ist `--dry-run`. Er initialisiert keine Zugangsdaten und schreibt ausschließlich den bereinigten JSON-Snapshot nach stdout.
-- Nur `--publish` lädt den vorhandenen privaten Credentialpfad aus `city-annweiler/config.yaml` und ruft anschließend `_admin_configuration()` aus dem bestehenden Benefitsi-MCP-Modul auf. Der Collector liest oder protokolliert keinen Schlüsselwert selbst.
+- Nur `--publish` lädt die vorhandene öffentliche Supabase-URL und den privaten Credentialpfad aus `city-annweiler/config.yaml` und ruft anschließend `_admin_configuration()` aus dem bestehenden Benefitsi-MCP-Modul auf. Der Collector liest oder protokolliert keinen Schlüsselwert selbst.
 - Veröffentlichung ist ausschließlich an `https://slscoqdhbxftcournvut.supabase.co` erlaubt. Abweichende Hosts, URL-Credentials, Queryparameter und Redirects werden abgelehnt.
 - Profile außerhalb von Benefitsi erhalten keine Cron- oder LaunchAgent-Metadaten. Prompts, Deliveries, Sessions und Memory-Inhalte werden nie übertragen.
 - Kontextdateien werden nur unter den fünf Vertragsnamen innerhalb eines echten Profilverzeichnisses gelesen. Symlinks und Traversalpfade werden nicht verfolgt.

@@ -605,15 +605,28 @@ class CliTests(unittest.TestCase):
             "  benefitsi:\n"
             "    env:\n"
             "      BENEFITSI_MCP_CREDENTIAL_FILE: /tmp/synthetic-private-credentials\n"
+            "      BENEFITSI_SUPABASE_URL: https://slscoqdhbxftcournvut.supabase.co\n"
+            "      BENEFITSI_MCP_PROFILE: must-not-be-copied\n"
             f"      CITY_DRAFT_SECRET: {SECRET}\n",
             encoding="utf-8",
         )
         module.write_text(
             "import os\n"
+            "class ConfigurationError(RuntimeError):\n"
+            "    pass\n"
+            "def _load_private_credentials():\n"
+            "    if os.environ.get('BENEFITSI_MCP_CREDENTIAL_FILE') != '/tmp/synthetic-private-credentials':\n"
+            "        raise ConfigurationError('credential file missing')\n"
+            "    os.environ['BENEFITSI_SUPABASE_SERVICE_ROLE_KEY'] = 'service-secret'\n"
             "def _admin_configuration():\n"
-            "    assert os.environ['BENEFITSI_MCP_CREDENTIAL_FILE'] == '/tmp/synthetic-private-credentials'\n"
+            "    _load_private_credentials()\n"
+            "    base_url = os.environ.get('BENEFITSI_SUPABASE_URL', '').strip().rstrip('/')\n"
+            "    service_key = os.environ.get('BENEFITSI_SUPABASE_SERVICE_ROLE_KEY', '').strip()\n"
+            "    if not base_url or not service_key:\n"
+            "        raise ConfigurationError('publish configuration missing')\n"
             "    assert 'CITY_DRAFT_SECRET' not in os.environ\n"
-            "    return ('https://slscoqdhbxftcournvut.supabase.co', 'service-secret')\n",
+            "    assert 'BENEFITSI_MCP_PROFILE' not in os.environ\n"
+            "    return (base_url, service_key)\n",
             encoding="utf-8",
         )
         with mock.patch.dict(os.environ, {}, clear=True):
@@ -621,6 +634,37 @@ class CliTests(unittest.TestCase):
                 collect_runtime.load_admin_configuration(module, city_config),
                 ("https://slscoqdhbxftcournvut.supabase.co", "service-secret"),
             )
+
+    def test_admin_loader_rejects_missing_invalid_or_oversized_public_url(self):
+        module = self.fx.root / "server.py"
+        module.write_text(
+            "import os\n"
+            "def _admin_configuration():\n"
+            "    return (os.environ['BENEFITSI_SUPABASE_URL'], 'service-secret')\n",
+            encoding="utf-8",
+        )
+        cases = [
+            "",
+            "      BENEFITSI_SUPABASE_URL: 123\n",
+            "      BENEFITSI_SUPABASE_URL: http://slscoqdhbxftcournvut.supabase.co\n",
+            "      BENEFITSI_SUPABASE_URL: https://example.com\n",
+            f"      BENEFITSI_SUPABASE_URL: https://{'x' * 2050}.example\n",
+        ]
+        for url_line in cases:
+            with self.subTest(url_line=url_line[:80]):
+                city_config = self.fx.root / "city-config.yaml"
+                city_config.write_text(
+                    "mcp_servers:\n"
+                    "  benefitsi:\n"
+                    "    env:\n"
+                    "      BENEFITSI_MCP_CREDENTIAL_FILE: /tmp/synthetic-private-credentials\n"
+                    f"{url_line}",
+                    encoding="utf-8",
+                )
+                with mock.patch.dict(os.environ, {}, clear=True):
+                    with self.assertRaises(collect_runtime.CollectorError):
+                        collect_runtime.load_admin_configuration(module, city_config)
+                    self.assertEqual(dict(os.environ), {})
 
     def test_publish_mode_rejects_fixture_path_overrides_before_loading_credentials(self):
         stdout = io.StringIO()

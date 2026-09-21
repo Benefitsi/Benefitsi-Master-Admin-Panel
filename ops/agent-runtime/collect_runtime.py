@@ -718,12 +718,14 @@ def collect_snapshot(
     return snapshot
 
 
-def _initialize_private_credential_path(profile_config_path: Path) -> None:
+def _initialize_publish_configuration(profile_config_path: Path) -> None:
     try:
         config = yaml.safe_load(_decode_metadata(profile_config_path, MAX_METADATA_BYTES))
-        credential_path = config["mcp_servers"]["benefitsi"]["env"]["BENEFITSI_MCP_CREDENTIAL_FILE"]
+        benefitsi_env = config["mcp_servers"]["benefitsi"]["env"]
+        credential_path = benefitsi_env["BENEFITSI_MCP_CREDENTIAL_FILE"]
+        supabase_url = benefitsi_env["BENEFITSI_SUPABASE_URL"]
     except (CollectorError, UnicodeError, yaml.YAMLError, KeyError, TypeError) as exc:
-        raise CollectorError("private credential path initializer unavailable") from exc
+        raise CollectorError("publish configuration initializer unavailable") from exc
     if (
         not isinstance(credential_path, str)
         or not credential_path.strip()
@@ -731,15 +733,27 @@ def _initialize_private_credential_path(profile_config_path: Path) -> None:
         or any(ord(char) < 32 for char in credential_path)
         or not Path(credential_path).expanduser().is_absolute()
     ):
-        raise CollectorError("private credential path initializer is invalid")
+        raise CollectorError("publish configuration initializer is invalid")
+    if (
+        not isinstance(supabase_url, str)
+        or not supabase_url.strip()
+        or len(supabase_url) > 2048
+        or any(ord(char) < 32 for char in supabase_url)
+    ):
+        raise CollectorError("publish configuration initializer is invalid")
+    try:
+        normalized_url = _validated_base_url(supabase_url.strip())
+    except (PublishError, ValueError) as exc:
+        raise CollectorError("publish configuration initializer is invalid") from exc
     os.environ["BENEFITSI_MCP_CREDENTIAL_FILE"] = credential_path.strip()
+    os.environ["BENEFITSI_SUPABASE_URL"] = normalized_url
 
 
 def load_admin_configuration(
     module_path: Path = DEFAULT_MCP_SERVER,
     profile_config_path: Path = DEFAULT_PROFILE_CONFIG,
 ) -> tuple[str, str]:
-    _initialize_private_credential_path(profile_config_path)
+    _initialize_publish_configuration(profile_config_path)
     spec = importlib.util.spec_from_file_location("benefitsi_runtime", module_path)
     if spec is None or spec.loader is None:
         raise CollectorError("credential initializer unavailable")
