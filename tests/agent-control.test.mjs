@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { JSDOM } from "jsdom"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { AgentOverview } from "../app/agents/agent-overview.tsx"
@@ -146,6 +147,32 @@ test("overview explains evidence boundaries and renders no start or publish acti
   assert.match(html, /href="\/city-operations"/)
   assert.match(html, /href="\/automation"/)
   assert.doesNotMatch(html, /<button/)
+})
+
+test("profile regions resolve uniquely to their visible headings", () => {
+  const benefitsiProfile = validSnapshot().profiles[0]
+  const runtime = normalizeRuntimeSnapshot(validSnapshot({ profiles: [
+    benefitsiProfile,
+    { ...benefitsiProfile, id: "external-review", scope: "general" },
+  ] }), now)
+  const html = renderToStaticMarkup(createElement(AgentOverview, { data: {
+    checkedAt: now.toISOString(), runtime,
+    cities: { state: "available", items: [] }, citySchedules: { state: "available", items: [] },
+    pipeline: { state: "available", item: null },
+  } }))
+  const document = new JSDOM(html).window.document
+
+  for (const expectedTitle of ["Benefitsi-Profile", "Weitere beobachtete Profile"]) {
+    const heading = [...document.querySelectorAll("h2")].find(element => element.textContent === expectedTitle)
+    assert.ok(heading, `missing heading: ${expectedTitle}`)
+    const region = heading.closest("section")
+    assert.ok(region, `missing region for: ${expectedTitle}`)
+    const references = region.getAttribute("aria-labelledby")?.trim().split(/\s+/) ?? []
+    assert.equal(references.length, 1, `${expectedTitle} must use one heading reference`)
+    const matches = [...document.querySelectorAll("[id]")].filter(element => element.id === references[0])
+    assert.equal(matches.length, 1, `${expectedTitle} heading reference must resolve uniquely`)
+    assert.equal(matches[0].textContent, expectedTitle)
+  }
 })
 
 test("old city evidence never renders as a current technical success", () => {
