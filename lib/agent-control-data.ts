@@ -149,9 +149,14 @@ function normalizePipeline(value: unknown): PipelineHealth | null {
   const summaryTechnical = nullableBoolean(health?.technical_ok)
   return {
     cityId: value.city_id, cityName: cityDisplayName(value.city_id), lastRunAt: nullableDate(value.last_run_at),
-    lastRunOk, technicalOk: lastRunOk === false ? false : lastRunOk === true ? summaryTechnical : null,
-    editorialReviewPending: nullableBoolean(health?.editorial_review_pending), researchCheckedAt: nullableDate(health?.research_checked_at),
+    lastRunOk, technicalOk: summaryTechnical,
+    editorialReviewPending: editorialReviewPending(health), researchCheckedAt: nullableDate(health?.research_checked_at),
   }
+}
+
+function editorialReviewPending(health: Record<string, unknown> | null) {
+  if (health?.editorial_status === "pending_review") return true
+  return nullableBoolean(health?.editorial_review_pending)
 }
 
 function unavailableResult(now: Date): AgentControlData {

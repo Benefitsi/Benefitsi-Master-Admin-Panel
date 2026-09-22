@@ -91,7 +91,7 @@ function CityOperations({ data }: { data: AgentControlData }) {
 function CityCard({ city, data }: { city: CityControl; data: AgentControlData }) {
   const pipeline = data.pipeline.item?.cityId === city.cityId ? data.pipeline.item : null
   const schedules = data.citySchedules.items.filter(item => item.cityId === city.cityId)
-  return <article className="rounded-xl bg-slate-50 p-4"><h3 className="font-bold">{city.cityName ?? `Unbekannte Stadt · ${city.cityId}`}</h3><dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Info label="Technischer Status" value={cityTechnicalStatus(pipeline, data.checkedAt)} /><Info label="Inhaltsfreigabe" value={city.autoPublishEnabled === true ? "Automatische Freigabe konfiguriert" : pipeline?.editorialReviewPending === true ? "Menschliche Prüfung ausstehend" : "Nicht nachgewiesen"} /><Info label="Letzte Recherche" value={dateTime(pipeline?.researchCheckedAt ?? null)} /><Info label="Beobachtete Pläne" value={data.citySchedules.state === "unavailable" ? null : String(schedules.length)} /></dl></article>
+  return <article className="rounded-xl bg-slate-50 p-4"><h3 className="font-bold">{city.cityName ?? `Unbekannte Stadt · ${city.cityId}`}</h3><dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Info label="Technischer Status" value={cityTechnicalStatus(pipeline, data.checkedAt)} /><Info label="Veröffentlichungskonfiguration" value={publicationConfiguration(city.autoPublishEnabled)} /><Info label="Redaktionelle Prüfung" value={editorialReviewStatus(pipeline?.editorialReviewPending ?? null)} /><Info label="Letzte Recherche" value={dateTime(pipeline?.researchCheckedAt ?? null)} /><Info label="Beobachtete Pläne" value={data.citySchedules.state === "unavailable" ? null : String(schedules.length)} /></dl></article>
 }
 
 function Info({ label, value }: { label: string; value: string | null }) { return <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-1 break-words font-medium text-slate-800">{value ?? "Nicht nachgewiesen"}</dd></div> }
@@ -99,6 +99,8 @@ function automationLabel(value: AgentProfile["automation"]) { return value === "
 function runtimeLabel(value: AgentProfile["runtimeHealth"]) { return value === "ok" ? "Letzter Lauf aktuell erfolgreich" : value === "failed" ? "Technische Prüfung nötig" : "Kein aktueller Laufnachweis" }
 function loadedByLabel(value: AgentProfile["contextFiles"][number]["loadedBy"]) { return value === "system" ? "automatisch" : value === "reference" ? "bei Bedarf" : "unbekannt" }
 function sizeLabel(chars: number | null, limit: number | null) { return chars === null ? "Größe unbekannt" : `${chars.toLocaleString("de-DE")} Zeichen${limit === null ? "" : ` / Limit ${limit.toLocaleString("de-DE")}`}` }
+function publicationConfiguration(value: boolean | null) { return value === true ? "Automatische Veröffentlichung aktiviert" : value === false ? "Automatische Veröffentlichung deaktiviert" : "Nicht nachgewiesen" }
+function editorialReviewStatus(value: boolean | null) { return value === true ? "Menschliche Prüfung ausstehend" : value === false ? "Keine ausstehende Prüfung gemeldet" : "Nicht nachgewiesen" }
 function cityTechnicalStatus(pipeline: AgentControlData["pipeline"]["item"], checkedAt: string) {
   if (pipeline?.technicalOk !== true) return pipeline?.technicalOk === false ? "Technische Prüfung nötig" : "Nicht nachgewiesen"
   const evidenceAt = pipeline.researchCheckedAt ?? pipeline.lastRunAt

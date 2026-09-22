@@ -4,7 +4,7 @@ import test from "node:test"
 import ts from "typescript"
 import { cityDisplayName, contractTimestampMs, normalizeRuntimeSnapshot } from "../lib/agent-control.ts"
 
-function setup({ session = { isAdmin: true }, failures = [], empty = [], equivalentTimestamp = false, pipelineContradiction = false, pipelineRunUnknown = false, invalidSourceDate = false } = {}) {
+function setup({ session = { isAdmin: true }, failures = [], empty = [], equivalentTimestamp = false, pipelineHealth, pipelineLastRunOk, pipelineSummaryStatus, pipelineRunUnknown = false, invalidSourceDate = false } = {}) {
   const events = []
   let releaseAuth
   const auth = session instanceof Promise ? session : Promise.resolve(session)
@@ -18,7 +18,9 @@ function setup({ session = { isAdmin: true }, failures = [], empty = [], equival
     annweiler_event_pipeline_health: { city_id: "b9e684e4-54b3-41ff-8f97-4426423893c2", last_run_at: "2026-09-21T09:00:00Z", last_run_ok: true, summary: { health: { technical_ok: true, editorial_review_pending: true, research_checked_at: "2026-09-21T08:55:00Z" }, raw_log: "private" } },
   }
   if (equivalentTimestamp) rows.benefitsi_agent_runtime_snapshots.observed_at = "2026-09-21T12:00:00+02:00"
-  if (pipelineContradiction) rows.annweiler_event_pipeline_health.last_run_ok = false
+  if (pipelineHealth) rows.annweiler_event_pipeline_health.summary.health = pipelineHealth
+  if (typeof pipelineLastRunOk === "boolean") rows.annweiler_event_pipeline_health.last_run_ok = pipelineLastRunOk
+  if (pipelineSummaryStatus) rows.annweiler_event_pipeline_health.summary.status = pipelineSummaryStatus
   if (pipelineRunUnknown) rows.annweiler_event_pipeline_health.last_run_ok = null
   if (invalidSourceDate) rows.city_agent_city_controls[0].last_full_check_at = "2026-09-21"
   const builder = (table) => {
@@ -79,15 +81,42 @@ test("wrapper and snapshot timestamps compare as instants across ISO offsets", a
   assert.equal(result.runtime.state, "fresh")
 })
 
-test("pipeline row failure overrides a contradictory positive summary", async () => {
-  const result = await setup({ pipelineContradiction: true }).run()
-  assert.equal(result.pipeline.item.technicalOk, false)
+test("partial overall result preserves explicit technical success and pending editorial status", async () => {
+  const result = await setup({ pipelineLastRunOk: false, pipelineSummaryStatus: "partial", pipelineHealth: {
+    technical_ok: true,
+    editorial_status: "pending_review",
+    city_current: false,
+    research_checked_at: "2026-09-21T08:55:00Z",
+  } }).run()
+  assert.equal(result.pipeline.item.technicalOk, true)
   assert.equal(result.pipeline.item.lastRunOk, false)
+  assert.equal(result.pipeline.item.editorialReviewPending, true)
 })
 
-test("missing authoritative pipeline result cannot become a positive technical state", async () => {
+test("technical evidence preserves explicit false and keeps missing or malformed values unknown", async () => {
+  for (const [technical_ok, expected] of [[false, false], [undefined, null], ["true", null]]) {
+    const result = await setup({ pipelineHealth: { technical_ok } }).run()
+    assert.equal(result.pipeline.item.technicalOk, expected)
+  }
+})
+
+test("legacy editorial review booleans remain supported", async () => {
+  for (const [editorial_review_pending, expected] of [[true, true], [false, false]]) {
+    const result = await setup({ pipelineHealth: { technical_ok: true, editorial_review_pending } }).run()
+    assert.equal(result.pipeline.item.editorialReviewPending, expected)
+  }
+})
+
+test("absent and unrecognized editorial states remain unknown", async () => {
+  for (const pipelineHealth of [{ technical_ok: true }, { technical_ok: true, editorial_status: "published" }]) {
+    const result = await setup({ pipelineHealth }).run()
+    assert.equal(result.pipeline.item.editorialReviewPending, null)
+  }
+})
+
+test("unknown overall result remains separate from explicit technical evidence", async () => {
   const result = await setup({ pipelineRunUnknown: true }).run()
-  assert.equal(result.pipeline.item.technicalOk, null)
+  assert.equal(result.pipeline.item.technicalOk, true)
   assert.equal(result.pipeline.item.lastRunOk, null)
 })
 
