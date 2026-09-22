@@ -44,8 +44,8 @@ export function AgentOverview({ data }: { data: AgentControlData }) {
       <p className="mt-4 text-sm leading-6 text-slate-600">Recherche und technische Prüfung dürfen vorbereitet werden. Inhalte werden erst nach einer ausdrücklichen menschlichen Freigabe veröffentlicht.</p>
     </section>
 
-    {benefitsi.length > 0 ? <ProfileSection title="Benefitsi-Profile" profiles={benefitsi} /> : null}
-    {others.length > 0 ? <ProfileSection title="Weitere beobachtete Profile" profiles={others} /> : null}
+    {benefitsi.length > 0 ? <ProfileSection headingId="benefitsi-profiles-heading" title="Benefitsi-Profile" profiles={benefitsi} /> : null}
+    {others.length > 0 ? <ProfileSection headingId="other-profiles-heading" title="Weitere beobachtete Profile" profiles={others} /> : null}
 
     <CityOperations data={data} />
   </div>
@@ -60,9 +60,9 @@ function Metric({ value, label }: { value: number | null; label: string }) {
   return <div className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-3xl font-black tabular-nums text-[#061829]">{value ?? "—"}</p><p className="mt-1 text-sm text-slate-600">{value === null ? `${label} · Quelle unbekannt` : label}</p></div>
 }
 
-function ProfileSection({ title, profiles }: { title: string; profiles: AgentProfile[] }) {
-  return <section aria-labelledby={`section-${title}`} className="space-y-3">
-    <h2 id={`section-${title}`} className="text-xl font-bold tracking-tight">{title}</h2>
+function ProfileSection({ headingId, title, profiles }: { headingId: string; title: string; profiles: AgentProfile[] }) {
+  return <section aria-labelledby={headingId} className="space-y-3">
+    <h2 id={headingId} className="text-xl font-bold tracking-tight">{title}</h2>
     <div className="grid gap-4 xl:grid-cols-2">{profiles.map(profile => <ProfileCard key={profile.id} profile={profile} />)}</div>
   </section>
 }
