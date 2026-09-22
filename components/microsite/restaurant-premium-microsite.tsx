@@ -3496,9 +3496,7 @@ function FooterSection({
             )}
           </p>
 
-          <div className="mt-4 grid max-w-[360px] grid-cols-3 gap-3">
-            <FooterTrustItem id="footer.trust.0" icon="shield" label={siteCopy(config, "Sicher & geprüft", "Safe & verified")} config={config} />
-            <FooterTrustItem id="footer.trust.1" icon="privacy" label={siteCopy(config, "DSGVO-konform", "GDPR compliant")} config={config} />
+          <div className="mt-4 max-w-[120px]">
             <FooterTrustItem id="footer.trust.2" icon="local" label={siteCopy(config, "Lokale Partner", "Local partners")} config={config} />
           </div>
         </div>
@@ -3522,6 +3520,10 @@ function FooterSection({
           ]}
         />
       </div>
+      <nav aria-label={siteCopy(config, "Rechtliche Hinweise", "Legal information")} className="mx-auto flex max-w-6xl flex-wrap gap-x-5 gap-y-2 border-t border-zinc-200 py-4 text-xs">
+        <a href="https://benefitsi.de/impressum" className="underline underline-offset-4">{siteCopy(config, "Impressum", "Legal notice")}</a>
+        <a href="https://benefitsi.de/datenschutz" className="underline underline-offset-4">{siteCopy(config, "Datenschutz", "Privacy policy")}</a>
+      </nav>
     </footer>
   )
 }

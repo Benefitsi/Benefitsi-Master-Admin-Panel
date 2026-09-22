@@ -19,6 +19,7 @@ import {
   selectDueAutomaticSources,
 } from "./source-selection"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { sourceSnapshotFreshness } from "./source-freshness"
 
 type SupabaseClient = ReturnType<typeof createAdminClient>
 
@@ -42,6 +43,7 @@ type AutomationJob = {
 
 type SnapshotRow = {
   id: string
+  fetched_at: string
   content_hash: string
   extracted_payload: Partial<CityAgentSourceFacts>
 }
@@ -218,9 +220,11 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
 
   const sourcesResult = await supabase
     .from("city_agent_sources")
-    .select("id,city_id,slug,url,source_type,trust_level,cadence,next_check_at,parser_config,content_scope,active")
+    .select("id,city_id,slug,url,source_type,trust_level,cadence,next_check_at,parser_config,content_scope,active,enabled,last_success_at")
     .eq("city_id", cityId)
     .eq("active", true)
+    .eq("enabled", true)
+    .neq("cadence", "manual")
     .or(AUTOMATIC_SOURCE_OWNER_FILTER)
     .order("next_check_at", { ascending: true, nullsFirst: true })
     .limit(boundedSources(options.maxSources) * 2)
@@ -245,21 +249,25 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
   const errors: string[] = []
   let snapshotCount = 0
   let proposalCount = 0
+  let staleCount = 0
+  let unknownSourceFreshnessCount = 0
   let autoPublishedCount = 0
   const reviewCandidates: Array<Record<string, unknown>> = []
 
   for (const source of dueSources) {
     const previousResult = await supabase
       .from("city_agent_source_snapshots")
-      .select("id,content_hash,extracted_payload")
+      .select("id,content_hash,extracted_payload,fetched_at")
       .eq("source_id", source.id)
       .order("fetched_at", { ascending: false })
       .limit(1)
       .maybeSingle()
     const previous = (previousResult.data ?? null) as SnapshotRow | null
+    let sourceFreshness = sourceSnapshotFreshness(source.cadence, previous?.fetched_at, now, source.last_success_at)
 
     try {
       const facts = await provider.fetchSource(source)
+      sourceFreshness = sourceSnapshotFreshness(source.cadence, facts.truncated || facts.httpStatus < 200 || facts.httpStatus >= 300 ? null : facts.retrievedAt, options.now ?? new Date())
       const snapshotInsert = await supabase
         .from("city_agent_source_snapshots")
         .upsert(
@@ -289,7 +297,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
       if (snapshot?.id) snapshotCount += 1
 
       const changed = !previous || previous.content_hash !== facts.contentHash
-      await supabase.from("city_agent_sources").update({ last_checked_at: facts.retrievedAt, last_status: changed ? "changed" : "healthy", next_check_at: nextSourceCheckAt(source, now), updated_at: facts.retrievedAt }).eq("id", source.id)
+      await supabase.from("city_agent_sources").update({ last_checked_at: facts.retrievedAt, ...(sourceFreshness === "current" ? { last_success_at: facts.retrievedAt } : {}), last_status: changed ? "changed" : "healthy", next_check_at: nextSourceCheckAt(source, now), updated_at: facts.retrievedAt }).eq("id", source.id)
       await addAudit(supabase, runId, "source_checked", { sourceId: source.id, changed, contentHash: facts.contentHash }, agentProfile)
 
       if (changed && snapshot?.id) {
@@ -340,6 +348,8 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
       await supabase.from("city_agent_sources").update({ last_checked_at: now.toISOString(), last_status: "error", next_check_at: nextSourceCheckAt(source, now), updated_at: now.toISOString() }).eq("id", source.id)
       await addAudit(supabase, runId, "source_checked", { sourceId: source.id, error: message.slice(0, 300) }, agentProfile)
     }
+    staleCount += Number(sourceFreshness === "stale")
+    unknownSourceFreshnessCount += Number(sourceFreshness === "unknown")
   }
 
   const autoPublishAllowed = options.dryRun === false && process.env.CITY_AGENT_AUTO_PUBLISH === "true"
@@ -400,7 +410,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
 
   const status = errors.length ? (snapshotCount ? "partial" : "failed") : "succeeded"
   const finishedAt = new Date().toISOString()
-  await supabase.from("city_agent_runs").update({ status, source_count: dueSources.length, snapshot_count: snapshotCount, proposal_count: proposalCount, stale_count: 0, error_code: errors.length ? "source_errors" : null, error_summary: errors.length ? errors.join(" | ").slice(0, 2_000) : null, metadata: { autoPublishedCount, reviewCandidateCount: reviewCandidates.length }, finished_at: finishedAt, updated_at: finishedAt }).eq("id", runId)
+  await supabase.from("city_agent_runs").update({ status, source_count: dueSources.length, snapshot_count: snapshotCount, proposal_count: proposalCount, stale_count: staleCount, error_code: errors.length ? "source_errors" : null, error_summary: errors.length ? errors.join(" | ").slice(0, 2_000) : null, metadata: { autoPublishedCount, reviewCandidateCount: reviewCandidates.length, freshnessScope: "source_checks", unknownSourceFreshnessCount }, finished_at: finishedAt, updated_at: finishedAt }).eq("id", runId)
   await addAudit(supabase, runId, status === "failed" ? "failed" : "completed", { sourceCount: dueSources.length, snapshotCount, proposalCount, errors: errors.length, autoPublishedCount, protected_action_executed: autoPublishedCount > 0 }, agentProfile)
   if (status === "failed") {
     await failJob(supabase, job.id, agentProfile, "all_sources_failed")
@@ -409,10 +419,10 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
       supabase,
       job.id,
       agentProfile,
-      { runId, cityId, citySlug, sourceCount: dueSources.length, snapshotCount, proposalCount, autoPublishedCount, errors: errors.slice(0, 10), protected_action_executed: autoPublishedCount > 0 },
+      { runId, cityId, citySlug, sourceCount: dueSources.length, snapshotCount, proposalCount, staleCount, unknownSourceFreshnessCount, freshnessScope: "source_checks", autoPublishedCount, errors: errors.slice(0, 10), protected_action_executed: autoPublishedCount > 0 },
       autoPublishedCount ? `${autoPublishedCount} City-Vorschläge wurden nach Ben-Policy veröffentlicht.` : proposalCount ? `${proposalCount} belegte Vorschläge warten auf Prüfung.` : null,
     )
   }
 
-  return { claimed: true, jobId: job.id, runId, cityId, citySlug, provider: provider.name, sourceCount: dueSources.length, snapshotCount, proposalCount, autoPublishedCount, staleCount: 0, errorCount: errors.length, status, errors }
+  return { claimed: true, jobId: job.id, runId, cityId, citySlug, provider: provider.name, sourceCount: dueSources.length, snapshotCount, proposalCount, autoPublishedCount, staleCount, errorCount: errors.length, status, errors }
 }

@@ -19,6 +19,7 @@ function source(id, nextCheckAt, parserConfig = {}, cadence = "daily") {
     parser_config: parserConfig,
     content_scope: {},
     active: true,
+    enabled: true,
   }
 }
 
@@ -48,6 +49,28 @@ test("automatic selection leaves M1-owned sources to the monthly preflight", () 
   )
 })
 
+test("automatic selection does not fetch disabled or manual sources when due", () => {
+  const due = "2026-09-16T11:00:00.000Z"
+  const selected = selection.selectDueAutomaticSources([
+    { ...source("knobi-disabled", due, {}, "manual"), enabled: false },
+    { ...source("disabled-daily", due), enabled: false },
+    { ...source("inactive-daily", due), active: false },
+    source("manual-due", due, {}, "manual"),
+    { ...source("activation-unknown", due), enabled: undefined },
+    source("allowed", due),
+  ], now, 20)
+  assert.deepEqual(selected.map((row) => row.id), ["allowed"])
+})
+
+test("automatic selection leaves every explicitly owned source to its owner", () => {
+  const selected = selection.selectDueAutomaticSources([
+    source("freshness", null, { cadence_owner: "m1_city_freshness" }),
+    source("future-owner", null, { cadence_owner: "another_city_worker" }),
+    source("allowed", null),
+  ], now, 20)
+  assert.deepEqual(selected.map((row) => row.id), ["allowed"])
+})
+
 test("the automatic runner excludes M1 ownership before applying its query limit", async () => {
   const runner = await readFile(
     new URL("../lib/city-agent/runner.ts", import.meta.url),
@@ -56,7 +79,7 @@ test("the automatic runner excludes M1 ownership before applying its query limit
 
   assert.equal(
     selection.AUTOMATIC_SOURCE_OWNER_FILTER,
-    "parser_config->>cadence_owner.is.null,parser_config->>cadence_owner.neq.m1_daily_preflight",
+    "parser_config->>cadence_owner.is.null",
   )
   const ownerFilter = runner.indexOf(
     ".or(AUTOMATIC_SOURCE_OWNER_FILTER)",

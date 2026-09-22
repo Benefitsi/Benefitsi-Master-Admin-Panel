@@ -29,6 +29,8 @@ export type CityAgentSourceRow = {
   parser_config: Record<string, unknown>
   content_scope: Record<string, unknown>
   active: boolean
+  enabled: boolean
+  last_success_at?: string | null
 }
 
 export type CityAgentSourceFacts = {
