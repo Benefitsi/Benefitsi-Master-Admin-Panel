@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "release": "2026-09-22-city-source-freshness-v1",
+  "status": "local_review_candidate",
+  "production_installed": false,
+  "disabled_by_default": true,
+  "dispatcher": {
+    "existing_launchd_label": "ai.benefitsi.hermes-ben-worker",
+    "new_schedule": false,
+    "poll_seconds": 3600,
+    "review_interval_seconds": 259200,
+    "provider_calls": 0
+  },
+  "runtime_files": [
+    {
+      "source": "city_freshness_runner.py",
+      "destination": "/Users/patrick/.hermes/projects/benefitsi/automation/city_freshness_runner.py",
+      "sha256": "d519b5a56f6d9c589c8295ab915da4a7563114d366d5b0eb4962aca3f80da464"
+    },
+    {
+      "source": "city-freshness-config.json",
+      "destination": "/Users/patrick/.hermes/projects/benefitsi/automation/city-freshness-config.json",
+      "sha256": "a3935cdf847e904d9ef7487012964a94d26bf88492e1da4b4f99c77d793ebedd"
+    }
+  ],
+  "worker_hook": {
+    "generator": "prepare_worker_hook.py",
+    "generator_sha256": "8adb56aed4ffafa32ccf59a3b7eb22b05a386e2bf7a0073525ae4d31eba68d83",
+    "destination": "/Users/patrick/.hermes/projects/benefitsi/automation/benefitsi-automation-worker.sh",
+    "expected_unhooked_sha256": "a455707a974fa0b021b470fe84338e57ed33c46d8b61ef406aadf84371286d7a",
+    "prepared_candidate_sha256": "1fe9a4fd42afe9378c54b6628f6ebf2fd83ab6b215ee729ff56644ace612a845",
+    "requires_new_live_hash_check": true,
+    "may_only_insert_before": "# Read-only preflight never claims work; the existing MCP claim remains authoritative."
+  },
+  "database": {
+    "repository": "Benefitsi-Database",
+    "migration": "supabase/migrations/20260922083737_city_source_freshness_reviews.sql",
+    "sha256": "620af13eb978ceeda2152a6bf64870827fead452fe88649f79dceb3f0e38fce0",
+    "rpc_allowlist": [
+      "city_freshness_inventory",
+      "record_city_freshness_review"
+    ],
+    "source_enrollment_included": false
+  },
+  "existing_dependencies": [
+    {
+      "file": "automation/sources_budget_preflight.py",
+      "observed_sha256": "a1c3913fb3c5f5a6485ba1f2111025c50717c1ee35ee039d07d194e1542bfc77",
+      "required_functions": [
+        "load_profile_environment"
+      ],
+      "copy": false
+    },
+    {
+      "file": "mcp/server.py",
+      "observed_sha256": "b6d3510ad7490fca0a71290cf4e62aabac2631aebcdc63de16eeef1ef78b286f",
+      "required_functions": [
+        "_fetch_city_source",
+        "_profile_city_scope",
+        "_admin_configuration"
+      ],
+      "copy": false
+    }
+  ],
+  "must_not_replace": [
+    "mcp/server.py",
+    "automation/event_publication_runner.py",
+    "automation/visitor_fact_runner.py",
+    "automation/annweiler-source-registry.json",
+    "automation/annweiler-event-discovery.sh",
+    "existing profile config.yaml or .env files",
+    "launchd plists"
+  ],
+  "rollback": "Disable city-freshness-config.json; restore only the reviewed worker backup after checking for newer runtime changes; retain source review history."
+}
