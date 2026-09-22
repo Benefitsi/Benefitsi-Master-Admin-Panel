@@ -159,6 +159,29 @@ test("old city evidence never renders as a current technical success", () => {
   assert.doesNotMatch(html, /Technisch in Ordnung/)
 })
 
+test("city card keeps auto-publication configuration separate from pending editorial review", () => {
+  const html = renderToStaticMarkup(createElement(AgentOverview, { data: {
+    checkedAt: "2026-09-21T10:30:00Z", runtime: { state: "unavailable", snapshot: null },
+    cities: { state: "available", items: [{ cityId: "b9e684e4-54b3-41ff-8f97-4426423893c2", cityName: "Annweiler am Trifels", operatingMode: "review", orchestratorProfile: "ben", cityProfile: "city-annweiler", timezone: "Europe/Berlin", autoPublishEnabled: true, lastFullCheckAt: null, nextFullCheckAt: null, healthStatus: "partial" }] },
+    citySchedules: { state: "available", items: [] },
+    pipeline: { state: "available", item: { cityId: "b9e684e4-54b3-41ff-8f97-4426423893c2", cityName: "Annweiler am Trifels", lastRunAt: "2026-09-21T09:00:00Z", lastRunOk: false, technicalOk: true, editorialReviewPending: true, researchCheckedAt: "2026-09-21T08:55:00Z" } },
+  } }))
+  assert.match(html, /Technisch in Ordnung/)
+  assert.match(html, /Veröffentlichungskonfiguration.*Automatische Veröffentlichung aktiviert/s)
+  assert.match(html, /Redaktionelle Prüfung.*Menschliche Prüfung ausstehend/s)
+})
+
+test("city card distinguishes disabled and unknown publication configuration", () => {
+  for (const [autoPublishEnabled, expected] of [[false, "Automatische Veröffentlichung deaktiviert"], [null, "Nicht nachgewiesen"]]) {
+    const html = renderToStaticMarkup(createElement(AgentOverview, { data: {
+      checkedAt: now.toISOString(), runtime: { state: "unavailable", snapshot: null },
+      cities: { state: "available", items: [{ cityId: "city", cityName: "Teststadt", operatingMode: null, orchestratorProfile: null, cityProfile: null, timezone: null, autoPublishEnabled, lastFullCheckAt: null, nextFullCheckAt: null, healthStatus: null }] },
+      citySchedules: { state: "available", items: [] }, pipeline: { state: "available", item: null },
+    } }))
+    assert.match(html, new RegExp(`Veröffentlichungskonfiguration.*${expected}`, "s"))
+  }
+})
+
 test("complete source failure shows an honest empty state without invented profiles", () => {
   const html = renderToStaticMarkup(createElement(AgentOverview, { data: {
     checkedAt: now.toISOString(), runtime: { state: "unavailable", snapshot: null },
