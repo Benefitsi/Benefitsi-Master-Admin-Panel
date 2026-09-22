@@ -2434,8 +2434,8 @@ export async function previewAIMenuImport(
       return { ok: false, message: "Eine Seite fehlt oder ist leer. Bitte alle Speisekartenseiten erneut auswählen." }
     }
     const draft = await extractMenuFromFiles(sources, {
-      apiKey: process.env.GEMINI_API_KEY?.trim() ?? "",
-      model: process.env.GEMINI_MENU_MODEL?.trim(),
+      bridgeUrl: process.env.M1_BRIDGE_URL?.trim() ?? "",
+      bridgeSecret: process.env.M1_BRIDGE_SECRET?.trim() ?? "",
     })
     return { ok: true, message: "Erkennung abgeschlossen. Bitte alle Angaben vor dem Übernehmen prüfen.", draft }
   } catch (error) {
