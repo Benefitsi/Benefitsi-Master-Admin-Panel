@@ -50,6 +50,7 @@ export function FounderOverview({ snapshot }: { snapshot: FounderSnapshot }) {
           <p className="mt-2 text-xs leading-5 text-slate-500">Letzter erfasster echter Lauf: {dateTime(snapshot.cityRun?.finishedAt ?? null)}<br />Aktualität: maximal 48 Stunden. Ein technischer Lauf bestätigt keine redaktionelle Freigabe.</p>
         </div>
       </div>
+      <Link href="/agents" className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-[#061829] transition hover:border-teal-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600">Agenten, Zeitpläne und Freigaben öffnen <span aria-hidden="true" className="ml-2 text-teal-700">→</span></Link>
       <p className="text-xs leading-5 text-slate-500">Betriebszahlen aus Supabase, standortübergreifend außer M1 Annweiler. Umsatz, zahlende Nutzer und Wiederkehr sind hier noch nicht angebunden. Fehlende Messungen werden nicht als null dargestellt.</p>
     </section>
   )

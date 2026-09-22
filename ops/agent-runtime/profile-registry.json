@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "id": "ben",
+      "scope": "benefitsi",
+      "purpose": "Koordiniert Benefitsi-Aufträge und bearbeitet die freigegebene Automationswarteschlange.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": [
+        {
+          "id": "ai.benefitsi.hermes-ben-worker",
+          "status": {
+            "kind": "ben-preflight",
+            "path": "logs/benefitsi-worker-runs/*-preflight.json"
+          }
+        }
+      ]
+    },
+    {
+      "id": "benefitsi-content",
+      "scope": "benefitsi",
+      "purpose": "Entwirft quellengestützte Benefitsi-Inhalte ohne Veröffentlichungsrecht.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": []
+    },
+    {
+      "id": "benefitsi-seo",
+      "scope": "benefitsi",
+      "purpose": "Misst SEO-, Local-, Maps- und KI-Sichtbarkeit; Ergebnisse bleiben freigabepflichtig.",
+      "citySlug": null,
+      "hermesJobIds": ["944f1a0e360b"],
+      "launchdSchedules": []
+    },
+    {
+      "id": "city-annweiler",
+      "scope": "benefitsi",
+      "purpose": "Recherchiert Annweiler aus freigegebenen Quellen und bereitet Änderungen mit Prüfstatus vor.",
+      "citySlug": "annweiler",
+      "hermesJobIds": [],
+      "launchdSchedules": [
+        {
+          "id": "ai.benefitsi.annweiler-event-discovery",
+          "status": {
+            "kind": "city-report",
+            "path": "logs/event-publication/latest.json"
+          }
+        },
+        {
+          "id": "ai.benefitsi.annweiler-event-monitor",
+          "status": {
+            "kind": "city-report",
+            "path": "logs/event-publication/monitor-latest.json"
+          }
+        }
+      ]
+    },
+    {
+      "id": "stamp-curator",
+      "scope": "benefitsi",
+      "purpose": "Kuriert quellengestützte Ortsstempel-Konzepte für die manuelle Prüfung.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": []
+    },
+    {
+      "id": "studio",
+      "scope": "benefitsi",
+      "purpose": "Setzt Benefitsi-Design, Frontend und visuelle Qualitätssicherung um.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": []
+    },
+    {
+      "id": "alexhormozi",
+      "scope": "general",
+      "purpose": "Berät quellenbasiert zu Angebot, Wachstum und Geschäftsentwicklung.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": []
+    },
+    {
+      "id": "codex",
+      "scope": "general",
+      "purpose": "Unterstützt interaktive Softwareentwicklung und Qualitätssicherung.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": []
+    },
+    {
+      "id": "nova",
+      "scope": "general",
+      "purpose": "Unterstützt persönliche Zusammenfassungen, Erinnerungen und allgemeine Koordination.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": []
+    },
+    {
+      "id": "beast",
+      "scope": "unknown",
+      "purpose": "Aufgabe und Benefitsi-Zuordnung sind derzeit nicht belegt.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": []
+    },
+    {
+      "id": "flo",
+      "scope": "unknown",
+      "purpose": "Aufgabe und Benefitsi-Zuordnung sind derzeit nicht belegt.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": []
+    },
+    {
+      "id": "luis",
+      "scope": "unknown",
+      "purpose": "Aufgabe und Benefitsi-Zuordnung sind derzeit nicht belegt.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": []
+    },
+    {
+      "id": "thor",
+      "scope": "unknown",
+      "purpose": "Aufgabe und Benefitsi-Zuordnung sind derzeit nicht belegt.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": []
+    },
+    {
+      "id": "viki",
+      "scope": "unknown",
+      "purpose": "Aufgabe und Benefitsi-Zuordnung sind derzeit nicht belegt.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": []
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.benefitsi.agent-runtime-observer</string>
+  <key>Disabled</key>
+  <true/>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/patrick/.hermes/hermes-agent/venv/bin/python</string>
+    <string>/Users/patrick/.hermes/projects/benefitsi/agent-runtime/collect_runtime.py</string>
+    <string>--publish</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/patrick/.hermes/projects/benefitsi/agent-runtime</string>
+  <key>StartInterval</key>
+  <integer>1800</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>/Users/patrick/.hermes/logs/agent-runtime-observer.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/patrick/.hermes/logs/agent-runtime-observer.stderr.log</string>
+</dict>
+</plist>
