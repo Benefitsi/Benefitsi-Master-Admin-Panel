@@ -66,6 +66,8 @@ import {
 } from "@/lib/partner-save"
 import * as menuImport from "@/lib/menu-import.js"
 import * as menuZipImport from "@/lib/menu-zip-import.js"
+import { extractMenuFromFiles, validateReviewedMenuDraft } from "@/lib/menu-ai-import"
+import type { AiMenuDraft } from "@/lib/menu-ai-types"
 
 const {
   downloadRemoteImage,
@@ -2402,6 +2404,116 @@ export async function duplicateMenuCategory(
   return {
     ok: true,
     message: `Category duplicated with ${itemCopies.length} ${itemCopies.length === 1 ? "item" : "items"}.`,
+  }
+}
+
+// Resolve the stored menu owner again on both requests. A client-supplied partner
+// must never redirect an existing menu's import to a different shop.
+async function authorizeAIMenuTarget(formData: FormData): Promise<PartnerActionAccess> {
+  const menuId = stringValue(formData, "menu_id")
+  const partnerId = stringValue(formData, "partner_id")
+  const access = menuId
+    ? await authorizePartnerRowMutation("menus", menuId)
+    : await authorizePartnerMutation(partnerId)
+  if (!access.ok) return access
+  if (partnerId && partnerId !== access.partnerId) {
+    return { ok: false, message: "Das Menü gehört nicht zum ausgewählten Partner." }
+  }
+  return { ...access, menuId }
+}
+
+export async function previewAIMenuImport(
+  formData: FormData,
+): Promise<{ ok: boolean; message: string; draft?: AiMenuDraft }> {
+  const access = await authorizeAIMenuTarget(formData)
+  if (!access.ok) return { ok: false, message: access.message }
+
+  try {
+    const sources = formData.getAll("menu_source")
+    if (!sources.length || !sources.every((source): source is File => source instanceof File && source.size > 0)) {
+      return { ok: false, message: "Eine Seite fehlt oder ist leer. Bitte alle Speisekartenseiten erneut auswählen." }
+    }
+    const draft = await extractMenuFromFiles(sources, {
+      bridgeUrl: process.env.M1_BRIDGE_URL?.trim() ?? "",
+      bridgeSecret: process.env.M1_BRIDGE_SECRET?.trim() ?? "",
+    })
+    return { ok: true, message: "Erkennung abgeschlossen. Bitte alle Angaben vor dem Übernehmen prüfen.", draft }
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Die Speisekarte konnte nicht erkannt werden." }
+  }
+}
+
+export async function confirmAIMenuImport(formData: FormData): Promise<PartnerActionState> {
+  const access = await authorizeAIMenuTarget(formData)
+  if (!access.ok) return { ok: false, message: access.message }
+  if (stringValue(formData, "confirm_review") !== "true") {
+    return { ok: false, message: "Bitte bestätige, dass du Preise, Texte und Allergene geprüft hast." }
+  }
+
+  let draft: AiMenuDraft
+  try {
+    const serialized = stringValue(formData, "menu_draft")
+    if (serialized.length > 2 * 1024 * 1024) throw new Error("Der Menüentwurf ist zu groß. Bitte in kleineren Teilen importieren.")
+    draft = validateReviewedMenuDraft(JSON.parse(serialized))
+  } catch (error) {
+    return { ok: false, message: error instanceof SyntaxError ? "Der Menüentwurf ist ungültig. Bitte erneut prüfen." : error instanceof Error ? error.message : "Der Menüentwurf ist ungültig." }
+  }
+
+  const { supabase, partnerId } = access
+  let menuId = access.menuId ?? ""
+  let created = false
+  if (!menuId) {
+    const existing = await supabase.from("menus").select("id").eq("partner_id", partnerId).limit(1).maybeSingle()
+    if (existing.error) return { ok: false, message: existing.error.message }
+    if (existing.data) {
+      return { ok: false, message: "Inzwischen existiert bereits ein Menü. Bitte die Seite neu laden und den Import dort starten." }
+    }
+    const now = new Date().toISOString()
+    const result = await supabase.from("menus").insert({
+      partner_id: partnerId,
+      name: draft.name,
+      description: null,
+      status: "published",
+      created_at: now,
+      updated_at: now,
+    }).select("id").single()
+    if (result.error || !result.data?.id) return { ok: false, message: result.error?.message ?? "Das Menü konnte nicht angelegt werden." }
+    menuId = result.data.id
+    created = true
+  }
+
+  // Project only reviewed menu data. AI output never supplies IDs, remote image
+  // URLs, popularity, publication status, or a destructive import mode.
+  const categories: ImportedMenuCategory[] = draft.categories.map(category => ({
+    name: category.name,
+    image_url: null,
+    items: category.items.map(item => ({
+      name: item.name,
+      description: item.description || null,
+      price: item.price,
+      currency: draft.currency,
+      image_url: null,
+      tags: item.tags,
+      allergens: item.allergens,
+      addons: [],
+      is_popular: false,
+    })),
+  }))
+  const result = await saveImportedMenuCategories(supabase, menuId, "append", categories)
+  if (!result.ok) {
+    if (created) {
+      const rollback = await supabase.from("menus").delete().eq("id", menuId).eq("partner_id", partnerId)
+      if (rollback.error) return { ...result, message: `${result.message} Das leere neue Menü konnte nicht entfernt werden; bitte vor einem erneuten Import prüfen.` }
+    }
+    return result
+  }
+  revalidatePath("/")
+  revalidatePath("/partner")
+  return {
+    ...result,
+    menuId,
+    created,
+    message: `${result.importedCategories} Kategorien und ${result.importedItems} Einträge wurden ${created ? "als Menü veröffentlicht" : "zum veröffentlichten Menü hinzugefügt"}.`,
   }
 }
 

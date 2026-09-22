@@ -112,6 +112,7 @@ import { MicrositePanel } from "./microsite-panel"
 import { MicrositeReadOnlyNotice } from "@/components/microsite-read-only-notice"
 import { useAdminLanguage } from "./admin-language"
 import { LoadingSpinner } from "@/components/loading-ui"
+import { MenuAiImportDialog } from "@/components/menu-ai-import-dialog"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
 
 const initialState: PartnerActionState = {
@@ -8122,6 +8123,9 @@ function MenuPanel({
       ) : null}
       {!menu && partnerId ? (
         <DealFormShell title="Add menu">
+          <div className="mb-4">
+            <MenuAiImportDialog partnerId={partnerId} />
+          </div>
           <MenuForm partnerId={partnerId} />
         </DealFormShell>
       ) : null}
@@ -8457,6 +8461,15 @@ function MenuCard({
         </span>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
+        {menu.id ? (
+          <MenuAiImportDialog
+            partnerId={partnerId}
+            menuId={menu.id}
+            menuName={menu.name ?? undefined}
+            currency={localItems.find((item) => item.currency)?.currency ?? undefined}
+            hasExistingContent={localCategories.length > 0 || localItems.length > 0}
+          />
+        ) : null}
         {menu.id ? (
           <MenuImportDialog
             categoryCount={localCategories.length}
