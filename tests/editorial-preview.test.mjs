@@ -56,6 +56,27 @@ test("reading view renders the draft as an article with photo, paragraphs, credi
   assert.equal(document.body.textContent.includes('"paragraphs"'), false)
 })
 
+test("all preview scopes keep sources and image credits together after the reading links", () => {
+  for (const scope of ["city", "partner", "global"]) {
+    const document = preview({ ...post, scope, content: [
+      { heading: " Bildnachweis: ", paragraphs: ["Foto: Erika · [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)"] },
+      { heading: "Quellen des Queichtals", paragraphs: ["Dieser Abschnitt gehört zum Beitrag."] },
+    ] })
+    const footer = document.querySelector('article footer[aria-label="Quellen und Bildnachweise"]')
+    assert.ok(footer, `${scope}: attribution belongs in the article footer`)
+    assert.equal(footer.querySelector('a[href="https://example.org/visit"]').textContent, "Offizielle Quelle")
+    assert.equal(footer.querySelector('a[href="https://creativecommons.org/licenses/by-sa/4.0/"]').textContent, "CC BY-SA 4.0")
+    assert.match(footer.textContent, /Foto: Erika/)
+    assert.equal(footer.textContent.includes("Quellen des Queichtals"), false)
+    assert.match(document.querySelector("article").textContent, /Dieser Abschnitt gehört zum Beitrag/)
+    assert.ok(document.querySelector('nav[aria-label="Weiterlesen"]').compareDocumentPosition(footer) & 4)
+    assert.equal(document.querySelector("article aside"), null)
+  }
+  const creditOnly = preview({ ...post, sources: [], content: [{ heading: "Bildnachweis", paragraphs: ["Foto: Erika"] }] })
+  assert.match(creditOnly.querySelector("article footer").textContent, /Foto: Erika/)
+  assert.equal(preview({ ...post, sources: [] }).querySelector("article footer"), null)
+})
+
 test("preview rejects executable URLs and token images while escaping markup", () => {
   const document = preview({ ...post, title: "<script>alert(1)</script>", image_url: "https://example.org/photo?token=private",
     sources: [{ label: "Bad", url: "javascript:alert(1)" }, { label: "Bad2", url: "//evil.test" }],
