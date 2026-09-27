@@ -329,6 +329,7 @@ function MicrositeThemeCss() {
 
       .premium-hero-stage {
         isolation: isolate;
+        overflow-x: clip;
       }
 
       .premium-hero-media-inner {
@@ -1488,7 +1489,7 @@ function HeroSection({
 
   return (
     <section className="relative bg-[var(--site-bg)]">
-      <div className="premium-hero-stage relative mx-auto w-full min-w-0 max-w-7xl overflow-visible bg-[var(--site-bg)] @min-[640px]:min-h-[600px] @min-[1024px]:min-h-[600px]">
+      <div className="premium-hero-stage relative mx-auto w-full min-w-0 max-w-7xl bg-[var(--site-bg)] @min-[640px]:min-h-[600px] @min-[1024px]:min-h-[600px]">
         <div className="premium-hero-media-inner absolute inset-0 overflow-hidden bg-[var(--site-secondary)]">
             <BrandedImage
               src={config.hero.backgroundImageUrl}
