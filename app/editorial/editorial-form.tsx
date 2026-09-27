@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState, type FormEvent } from "react"
+import { flushSync } from "react-dom"
 import Link from "next/link"
 import { EditorialContentFields } from "@/app/editorial/editorial-content-fields"
 import { EditorialPreview, type EditorialPreviewPost } from "@/app/editorial/editorial-preview"
@@ -73,16 +74,19 @@ export function EditorialForm({ action, initial, cities, partners }: EditorialFo
 
   function validateBeforeSave(event: FormEvent<HTMLFormElement>) {
     const data = new FormData(event.currentTarget)
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
+    const intent = submitter?.name === "intent" ? submitter.value : ""
     const sources: EditorialSource[] = JSON.parse(String(data.get("sourcesJson") ?? "[]"))
-    if (status === "active" && scope !== "global" && !sources.some(isPublishableEditorialSource)) {
+    if ((intent === "publish_now" || (intent !== "save_draft" && status === "active")) && scope !== "global" && !sources.some(isPublishableEditorialSource)) {
       event.preventDefault()
-      setSaveError("Zum Veröffentlichen fehlt eine Quelle mit gültiger Webadresse. Ergänze sie oder wähle den Status Entwurf. Deine Eingaben bleiben erhalten.")
+      setPreview(null)
+      setSaveError("Zum Veröffentlichen fehlt eine Quelle mit gültiger Webadresse. Ergänze sie oder speichere den Beitrag als Entwurf. Deine Eingaben bleiben erhalten.")
       formRef.current?.scrollIntoView?.({ block: "start" })
     } else setSaveError("")
   }
 
   return (
-    <form ref={formRef} action={action} onSubmit={validateBeforeSave} className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white shadow-[0_18px_50px_rgba(6,24,41,.05)]">
+    <form ref={formRef} action={action} onSubmit={validateBeforeSave} onInvalidCapture={() => { if (preview) flushSync(() => setPreview(null)) }} className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white shadow-[0_18px_50px_rgba(6,24,41,.05)]">
       {initial ? <input type="hidden" name="postId" value={initial.id} /> : null}
 
       <div className="border-b border-[#061829]/10 p-5 sm:p-6">
@@ -164,7 +168,9 @@ export function EditorialForm({ action, initial, cities, partners }: EditorialFo
 
         <EditorialContentFields initial={initial} />
 
-        <div className="grid gap-4 md:grid-cols-[220px_220px_1fr] md:items-end">
+        <details className="rounded-xl border border-[#061829]/10 p-4">
+          <summary className="cursor-pointer text-sm font-bold text-[#526170]">Status und Termin (optional)</summary>
+        <div className="mt-4 grid gap-4 md:grid-cols-[220px_220px_1fr] md:items-end">
           <Field label="Status">
             <select name="status" value={status} onChange={(event) => setStatus(event.target.value as EditorialStatus)} className={inputClass}>
               <option value="draft">Entwurf</option>
@@ -180,12 +186,17 @@ export function EditorialForm({ action, initial, cities, partners }: EditorialFo
             Aktiv bedeutet: Der Beitrag darf auf der öffentlichen Website erscheinen. Entwürfe bleiben ausschließlich im Admin Panel.
           </p>
         </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#061829]/10 pt-5">
+        <div className="mt-4"><PendingSubmitButton pendingLabel="Wird gespeichert…" className={secondaryButton}>Status und Termin speichern</PendingSubmitButton></div>
+        </details>
+      </div>
+      <div className="border-t border-[#061829]/10 bg-[#f7f9fc] p-5 sm:p-6">
+        <p className="mb-4 text-sm leading-6 text-[#526170]">Mit „Jetzt veröffentlichen“ wird dieser Stand gespeichert und sofort auf der Website sichtbar.</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Link href="/editorial" className={secondaryButton}>Abbrechen</Link>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={showPreview} className={secondaryButton}>Vorschau</button>
-            <PendingSubmitButton pendingLabel="Wird gespeichert…" className="min-h-11 rounded-xl bg-[#118cff] px-5 text-sm font-black text-white transition hover:bg-[#0878df]">Beitrag speichern</PendingSubmitButton>
+            <button type="button" onClick={preview ? () => setPreview(null) : showPreview} className={secondaryButton}>{preview ? "Weiter bearbeiten" : "Vorschau"}</button>
+            <PendingSubmitButton name={status === "active" || status === "archived" ? undefined : "intent"} value={status === "active" || status === "archived" ? undefined : "save_draft"} pendingLabel="Wird gespeichert…" className={secondaryButton}>{status === "active" || status === "archived" ? "Änderungen speichern" : "Als Entwurf speichern"}</PendingSubmitButton>
+            <PendingSubmitButton name="intent" value="publish_now" pendingLabel="Wird veröffentlicht…" className="min-h-11 rounded-xl bg-[#118cff] px-5 text-sm font-black text-white transition hover:bg-[#0878df]">Jetzt veröffentlichen</PendingSubmitButton>
           </div>
         </div>
       </div>
