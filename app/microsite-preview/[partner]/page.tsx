@@ -8,7 +8,7 @@ import { MicrositePreviewShell } from "./preview-shell"
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Microsite Preview | Benefitsi Admin",
+  title: "Mikroseite · Builder-Referenz & Versionsvergleich | Benefitsi Admin",
   robots: {
     index: false,
     follow: false,
@@ -35,11 +35,10 @@ export default async function MicrositePreviewPage({
     notFound()
   }
 
-  const config = resolveMicrositeConfig(
-    partner.microsite?.draftVersion?.config ??
-      partner.microsite?.publishedVersion?.config,
-    partner,
-  )
+  const previewSource = query.source === "published" ? "published" : query.source === "builder" ? "builder" : "saved"
+  const version = previewSource === "published" ? partner.microsite?.publishedVersion : partner.microsite?.draftVersion ?? partner.microsite?.publishedVersion
+  if (previewSource === "published" && !version) notFound()
+  const config = resolveMicrositeConfig(version?.config, partner)
 
   return (
     <MicrositePreviewShell
@@ -47,6 +46,7 @@ export default async function MicrositePreviewPage({
       initialConfig={config}
       previewStorageKey={micrositePreviewStorageKey(partner)}
       useBuilderDraft={query.source === "builder"}
+      previewSource={previewSource}
       isMobile={query.viewport === "mobile"}
       previewMode={query.mode === "dark" ? "dark" : query.mode === "light" ? "light" : undefined}
     />
