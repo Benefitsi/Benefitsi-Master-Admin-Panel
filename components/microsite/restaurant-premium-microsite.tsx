@@ -2365,8 +2365,7 @@ function AppScreenShowcase({
         ...(partner.cover_urls || []),
         partner.discover_card_image_url,
         partner.feature_card_url,
-        screenshotUrl,
-        PARTNER_DETAIL_SCREEN_SRC,
+        ...(!published ? [screenshotUrl, PARTNER_DETAIL_SCREEN_SRC] : []),
       ].filter((value): value is string => Boolean(value)),
     ),
   ).slice(0, 5)
@@ -2436,7 +2435,7 @@ function AppScreenShowcase({
           <div ref={phoneScrollRef} className="premium-phone-scroll absolute inset-0 min-w-0 overflow-x-hidden overflow-y-auto bg-[#f6f7f9] pb-7">
             <div className="relative h-[176px] overflow-hidden bg-[#d8dee7]">
               <BrandedImage
-                src={heroImages[activeCover] || PARTNER_DETAIL_SCREEN_SRC}
+                src={heroImages[activeCover] || (published ? undefined : PARTNER_DETAIL_SCREEN_SRC)}
                 alt={siteCopy(config, "Titelbild von " + partnerName, "Cover image for " + partnerName)}
                 editableId="content.appPhoneScreenshotUrl"
                 editableLabel="Partner-Titelbild im Telefon"
