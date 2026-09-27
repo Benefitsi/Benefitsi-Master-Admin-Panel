@@ -14,6 +14,14 @@ test('palette mode survives publication while older v1 snapshots remain readable
   const legacy = createPublicMicrositeSnapshot(config())
   delete legacy.branding.paletteMode
   assert.equal(readPublicMicrositeSnapshot({ publicSnapshot: legacy }).branding.paletteMode, 'auto')
+  const envelope = { branding: { paletteMode: 'manual', privateNote: 'private-saved-note' }, publicSnapshot: legacy }
+  assert.equal(readPublicMicrositeSnapshot(envelope).branding.paletteMode, 'manual')
+  for (const paletteMode of ['auto', 'manual', null, 'invalid']) {
+    legacy.branding.paletteMode = paletteMode
+    const parsed = readPublicMicrositeSnapshot(envelope)
+    assert.equal(parsed.branding.paletteMode, paletteMode === 'manual' ? 'manual' : 'auto')
+    assert.ok(!JSON.stringify(parsed).includes('private-saved-note'))
+  }
 });
 
 test('real Admin publication stores a versioned projection while keeping editable config', async () => {

@@ -144,7 +144,11 @@ export function readPublicMicrositeSnapshot(value: unknown): PublicMicrositeConf
       if (!keys.every(key => typeof record(snapshot[group])[key] === "string")) return null
     }
     if (!Array.isArray(record(snapshot.navigation).links) || !Array.isArray(record(snapshot.hero).services) || !Array.isArray(record(snapshot.deals).topDealBullets)) return null
-    return createPublicMicrositeSnapshot(snapshot)
+    // Old v1 envelopes omitted this enum only from their public snapshot.
+    // Recover just that saved choice; explicit snapshot values always win.
+    const branding = record(snapshot.branding)
+    const paletteMode = Object.hasOwn(branding, "paletteMode") ? branding.paletteMode : record(source.branding).paletteMode
+    return createPublicMicrositeSnapshot({ ...snapshot, branding: { ...branding, paletteMode } })
   }
   // Pre-v1 nested publications retain their reviewed content without requiring
   // a migration or changing the currently selected published version.
