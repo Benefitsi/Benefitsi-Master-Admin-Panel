@@ -136,7 +136,7 @@ function StatusBadge({ status }: { status: EditorialPost["status"] }) {
 }
 
 function SuccessMessage({ code }: { code: string }) {
-  const message = code === "created" ? "Beitrag angelegt." : code === "archived" ? "Beitrag archiviert." : "Beitrag gespeichert."
+  const message = code === "published" ? "Beitrag veröffentlicht. Über „Auf der Website“ kannst du ihn öffnen." : code === "created" ? "Beitrag angelegt." : code === "archived" ? "Beitrag archiviert." : "Beitrag gespeichert."
   return <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">{message}</div>
 }
 
