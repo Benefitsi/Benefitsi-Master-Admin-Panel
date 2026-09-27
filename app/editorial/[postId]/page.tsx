@@ -27,7 +27,10 @@ export default async function EditorialDetailPage({ params, searchParams }: { pa
 
   return (
     <AdminShell adminName={adminName} title="Magazinbeitrag bearbeiten" subtitle={`${post.title} · ${post.status === "active" ? "öffentlich aktiv" : "noch nicht öffentlich"}`}>
-      <Link href="/editorial" className="inline-flex items-center text-sm font-black text-[#0b75d9] hover:text-[#075eae]">← Zur Editorial-Übersicht</Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href="/editorial" className="inline-flex min-h-11 items-center text-sm font-black text-[#0b75d9] hover:text-[#075eae]">← Alle Beiträge</Link>
+        <Link href={`/editorial/${post.id}/preview`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-[#118cff]/30 bg-white px-4 text-sm font-bold text-[#086fcc] hover:bg-[#f3f8ff]">Gespeicherten Beitrag ansehen ↗</Link>
+      </div>
       {query.error ? <ErrorMessage code={query.error} /> : null}
       {workspace.warnings.map((warning) => <Warning key={warning}>{warning}</Warning>)}
       <EditorialResearch result={intake} />
@@ -37,7 +40,7 @@ export default async function EditorialDetailPage({ params, searchParams }: { pa
 }
 
 function ErrorMessage({ code }: { code: string }) {
-  const message = code === "duplicate_slug" ? "Dieser Slug ist im gewählten Bereich bereits vergeben." : "Der Beitrag konnte nicht gespeichert werden. Bitte Pflichtfelder und JSON-Strukturen prüfen."
+  const message = code === "duplicate_slug" ? "Dieser Slug ist im gewählten Bereich bereits vergeben." : code === "sources_required" ? "Zum Veröffentlichen benötigt dieser Beitrag mindestens eine Quelle mit gültiger Webadresse. Als Entwurf kannst du ihn auch ohne Quelle speichern." : "Der Beitrag konnte nicht gespeichert werden. Bitte Pflichtfelder, Abschnitte und Webadressen prüfen."
   return <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900">{message}</div>
 }
 

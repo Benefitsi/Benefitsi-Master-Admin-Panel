@@ -158,6 +158,8 @@ test("overview renders the exact partner link only for a published active articl
     const element=await runtime("app/editorial/page.tsx",deps).default({searchParams:Promise.resolve({})})
     const document=documentOf(element)
     assert.ok(document.querySelector('a[href="/editorial/post-1"]'))
+    assert.equal(document.querySelector("article h3 a")?.getAttribute("href"), "/editorial/post-1/preview", "a draft title opens its protected reading view")
+    assert.ok([...document.querySelectorAll('a[href="/editorial/post-1/preview"]')].some(link => link.textContent === "Vorschau"))
     const links=[...document.querySelectorAll('a[target="_blank"]')]
     assert.equal(links.length,published?1:0)
     if(published) assert.equal(new URL(links[0].href).pathname,"/partner/exact-partner/blog/city-visit")
