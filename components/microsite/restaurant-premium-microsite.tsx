@@ -1,6 +1,8 @@
 /* eslint-disable @next/next/no-img-element -- Microsite assets are admin-selected storage URLs and may use partner-specific hosts. */
 "use client"
 
+import { MicrositeLink, useMicrositeIntegration } from "./microsite-integration"
+
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { CSSProperties } from "react"
 import {
@@ -235,6 +237,7 @@ export function RestaurantPremiumMicrosite({
   config: MicrositeConfig
   showAppDownloadPopup?: boolean
 }) {
+  const integration = useMicrositeIntegration()
   const theme = restaurantTheme()
   const palette = useResolvedPalette(
     config,
@@ -251,6 +254,7 @@ export function RestaurantPremiumMicrosite({
   return (
     <article
       lang={config.language}
+      data-template={config.template}
       style={style}
       className={`premium-microsite @container relative isolate w-full min-w-0 max-w-full overflow-visible rounded-none [overflow-wrap:anywhere] @min-[480px]:rounded-[1.6rem] ${
         isDark
@@ -266,12 +270,14 @@ export function RestaurantPremiumMicrosite({
         theme={theme}
       />
       <HeroSection partner={partner} config={config} template={config.template} />
-      <DealsSection partner={partner} config={config} template={config.template} />
-      <PartnerSocialFeed partner={partner} config={config} />
-      <MenuSection partner={partner} config={config} template={config.template} />
-      <QuoteSection config={config} />
+      {integration.benefits !== undefined ? integration.benefits : <DealsSection partner={partner} config={config} template={config.template} />}
+      {integration.app}
+      {integration.socialFeed !== undefined ? integration.socialFeed : <PartnerSocialFeed partner={partner} config={config} />}
+      {!integration.hideEmptySections || menuItemsForPartner(partner).length > 0 ? <MenuSection partner={partner} config={config} template={config.template} /> : null}
+      {!integration.hideEmptySections || config.content.quoteText ? <QuoteSection config={config} /> : null}
       <AboutContactSection partner={partner} config={config} template={config.template} />
-      <FaqSection config={config} />
+      {integration.faq !== undefined ? integration.faq : <FaqSection config={config} />}
+      {integration.beforeFooter}
       <FooterSection partner={partner} config={config} />
       {showAppDownloadPopup ? (
         <AppDownloadQrPopup partner={partner} config={config} />
@@ -1392,13 +1398,13 @@ function SiteHeader({
           ))}
         </nav>
         <div className="hidden items-center gap-3 @min-[1180px]:flex">
-          <a
+          <MicrositeLink
             href={hasBenefits ? "#deals" : "#speisekarte"}
             className="premium-button group inline-flex min-h-11 items-center justify-center gap-3 rounded-xl bg-[var(--site-accent)] px-5 py-3 text-sm font-black text-white shadow-[0_16px_30px_-18px_var(--site-accent)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105"
           >
             {hasBenefits ? config.hero.primaryButtonLabel : config.hero.secondaryButtonLabel}
             <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
-          </a>
+          </MicrositeLink>
         </div>
         <div className="relative z-10 flex shrink-0 items-center justify-end gap-1.5 @min-[1180px]:hidden">
           <button
@@ -1445,7 +1451,7 @@ function NavigationLink({
   onNavigate?: () => void
 }) {
   return (
-    <a
+    <MicrositeLink
       {...editable(`navigation.${link.anchor}`, "text", `Navigation ${link.label}`)}
       href={`#${link.anchor}`}
       onClick={onNavigate}
@@ -1457,7 +1463,7 @@ function NavigationLink({
       style={textStyleFor(config, `navigation.${link.anchor}`)}
     >
       {textValue(config, `navigation.${link.anchor}`, link.label)}
-    </a>
+    </MicrositeLink>
   )
 }
 
@@ -1470,6 +1476,7 @@ function HeroSection({
   config: MicrositeConfig
   template: MicrositeConfig["template"]
 }) {
+  const integration = useMicrositeIntegration()
   void template
   const hasBenefits = hasMicrositeBenefitContent(partner, config)
   const featureDescriptions = [
@@ -1498,7 +1505,7 @@ function HeroSection({
         <span aria-hidden="true" className="premium-hero-ambient" />
 
         <div className="premium-hero-badge absolute z-10">
-          <Badge config={config} />
+          {integration.heroBadge !== undefined ? integration.heroBadge : <Badge config={config} />}
         </div>
 
         <div className="premium-hero-flow z-10">
@@ -1995,16 +2002,18 @@ function DealsSection({
   )
 }
 
-function MicrositeDealBanner({
+export function MicrositeDealBanner({
   deal,
   config,
   active,
   primary = false,
+  action,
 }: {
   deal: Deal
   config: MicrositeConfig
   active: boolean
   primary?: boolean
+  action?: import("react").ReactNode
 }) {
   const isFeaturedDeal = primary
   const title = micrositeDealTitle(deal, config.language)
@@ -2104,7 +2113,7 @@ function MicrositeDealBanner({
             ))}
           </ul>
         ) : null}
-        <button
+        {action !== undefined ? <div className="mt-6">{action}</div> : <button
           {...(primary ? editable("deals.topDealButtonLabel", "text", "Vorteil Button") : {})}
           className={
             isFeaturedDeal
@@ -2118,7 +2127,7 @@ function MicrositeDealBanner({
             className={`${isFeaturedDeal ? "size-4" : "size-3.5"} transition-transform duration-300 group-hover:translate-x-1`}
             aria-hidden="true"
           />
-        </button>
+        </button>}
       </div>
     </article>
   )
@@ -2673,7 +2682,7 @@ function AppScreenShowcase({
 }
 function AppExploreButton({ href, config }: { href: string; config: MicrositeConfig }) {
   return (
-    <a
+    <MicrositeLink
       href={href}
       className="premium-app-cta premium-button group inline-flex min-h-11 items-center justify-self-center gap-2 rounded-xl px-4 py-2.5 text-white transition duration-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-[.985] @min-[760px]:justify-self-end"
     >
@@ -2683,7 +2692,7 @@ function AppExploreButton({ href, config }: { href: string; config: MicrositeCon
       <span className="grid size-7 place-items-center rounded-full bg-white/15 transition duration-300 group-hover:translate-x-1 group-hover:bg-white/24">
         <ArrowRight className="size-4" aria-hidden="true" />
       </span>
-    </a>
+    </MicrositeLink>
   )
 }
 
@@ -2702,7 +2711,7 @@ function StoreBadge({
   const english = language === "en"
 
   return (
-    <a
+    <MicrositeLink
       href={href}
       className={`inline-flex min-w-0 max-w-full items-center justify-center rounded-[0.8rem] bg-black text-white shadow-[0_12px_26px_rgba(15,23,42,.16)] ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-zinc-900 ${compact ? "w-full gap-1 px-1.5 py-1" : "w-full gap-3 px-4 py-3 @min-[420px]:w-auto @min-[420px]:min-w-[190px]"}`}
       aria-label={isAppStore ? (english ? "Download on the App Store" : "Laden im App Store") : (english ? "Get it on Google Play" : "Jetzt bei Google Play")}
@@ -2722,7 +2731,7 @@ function StoreBadge({
           {isAppStore ? "App Store" : "Google Play"}
         </span>
       </span>
-    </a>
+    </MicrositeLink>
   )
 }
 
@@ -3168,6 +3177,7 @@ function CompactContactSection({
   partner: PartnerWithDeals
   config: MicrositeConfig
 }) {
+  const integration = useMicrositeIntegration()
   const address = contactAddressFor(partner, config)
   const phone = partner.phone || siteCopy(config, "Telefon im Admin ergänzen", "Add phone number in admin")
   const opening = textValue(
@@ -3227,28 +3237,28 @@ function CompactContactSection({
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2 @min-[760px]:hidden">
-            <a
+            <MicrositeLink
               href={routeUrl}
               target="_blank"
               rel="noreferrer"
               className="col-span-2 rounded-xl bg-[var(--site-accent)] px-4 py-3 text-center text-sm font-black text-white shadow-[0_12px_28px_rgba(245,158,11,.28)]"
             >
               {siteCopy(config, "Route", "Directions")}
-            </a>
-            <a
+            </MicrositeLink>
+            <MicrositeLink
               href={phoneHref || "#kontakt"}
               className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-center text-sm font-bold text-white"
             >
               {siteCopy(config, "Anrufen", "Call")}
-            </a>
-            <a
+            </MicrositeLink>
+            <MicrositeLink
               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
               target="_blank"
               rel="noreferrer"
               className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-center text-sm font-bold text-white"
             >
               {siteCopy(config, "Karte", "Map")}
-            </a>
+            </MicrositeLink>
           </div>
         </div>
 
@@ -3282,14 +3292,14 @@ function CompactContactSection({
         {...editable("content.contactMap", "image", "Google Maps Karte")}
         className="relative min-h-[330px] overflow-hidden rounded-[1.15rem] border border-white/15 bg-zinc-900 shadow-[0_18px_42px_rgba(0,0,0,.24)] @min-[900px]:min-h-[380px]"
       >
-        <iframe
+        {integration.contactMap !== undefined ? integration.contactMap : <iframe
           title={`Google Maps Standort ${partner.name || config.hero.headline}`}
           src={mapsEmbedUrl}
           className="absolute inset-0 h-full w-full border-0"
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
           allowFullScreen
-        />
+        />}
       </div>
     </div>
   )
@@ -3420,6 +3430,8 @@ function AboutValueCard({
   fallback: string
   config: MicrositeConfig
 }) {
+  if (!textValue(config, id, fallback)) return null
+
   return (
     <div className="premium-liquid-panel premium-ecosystem-card rounded-[1.05rem] px-3 py-2.5 text-center">
       <ThemeIcon
@@ -3448,6 +3460,7 @@ function FooterSection({
   partner: PartnerWithDeals
   config: MicrositeConfig
 }) {
+  const integration = useMicrositeIntegration()
   const footerLogoUrl = textValue(config, "footer.benefitsiLogo", "")
   const hasBenefits = hasMicrositeBenefitContent(partner, config)
   const exploreLinks = [
@@ -3457,7 +3470,7 @@ function FooterSection({
           { label: siteCopy(config, "Stempelkarte", "Stamp card"), href: "#stempelkarte" },
         ]
       : []),
-    { label: siteCopy(config, "Speisekarte", "Menu"), href: "#speisekarte" },
+    ...(!integration.hideEmptySections || menuItemsForPartner(partner).length ? [{ label: siteCopy(config, "Speisekarte", "Menu"), href: "#speisekarte" }] : []),
   ]
 
   return (
@@ -3516,13 +3529,13 @@ function FooterSection({
           title="Benefitsi"
           links={[
             { label: "Benefitsi-App", href: "#app" },
-            { label: siteCopy(config, "Hilfe & FAQ", "Help & FAQ"), href: "#faq" },
+            ...(integration.faq === null ? [] : [{ label: siteCopy(config, "Hilfe & FAQ", "Help & FAQ"), href: "#faq" }]),
           ]}
         />
       </div>
       <nav aria-label={siteCopy(config, "Rechtliche Hinweise", "Legal information")} className="mx-auto flex max-w-6xl flex-wrap gap-x-5 gap-y-2 border-t border-zinc-200 py-4 text-xs">
-        <a href="https://benefitsi.de/impressum" className="underline underline-offset-4">{siteCopy(config, "Impressum", "Legal notice")}</a>
-        <a href="https://benefitsi.de/datenschutz" className="underline underline-offset-4">{siteCopy(config, "Datenschutz", "Privacy policy")}</a>
+        <MicrositeLink href="https://benefitsi.de/impressum" className="underline underline-offset-4">{siteCopy(config, "Impressum", "Legal notice")}</MicrositeLink>
+        <MicrositeLink href="https://benefitsi.de/datenschutz" className="underline underline-offset-4">{siteCopy(config, "Datenschutz", "Privacy policy")}</MicrositeLink>
       </nav>
     </footer>
   )
@@ -3541,12 +3554,12 @@ function FooterLinkColumn({
       <ul className="mt-3 space-y-2.5">
         {links.map((link) => (
           <li key={link.href}>
-            <a
+            <MicrositeLink
               href={link.href}
               className="text-sm text-zinc-500 transition hover:text-[var(--site-accent)]"
             >
               {link.label}
-            </a>
+            </MicrositeLink>
           </li>
         ))}
       </ul>
@@ -3746,7 +3759,7 @@ function AppDownloadQrPopup({
         </button>
 
         <div className="relative grid grid-cols-[78px_minmax(0,1fr)] items-center gap-3 @min-[620px]:grid-cols-[92px_minmax(0,1fr)]">
-          <a
+          <MicrositeLink
             href={appUrl}
             className="premium-qr-surface group relative aspect-square rounded-2xl bg-white p-1.5 shadow-[0_12px_32px_rgba(15,23,42,.11)] ring-1 ring-zinc-200/80"
             aria-label={siteCopy(config, "QR-Code zur Benefitsi App öffnen", "Open the Benefitsi app QR code")}
@@ -3756,7 +3769,7 @@ function AppDownloadQrPopup({
               alt={siteCopy(config, "QR-Code für die Benefitsi App", "QR code for the Benefitsi app")}
               className="h-full w-full rounded-xl object-contain transition duration-500 group-hover:scale-[1.03]"
             />
-          </a>
+          </MicrositeLink>
 
           <div className="min-w-0">
             <p className="text-[11px] font-black uppercase tracking-[.14em] text-[var(--site-accent)] @min-[620px]:text-xs">
@@ -3780,13 +3793,13 @@ function AppDownloadQrPopup({
                 siteCopy(config, "QR-Code scannen. Vorteile sichern.", "Scan the QR code. Get your benefits."),
               )}
             </p>
-            <a
+            <MicrositeLink
               href={appUrl}
               className="mt-2 inline-flex items-center gap-2 text-xs font-black text-zinc-950 @min-[620px]:hidden"
             >
               {siteCopy(config, "App öffnen", "Open app")}
               <ArrowRight className="size-3.5" aria-hidden="true" />
-            </a>
+            </MicrositeLink>
             <div className="mt-2 hidden grid-cols-2 gap-1.5 @min-[620px]:grid">
               <StoreBadge store="app-store" href={appUrl} language={config.language} compact />
               <StoreBadge store="google-play" href={appUrl} language={config.language} compact />
@@ -3856,7 +3869,7 @@ function PartnerSocialFeed({
             </h2>
           </div>
 
-          <a
+          <MicrositeLink
             href={profileUrl || posts[0].url}
             target="_blank"
             rel="noreferrer"
@@ -3867,7 +3880,7 @@ function PartnerSocialFeed({
               ? siteCopy(config, "Auf TikTok folgen", "Follow on TikTok")
               : siteCopy(config, "Auf Instagram folgen", "Follow on Instagram")}
             <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-          </a>
+          </MicrositeLink>
         </div>
 
         {platform === "instagram" ? (
@@ -4008,7 +4021,7 @@ function HeroButton({
   const href = primary ? "#deals" : "#speisekarte"
 
   return (
-    <a
+    <MicrositeLink
       {...editable(id, "text", "Startbereich Button")}
       href={href}
       className={`premium-button group inline-flex min-h-11 items-center justify-center gap-3 rounded-xl px-6 py-3 text-center text-sm font-black transition duration-300 hover:-translate-y-1 ${
@@ -4022,7 +4035,7 @@ function HeroButton({
       {primary ? (
         <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
       ) : null}
-    </a>
+    </MicrositeLink>
   )
 }
 
@@ -4325,7 +4338,7 @@ function spacingStyleFor(config: MicrositeConfig, id: string): CSSProperties {
 }
 
 function textValue(config: MicrositeConfig, id: string, fallback: string) {
-  return config.elementText[id] || fallback
+  return config.elementText[id] ?? fallback
 }
 
 function iconStyleFor(config: MicrositeConfig, id: string): CSSProperties {
@@ -4522,7 +4535,7 @@ function SocialBadge({
   const color = socialBadgeBackground(platform)
 
   return (
-    <a
+    <MicrositeLink
       {...editable(id, "group", `${displayLabel} Social-Media-Schaltfläche`)}
       href={href}
       target={href.startsWith("http") ? "_blank" : undefined}
@@ -4551,7 +4564,7 @@ function SocialBadge({
       >
         {conciseLabel}
       </span>
-    </a>
+    </MicrositeLink>
   )
 }
 
