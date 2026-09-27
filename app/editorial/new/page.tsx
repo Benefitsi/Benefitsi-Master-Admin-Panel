@@ -32,7 +32,7 @@ export default async function NewEditorialPage({ searchParams }: { searchParams:
 }
 
 function ErrorMessage({ code }: { code: string }) {
-  const message = code === "duplicate_slug" ? "Dieser Slug ist im gewählten Bereich bereits vergeben." : "Der Beitrag konnte nicht gespeichert werden. Bitte Pflichtfelder und JSON-Strukturen prüfen."
+  const message = code === "duplicate_slug" ? "Dieser Slug ist im gewählten Bereich bereits vergeben." : code === "sources_required" ? "Zum Veröffentlichen benötigt dieser Beitrag mindestens eine Quelle mit gültiger Webadresse. Als Entwurf kannst du ihn auch ohne Quelle speichern." : "Der Beitrag konnte nicht gespeichert werden. Bitte Pflichtfelder, Abschnitte und Webadressen prüfen."
   return <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900">{message}</div>
 }
 

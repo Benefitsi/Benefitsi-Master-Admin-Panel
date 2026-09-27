@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { requireAdmin } from "@/lib/admin"
+import { isPublishableEditorialSource } from "@/lib/editorial-source"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 const UUID_PATTERN =
@@ -155,14 +156,22 @@ function buildPayload(formData: FormData) {
   }
 }
 
-function invalidRedirect(path: string): never {
-  redirect(`${path}?error=validation`)
+function invalidRedirect(path: string, code = "validation"): never {
+  redirect(`${path}?error=${code}`)
+}
+
+function validatePublicationSources(payload: NonNullable<ReturnType<typeof buildPayload>>, path: string) {
+  if (payload.status !== "active" || payload.scope === "global") return
+  // Match the website's eligibility check, so an active post cannot silently 404.
+  const hasSource = payload.sources.some(isPublishableEditorialSource)
+  if (!hasSource) invalidRedirect(path, "sources_required")
 }
 
 export async function createEditorialPost(formData: FormData) {
   await requireAdmin()
   const payload = buildPayload(formData)
   if (!payload) invalidRedirect("/editorial/new")
+  validatePublicationSources(payload, "/editorial/new")
 
   const result = await createAdminClient().from("editorial_posts").insert(payload)
   if (result.error) {
@@ -179,6 +188,7 @@ export async function updateEditorialPost(formData: FormData) {
   const postId = text(formData, "postId", 80)
   const payload = buildPayload(formData)
   if (!UUID_PATTERN.test(postId) || !payload) invalidRedirect(`/editorial/${encodeURIComponent(postId)}`)
+  validatePublicationSources(payload, `/editorial/${encodeURIComponent(postId)}`)
 
   const result = await createAdminClient()
     .from("editorial_posts")
