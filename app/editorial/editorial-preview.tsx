@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode } from "react"
 import { publicMicrositeUrl } from "@/lib/public-microsite-contract"
 import type { EditorialPost } from "@/lib/editorial-types"
+import { splitEditorialNotes } from "@/lib/editorial-notes"
 
 export type EditorialPreviewPost = Pick<EditorialPost, "scope" | "title" | "excerpt" | "eyebrow" | "content" | "sources" | "related_links" | "image_url" | "image_alt" | "updated_at">
 
@@ -43,6 +44,7 @@ export function EditorialPreview({ post, embedded = false }: { post: EditorialPr
   const minutes = Math.max(1, Math.ceil(post.content.flatMap(section => section.paragraphs).join(" ").trim().split(/\s+/).length / 190))
   const sources = post.sources.flatMap(source => { const href = websiteUrl(source.url); return href ? [{ ...source, href }] : [] })
   const links = post.related_links.flatMap(link => { const href = websiteUrl(link.href); return href ? [{ ...link, href }] : [] })
+  const { sections, notes } = splitEditorialNotes(post.content)
 
   return (
     <article className="@container/editorial min-w-0 bg-white text-[#061829] [overflow-wrap:anywhere]">
@@ -55,14 +57,14 @@ export function EditorialPreview({ post, embedded = false }: { post: EditorialPr
           {partner && dateLabel ? <p className="mt-4 text-xs text-[#516477]">Stand: <time dateTime={date.toISOString()}>{dateLabel}</time></p> : null}
         </div>
       </header>
-      <div className={partner ? "mx-auto max-w-3xl px-5 pb-12 @3xl/editorial:px-8" : "mx-auto grid max-w-[1180px] grid-cols-1 gap-12 px-5 py-12 @3xl/editorial:px-8 @3xl/editorial:py-16 @5xl/editorial:grid-cols-[minmax(0,1fr)_280px]"}>
+      <div className={partner ? "mx-auto max-w-3xl px-5 pb-12 @3xl/editorial:px-8" : "mx-auto max-w-[860px] px-5 py-12 @3xl/editorial:px-8 @3xl/editorial:py-16"}>
         <div className={partner ? "space-y-8" : "min-w-0 space-y-12"}>
           {(city || partner) && image ? (
             // Use the same public URL policy and 3:2 treatment as the website.
             // eslint-disable-next-line @next/next/no-img-element
             <img src={image} alt={post.image_alt ?? ""} width={1200} height={800} className="aspect-[3/2] h-auto w-full rounded-2xl object-cover" referrerPolicy="no-referrer" decoding="async" />
           ) : null}
-          {post.content.map((section, index) => (
+          {sections.map((section, index) => (
             <section key={index}>
               <Heading className={partner ? "text-xl leading-tight font-bold tracking-tight @3xl/editorial:text-2xl" : "text-[clamp(1.375rem,3cqw,1.75rem)] leading-[1.15] font-black tracking-[-.035em]"}>{section.heading}</Heading>
               <div className={partner ? "mt-3 space-y-4 leading-7 text-[#405467]" : "mt-5 space-y-5 text-base leading-8 text-[#586778]"}>
@@ -75,12 +77,18 @@ export function EditorialPreview({ post, embedded = false }: { post: EditorialPr
             <div className="mt-5 grid gap-3 @xl/editorial:grid-cols-2">{links.map((link, index) => <a key={index} href={link.href} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-between gap-3 border border-[#dbe4ee] px-4 py-3 text-sm font-black hover:border-[#118cff]"><span>{link.label}</span><span aria-hidden="true" className="text-[#118cff]">→</span></a>)}</div>
           </nav> : null}
         </div>
-        {sources.length ? <aside aria-label="Quellen und weitere Informationen" className={`h-fit border-t-2 border-[#118cff] bg-[#f3f5f7] p-5 ${partner ? "mt-10 rounded-2xl" : ""}`}>
-          <Heading className="text-xs font-black uppercase tracking-[.16em] text-[#086fcc]">{city ? "Quellen" : "Weiterführend"}</Heading>
-          {city ? <p className="mt-3 text-sm leading-6 text-[#586778]">Benefitsi fasst die verlinkten Quellen zur Orientierung zusammen. Prüfe veränderliche Angaben wie Termine, Fahrpläne und Öffnungszeiten vor deinem Besuch bei der zuständigen Stelle.</p> : null}
-          <ul className="mt-5 space-y-3">{sources.map((source, index) => <li key={index}><a href={source.href} target="_blank" rel="noreferrer" className="text-sm font-bold leading-5 underline decoration-[#118cff] underline-offset-4">{source.label}</a></li>)}</ul>
-          {dateLabel ? <p className="mt-6 text-[11px] leading-5 text-[#586778]">Stand: {dateLabel}</p> : null}
-        </aside> : null}
+        {sources.length || notes.length ? <footer aria-label="Quellen und Bildnachweise" className="mt-10 space-y-3 border-t border-[#e3e8ee] pt-5 text-[11px] leading-5 text-[#617080] [overflow-wrap:anywhere] [&_a]:font-normal [&_a]:text-inherit [&_strong]:text-inherit">
+          {sources.length ? <section>
+            <Heading className="font-semibold">Quellen</Heading>
+            <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">{sources.map((source, index) => <li key={index}><a href={source.href} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:decoration-transparent focus-visible:outline-2 focus-visible:outline-offset-4">{source.label}</a></li>)}</ul>
+          </section> : null}
+          {notes.map((note, index) => <section key={index}>
+            <Heading className="font-semibold">{note.heading}</Heading>
+            <div className="mt-1 space-y-1">{note.paragraphs.map((paragraph, i) => <p key={i}><InlineText text={paragraph} /></p>)}</div>
+          </section>)}
+          {city && sources.length ? <p>Benefitsi fasst die verlinkten Quellen zur Orientierung zusammen. Prüfe veränderliche Angaben wie Termine, Fahrpläne und Öffnungszeiten vor deinem Besuch bei der zuständigen Stelle.</p> : null}
+          {dateLabel ? <p>Stand: {dateLabel}</p> : null}
+        </footer> : null}
       </div>
     </article>
   )
