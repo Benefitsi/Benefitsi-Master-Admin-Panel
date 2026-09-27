@@ -92,7 +92,7 @@ test("proposal changes are expandable and read-only; reordered JSON is unchanged
   input.latest_proposal = { title: "Suggested title", excerpt: "Suggested excerpt", content: [{ heading: "Suggestion", paragraphs: ["New evidence-based copy"] }], sources: [{ label: "Official", url: "https://example.org/source" }] }
   const document = documentOf(createElement(evidenceComponent(), { result: { state: "ready", data: review.normalizeEditorialIntake(input) } }))
   assert.match(document.querySelector("details").textContent, /Suggested title.*Suggested excerpt.*New evidence-based copy.*Official/)
-  assert.match(document.body.textContent, /gespeicherte Artikel bleibt unverändert/)
+  assert.match(document.body.textContent, /Automatik übernimmt Überarbeitungsvorschläge nicht selbst.*Vergleiche den Vorschlag mit dem aktuellen Artikel/)
   assert.equal(document.querySelectorAll("button,input,form").length, 0)
 })
 test("malformed research remains defensive and invalid dates are never claimed as checked", () => {
