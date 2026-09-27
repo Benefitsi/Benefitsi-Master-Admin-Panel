@@ -5,6 +5,7 @@ import { archiveEditorialPost } from "@/app/editorial/actions"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { requireAdmin } from "@/lib/admin"
 import { loadEditorialWorkspace } from "@/lib/editorial"
+import { editorialPublicPath } from "@/lib/editorial-review"
 import type { EditorialPost } from "@/lib/editorial-types"
 
 export const dynamic = "force-dynamic"
@@ -82,7 +83,7 @@ export default async function EditorialPage({ searchParams }: { searchParams: Pr
 
 function EditorialCard({ post, city, partner }: { post: EditorialPost; city?: { name: string; slug: string }; partner?: { name: string; slug: string } }) {
   const target = post.scope === "global" ? "Benefitsi Magazin" : post.scope === "city" ? `Stadt · ${city?.name ?? "nicht zugeordnet"}` : `Partner · ${partner?.name ?? "nicht zugeordnet"}`
-  const previewPath = post.scope === "global" ? `/blog/${post.slug}` : post.scope === "city" && city ? `/stadt/${city.slug}/blog/${post.slug}` : null
+  const previewPath = editorialPublicPath(post, city, partner)
 
   return (
     <article className="rounded-3xl border border-[#061829]/10 bg-white p-4 shadow-[0_12px_35px_rgba(6,24,41,.04)] sm:p-5">
