@@ -2,8 +2,19 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { publicationFixture } from './microsite-publication-cache.test.mjs'
 import { createDefaultMicrositeConfig } from '../lib/microsites.ts'
-import { createPublicMicrositeSnapshot, publicMicrositePublishBlockers, publicMicrositeUrl } from '../lib/public-microsite-contract.ts'
+import { createPublicMicrositeSnapshot, readPublicMicrositeSnapshot, publicMicrositePublishBlockers, publicMicrositeUrl } from '../lib/public-microsite-contract.ts'
 const config = () => createDefaultMicrositeConfig({ name: 'Synthetic BEN61', slug: 'ben61' }, 'restaurant-premium')
+
+test('palette mode survives publication while older v1 snapshots remain readable', () => {
+  for (const paletteMode of ['auto', 'manual']) {
+    const c = config(); c.branding.paletteMode = paletteMode
+    const snapshot = createPublicMicrositeSnapshot(c)
+    assert.equal(readPublicMicrositeSnapshot({ publicSnapshot: snapshot }).branding.paletteMode, paletteMode)
+  }
+  const legacy = createPublicMicrositeSnapshot(config())
+  delete legacy.branding.paletteMode
+  assert.equal(readPublicMicrositeSnapshot({ publicSnapshot: legacy }).branding.paletteMode, 'auto')
+});
 
 test('real Admin publication stores a versioned projection while keeping editable config', async () => {
   const c = config(); c.hero.headline = 'Actual producer BEN61'; c.builder.versionNote = 'private note'
