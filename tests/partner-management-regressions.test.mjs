@@ -81,6 +81,15 @@ test("partner editor keeps localized labels inside responsive controls and expos
   assert.match(code, /\[&>\*\]:min-w-0/)
 })
 
+test("category selector does not nest a disclosure inside a collapsible section", async () => {
+  const code = await readFile(adminUrl, "utf8")
+  const selector = code.slice(code.indexOf("function MultiSelectField"))
+
+  assert.match(selector, /<button[\s\S]*?aria-haspopup="listbox"/)
+  assert.match(selector, /onPointerDown=\{\(event\) => event\.stopPropagation\(\)\}/)
+  assert.doesNotMatch(selector, /<details[\s\S]*?<summary/)
+})
+
 test("active and featured partner metrics filter the list, with featured limited to active partners", async () => {
   const code = await readFile(adminUrl, "utf8")
 
