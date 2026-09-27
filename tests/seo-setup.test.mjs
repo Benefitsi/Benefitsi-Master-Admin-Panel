@@ -9,7 +9,7 @@ const target = {
   id: 't',
   updated_at: '2026-09-27T00:00:00Z',
   status: 'active',
-  canonical_url: 'https://benefitsi.de/p/test',
+  canonical_url: 'https://benefitsi.de/partner/test',
   target_type: 'partner_microsite',
   partner_id: 'p',
   city_id: null,
@@ -245,9 +245,22 @@ test('client projection excludes all private and unknown provider configuration'
   assert.doesNotMatch(JSON.stringify(projected), /hidden/)
 })
 test('city and editorial pages cannot store business profiles but can run measurements', async () => {
-  for (const target_type of ['city_portal', 'editorial_site']) {
+  for (const page of [
+    {
+      target_type: 'city_portal',
+      canonical_url: 'https://benefitsi.de/stadt/test',
+      partner_id: null,
+      city_id: 'c',
+    },
+    {
+      target_type: 'editorial_site',
+      canonical_url: 'https://benefitsi.de/impressum',
+      partner_id: null,
+      city_id: null,
+    },
+  ]) {
     const db = store()
-    db.getTarget = async () => ({ ...target, target_type, partner_id: null })
+    db.getTarget = async () => ({ ...target, ...page })
     await assert.rejects(
       saveSeoSetup(async () => db, 't', target.updated_at, input),
       /profile_setup_unavailable/,

@@ -6,7 +6,7 @@ import {
 } from '../lib/seo/seo-google-measurements.ts'
 const target = {
   id: 't',
-  canonical_url: 'https://benefitsi.de/p/test',
+  canonical_url: 'https://benefitsi.de/partner/test',
   target_type: 'partner_microsite',
   partner_id: 'p',
   city_id: null,
@@ -63,7 +63,7 @@ test('GSC uses readonly token, final 28 day period and exact page filter on both
           {
             dimension: 'page',
             operator: 'equals',
-            expression: 'https://benefitsi.de/p/test',
+            expression: 'https://benefitsi.de/partner/test',
           },
         ],
       },
@@ -79,8 +79,20 @@ test('GSC uses readonly token, final 28 day period and exact page filter on both
 test('only unowned root domain can query property-wide; city/editorial stay filtered; invalid hosts rejected', async () => {
   configured()
   for (const t of [
-    { ...target, target_type: 'city_portal', partner_id: null, city_id: 'c' },
-    { ...target, target_type: 'editorial_site', partner_id: null },
+    {
+      ...target,
+      target_type: 'city_portal',
+      canonical_url: 'https://benefitsi.de/stadt/test',
+      partner_id: null,
+      city_id: 'c',
+    },
+    {
+      ...target,
+      target_type: 'editorial_site',
+      canonical_url: 'https://benefitsi.de/impressum',
+      partner_id: null,
+      city_id: null,
+    },
     {
       ...target,
       target_type: 'domain',
@@ -95,10 +107,25 @@ test('only unowned root domain can query property-wide; city/editorial stay filt
       bodies.push(JSON.parse(init.body))
       return reply({ rows: [] })
     })
-    assert.equal(
-      Boolean(bodies[0].dimensionFilterGroups),
-      t.target_type !== 'domain',
-    )
+    assert.equal(bodies.length, 2)
+    for (const body of bodies) {
+      if (t.target_type === 'domain') {
+        assert.equal(body.dimensionFilterGroups, undefined)
+      } else {
+        assert.deepEqual(body.dimensionFilterGroups, [
+          {
+            groupType: 'and',
+            filters: [
+              {
+                dimension: 'page',
+                operator: 'equals',
+                expression: t.canonical_url,
+              },
+            ],
+          },
+        ])
+      }
+    }
   }
   for (const canonical_url of [
     'https://evil.test/',
@@ -190,7 +217,7 @@ test('PSI requests mobile lab categories, keeps absent metrics null, validates f
   assert.doesNotMatch(JSON.stringify(result), /test-secret/)
   for (const finalUrl of [
     'https://evil.test/',
-    'https://benefitsi.de/p/another',
+    'https://benefitsi.de/partner/another',
   ])
     assert.equal(
       (
