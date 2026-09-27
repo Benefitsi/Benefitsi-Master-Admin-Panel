@@ -17,7 +17,7 @@ export type PublicMicrositeStyle = Partial<Record<"fontSize" | "maxWidth" | "hei
 export type PublicMicrositeConfig = {
   schema: typeof PUBLIC_MICROSITE_SCHEMA; version: 1; template: string; language: "de" | "en";
   appearance: { mode: "light" | "dark" };
-  branding: Group<"branding">;
+  branding: Group<"branding"> & { paletteMode?: "auto" | "manual" };
   navigation: { links: { anchor: string; label: string }[] };
   hero: Group<"hero"> & { services: { label: string; icon: string; description: string }[] };
   deals: Group<"deals"> & { topDealBullets: string[] };
@@ -123,7 +123,7 @@ export function createPublicMicrositeSnapshot(value: unknown): PublicMicrositeCo
   return {
     schema: PUBLIC_MICROSITE_SCHEMA, version: 1, template: text(input.template), language: input.language === "en" ? "en" : "de",
     appearance: { mode: record(input.appearance).mode === "dark" ? "dark" : "light" },
-    branding: projectGroup(input, "branding"),
+    branding: { ...projectGroup(input, "branding"), paletteMode: record(input.branding).paletteMode === "manual" ? "manual" : "auto" },
     navigation: { links: (Array.isArray(record(input.navigation).links) ? record(input.navigation).links as unknown[] : []).flatMap(raw => {
       const link = record(raw), anchor = text(link.anchor)
       return PUBLIC_MICROSITE_ANCHORS.some(a => a === anchor) ? [{ anchor, label: elementText[`navigation.${anchor}`] || text(link.label) }] : []
@@ -144,7 +144,11 @@ export function readPublicMicrositeSnapshot(value: unknown): PublicMicrositeConf
       if (!keys.every(key => typeof record(snapshot[group])[key] === "string")) return null
     }
     if (!Array.isArray(record(snapshot.navigation).links) || !Array.isArray(record(snapshot.hero).services) || !Array.isArray(record(snapshot.deals).topDealBullets)) return null
-    return createPublicMicrositeSnapshot(snapshot)
+    // Old v1 envelopes omitted this enum only from their public snapshot.
+    // Recover just that saved choice; explicit snapshot values always win.
+    const branding = record(snapshot.branding)
+    const paletteMode = Object.hasOwn(branding, "paletteMode") ? branding.paletteMode : record(source.branding).paletteMode
+    return createPublicMicrositeSnapshot({ ...snapshot, branding: { ...branding, paletteMode } })
   }
   // Pre-v1 nested publications retain their reviewed content without requiring
   // a migration or changing the currently selected published version.

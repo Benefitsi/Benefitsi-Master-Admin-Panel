@@ -122,7 +122,7 @@ const builderTranslations: Record<string, string> = {
   "Restaurant-Premium-Vorlage": "Restaurant premium template",
   "Für Mobilgeräte optimierte Vorlage · Daten vom Partnerprofil · versionierte Veröffentlichung":
     "Mobile-first template · partner-profile data · versioned publishing",
-  "Aktuelle Vorschau öffnen": "Open current preview",
+  "Builder-Referenz öffnen": "Open Builder reference",
   "Gespeicherten Entwurf öffnen": "Open saved draft",
   "Noch nicht live": "Not live yet",
   "In Prüfung": "In review",
@@ -313,7 +313,7 @@ const builderTranslations: Record<string, string> = {
   "Die Live-Veröffentlichung ist gesperrt, bis alle Pflichtprüfungen erledigt sind. Entwurf und Prüfung bleiben möglich.":
     "Live publishing is locked until all required checks are complete. Draft and review actions are still available.",
   "Editor": "Editor",
-  "Live-Vorschau": "Live preview",
+  "Builder-Referenz": "Builder reference",
   "Preview herauszoomen": "Zoom out preview",
   "Vorschau verkleinern": "Zoom out preview",
   "Zoom zurücksetzen": "Reset zoom",
@@ -1148,7 +1148,7 @@ export function MicrositePanel({
 
   const previewToolbar = (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm font-medium text-zinc-700">{tr("Live-Vorschau")}</p>
+      <p className="text-sm font-medium text-zinc-700">{tr("Builder-Referenz")}</p>
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex items-center rounded-md border border-zinc-200 bg-white p-1">
           <button
@@ -1714,7 +1714,7 @@ export function MicrositePanel({
             }}
             className="inline-flex h-9 items-center rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
           >
-            {tr("Aktuelle Vorschau öffnen")}
+            {tr("Builder-Referenz öffnen")}
           </a>
           <StatusBadge
             label={isPublished ? "Live" : "Noch nicht live"}
@@ -2330,7 +2330,7 @@ export function MicrositePanel({
         >
           <div className="mb-4">{previewToolbar}</div>{false ? (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm font-medium text-zinc-700">{tr("Live-Vorschau")}</p>
+            <p className="text-sm font-medium text-zinc-700">{tr("Builder-Referenz")}</p>
             <div className="flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center rounded-md border border-zinc-200 bg-white p-1">
                 <button

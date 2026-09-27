@@ -88,6 +88,25 @@ const previewProps = query => ({
   searchParams: Promise.resolve(query),
 })
 
+test("published preview selects the published version even when a builder draft exists", async () => {
+  const selectedPartner = partner()
+  selectedPartner.microsite.draftVersion = { id: "draft-id", config: savedDraft }
+  selectedPartner.microsite.publishedVersion = { id: "published-id", config: savedPublished }
+  const { page, calls } = loadRoute(previewPath, { ...staffSession, isAdmin: true }, selectedPartner)
+  const html = renderToStaticMarkup(await page(previewProps({ source: "published", mode: "light", viewport: "mobile" })))
+  assert.match(html, /Saved public page/)
+  assert.equal(calls.shellProps[0].useBuilderDraft, false)
+  assert.equal(calls.shellProps[0].previewSource, "published")
+  assert.equal(calls.shellProps[0].previewMode, "light")
+})
+
+test("published preview never substitutes an unpublished draft", async () => {
+  const selectedPartner = partner()
+  selectedPartner.microsite.draftVersion = { id: "draft-id", config: savedDraft }
+  const { page } = loadRoute(previewPath, { ...staffSession, isAdmin: true }, selectedPartner)
+  await assert.rejects(page(previewProps({ source: "published" })), error => error.status === 404)
+})
+
 for (const [name, query, version] of [
   ["raw rows hidden after cutover", {}, null],
   ["builder/local-storage request after cutover", { source: "builder", viewport: "mobile" }, null],

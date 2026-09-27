@@ -3,9 +3,21 @@
 import { createContext, useContext } from "react"
 import type { AnchorHTMLAttributes, ComponentType, ReactNode } from "react"
 
-/** Host applications supply publication-aware sections without forking the design. */
+/** Public hosts supply data and actions; the Builder owns the visual sections. */
+export type PublishedMicrositeBenefits = {
+  label: string
+  dealActions: Record<string, ReactNode>
+  appAction: ReactNode
+  loyalty: {
+    targetCount?: number
+    rewards: Array<{ id: string; requiredStamps: number; title: string; description?: string; audienceLabel: string }>
+    footer: ReactNode
+  } | null
+}
+
 export type MicrositeIntegration = {
   hideEmptySections?: boolean
+  publishedBenefits?: PublishedMicrositeBenefits
   benefits?: ReactNode
   app?: ReactNode
   faq?: ReactNode

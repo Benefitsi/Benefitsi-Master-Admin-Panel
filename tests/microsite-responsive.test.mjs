@@ -54,7 +54,7 @@ test("keeps secondary deal banners compact next to the top deal", async () => {
   )
   assert.match(source, /const isFeaturedDeal = primary/)
   assert.match(source, /const articleClassName = isFeaturedDeal\s+\? `premium-topdeal/)
-  assert.match(source, /if \(!featuredDeal && !hasLoyaltyContent\) return null/)
+  assert.match(source, /if \(!featuredDeal && !hasLoyaltyContent && !published\) return null/)
 })
 
 test("keeps dark mode polished and uses the official social glyphs", async () => {

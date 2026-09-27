@@ -82,7 +82,7 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
               target="_blank"
               className="rounded-xl bg-teal-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-800"
             >
-              Open live preview
+              Builder-Referenz öffnen
             </Link>
             <form action={signOutPartner}>
               <PendingSubmitButton
