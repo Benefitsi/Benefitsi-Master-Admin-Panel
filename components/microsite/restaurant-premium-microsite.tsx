@@ -2936,20 +2936,21 @@ function MenuSection({
                   </div>
 
                   <div className="border-b border-zinc-100 px-5 py-3">
-                    <div className="flex flex-col gap-3 @min-[760px]:flex-row @min-[760px]:items-center @min-[760px]:justify-between">
+                    <div className="flex min-w-0 flex-col gap-3 @min-[760px]:flex-row @min-[760px]:items-center">
                       <input
                         type="search"
                         value={menuQuery}
                         onChange={(event) => setMenuQuery(event.target.value)}
                         placeholder={siteCopy(config, "Gericht, Getränk oder Kategorie suchen", "Search dishes, drinks or categories")}
-                        className="h-10 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[var(--site-accent)] focus:bg-white @min-[760px]:max-w-sm"
+                        className="h-10 w-full shrink-0 rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[var(--site-accent)] focus:bg-white @min-[760px]:max-w-sm"
                       />
-                      <div className="flex gap-2 overflow-x-auto pb-1 @min-[760px]:justify-end">
+                      <div role="group" aria-label={siteCopy(config, "Speisekarte filtern", "Filter menu")} className="flex min-w-0 max-w-full gap-2 overflow-x-auto pb-1 @min-[760px]:flex-1">
                         {filters.map((filter) => (
                         <button
                           key={filter.id}
                           type="button"
                           onClick={() => setActiveFilterId(filter.id)}
+                          aria-pressed={activeFilterId === filter.id}
                           className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition ${
                             activeFilterId === filter.id
                               ? "border-[var(--site-accent)] bg-[var(--site-accent)] text-white shadow-sm"
