@@ -26,7 +26,7 @@ export function EditorialResearch({ result }: { result: EditorialIntakeResult })
       </div>
       {data.proposal ? <details className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
         <summary className="cursor-pointer text-sm font-black text-amber-950">Neuen Textvorschlag prüfen</summary>
-        <p className="mt-3 text-sm font-semibold text-amber-950">Der gespeicherte Artikel bleibt unverändert. Dieser Vorschlag wird nicht automatisch übernommen.</p>
+        <p className="mt-3 text-sm font-semibold text-amber-950">Die Automatik übernimmt Überarbeitungsvorschläge nicht selbst. Vergleiche den Vorschlag mit dem aktuellen Artikel.</p>
         <div className="mt-4 space-y-3 text-sm leading-6">
           <h3 className="text-lg font-black">{data.proposal.title || "Vorschlag ohne Titel"}</h3>
           {data.proposal.excerpt ? <p>{data.proposal.excerpt}</p> : null}
