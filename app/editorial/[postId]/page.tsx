@@ -3,9 +3,10 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { AdminShell } from "@/app/admin-shell"
 import { updateEditorialPost } from "@/app/editorial/actions"
+import { EditorialResearch } from "@/app/editorial/editorial-research"
 import { EditorialForm } from "@/app/editorial/editorial-form"
 import { requireAdmin } from "@/lib/admin"
-import { loadEditorialPost, loadEditorialWorkspace } from "@/lib/editorial"
+import { loadEditorialIntake, loadEditorialPost, loadEditorialWorkspace } from "@/lib/editorial"
 
 export const dynamic = "force-dynamic"
 
@@ -20,7 +21,7 @@ export default async function EditorialDetailPage({ params, searchParams }: { pa
   const { adminSession } = await requireAdmin()
   const { postId } = await params
   const query = await searchParams
-  const [post, workspace] = await Promise.all([loadEditorialPost(postId), loadEditorialWorkspace()])
+  const [post, workspace, intake] = await Promise.all([loadEditorialPost(postId), loadEditorialWorkspace(), loadEditorialIntake(postId)])
   if (!post) notFound()
   const adminName = adminSession.profile?.display_name || adminSession.profile?.email || adminSession.user.email || "Admin"
 
@@ -29,6 +30,7 @@ export default async function EditorialDetailPage({ params, searchParams }: { pa
       <Link href="/editorial" className="inline-flex items-center text-sm font-black text-[#0b75d9] hover:text-[#075eae]">← Zur Editorial-Übersicht</Link>
       {query.error ? <ErrorMessage code={query.error} /> : null}
       {workspace.warnings.map((warning) => <Warning key={warning}>{warning}</Warning>)}
+      <EditorialResearch result={intake} />
       <EditorialForm action={updateEditorialPost} initial={post} cities={workspace.cities} partners={workspace.partners} />
     </AdminShell>
   )
