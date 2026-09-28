@@ -177,6 +177,13 @@ function AdminShellContent({
               icon={<AnalyticsIcon className="size-5" />}
             />
             <AdminNavigationLink
+              href="/seo"
+              label="SEO & Sichtbarkeit"
+              active={pathname === "/seo" || pathname.startsWith("/seo/")}
+              collapsed={collapsed}
+              icon={<AnalyticsIcon className="size-5" />}
+            />
+            <AdminNavigationLink
               href="/wissen"
               label="Wissen"
               active={pathname.startsWith("/wissen")}
