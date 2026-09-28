@@ -25,9 +25,17 @@ export async function commercePartner(providerId?:string) {
 }
 export async function commerceDashboard(providerId?:string) {
   const context=await commercePartner(providerId)
-  if(!context.provider) return {...context,offerings:[],resources:[],menu:[],slots:[],bookings:[]}
+  if(!context.provider) return {...context,offerings:[],resources:[],menu:[],slots:[],bookings:[],deals:[],dealRules:[],dealConfigurationAvailable:false}
   const id=context.provider.id
   const results=await Promise.all(['commerce_offerings','commerce_resources','commerce_menu_items','commerce_slots','commerce_bookings'].map(table=>context.admin.from(table).select('*').eq('provider_id',id).order(table==='commerce_slots'?'starts_at':'created_at',{ascending:table==='commerce_slots'}).limit(table==='commerce_bookings'?250:1000)))
   if(results.some(r=>r.error)) throw new Error('commerce_migration_required')
-  return {...context,offerings:results[0].data||[],resources:results[1].data||[],menu:results[2].data||[],slots:results[3].data||[],bookings:results[4].data||[]}
+  let deals:Record<string,unknown>[]=[],dealRules:Record<string,unknown>[]=[],dealConfigurationAvailable=false
+  if(context.provider.test_mode) {
+    const [available,configured]=await Promise.all([
+      context.admin.from('deals').select('id,partner_id,public_title,reward_item,customer_description,terms,type,discount_type,active,benefit_category').eq('partner_id',context.provider.partner_id).eq('active',true).eq('benefit_category','direct_selectable').in('discount_type',['2for1','item','fixed','percent']).order('created_at',{ascending:false}),
+      context.admin.from('commerce_deal_rules').select('provider_id,deal_id,enabled,menu_item_ids').eq('provider_id',id),
+    ])
+    if(!available.error&&!configured.error) {deals=available.data||[];dealRules=configured.data||[];dealConfigurationAvailable=true}
+  }
+  return {...context,offerings:results[0].data||[],resources:results[1].data||[],menu:results[2].data||[],slots:results[3].data||[],bookings:results[4].data||[],deals,dealRules,dealConfigurationAvailable}
 }
