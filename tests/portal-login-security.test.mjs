@@ -23,3 +23,17 @@ test('linked partner login remains inside the partner dashboard',async()=>{
  const t=loginCode('partner.benefitsi.de',{isAdmin:false,partnerIds:['shop']})
  await assert.rejects(t.partner({message:''},t.form),/redirect:\/partner$/)
 })
+
+test('partner sign-in form submits through the partner action',()=>{
+ const partnerLogin=async()=>{},adminLogin=async()=>{}
+ let submittedAction
+ const {PartnerLoginForm}=loadTypescript('app/partner/login/login-form.tsx',{
+  react:{useActionState:action=>{submittedAction=action;return [{message:''},()=>{},false]}},
+  'next/link':()=>null,
+  '@/components/loading-ui':{LoadingSpinner:()=>null},
+  '@/app/login/actions':{login:adminLogin},
+  './actions':{partnerLogin},
+ })
+ PartnerLoginForm({isConfigured:true})
+ assert.equal(submittedAction,partnerLogin)
+})
