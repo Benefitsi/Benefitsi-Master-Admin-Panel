@@ -56,7 +56,9 @@ test("the browser-facing knowledge component contains no private-table or token 
   assert.doesNotMatch(combined, /token|service.role/i)
 })
 
-test("the token-bound ingestion API bypasses the browser-session redirect", async () => {
-  const proxy = await source("lib/supabase/proxy.ts")
-  assert.match(proxy, /pathname\.startsWith\("\/api\/internal\/knowledge\/sync"\)/)
+test("only known token-bound ingestion routes bypass the browser-session redirect", async () => {
+  const { portalRoute } = await import('../lib/portal-routing.ts')
+  assert.equal(portalRoute('admin.benefitsi.de', '/api/internal/knowledge/sync/batch', 'POST').kind, 'machine')
+  assert.equal(portalRoute('admin.benefitsi.de', '/api/internal/knowledge/sync/unknown', 'POST').kind, 'admin')
+  assert.equal(portalRoute('partner.benefitsi.de', '/api/internal/knowledge/sync/batch', 'POST').kind, 'deny')
 })

@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server"
+import { isPartnerHost } from "@/lib/portal-routing"
 import { canonicalPartnerSlug } from "@/lib/partner-paths"
 import { updateSession } from "@/lib/supabase/proxy"
 
 export async function proxy(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/p/")) {
+  if (!isPartnerHost(request.headers.get("host") ?? request.nextUrl.host) && request.nextUrl.pathname.startsWith("/p/")) {
     const slug = request.nextUrl.pathname.slice(3).split("/")[0]
     if (slug) {
       const webBaseUrl = (
@@ -21,7 +22,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|ai-sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image).*)"],
 }

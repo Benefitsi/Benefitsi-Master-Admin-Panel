@@ -30,35 +30,6 @@ type PartnerIdentity = {
   email?: string | null
 }
 
-type PartnerProfileSelectAttempt = {
-  columns: string
-  idColumns: Array<"id" | "uid">
-  includesPartnerFlag: boolean
-}
-
-const PARTNER_PROFILE_SELECT_ATTEMPTS: PartnerProfileSelectAttempt[] = [
-  {
-    columns: "id,uid,email,display_name,is_partner",
-    idColumns: ["id", "uid"],
-    includesPartnerFlag: true,
-  },
-  {
-    columns: "id,email,display_name,is_partner",
-    idColumns: ["id"],
-    includesPartnerFlag: true,
-  },
-  {
-    columns: "uid,email,display_name,is_partner",
-    idColumns: ["uid"],
-    includesPartnerFlag: true,
-  },
-  {
-    columns: "id,uid,email,display_name",
-    idColumns: ["id", "uid"],
-    includesPartnerFlag: false,
-  },
-]
-
 export async function getPartnerPortalSession(
   supabase?: SupabaseServerClient,
 ): Promise<PartnerPortalSession | null> {
@@ -82,7 +53,6 @@ export async function getPartnerPortalSession(
   const { partnerIds, ownedPartnerIds } = await getAccessiblePartnerIds(
     client,
     user.id,
-    profile,
   )
 
   return {
@@ -163,76 +133,17 @@ async function getPartnerProfileForIdentity(
   supabase: SupabaseClient,
   identity: PartnerIdentity,
 ) {
-  const email = identity.email?.trim()
-
-  if (email) {
-    for (const attempt of PARTNER_PROFILE_SELECT_ATTEMPTS) {
-      let query = supabase
-        .from("users")
-        .select(attempt.columns)
-        .ilike("email", email)
-        .limit(1)
-
-      if (attempt.includesPartnerFlag) {
-        query = query.order("is_partner", {
-          ascending: false,
-          nullsFirst: false,
-        })
-      }
-
-      const result = await query.maybeSingle()
-
-      if (!result.error) {
-        if (result.data) {
-          return result.data as unknown as PartnerProfile
-        }
-
-        continue
-      }
-
-      if (!isSchemaError(result.error.message)) {
-        console.error("Partner lookup by email failed:", result.error.message)
-        break
-      }
-    }
-  }
-
-  for (const attempt of PARTNER_PROFILE_SELECT_ATTEMPTS) {
-    for (const column of attempt.idColumns) {
-      const result = await supabase
-        .from("users")
-        .select(attempt.columns)
-        .eq(column, identity.id)
-        .limit(1)
-        .maybeSingle()
-
-      if (!result.error) {
-        if (result.data) {
-          return result.data as unknown as PartnerProfile
-        }
-
-        continue
-      }
-
-      if (!isSchemaError(result.error.message)) {
-        console.error(`Partner lookup by ${column} failed:`, result.error.message)
-      }
-    }
-  }
-
-  return null
+  const result = await supabase.from("users")
+    .select("id,email,display_name,is_partner").eq("id", identity.id).maybeSingle()
+  if (result.error || result.data?.id !== identity.id) return null
+  return result.data as PartnerProfile
 }
 
 async function getAccessiblePartnerIds(
   supabase: SupabaseClient,
   userId: string,
-  profile: PartnerProfile | null,
 ) {
-  const identities = Array.from(
-    new Set(
-      [userId, profile?.id ?? "", profile?.uid ?? ""].filter((value) => Boolean(value)),
-    ),
-  )
+  const identities = [userId].filter(Boolean)
 
   if (identities.length === 0) {
     return { partnerIds: [], ownedPartnerIds: [] }
@@ -269,7 +180,7 @@ async function getAccessiblePartnerIds(
     )
   } else {
     for (const row of staffResult.data ?? []) {
-      if (row.active === false) {
+      if (row.active !== true) {
         continue
       }
 
@@ -283,14 +194,4 @@ async function getAccessiblePartnerIds(
     partnerIds: Array.from(partnerIds),
     ownedPartnerIds: Array.from(ownedPartnerIds),
   }
-}
-
-function isSchemaError(message: string) {
-  const normalized = message.toLowerCase()
-
-  return (
-    normalized.includes("column") ||
-    normalized.includes("schema cache") ||
-    normalized.includes("does not exist")
-  )
 }

@@ -45,7 +45,7 @@ test("keeps admin and partner recovery destinations separate", () => {
   )
   assert.equal(
     recoveryCallbackUrl("https://admin.benefitsi.de", "admin"),
-    "https://benefitsi.de/",
+    "https://admin.benefitsi.de/auth/confirm?next=%2Freset-password%3Fportal%3Dadmin",
   )
 })
 
@@ -83,7 +83,7 @@ test("both login forms expose password recovery and auth routes stay public", as
     await Promise.all([
       read("app/login/login-form.tsx"),
       read("app/partner/login/login-form.tsx"),
-      read("lib/supabase/proxy.ts"),
+      read("lib/portal-routing.ts"),
       read("app/forgot-password/recovery-request-form.tsx"),
       read("app/reset-password/reset-password-form.tsx"),
       read("app/auth/confirm/route.ts"),
@@ -92,9 +92,9 @@ test("both login forms expose password recovery and auth routes stay public", as
 
   assert.match(adminLogin, /href="\/forgot-password"/)
   assert.match(partnerLogin, /href="\/partner\/forgot-password"/)
-  assert.match(proxy, /pathname === "\/forgot-password"/)
-  assert.match(proxy, /pathname === "\/partner\/forgot-password"/)
-  assert.match(proxy, /pathname === "\/reset-password"/)
+  assert.match(proxy, /\/forgot-password/)
+  assert.match(proxy, /\/partner\/forgot-password/)
+  assert.match(proxy, /\/reset-password/)
   assert.match(requestForm, /auth\.resetPasswordForEmail/)
   assert.match(requestForm, /recoveryCallbackUrl\(window\.location\.origin, portal\)/)
   assert.match(requestForm, /If an account exists/)
@@ -106,9 +106,9 @@ test("both login forms expose password recovery and auth routes stay public", as
   assert.doesNotMatch(recoveryTemplate, /\.SiteURL/)
 })
 
-test("production recovery preserves the partner portal through the public bridge", () => {
+test("production recovery stays on the isolated partner origin", () => {
   assert.equal(
     recoveryCallbackUrl("https://admin.benefitsi.de", "partner"),
-    "https://benefitsi.de/?portal=partner",
+    "https://partner.benefitsi.de/auth/confirm?next=%2Freset-password%3Fportal%3Dpartner",
   )
 })

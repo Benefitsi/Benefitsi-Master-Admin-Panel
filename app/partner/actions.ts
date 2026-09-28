@@ -1,7 +1,11 @@
 "use server"
 
-import { signOut } from "@/app/actions"
-
+import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
 export async function signOutPartner() {
-  return signOut()
+  const supabase = await createClient()
+  await supabase.auth.signOut({scope:"local"})
+  revalidatePath("/", "layout")
+  redirect("/partner/login")
 }

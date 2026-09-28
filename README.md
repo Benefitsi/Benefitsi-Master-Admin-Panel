@@ -93,23 +93,14 @@ Both sign-in pages include a **Forgot password?** link. Supabase Auth sends the
 recovery message through the project's configured SMTP provider (Resend), so no
 Resend API key is exposed to this application.
 
-Production recovery first uses the allow-listed `https://benefitsi.de/` Site URL.
-The public site's recovery bridge then forwards the single-use response to the
-admin panel. This keeps recovery working while the Supabase Site URL serves the
-public website. Add these two exact URLs to **Supabase Dashboard > Authentication
-> URL Configuration > Redirect URLs** as defense in depth:
+Recovery redirects directly to the portal that requested the reset. Configure the
+exact callback URLs listed under **Separate partner and admin origins** in
+**Supabase Dashboard > Authentication > URL Configuration > Redirect URLs** before
+promoting this change. Preserve existing entries and the public website Site URL.
 
-```text
-https://admin.benefitsi.de/auth/confirm?next=/reset-password?portal=admin
-https://admin.benefitsi.de/auth/confirm?next=/reset-password?portal=partner
-```
-
-Then use `supabase/templates/recovery.html` as the **Reset password** email
-template in **Authentication > Email Templates**. The template sends the hashed,
-single-use recovery token to `/auth/confirm`; this makes the cookie-based SSR
-flow reliable even when the email is opened in a different browser. Local
-Supabase already uses this template through `supabase/config.toml`, and local
-emails remain available in Mailpit.
+The reset-password template at `supabase/templates/recovery.html` uses Supabase's
+single-use `ConfirmationURL`. Local Supabase loads this template through
+`supabase/config.toml`; local emails remain available in Mailpit.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
@@ -142,3 +133,23 @@ self-hosted multi-instance deployment, also set the same
 NEXT_DEPLOYMENT_ID=release-2026-09-05
 NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$(openssl rand -base64 32)
 ```
+
+
+## Separate partner and admin origins
+
+- Team: `https://admin.benefitsi.de`
+- Partners: `https://partner.benefitsi.de` (root forwards to `/partner`)
+- Both hosts use the same Vercel project; authorization is never inferred from a hostname alone.
+- Sessions use separate `__Host-benefitsi-admin-auth` and `__Host-benefitsi-partner-auth` cookies (Secure, Path=/, no Domain). Existing sessions must sign in again once after migration.
+- Admin authorization requires the verified Auth user's exact `public.users.id` and boolean `is_admin = true`. Email, legacy uid, user metadata and partner role flags never grant admin access.
+- Partner host refuses admin pages/APIs and masks admin privileges within shared Server Actions. All new non-public routes default to admin-only. Automation/Stripe endpoints retain their independent secret/signature checks via exact allowlists.
+- Merchant Connect and billing callbacks use `BENEFITSI_PARTNER_BASE_URL` (default `https://partner.benefitsi.de`). `BENEFITSI_BOOKING_BASE_URL` remains the internal/admin origin.
+
+Before promotion, preserve existing Supabase Redirect URLs and add these exact callbacks:
+
+```
+https://admin.benefitsi.de/auth/confirm?next=%2Freset-password%3Fportal%3Dadmin
+https://partner.benefitsi.de/auth/confirm?next=%2Freset-password%3Fportal%3Dpartner
+```
+
+Validate with an unprivileged linked partner: own dashboard works, other partners remain inaccessible, administrative pages and exports return 403, and attempts to modify `users.is_admin`, `users.id`, or `users.email` return database permission errors. Run `npm test`, `npm run lint`, and `npm run build` before promotion.

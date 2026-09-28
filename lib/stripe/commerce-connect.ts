@@ -1,7 +1,7 @@
 import "server-only"
 
 import { commercePartner } from "@/lib/commerce/partner"
-import { getStripeTestClient, isStripeConnectPlatformReady, requireBookingBaseUrl } from "@/lib/stripe/config"
+import { getStripeTestClient, isStripeConnectPlatformReady, requirePartnerBaseUrl } from "@/lib/stripe/config"
 import { createTestMerchantAccount, createMerchantOnboardingLink, retrieveMerchantAccountStatus } from "@/lib/stripe/connect"
 
 async function requireMerchantOwner(providerId: string) {
@@ -38,7 +38,7 @@ export async function beginCommerceOnboarding(providerId: string): Promise<strin
     })
   }
   return createMerchantOnboardingLink(stripe, {
-    accountId, providerId, baseUrl: requireBookingBaseUrl(), callbackPath: "/api/commerce/connect",
+    accountId, providerId, baseUrl: requirePartnerBaseUrl(), callbackPath: "/api/commerce/connect",
   })
 }
 

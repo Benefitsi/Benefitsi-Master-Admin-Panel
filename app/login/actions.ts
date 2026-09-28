@@ -1,8 +1,11 @@
 "use server"
 
+import { headers } from "next/headers"
+import { isPartnerHost } from "@/lib/portal-routing"
+
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { getPartnerPortalSession } from "@/lib/partner-portal"
+import { getAdminSession } from "@/lib/admin"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 
@@ -14,6 +17,7 @@ export async function login(
   _prevState: LoginActionState,
   formData: FormData,
 ): Promise<LoginActionState> {
+  if (isPartnerHost((await headers()).get("host") ?? "")) return {message:"Admin sign-in is unavailable on the partner portal."}
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
 
@@ -35,20 +39,13 @@ export async function login(
     return { message: "Invalid email or password." }
   }
 
-  const portalSession = await getPartnerPortalSession(supabase)
+  const adminSession = await getAdminSession(supabase)
 
-  if (
-    !portalSession ||
-    (!portalSession.isAdmin && portalSession.partnerIds.length === 0)
-  ) {
-    await supabase.auth.signOut()
-
-    return {
-      message:
-        "This account is not authorized for the Benefitsi admin or partner panel.",
-    }
+  if (!adminSession?.isAdmin) {
+    await supabase.auth.signOut({ scope: "local" })
+    return { message: "This account is not authorized for the Benefitsi admin panel." }
   }
 
   revalidatePath("/", "layout")
-  redirect(portalSession.isAdmin ? "/" : "/partner")
+  redirect("/")
 }
