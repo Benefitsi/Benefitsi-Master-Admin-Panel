@@ -144,17 +144,19 @@ test('rendered inbox has private evidence and distinct historical resolution con
   assert.equal(linkedDocument.querySelectorAll('[name="meetupId"]').length, 0)
 })
 
-function actionHarness({ role = 'admin', city = true, rpcError = null, rpcData = undefined } = {}) {
+function actionHarness({ role = 'admin', host = 'admin.benefitsi.de', profileId = actorId, city = true, rpcError = null, rpcData = undefined } = {}) {
   const events = []
   const user = role === 'guest' ? null : { id: actorId, email: 'actor@example.invalid', user_metadata: { is_admin: true } }
-  const profile = role === 'admin' ? { email: user.email, display_name: 'Admin', is_admin: true } : role === 'partner' ? { email: user.email, display_name: 'Partner', is_admin: false, is_partner: true } : { email: user?.email, display_name: 'Ordinary', is_admin: false }
+  const profile = role === 'admin' ? { id: profileId, email: user.email, display_name: 'Admin', is_admin: true } : role === 'partner' ? { id: profileId, email: user.email, display_name: 'Partner', is_admin: false, is_partner: true } : { id: profileId, email: user?.email, display_name: 'Ordinary', is_admin: false }
   const authClient = {
     auth: { getUser: async () => ({ data: { user }, error: null }) },
-    from: table => { assert.equal(table, 'users'); return { select() { return this }, ilike() { return this }, order() { return this }, limit() { return this }, maybeSingle: async () => ({ data: profile, error: null }) } },
+    from: table => { assert.equal(table, 'users'); return { select() { return this }, eq(field, value) { assert.equal(field, 'id'); assert.equal(value, actorId); return this }, maybeSingle: async () => ({ data: profile, error: null }) } },
   }
   const redirect = path => { throw Object.assign(new Error('redirect'), { path }) }
   const { requireAdmin } = load('lib/admin.ts', {
     '@supabase/supabase-js': { createClient() { throw Error('no real auth') } }, 'next/navigation': { redirect },
+    'next/headers': { headers: async () => new Headers({ host }) },
+    '@/lib/portal-routing': { isPartnerHost: value => value === 'partner.benefitsi.de' },
     '@/lib/supabase/server': { createClient: async () => authClient }, '@/lib/supabase/config': { getSupabaseConfig: () => ({ isConfigured: false }) },
   }, { console: { error() {} } })
   const service = {
@@ -183,6 +185,12 @@ test('actual requireAdmin denies guest, ordinary, partner and forged metadata be
     }
     assert.deepEqual(harness.events, [])
   }
+  const partnerHost = actionHarness({ host: 'partner.benefitsi.de' })
+  await assert.rejects(partnerHost.actions.resolveCommunityMeetupReports(actionForm()), error => error.path === '/login')
+  assert.deepEqual(partnerHost.events, [])
+  const mismatchedProfile = actionHarness({ profileId: reportId })
+  await assert.rejects(mismatchedProfile.actions.resolveCommunityMeetupReports(actionForm()), error => error.path === '/login')
+  assert.deepEqual(mismatchedProfile.events, [])
 })
 
 test('historical resolution derives actor, validates city, note and exact response before success', async () => {
