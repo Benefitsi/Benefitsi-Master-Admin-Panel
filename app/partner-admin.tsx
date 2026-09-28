@@ -112,6 +112,8 @@ import { MicrositePanel } from "./microsite-panel"
 import { MicrositeReadOnlyNotice } from "@/components/microsite-read-only-notice"
 import { useAdminLanguage } from "./admin-language"
 import { LoadingSpinner } from "@/components/loading-ui"
+import { MenuAiImportDialog } from "@/components/menu-ai-import-dialog"
+import { PartnerMenuImportAccess } from "@/components/partner-menu-import-access"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
 
 const initialState: PartnerActionState = {
@@ -311,6 +313,7 @@ type PartnerWorkspaceProps = {
   initialView?: "settings" | "microsite"
   portalMode?: boolean
   micrositeEditingEnabled?: boolean
+  adminAccess?: boolean
 }
 
 type InitialDealDraft = {
@@ -505,6 +508,7 @@ export function PartnerWorkspace({
   initialView = "settings",
   portalMode = false,
   micrositeEditingEnabled = !portalMode,
+  adminAccess = !portalMode,
 }: PartnerWorkspaceProps) {
   const [query, setQuery] = useState("")
   const [partnerFilter, setPartnerFilter] = useState<
@@ -774,6 +778,7 @@ export function PartnerWorkspace({
                 onLocationChange={setWorkspaceLocation}
                 portalMode={portalMode}
                 micrositeEditingEnabled={micrositeEditingEnabled}
+                adminAccess={adminAccess}
               />
           ) : partners.length && hasActiveFilters ? (
             <EditorShell
@@ -910,6 +915,7 @@ function PartnerDetail({
   onLocationChange,
   portalMode = false,
   micrositeEditingEnabled = !portalMode,
+  adminAccess = !portalMode,
 }: {
   partner: PartnerWithDeals
   cities: City[]
@@ -923,6 +929,7 @@ function PartnerDetail({
   }) => void
   portalMode?: boolean
   micrositeEditingEnabled?: boolean
+  adminAccess?: boolean
 }) {
   const partnerFormId = `partner-form-${partner.id ?? "partner"}`
   const partnerIdentity = partner.id ?? "partner"
@@ -1126,7 +1133,7 @@ function PartnerDetail({
                 <DealsPanel partner={partner} embedded />
               </div>
             ) : null}
-            {settingsTab === "menu" ? <MenuPanel partner={partner} embedded /> : null}
+            {settingsTab === "menu" ? <MenuPanel partner={partner} adminAccess={adminAccess} embedded /> : null}
             {settingsTab === "access" ? (
               <PartnerStaffPanel partner={partner} users={owners} embedded />
             ) : null}
@@ -8101,9 +8108,11 @@ function HolidayEditorDialog({
 function MenuPanel({
   partner,
   embedded = false,
+  adminAccess = false,
 }: {
   partner: PartnerWithDeals
   embedded?: boolean
+  adminAccess?: boolean
 }) {
   if (!partnerTypeSupportsMenu(partner.type)) {
     return null
@@ -8111,9 +8120,15 @@ function MenuPanel({
 
   const partnerId = partner.id ?? ""
   const menu = partner.menus[0]
+  const aiImportEnabled = adminAccess || partner.menu_ai_import_enabled === true
 
   const content = (
     <div className="space-y-4">
+      {adminAccess && partnerId ? (
+        <PartnerMenuImportAccess key={partnerId} partnerId={partnerId} enabled={partner.menu_ai_import_enabled === null ? null : partner.menu_ai_import_enabled === true} />
+      ) : !aiImportEnabled ? (
+        <InfoNote>Der Menüimport aus Foto / PDF kann vom Benefitsi-Team für deinen Betrieb freigeschaltet werden.</InfoNote>
+      ) : null}
       {partner.menus.length > 1 ? (
         <InfoNote>
           This admin now supports one menu per partner. It is showing the
@@ -8122,6 +8137,9 @@ function MenuPanel({
       ) : null}
       {!menu && partnerId ? (
         <DealFormShell title="Add menu">
+          {aiImportEnabled ? <div className="mb-4">
+            <MenuAiImportDialog partnerId={partnerId} />
+          </div> : null}
           <MenuForm partnerId={partnerId} />
         </DealFormShell>
       ) : null}
@@ -8130,6 +8148,7 @@ function MenuPanel({
           key={menu.id ?? `${menu.partner_id}-${menu.name}`}
           menu={menu}
           partnerId={partnerId}
+          aiImportEnabled={aiImportEnabled}
         />
       ) : (
         <EmptyState>No menu configured yet.</EmptyState>
@@ -8156,9 +8175,11 @@ function MenuPanel({
 function MenuCard({
   menu,
   partnerId,
+  aiImportEnabled = false,
 }: {
   menu: PartnerMenu
   partnerId: string
+  aiImportEnabled?: boolean
 }) {
   const [categoryEditor, setCategoryEditor] = useState<MenuCategoryEditorState | null>(null)
   const [itemEditor, setItemEditor] = useState<MenuItemEditorState | null>(null)
@@ -8457,6 +8478,15 @@ function MenuCard({
         </span>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
+        {menu.id && aiImportEnabled ? (
+          <MenuAiImportDialog
+            partnerId={partnerId}
+            menuId={menu.id}
+            menuName={menu.name ?? undefined}
+            currency={localItems.find((item) => item.currency)?.currency ?? undefined}
+            hasExistingContent={localCategories.length > 0 || localItems.length > 0}
+          />
+        ) : null}
         {menu.id ? (
           <MenuImportDialog
             categoryCount={localCategories.length}
