@@ -36,8 +36,11 @@ export async function POST(request: Request) {
       if (message.event_key === 'payment.checkout_attached') return
       if (!message.provider_id || !message.booking_id || !message.event_key) throw Error('invalid_notification')
       const provider = await admin.from('booking_providers').select('display_name,support_email').eq('id', message.provider_id).single()
-      const booking = await admin.from('commerce_bookings').select('public_reference').eq('id', message.booking_id).eq('provider_id', message.provider_id).single()
+      const booking = await admin.from('commerce_bookings').select('public_reference,is_test').eq('id', message.booking_id).eq('provider_id', message.provider_id).single()
       if (provider.error || booking.error) throw Error('notification_source_missing')
+      // Defence in depth for old or already leased outbox entries. Database
+      // claim/queue checks use the immutable booking snapshot as the first gate.
+      if (booking.data.is_test !== false) return
       const secret = await admin.from('commerce_booking_secrets').select('public_token').eq('booking_id', message.booking_id).single()
       if (secret.error) throw Error('status_link_unavailable')
       const statusUrl = new URL(`/buchung/${booking.data.public_reference}`, guestOrigin)

@@ -83,6 +83,7 @@ export function parseBookingRequest(value: unknown) {
   } else if(v.delivery_address!=null) throw new Error('delivery_address_not_allowed')
   return {
     ...(v.fulfillment_mode===undefined?{}:{fulfillment_mode:mode}),...(address?{delivery_address:address}:{}),
+    ...(v.deal_id==null?{}:{deal_id:uuid(v.deal_id)}),
     partner_id: uuid(v.partner_id), offering_id:uuid(v.offering_id), slot_id:uuid(v.slot_id),
     quantity:integer(v.quantity ?? 1,1,100),
     items:v.items.map(item=>{
@@ -109,7 +110,7 @@ export function parseGuestAccess(value: unknown) {
 }
 export function safeBookingResult(value: unknown) {
   const v=record(value), source=record(v.booking), booking:Row={}
-  for(const key of ['id','public_reference','public_token','provider_id','offering_id','kind','state','payment_method','payment_state','total_amount','currency','slot_id','starts_at','ends_at','hold_expires_at','quantity','title','cancellation_policy','customer_payment_notice','items','fulfillment_mode','delivery_address','pickup_address','subtotal_amount','delivery_fee']) {
+  for(const key of ['id','public_reference','public_token','provider_id','offering_id','kind','state','payment_method','payment_state','total_amount','currency','slot_id','starts_at','ends_at','hold_expires_at','quantity','title','cancellation_policy','customer_payment_notice','items','fulfillment_mode','delivery_address','pickup_address','subtotal_amount','delivery_fee','discount_amount','applied_deal']) {
     if(source[key]!==undefined) booking[key]=source[key]
   }
   return {ok:true,replayed:v.replayed===true,booking}
