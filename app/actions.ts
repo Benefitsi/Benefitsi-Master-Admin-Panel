@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server"
 export async function signOut() {
   if (getSupabaseConfig().isConfigured) {
     const supabase = await createClient()
-    await supabase.auth.signOut()
+    await supabase.auth.signOut({scope: "local"})
   }
 
   revalidatePath("/", "layout")

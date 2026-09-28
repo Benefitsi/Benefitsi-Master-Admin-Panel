@@ -1,3 +1,5 @@
+import { headers } from "next/headers"
+import { isPartnerHost } from "@/lib/portal-routing"
 import { createClient as createAuthClient } from "@supabase/supabase-js"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
@@ -22,7 +24,7 @@ export type AdminSession = {
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 
-const ADMIN_COLUMNS = "email,display_name,is_admin"
+const ADMIN_COLUMNS = "id,email,display_name,is_admin"
 
 export type AdminIdentity = {
   id: string
@@ -50,7 +52,7 @@ export async function getAdminSession(
       email: user.email,
     },
     profile,
-    isAdmin: isAdminProfile(profile),
+    isAdmin: !isPartnerHost((await headers()).get("host") ?? "") && isAdminProfile(profile),
   }
 }
 
@@ -95,59 +97,17 @@ export async function verifyAdminPassword(
 }
 
 export function isAdminProfile(profile: AdminProfile | null) {
-  const value = profile?.is_admin
-
-  return value === true || value === 1 || value === "true"
+  return profile?.is_admin === true
 }
 
 export async function getAdminProfileForIdentity(
   supabase: SupabaseServerClient,
   identity: AdminIdentity,
 ) {
-  const email = identity.email?.trim()
-
-  if (email) {
-    const byEmail = await supabase
-      .from("users")
-      .select(ADMIN_COLUMNS)
-      .ilike("email", email)
-      .order("is_admin", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (byEmail.error) {
-      console.error("Admin lookup by email failed:", byEmail.error.message)
-    }
-
-    if (byEmail.data) {
-      return byEmail.data as AdminProfile
-    }
-  }
-
-  return await getAdminProfileByOptionalUserIdColumn(supabase, identity.id)
-}
-
-async function getAdminProfileByOptionalUserIdColumn(
-  supabase: SupabaseServerClient,
-  userId: string,
-) {
-  for (const column of ["uid", "id"]) {
-    const result = await supabase
-      .from("users")
-      .select(ADMIN_COLUMNS)
-      .eq(column, userId)
-      .limit(1)
-      .maybeSingle()
-
-    if (result.error) {
-      console.error(`Admin lookup by ${column} failed:`, result.error.message)
-      continue
-    }
-
-    if (result.data) {
-      return result.data as AdminProfile
-    }
-  }
-
-  return null
+  // The canonical profile ID is the auth UID. Email and legacy uid fields
+  // are display/compatibility data, never alternate authorization identities.
+  const result = await supabase.from("users").select(ADMIN_COLUMNS)
+    .eq("id", identity.id).maybeSingle()
+  if (result.error || result.data?.id !== identity.id) return null
+  return result.data as AdminProfile
 }
