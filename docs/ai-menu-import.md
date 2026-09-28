@@ -7,6 +7,14 @@ The final action checks ownership again and requires explicit confirmation.
 It appends reviewed categories/items and preserves existing menu metadata and
 content. A partner without a menu receives a new published menu at confirmation.
 
+Review starts with the original beside a compact category/item/price list.
+Images can be enlarged and multiple source photos paged through; PDFs render
+inline with a link fallback. Clicking an item opens its fields, while the details
+toggle opens the complete editable list. Recognition notes start collapsed and
+missing-price markers jump to the relevant editor. Edits invalidate the review
+checkbox. Confirmation validates the complete draft even when editors are closed,
+so missing prices cannot turn into zero through string-to-number conversion.
+
 ## Configuration
 
 - `M1_BRIDGE_URL` and `M1_BRIDGE_SECRET`: existing server-only bridge configuration.
@@ -35,6 +43,13 @@ requires valid prices in EUR, matching the existing menu persistence contract.
 Allergens are transcribed only from the source, never inferred from ingredients.
 Source warnings/uncertainty notes stay visible during review but are not published;
 relevant variants and extra charges must be added to the editable item description.
+
+A completed model reply with malformed JSON gets one regeneration from the
+original OCR, with an explicit JSON-format correction. Both calls share the
+existing 110-second subprocess limit. Failed/partial runs, incomplete drafts and
+invalid schema values still fail validation; no menu values are patched locally.
+The UI distinguishes known OCR errors from invalid agent output and transient
+service failures. Unknown upstream details are never shown to the user.
 
 ## Verification
 

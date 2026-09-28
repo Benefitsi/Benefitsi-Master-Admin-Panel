@@ -51,13 +51,54 @@ export async function extractMenuFromFiles(files: File[], options: ExtractOption
   if (!response.ok) {
     if (response.status === 429) throw new Error("Der Hermes-Menü-Agent ist ausgelastet. Bitte später erneut versuchen.")
     if (response.status === 401 || response.status === 403) throw new Error("Der Zugang zum Hermes-Menü-Agenten ist nicht verfügbar. Bitte das Benefitsi-Team kontaktieren.")
-    throw new Error("Der Hermes-Menü-Agent konnte die Karte nicht vollständig verarbeiten. Bitte eine gut lesbare Datei mit höchstens acht Seiten verwenden und erneut versuchen.")
+    throw new Error(await extractionErrorMessage(response))
   }
   const payload = await readProviderResponse(response)
   if (payload.profile !== "benefitsi-menu" || payload.task !== "extract-menu" || payload.schemaVersion !== 1 || payload.requestId !== requestId) {
     throw new Error("Die Antwort des Hermes-Menü-Agenten passt nicht zu diesem Auftrag. Bitte erneut versuchen.")
   }
   return validateDraft(payload.draft, false)
+}
+
+async function extractionErrorMessage(response: Response): Promise<string> {
+  const fallback = "Der Hermes-Menü-Agent konnte die Anfrage gerade nicht verarbeiten. Bitte erneut versuchen."
+  // Only known, bounded bridge errors may influence the user-facing message.
+  // Provider errors can contain internal details and must never be echoed.
+  if (response.status !== 400) return fallback
+  let payload: Record<string, unknown>
+  try {
+    payload = await readProviderResponse(response)
+  } catch {
+    return fallback
+  }
+  switch (payload.error) {
+    case "Die Datei ist unlesbar, zu umfangreich oder hat mehr als acht Seiten.":
+    case "Mindestens eine Seite ist unlesbar. Bitte erneut fotografieren.":
+    case "Es wurde kein lesbarer Text gefunden.":
+      return "Die Texterkennung konnte die Datei nicht lesen. Bitte gut lesbare Fotos oder eine PDF-Datei mit höchstens acht Seiten verwenden."
+    case "Bitte Kartenteile mit höchstens acht Seiten verwenden.":
+      return "Die Datei enthält zu viele Seiten. Bitte in Teile mit höchstens acht Seiten aufteilen."
+    case "Die Speisekarte ist zu umfangreich.":
+    case "Die Speisekarte enthält zu viel Text. Bitte aufteilen.":
+    case "Bitte kleinere Kartenteile mit höchstens 40 Kategorien verwenden.":
+    case "Bitte kleinere Kartenteile mit höchstens 200 Artikeln verwenden.":
+    case "Der Menüentwurf ist zu umfangreich.":
+      return SPLIT_MESSAGE
+    case "Die Texterkennung hat zu lange gedauert. Bitte kleinere Kartenteile verwenden.":
+      return "Die Texterkennung hat zu lange gedauert. Bitte kleinere Kartenteile verwenden und erneut versuchen."
+    case "Hermes konnte keinen vollständigen Menüentwurf erstellen.":
+    case "Die Speisekarte wurde nicht vollständig erkannt.":
+    case "Der Menüentwurf enthält ungültigen Text.":
+    case "Der Menüentwurf enthält ungültige Hinweise.":
+    case "Die Währung ist ungültig.":
+    case "Ungültige Kategorie.":
+    case "Leere Kategorie.":
+    case "Ungültiger Artikel.":
+    case "Ungültiger Artikelpreis.":
+      return "Der Hermes-Menü-Agent hat keinen gültigen, vollständigen Menüentwurf geliefert. Bitte die Vorschau erneut erstellen. Es wurde nichts importiert."
+    default:
+      return fallback
+  }
 }
 
 /** Final mutation boundary: this refuses unresolved extraction values. */

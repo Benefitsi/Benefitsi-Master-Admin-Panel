@@ -19,6 +19,29 @@ def parse_result(result):
     return json.loads(final)
 
 
+def extract_draft(agent, document):
+    source = "OCR_MENU_DATA\n" + json.dumps(document, ensure_ascii=False)
+    instructions = "Strukturiere die OCR_MENU_DATA gemäß deinem Menü-Schema. Bewahre alle Artikel; unklare Felder bleiben leer. Antworte ausschließlich als JSON."
+    result = agent.run_conversation(
+        user_message=source, system_message=instructions,
+    )
+    try:
+        return parse_result(result)
+    except json.JSONDecodeError:
+        # Regenerate from the original OCR, never guess a repair to menu values.
+        # Only a completed response with invalid JSON gets one correction. The
+        # bridge's existing 110-second subprocess limit covers both calls.
+        result = agent.run_conversation(
+            user_message=("Die vorherige Antwort war kein gültiges JSON. Erstelle den vollständigen "
+                          "Menüentwurf aus den ursprünglichen OCR_MENU_DATA erneut. Achte besonders "
+                          "auf korrekt maskierte Anführungszeichen innerhalb von Texten. Verwende "
+                          "keine Markdown-Codeblöcke. Bewahre alle Kategorien und Artikel; erfinde "
+                          "keine fehlenden Werte.\n\n" + source),
+            system_message=instructions,
+        )
+        return parse_result(result)
+
+
 def run(document):
     profile = Path(__file__).resolve().parent.parent
     hermes = Path.home() / ".hermes/hermes-agent"
@@ -58,11 +81,7 @@ def run(document):
                         run_budget_seconds=90)
         if agent.tools:
             raise RuntimeError("Menu agent must have zero tools")
-        result = agent.run_conversation(
-            user_message="OCR_MENU_DATA\n" + json.dumps(document, ensure_ascii=False),
-            system_message="Strukturiere die OCR_MENU_DATA gemäß deinem Menü-Schema. Bewahre alle Artikel; unklare Felder bleiben leer. Antworte ausschließlich als JSON.",
-        )
-        return parse_result(result)
+        return extract_draft(agent, document)
 
 
 if __name__ == "__main__":

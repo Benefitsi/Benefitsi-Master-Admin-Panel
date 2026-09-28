@@ -215,3 +215,34 @@ test("provider transport errors are actionable German messages without echoing u
   })
   await assert.rejects(extractMenuFromFiles([pdfFile()], { ...bridgeOptions, fetch: async () => { throw new TypeError("private-key upstream network error") } }), /Verbindung|erreichbar|erneut/)
 })
+
+test("an invalid Hermes answer is distinguished from an unreadable uploaded file", async () => {
+  await assert.rejects(extractMenuFromFiles([pdfFile()], {
+    ...bridgeOptions,
+    fetch: async () => Response.json({ error: "Hermes konnte keinen vollständigen Menüentwurf erstellen." }, { status: 400 }),
+  }), (error) => {
+    assert.match(error.message, /Antwort|Menüentwurf/)
+    assert.doesNotMatch(error.message, /gut lesbare|acht Seiten|fotografieren/)
+    return true
+  })
+})
+
+test("unavailable or unknown bridge failures do not falsely blame source legibility", async () => {
+  for (const status of [400, 500, 503]) {
+    await assert.rejects(extractMenuFromFiles([pdfFile()], {
+      ...bridgeOptions,
+      fetch: async () => Response.json({ error: "private internal cause" }, { status }),
+    }), (error) => {
+      assert.doesNotMatch(error.message, /private internal|gut lesbare|acht Seiten|fotografieren/)
+      assert.match(error.message, /erneut|nicht verfügbar/)
+      return true
+    })
+  }
+})
+
+test("an explicit OCR failure retains actionable source guidance", async () => {
+  await assert.rejects(extractMenuFromFiles([pdfFile()], {
+    ...bridgeOptions,
+    fetch: async () => Response.json({ error: "Die Datei ist unlesbar, zu umfangreich oder hat mehr als acht Seiten." }, { status: 400 }),
+  }), /lesbar|acht Seiten/)
+})
