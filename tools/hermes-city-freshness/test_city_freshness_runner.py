@@ -4,6 +4,7 @@ from unittest.mock import patch
 import tempfile
 import json
 import io
+from types import SimpleNamespace
 from contextlib import redirect_stdout
 from pathlib import Path
 
@@ -96,6 +97,26 @@ class FreshnessTests(unittest.TestCase):
         self.assertNotIn('SECRET',str(result))
         self.assertNotIn('customer@example.org',str(result))
 
+    def test_typed_host_denial_is_report_only_and_keeps_existing_database_failure_contract(self):
+        payloads=[]
+        def fail(_):raise runner.SourceHostNotApproved('SECRET untrusted details')
+        def record(payload):
+            payloads.append(payload)
+            return dict(check_id='66666666-6666-4666-8666-666666666666',source_id=SOURCE,public_data_changed=False,comparison='unverified')
+        result=runner.run_inventory(inventory([source()]),profile='city-annweiler',fetch=fail,record=record,now=NOW)
+        self.assertEqual(result['sources'][0].get('failure_reason'),'host_not_approved')
+        self.assertEqual(result['sources'][0]['error_code'],'fetch_failed')
+        self.assertEqual(result['sources'][0]['comparison'],'unverified')
+        self.assertEqual(result['counts']['failed'],1)
+        self.assertEqual(payloads[0]['error_code'],'fetch_failed')
+        self.assertNotIn('failure_reason',payloads[0])
+        self.assertNotIn('SECRET',str(result))
+
+    def test_plain_exception_text_cannot_impersonate_a_host_policy_diagnostic(self):
+        def fail(_):raise RuntimeError('host_not_approved City source domain is not approved for this MCP.')
+        result=runner.run_inventory(inventory([source()]),profile='city-annweiler',fetch=fail,now=NOW)
+        self.assertNotIn('failure_reason',result['sources'][0])
+
     def test_empty_inventory_is_not_reported_as_completed_city_verification(self):
         result=runner.run_inventory(inventory([]),profile='city-annweiler',fetch=lambda _:self.fail('empty'),now=NOW)
         self.assertEqual(result['status'],'not_configured')
@@ -138,5 +159,46 @@ class FreshnessTests(unittest.TestCase):
 
     def test_link_target_change_changes_the_fingerprint_without_claiming_dead_links(self):
         self.assertNotEqual(runner.fingerprint(page(links=[{'url':'https://example.org/old'}])),runner.fingerprint(page(links=[{'url':'https://example.org/new'}])))
+
+
+class RuntimeHostTests(unittest.TestCase):
+    def runtime(self, profile='city-annweiler', hosts=None):
+        directory=tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        policy=Path(directory.name)/'hosts.json'
+        policy.write_text(json.dumps({'schema_version':1,'profiles':{'city-annweiler':{'exact_hosts':hosts or ['www.baeckerei-neu.de']}}}))
+        original_hosts={'already-approved.example.org'}
+        server=SimpleNamespace(APPROVED_CITY_SOURCE_EXACT_HOSTS=original_hosts,
+            _profile_city_scope=lambda:CITY)
+        # DNS and transport remain the existing server's responsibility. This
+        # double asserts delegation and exact host semantics only.
+        server._approved_city_source_host=lambda host:host.casefold().rstrip('.') in server.APPROVED_CITY_SOURCE_EXACT_HOSTS
+        server._fetch_city_source=lambda url,max_chars:dict(url=url,max_chars=max_chars)
+        with patch.object(runner,'SOURCE_HOSTS_PATH',policy), patch.object(runner,'load_module',side_effect=[SimpleNamespace(load_profile_environment=lambda _:{}),server]), patch.object(runner.sys,'path',list(runner.sys.path)):
+            runtime=runner.Runtime(profile)
+        return runtime,original_hosts
+
+    def test_profile_enrollment_adds_exact_hosts_only_without_mutating_shared_policy(self):
+        runtime,original=self.runtime()
+        self.assertEqual(original,{'already-approved.example.org'})
+        self.assertEqual(runtime.fetch('https://www.baeckerei-neu.de/filialen/'),{'url':'https://www.baeckerei-neu.de/filialen/','max_chars':30000})
+        self.assertEqual(runtime.fetch('https://already-approved.example.org/')['max_chars'],30000)
+        for host in ('baeckerei-neu.de','other.baeckerei-neu.de','www.baeckerei-neu.de.evil.org','unreviewed.example.org'):
+            with self.assertRaises(runner.SourceHostNotApproved):runtime.fetch('https://'+host+'/')
+
+    def test_other_profiles_do_not_receive_annweiler_business_hosts(self):
+        runtime,_=self.runtime(profile='city-landau')
+        with self.assertRaises(runner.SourceHostNotApproved):runtime.fetch('https://www.baeckerei-neu.de/')
+
+    def test_host_policy_rejects_wildcards_urls_addresses_ports_and_noncanonical_names(self):
+        for host in ('*.example.org','https://example.org','127.0.0.1','[::1]','localhost','example.org:443','example.org/path','EXAMPLE.org','example.org.','-bad.example.org','example..org','example.org-'):
+            with self.subTest(host=host), self.assertRaises(ValueError):self.runtime(hosts=[host])
+
+    def test_existing_fetch_guards_are_still_called_and_their_errors_are_not_reclassified(self):
+        runtime,_=self.runtime()
+        for url in ('http://www.baeckerei-neu.de/','https://name:secret@www.baeckerei-neu.de/','https://www.baeckerei-neu.de:8443/'):
+            with patch.object(runtime.server,'_fetch_city_source',side_effect=ValueError('existing guard')) as fetch:
+                with self.assertRaisesRegex(ValueError,'existing guard'):runtime.fetch(url)
+                fetch.assert_called_once_with(url,max_chars=30000)
 
 if __name__ == '__main__':unittest.main()

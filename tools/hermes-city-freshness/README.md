@@ -2,6 +2,8 @@
 
 Status: locally implemented and tested on 22 September 2026. The shipped configuration is disabled. No production migration, M1 installation, source enrollment or live run was performed for this change.
 
+Runtime follow-up, 28 September 2026: the reviewed Annweiler business inventory includes 43 URLs on 42 hosts. Two tourism hosts are already permitted by the existing MCP policy. `city-freshness-hosts.json` explicitly lists the remaining 40 exact hosts for `city-annweiler` only. These grants are applied to the freshness child process's freshly imported MCP module; the installed MCP file, other profiles, and other agents are unchanged. The runner never derives host permissions from database inventory or fetched pages. This local follow-up has not been installed or run against live sources.
+
 This stage uses the existing hourly `ai.benefitsi.hermes-ben-worker` dispatcher. It adds no launchd label and no Codex automation. A deterministic child process uses the respective existing `city-<slug>` profile, reads its city scope and credentials in memory, and calls only `city_freshness_inventory` and `record_city_freshness_review`. It makes no model calls.
 
 ## What it establishes
@@ -28,7 +30,7 @@ Both dispatcher configuration and database configuration must permit a source. N
 3. The source has `active=true`, `enabled=true`, and `cadence` other than `manual`.
 4. `parser_config` has exact JSON values `{"cadence_owner":"m1_city_freshness","interval_seconds":259200,"auto_publish":false}`. Preserve any other existing metadata.
 5. `content_scope` binds the reviewed entity type and entity UUID. `LINK` can omit entity ID.
-6. The URL's host is already approved by the installed MCP fetcher. That existing fetcher enforces HTTPS, public DNS, redirects, content type and size. Redirecting away from the exact registered URL is an unresolved review in this stage.
+6. The URL's host is approved by the installed MCP fetcher or explicitly listed for this profile in the versioned `city-freshness-hosts.json`. Additional entries grant only that exact host, without sibling/subdomain permissions. Missing or malformed policy files fail closed. The existing fetcher still enforces HTTPS, public DNS, redirects, content type and size. Redirecting away from the exact registered URL is an unresolved review in this stage.
 7. The global config and the individual profile entry are explicitly enabled after deployment review.
 
 An entry owned by an existing visitor/event/club process must not be reassigned casually. This stage owns only the specifically reviewed registrations. The generic Admin source runner now excludes every explicit `cadence_owner`, as well as disabled/manual/inactive sources, before its database query limit.
@@ -47,6 +49,8 @@ Each profile has an OS lock, a maximum inventory of 200 sources and a maximum ba
 
 Logs are written to the existing Ben run directory and to `profiles/<profile>/logs/city-freshness/latest.json`. Source-fetch failures with recorded review are valid operational findings. RPC/write/readback failures return exit 20. The minimal shell hook logs an error and leaves the existing Ben queue workflow intact, so Ben's overall exit code alone is not a freshness-stage health signal. Missing or old profile reports require operational investigation; this release does not create a separate alert sender.
 
+An initial registered-host denial has report-only `failure_reason=host_not_approved`, derived from a local exception type rather than exception text. Its database receipt remains `fetch_status=failed`, `comparison=unverified`, `error_code=fetch_failed`; no schema change is required. Redirect/DNS/transport failures retain the existing failure classification. Installing a host grant does not convert old failures to success, change source revisions or reset review decisions. A later permitted source revision/window needs a fresh observation.
+
 ## Database and access
 
 The accompanying database migration is `20260922083737_city_source_freshness_reviews.sql` in the Benefitsi Database repository. It creates:
@@ -62,7 +66,9 @@ The SQL fixture tests the migration in a **synthetic, isolated local database**,
 
 ## Installation review and drift handling
 
-`install-manifest.json` is the exact proposed file list with SHA-256 values. It is not an installer. Only the new runner and disabled config are new installed runtime files. `prepare_worker_hook.py` is an offline candidate generator, not a runtime dependency.
+`install-manifest.json` is the exact proposed file list with SHA-256 values. It is not an installer. The runner, disabled dispatcher config and profile-specific host policy are the runtime files. `prepare_worker_hook.py` is an offline candidate generator, not a runtime dependency.
+
+For an existing installation, the 28 September follow-up replaces only the runner and adds its adjacent host-policy file after review, backup and drift checks. Preserve the installed dispatcher's current enabled/profile settings and existing worker hook; the disabled sample config must not overwrite that state. Install the host policy before the new runner and verify both manifest hashes. Do not change source revisions or retry records as part of installation; those require a separate reviewed operation.
 
 The read-only M1 audit found the current worker hash `a455707a974fa0b021b470fe84338e57ed33c46d8b61ef406aadf84371286d7a`. The installed MCP server and event publication runner differ from the older web checkout. This release **does not copy either file**, alter the menu/content bridge, or rewrite the worker prompt. A second read-only AST inspection confirmed the existing fetch/profile/configuration function signatures without importing the modules or executing a job.
 
@@ -72,7 +78,7 @@ The reviewed deployment sequence is:
 2. Read the current installed worker and relevant runtime hashes again. Preserve a timestamped backup of those exact bytes. If the worker changed, inspect the difference and update the reviewed baseline deliberately.
 3. Run the candidate generator on the **current installed worker copy**, with its reviewed SHA and a different output path. It refuses drift, altered hooks, duplicate anchors and overwriting the input. The generator is idempotent for its unchanged hook.
 4. Review a byte diff: only the bounded freshness invocation before the preflight/queue-empty exit may be added. Run `bash -n` on the candidate. Recheck the live worker hash immediately before any approved replacement.
-5. Copy only the manifest's two new runtime files plus the approved worker candidate. Keep the config disabled. Preserve owner/mode and verify installed hashes. Do not restart or kick launchd merely to test this.
+5. For a first installation, copy only the manifest's three runtime files plus the approved worker candidate. Keep the config disabled. Preserve owner/mode and verify installed hashes. Do not restart or kick launchd merely to test this.
 6. After reviewed source enrollment and root approval, enable the chosen existing profile. Run a bounded source observation/readback and then observe a real hourly dispatch. Check review cards, coverage counts and that public records and human decisions did not change. This production acceptance step has not been performed here.
 
 Rollback first sets the global config `enabled=false`; the next hourly hook exits without loading profiles or contacting Supabase. Restore the worker only from the reviewed backup if its rest has not changed since deployment. Retain observation/review history; do not drop it or reverse public content because this stage never edited such content.

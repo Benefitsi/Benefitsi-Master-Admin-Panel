@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "profiles": {
+    "city-annweiler": {
+      "exact_hosts": [
+        "fahrschule-grimm.com",
+        "find.shell.com",
+        "fitness-world.net",
+        "jobs.aldi-sued.de",
+        "supersite.richter-annweiler.de",
+        "trifels-bestattungen.de",
+        "www.baeckerei-neu.de",
+        "www.baeckergoertz.de",
+        "www.bahn-apo.de",
+        "www.bestattungen-albert.de",
+        "www.blumen-maas-annweiler.de",
+        "www.brillen-lippok.de",
+        "www.burgunderhof-schneider.de",
+        "www.dm.de",
+        "www.emanuel-haustechnik.de",
+        "www.eugenias-haarstudio.de",
+        "www.friseur-martin-winter.app",
+        "www.glasereimueller.com",
+        "www.hoergeraete-kehrel.de",
+        "www.jet.de",
+        "www.kur-apo-annweiler-app.de",
+        "www.lack-christmann.de",
+        "www.lidl.de",
+        "www.meinstudio-pfalz.de",
+        "www.naturkostladenkornmuehle.de",
+        "www.nkd.com",
+        "www.pfalz-lamas.de",
+        "www.physiotherapie-wehrle.de",
+        "www.praxis-walter.net",
+        "www.reifen-daussmann.de",
+        "www.sparkasse-suedpfalz.de",
+        "www.tierarztpraxis-annweiler.de",
+        "www.timeoutannweiler.de",
+        "www.tp-ludwig.de",
+        "www.trifels-apotheke.de",
+        "www.trifelsversorger.de",
+        "www.tuv.com",
+        "www.ugde.com",
+        "www.vrbank-sww.de",
+        "www.wasgau.de"
+      ]
+    }
+  }
+}

@@ -10,6 +10,7 @@ import argparse
 import fcntl
 import hashlib
 import importlib.util
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -19,6 +20,7 @@ import sys
 import time
 from datetime import datetime, timezone
 import urllib.error
+import urllib.parse
 import urllib.request
 from uuid import UUID
 
@@ -27,6 +29,38 @@ OWNER = 'm1_city_freshness'
 INTERVAL_SECONDS = 259200
 MAX_SOURCES = 20
 MAX_RPC_BYTES = 512_000
+SOURCE_HOSTS_PATH = Path(__file__).with_name('city-freshness-hosts.json')
+
+
+class SourceHostNotApproved(ValueError):
+    """Typed local policy denial; its message is never included in a report."""
+
+
+def source_hosts(profile):
+    with SOURCE_HOSTS_PATH.open('rb') as policy_file:
+        raw = policy_file.read(32_001)
+    if len(raw) > 32_000:
+        raise ValueError('source_host_policy_too_large')
+    config = json.loads(raw)
+    profiles = config.get('profiles')
+    if config.get('schema_version') != 1 or not isinstance(profiles, dict) or len(profiles) > 20:
+        raise ValueError('invalid_source_host_policy')
+    for name, policy in profiles.items():
+        if not re.fullmatch(r'city-[a-z0-9][a-z0-9-]{0,79}', name) or not isinstance(policy, dict):
+            raise ValueError('invalid_source_host_profile')
+        hosts = policy.get('exact_hosts')
+        if not isinstance(hosts, list) or len(hosts) > 200:
+            raise ValueError('invalid_source_host_list')
+        for host in hosts:
+            if (not isinstance(host, str) or len(host) > 253
+                    or not re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])', host)):
+                raise ValueError('invalid_exact_source_host')
+            try:
+                ipaddress.ip_address(host)
+            except ValueError:
+                continue
+            raise ValueError('source_host_ip_denied')
+    return frozenset(profiles.get(profile, {}).get('exact_hosts', []))
 
 
 def instant(value):
@@ -108,12 +142,13 @@ def run_inventory(inventory, *, profile, fetch, record=None, now=None, max_sourc
         attempted = now or timestamp()
         if source['url'] not in cache:
             try:
-                cache[source['url']] = (fetch(source['url']), None)
+                cache[source['url']] = (fetch(source['url']), None, None)
             except Exception as error:
                 http_error = error if isinstance(error, urllib.error.HTTPError) else error.__cause__
                 http = http_error.code if isinstance(http_error, urllib.error.HTTPError) else None
-                cache[source['url']] = ({'http_status': http}, 'fetch_failed')
-        page, error_code = cache[source['url']]
+                reason = 'host_not_approved' if isinstance(error, SourceHostNotApproved) else None
+                cache[source['url']] = ({'http_status': http}, 'fetch_failed', reason)
+        page, error_code, failure_reason = cache[source['url']]
         if error_code is None:
             error_code = page_error(page, source, fixed_now or datetime.now(timezone.utc))
         current = fingerprint(page) if error_code is None else None
@@ -130,6 +165,8 @@ def run_inventory(inventory, *, profile, fetch, record=None, now=None, max_sourc
         result = dict(source_id=source['id'], source_url=source['url'], comparison=comparison,
                       before_fingerprint=previous, after_fingerprint=current, error_code=error_code,
                       stale_fields=stale_fields, unknown_fields=unknown_fields, review_needed=needs_review)
+        if failure_reason:
+            result['failure_reason'] = failure_reason
         if record is not None:
             payload = dict(schema_version=1, profile=profile, source_id=source['id'],
                            source_updated_at=source['source_updated_at'], window_start=source['window_start'],
@@ -178,6 +215,12 @@ class Runtime:
         self.city_scope = self.server._profile_city_scope()
         if not self.city_scope:
             raise ValueError('city_profile_scope_missing')
+        # load_module creates a separate module for this child process. Replace
+        # its set with a copy: never edit the installed MCP file, mutate a shared
+        # set or derive network permissions from inventory/source-page content.
+        self.server.APPROVED_CITY_SOURCE_EXACT_HOSTS = frozenset(
+            self.server.APPROVED_CITY_SOURCE_EXACT_HOSTS
+        ) | source_hosts(profile)
 
     def rpc(self, name, payload):
         if name not in ('city_freshness_inventory', 'record_city_freshness_review'):
@@ -204,6 +247,13 @@ class Runtime:
         return result
 
     def fetch(self, url):
+        parsed = urllib.parse.urlparse(url)
+        if (parsed.scheme == 'https' and parsed.hostname and not parsed.username
+                and not parsed.password and parsed.port in (None, 443)
+                and not self.server._approved_city_source_host(parsed.hostname)):
+            raise SourceHostNotApproved()
+        # The existing fetcher still validates HTTPS, public DNS, every redirect,
+        # final URL, MIME, response bytes and readable-text length.
         return self.server._fetch_city_source(url, max_chars=30_000)
 
     def record(self, payload):
