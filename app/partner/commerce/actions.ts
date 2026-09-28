@@ -9,13 +9,15 @@ const tables:Record<string,string>={offering:'commerce_offerings',resource:'comm
 function value(form:FormData,name:string) {return String(form.get(name)||'')}
 function destination(provider:string,error?:string) {return `/partner/commerce?provider=${encodeURIComponent(provider)}${error?'&error='+error:''}`}
 export async function saveCommerceConfiguration(form:FormData) {
-  const providerId=value(form,'provider_id')
+  let providerId=value(form,'provider_id')
   let failed=false
   try {
-    const {admin}=await commercePartner(providerId)
     const input=configurationFormInput(form)
     if(input.entity==='slot') {input.starts_at=berlinDateTime(value(form,'starts_at'));input.ends_at=berlinDateTime(value(form,'ends_at'))}
     const parsed=parseConfiguration(input),table=tables[parsed.entity]
+    providerId=parsed.providerId
+    const {admin}=await commercePartner(providerId)
+    parsed.data.provider_id=providerId
     // Validate every referenced object in the same tenant before privileged writes.
     for(const [field,target] of [['offering_id','commerce_offerings'],['resource_id','commerce_resources']]) {
       if(parsed.data[field]) {

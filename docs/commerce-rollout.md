@@ -1,6 +1,6 @@
 # Commerce integration review and rollout
 
-Prepared 28 September 2026 on `codex/booking-integration-20260922`. The user authorized pushing these changes for review. This is not a production rollout: no live database migration, merchant activation, app-store release, or real payment is part of the push.
+Prepared 28 September 2026 on `codex/booking-integration-20260922`. The user authorized merging the coordinated integration into main on 28 September 2026. Main integration does not apply live database migrations, activate merchants, publish an app-store release or process real payments. Hosting may build/deploy the merged code through its existing Git integration.
 
 ## Coordinated repositories
 
@@ -26,7 +26,7 @@ The existing app defaults its global entry flag to true but fails closed on abse
 
 Benefits such as 2-for-1 still require the existing Benefitsi account/login and app redemption flow. Guest checkout does not grant account benefits. No web SSO or automatic benefit discount in the online cart is included.
 
-## Fresh validation before push
+## Validation at the original feature push
 
 - Web: 105 focused tests; TypeScript successful.
 - Admin: 83 focused tests plus 6 server-boundary tests; TypeScript successful.
@@ -36,3 +36,13 @@ Benefits such as 2-for-1 still require the existing Benefitsi account/login and 
 Local original Knobi microsite/menu interaction was checked in the preceding implementation pass. Full staging migration, signed native device/payment/login acceptance and notification delivery remain rollout checks. Local private snapshots, credentials, generated app-preview build and booking journals are excluded from Git. Test fixtures do not activate the real Knobi or Da Michele partner.
 
 Earlier handoff checkpoints describe earlier local states. This document and the partner-ordering code are authoritative for the current activation contract.
+
+## Historical Stripe payments at cutover
+
+All new checkout creation uses direct merchant payments. Existing legacy destination-charge bookings retain read, reconciliation and refund support in `lib/stripe/legacy-payments.ts`. Account scope is discovered only by reading the persisted Stripe object; fallback to the platform occurs only on `resource_missing`. Booking metadata, amount, currency and the historical transfer destination are verified before any refund. Existing platform refunds keep their original parameters and idempotency keys. They do not gain automatic transfer reversal: review historical settlement/reversal accounting separately.
+
+Keep the existing **Your account** booking webhook endpoint enabled while historical payments remain. Set its signing secret as `STRIPE_LEGACY_WEBHOOK_SECRET` when `STRIPE_WEBHOOK_SECRET` is assigned to the **Connected accounts** endpoint. Both call `/api/stripe/webhook`; software billing has its own route/secret. These scopes are distinct in [Stripe's webhook documentation](https://docs.stripe.com/connect/webhooks). Platform events can update only an exact persisted legacy session/payment; they cannot enter commerce payment processing.
+
+## Main integration review
+
+Latest main was integrated without conflicts. Pre-merge review added regression coverage for duplicate tenant fields, legacy checkout retry/reconciliation/refund compatibility, independent retained checkout forms, and empty-menu ordering gates. New ordering remains behind global and per-partner controls; the existing login requirement for Benefitsi benefits is retained.

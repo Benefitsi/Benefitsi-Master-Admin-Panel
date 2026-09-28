@@ -90,6 +90,12 @@ export function validateDirectBookingEvent(event: Stripe.Event, booking: DirectB
   if (event.livemode || !event.account || event.account !== booking.accountId) {
     throw new Error("Stripe-Ereignis gehört nicht zum Test-Händlerkonto.")
   }
+  return validateBookingEventObject(event, booking)
+}
+
+/** Shared object checks, after the caller verifies the Stripe account scope. */
+export function validateBookingEventObject(event: Stripe.Event, booking: DirectBookingSnapshot) {
+  if (event.livemode) throw new Error("Live-Zahlungsereignis ist nicht freigegeben.")
   if (event.type.startsWith("checkout.session.")) {
     const session = event.data.object as Stripe.Checkout.Session
     const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id

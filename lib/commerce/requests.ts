@@ -146,6 +146,9 @@ export function parseConfiguration(value: unknown): {entity:string;providerId:st
 
 /** Decode partner form transport, then use parseConfiguration for all authorization-bound values. */
 export function configurationFormInput(form:FormData):Row {
+  for(const key of new Set(form.keys())) {
+    if(!['payment_modes','fulfillment_modes'].includes(key)&&form.getAll(key).length!==1) throw new Error('duplicate_configuration_field')
+  }
   const input:Row=Object.fromEntries(form.entries())
   const value=(name:string)=>String(form.get(name)||'')
   if(input.entity==='offering') {

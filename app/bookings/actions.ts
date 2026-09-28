@@ -8,7 +8,7 @@ import { loadBookingOperations } from "@/lib/bookings/data"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { isStripeTestConfigured } from "@/lib/stripe/config"
 
-import { refundDirectPayment, retrieveDirectRefund } from "@/lib/stripe/direct-payments"
+import { refundLegacyPayment } from "@/lib/stripe/legacy-payments"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -160,7 +160,7 @@ export async function cancelOrRefundBooking(formData: FormData) {
   const admin = createAdminClient()
   const bookingResult = await admin
     .from("bookings")
-    .select("id,state,stripe_account_id,stripe_payment_intent_id,stripe_refund_id")
+    .select("id,state,stripe_account_id,total_amount,currency,stripe_checkout_session_id,stripe_payment_intent_id,stripe_refund_id")
     .eq("id", bookingId)
     .maybeSingle()
   if (bookingResult.error || !bookingResult.data) {
@@ -190,23 +190,14 @@ export async function cancelOrRefundBooking(formData: FormData) {
   if (!needsRefund) finish("success", "booking_cancelled")
 
   try {
-    const refund = booking.stripe_refund_id
-      ? await retrieveDirectRefund(booking.stripe_refund_id, booking.stripe_account_id)
-      : await refundDirectPayment({
-          paymentIntentId: booking.stripe_payment_intent_id,
-          accountId: booking.stripe_account_id,
-          bookingId,
-          bookingSystem: "legacy",
-          idempotencyKey: `benefitsi-refund-${bookingId}`,
-        })
+    const refund = await refundLegacyPayment(booking)
     const pending = await admin.rpc("mark_booking_refund_pending", {
       p_booking_id: bookingId,
       p_stripe_refund_id: refund.id,
       p_actor_id: identity.id,
       p_actor_profile: identity.profile,
     })
-    if (pending.error) finish("error", "refund_attach_failed")
-    finish("success", "test_refund_created")
+    if (pending.error) throw new Error("Erstattung konnte nicht verknüpft werden.")
   } catch (error) {
     console.error(
       "Stripe test refund failed:",
@@ -214,4 +205,5 @@ export async function cancelOrRefundBooking(formData: FormData) {
     )
     finish("error", "test_refund_failed")
   }
+  finish("success", "test_refund_created")
 }

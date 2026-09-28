@@ -22,6 +22,15 @@ export function requireStripeWebhookSecret() {
   return secret
 }
 
+export function verifyBookingWebhook(payload: string, signature: string) {
+  const secrets = [process.env.STRIPE_WEBHOOK_SECRET, process.env.STRIPE_LEGACY_WEBHOOK_SECRET]
+    .map(value => value?.trim()).filter((value): value is string => Boolean(value?.startsWith("whsec_")))
+  for (const secret of new Set(secrets)) {
+    try { return getStripeTestClient().webhooks.constructEvent(payload, signature, secret) } catch { /* Try the other configured booking endpoint. */ }
+  }
+  throw new Error("Ungültige Booking-Webhook-Signatur.")
+}
+
 export function getStripeTestClient() {
   if (!stripeClient) {
     stripeClient = new Stripe(requireStripeTestSecret(), {

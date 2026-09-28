@@ -2,10 +2,11 @@ import { createHash } from "node:crypto"
 import { NextResponse } from "next/server"
 import type Stripe from "stripe"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { getStripeTestClient, requireStripeWebhookSecret } from "@/lib/stripe/config"
+import { verifyBookingWebhook } from "@/lib/stripe/config"
 import { settleCommercePayment } from "@/lib/stripe/commerce-event"
 import { settleCancellation } from "@/lib/commerce/service"
 import { validateDirectBookingEvent } from "@/lib/stripe/direct-contracts"
+import { validateHistoricalBookingEvent } from "@/lib/stripe/legacy-payments"
 
 const allowedBookingEvents = new Set([
   "checkout.session.completed", "checkout.session.async_payment_succeeded",
@@ -27,12 +28,12 @@ export async function POST(request: Request) {
   const payload = await request.text()
   let event: Stripe.Event
   try {
-    event = getStripeTestClient().webhooks.constructEvent(payload, signature, requireStripeWebhookSecret())
+    event = verifyBookingWebhook(payload, signature)
   } catch {
     return NextResponse.json({ error: "Ungültige Signatur." }, { status: 400 })
   }
   if (event.livemode) return NextResponse.json({ error: "Live-Webhooks sind nicht freigegeben." }, { status: 403 })
-  if (!event.account || !/^acct_[A-Za-z0-9]+$/.test(event.account)) {
+  if (event.account && !/^acct_[A-Za-z0-9]+$/.test(event.account)) {
     return NextResponse.json({ error: "Connected-Account-Zuordnung fehlt." }, { status: 400 })
   }
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     const admin = createAdminClient()
     if (event.type === "account.updated") {
       const account = event.data.object
-      if (account.id !== event.account) return NextResponse.json({ error: "Händlerkonto stimmt nicht überein." }, { status: 400 })
+      if (!event.account || account.id !== event.account) return NextResponse.json({ error: "Händlerkonto stimmt nicht überein." }, { status: 400 })
       const compatible = account.controller?.fees?.payer === "account" &&
         account.controller?.losses?.payments === "stripe" &&
         account.controller?.stripe_dashboard?.type === "full"
@@ -62,6 +63,28 @@ export async function POST(request: Request) {
     let commerce = Boolean(metadata?.benefitsi_commerce_booking_id)
     const bookingId = metadata?.benefitsi_commerce_booking_id || metadata?.benefitsi_booking_id
     const fields = "id,stripe_account_id,total_amount,currency,stripe_checkout_session_id,stripe_payment_intent_id"
+    if (!event.account) {
+      // Historical destination charges exist only on the platform and only in
+      // legacy bookings. Resolve by persisted Stripe ID, never metadata alone.
+      if (commerce) return NextResponse.json({ received: true, ignored: true })
+      const isSession = event.type.startsWith("checkout.session.")
+      if (!isSession && !paymentIntentId) return NextResponse.json({ received: true, ignored: true })
+      const result = await admin.from("bookings").select(fields)
+        .eq(isSession ? "stripe_checkout_session_id" : "stripe_payment_intent_id", isSession ? object.id : paymentIntentId!).maybeSingle()
+      if (result.error) return webhookResult(result.error)
+      if (!result.data) return NextResponse.json({ received: true, ignored: true })
+      const disposition = await validateHistoricalBookingEvent(event, result.data)
+      if (disposition === "pending" || disposition === "partial_refund") return NextResponse.json({ received: true, pending: true })
+      const applied = await admin.rpc("apply_stripe_booking_event", {
+        p_event_id: event.id,
+        p_event_type: event.type === "checkout.session.async_payment_succeeded" ? "checkout.session.completed" : event.type,
+        p_livemode: false, p_payload_sha256: payloadHash, p_booking_id: result.data.id,
+        p_object_id: object.id, p_checkout_session_id: isSession ? object.id : null,
+        p_payment_intent_id: paymentIntentId, p_charge_id: isSession ? null : object.id,
+        p_amount_total: result.data.total_amount, p_stripe_account_id: null,
+      })
+      return webhookResult(applied.error)
+    }
     let booking: BookingSnapshot | null = null
     if (bookingId) {
       const result = await admin.from(commerce ? "commerce_bookings" : "bookings")

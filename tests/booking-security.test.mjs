@@ -55,7 +55,7 @@ test("webhook verifies the raw signed payload and rejects live events", async ()
     new URL("../app/api/stripe/webhook/route.ts", import.meta.url),
     "utf8",
   )
-  assert.ok(source.indexOf("await request.text()") < source.indexOf("constructEvent("))
+  assert.ok(source.indexOf("await request.text()") < source.indexOf("event = verifyBookingWebhook("))
   assert.match(source, /request\.headers\.get\("stripe-signature"\)/)
   assert.match(source, /if \(event\.livemode\)/)
   assert.match(source, /\.rpc\("apply_stripe_booking_event"/)
@@ -211,7 +211,9 @@ test("admin refund requires explicit confirmation and test Stripe before mutatio
     refund.indexOf("!isStripeTestConfigured()") <
       refund.indexOf('.rpc("request_booking_cancellation"'),
   )
-  assert.match(refund, /idempotencyKey: `benefitsi-refund-\$\{bookingId\}`/)
+  assert.match(refund, /await refundLegacyPayment\(booking\)/)
+  const adapter = await readFile(new URL("../lib/stripe/legacy-payments.ts", import.meta.url), "utf8")
+  assert.match(adapter, /idempotencyKey: `benefitsi-refund-\$\{booking\.id\}`/)
 })
 
 test("CSV export is admin-only, PII-free and neutralizes spreadsheet formulas", async () => {
