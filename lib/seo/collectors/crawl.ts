@@ -51,7 +51,11 @@ async function hopWait<T>(work:Promise<T>,deadline:number,controller:AbortContro
 async function nativeFetch(url:URL,ip:string,method:string,deadline:number):Promise<Response>{
   return new Promise((resolve,reject)=>{
     const timer=setTimeout(()=>request.destroy(new CollectorFailure('timeout')),Math.min(10000,Math.max(1,deadline-Date.now())))
-    const request=httpsRequest(url,{method,timeout:Math.min(10000,Math.max(1,deadline-Date.now())),lookup:(_hostname,_options,callback)=>callback(null,ip,isIP(ip)),headers:{'user-agent':'BenefitsiSEOAudit/1.0','accept':'text/html,*/*;q=0.8'}},response=>{
+    const request=httpsRequest(url,{method,timeout:Math.min(10000,Math.max(1,deadline-Date.now())),lookup:(_hostname,lookupOptions,callback)=>{
+      const family=isIP(ip)
+      if(lookupOptions.all)callback(null,[{address:ip,family}])
+      else callback(null,ip,family)
+    },headers:{'user-agent':'BenefitsiSEOAudit/1.0','accept':'text/html,*/*;q=0.8'}},response=>{
       const chunks:Buffer[]=[];let size=0
       response.on('data',(chunk:Buffer)=>{size+=chunk.length;if(size>2_000_000){request.destroy(new CollectorFailure('invalid_response'));return}chunks.push(chunk)})
       response.on('end',()=>{clearTimeout(timer);const headers=new Headers();for(const [key,value] of Object.entries(response.headers))if(value!==undefined)headers.set(key,Array.isArray(value)?value.join(', '):value);const status=response.statusCode??500;resolve(new Response([204,205,304].includes(status)?null:Buffer.concat(chunks),{status,headers}))})

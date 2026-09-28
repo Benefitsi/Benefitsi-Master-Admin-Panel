@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { collectGsc, collectGbp, collectPageSpeed } from '../lib/seo/collectors/google.ts'
 import { brightSearchUrl, fetchBrightSerp, rankFromSerp } from '../lib/seo/collectors/brightdata.ts'
 import { collectWebsite } from '../lib/seo/collectors/crawl.ts'
@@ -224,4 +225,40 @@ test('crawler resolves relative links from each page and bounds page count', asy
   assert.ok(visited.includes('https://www.example.com/shop/child/'))
   assert.ok(visited.includes('https://www.example.com/shop/child/child/'))
   assert.ok(result.data.pages.length<=5)
+})
+
+test('native HTTPS pins the resolved public address using Node all-address lookup contract',()=>{
+ const probe=String.raw`
+import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
+import { mock } from 'node:test'
+let pinned=false
+mock.module('node:https',{namedExports:{request:(_url,options,onResponse)=>{
+ const request=new EventEmitter()
+ request.end=()=>{
+  options.lookup('www.example.com',{all:false},(error,address,family)=>{
+   assert.ifError(error)
+   assert.equal(address,'93.184.215.14')
+   assert.equal(family,4)
+  })
+  options.lookup('www.example.com',{all:true},(error,addresses)=>{
+   assert.ifError(error)
+   assert.deepEqual(addresses,[{address:'93.184.215.14',family:4}])
+   pinned=true
+   const response=new EventEmitter()
+   response.statusCode=200
+   response.headers={'content-type':'text/html'}
+   onResponse(response)
+   queueMicrotask(()=>{response.emit('data',Buffer.from('<title>OK</title>'));response.emit('end')})
+  })
+ }
+ request.destroy=error=>request.emit('error',error)
+ return request
+}}})
+const {collectWebsite}=await import('./lib/seo/collectors/crawl.ts')
+const result=await collectWebsite({id:'t',canonical_url:'https://www.example.com/',target_type:'domain',partner_id:null,city_id:null},{resolve:async()=>['93.184.215.14']})
+assert.equal(result.state,'ok')
+assert.equal(pinned,true)
+`
+ execFileSync(process.execPath,['--experimental-test-module-mocks','--import','tsx','--input-type=module','-e',probe],{cwd:process.cwd(),stdio:'pipe',timeout:5000})
 })

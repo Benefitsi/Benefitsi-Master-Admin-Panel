@@ -32,6 +32,12 @@ export type CollectionCredentials = {
 }
 const defaultProviders = {crawl:collectWebsite,gsc:collectGsc,gbp:collectGbp,psi:collectPageSpeed,rank:fetchBrightSerp}
 type RunnerOptions = {clock?:()=>Date;providers?:typeof defaultProviders}
+// One admission covers claim (12s), load (12s), the longest collector (45s),
+// finish (12s), finishTick (12s), and 7s of processing overhead.
+const JOB_ADMISSION_MS=100_000
+// A rank request covers reserve (12s), provider (20s), finishRequest (12s),
+// then job and tick completion (12s each), plus 2s of overhead.
+const RANK_ADMISSION_MS=70_000
 
 async function collectRank(run:CollectionRun,store:CollectionStore,credentials:CollectionCredentials,options:RunnerOptions,deadline:number) {
   const config=readComparisonConfig(run.comparison_config)
@@ -42,7 +48,7 @@ async function collectRank(run:CollectionRun,store:CollectionStore,credentials:C
   let problem:Observation|null=config.channel!=='organic'?base('unsupported',null,'maps_unsupported'):!credentials.bright?.apiKey?.trim()||!credentials.bright.zone.trim()?base('unconfigured'):null
   if(!problem){
     for(const [index,keyword] of config.keywords.entries()){
-      if(Date.now()+25_000>deadline){problem=base('timeout',null,'batch_deadline');break}
+      if(Date.now()+RANK_ADMISSION_MS>deadline){problem=base('timeout',null,'batch_deadline');break}
       const reservation=await store.reserve(requestContextKey(config,keyword),(options.clock?.()??new Date()).toISOString().slice(0,10))
       let item:Observation
       if(reservation.state==='cached')item=reservation.observation
@@ -89,13 +95,13 @@ async function collectRun(run:CollectionRun,input:CollectionInput,store:Collecti
 
 export async function runCollectionTick(store:CollectionStore,credentials:CollectionCredentials,options:RunnerOptions={}):Promise<TickCounts> {
   const counts:TickCounts={state:'idle',scheduled:0,processed:0,saved:0,stale:0}
+  const deadline=Date.now()+220_000
   const token=await store.startTick()
   if(!token)return counts
-  const deadline=Date.now()+220_000
   let error:string|null=null
   try{
     counts.state='ok';counts.scheduled=await store.schedule()
-    while(counts.processed<4&&Date.now()+60_000<deadline){
+    while(counts.processed<4&&Date.now()+JOB_ADMISSION_MS<=deadline){
       const run=await store.claim()
       if(!run)break
       const input=await store.load(run)

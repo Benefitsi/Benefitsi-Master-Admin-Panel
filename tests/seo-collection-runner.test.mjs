@@ -63,3 +63,46 @@ test('storage failures leave an error heartbeat without leaking exception conten
  assert.equal(h.calls.ticks[0][2],'collection_storage')
  assert.equal(JSON.stringify(h.calls).includes('SECRET'),false)
 })
+test('slow successful storage and crawl calls stay within the 220 second tick including start and finalization',async()=>{
+ const h=harness(['crawl','crawl','crawl','crawl']);const originalNow=Date.now;let elapsed=0
+ const slow=(fn,ms)=>async(...args)=>{elapsed+=ms;return fn(...args)}
+ try{
+  Date.now=()=>elapsed
+  h.store.startTick=slow(h.store.startTick,11_000)
+  h.store.schedule=slow(h.store.schedule,11_000)
+  h.store.claim=slow(h.store.claim,11_000)
+  h.store.load=slow(h.store.load,11_000)
+  h.store.finish=slow(h.store.finish,11_000)
+  h.store.finishTick=slow(h.store.finishTick,11_000)
+  h.providers.crawl=slow(h.providers.crawl,45_000)
+  const result=await runCollectionTick(h.store,h.credentials,{clock,providers:h.providers})
+  assert.equal(result.processed,2)
+  assert.equal(result.saved,2)
+  assert.ok(elapsed<=220_000,`tick elapsed ${elapsed}ms`)
+ }finally{Date.now=originalNow}
+})
+test('rank stops admitting requests while preserving a complete unknown batch and its claimed request result',async()=>{
+ const h=harness(['crawl','rank']);h.credentials.bright={apiKey:'fixture',zone:'free'}
+ const originalNow=Date.now;let elapsed=0
+ const slow=(fn,ms)=>async(...args)=>{elapsed+=ms;return fn(...args)}
+ try{
+  Date.now=()=>elapsed
+  h.store.startTick=slow(h.store.startTick,11_000)
+  h.store.schedule=slow(h.store.schedule,11_000)
+  h.store.claim=slow(h.store.claim,11_000)
+  h.store.load=slow(h.store.load,11_000)
+  h.store.reserve=slow(h.store.reserve,11_000)
+  h.store.finishRequest=slow(h.store.finishRequest,11_000)
+  h.store.finish=slow(h.store.finish,11_000)
+  h.store.finishTick=slow(h.store.finishTick,11_000)
+  h.providers.crawl=slow(h.providers.crawl,45_000)
+  h.providers.rank=slow(async()=>({state:'ok',source:'bright_data',method:'google_organic_top10_full_json_v1',observedAt:clock().toISOString(),data:{query:comparison.keywords[0],context:{...comparison},organic:[{rank:3,link:'https://partner.example/menu'}],coverage:{depth:10,complete:false}}}),20_000)
+  const result=await runCollectionTick(h.store,h.credentials,{clock,providers:h.providers})
+  assert.equal(result.saved,2)
+  assert.equal(h.calls.requests.length,1)
+  assert.equal(h.calls.finish[1][2].length,2)
+  assert.equal(h.calls.finish[1][1].errorCode,'batch_deadline')
+  assert.equal(h.calls.finish[1][2][1].coverage,0)
+  assert.ok(elapsed<=220_000,`tick elapsed ${elapsed}ms`)
+ }finally{Date.now=originalNow}
+})
