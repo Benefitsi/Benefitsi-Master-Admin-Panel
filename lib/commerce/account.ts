@@ -4,7 +4,6 @@ type Row = Record<string, unknown>
 export type AccountDependencies = {
   verifyUser: (accessToken:string) => Promise<{id:string;is_anonymous?:boolean}|null>
   rpc: (name:string,args:Row) => Promise<unknown>
-  profile?: (userId:string) => Promise<{name:string;email:string}>
 }
 export function accountToken(value:unknown):string {
   if(typeof value!=='string'||!/^[a-f0-9]{64}$/.test(value)) throw Error('invalid_account_token')
@@ -31,7 +30,7 @@ export async function commerceAccount(value:unknown,deps:AccountDependencies):Pr
   if(input.action==='context') {
     const context=record(await deps.rpc('commerce_deal_context',{p_partner_id:partner,p_user_id:userId}))
     const recoveryScope=createHash('sha256').update(`commerce-recovery:${partner}:${userId}`).digest('hex')
-    return {...context,authenticated:true,recovery_scope:recoveryScope,...(deps.profile?{customer:await deps.profile(userId)}:{})}
+    return {...context,authenticated:true,recovery_scope:recoveryScope}
   }
   if(!Array.isArray(input.items)||input.items.length>30) throw Error('invalid_cart')
   return record(await deps.rpc('commerce_deal_quote',{
