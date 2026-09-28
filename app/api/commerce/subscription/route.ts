@@ -1,12 +1,12 @@
 import { commercePartner } from "@/lib/commerce/partner"
 import { commerceError, requestBody } from "@/lib/commerce/http"
 import { record, uuid } from "@/lib/commerce/requests"
-import { requireBookingBaseUrl } from "@/lib/stripe/config"
+import { requirePartnerBaseUrl } from "@/lib/stripe/config"
 import { createSoftwareSubscription, createSoftwareBillingPortal } from "@/lib/stripe/software-billing"
 
 export async function POST(request: Request) {
   try {
-    const origin = requireBookingBaseUrl()
+    const origin = requirePartnerBaseUrl()
     if (request.headers.get("origin") !== origin) throw new Error("unauthorized")
     const body = record(await requestBody(request))
     const providerId = uuid(body.providerId)

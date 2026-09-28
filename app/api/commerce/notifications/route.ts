@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto'
 import { webOrigin } from '@/lib/commerce/http'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireBookingBaseUrl } from '@/lib/stripe/config'
+import { requirePartnerBaseUrl } from '@/lib/stripe/config'
 import { deliverNotifications, type Notification } from '@/lib/commerce/delivery'
 import {
   buildBookingEmails,
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const configuration = notificationDeliveryConfig(process.env)
     if (!configuration) return Response.json({ error: 'Benachrichtigungszustellung ist nicht konfiguriert.' }, { status: 503 })
     const guestOrigin = webOrigin()
-    const merchantOrigin = requireBookingBaseUrl()
+    const merchantOrigin = requirePartnerBaseUrl()
     const admin = createAdminClient()
     // Two sequential ten-second sends per message remain within the five-minute lease.
     const claim = await admin.rpc('commerce_claim_notifications', { p_limit: configuration.mode === 'resend' ? 10 : 20 })

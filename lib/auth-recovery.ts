@@ -28,10 +28,8 @@ export function resetPasswordPathForPortal(portal: AuthPortal) {
 
 export function recoveryCallbackUrl(origin: string, portal: AuthPortal) {
   const sourceOrigin = new URL(origin)
-  if (sourceOrigin.hostname === "admin.benefitsi.de") {
-    return portal === "partner"
-      ? "https://benefitsi.de/?portal=partner"
-      : "https://benefitsi.de/"
+  if (["admin.benefitsi.de", "partner.benefitsi.de"].includes(sourceOrigin.hostname)) {
+    sourceOrigin.hostname = portal === "partner" ? "partner.benefitsi.de" : "admin.benefitsi.de"
   }
 
   const callbackUrl = new URL("/auth/confirm", sourceOrigin.origin)
