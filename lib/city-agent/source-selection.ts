@@ -1,9 +1,7 @@
 import type { CityAgentSourceRow } from "./contracts"
 
-const M1_CADENCE_OWNER = "m1_daily_preflight"
-
 export const AUTOMATIC_SOURCE_OWNER_FILTER =
-  `parser_config->>cadence_owner.is.null,parser_config->>cadence_owner.neq.${M1_CADENCE_OWNER}`
+  "parser_config->>cadence_owner.is.null"
 
 export function selectDueAutomaticSources(
   sources: CityAgentSourceRow[],
@@ -13,7 +11,10 @@ export function selectDueAutomaticSources(
   return sources
     .filter(
       (source) =>
-        source.parser_config?.cadence_owner !== M1_CADENCE_OWNER &&
+        source.active === true &&
+        source.enabled === true &&
+        source.cadence !== "manual" &&
+        source.parser_config?.cadence_owner == null &&
         (!source.next_check_at ||
           new Date(source.next_check_at).getTime() <= now.getTime()),
     )

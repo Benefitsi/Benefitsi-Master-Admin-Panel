@@ -2148,7 +2148,7 @@ function PartnerForm({
       noValidate
       onInput={() => {
         if (validationMessage) setValidationMessage("")
-        if (!state.ok && state.message) setDismissedActionState(state)
+        if (state.message) setDismissedActionState(state)
         refreshDirtyState()
       }}
       onChange={refreshDirtyState}
@@ -11138,7 +11138,7 @@ function MultiSelectField({
   )
   const selectedValues = values ?? uncontrolledSelectedValues
   const [open, setOpen] = useState(false)
-  const detailsRef = useRef<HTMLDetailsElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const labelsByValue = new Map(options.map((option) => [option.value, option.label]))
   const selectedLabels = selectedValues.length
     ? selectedValues
@@ -11153,8 +11153,8 @@ function MultiSelectField({
 
     const closeOnOutsideClick = (event: PointerEvent) => {
       if (
-        detailsRef.current &&
-        !detailsRef.current.contains(event.target as Node)
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
       ) {
         setOpen(false)
       }
@@ -11177,29 +11177,30 @@ function MultiSelectField({
   return (
     <div className="min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
-      <details
-        ref={detailsRef}
-        className="relative"
-        open={open}
-        onToggle={(event) => setOpen(event.currentTarget.open)}
-      >
-        <summary
+      {selectedValues.map((value) => (
+        <input key={value} type="hidden" name={name} value={value} />
+      ))}
+      <div ref={dropdownRef} className="relative">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-haspopup="listbox"
           className="flex min-h-9 cursor-pointer list-none items-center rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
           onClick={(event) => {
             event.preventDefault()
+            event.stopPropagation()
             setOpen((value) => !value)
           }}
         >
           <span className="line-clamp-2">{selectedLabels}</span>
-        </summary>
-        <div
-          className="absolute z-20 mt-2 grid max-h-72 w-full gap-1 overflow-y-auto rounded-md border border-zinc-200 bg-white p-2 shadow-lg"
-          onPointerDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setOpen(false)
-            }
-          }}
-        >
+        </button>
+        {open ? (
+          <div
+            role="listbox"
+            aria-label={label}
+            className="absolute z-20 mt-2 grid max-h-72 w-full gap-1 overflow-y-auto rounded-md border border-zinc-200 bg-white p-2 shadow-lg"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
           {options.map((option) => {
             const checked = selectedValues.includes(option.value)
 
@@ -11210,7 +11211,6 @@ function MultiSelectField({
               >
                 <input
                   type="checkbox"
-                  name={name}
                   value={option.value}
                   checked={checked}
                   onChange={(event) => {
@@ -11232,8 +11232,9 @@ function MultiSelectField({
               </label>
             )
           })}
-        </div>
-      </details>
+          </div>
+        ) : null}
+      </div>
       {hint ? <span className="block text-xs text-zinc-500">{hint}</span> : null}
     </div>
   )

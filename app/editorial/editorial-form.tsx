@@ -1,12 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState, type FormEvent } from "react"
+import { flushSync } from "react-dom"
 import Link from "next/link"
+import { EditorialContentFields } from "@/app/editorial/editorial-content-fields"
+import { EditorialPreview, type EditorialPreviewPost } from "@/app/editorial/editorial-preview"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
+import { isPublishableEditorialSource } from "@/lib/editorial-source"
 import type {
   EditorialAudience,
   EditorialPost,
   EditorialScope,
+  EditorialSource,
   EditorialStatus,
   EditorialTarget,
 } from "@/lib/editorial-types"
@@ -18,20 +23,6 @@ type EditorialFormProps = {
   initial?: EditorialPost | null
   cities: EditorialTarget[]
   partners: EditorialTarget[]
-}
-
-const defaultContent = [
-  {
-    heading: "Der wichtigste Gedanke",
-    paragraphs: ["Hier steht der erste Absatz des Beitrags.", "Hier kann ein zweiter Absatz ergänzen."],
-  },
-]
-
-const defaultSources = [{ label: "Interner Link", url: "/so-funktionierts" }]
-const defaultRelatedLinks = [{ label: "Mehr bei Benefitsi", href: "/blog" }]
-
-function jsonValue(value: unknown, fallback: unknown) {
-  return JSON.stringify(value ?? fallback, null, 2)
 }
 
 function dateTimeLocalValue(value: string | null | undefined) {
@@ -59,6 +50,9 @@ const secondaryButton =
   "inline-flex min-h-11 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-black text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff]"
 
 export function EditorialForm({ action, initial, cities, partners }: EditorialFormProps) {
+  const formRef = useRef<HTMLFormElement>(null)
+  const [preview, setPreview] = useState<EditorialPreviewPost | null>(null)
+  const [saveError, setSaveError] = useState("")
   const [scope, setScope] = useState<EditorialScope>(initial?.scope ?? "global")
   const [title, setTitle] = useState(initial?.title ?? "")
   const [slug, setSlug] = useState(initial?.slug ?? "")
@@ -66,19 +60,48 @@ export function EditorialForm({ action, initial, cities, partners }: EditorialFo
   const [audience, setAudience] = useState<EditorialAudience>(initial?.audience ?? "benefitsi")
   const [status, setStatus] = useState<EditorialStatus>(initial?.status ?? "draft")
 
+  function showPreview() {
+    if (!formRef.current) return
+    const data = new FormData(formRef.current)
+    const value = (name: string) => String(data.get(name) ?? "")
+    setPreview({ scope, title: value("title"), excerpt: value("excerpt"), eyebrow: value("eyebrow"),
+      image_url: value("imageUrl"), image_alt: value("imageAlt"),
+      content: JSON.parse(value("contentJson")), sources: JSON.parse(value("sourcesJson")), related_links: JSON.parse(value("relatedLinksJson")),
+      updated_at: initial?.updated_at ?? new Date().toISOString(),
+    })
+    formRef.current.scrollIntoView?.({ block: "start" })
+  }
+
+  function validateBeforeSave(event: FormEvent<HTMLFormElement>) {
+    const data = new FormData(event.currentTarget)
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
+    const intent = submitter?.name === "intent" ? submitter.value : ""
+    const sources: EditorialSource[] = JSON.parse(String(data.get("sourcesJson") ?? "[]"))
+    if ((intent === "publish_now" || (intent !== "save_draft" && status === "active")) && scope !== "global" && !sources.some(isPublishableEditorialSource)) {
+      event.preventDefault()
+      setPreview(null)
+      setSaveError("Zum Veröffentlichen fehlt eine Quelle mit gültiger Webadresse. Ergänze sie oder speichere den Beitrag als Entwurf. Deine Eingaben bleiben erhalten.")
+      formRef.current?.scrollIntoView?.({ block: "start" })
+    } else setSaveError("")
+  }
+
   return (
-    <form action={action} className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white shadow-[0_18px_50px_rgba(6,24,41,.05)]">
+    <form ref={formRef} action={action} onSubmit={validateBeforeSave} onInvalidCapture={() => { if (preview) flushSync(() => setPreview(null)) }} className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white shadow-[0_18px_50px_rgba(6,24,41,.05)]">
       {initial ? <input type="hidden" name="postId" value={initial.id} /> : null}
 
       <div className="border-b border-[#061829]/10 p-5 sm:p-6">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">Beitrag bearbeiten</p>
-        <h2 className="mt-1 text-2xl font-black tracking-[-0.035em]">Inhalt, Ziel und Veröffentlichung</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#617080]">
-          Ein Beitrag wird erst öffentlich sichtbar, wenn der Status auf „Aktiv“ steht und ein Veröffentlichungszeitpunkt gesetzt ist.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h2 className="text-xl font-black tracking-[-0.025em]">{preview ? "Beitragsvorschau" : "Inhalt bearbeiten"}</h2><p className="mt-1 text-sm leading-6 text-[#617080]">{preview ? "Dein aktueller Bearbeitungsstand. Noch nicht gespeichert." : "Texte und Links ändern, danach in der Vorschau prüfen."}</p></div>
+          <div className="flex gap-2" aria-label="Ansicht wechseln">
+            <button type="button" aria-pressed={!preview} onClick={() => setPreview(null)} className={`${secondaryButton} ${!preview ? "border-[#118cff] bg-[#f3f8ff]" : ""}`}>Bearbeiten</button>
+            <button type="button" aria-pressed={Boolean(preview)} onClick={showPreview} className={`${secondaryButton} ${preview ? "border-[#118cff] bg-[#f3f8ff]" : ""}`}>Vorschau</button>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-5 p-5 sm:p-6">
+      {saveError ? <p role="alert" className="m-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{saveError}</p> : null}
+      {preview ? <EditorialPreview post={preview} embedded /> : null}
+      <div hidden={Boolean(preview)} className={preview ? "hidden" : "grid gap-5 p-5 sm:p-6"}>
         <div className="grid gap-4 md:grid-cols-3">
           <Field label="Bereich" helper="Wo soll der Beitrag erscheinen?">
             <select
@@ -116,7 +139,7 @@ export function EditorialForm({ action, initial, cities, partners }: EditorialFo
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <Field label="Eyebrow">
+          <Field label="Dachzeile" helper="Kurzer Hinweis über dem Titel, z. B. Rund um Annweiler.">
             <input name="eyebrow" maxLength={120} defaultValue={initial?.eyebrow ?? "Magazin"} className={inputClass} />
           </Field>
           <Field label="Kategorie">
@@ -143,25 +166,11 @@ export function EditorialForm({ action, initial, cities, partners }: EditorialFo
           </Field>
         </div>
 
-        <Field label="Beitragsinhalt" required helper="Als JSON mit Abschnitten. Die Vorschau nutzt daraus Überschrift und Absätze.">
-          <textarea name="contentJson" required rows={16} defaultValue={jsonValue(initial?.content, defaultContent)} className={`${inputClass} min-h-80 py-3 font-mono text-xs leading-6`} />
-        </Field>
+        <EditorialContentFields initial={initial} />
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Field label="Quellen und weiterführende Seiten" helper="Array mit label und url. Interne Pfade wie /fuer-partner sind erlaubt.">
-            <textarea name="sourcesJson" rows={8} defaultValue={jsonValue(initial?.sources, defaultSources)} className={`${inputClass} min-h-48 py-3 font-mono text-xs leading-6`} />
-          </Field>
-          <Field label="Verwandte Links" helper="Array mit label und href für die interne Verlinkung.">
-            <textarea name="relatedLinksJson" rows={8} defaultValue={jsonValue(initial?.related_links, defaultRelatedLinks)} className={`${inputClass} min-h-48 py-3 font-mono text-xs leading-6`} />
-          </Field>
-        </div>
-
-        <details className="rounded-2xl border border-[#061829]/10 bg-[#f7f9fa] px-4 py-3 text-sm text-[#526170]">
-          <summary className="cursor-pointer font-black text-[#061829]">JSON-Struktur anzeigen</summary>
-          <pre className="mt-3 overflow-x-auto whitespace-pre-wrap text-xs leading-5">{`Inhalt:\n[{ "heading": "Überschrift", "paragraphs": ["Absatz 1", "Absatz 2"] }]\n\nQuelle:\n[{ "label": "Für Partner", "url": "/fuer-partner" }]\n\nVerwandter Link:\n[{ "label": "Annweiler entdecken", "href": "/stadt/annweiler" }]`}</pre>
-        </details>
-
-        <div className="grid gap-4 md:grid-cols-[220px_220px_1fr] md:items-end">
+        <details className="rounded-xl border border-[#061829]/10 p-4">
+          <summary className="cursor-pointer text-sm font-bold text-[#526170]">Status und Termin (optional)</summary>
+        <div className="mt-4 grid gap-4 md:grid-cols-[220px_220px_1fr] md:items-end">
           <Field label="Status">
             <select name="status" value={status} onChange={(event) => setStatus(event.target.value as EditorialStatus)} className={inputClass}>
               <option value="draft">Entwurf</option>
@@ -177,12 +186,18 @@ export function EditorialForm({ action, initial, cities, partners }: EditorialFo
             Aktiv bedeutet: Der Beitrag darf auf der öffentlichen Website erscheinen. Entwürfe bleiben ausschließlich im Admin Panel.
           </p>
         </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#061829]/10 pt-5">
+        <div className="mt-4"><PendingSubmitButton pendingLabel="Wird gespeichert…" className={secondaryButton}>Status und Termin speichern</PendingSubmitButton></div>
+        </details>
+      </div>
+      <div className="border-t border-[#061829]/10 bg-[#f7f9fc] p-5 sm:p-6">
+        <p className="mb-4 text-sm leading-6 text-[#526170]">Mit „Jetzt veröffentlichen“ wird dieser Stand gespeichert und sofort auf der Website sichtbar.</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Link href="/editorial" className={secondaryButton}>Abbrechen</Link>
-          <PendingSubmitButton pendingLabel="Wird gespeichert…" className="min-h-11 rounded-xl bg-[#118cff] px-5 text-sm font-black text-white transition hover:bg-[#0878df]">
-            Beitrag speichern
-          </PendingSubmitButton>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={preview ? () => setPreview(null) : showPreview} className={secondaryButton}>{preview ? "Weiter bearbeiten" : "Vorschau"}</button>
+            <PendingSubmitButton name={status === "active" || status === "archived" ? undefined : "intent"} value={status === "active" || status === "archived" ? undefined : "save_draft"} pendingLabel="Wird gespeichert…" className={secondaryButton}>{status === "active" || status === "archived" ? "Änderungen speichern" : "Als Entwurf speichern"}</PendingSubmitButton>
+            <PendingSubmitButton name="intent" value="publish_now" pendingLabel="Wird veröffentlicht…" className="min-h-11 rounded-xl bg-[#118cff] px-5 text-sm font-black text-white transition hover:bg-[#0878df]">Jetzt veröffentlichen</PendingSubmitButton>
+          </div>
         </div>
       </div>
     </form>

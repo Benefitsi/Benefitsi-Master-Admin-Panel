@@ -1,6 +1,8 @@
 /* eslint-disable @next/next/no-img-element -- Microsite assets are admin-selected storage URLs and may use partner-specific hosts. */
 "use client"
 
+import { MicrositeLink, useMicrositeIntegration } from "./microsite-integration"
+
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { CSSProperties } from "react"
 import {
@@ -235,6 +237,7 @@ export function RestaurantPremiumMicrosite({
   config: MicrositeConfig
   showAppDownloadPopup?: boolean
 }) {
+  const integration = useMicrositeIntegration()
   const theme = restaurantTheme()
   const palette = useResolvedPalette(
     config,
@@ -251,6 +254,7 @@ export function RestaurantPremiumMicrosite({
   return (
     <article
       lang={config.language}
+      data-template={config.template}
       style={style}
       className={`premium-microsite @container relative isolate w-full min-w-0 max-w-full overflow-visible rounded-none [overflow-wrap:anywhere] @min-[480px]:rounded-[1.6rem] ${
         isDark
@@ -266,12 +270,14 @@ export function RestaurantPremiumMicrosite({
         theme={theme}
       />
       <HeroSection partner={partner} config={config} template={config.template} />
-      <DealsSection partner={partner} config={config} template={config.template} />
-      <PartnerSocialFeed partner={partner} config={config} />
-      <MenuSection partner={partner} config={config} template={config.template} />
-      <QuoteSection config={config} />
+      {integration.benefits !== undefined ? integration.benefits : <DealsSection partner={partner} config={config} template={config.template} />}
+      {integration.app}
+      {integration.socialFeed !== undefined ? integration.socialFeed : <PartnerSocialFeed partner={partner} config={config} />}
+      {!integration.hideEmptySections || menuItemsForPartner(partner).length > 0 ? <MenuSection partner={partner} config={config} template={config.template} /> : null}
+      {!integration.hideEmptySections || config.content.quoteText ? <QuoteSection config={config} /> : null}
       <AboutContactSection partner={partner} config={config} template={config.template} />
-      <FaqSection config={config} />
+      {integration.faq !== undefined ? integration.faq : <FaqSection config={config} />}
+      {integration.beforeFooter}
       <FooterSection partner={partner} config={config} />
       {showAppDownloadPopup ? (
         <AppDownloadQrPopup partner={partner} config={config} />
@@ -323,6 +329,7 @@ function MicrositeThemeCss() {
 
       .premium-hero-stage {
         isolation: isolate;
+        overflow-x: clip;
       }
 
       .premium-hero-media-inner {
@@ -1392,13 +1399,13 @@ function SiteHeader({
           ))}
         </nav>
         <div className="hidden items-center gap-3 @min-[1180px]:flex">
-          <a
+          <MicrositeLink
             href={hasBenefits ? "#deals" : "#speisekarte"}
             className="premium-button group inline-flex min-h-11 items-center justify-center gap-3 rounded-xl bg-[var(--site-accent)] px-5 py-3 text-sm font-black text-white shadow-[0_16px_30px_-18px_var(--site-accent)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105"
           >
             {hasBenefits ? config.hero.primaryButtonLabel : config.hero.secondaryButtonLabel}
             <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
-          </a>
+          </MicrositeLink>
         </div>
         <div className="relative z-10 flex shrink-0 items-center justify-end gap-1.5 @min-[1180px]:hidden">
           <button
@@ -1445,7 +1452,7 @@ function NavigationLink({
   onNavigate?: () => void
 }) {
   return (
-    <a
+    <MicrositeLink
       {...editable(`navigation.${link.anchor}`, "text", `Navigation ${link.label}`)}
       href={`#${link.anchor}`}
       onClick={onNavigate}
@@ -1457,7 +1464,7 @@ function NavigationLink({
       style={textStyleFor(config, `navigation.${link.anchor}`)}
     >
       {textValue(config, `navigation.${link.anchor}`, link.label)}
-    </a>
+    </MicrositeLink>
   )
 }
 
@@ -1470,6 +1477,7 @@ function HeroSection({
   config: MicrositeConfig
   template: MicrositeConfig["template"]
 }) {
+  const integration = useMicrositeIntegration()
   void template
   const hasBenefits = hasMicrositeBenefitContent(partner, config)
   const featureDescriptions = [
@@ -1481,7 +1489,7 @@ function HeroSection({
 
   return (
     <section className="relative bg-[var(--site-bg)]">
-      <div className="premium-hero-stage relative mx-auto w-full min-w-0 max-w-7xl overflow-visible bg-[var(--site-bg)] @min-[640px]:min-h-[600px] @min-[1024px]:min-h-[600px]">
+      <div className="premium-hero-stage relative mx-auto w-full min-w-0 max-w-7xl bg-[var(--site-bg)] @min-[640px]:min-h-[600px] @min-[1024px]:min-h-[600px]">
         <div className="premium-hero-media-inner absolute inset-0 overflow-hidden bg-[var(--site-secondary)]">
             <BrandedImage
               src={config.hero.backgroundImageUrl}
@@ -1498,7 +1506,7 @@ function HeroSection({
         <span aria-hidden="true" className="premium-hero-ambient" />
 
         <div className="premium-hero-badge absolute z-10">
-          <Badge config={config} />
+          {integration.heroBadge !== undefined ? integration.heroBadge : <Badge config={config} />}
         </div>
 
         <div className="premium-hero-flow z-10">
@@ -1594,12 +1602,13 @@ function DealsSection({
   showEcosystem?: boolean
   showLoyalty?: boolean
 }) {
-  const publicDeals = getMicrositePublicDeals(partner.deals)
+  const published = useMicrositeIntegration().publishedBenefits
+  const publicDeals = published ? partner.deals : getMicrositePublicDeals(partner.deals)
   const welcomeDeals = getMicrositeWelcomeDeals(partner.deals)
   const stampDeals = getMicrositeStampDeals(partner.deals)
   const stampRewards = getMicrositeStampRewards(partner.reward_milestones)
   const { featuredDeal, secondaryDeals } = partitionMicrositePublicDeals(publicDeals)
-  const stampCount = Math.max(
+  const stampCount = published ? published.loyalty?.targetCount || 0 : Math.max(
     10,
     ...stampRewards
       .map((milestone) => milestone.required_stamps || 0)
@@ -1617,6 +1626,7 @@ function DealsSection({
   const [topDealActive, setTopDealActive] = useState(false)
 
   useEffect(() => {
+    if (stampCount <= 0) return
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       const reducedMotionFrame = window.requestAnimationFrame(() => {
         setActiveStamp(stampCount)
@@ -1677,7 +1687,19 @@ function DealsSection({
       window.removeEventListener("resize", requestBannerUpdate)
     }
   }, [publicDeals.length])
-  const stampMilestoneCards = [
+  const stampMilestoneCards = published ? (published.loyalty?.rewards || []).map(reward => ({
+    id: reward.id,
+    stamp: reward.requiredStamps,
+    eyebrow: `${reward.requiredStamps} ${config.language === "en" ? "stamps" : "Stempel"}${reward.audienceLabel ? ` · ${reward.audienceLabel}` : ""}`,
+    titleId: `stamps.reward.${reward.requiredStamps}.label`,
+    titleFallback: reward.title,
+    textId: `stamps.reward.${reward.requiredStamps}.description`,
+    textFallback: reward.description || "",
+    imageId: `stamps.reward.${reward.requiredStamps}.image`,
+    imageUrl: textValue(config, `stamps.reward.${reward.requiredStamps}.image`, ""),
+    iconName: micrositeRewardIconName(reward.title),
+    tone: "amber" as const,
+  })) : [
     ...welcomeDeals.map((deal, index) => {
       const title = micrositeWelcomeTitle(deal, config.language)
       return {
@@ -1737,13 +1759,14 @@ function DealsSection({
   ]
   const hasLoyaltyContent = showLoyalty && stampMilestoneCards.length > 0
 
-  if (!featuredDeal && !hasLoyaltyContent) return null
+  if (!featuredDeal && !hasLoyaltyContent && !published) return null
 
   return (
     <section id="deals" className={`${restaurantSectionClass(template, "deals")} scroll-mt-24 px-5 pb-10 @min-[640px]:px-8 @min-[1024px]:px-10`}>
       <div className="mx-auto flex max-w-6xl flex-col gap-8 @min-[900px]:gap-10">
         <div className="premium-reveal pb-2 pt-12 @min-[640px]:pt-16">
           <div className="max-w-3xl">
+            {published ? <p className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--site-muted)]">{published.label}</p> : null}
             <h2
               {...editable("deals.headline", "text", "Vorteils-Überschrift")}
               className="text-[clamp(2rem,4.8cqw,3.3rem)] font-black leading-[1.04] tracking-[-0.04em]"
@@ -1775,6 +1798,7 @@ function DealsSection({
               config={config}
               active={topDealActive}
               primary
+              action={published?.dealActions[featuredDeal.id || ""]}
             />
             {secondaryDeals.length ? (
               <div className={`grid gap-5 ${secondaryDeals.length > 1 ? "@min-[900px]:grid-cols-2" : ""}`}>
@@ -1784,6 +1808,7 @@ function DealsSection({
                     deal={deal}
                     config={config}
                     active={topDealActive}
+                    action={published?.dealActions[deal.id || ""]}
                   />
                 ))}
               </div>
@@ -1791,7 +1816,7 @@ function DealsSection({
           </div>
         ) : null}
 
-        {showLoyalty ? <div
+        {hasLoyaltyContent ? <div
           id="stempelkarte"
           className="premium-stamp-story relative scroll-mt-24"
         >
@@ -1814,13 +1839,13 @@ function DealsSection({
               >
                 {config.stamps.slogan}
               </p>
-              <p className="premium-stamp-progress premium-no-text-reveal mt-4 inline-flex items-center gap-2 rounded-full bg-[color-mix(in_srgb,var(--site-tertiary)_14%,white)] px-3 py-1.5 text-xs font-black text-[var(--site-secondary)]" aria-live="polite">
+              {stampCount > 0 ? <p className="premium-stamp-progress premium-no-text-reveal mt-4 inline-flex items-center gap-2 rounded-full bg-[color-mix(in_srgb,var(--site-tertiary)_14%,white)] px-3 py-1.5 text-xs font-black text-[var(--site-secondary)]" aria-live="polite">
                 <span className="tabular-nums">{activeStamp}/{stampCount}</span>
-                <span>{config.language === "en" ? "stamps completed" : "Stempel geschafft"}</span>
-              </p>
+                <span>{config.language === "en" ? " stamps completed" : " Stempel geschafft"}</span>
+              </p> : null}
             </div>
             <div>
-              <div className="relative pt-1">
+              {stampCount > 0 ? <div className="relative pt-1">
                 <div className="absolute left-5 right-5 top-6 hidden h-px bg-zinc-200 @min-[640px]:block" />
                 <div
                   className="absolute left-5 top-6 hidden h-px max-w-[calc(100%_-_2.5rem)] bg-[linear-gradient(90deg,#10b981,var(--site-tertiary),var(--site-accent))] transition-[width] duration-300 ease-out @min-[640px]:block"
@@ -1868,7 +1893,7 @@ function DealsSection({
                             className="premium-stamp-number relative z-10 font-bold text-current"
                             style={textStyleFor(config, `stamps.number.${number}`)}
                           >
-                            {textValue(config, `stamps.number.${number}`, String(number))}
+                            {published ? String(number) : textValue(config, `stamps.number.${number}`, String(number))}
                           </span>
                           {completed && !highlighted ? (
                             <span
@@ -1895,7 +1920,7 @@ function DealsSection({
                     )
                   })}
                 </div>
-              </div>
+              </div> : null}
 
               <div className="premium-stamp-rewards mt-5 grid grid-cols-1 gap-3 @min-[640px]:mt-7 @min-[640px]:grid-cols-2 @min-[900px]:grid-cols-3">
                 {stampMilestoneCards.map((card) => {
@@ -1972,7 +1997,7 @@ function DealsSection({
                 })}
               </div>
 
-              <p
+              {published ? published.loyalty?.footer : <p
                 {...editable("stamps.description", "text", "Stempelkarte Hinweis")}
                 className="mt-7 hidden text-xs text-zinc-500 @min-[640px]:block"
                 style={textStyleFor(config, "stamps.description")}
@@ -1982,29 +2007,31 @@ function DealsSection({
                   "stamps.description",
                   "Belohnungen und benötigte Stempel werden direkt aus den Partnerdaten übernommen.",
                 )}
-              </p>
+              </p>}
             </div>
           </div>
           </div>
         </div>
 
-        : <p id="stempelkarte" className="text-sm leading-7 text-zinc-600">{siteCopy(config, "Aktuelle Vorteile und verfügbare Treuebelohnungen findest du in der Benefitsi-App.", "Find current benefits and available loyalty rewards in the Benefitsi app.")}</p>}
+        : !published && !showLoyalty ? <p id="stempelkarte" className="text-sm leading-7 text-zinc-600">{siteCopy(config, "Aktuelle Vorteile und verfügbare Treuebelohnungen findest du in der Benefitsi-App.", "Find current benefits and available loyalty rewards in the Benefitsi app.")}</p> : null}
         {showEcosystem ? <BenefitsEcosystemSection partner={partner} config={config} /> : null}
       </div>
     </section>
   )
 }
 
-function MicrositeDealBanner({
+export function MicrositeDealBanner({
   deal,
   config,
   active,
   primary = false,
+  action,
 }: {
   deal: Deal
   config: MicrositeConfig
   active: boolean
   primary?: boolean
+  action?: import("react").ReactNode
 }) {
   const isFeaturedDeal = primary
   const title = micrositeDealTitle(deal, config.language)
@@ -2104,7 +2131,7 @@ function MicrositeDealBanner({
             ))}
           </ul>
         ) : null}
-        <button
+        {action !== undefined ? <div className="mt-6">{action}</div> : <button
           {...(primary ? editable("deals.topDealButtonLabel", "text", "Vorteil Button") : {})}
           className={
             isFeaturedDeal
@@ -2118,7 +2145,7 @@ function MicrositeDealBanner({
             className={`${isFeaturedDeal ? "size-4" : "size-3.5"} transition-transform duration-300 group-hover:translate-x-1`}
             aria-hidden="true"
           />
-        </button>
+        </button>}
       </div>
     </article>
   )
@@ -2295,6 +2322,7 @@ function AppScreenShowcase({
   config: MicrositeConfig
   screenshotUrl: string
 }) {
+  const published = useMicrositeIntegration().publishedBenefits
   const partnerName = partner.short_name || partner.name || siteCopy(config, "Partner", "Partner")
   const partnerCategory =
     partner.category?.filter(Boolean).slice(0, 2).join(" · ") ||
@@ -2321,15 +2349,15 @@ function AppScreenShowcase({
         "Details zum aktuellen Vorteil findest du in der Benefitsi-App.",
         "Find the current benefit details in the Benefitsi app.",
       )
-  const savingsLabel = activeDeal?.estimated_savings
+  const savingsLabel = published ? siteCopy(config, "Vorteilsvorschau", "Benefit preview") : activeDeal?.estimated_savings
     ? siteCopy(config, "ca. " + formatPrice(activeDeal.estimated_savings, "EUR") + " sparen", "save about " + formatPrice(activeDeal.estimated_savings, "EUR"))
     : siteCopy(config, "Direkt sparen", "Save instantly")
-  const stampTarget = Math.max(
+  const stampTarget = published ? published.loyalty?.targetCount || 0 : Math.max(
     10,
     partner.stamp_target || 0,
     ...partner.reward_milestones.map((milestone) => milestone.required_stamps || 0),
   )
-  const previewStamps = Math.min(4, Math.max(1, stampTarget - 1))
+  const previewStamps = published ? 0 : Math.min(4, Math.max(1, stampTarget - 1))
   const customPreview = screenshotUrl && screenshotUrl !== PARTNER_DETAIL_SCREEN_SRC ? screenshotUrl : null
   const heroImages = Array.from(
     new Set(
@@ -2338,8 +2366,7 @@ function AppScreenShowcase({
         ...(partner.cover_urls || []),
         partner.discover_card_image_url,
         partner.feature_card_url,
-        screenshotUrl,
-        PARTNER_DETAIL_SCREEN_SRC,
+        ...(!published ? [screenshotUrl, PARTNER_DETAIL_SCREEN_SRC] : []),
       ].filter((value): value is string => Boolean(value)),
     ),
   ).slice(0, 5)
@@ -2354,7 +2381,7 @@ function AppScreenShowcase({
   const weekdayLabels = config.language === "de"
     ? ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"]
     : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-  const fallbackMenuItems = [
+  const fallbackMenuItems = published ? [] : [
     [siteCopy(config, "Lieblingsgericht", "Signature dish"), "12,90 €"],
     [siteCopy(config, "Hausgemachtes Getränk", "House drink"), "4,50 €"],
     [siteCopy(config, "Dessert des Hauses", "House dessert"), "6,90 €"],
@@ -2390,6 +2417,7 @@ function AppScreenShowcase({
 
   return (
     <div className="relative mx-auto flex min-h-[520px] max-w-[330px] flex-col items-center justify-center px-4 py-3 @min-[900px]:min-h-[545px] @min-[900px]:px-2">
+      {published ? <p className="relative z-[1] mb-3 text-xs font-semibold text-[var(--site-muted)]">{siteCopy(config, "App-Vorschau · Beispielansicht", "App preview · sample view")}</p> : null}
       <div className="pointer-events-none absolute left-1/2 top-1/2 h-[78%] w-[82%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color-mix(in_srgb,var(--site-accent)_16%,transparent)] blur-3xl" />
       <div className="pointer-events-none absolute left-1/2 top-1/2 h-[72%] w-[68%] -translate-x-1/2 -translate-y-1/2 rounded-[48%] border border-[color-mix(in_srgb,var(--site-accent)_16%,transparent)]" />
 
@@ -2408,7 +2436,7 @@ function AppScreenShowcase({
           <div ref={phoneScrollRef} className="premium-phone-scroll absolute inset-0 min-w-0 overflow-x-hidden overflow-y-auto bg-[#f6f7f9] pb-7">
             <div className="relative h-[176px] overflow-hidden bg-[#d8dee7]">
               <BrandedImage
-                src={heroImages[activeCover] || PARTNER_DETAIL_SCREEN_SRC}
+                src={heroImages[activeCover] || (published ? undefined : PARTNER_DETAIL_SCREEN_SRC)}
                 alt={siteCopy(config, "Titelbild von " + partnerName, "Cover image for " + partnerName)}
                 editableId="content.appPhoneScreenshotUrl"
                 editableLabel="Partner-Titelbild im Telefon"
@@ -2425,7 +2453,7 @@ function AppScreenShowcase({
                 <ChevronLeft className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
               </button>
               <span className="absolute right-2 top-7 z-[2] rounded-full bg-[#0a9fe1] px-2 py-1 text-[5.5px] font-black uppercase tracking-[.06em] text-white shadow-sm">
-                {siteCopy(config, "Offen", "Open")}
+                {published ? siteCopy(config, "Vorschau", "Preview") : siteCopy(config, "Offen", "Open")}
               </span>
               {heroImages.length > 1 ? (
                 <div className="absolute inset-x-0 bottom-2 z-[2] flex justify-center gap-1" aria-label={siteCopy(config, "Titelbilder", "Cover images")}>
@@ -2473,14 +2501,14 @@ function AppScreenShowcase({
                   <Award className="size-2.5" aria-hidden="true" />
                   {siteCopy(config, "Neu hier", "New here")}
                 </span>
-                <button
+                {!published || menuItems.length ? <button
                   type="button"
                   onClick={() => setMenuOpen(true)}
                   className="premium-phone-compact-label inline-flex h-6 cursor-pointer items-center gap-1 rounded-full border border-[#9adbe5] bg-white px-2 text-[#182136] transition hover:bg-[#f5fbfc] active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]"
                 >
                   <Utensils className="size-2.5" aria-hidden="true" />
                   {siteCopy(config, "Speisekarte", "Menu")}
-                </button>
+                </button> : null}
               </div>
 
               <button
@@ -2496,7 +2524,7 @@ function AppScreenShowcase({
                 {partnerDescription}
               </p>
 
-              <div className="mt-3.5 flex items-center gap-1.5">
+              {!published || activeDeal ? <><div className="mt-3.5 flex items-center gap-1.5">
                 <h4 className="text-[10.5px] font-black tracking-[-.025em] text-[#152033]">{siteCopy(config, "Deine Vorteile", "Your benefits")}</h4>
                 <Circle className="size-3 text-[#657184]" strokeWidth={2} aria-hidden="true" />
               </div>
@@ -2513,7 +2541,7 @@ function AppScreenShowcase({
                 </div>
                 <p className="mt-2 line-clamp-2 text-[6.5px] leading-[1.45] text-[#687486]">{dealDescription}</p>
                 <div className="mt-1.5 flex items-center justify-between text-[5.5px] font-semibold text-[#7a8492]">
-                  <span>{siteCopy(config, "Bei jedem Besuch", "On every visit")}</span>
+                  <span>{published ? siteCopy(config, "Details und Bedingungen beachten", "See details and conditions") : siteCopy(config, "Bei jedem Besuch", "On every visit")}</span>
                   <button type="button" onClick={() => showPhoneToast("Vorteilsdetails geöffnet", "Benefit details opened")} className="cursor-pointer text-[5px] font-black text-[#078dcc] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
                     {siteCopy(config, "Details", "Details")}
                   </button>
@@ -2534,12 +2562,13 @@ function AppScreenShowcase({
                   {siteCopy(config, "Alle Vorteile anzeigen", "Show all benefits")}
                 </button>
               ) : null}
+              </> : null}
 
-              <h4 className="mt-4 text-[10.5px] font-black tracking-[-.025em] text-[#152033]">{siteCopy(config, "Stempelkarte", "Stamp card")}</h4>
+              {!published || published.loyalty ? <><h4 className="mt-4 text-[10.5px] font-black tracking-[-.025em] text-[#152033]">{siteCopy(config, "Stempelkarte", "Stamp card")}</h4>
               <div className="mt-2 rounded-[1rem] border border-[#e1e5eb] bg-white p-2.5 shadow-[0_5px_14px_rgba(23,32,51,.07)]">
                 <div className="flex items-end justify-between">
                   <span>
-                    <span className="block text-[8px] font-black text-[#202a3c]">{previewStamps}/{stampTarget} {siteCopy(config, "Stempel", "stamps")}</span>
+                    <span className="block text-[8px] font-black text-[#202a3c]">{stampTarget > 0 ? `${previewStamps}/${stampTarget} ${siteCopy(config, "Stempel", "stamps")}` : siteCopy(config, "Belohnungen entdecken", "Discover rewards")}</span>
                     <span className="mt-0.5 block text-[5.5px] text-[#7b8696]">{siteCopy(config, "Weiter sammeln und Belohnung sichern", "Keep collecting toward your reward")}</span>
                   </span>
                   <BadgeCheck className="size-4 text-[#13aa92]" aria-hidden="true" />
@@ -2554,6 +2583,7 @@ function AppScreenShowcase({
                   {siteCopy(config, "Stempel sammeln", "Collect stamps")}
                 </button>
               </div>
+              </> : null}
 
               <h4 className="mt-4 text-[10.5px] font-black tracking-[-.025em] text-[#152033]">{siteCopy(config, "Deine Badges", "Your badges")}</h4>
               <div className="mt-2 grid grid-cols-3 gap-1.5">
@@ -2672,8 +2702,10 @@ function AppScreenShowcase({
   )
 }
 function AppExploreButton({ href, config }: { href: string; config: MicrositeConfig }) {
+  const published = useMicrositeIntegration().publishedBenefits
+  if (published) return <div className="justify-self-start @min-[760px]:justify-self-end">{published.appAction}</div>
   return (
-    <a
+    <MicrositeLink
       href={href}
       className="premium-app-cta premium-button group inline-flex min-h-11 items-center justify-self-center gap-2 rounded-xl px-4 py-2.5 text-white transition duration-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-[.985] @min-[760px]:justify-self-end"
     >
@@ -2683,7 +2715,7 @@ function AppExploreButton({ href, config }: { href: string; config: MicrositeCon
       <span className="grid size-7 place-items-center rounded-full bg-white/15 transition duration-300 group-hover:translate-x-1 group-hover:bg-white/24">
         <ArrowRight className="size-4" aria-hidden="true" />
       </span>
-    </a>
+    </MicrositeLink>
   )
 }
 
@@ -2702,7 +2734,7 @@ function StoreBadge({
   const english = language === "en"
 
   return (
-    <a
+    <MicrositeLink
       href={href}
       className={`inline-flex min-w-0 max-w-full items-center justify-center rounded-[0.8rem] bg-black text-white shadow-[0_12px_26px_rgba(15,23,42,.16)] ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-zinc-900 ${compact ? "w-full gap-1 px-1.5 py-1" : "w-full gap-3 px-4 py-3 @min-[420px]:w-auto @min-[420px]:min-w-[190px]"}`}
       aria-label={isAppStore ? (english ? "Download on the App Store" : "Laden im App Store") : (english ? "Get it on Google Play" : "Jetzt bei Google Play")}
@@ -2722,7 +2754,7 @@ function StoreBadge({
           {isAppStore ? "App Store" : "Google Play"}
         </span>
       </span>
-    </a>
+    </MicrositeLink>
   )
 }
 
@@ -2927,20 +2959,21 @@ function MenuSection({
                   </div>
 
                   <div className="border-b border-zinc-100 px-5 py-3">
-                    <div className="flex flex-col gap-3 @min-[760px]:flex-row @min-[760px]:items-center @min-[760px]:justify-between">
+                    <div className="flex min-w-0 flex-col gap-3 @min-[760px]:flex-row @min-[760px]:items-center">
                       <input
                         type="search"
                         value={menuQuery}
                         onChange={(event) => setMenuQuery(event.target.value)}
                         placeholder={siteCopy(config, "Gericht, Getränk oder Kategorie suchen", "Search dishes, drinks or categories")}
-                        className="h-10 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[var(--site-accent)] focus:bg-white @min-[760px]:max-w-sm"
+                        className="h-10 w-full shrink-0 rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[var(--site-accent)] focus:bg-white @min-[760px]:max-w-sm"
                       />
-                      <div className="flex gap-2 overflow-x-auto pb-1 @min-[760px]:justify-end">
+                      <div role="group" aria-label={siteCopy(config, "Speisekarte filtern", "Filter menu")} className="flex min-w-0 max-w-full gap-2 overflow-x-auto pb-1 @min-[760px]:flex-1">
                         {filters.map((filter) => (
                         <button
                           key={filter.id}
                           type="button"
                           onClick={() => setActiveFilterId(filter.id)}
+                          aria-pressed={activeFilterId === filter.id}
                           className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition ${
                             activeFilterId === filter.id
                               ? "border-[var(--site-accent)] bg-[var(--site-accent)] text-white shadow-sm"
@@ -3168,6 +3201,7 @@ function CompactContactSection({
   partner: PartnerWithDeals
   config: MicrositeConfig
 }) {
+  const integration = useMicrositeIntegration()
   const address = contactAddressFor(partner, config)
   const phone = partner.phone || siteCopy(config, "Telefon im Admin ergänzen", "Add phone number in admin")
   const opening = textValue(
@@ -3227,28 +3261,28 @@ function CompactContactSection({
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2 @min-[760px]:hidden">
-            <a
+            <MicrositeLink
               href={routeUrl}
               target="_blank"
               rel="noreferrer"
               className="col-span-2 rounded-xl bg-[var(--site-accent)] px-4 py-3 text-center text-sm font-black text-white shadow-[0_12px_28px_rgba(245,158,11,.28)]"
             >
               {siteCopy(config, "Route", "Directions")}
-            </a>
-            <a
+            </MicrositeLink>
+            <MicrositeLink
               href={phoneHref || "#kontakt"}
               className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-center text-sm font-bold text-white"
             >
               {siteCopy(config, "Anrufen", "Call")}
-            </a>
-            <a
+            </MicrositeLink>
+            <MicrositeLink
               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
               target="_blank"
               rel="noreferrer"
               className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-center text-sm font-bold text-white"
             >
               {siteCopy(config, "Karte", "Map")}
-            </a>
+            </MicrositeLink>
           </div>
         </div>
 
@@ -3282,14 +3316,14 @@ function CompactContactSection({
         {...editable("content.contactMap", "image", "Google Maps Karte")}
         className="relative min-h-[330px] overflow-hidden rounded-[1.15rem] border border-white/15 bg-zinc-900 shadow-[0_18px_42px_rgba(0,0,0,.24)] @min-[900px]:min-h-[380px]"
       >
-        <iframe
+        {integration.contactMap !== undefined ? integration.contactMap : <iframe
           title={`Google Maps Standort ${partner.name || config.hero.headline}`}
           src={mapsEmbedUrl}
           className="absolute inset-0 h-full w-full border-0"
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
           allowFullScreen
-        />
+        />}
       </div>
     </div>
   )
@@ -3420,6 +3454,8 @@ function AboutValueCard({
   fallback: string
   config: MicrositeConfig
 }) {
+  if (!textValue(config, id, fallback)) return null
+
   return (
     <div className="premium-liquid-panel premium-ecosystem-card rounded-[1.05rem] px-3 py-2.5 text-center">
       <ThemeIcon
@@ -3448,16 +3484,17 @@ function FooterSection({
   partner: PartnerWithDeals
   config: MicrositeConfig
 }) {
+  const integration = useMicrositeIntegration()
   const footerLogoUrl = textValue(config, "footer.benefitsiLogo", "")
   const hasBenefits = hasMicrositeBenefitContent(partner, config)
   const exploreLinks = [
     ...(hasBenefits
       ? [
           { label: siteCopy(config, "Vorteile & Aktionen", "Benefits & campaigns"), href: "#deals" },
-          { label: siteCopy(config, "Stempelkarte", "Stamp card"), href: "#stempelkarte" },
+          ...(!integration.publishedBenefits || integration.publishedBenefits.loyalty ? [{ label: siteCopy(config, "Stempelkarte", "Stamp card"), href: "#stempelkarte" }] : []),
         ]
       : []),
-    { label: siteCopy(config, "Speisekarte", "Menu"), href: "#speisekarte" },
+    ...(!integration.hideEmptySections || menuItemsForPartner(partner).length ? [{ label: siteCopy(config, "Speisekarte", "Menu"), href: "#speisekarte" }] : []),
   ]
 
   return (
@@ -3496,9 +3533,7 @@ function FooterSection({
             )}
           </p>
 
-          <div className="mt-4 grid max-w-[360px] grid-cols-3 gap-3">
-            <FooterTrustItem id="footer.trust.0" icon="shield" label={siteCopy(config, "Sicher & geprüft", "Safe & verified")} config={config} />
-            <FooterTrustItem id="footer.trust.1" icon="privacy" label={siteCopy(config, "DSGVO-konform", "GDPR compliant")} config={config} />
+          <div className="mt-4 max-w-[120px]">
             <FooterTrustItem id="footer.trust.2" icon="local" label={siteCopy(config, "Lokale Partner", "Local partners")} config={config} />
           </div>
         </div>
@@ -3518,10 +3553,14 @@ function FooterSection({
           title="Benefitsi"
           links={[
             { label: "Benefitsi-App", href: "#app" },
-            { label: siteCopy(config, "Hilfe & FAQ", "Help & FAQ"), href: "#faq" },
+            ...(integration.faq === null ? [] : [{ label: siteCopy(config, "Hilfe & FAQ", "Help & FAQ"), href: "#faq" }]),
           ]}
         />
       </div>
+      <nav aria-label={siteCopy(config, "Rechtliche Hinweise", "Legal information")} className="mx-auto flex max-w-6xl flex-wrap gap-x-5 gap-y-2 border-t border-zinc-200 py-4 text-xs">
+        <MicrositeLink href="https://benefitsi.de/impressum" className="underline underline-offset-4">{siteCopy(config, "Impressum", "Legal notice")}</MicrositeLink>
+        <MicrositeLink href="https://benefitsi.de/datenschutz" className="underline underline-offset-4">{siteCopy(config, "Datenschutz", "Privacy policy")}</MicrositeLink>
+      </nav>
     </footer>
   )
 }
@@ -3539,12 +3578,12 @@ function FooterLinkColumn({
       <ul className="mt-3 space-y-2.5">
         {links.map((link) => (
           <li key={link.href}>
-            <a
+            <MicrositeLink
               href={link.href}
               className="text-sm text-zinc-500 transition hover:text-[var(--site-accent)]"
             >
               {link.label}
-            </a>
+            </MicrositeLink>
           </li>
         ))}
       </ul>
@@ -3744,7 +3783,7 @@ function AppDownloadQrPopup({
         </button>
 
         <div className="relative grid grid-cols-[78px_minmax(0,1fr)] items-center gap-3 @min-[620px]:grid-cols-[92px_minmax(0,1fr)]">
-          <a
+          <MicrositeLink
             href={appUrl}
             className="premium-qr-surface group relative aspect-square rounded-2xl bg-white p-1.5 shadow-[0_12px_32px_rgba(15,23,42,.11)] ring-1 ring-zinc-200/80"
             aria-label={siteCopy(config, "QR-Code zur Benefitsi App öffnen", "Open the Benefitsi app QR code")}
@@ -3754,7 +3793,7 @@ function AppDownloadQrPopup({
               alt={siteCopy(config, "QR-Code für die Benefitsi App", "QR code for the Benefitsi app")}
               className="h-full w-full rounded-xl object-contain transition duration-500 group-hover:scale-[1.03]"
             />
-          </a>
+          </MicrositeLink>
 
           <div className="min-w-0">
             <p className="text-[11px] font-black uppercase tracking-[.14em] text-[var(--site-accent)] @min-[620px]:text-xs">
@@ -3778,13 +3817,13 @@ function AppDownloadQrPopup({
                 siteCopy(config, "QR-Code scannen. Vorteile sichern.", "Scan the QR code. Get your benefits."),
               )}
             </p>
-            <a
+            <MicrositeLink
               href={appUrl}
               className="mt-2 inline-flex items-center gap-2 text-xs font-black text-zinc-950 @min-[620px]:hidden"
             >
               {siteCopy(config, "App öffnen", "Open app")}
               <ArrowRight className="size-3.5" aria-hidden="true" />
-            </a>
+            </MicrositeLink>
             <div className="mt-2 hidden grid-cols-2 gap-1.5 @min-[620px]:grid">
               <StoreBadge store="app-store" href={appUrl} language={config.language} compact />
               <StoreBadge store="google-play" href={appUrl} language={config.language} compact />
@@ -3854,7 +3893,7 @@ function PartnerSocialFeed({
             </h2>
           </div>
 
-          <a
+          <MicrositeLink
             href={profileUrl || posts[0].url}
             target="_blank"
             rel="noreferrer"
@@ -3865,7 +3904,7 @@ function PartnerSocialFeed({
               ? siteCopy(config, "Auf TikTok folgen", "Follow on TikTok")
               : siteCopy(config, "Auf Instagram folgen", "Follow on Instagram")}
             <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-          </a>
+          </MicrositeLink>
         </div>
 
         {platform === "instagram" ? (
@@ -4006,7 +4045,7 @@ function HeroButton({
   const href = primary ? "#deals" : "#speisekarte"
 
   return (
-    <a
+    <MicrositeLink
       {...editable(id, "text", "Startbereich Button")}
       href={href}
       className={`premium-button group inline-flex min-h-11 items-center justify-center gap-3 rounded-xl px-6 py-3 text-center text-sm font-black transition duration-300 hover:-translate-y-1 ${
@@ -4020,7 +4059,7 @@ function HeroButton({
       {primary ? (
         <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
       ) : null}
-    </a>
+    </MicrositeLink>
   )
 }
 
@@ -4323,7 +4362,7 @@ function spacingStyleFor(config: MicrositeConfig, id: string): CSSProperties {
 }
 
 function textValue(config: MicrositeConfig, id: string, fallback: string) {
-  return config.elementText[id] || fallback
+  return config.elementText[id] ?? fallback
 }
 
 function iconStyleFor(config: MicrositeConfig, id: string): CSSProperties {
@@ -4520,7 +4559,7 @@ function SocialBadge({
   const color = socialBadgeBackground(platform)
 
   return (
-    <a
+    <MicrositeLink
       {...editable(id, "group", `${displayLabel} Social-Media-Schaltfläche`)}
       href={href}
       target={href.startsWith("http") ? "_blank" : undefined}
@@ -4549,7 +4588,7 @@ function SocialBadge({
       >
         {conciseLabel}
       </span>
-    </a>
+    </MicrositeLink>
   )
 }
 

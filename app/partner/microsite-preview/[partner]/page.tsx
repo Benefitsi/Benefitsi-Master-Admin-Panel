@@ -16,7 +16,7 @@ import { MicrositePreviewShell } from "@/app/microsite-preview/[partner]/preview
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Partner Microsite Preview | Benefitsi",
+  title: "Partner-Mikroseite · Builder-Referenz & Versionsvergleich | Benefitsi",
   robots: {
     index: false,
     follow: false,
@@ -28,7 +28,7 @@ export default async function PartnerMicrositePreviewPage({
   searchParams,
 }: {
   params: Promise<{ partner: string }>
-  searchParams: Promise<{ viewport?: string; source?: string }>
+  searchParams: Promise<{ viewport?: string; source?: string; mode?: string }>
 }) {
   const config = getSupabaseConfig()
 
@@ -81,11 +81,10 @@ export default async function PartnerMicrositePreviewPage({
     )
   }
 
-  const configValue = resolveMicrositeConfig(
-    partner.microsite?.draftVersion?.config ??
-      partner.microsite?.publishedVersion?.config,
-    partner,
-  )
+  const previewSource = query.source === "published" ? "published" : query.source === "builder" ? "builder" : "saved"
+  const version = previewSource === "published" ? partner.microsite?.publishedVersion : partner.microsite?.draftVersion ?? partner.microsite?.publishedVersion
+  if (previewSource === "published" && !version) notFound()
+  const configValue = resolveMicrositeConfig(version?.config, partner)
 
   return (
     <MicrositePreviewShell
@@ -93,6 +92,8 @@ export default async function PartnerMicrositePreviewPage({
       initialConfig={configValue}
       previewStorageKey={micrositePreviewStorageKey(partner)}
       useBuilderDraft={query.source === "builder"}
+      previewSource={previewSource}
+      previewMode={query.mode === "dark" ? "dark" : query.mode === "light" ? "light" : undefined}
       isMobile={query.viewport === "mobile"}
       previewBasePath="/partner/microsite-preview"
     />

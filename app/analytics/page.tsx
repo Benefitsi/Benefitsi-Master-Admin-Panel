@@ -10,6 +10,8 @@ import {
   type AnalyticsSearchParams,
 } from "@/lib/analytics/filters"
 import { loadBusinessAnalytics } from "@/lib/analytics/loader"
+import { loadCityMeasurement } from "@/lib/analytics/city-measurement-loader"
+import { CityMeasurementDashboard } from "@/components/analytics/city-measurement-dashboard"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 
 export const dynamic = "force-dynamic"
@@ -31,7 +33,10 @@ export default async function AnalyticsPage({
 
   const filters = parseBusinessAnalyticsFilters(await searchParams)
   const { supabase, adminSession } = await requireAdmin()
-  const analytics = await loadBusinessAnalytics(supabase, filters)
+  const [analytics, cityMeasurement] = await Promise.all([
+    loadBusinessAnalytics(supabase, filters),
+    loadCityMeasurement(supabase, filters),
+  ])
   const adminName =
     adminSession.profile?.display_name ||
     adminSession.profile?.email ||
@@ -41,8 +46,8 @@ export default async function AnalyticsPage({
   return (
     <AdminShell
       adminName={adminName}
-      title="Business Control Center"
-      subtitle="Business, product, marketing, and profit in one verified view"
+      title="Unternehmensanalyse"
+      subtitle="Stadtnutzung, Web-Betrieb und Geschäftszahlen mit ihren Quellen"
     >
       {analytics.state === "ready" ||
       analytics.state === "empty" ||
@@ -50,9 +55,14 @@ export default async function AnalyticsPage({
         <BusinessControlCenter
           payload={analytics.payload}
           canReadFinance={analytics.permissions.financeRead}
-        />
+        >
+          <CityMeasurementDashboard result={cityMeasurement} filters={filters} />
+        </BusinessControlCenter>
       ) : (
-        <AnalyticsAccessState state={analytics.state} />
+        <div className="space-y-5">
+          <AnalyticsAccessState state={analytics.state} />
+          <CityMeasurementDashboard result={cityMeasurement} filters={filters} showFilters />
+        </div>
       )}
     </AdminShell>
   )

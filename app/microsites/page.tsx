@@ -45,14 +45,14 @@ export default async function MicrositesPage() {
   return (
     <AdminShell
       adminName={adminName}
-      title="Microsites"
-      subtitle="Builder, drafts, and published partner pages"
+      title="Mikroseiten"
+      subtitle="Builder-Referenz, gespeicherte Entwürfe und veröffentlichte Stände"
       micrositeCount={dashboard.partners.length}
     >
       <section className="grid gap-3 sm:grid-cols-3">
         <Metric label="Partner" value={dashboard.partners.length} />
-        <Metric label="Live" value={liveCount} tone="green" />
-        <Metric label="Only draft" value={draftCount} tone="blue" />
+        <Metric label="Veröffentlichte Stände" value={liveCount} tone="green" />
+        <Metric label="Nur Entwurf" value={draftCount} tone="blue" />
       </section>
 
       {dashboard.errors.length > 0 ? (
@@ -69,10 +69,10 @@ export default async function MicrositesPage() {
       <section className="overflow-hidden rounded-2xl border border-[#061829]/10 bg-white shadow-[0_18px_48px_rgba(6,24,41,.05)]">
         <header className="border-b border-[#061829]/10 px-4 py-4 sm:px-5">
           <h2 className="text-base font-bold text-[#061829]">
-            Partner microsites
+            Mikroseiten der Partner
           </h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Open the builder, review the draft, or visit the live page.
+            Die Builder-Referenz zeigt das maßgebliche Layout. Vergleiche daneben den gespeicherten und den veröffentlichten Stand.
           </p>
         </header>
 
@@ -154,15 +154,20 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
           href={`/microsite-builder/${encodeURIComponent(identifier)}`}
           className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#17d4d7_0%,#118cff_100%)] px-4 text-sm font-bold text-white shadow-[0_8px_20px_rgba(17,140,255,.18)] transition hover:-translate-y-px hover:shadow-[0_10px_24px_rgba(17,140,255,.24)] active:translate-y-0 active:scale-[.98]"
         >
-          Builder
+          Builder bearbeiten
         </Link>
         <Link
-          href={`/microsite-preview/${encodeURIComponent(previewIdentifier)}`}
+          href={`/microsite-preview/${encodeURIComponent(previewIdentifier)}?source=builder&mode=light`}
           target="_blank"
           className="inline-flex min-h-10 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50"
         >
-          Preview
+          Builder-Referenz
         </Link>
+        {partner.microsite?.publishedVersion ? <Link
+          href={`/microsite-preview/${encodeURIComponent(previewIdentifier)}?source=published&mode=light`}
+          target="_blank"
+          className="inline-flex min-h-10 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800"
+        >Veröffentlichten Stand vergleichen</Link> : null}
         {liveHref ? (
           <a
             href={liveHref}
@@ -170,7 +175,7 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
             rel="noreferrer"
             className="col-span-2 inline-flex min-h-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
           >
-            Live page
+            Öffentliche Seite
           </a>
         ) : null}
       </div>
@@ -187,7 +192,7 @@ function StatusBadge({ state }: { state: "Live" | "Draft" | "Not created" }) {
 
   return (
     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${classes}`}>
-      {state}
+      {state === "Live" ? "Veröffentlichter Stand vorhanden" : state === "Draft" ? "Entwurf vorhanden" : "Noch nicht angelegt"}
     </span>
   )
 }

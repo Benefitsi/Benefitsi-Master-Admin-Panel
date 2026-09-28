@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { requireAdmin } from "@/lib/admin"
+import { isPublishableEditorialSource } from "@/lib/editorial-source"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 const UUID_PATTERN =
@@ -97,6 +98,8 @@ function dateValue(formData: FormData) {
 }
 
 function buildPayload(formData: FormData) {
+  const intent = text(formData, "intent", 30)
+  if (intent && !["publish_now", "save_draft"].includes(intent)) return null
   const scope = text(formData, "scope", 20)
   const cityId = text(formData, "cityId", 80)
   const partnerId = text(formData, "partnerId", 80)
@@ -104,11 +107,11 @@ function buildPayload(formData: FormData) {
   const slug = text(formData, "slug", 180).toLocaleLowerCase("de")
   const excerpt = text(formData, "excerpt", 500)
   const imageUrl = optionalUrl(formData, "imageUrl")
-  const publishedAt = dateValue(formData)
+  const publishedAt = intent === "publish_now" ? new Date().toISOString() : intent === "save_draft" ? null : dateValue(formData)
   const content = parseContent(formData)
   const sources = parseLinks(formData, "sourcesJson", "url")
   const relatedLinks = parseLinks(formData, "relatedLinksJson", "href")
-  const status = text(formData, "status", 20)
+  const status = intent === "publish_now" ? "active" : intent === "save_draft" ? "draft" : text(formData, "status", 20)
 
   if (
     !["global", "city", "partner"].includes(scope) ||
@@ -155,14 +158,22 @@ function buildPayload(formData: FormData) {
   }
 }
 
-function invalidRedirect(path: string): never {
-  redirect(`${path}?error=validation`)
+function invalidRedirect(path: string, code = "validation"): never {
+  redirect(`${path}?error=${code}`)
+}
+
+function validatePublicationSources(payload: NonNullable<ReturnType<typeof buildPayload>>, path: string) {
+  if (payload.status !== "active" || payload.scope === "global") return
+  // Match the website's eligibility check, so an active post cannot silently 404.
+  const hasSource = payload.sources.some(isPublishableEditorialSource)
+  if (!hasSource) invalidRedirect(path, "sources_required")
 }
 
 export async function createEditorialPost(formData: FormData) {
   await requireAdmin()
   const payload = buildPayload(formData)
   if (!payload) invalidRedirect("/editorial/new")
+  validatePublicationSources(payload, "/editorial/new")
 
   const result = await createAdminClient().from("editorial_posts").insert(payload)
   if (result.error) {
@@ -171,7 +182,7 @@ export async function createEditorialPost(formData: FormData) {
   }
 
   revalidatePath("/editorial")
-  redirect("/editorial?success=created")
+  redirect(formData.get("intent") === "publish_now" ? "/editorial?success=published" : "/editorial?success=created")
 }
 
 export async function updateEditorialPost(formData: FormData) {
@@ -179,6 +190,7 @@ export async function updateEditorialPost(formData: FormData) {
   const postId = text(formData, "postId", 80)
   const payload = buildPayload(formData)
   if (!UUID_PATTERN.test(postId) || !payload) invalidRedirect(`/editorial/${encodeURIComponent(postId)}`)
+  validatePublicationSources(payload, `/editorial/${encodeURIComponent(postId)}`)
 
   const result = await createAdminClient()
     .from("editorial_posts")
@@ -191,7 +203,46 @@ export async function updateEditorialPost(formData: FormData) {
   }
 
   revalidatePath("/editorial")
-  redirect("/editorial?success=saved")
+  redirect(formData.get("intent") === "publish_now" ? "/editorial?success=published" : "/editorial?success=saved")
+}
+
+export async function publishEditorialPost(formData: FormData) {
+  await requireAdmin()
+  const postId = text(formData, "postId", 80)
+  if (!UUID_PATTERN.test(postId)) redirect("/editorial?error=publish")
+  const path = `/editorial/${postId}/preview`
+  const expectedUpdatedAt = text(formData, "expectedUpdatedAt", 80)
+  const admin = createAdminClient()
+  const current = await admin.from("editorial_posts").select("*").eq("id", postId).maybeSingle()
+  if (current.error || !current.data) invalidRedirect(path, "save")
+  const post = current.data
+  if (!expectedUpdatedAt || post.updated_at !== expectedUpdatedAt) invalidRedirect(path, "changed")
+  // This action changes status only, so the saved URL must already be canonical.
+  if (typeof post.slug !== "string" || !SLUG_PATTERN.test(post.slug)) invalidRedirect(path)
+
+  // Validate the saved article with the same rules as the editor, without copying
+  // its contents back to the database or accepting article text from the browser.
+  const data = new FormData()
+  for (const [key, value] of Object.entries({
+    intent: "publish_now", scope: post.scope, cityId: post.city_id ?? "", partnerId: post.partner_id ?? "",
+    title: post.title, slug: post.slug, excerpt: post.excerpt, eyebrow: post.eyebrow, category: post.category,
+    audience: post.audience, imageUrl: post.image_url ?? "", imageAlt: post.image_alt ?? "",
+    contentJson: JSON.stringify(post.content), sourcesJson: JSON.stringify(post.sources), relatedLinksJson: JSON.stringify(post.related_links),
+  })) data.set(key, String(value ?? ""))
+  const payload = buildPayload(data)
+  if (!payload) invalidRedirect(path)
+  validatePublicationSources(payload, path)
+  if (post.status === "active" && post.published_at && Date.parse(post.published_at) <= Date.now()) redirect("/editorial?success=published")
+
+  const result = await admin.from("editorial_posts").update({
+    status: payload.status, published_at: payload.published_at,
+    last_verified_at: payload.last_verified_at, updated_at: payload.updated_at,
+  }).eq("id", postId).eq("updated_at", expectedUpdatedAt).select("id").maybeSingle()
+  if (result.error) invalidRedirect(path, "save")
+  if (!result.data) invalidRedirect(path, "changed")
+  revalidatePath("/editorial")
+  revalidatePath(path)
+  redirect("/editorial?success=published")
 }
 
 export async function archiveEditorialPost(formData: FormData) {

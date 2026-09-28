@@ -81,6 +81,39 @@ test("partner editor keeps localized labels inside responsive controls and expos
   assert.match(code, /\[&>\*\]:min-w-0/)
 })
 
+test("category selector does not nest a disclosure inside a collapsible section", async () => {
+  const code = await readFile(adminUrl, "utf8")
+  const selector = code.slice(
+    code.indexOf("function MultiSelectField"),
+    code.indexOf("function WeekdayChipField"),
+  )
+
+  assert.match(selector, /<button[\s\S]*?aria-haspopup="listbox"/)
+  assert.match(selector, /onPointerDown=\{\(event\) => event\.stopPropagation\(\)\}/)
+  assert.doesNotMatch(selector, /<details[\s\S]*?<summary/)
+})
+
+test("selected categories remain part of form data while the dropdown is closed", async () => {
+  const code = await readFile(adminUrl, "utf8")
+  const selector = code.slice(
+    code.indexOf("function MultiSelectField"),
+    code.indexOf("function WeekdayChipField"),
+  )
+
+  assert.match(
+    selector,
+    /selectedValues\.map\(\(value\) => \([\s\S]*?type="hidden"[\s\S]*?name=\{name\}[\s\S]*?value=\{value\}/,
+  )
+  assert.doesNotMatch(selector, /type="checkbox"\s+name=\{name\}/)
+})
+
+test("editing the partner form dismisses stale save results", async () => {
+  const code = await readFile(adminUrl, "utf8")
+
+  assert.match(code, /onInput=\{\(\) => \{[\s\S]*?if \(state\.message\) setDismissedActionState\(state\)/)
+  assert.doesNotMatch(code, /if \(!state\.ok && state\.message\) setDismissedActionState\(state\)/)
+})
+
 test("active and featured partner metrics filter the list, with featured limited to active partners", async () => {
   const code = await readFile(adminUrl, "utf8")
 

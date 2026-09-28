@@ -1,4 +1,5 @@
 import Link from "next/link"
+import type { ReactNode } from "react"
 import type {
   AnalyticsBreakdownTable,
   AnalyticsDataQuality,
@@ -73,9 +74,11 @@ const SECTION_META: Record<
 export function BusinessControlCenter({
   payload,
   canReadFinance,
+  children,
 }: {
   payload: BusinessAnalyticsPayloadV1
   canReadFinance: boolean
+  children?: ReactNode
 }) {
   const sectionKeys = (Object.keys(SECTION_META) as AnalyticsSectionKey[]).filter(
     (key) => canReadFinance || key !== "revenueProfit",
@@ -87,6 +90,8 @@ export function BusinessControlCenter({
         filters={payload.filters}
         options={payload.filterOptions}
       />
+
+      {children}
 
       <StatusBanner payload={payload} />
 

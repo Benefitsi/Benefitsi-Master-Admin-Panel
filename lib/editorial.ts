@@ -1,5 +1,6 @@
 import "server-only"
 
+import { normalizeEditorialIntake, type EditorialIntakeResult } from "@/lib/editorial-review"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type {
   EditorialLink,
@@ -105,4 +106,20 @@ export async function loadEditorialPost(postId: string) {
   return result.data
     ? normalizePost(result.data as Record<string, unknown>)
     : null
+}
+
+// Called only after the detail page completes requireAdmin; never exported as an action.
+export async function loadEditorialIntake(postId: string): Promise<EditorialIntakeResult> {
+  try {
+    const result = await createAdminClient()
+      .from("editorial_draft_intakes")
+      .select("topic_key,research,initial_post,latest_proposal,updated_at")
+      .eq("editorial_post_id", postId)
+      .maybeSingle()
+    if (result.error) return { state: "unavailable" }
+    if (!result.data) return { state: "missing" }
+    return { state: "ready", data: normalizeEditorialIntake(result.data) }
+  } catch {
+    return { state: "unavailable" }
+  }
 }

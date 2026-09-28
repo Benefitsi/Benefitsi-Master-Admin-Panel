@@ -1,6 +1,8 @@
 /* eslint-disable @next/next/no-img-element -- Partner-selected assets can use arbitrary storage hosts. */
 "use client"
 
+import { MicrositeLink, useMicrositeIntegration } from "./microsite-integration"
+
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react"
 import {
   ArrowRight,
@@ -106,6 +108,7 @@ type MicrositeContext = {
   hasBenefits: boolean
   showMockDeals: boolean
   showBenefitSection: boolean
+  integration: ReturnType<typeof useMicrositeIntegration>
 }
 
 const activityTemplates = new Set<CategoryMicrositeTemplateId>([
@@ -196,6 +199,7 @@ function readableAccentOnSurface(accent: string, surface: string, fallback: stri
 }
 
 export function CategoryPremiumMicrosite({ partner, config, template, showAppDownloadPopup = true, showMockDeals = false }: Props) {
+  const integration = useMicrositeIntegration()
   const copy = categoryThemeContent(partner, template, config.language)
   const family = categoryFamilyForPartner(partner, template)
   const familyText = familyCopy(family, config.language)
@@ -231,18 +235,18 @@ export function CategoryPremiumMicrosite({ partner, config, template, showAppDow
   const phone = partner.phone?.replace(/[^\d+]/g, "") || ""
   const contactHref = website || (phone ? `tel:${phone}` : "#kontakt")
   const address = partner.address || partner.city_name || ""
-  const mapUrl = address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}` : ""
+  const mapUrl = textValue(config, "content.contactMap", address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}` : "")
   const appUrl = textValue(config, "content.appDownloadUrl", appDownloadUrlForPartner(partner))
   const configuredStoryImage = config.elementText["content.aboutHeroImageUrl"]?.trim()
   const storyImage = configuredStoryImage || partner.cover_urls?.find((url) => url !== heroImage)
   const wellnessDetailImage = config.elementText["content.wellnessHeroDetailImageUrl"]?.trim() || ""
   const hasBenefits = getMicrositePublicDeals(partner.deals).length > 0 || getMicrositeStampRewards(partner.reward_milestones).length > 0
   const showBenefitSection = hasBenefits || showMockDeals
-  const context: MicrositeContext = { partner, config, template, family, copy, Icon, heroImage, storyImage, wellnessDetailImage, name, address, phone, website, contactHref, mapUrl, appUrl, hasBenefits, showMockDeals, showBenefitSection }
+  const context: MicrositeContext = { partner, config, template, family, copy, Icon, heroImage, storyImage, wellnessDetailImage, name, address, phone, website, contactHref, mapUrl, appUrl, hasBenefits, showMockDeals, showBenefitSection, integration }
 
   return <article lang={config.language} style={style} data-template={template} data-family={family} className={`premium-microsite @container ${styles.site} ${config.appearance.mode === "dark" ? "premium-microsite-dark" : ""}`}>
     <MicrositeThemeCss />
-    <a className={styles.skipLink} href="#partner-content">{t("Zum Inhalt", "Skip to content")}</a>
+    <MicrositeLink className={styles.skipLink} href="#partner-content">{t("Zum Inhalt", "Skip to content")}</MicrositeLink>
     <CategoryHeader context={context} />
     <main id="partner-content">
       {template === "salon-studio" ? <SalonTemplate context={context} familyText={familyText} /> : null}
@@ -251,6 +255,7 @@ export function CategoryPremiumMicrosite({ partner, config, template, showAppDow
       {family === "wellness" && template !== "salon-studio" ? <WellnessTemplate context={context} familyText={familyText} /> : null}
       {family === "services" ? <ServicesTemplate context={context} familyText={familyText} /> : null}
     </main>
+    {integration.beforeFooter}
     <CategoryFooter context={context} />
     {showAppDownloadPopup ? <AppDownloadQrPopup partner={partner} config={config} /> : null}
   </article>
@@ -262,11 +267,11 @@ function CategoryHeader({ context }: { context: MicrositeContext }) {
   const links = config.navigation.links.filter((link) => showBenefitSection || !["deals", "stempelkarte"].includes(link.anchor))
   const logo = config.branding.logoUrl || partner.logo_url || "/Benefitsi_Icon_FullColor_RGB_512.png"
   return <header className={styles.header} data-family={family}><div className={styles.headerInner}>
-    <a href="#partner-content" className={styles.brand} aria-label={name}><img {...editable("branding.logo", "image", "Partnerlogo")} src={logo} alt="" width={42} height={42} style={imageStyleFor(config, "branding.logo")} /><span>{name}</span></a>
-    <nav className={styles.desktopNav} aria-label={config.language === "en" ? "Microsite navigation" : "Microsite-Navigation"}>{links.map((link) => <a key={link.anchor} {...editable(`navigation.${link.anchor}`, "text", `Navigation ${link.label}`)} href={`#${link.anchor}`} style={textStyleFor(config, `navigation.${link.anchor}`)}>{textValue(config, `navigation.${link.anchor}`, link.label)}</a>)}</nav>
-    <a className={styles.headerCta} href={showBenefitSection ? "#deals" : "#speisekarte"}><span {...editable(showBenefitSection ? "hero.primaryButtonLabel" : "hero.secondaryButtonLabel", "text", "Navigation CTA")} style={textStyleFor(config, showBenefitSection ? "hero.primaryButtonLabel" : "hero.secondaryButtonLabel")}>{showBenefitSection ? config.hero.primaryButtonLabel : config.hero.secondaryButtonLabel}</span><ArrowRight size={16} aria-hidden="true" /></a>
+    <MicrositeLink href="#partner-content" className={styles.brand} aria-label={name}><img {...editable("branding.logo", "image", "Partnerlogo")} src={logo} alt="" width={42} height={42} style={imageStyleFor(config, "branding.logo")} /><span>{name}</span></MicrositeLink>
+    <nav className={styles.desktopNav} aria-label={config.language === "en" ? "Microsite navigation" : "Microsite-Navigation"}>{links.map((link) => <MicrositeLink key={link.anchor} {...editable(`navigation.${link.anchor}`, "text", `Navigation ${link.label}`)} href={`#${link.anchor}`} style={textStyleFor(config, `navigation.${link.anchor}`)}>{textValue(config, `navigation.${link.anchor}`, link.label)}</MicrositeLink>)}</nav>
+    <MicrositeLink className={styles.headerCta} href={showBenefitSection ? "#deals" : "#speisekarte"}><span {...editable(showBenefitSection ? "hero.primaryButtonLabel" : "hero.secondaryButtonLabel", "text", "Navigation CTA")} style={textStyleFor(config, showBenefitSection ? "hero.primaryButtonLabel" : "hero.secondaryButtonLabel")}>{showBenefitSection ? config.hero.primaryButtonLabel : config.hero.secondaryButtonLabel}</span><ArrowRight size={16} aria-hidden="true" /></MicrositeLink>
     <button className={styles.menuButton} type="button" onClick={() => setMenuOpen((open) => !open)} aria-expanded={menuOpen} aria-controls="category-mobile-navigation" aria-label={config.language === "en" ? "Open navigation" : "Navigation öffnen"}><span aria-hidden="true">{menuOpen ? "×" : "☰"}</span></button>
-    {menuOpen ? <nav id="category-mobile-navigation" className={styles.mobileNav} aria-label={config.language === "en" ? "Mobile navigation" : "Mobile Navigation"}>{links.map((link) => <a key={link.anchor} href={`#${link.anchor}`} onClick={() => setMenuOpen(false)}>{textValue(config, `navigation.${link.anchor}`, link.label)}</a>)}</nav> : null}
+    {menuOpen ? <nav id="category-mobile-navigation" className={styles.mobileNav} aria-label={config.language === "en" ? "Mobile navigation" : "Mobile Navigation"}>{links.map((link) => <MicrositeLink key={link.anchor} href={`#${link.anchor}`} onClick={() => setMenuOpen(false)}>{textValue(config, `navigation.${link.anchor}`, link.label)}</MicrositeLink>)}</nav> : null}
   </div></header>
 }
 
@@ -313,22 +318,22 @@ function ActivitiesHero({ context, familyText }: { context: MicrositeContext; fa
         <EditableCopy config={config} id="hero.headline" as="h1">{config.hero.headline}</EditableCopy>
         <EditableCopy config={config} id="hero.slogan" className={styles.activitiesHeroSlogan}>{config.hero.slogan}</EditableCopy>
         <div className={styles.activitiesHeroActions}>
-          <a className={styles.activitiesHeroPrimary} href={context.contactHref}>
+          <MicrositeLink className={styles.activitiesHeroPrimary} href={context.contactHref}>
             <span {...editable("category.heroAction", "text", "Hero Aktion")} style={textStyleFor(config, "category.heroAction")}>
               {textValue(config, "category.heroAction", copy.action)}
             </span>
             <ArrowRight size={18} aria-hidden="true" />
-          </a>
-          {showBenefitSection ? <a className={styles.activitiesHeroBenefits} href="#deals"><Gift size={15} aria-hidden="true" />{config.hero.primaryButtonLabel}</a> : null}
+          </MicrositeLink>
+          {showBenefitSection ? <MicrositeLink className={styles.activitiesHeroBenefits} href="#deals"><Gift size={15} aria-hidden="true" />{config.hero.primaryButtonLabel}</MicrositeLink> : null}
         </div>
         <p className={styles.activitiesHeroNote}>{copy.note}</p>
       </div>
       <div className={styles.activitiesHeroStage} data-template={context.template}>
         <HeroImage context={context} className={styles.activitiesHeroImage} />
         <div className={styles.activitiesHeroRoute} aria-hidden="true"><span /><span /><span /></div>
-        <a className={styles.activitiesHeroPass} href="#speisekarte">
+        <MicrositeLink className={styles.activitiesHeroPass} href="#speisekarte">
           <span>01</span><strong>{copy.label}</strong><ArrowRight size={17} aria-hidden="true" />
-        </a>
+        </MicrositeLink>
       </div>
       <div className={styles.activitiesHeroMeta}>
         <span>{address || t("Dein Erlebnis vor Ort", "Your local experience")}</span>
@@ -356,13 +361,13 @@ function WellnessHero({ context, familyText }: { context: MicrositeContext; fami
         <EditableCopy config={config} id="hero.slogan" className={styles.wellnessHeroSlogan}>{config.hero.slogan}</EditableCopy>
         <p className={styles.wellnessHeroNote}>{copy.note}</p>
         <div className={styles.wellnessHeroActions}>
-          <a className={styles.wellnessHeroPrimary} href={context.contactHref}>
+          <MicrositeLink className={styles.wellnessHeroPrimary} href={context.contactHref}>
             <span {...editable("category.heroAction", "text", "Hero Aktion")} style={textStyleFor(config, "category.heroAction")}>
               {textValue(config, "category.heroAction", copy.action)}
             </span>
             <ArrowRight size={17} aria-hidden="true" />
-          </a>
-          {showBenefitSection ? <a className={styles.wellnessHeroBenefits} href="#deals">{config.hero.primaryButtonLabel}<Gift size={15} aria-hidden="true" /></a> : null}
+          </MicrositeLink>
+          {showBenefitSection ? <MicrositeLink className={styles.wellnessHeroBenefits} href="#deals">{config.hero.primaryButtonLabel}<Gift size={15} aria-hidden="true" /></MicrositeLink> : null}
         </div>
       </div>
       <div className={styles.wellnessHeroArt} data-template={context.template}>
@@ -396,13 +401,13 @@ function SalonHero({ context, familyText }: { context: MicrositeContext; familyT
         <EditableCopy config={config} id="hero.slogan" className={styles.salonHeroSlogan}>{config.hero.slogan}</EditableCopy>
         <p className={styles.salonHeroNote}>{copy.note}</p>
         <div className={styles.salonHeroActions}>
-          <a className={styles.salonHeroPrimary} href={context.contactHref}>
+          <MicrositeLink className={styles.salonHeroPrimary} href={context.contactHref}>
             <span {...editable("category.heroAction", "text", "Hero Aktion")} style={textStyleFor(config, "category.heroAction")}>
               {textValue(config, "category.heroAction", copy.action)}
             </span>
             <ArrowRight size={17} aria-hidden="true" />
-          </a>
-          {showBenefitSection ? <a className={styles.salonHeroBenefits} href="#deals">{config.hero.primaryButtonLabel}<Gift size={15} aria-hidden="true" /></a> : null}
+          </MicrositeLink>
+          {showBenefitSection ? <MicrositeLink className={styles.salonHeroBenefits} href="#deals">{config.hero.primaryButtonLabel}<Gift size={15} aria-hidden="true" /></MicrositeLink> : null}
         </div>
         <div className={styles.salonHeroDetails}>
           <span>{address || t("Persönliche Beratung im Studio", "Personal consultation in studio")}</span>
@@ -429,8 +434,8 @@ function CinemaHero({ context, familyText }: { context: MicrositeContext; family
         <EditableCopy config={config} id="hero.headline" as="h1">{config.hero.headline}</EditableCopy>
         <EditableCopy config={config} id="hero.slogan" className={styles.cinemaHeroSlogan}>{config.hero.slogan}</EditableCopy>
         <div className={styles.cinemaHeroActions}>
-          <a className={styles.cinemaHeroPrimary} href={context.contactHref}><span {...editable("category.heroAction", "text", "Hero Aktion")} style={textStyleFor(config, "category.heroAction")}>{textValue(config, "category.heroAction", copy.action)}</span><ArrowRight size={17} aria-hidden="true" /></a>
-          {showBenefitSection ? <a className={styles.cinemaHeroBenefits} href="#deals">{config.hero.primaryButtonLabel}</a> : null}
+          <MicrositeLink className={styles.cinemaHeroPrimary} href={context.contactHref}><span {...editable("category.heroAction", "text", "Hero Aktion")} style={textStyleFor(config, "category.heroAction")}>{textValue(config, "category.heroAction", copy.action)}</span><ArrowRight size={17} aria-hidden="true" /></MicrositeLink>
+          {showBenefitSection ? <MicrositeLink className={styles.cinemaHeroBenefits} href="#deals">{config.hero.primaryButtonLabel}</MicrositeLink> : null}
         </div>
       </div>
       <div className={styles.cinemaHeroScreen}>
@@ -453,7 +458,7 @@ function ServicesHero({ context, familyText }: { context: MicrositeContext; fami
         <p className={styles.heroEyebrow}><Handshake size={16} aria-hidden="true" /><span {...editable("category.heroKicker", "text", "Hero Kicker")} style={textStyleFor(config, "category.heroKicker")}>{normalizeCategoryText(textValue(config, "category.heroKicker", familyText.kicker))}</span></p>
         <EditableCopy config={config} id="hero.headline" as="h1">{config.hero.headline}</EditableCopy>
         <EditableCopy config={config} id="hero.slogan" className={styles.servicesHeroSlogan}>{config.hero.slogan}</EditableCopy>
-        <div className={styles.servicesHeroActions}><a className={styles.servicesHeroPrimary} href={context.contactHref}><span {...editable("category.heroAction", "text", "Hero Aktion")} style={textStyleFor(config, "category.heroAction")}>{textValue(config, "category.heroAction", copy.action)}</span><ArrowRight size={17} aria-hidden="true" /></a>{showBenefitSection ? <a href="#deals">{config.hero.primaryButtonLabel}</a> : null}</div>
+        <div className={styles.servicesHeroActions}><MicrositeLink className={styles.servicesHeroPrimary} href={context.contactHref}><span {...editable("category.heroAction", "text", "Hero Aktion")} style={textStyleFor(config, "category.heroAction")}>{textValue(config, "category.heroAction", copy.action)}</span><ArrowRight size={17} aria-hidden="true" /></MicrositeLink>{showBenefitSection ? <MicrositeLink href="#deals">{config.hero.primaryButtonLabel}</MicrositeLink> : null}</div>
       </div>
       <div className={styles.servicesHeroBrief}>
         <div className={styles.servicesHeroMedia} data-template={context.template}><HeroImage context={context} className={styles.servicesHeroImage} /><span aria-hidden="true">{copy.label}</span></div>
@@ -508,7 +513,7 @@ function ActivityDeck({ items, context }: { items: PartnerOffering[]; context: M
   const visibleItems = showAll ? items : items.slice(0, 6)
   const active = items.find((item) => micrositeMenuItemKey(item) === activeKey) || items[0]
   if (!items.length) return <EmptyOfferings context={context} />
-  return <div className={styles.activityDeck}><div className={styles.activityRail} role="tablist" aria-label={config.language === "en" ? "Experiences" : "Erlebnisse"}>{visibleItems.map((item) => { const key = micrositeMenuItemKey(item); return <button key={key} type="button" role="tab" aria-selected={key === micrositeMenuItemKey(active)} className={key === micrositeMenuItemKey(active) ? styles.activityTabActive : styles.activityTab} onClick={() => setActiveKey(key)}><span>{item.categoryName || copy.label}</span><strong>{micrositeMenuItemDisplayName(item.name)}</strong><ArrowRight size={15} aria-hidden="true" /></button> })}{items.length > 6 ? <button className={styles.moreButton} type="button" onClick={() => setShowAll((value) => !value)}>{showAll ? (config.language === "en" ? "Show fewer" : "Weniger anzeigen") : (config.language === "en" ? `Show all ${items.length}` : `Alle ${items.length} anzeigen`)}</button> : null}</div><article className={styles.activityFeature}>{active?.image_url && active.micrositeShowImage !== false ? <img {...(active.micrositeImageId ? editable(active.micrositeImageId, "image", "Leistungsbild") : {})} src={active.image_url} alt={micrositeMenuItemDisplayName(active.name)} style={imageStyleFor(config, active.micrositeImageId || "")} /> : <div className={styles.featureFallback}><Icon size={54} strokeWidth={1} aria-hidden="true" /></div>}<div className={styles.featureCopy}><p>{active?.categoryName || copy.label}</p><h3>{active ? micrositeMenuItemDisplayName(active.name) : copy.label}</h3><span>{active?.description || (config.language === "en" ? "Ask the team for details and availability." : "Frage das Team nach Details und Verfügbarkeit.")}</span><div><strong>{active ? formatOfferingPrice(active.price, active.currency, config.language) : ""}</strong><a href={contactHref}>{copy.action}<ArrowRight size={16} aria-hidden="true" /></a></div></div></article></div>
+  return <div className={styles.activityDeck}><div className={styles.activityRail} role="tablist" aria-label={config.language === "en" ? "Experiences" : "Erlebnisse"}>{visibleItems.map((item) => { const key = micrositeMenuItemKey(item); return <button key={key} type="button" role="tab" aria-selected={key === micrositeMenuItemKey(active)} className={key === micrositeMenuItemKey(active) ? styles.activityTabActive : styles.activityTab} onClick={() => setActiveKey(key)}><span>{item.categoryName || copy.label}</span><strong>{micrositeMenuItemDisplayName(item.name)}</strong><ArrowRight size={15} aria-hidden="true" /></button> })}{items.length > 6 ? <button className={styles.moreButton} type="button" onClick={() => setShowAll((value) => !value)}>{showAll ? (config.language === "en" ? "Show fewer" : "Weniger anzeigen") : (config.language === "en" ? `Show all ${items.length}` : `Alle ${items.length} anzeigen`)}</button> : null}</div><article className={styles.activityFeature}>{active?.image_url && active.micrositeShowImage !== false ? <img {...(active.micrositeImageId ? editable(active.micrositeImageId, "image", "Leistungsbild") : {})} src={active.image_url} alt={micrositeMenuItemDisplayName(active.name)} style={imageStyleFor(config, active.micrositeImageId || "")} /> : <div className={styles.featureFallback}><Icon size={54} strokeWidth={1} aria-hidden="true" /></div>}<div className={styles.featureCopy}><p>{active?.categoryName || copy.label}</p><h3>{active ? micrositeMenuItemDisplayName(active.name) : copy.label}</h3><span>{active?.description || (config.language === "en" ? "Ask the team for details and availability." : "Frage das Team nach Details und Verfügbarkeit.")}</span><div><strong>{active ? formatOfferingPrice(active.price, active.currency, config.language) : ""}</strong><MicrositeLink href={contactHref}>{copy.action}<ArrowRight size={16} aria-hidden="true" /></MicrositeLink></div></div></article></div>
 }
 
 function RitualDeck({ items, context }: { items: PartnerOffering[]; context: MicrositeContext }) {
@@ -516,7 +521,7 @@ function RitualDeck({ items, context }: { items: PartnerOffering[]; context: Mic
   const [activeIndex, setActiveIndex] = useState(0)
   if (!items.length) return <EmptyOfferings context={context} />
   const active = items[Math.min(activeIndex, items.length - 1)]
-  return <div className={styles.ritualDeck}><div className={styles.ritualList} role="tablist" aria-label={config.language === "en" ? "Treatments" : "Behandlungen"}>{items.slice(0, 6).map((item, index) => <button key={micrositeMenuItemKey(item)} type="button" role="tab" aria-selected={activeIndex === index} className={activeIndex === index ? styles.ritualTabActive : styles.ritualTab} onClick={() => setActiveIndex(index)}><span>0{index + 1}</span><strong>{micrositeMenuItemDisplayName(item.name)}</strong><ArrowRight size={15} aria-hidden="true" /></button>)}</div><article className={styles.ritualFeature}><div className={styles.ritualImage}>{active.image_url && active.micrositeShowImage !== false ? <img {...(active.micrositeImageId ? editable(active.micrositeImageId, "image", "Behandlungsbild") : {})} src={active.image_url} alt={micrositeMenuItemDisplayName(active.name)} style={imageStyleFor(config, active.micrositeImageId || "")} /> : <Icon size={56} strokeWidth={1} aria-hidden="true" />}</div><div><p>{active.categoryName || copy.label}</p><h3>{micrositeMenuItemDisplayName(active.name)}</h3><span>{active.description || (config.language === "en" ? "Discuss the right duration and intensity with the team." : "Besprich Dauer und Intensität direkt mit dem Team.")}</span><div className={styles.ritualMeta}><strong>{formatOfferingPrice(active.price, active.currency, config.language)}</strong><a href={contactHref}>{copy.action}<ArrowRight size={16} aria-hidden="true" /></a></div></div></article></div>
+  return <div className={styles.ritualDeck}><div className={styles.ritualList} role="tablist" aria-label={config.language === "en" ? "Treatments" : "Behandlungen"}>{items.slice(0, 6).map((item, index) => <button key={micrositeMenuItemKey(item)} type="button" role="tab" aria-selected={activeIndex === index} className={activeIndex === index ? styles.ritualTabActive : styles.ritualTab} onClick={() => setActiveIndex(index)}><span>0{index + 1}</span><strong>{micrositeMenuItemDisplayName(item.name)}</strong><ArrowRight size={15} aria-hidden="true" /></button>)}</div><article className={styles.ritualFeature}><div className={styles.ritualImage}>{active.image_url && active.micrositeShowImage !== false ? <img {...(active.micrositeImageId ? editable(active.micrositeImageId, "image", "Behandlungsbild") : {})} src={active.image_url} alt={micrositeMenuItemDisplayName(active.name)} style={imageStyleFor(config, active.micrositeImageId || "")} /> : <Icon size={56} strokeWidth={1} aria-hidden="true" />}</div><div><p>{active.categoryName || copy.label}</p><h3>{micrositeMenuItemDisplayName(active.name)}</h3><span>{active.description || (config.language === "en" ? "Discuss the right duration and intensity with the team." : "Besprich Dauer und Intensität direkt mit dem Team.")}</span><div className={styles.ritualMeta}><strong>{formatOfferingPrice(active.price, active.currency, config.language)}</strong><MicrositeLink href={contactHref}>{copy.action}<ArrowRight size={16} aria-hidden="true" /></MicrositeLink></div></div></article></div>
 }
 
 function SalonServiceBook({ items, context }: { items: PartnerOffering[]; context: MicrositeContext }) {
@@ -541,7 +546,7 @@ function SalonServiceBook({ items, context }: { items: PartnerOffering[]; contex
         <p>{active.categoryName || copy.label}</p>
         <h3>{micrositeMenuItemDisplayName(active.name)}</h3>
         <span>{active.description || (config.language === "en" ? "Discuss the right finish, duration and details with the studio." : "Besprich Finish, Dauer und Details direkt mit dem Studio.")}</span>
-        <div><strong>{formatOfferingPrice(active.price, active.currency, config.language)}</strong><a href={contactHref}>{copy.action}<ArrowRight size={16} aria-hidden="true" /></a></div>
+        <div><strong>{formatOfferingPrice(active.price, active.currency, config.language)}</strong><MicrositeLink href={contactHref}>{copy.action}<ArrowRight size={16} aria-hidden="true" /></MicrositeLink></div>
       </div>
     </article>
   </div>
@@ -563,7 +568,7 @@ function CinemaProgramme({ items, context }: { items: PartnerOffering[]; context
     </div>
     <article className={styles.cinemaFilmFeature}>
       <div className={styles.cinemaFilmPoster}>{active.image_url && active.micrositeShowImage !== false ? <img {...(active.micrositeImageId ? editable(active.micrositeImageId, "image", "Programm Bild") : {})} src={active.image_url} alt={micrositeMenuItemDisplayName(active.name)} style={imageStyleFor(config, active.micrositeImageId || "")} /> : <Icon size={58} strokeWidth={.9} aria-hidden="true" />}</div>
-      <div className={styles.cinemaFilmCopy}><p>{active.categoryName || copy.label}</p><h3>{micrositeMenuItemDisplayName(active.name)}</h3><span>{active.description || (config.language === "en" ? "Ask the cinema for current times, language versions and tickets." : "Aktuelle Zeiten, Sprachfassungen und Tickets erfährst du direkt beim Kino.")}</span><div className={styles.cinemaFilmMeta}><strong>{formatOfferingPrice(active.price, active.currency, config.language)}</strong><em>{config.language === "en" ? "Times at the venue" : "Zeiten direkt beim Kino"}</em></div><a href={contactHref}>{copy.action}<ArrowRight size={16} aria-hidden="true" /></a></div>
+      <div className={styles.cinemaFilmCopy}><p>{active.categoryName || copy.label}</p><h3>{micrositeMenuItemDisplayName(active.name)}</h3><span>{active.description || (config.language === "en" ? "Ask the cinema for current times, language versions and tickets." : "Aktuelle Zeiten, Sprachfassungen und Tickets erfährst du direkt beim Kino.")}</span><div className={styles.cinemaFilmMeta}><strong>{formatOfferingPrice(active.price, active.currency, config.language)}</strong><em>{config.language === "en" ? "Times at the venue" : "Zeiten direkt beim Kino"}</em></div><MicrositeLink href={contactHref}>{copy.action}<ArrowRight size={16} aria-hidden="true" /></MicrositeLink></div>
     </article>
   </div>
 }
@@ -573,10 +578,10 @@ function ServiceFinder({ items, context }: { items: PartnerOffering[]; context: 
   const [query, setQuery] = useState("")
   const filtered = items.filter((item) => [item.name, item.description, item.categoryName].join(" ").toLowerCase().includes(query.trim().toLowerCase()))
   if (!items.length) return <EmptyOfferings context={context} />
-  return <div className={styles.serviceFinder}><label className={styles.serviceSearch}><Search size={16} aria-hidden="true" /><span className="sr-only">{config.language === "en" ? "Search services" : "Leistungen durchsuchen"}</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={config.language === "en" ? "Search services" : "Leistung suchen"} /></label><div className={styles.serviceRows}>{filtered.map((item) => <article key={micrositeMenuItemKey(item)} className={styles.serviceRow}>{item.image_url && item.micrositeShowImage !== false ? <img {...(item.micrositeImageId ? editable(item.micrositeImageId, "image", "Leistungsbild") : {})} src={item.image_url} alt="" style={imageStyleFor(config, item.micrositeImageId || "")} /> : <div className={styles.serviceIcon}><Icon size={25} strokeWidth={1.4} aria-hidden="true" /></div>}<div><p>{item.categoryName || copy.label}</p><h3>{micrositeMenuItemDisplayName(item.name)}</h3><span>{item.description || (config.language === "en" ? "Confirm availability and details with the team." : "Verfügbarkeit und Details direkt mit dem Team klären.")}</span></div><strong>{formatOfferingPrice(item.price, item.currency, config.language)}</strong><a href={contactHref} aria-label={`${copy.action}: ${micrositeMenuItemDisplayName(item.name)}`}><ArrowRight size={18} aria-hidden="true" /></a></article>)}</div>{!filtered.length ? <p className={styles.emptySearch}>{config.language === "en" ? "No matching services." : "Keine passende Leistung gefunden."}</p> : null}</div>
+  return <div className={styles.serviceFinder}><label className={styles.serviceSearch}><Search size={16} aria-hidden="true" /><span className="sr-only">{config.language === "en" ? "Search services" : "Leistungen durchsuchen"}</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={config.language === "en" ? "Search services" : "Leistung suchen"} /></label><div className={styles.serviceRows}>{filtered.map((item) => <article key={micrositeMenuItemKey(item)} className={styles.serviceRow}>{item.image_url && item.micrositeShowImage !== false ? <img {...(item.micrositeImageId ? editable(item.micrositeImageId, "image", "Leistungsbild") : {})} src={item.image_url} alt="" style={imageStyleFor(config, item.micrositeImageId || "")} /> : <div className={styles.serviceIcon}><Icon size={25} strokeWidth={1.4} aria-hidden="true" /></div>}<div><p>{item.categoryName || copy.label}</p><h3>{micrositeMenuItemDisplayName(item.name)}</h3><span>{item.description || (config.language === "en" ? "Confirm availability and details with the team." : "Verfügbarkeit und Details direkt mit dem Team klären.")}</span></div><strong>{formatOfferingPrice(item.price, item.currency, config.language)}</strong><MicrositeLink href={contactHref} aria-label={`${copy.action}: ${micrositeMenuItemDisplayName(item.name)}`}><ArrowRight size={18} aria-hidden="true" /></MicrositeLink></article>)}</div>{!filtered.length ? <p className={styles.emptySearch}>{config.language === "en" ? "No matching services." : "Keine passende Leistung gefunden."}</p> : null}</div>
 }
 
-function EmptyOfferings({ context }: { context: MicrositeContext }) { const { config, copy, contactHref, Icon } = context; return <div className={styles.emptyOfferings}><Icon size={30} strokeWidth={1.2} aria-hidden="true" /><div><h3>{config.language === "en" ? "Plan your visit with the team." : "Plane deinen Besuch direkt mit dem Team."}</h3><p>{config.language === "en" ? "Current options, prices and availability are available on request." : "Die aktuelle Auswahl, Preise und Verfügbarkeit erfährst du direkt beim Team."}</p></div><a href={contactHref}>{copy.action}<ArrowRight size={16} aria-hidden="true" /></a></div> }
+function EmptyOfferings({ context }: { context: MicrositeContext }) { const { config, copy, contactHref, Icon } = context; return <div className={styles.emptyOfferings}><Icon size={30} strokeWidth={1.2} aria-hidden="true" /><div><h3>{config.language === "en" ? "Plan your visit with the team." : "Plane deinen Besuch direkt mit dem Team."}</h3><p>{config.language === "en" ? "Current options, prices and availability are available on request." : "Die aktuelle Auswahl, Preise und Verfügbarkeit erfährst du direkt beim Team."}</p></div><MicrositeLink href={contactHref}>{copy.action}<ArrowRight size={16} aria-hidden="true" /></MicrositeLink></div> }
 
 function JourneySection({ context, familyText }: { context: MicrositeContext; familyText: Record<string, string> }) { const { config, copy } = context; return <section className={`${styles.journey} ${styles.activitiesJourney}`} data-family="activities"><div><p>{copy.label}</p><EditableCopy config={config} id="category.planHeadline" as="h2">{textValue(config, "category.planHeadline", familyText.planTitle)}</EditableCopy><EditableCopy config={config} id="category.planText">{textValue(config, "category.planText", familyText.planBody)}</EditableCopy></div><ol>{copy.planning.map((step, index) => <li key={step}><b>0{index + 1}</b><EditableCopy config={config} id={`category.planStep.${index}`}>{textValue(config, `category.planStep.${index}`, step)}</EditableCopy><ArrowRight size={17} aria-hidden="true" /></li>)}</ol></section> }
 
@@ -595,6 +600,7 @@ function CinemaVisitGuide({ context, familyText }: { context: MicrositeContext; 
 function ServicePlan({ context, familyText }: { context: MicrositeContext; familyText: Record<string, string> }) { const { config, copy } = context; return <section className={`${styles.servicePlan} ${styles.servicesJourney}`} data-family="services"><div><p>{copy.label}</p><EditableCopy config={config} id="category.planHeadline" as="h2">{textValue(config, "category.planHeadline", familyText.planTitle)}</EditableCopy><EditableCopy config={config} id="category.planText">{textValue(config, "category.planText", familyText.planBody)}</EditableCopy></div><div className={styles.servicePlanSteps}>{copy.planning.map((step, index) => <div key={step}><b>0{index + 1}</b><EditableCopy config={config} id={`category.planStep.${index}`}>{textValue(config, `category.planStep.${index}`, step)}</EditableCopy><ArrowRight size={16} aria-hidden="true" /></div>)}</div></section> }
 
 function CategoryBenefits({ context, familyText }: { context: MicrositeContext; familyText: Record<string, string> }) {
+  if (context.integration.benefits !== undefined) return <>{context.integration.benefits}</>
   const { partner, config, family, contactHref, showMockDeals } = context
   const deals = getMicrositePublicDeals(partner.deals)
   const rewards = getMicrositeStampRewards(partner.reward_milestones)
@@ -643,7 +649,7 @@ function TwoForOneHighlight({ deal, config, family, contactHref }: { deal: Deal;
       <span>{description}</span>
       {details.length ? <ul>{details.map((detail) => <li key={detail}><Check size={14} aria-hidden="true" />{detail}</li>)}</ul> : null}
     </div>
-    <a className={styles.twoForOneCta} href={contactHref}><span {...editable("deals.topDealButtonLabel", "text", "Vorteil Button")} style={textStyleFor(config, "deals.topDealButtonLabel")}>{config.deals.topDealButtonLabel}</span><ArrowRight size={16} aria-hidden="true" /></a>
+    <MicrositeLink className={styles.twoForOneCta} href={contactHref}><span {...editable("deals.topDealButtonLabel", "text", "Vorteil Button")} style={textStyleFor(config, "deals.topDealButtonLabel")}>{config.deals.topDealButtonLabel}</span><ArrowRight size={16} aria-hidden="true" /></MicrositeLink>
   </article>
 }
 
@@ -692,16 +698,17 @@ function DealCard({ deal, config, family, contactHref, featured = false }: { dea
   const title = micrositeDealTitle(deal, config.language)
   const description = micrositeDealDescription(deal, config.language)
   const details = micrositeDealDetails(deal, config.language).slice(0, 2)
-  return <article className={featured ? styles.featuredBenefit : styles.benefitCard} data-family={family}><p>{micrositeDealTypeLabel(deal, config.language)}</p><h3>{title}</h3><span>{description}</span>{details.length ? <ul>{details.map((detail) => <li key={detail}><Check size={14} aria-hidden="true" />{detail}</li>)}</ul> : null}<a href={contactHref}><span {...editable("deals.topDealButtonLabel", "text", "Vorteil Button")} style={textStyleFor(config, "deals.topDealButtonLabel")}>{config.deals.topDealButtonLabel}</span><ArrowRight size={15} aria-hidden="true" /></a></article>
+  return <article className={featured ? styles.featuredBenefit : styles.benefitCard} data-family={family}><p>{micrositeDealTypeLabel(deal, config.language)}</p><h3>{title}</h3><span>{description}</span>{details.length ? <ul>{details.map((detail) => <li key={detail}><Check size={14} aria-hidden="true" />{detail}</li>)}</ul> : null}<MicrositeLink href={contactHref}><span {...editable("deals.topDealButtonLabel", "text", "Vorteil Button")} style={textStyleFor(config, "deals.topDealButtonLabel")}>{config.deals.topDealButtonLabel}</span><ArrowRight size={15} aria-hidden="true" /></MicrositeLink></article>
 }
 
 function MockDealCard({ deal, family, contactHref, featured = false }: { deal: MockDeal; family: CategoryFamily; contactHref: string; featured?: boolean }) {
-  return <article className={featured ? styles.featuredBenefit : styles.benefitCard} data-family={family} data-preview-card="true"><p>{deal.label}</p><h3>{deal.title}</h3><span>{deal.description}</span><ul>{deal.details.map((detail) => <li key={detail}><Check size={14} aria-hidden="true" />{detail}</li>)}</ul><a href={contactHref} onClick={(event) => event.preventDefault()}>{"Preview"}<ArrowRight size={15} aria-hidden="true" /></a></article>
+  return <article className={featured ? styles.featuredBenefit : styles.benefitCard} data-family={family} data-preview-card="true"><p>{deal.label}</p><h3>{deal.title}</h3><span>{deal.description}</span><ul>{deal.details.map((detail) => <li key={detail}><Check size={14} aria-hidden="true" />{detail}</li>)}</ul><MicrositeLink href={contactHref} onClick={(event) => event.preventDefault()}>{"Preview"}<ArrowRight size={15} aria-hidden="true" /></MicrositeLink></article>
 }
 
-function CategoryStory({ context, familyText }: { context: MicrositeContext; familyText: Record<string, string> }) { const { config, family, name, storyImage } = context; return <section id="ueber-uns" className={styles.story} data-family={family}>{storyImage ? <img {...editable("content.aboutHeroImageUrl", "image", "Über-uns Bild")} src={storyImage} alt={name} loading="lazy" style={imageStyleFor(config, "content.aboutHeroImageUrl")} /> : <div className={styles.storyFallback} aria-hidden="true" />}<div><EditableCopy config={config} id="content.aboutLabel">{textValue(config, "content.aboutLabel", familyText.storyTitle)}</EditableCopy><EditableCopy config={config} id="content.aboutHeadline" as="h2">{config.content.aboutHeadline}</EditableCopy><EditableCopy config={config} id="content.aboutText">{config.content.aboutText}</EditableCopy><a href="#kontakt" className={styles.storyLink}>{config.language === "en" ? "Meet the team" : "Team kennenlernen"}<ArrowRight size={16} aria-hidden="true" /></a></div></section> }
+function CategoryStory({ context, familyText }: { context: MicrositeContext; familyText: Record<string, string> }) { const { config, family, name, storyImage } = context; return <section id="ueber-uns" className={styles.story} data-family={family}>{storyImage ? <img {...editable("content.aboutHeroImageUrl", "image", "Über-uns Bild")} src={storyImage} alt={name} loading="lazy" style={imageStyleFor(config, "content.aboutHeroImageUrl")} /> : <div className={styles.storyFallback} aria-hidden="true" />}<div><EditableCopy config={config} id="content.aboutLabel">{textValue(config, "content.aboutLabel", familyText.storyTitle)}</EditableCopy><EditableCopy config={config} id="content.aboutHeadline" as="h2">{config.content.aboutHeadline}</EditableCopy><EditableCopy config={config} id="content.aboutText">{config.content.aboutText}</EditableCopy><MicrositeLink href="#kontakt" className={styles.storyLink}>{config.language === "en" ? "Meet the team" : "Team kennenlernen"}<ArrowRight size={16} aria-hidden="true" /></MicrositeLink></div></section> }
 
 function CategoryAppPrompt({ context, familyText }: { context: MicrositeContext; familyText: Record<string, string> }) {
+  if (context.integration.app !== undefined) return <>{context.integration.app}</>
   const { config, family, appUrl, partner } = context
   const nextReward = getMicrositeStampRewards(partner.reward_milestones)[0]
   const english = config.language === "en"
@@ -713,14 +720,14 @@ function CategoryAppPrompt({ context, familyText }: { context: MicrositeContext;
       ? "Collect stamps in the Benefitsi app. Partner rewards unlock once you reach their stamp level."
       : "Sammle Stempel in der Benefitsi App. Partner-Belohnungen schaltest du ab der jeweiligen Stempelstufe frei."
 
-  return <section id="app" className={styles.appPrompt} data-family={family}><div><p>Benefitsi App</p><EditableCopy config={config} id="content.appHeadline" as="h2">{config.content.appHeadline || familyText.appTitle}</EditableCopy><EditableCopy config={config} id="content.appText">{config.content.appText || familyText.appBody}</EditableCopy><p className={styles.appStampMessage}><Gift size={18} strokeWidth={1.5} aria-hidden="true" /><span>{stampMessage}</span></p><a href={appUrl}>{english ? "Open the app" : "App öffnen"}<ArrowRight size={16} aria-hidden="true" /></a></div><div className={styles.appToken}><img src="/Benefitsi_Icon_FullColor_RGB_512.png" alt="Benefitsi" width={42} height={42} /><span>{english ? "Your benefits, ready when you are." : "Deine Vorteile, wenn du sie brauchst."}</span><Gift size={44} strokeWidth={1} aria-hidden="true" /></div></section>
+  return <section id="app" className={styles.appPrompt} data-family={family}><div><p>Benefitsi App</p><EditableCopy config={config} id="content.appHeadline" as="h2">{config.content.appHeadline || familyText.appTitle}</EditableCopy><EditableCopy config={config} id="content.appText">{config.content.appText || familyText.appBody}</EditableCopy><p className={styles.appStampMessage}><Gift size={18} strokeWidth={1.5} aria-hidden="true" /><span>{stampMessage}</span></p><MicrositeLink href={appUrl}>{english ? "Open the app" : "App öffnen"}<ArrowRight size={16} aria-hidden="true" /></MicrositeLink></div><div className={styles.appToken}><img src="/Benefitsi_Icon_FullColor_RGB_512.png" alt="Benefitsi" width={42} height={42} /><span>{english ? "Your benefits, ready when you are." : "Deine Vorteile, wenn du sie brauchst."}</span><Gift size={44} strokeWidth={1} aria-hidden="true" /></div></section>
 }
 
-function CategoryContact({ context, familyText }: { context: MicrositeContext; familyText: Record<string, string> }) { const { partner, config, family, address, phone, website, mapUrl } = context; return <section id="kontakt" className={styles.contact} data-family={family}><div><EditableCopy config={config} id="content.contactLabel">{config.content.contactLabel || familyText.contactTitle}</EditableCopy><EditableCopy config={config} id="content.contactHeadline" as="h2">{config.content.contactHeadline}</EditableCopy><div className={styles.contactLinks}>{address ? <span><MapPin size={17} aria-hidden="true" />{address}</span> : null}{phone ? <a href={`tel:${phone}`}><Phone size={17} aria-hidden="true" />{partner.phone}</a> : null}{partner.email ? <a href={`mailto:${partner.email}`}>{partner.email}</a> : null}{website ? <a href={website}>{config.language === "en" ? "Visit website" : "Website besuchen"}<ArrowRight size={15} aria-hidden="true" /></a> : null}{mapUrl ? <a href={mapUrl} target="_blank" rel="noreferrer"><Route size={17} aria-hidden="true" />{config.language === "en" ? "Get directions" : "Route planen"}</a> : null}</div></div><div className={styles.hours}><h3><Clock3 size={19} aria-hidden="true" />{config.language === "en" ? "Opening hours" : "Öffnungszeiten"}</h3><OpeningHours partner={partner} language={config.language} /></div></section> }
+function CategoryContact({ context, familyText }: { context: MicrositeContext; familyText: Record<string, string> }) { const { partner, config, family, address, phone, website, mapUrl } = context; return <section id="kontakt" className={styles.contact} data-family={family}><div><EditableCopy config={config} id="content.contactLabel">{config.content.contactLabel || familyText.contactTitle}</EditableCopy><EditableCopy config={config} id="content.contactHeadline" as="h2">{config.content.contactHeadline}</EditableCopy><div className={styles.contactLinks}>{address ? <span><MapPin size={17} aria-hidden="true" />{address}</span> : null}{phone ? <MicrositeLink href={`tel:${phone}`}><Phone size={17} aria-hidden="true" />{partner.phone}</MicrositeLink> : null}{partner.email ? <MicrositeLink href={`mailto:${partner.email}`}>{partner.email}</MicrositeLink> : null}{website ? <MicrositeLink href={website}>{config.language === "en" ? "Visit website" : "Website besuchen"}<ArrowRight size={15} aria-hidden="true" /></MicrositeLink> : null}{mapUrl ? <MicrositeLink href={mapUrl} target="_blank" rel="noreferrer"><Route size={17} aria-hidden="true" />{config.language === "en" ? "Get directions" : "Route planen"}</MicrositeLink> : null}</div></div><div className={styles.hours}><h3><Clock3 size={19} aria-hidden="true" />{config.language === "en" ? "Opening hours" : "Öffnungszeiten"}</h3>{context.integration.openingHours !== undefined ? context.integration.openingHours : <OpeningHours partner={partner} language={config.language} />}</div></section> }
 
-function CategoryFaq({ context }: { context: MicrositeContext }) { const { partner, config, family } = context; return <section id="faq" className={styles.faq} data-family={family}><EditableCopy config={config} id="category.faqHeadline" as="h2">{textValue(config, "category.faqHeadline", config.language === "en" ? "Before you visit" : "Vor deinem Besuch")}</EditableCopy><div>{micrositeFaqItemsForPartner(partner, config).slice(0, 4).map((item) => <details key={item.question}><summary>{item.question}</summary><p>{item.answer}</p></details>)}</div></section> }
+function CategoryFaq({ context }: { context: MicrositeContext }) { if (context.integration.faq !== undefined) return <>{context.integration.faq}</>; const { partner, config, family } = context; return <section id="faq" className={styles.faq} data-family={family}><EditableCopy config={config} id="category.faqHeadline" as="h2">{textValue(config, "category.faqHeadline", config.language === "en" ? "Before you visit" : "Vor deinem Besuch")}</EditableCopy><div>{micrositeFaqItemsForPartner(partner, config).slice(0, 4).map((item) => <details key={item.question}><summary>{item.question}</summary><p>{item.answer}</p></details>)}</div></section> }
 
-function CategoryFooter({ context }: { context: MicrositeContext }) { const { config, family, name, copy } = context; return <footer className={styles.footer} data-family={family}><div><strong>{name}</strong><p>{normalizeCategoryText(config.content.footerText)}</p></div><nav aria-label={config.language === "en" ? "Footer navigation" : "Footer-Navigation"}><a href="#speisekarte">{copy.label}</a><a href="#kontakt">{config.language === "en" ? "Contact" : "Kontakt"}</a><a href="https://benefitsi.de/impressum">{config.language === "en" ? "Legal notice" : "Impressum"}</a><a href="https://benefitsi.de/datenschutz">{config.language === "en" ? "Privacy" : "Datenschutz"}</a></nav><span>Powered by Benefitsi</span></footer> }
+function CategoryFooter({ context }: { context: MicrositeContext }) { const { config, family, name, copy } = context; return <footer className={styles.footer} data-family={family}><div><strong>{name}</strong><p>{normalizeCategoryText(config.content.footerText)}</p></div><nav aria-label={config.language === "en" ? "Footer navigation" : "Footer-Navigation"}><MicrositeLink href="#speisekarte">{copy.label}</MicrositeLink><MicrositeLink href="#kontakt">{config.language === "en" ? "Contact" : "Kontakt"}</MicrositeLink><MicrositeLink href="https://benefitsi.de/impressum">{config.language === "en" ? "Legal notice" : "Impressum"}</MicrositeLink><MicrositeLink href="https://benefitsi.de/datenschutz">{config.language === "en" ? "Privacy" : "Datenschutz"}</MicrositeLink></nav><span>Powered by Benefitsi</span></footer> }
 
 function OpeningHours({ partner, language }: { partner: PartnerWithDeals; language: MicrositeConfig["language"] }) {
   const en = language === "en"
