@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { AdminShell } from "@/app/admin-shell"
-import { moderateCommunitySubmission, moderateNativeMeetup } from "@/app/city-pages/[citySlug]/community/actions"
+import { moderateCommunitySubmission, moderateNativeMeetup, resolveCommunityMeetupReports } from "@/app/city-pages/[citySlug]/community/actions"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { requireAdmin } from "@/lib/admin"
 import {
@@ -11,7 +11,7 @@ import {
   type NativeCommunityMeetup,
 } from "@/lib/city-pages/community"
 
-import { meetupApprovalBlockers } from "@/lib/city-pages/community-moderation"
+import { isHistoricalMeetup, meetupApprovalBlockers } from "@/lib/city-pages/community-moderation"
 
 export const dynamic = "force-dynamic"
 
@@ -83,7 +83,7 @@ export default async function CityCommunityPage({
 
       {query.success ? (
         <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-900">
-          Moderation und Statusverlauf wurden atomar gespeichert.
+          {query.success === "reports_resolved" ? "Die offenen Meldungen wurden intern bearbeitet. Der Treffenstatus blieb unverändert." : "Moderation und Statusverlauf wurden atomar gespeichert."}
         </p>
       ) : null}
       {query.success === "APPROVED" && query.published && /^[0-9a-f-]{36}$/i.test(query.published) ? <a href={publicMeetupUrl(citySlug, query.published)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-sm font-black text-[#0b75d9]">Freigegebenes Treffen auf der Website öffnen ↗</a> : null}
@@ -93,6 +93,7 @@ export default async function CityCommunityPage({
             ? "Eine interne Begründung ist für jede Moderation erforderlich."
             : query.error === "city" ? "Die Stadtzuordnung konnte nicht bestätigt werden. Bitte die Inbox neu laden."
             : query.error === "meetup_moderation" ? "Das App-Treffen konnte nicht moderiert werden. Prüfe Gastgeber, Termin, Treffpunkt und aktuellen Status; abgeschlossene oder abgesagte Treffen werden nicht reaktiviert."
+            : query.error === "report_resolution" ? "Die Meldungen konnten nicht bearbeitet werden. Bitte die Inbox neu laden und erneut prüfen."
             : "Die Moderation konnte nicht gespeichert werden. Für ein Treffen müssen Gastgeberkonto, Termin und Treffpunkt vorliegen; prüfe auch den aktuellen Status."}
         </p>
       ) : null}
@@ -102,8 +103,8 @@ export default async function CityCommunityPage({
       ))}
 
       <section className="grid overflow-hidden rounded-3xl bg-[#061829] text-white sm:grid-cols-3">
-        <Metric label="Gesamt" value={inbox.submissions.length + inbox.nativeMeetups.length} />
-        <Metric label="Offen" value={openCount} />
+        <Metric label="Angezeigt" value={inbox.submissions.length + inbox.nativeMeetups.length} />
+        <Metric label="Offen angezeigt" value={openCount} />
         <Metric label="App-Treffen zur Prüfung" value={inbox.nativeMeetups.length} />
       </section>
 
@@ -232,13 +233,14 @@ function SubmissionCard({
           )}
         </form>
       </div>
-      {submission.linkedMeetup ? <section className="border-t border-[#061829]/10 bg-amber-50 p-5"><h3 className="mb-4 text-lg font-black">Verknüpftes Treffen erneut prüfen</h3><NativeMeetupCard citySlug={citySlug} meetup={submission.linkedMeetup} /></section> : null}
+      {submission.linkedMeetup ? <section className="border-t border-[#061829]/10 bg-amber-50 p-5"><h3 className="mb-4 text-lg font-black">Verknüpftes Treffen erneut prüfen</h3><NativeMeetupCard citySlug={citySlug} meetup={submission.linkedMeetup} linkedProposalPending={submission.status === "needs_review"} /></section> : null}
     </article>
   )
 }
 
-function NativeMeetupCard({ citySlug, meetup }: { citySlug: string; meetup: NativeCommunityMeetup }) {
+function NativeMeetupCard({ citySlug, meetup, linkedProposalPending = false }: { citySlug: string; meetup: NativeCommunityMeetup; linkedProposalPending?: boolean }) {
   const blockers = meetupApprovalBlockers(meetup)
+  const historical = isHistoricalMeetup(meetup)
   return <article className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white p-5 md:p-6">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-wide text-[#0b75d9]">{meetup.linkedSubmission ? "Verknüpftes Community-Treffen" : "App-Treffen"} · {statusLabels[meetup.lifecycleStatus] ?? meetup.lifecycleStatus}</p><h3 className="mt-2 text-2xl font-black">{meetup.title}</h3></div><span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-900">{statusLabels[meetup.moderationStatus] ?? meetup.moderationStatus}</span></div>
     <div className="mt-5 grid gap-7 md:grid-cols-[minmax(0,1.2fr)_minmax(18rem,.8fr)]"><div><p className="whitespace-pre-wrap text-sm leading-7 text-[#455767]">{meetup.description}</p>
@@ -254,14 +256,22 @@ function NativeMeetupCard({ citySlug, meetup }: { citySlug: string; meetup: Nati
         <Fact label="Sichtbarkeit" value={meetup.visibility === "PUBLIC" ? "Öffentlich" : "Eingeschränkt – bleibt nach Freigabe unverändert"} />
         <Fact label="Eingang" value={formatDate(meetup.createdAt)} />
       </dl><p className="mt-3 text-xs leading-5 text-[#617080]">Nur der öffentliche Profilname wird geladen. Private E-Mail, Telefonnummer und Teilnehmerlisten werden nicht angezeigt.</p>
-    </div><form action={moderateNativeMeetup} className="h-fit rounded-2xl bg-[#f6f8f7] p-4">
+      {meetup.reports.length ? <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4"><h4 className="font-black">Offene private Meldungen ({meetup.reports.length})</h4><ul className="mt-3 grid gap-3">{meetup.reports.map(report => <li key={report.id} className="rounded-xl bg-white p-3 text-sm"><p className="font-black">{report.reason} · {formatDate(report.createdAt)}</p>{report.details ? <p className="mt-2 whitespace-pre-wrap break-words text-[#455767]">{report.details}</p> : null}</li>)}</ul><p className="mt-3 text-xs">Nur für die interne Prüfung. Die Identität der meldenden Person wird hier nicht angezeigt.</p></section> : null}
+    </div>{historical ? <form action={resolveCommunityMeetupReports} className="h-fit rounded-2xl bg-[#f6f8f7] p-4">
+      <input type="hidden" name="cityId" value={meetup.cityId} /><input type="hidden" name="citySlug" value={citySlug} /><input type="hidden" name="meetupId" value={meetup.id} />
+      <h4 className="text-lg font-black">Historische Meldungen bearbeiten</h4>
+      <p className="mt-2 text-sm leading-6 text-[#617080]">Diese Entscheidung bearbeitet nur offene Meldungen. Das abgesagte oder beendete Treffen wird nicht erneut freigegeben oder veröffentlicht.</p>
+      <label className="mt-4 grid gap-2 text-xs font-bold text-[#526170]">Meldungen entscheiden<select name="resolution" defaultValue="ACTIONED" className={inputClass}><option value="ACTIONED">Maßnahme dokumentieren</option><option value="DISMISSED">Meldungen verwerfen</option></select></label>
+      <label className="mt-4 grid gap-2 text-xs font-bold text-[#526170]">Interne Begründung *<textarea name="privateNote" required maxLength={1200} rows={4} className={`${inputClass} py-3`} /></label>
+      <PendingSubmitButton pendingLabel="Wird gespeichert …" className="mt-4 min-h-11 w-full rounded-xl bg-[#118cff] px-4 text-sm font-black text-white">Meldungen bearbeiten</PendingSubmitButton>
+    </form> : linkedProposalPending ? <aside className="h-fit rounded-2xl bg-[#f6f8f7] p-4 text-sm text-[#455767]"><h4 className="font-black">Verknüpften Vorschlag zuerst prüfen</h4><p className="mt-2">Die offene Web-Einreichung muss zuerst entschieden werden. Danach kann das Treffen erneut geprüft werden.</p></aside> : <form action={moderateNativeMeetup} className="h-fit rounded-2xl bg-[#f6f8f7] p-4">
       <input type="hidden" name="cityId" value={meetup.cityId} /><input type="hidden" name="citySlug" value={citySlug} /><input type="hidden" name="meetupId" value={meetup.id} />
       <h4 className="text-lg font-black">App-Treffen moderieren</h4>
       {blockers.length ? <ul className="mt-3 list-disc space-y-2 rounded-xl bg-amber-50 py-3 pl-7 pr-3 text-sm text-amber-950">{blockers.map(blocker => <li key={blocker}>{blocker}</li>)}</ul> : <p className="mt-2 text-sm leading-6 text-[#617080]">Freigabe veröffentlicht dieses Treffen im bestehenden Datensatz. Sichtbarkeit und Gastgeber bleiben erhalten.</p>}
       <label className="mt-4 grid gap-2 text-xs font-bold text-[#526170]">Entscheidung<select name="status" defaultValue={blockers.length ? "REJECTED" : "APPROVED"} className={inputClass}><option value="APPROVED" disabled={blockers.length > 0}>Freigeben</option><option value="REJECTED">Ablehnen</option></select></label>
       <label className="mt-4 grid gap-2 text-xs font-bold text-[#526170]">Interne Begründung *<textarea name="privateNote" required maxLength={2000} rows={4} className={`${inputClass} py-3`} /></label>
       <PendingSubmitButton pendingLabel="Wird gespeichert …" className="mt-4 min-h-11 w-full rounded-xl bg-[#118cff] px-4 text-sm font-black text-white">Entscheidung speichern</PendingSubmitButton>
-    </form></div>
+    </form>}</div>
   </article>
 }
 

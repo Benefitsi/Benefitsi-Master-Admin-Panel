@@ -1,0 +1,9 @@
+# Community report inbox — Admin source note
+
+The city Community inbox now loads pending meetup reports through their `city_meetups` city relation. It includes a reported meetup even when one report leaves its moderation status `APPROVED`. The private card shows a bounded reason, details and submission time without reporter identity. A linked submission and its meetup appear together; an older linked meetup outside the displayed submission page appears as one standalone card.
+
+The report read is limited to 251 rows, displaying at most 250 with an explicit incomplete-read warning. The existing submission and app proposal caps also warn at their boundaries. Failed report or related meetup reads remain visible as warnings; auxiliary public host-name lookup can separately warn under existing service ACLs.
+
+Active meetups use the existing protected moderation actions, whose service responses are checked before success. Pending linked web proposals must be decided first. Cancelled, completed and Berlin-time-ended meetups with pending reports use `resolve_city_meetup_reports_v1`; this closes reports and records private audit evidence while leaving the meetup unchanged. The action derives its actor from `requireAdmin`, verifies the city ID/slug pair, rejects blank or over-1200-character notes, and validates the exact `{meetup_id,resolution,resolved_count}` response. It invalidates the inbox only after success. Closed meetups without pending reports no longer appear as unusable review cards.
+
+Local behavior tests use synthetic identities, intercepted service/auth boundaries and rendered server components. They do not establish hosted permissions, real browser acceptance or successful public refresh delivery.
