@@ -16,6 +16,7 @@ import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
+export const maxDuration = 180
 
 export default async function PartnerDashboardPage({
   searchParams,
@@ -129,6 +130,7 @@ export default async function PartnerDashboardPage({
               initialView={requestedView === "microsite" ? "microsite" : "settings"}
               portalMode
               micrositeEditingEnabled={portalSession.isAdmin}
+              adminAccess={portalSession.isAdmin}
             />
           </section>
         ) : null}
