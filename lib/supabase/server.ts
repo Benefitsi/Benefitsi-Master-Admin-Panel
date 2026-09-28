@@ -1,12 +1,15 @@
 import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { sessionCookieOptions } from "@/lib/portal-routing"
+import { cookies, headers } from "next/headers"
 import { requireSupabaseConfig } from "./config"
 
 export async function createClient() {
   const cookieStore = await cookies()
+  const cookieOptions = sessionCookieOptions((await headers()).get("host") ?? "localhost")
   const { url, publishableKey } = requireSupabaseConfig()
 
   return createServerClient(url, publishableKey, {
+    cookieOptions,
     cookies: {
       getAll() {
         return cookieStore.getAll()

@@ -2,72 +2,59 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { getSupabaseConfig } from "./config"
 import { loginPathForRequest } from "../auth-recovery"
+import { portalRoute, sessionCookieOptions } from "@/lib/portal-routing"
 
 export async function updateSession(request: NextRequest) {
-  const config = getSupabaseConfig()
-
-  if (!config.isConfigured) {
-    return NextResponse.next({ request })
+  const requestHost = request.headers.get("host") ?? request.nextUrl.host
+  const policy = portalRoute(requestHost, request.nextUrl.pathname, request.method)
+  const noStore = { "Cache-Control": "private, no-store" }
+  if (policy.kind === "deny") return NextResponse.json({error:"Forbidden"}, {status:403,headers:noStore})
+  if (policy.kind === "redirect") {
+    // Never forward auth codes/tokens or arbitrary query strings across origins.
+    return NextResponse.redirect(policy.url, {status:307,headers:noStore})
   }
-
-  let supabaseResponse = NextResponse.next({ request })
-
+  if (policy.kind === "machine") return NextResponse.next({request,headers:noStore})
+  const config = getSupabaseConfig()
+  if (!config.isConfigured) {
+    return policy.kind === "public" ? NextResponse.next({request,headers:noStore})
+      : NextResponse.json({error:"Authentication unavailable"},{status:503,headers:noStore})
+  }
+  let response = NextResponse.next({request,headers:noStore})
   const supabase = createServerClient(config.url, config.publishableKey, {
+    cookieOptions: sessionCookieOptions(requestHost),
     cookies: {
-      getAll() {
-        return request.cookies.getAll()
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) =>
-          request.cookies.set(name, value),
-        )
-        supabaseResponse = NextResponse.next({ request })
-        cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options),
-        )
+      getAll: () => request.cookies.getAll(),
+      setAll(cookiesToSet, cacheHeaders) {
+        cookiesToSet.forEach(({name,value}) => request.cookies.set(name,value))
+        response = NextResponse.next({request,headers:noStore})
+        cookiesToSet.forEach(({name,value,options}) => response.cookies.set(name,value,options))
+        if (cacheHeaders) Object.entries(cacheHeaders).forEach(([name,value]) => response.headers.set(name,value))
       },
     },
   })
-
-  const { data } = await supabase.auth.getClaims()
-
-  const user = data?.claims
-  const pathname = request.nextUrl.pathname
-  const isPublicRoute =
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/partner/login") ||
-    pathname === "/forgot-password" ||
-    pathname === "/partner/forgot-password" ||
-    pathname === "/reset-password" ||
-    pathname === "/auth/confirm" ||
-    pathname === "/auth/auth-code-error" ||
-    // Automation endpoints authenticate themselves with CRON_SECRET. Keeping
-    // them outside the browser-session gate lets Vercel/local cron reach the
-    // route; the route-level timingSafeEqual check remains mandatory.
-    pathname.startsWith("/api/automation/") ||
-    pathname === "/p" ||
-    // Knowledge ingestion authenticates with its source-bound token at the
-    // route boundary; it must not depend on a browser cookie/session.
-    pathname.startsWith("/api/internal/knowledge/sync") ||
-    pathname.startsWith("/p/") ||
-    pathname === "/robots.txt" ||
-    pathname === "/sitemap.xml"
-
-  if (!user && !isPublicRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = loginPathForRequest(pathname)
-    url.search = ""
-    const redirectResponse = NextResponse.redirect(url)
-    supabaseResponse.cookies.getAll().forEach((cookie) =>
-      redirectResponse.cookies.set(cookie),
-    )
-    for (const name of ["cache-control", "expires", "pragma"]) {
-      const value = supabaseResponse.headers.get(name)
-      if (value) redirectResponse.headers.set(name, value)
-    }
-    redirectResponse.headers.set("Cache-Control", "private, no-store")
-    return redirectResponse
+  const {data,error} = await supabase.auth.getUser()
+  const user = error ? null : data.user
+  if (policy.kind === "public") return response
+  function finish(next: NextResponse) {
+    response.cookies.getAll().forEach(cookie => next.cookies.set(cookie))
+    next.headers.set("Cache-Control","private, no-store")
+    return next
   }
-
-  return supabaseResponse
+  if (!user) {
+    if (request.nextUrl.pathname.startsWith('/api/') || !['GET','HEAD'].includes(request.method)) {
+      return finish(NextResponse.json({error:"Unauthorized"},{status:401}))
+    }
+    const url = request.nextUrl.clone()
+    url.pathname = loginPathForRequest(request.nextUrl.pathname)
+    url.search = ''
+    return finish(NextResponse.redirect(url))
+  }
+  if (policy.kind === "admin") {
+    const result = await supabase.from('users').select('id,is_admin').eq('id',user.id).maybeSingle()
+    if (result.error || result.data?.id !== user.id || result.data?.is_admin !== true) {
+      return finish(NextResponse.json({error:"Forbidden"},{status:403}))
+    }
+  }
+  // Partner pages/actions perform their own membership and ownership checks.
+  return response
 }

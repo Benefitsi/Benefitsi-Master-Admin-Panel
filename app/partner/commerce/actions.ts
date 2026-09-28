@@ -69,9 +69,9 @@ export async function openSoftwareBilling(form:FormData) {
   const providerId=value(form,'provider_id')
   const {session}=await commercePartner(providerId)
   const {createSoftwareSubscription,createSoftwareBillingPortal}=await import('@/lib/stripe/software-billing')
-  const {requireBookingBaseUrl}=await import('@/lib/stripe/config')
+  const {requirePartnerBaseUrl}=await import('@/lib/stripe/config')
   let url=''
-  try {url=value(form,'billing_action')==='portal'?await createSoftwareBillingPortal(providerId,requireBookingBaseUrl()):await createSoftwareSubscription(providerId,session.user.email||'',requireBookingBaseUrl())}catch {redirect(destination(providerId,'billing'))}
+  try {url=value(form,'billing_action')==='portal'?await createSoftwareBillingPortal(providerId,requirePartnerBaseUrl()):await createSoftwareSubscription(providerId,session.user.email||'',requirePartnerBaseUrl())}catch {redirect(destination(providerId,'billing'))}
   redirect(url)
 }
 

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { signOut } from "@/app/actions"
-import { getPartnerPortalSession } from "@/lib/partner-portal"
+import { getAdminSession } from "@/lib/admin"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { LoginForm } from "./login-form"
@@ -15,15 +15,12 @@ export default async function LoginPage() {
 
   if (config.isConfigured) {
     const supabase = await createClient()
-    const portalSession = await getPartnerPortalSession(supabase)
+    const portalSession = await getAdminSession(supabase)
 
     if (portalSession?.isAdmin) {
       redirect("/")
     }
 
-    if (portalSession?.partnerIds.length) {
-      redirect("/partner")
-    }
   }
 
   return (
@@ -36,7 +33,7 @@ export default async function LoginPage() {
         <section className="hidden bg-[#061829] p-10 text-white lg:flex lg:flex-col lg:justify-between">
           <div>
             <BrandLogo surface="dark" className="h-auto w-48" priority />
-             <p className="mt-3 text-sm font-medium text-white/55">Admin & Partner Panel</p>
+             <p className="mt-3 text-sm font-medium text-white/55">Admin Panel</p>
           </div>
 
           <div className="max-w-xl">
@@ -67,12 +64,12 @@ export default async function LoginPage() {
           <div className="w-full max-w-md rounded-2xl border border-[#061829]/10 bg-white p-6 shadow-[0_24px_70px_rgba(6,24,41,.08)] sm:p-8">
             <div className="mb-8">
               <BrandLogo className="mb-7 h-auto w-44 lg:hidden" priority />
-              <p className="text-sm font-bold text-[#118cff]">Admin & Partner Panel</p>
+              <p className="text-sm font-bold text-[#118cff]">Admin Panel</p>
               <h2 className="mt-2 text-2xl font-black tracking-[-0.035em] text-[#061829]">
                 Anmeldung
               </h2>
               <p className="mt-2 text-sm leading-6 text-[#526170]">
-                Melde dich mit deinem Supabase-Konto an. Du wirst automatisch in die Bereiche weitergeleitet, für die du berechtigt bist.
+                Anmeldung für das Benefitsi-Team. Partner nutzen partner.benefitsi.de.
               </p>
             </div>
 
@@ -88,19 +85,18 @@ export default async function LoginPage() {
 
 async function NonAdminSessionNotice() {
   const supabase = await createClient()
-  const portalSession = await getPartnerPortalSession(supabase)
+  const portalSession = await getAdminSession(supabase)
 
   if (
     !portalSession ||
-    portalSession.isAdmin ||
-    portalSession.partnerIds.length > 0
+    portalSession.isAdmin
   ) {
     return null
   }
 
   return (
     <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-      <p className="font-medium">The current account is not authorized for either panel.</p>
+      <p className="font-medium">The current account is not authorized for the admin panel.</p>
       <form action={signOut} className="mt-2">
         <PendingSubmitButton
           pendingLabel="Signing out..."

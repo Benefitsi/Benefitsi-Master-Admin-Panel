@@ -75,3 +75,12 @@ export function requireBookingProxySecret() {
   }
   return secret
 }
+
+// Merchant callbacks must return to the host that owns the partner session.
+export function requirePartnerBaseUrl() {
+  const url = new URL(process.env.BENEFITSI_PARTNER_BASE_URL?.trim() || "https://partner.benefitsi.de")
+  if (url.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && url.hostname === "localhost")) {
+    throw new Error("Die Partner-Basis-URL muss HTTPS verwenden.")
+  }
+  return url.origin
+}

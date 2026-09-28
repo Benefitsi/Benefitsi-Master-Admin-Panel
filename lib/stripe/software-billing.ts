@@ -4,7 +4,7 @@ import type Stripe from "stripe"
 import { createHash } from "node:crypto"
 import { commercePartner } from "@/lib/commerce/partner"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { getStripeTestClient, requireBookingBaseUrl } from "@/lib/stripe/config"
+import { getStripeTestClient, requirePartnerBaseUrl } from "@/lib/stripe/config"
 import { buildSoftwareSubscription, validateSoftwarePrice } from "@/lib/stripe/software-billing-contracts"
 
 export function isSoftwareBillingConfigured() {
@@ -12,7 +12,7 @@ export function isSoftwareBillingConfigured() {
 }
 
 function expectedOrigin(origin: string) {
-  const configured = requireBookingBaseUrl()
+  const configured = requirePartnerBaseUrl()
   if (new URL(origin).origin !== configured) throw new Error("Ungültige Abrechnungs-Basis-URL.")
   return configured
 }
