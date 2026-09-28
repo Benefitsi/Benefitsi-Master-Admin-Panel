@@ -49,7 +49,7 @@ export async function moderateCommunitySubmission(formData: FormData) {
   const admin = createAdminClient()
   const { data: city, error: cityError } = await admin.from("cities").select("id").eq("id", cityId).eq("slug", citySlug).maybeSingle()
   if (cityError || !city) redirect(`${inboxPath(citySlug)}?error=city`)
-  const { error } = await admin.rpc("moderate_city_community_submission", {
+  const { data, error } = await admin.rpc("moderate_city_community_submission", {
     p_submission_id: submissionId,
     p_city_id: cityId,
     p_status: status,
@@ -59,7 +59,7 @@ export async function moderateCommunitySubmission(formData: FormData) {
     p_public_message: publicMessage || null,
   })
 
-  if (error) {
+  if (error || !data || data.id !== submissionId || data.city_id !== cityId || data.status !== status) {
     redirect(`${inboxPath(citySlug)}?error=moderation`)
   }
 
@@ -84,18 +84,53 @@ export async function moderateNativeMeetup(formData: FormData) {
   const admin = createAdminClient()
   const { data: city, error: cityError } = await admin.from("cities").select("id").eq("id", cityId).eq("slug", citySlug).maybeSingle()
   if (cityError || !city) redirect(`${inboxPath(citySlug)}?error=city`)
-  const { error } = await admin.rpc("moderate_city_meetup_v1", {
+  const { data, error } = await admin.rpc("moderate_city_meetup_v1", {
     p_meetup_id: meetupId,
     p_city_id: cityId,
     p_status: status,
     p_actor_id: adminSession.user.id,
     p_private_note: privateNote,
   })
-  if (error) redirect(`${inboxPath(citySlug)}?error=meetup_moderation`)
+  if (error || !data || data.ok !== true || data.id !== meetupId || data.moderation_status !== status) redirect(`${inboxPath(citySlug)}?error=meetup_moderation`)
   const published = status === "APPROVED" ? await admin.from("city_meetups").select("id")
     .eq("id", meetupId).eq("city_id", cityId).eq("visibility", "PUBLIC").eq("moderation_status", "APPROVED").maybeSingle() : null
   revalidatePath(inboxPath(citySlug))
   revalidatePath(`/city-pages/${citySlug}`)
   const refresh = await refreshPublicCity(citySlug, cityId)
   redirect(`${inboxPath(citySlug)}?success=${encodeURIComponent(status)}${published?.data?.id ? `&published=${encodeURIComponent(published.data.id)}` : ""}${refresh === "ok" ? "" : `&warning=refresh_${refresh}`}`)
+}
+
+export async function resolveCommunityMeetupReports(formData: FormData) {
+  const { adminSession } = await requireAdmin()
+  const cityId = value(formData, "cityId", 80)
+  const citySlug = value(formData, "citySlug", 180)
+  const meetupId = value(formData, "meetupId", 80)
+  const resolution = value(formData, "resolution", 30)
+  const noteInput = formData.get("privateNote")
+  const privateNote = typeof noteInput === "string" ? noteInput.trim() : ""
+  if (!UUID_PATTERN.test(cityId) || !UUID_PATTERN.test(meetupId) ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(citySlug) ||
+      !["ACTIONED", "DISMISSED"].includes(resolution)) {
+    throw new Error("Ungültige Moderationsanfrage.")
+  }
+  if (!privateNote || [...privateNote].length > 1200) {
+    redirect(`${inboxPath(citySlug)}?error=private_note`)
+  }
+  const admin = createAdminClient()
+  const { data: city, error: cityError } = await admin.from("cities").select("id")
+    .eq("id", cityId).eq("slug", citySlug).maybeSingle()
+  if (cityError || !city) redirect(`${inboxPath(citySlug)}?error=city`)
+  const { data, error } = await admin.rpc("resolve_city_meetup_reports_v1", {
+    p_meetup_id: meetupId,
+    p_city_id: cityId,
+    p_resolution: resolution,
+    p_actor_id: adminSession.user.id,
+    p_private_note: privateNote,
+  })
+  if (error || !data || data.meetup_id !== meetupId || data.resolution !== resolution ||
+      !Number.isInteger(data.resolved_count) || data.resolved_count < 1) {
+    redirect(`${inboxPath(citySlug)}?error=report_resolution`)
+  }
+  revalidatePath(inboxPath(citySlug))
+  redirect(`${inboxPath(citySlug)}?success=reports_resolved`)
 }
