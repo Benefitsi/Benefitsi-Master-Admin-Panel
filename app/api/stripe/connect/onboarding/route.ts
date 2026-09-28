@@ -7,8 +7,8 @@ import {
   requireBookingBaseUrl,
 } from "@/lib/stripe/config"
 import {
-  createRecipientOnboardingLink,
-  createTestRecipientAccount,
+  createMerchantOnboardingLink,
+  createTestMerchantAccount,
 } from "@/lib/stripe/connect"
 
 const UUID_PATTERN =
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const stripe = getStripeTestClient()
     let accountId = providerResult.data.stripe_account_id
     if (!accountId) {
-      accountId = await createTestRecipientAccount(stripe, {
+      accountId = await createTestMerchantAccount(stripe, {
         providerId,
         displayName: providerResult.data.display_name,
         supportEmail: providerResult.data.support_email,
@@ -69,6 +69,7 @@ export async function POST(request: Request) {
         .from("booking_providers")
         .update({
           stripe_account_id: accountId,
+          stripe_charge_model: "direct_merchant",
           onboarding_status: "onboarding_started",
           updated_at: new Date().toISOString(),
         })
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
     }
 
     const baseUrl = requireBookingBaseUrl()
-    const onboardingUrl = await createRecipientOnboardingLink(stripe, {
+    const onboardingUrl = await createMerchantOnboardingLink(stripe, {
       accountId,
       providerId,
       baseUrl,

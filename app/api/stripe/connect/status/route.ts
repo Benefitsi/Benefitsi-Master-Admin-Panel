@@ -7,8 +7,8 @@ import {
   requireBookingBaseUrl,
 } from "@/lib/stripe/config"
 import {
-  createRecipientOnboardingLink,
-  retrieveRecipientAccountStatus,
+  createMerchantOnboardingLink,
+  retrieveMerchantAccountStatus,
 } from "@/lib/stripe/connect"
 
 const UUID_PATTERN =
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
 
   try {
     const stripe = getStripeTestClient()
-    const status = await retrieveRecipientAccountStatus(
+    const status = await retrieveMerchantAccountStatus(
       stripe,
       provider.stripe_account_id,
     )
@@ -60,9 +60,10 @@ export async function GET(request: Request) {
       .from("booking_providers")
       .update({
         onboarding_status: status.onboardingStatus,
-        charges_enabled: status.transfersEnabled,
+        stripe_charge_model: "direct_merchant",
+        charges_enabled: status.chargesEnabled,
         payouts_enabled: status.payoutsEnabled,
-        details_submitted: status.transfersEnabled,
+        details_submitted: status.chargesEnabled,
         updated_at: new Date().toISOString(),
       })
       .eq("id", providerId)
@@ -82,14 +83,15 @@ export async function GET(request: Request) {
       details: {
         stripe_account_id: status.accountId,
         onboarding_status: status.onboardingStatus,
-        transfers_enabled: status.transfersEnabled,
+        stripe_charge_model: "direct_merchant",
+        charges_enabled: status.chargesEnabled,
         payouts_enabled: status.payoutsEnabled,
         test_mode: true,
       },
     })
 
     if (mode === "refresh") {
-      const onboardingUrl = await createRecipientOnboardingLink(stripe, {
+      const onboardingUrl = await createMerchantOnboardingLink(stripe, {
         accountId: status.accountId,
         providerId,
         baseUrl,

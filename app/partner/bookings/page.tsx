@@ -20,11 +20,6 @@ export default async function PartnerBookingsPage({
     "Partner"
   const confirmed = context.bookings.filter((booking) => booking.state === "confirmed")
   const gross = confirmed.reduce((sum, booking) => sum + booking.totalAmount, 0)
-  const net = confirmed.reduce(
-    (sum, booking) =>
-      sum + booking.totalAmount - booking.applicationFeeAmount,
-    0,
-  )
 
   return (
     <main className="min-h-screen bg-[#f7f6f1] px-5 py-6 text-[#061829]">
@@ -32,7 +27,7 @@ export default async function PartnerBookingsPage({
         <header className="flex flex-col gap-4 rounded-3xl border border-[#061829]/10 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <BrandLogo className="h-auto w-44" priority />
-            <p className="mt-2 text-sm text-[#617080]">Partner Booking Operations</p>
+            <p className="mt-2 text-sm text-[#617080]">Erlebnisbuchungen</p><Link href="/partner/commerce" className="text-sm font-semibold text-blue-700">Bestellungen, Tische & Termine →</Link>
           </div>
           <div className="text-sm font-semibold text-[#526170]">{userName}</div>
         </header>
@@ -48,10 +43,9 @@ export default async function PartnerBookingsPage({
         {feedback.error ? <Message tone="error">Aktion blockiert: {feedback.error}</Message> : null}
         {feedback.success ? <Message tone="success">Stornoanfrage wurde sicher protokolliert.</Message> : null}
 
-        <section className="mt-5 grid overflow-hidden rounded-3xl border border-[#061829]/10 bg-white sm:grid-cols-3">
+        <section className="mt-5 grid overflow-hidden rounded-3xl border border-[#061829]/10 bg-white sm:grid-cols-2">
           <Metric label="Bestätigte Buchungen" value={String(confirmed.length)} />
           <Metric label="Bruttovolumen" value={money(gross)} />
-          <Metric label="Voraussichtlicher Anbieteranteil" value={money(net)} />
         </section>
 
         <section className="mt-5 rounded-3xl border border-[#061829]/10 bg-white p-5">
@@ -82,7 +76,7 @@ export default async function PartnerBookingsPage({
                   <div>
                     <p className="font-black">{booking.publicReference} · {booking.offerTitle}</p>
                     <p className="mt-1 text-sm text-[#617080]">
-                      {booking.quantity} Platz/Plätze · {money(booking.totalAmount)} · Anbieteranteil {money(booking.totalAmount - booking.applicationFeeAmount)} · {booking.state}
+                      {booking.quantity} Platz/Plätze · {money(booking.totalAmount)} · {booking.state}
                     </p>
                   </div>
                   {["hold", "payment_pending", "confirmed"].includes(booking.state) ? (

@@ -1,3 +1,4 @@
+import { loadMicrositeCommerceActions } from "@/lib/commerce/microsite"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { getAdminSession } from "@/lib/admin"
@@ -78,6 +79,7 @@ export default async function MicrositeBuilderPage({ params }: PageProps) {
 
       <section className="mx-auto w-full max-w-[1800px] min-w-0 p-3 sm:p-5">
         <MicrositePanel
+      commerceActions={await loadMicrositeCommerceActions(partner.id)}
           key={`${partner.id ?? partner.name ?? "microsite"}-${partner.microsite?.draftVersion?.id ?? partner.microsite?.publishedVersion?.id ?? "new"}`}
           partner={partner}
           fullscreen

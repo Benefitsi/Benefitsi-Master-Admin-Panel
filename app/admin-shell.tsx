@@ -156,6 +156,13 @@ function AdminShellContent({
               icon={<BookingIcon className="size-5" />}
             />
             <AdminNavigationLink
+              href="/commerce"
+              label="Online-Bestellungen"
+              active={pathname.startsWith("/commerce")}
+              collapsed={collapsed}
+              icon={<BookingIcon className="size-5" />}
+            />
+            <AdminNavigationLink
               href="/automation"
               label="Automation Control"
               active={pathname.startsWith("/automation")}

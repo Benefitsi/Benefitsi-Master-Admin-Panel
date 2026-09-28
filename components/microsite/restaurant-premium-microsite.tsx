@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- Microsite assets are admin-selected storage URLs and may use partner-specific hosts. */
 "use client"
 
-import { MicrositeLink, useMicrositeIntegration } from "./microsite-integration"
+import { MicrositeLink, MicrositeCommerceActions, useMicrositeIntegration } from "./microsite-integration"
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { CSSProperties } from "react"
@@ -1356,6 +1356,7 @@ function SiteHeader({
   config: MicrositeConfig
   theme: ReturnType<typeof restaurantTheme>
 }) {
+  const integration = useMicrositeIntegration()
   const navStyle = config.elementStyles["navigation.group"] ?? {}
   const [menuOpen, setMenuOpen] = useState(false)
   const hasBenefits = hasMicrositeBenefitContent(partner, config)
@@ -1399,13 +1400,13 @@ function SiteHeader({
           ))}
         </nav>
         <div className="hidden items-center gap-3 @min-[1180px]:flex">
-          <MicrositeLink
+          {integration.commerceActions?.length ? <MicrositeCommerceActions compact /> : <MicrositeLink
             href={hasBenefits ? "#deals" : "#speisekarte"}
             className="premium-button group inline-flex min-h-11 items-center justify-center gap-3 rounded-xl bg-[var(--site-accent)] px-5 py-3 text-sm font-black text-white shadow-[0_16px_30px_-18px_var(--site-accent)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105"
           >
             {hasBenefits ? config.hero.primaryButtonLabel : config.hero.secondaryButtonLabel}
             <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
-          </MicrositeLink>
+          </MicrositeLink>}
         </div>
         <div className="relative z-10 flex shrink-0 items-center justify-end gap-1.5 @min-[1180px]:hidden">
           <button
@@ -1546,9 +1547,11 @@ function HeroSection({
             />
           </div>
 
-          <div className="mt-6 flex flex-col gap-2.5 @min-[520px]:flex-row @min-[1024px]:gap-3">
+          <div className="mt-6 flex flex-col flex-wrap gap-2.5 @min-[520px]:flex-row @min-[1024px]:gap-3">
+            {integration.commerceActions?.length ? <MicrositeCommerceActions /> : <>
             {hasBenefits ? <HeroButton id="hero.primaryButtonLabel" primary label={config.hero.primaryButtonLabel} config={config} /> : null}
             <HeroButton id="hero.secondaryButtonLabel" label={config.hero.secondaryButtonLabel} config={config} />
+            </>}
           </div>
         </div>
 
@@ -2131,6 +2134,7 @@ export function MicrositeDealBanner({
             ))}
           </ul>
         ) : null}
+        <p className={`mt-4 text-xs leading-5 ${isFeaturedDeal ? "text-zinc-200" : "text-[var(--site-muted)]"}`}>Zum Einlösen mit deinem Benefitsi-Konto in der App anmelden.</p>
         {action !== undefined ? <div className="mt-6">{action}</div> : <button
           {...(primary ? editable("deals.topDealButtonLabel", "text", "Vorteil Button") : {})}
           className={

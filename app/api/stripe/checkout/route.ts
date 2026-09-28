@@ -3,10 +3,11 @@ import { timingSafeEqual } from "node:crypto"
 import { normalizeBookingHold } from "@/lib/bookings/contracts"
 import { createAdminClient } from "@/lib/supabase/admin"
 import {
-  getStripeTestClient,
   requireBookingBaseUrl,
   requireBookingProxySecret,
 } from "@/lib/stripe/config"
+
+import { createDirectCheckout, retrieveDirectCheckout } from "@/lib/stripe/direct-payments"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -95,11 +96,13 @@ export async function POST(request: Request) {
       .eq("id", hold.bookingId)
       .maybeSingle()
 
-    const stripe = getStripeTestClient()
     if (existing.data?.stripe_checkout_session_id) {
-      const session = await stripe.checkout.sessions.retrieve(
-        existing.data.stripe_checkout_session_id,
+      const session = await retrieveDirectCheckout(
+        existing.data.stripe_checkout_session_id, hold.stripeAccountId,
       )
+      if (session.status !== "open" || !session.url) {
+        return NextResponse.json({ error: "Dieser Checkout ist bereits abgeschlossen oder abgelaufen." }, { status: 409 })
+      }
       return NextResponse.json({
         bookingReference: hold.publicReference,
         checkoutUrl: session.url,
@@ -107,47 +110,24 @@ export async function POST(request: Request) {
       })
     }
 
+    if (hold.applicationFeeAmount !== 0 || !hold.holdExpiresAt) {
+      return NextResponse.json({ error: "Die Buchung benötigt den provisionsfreien Händler-Zahlungsvertrag." }, { status: 409 })
+    }
     const baseUrl = requireBookingBaseUrl()
-    const session = await stripe.checkout.sessions.create(
-      {
-        mode: "payment",
-        line_items: [
-          {
-            quantity: 1,
-            price_data: {
-              currency: hold.currency,
-              unit_amount: hold.totalAmount,
-              product_data: {
-                name: hold.offerTitle,
-                description: `${quantity} Platz/Plätze · Benefitsi Buchung ${hold.publicReference}`,
-              },
-            },
-          },
-        ],
-        customer_email: customerEmail || undefined,
-        client_reference_id: hold.publicReference,
-        metadata: {
-          benefitsi_booking_id: hold.bookingId,
-          benefitsi_booking_reference: hold.publicReference,
-        },
-        payment_intent_data: {
-          application_fee_amount: hold.applicationFeeAmount,
-          transfer_data: {
-            destination: hold.stripeAccountId,
-          },
-          metadata: {
-            benefitsi_booking_id: hold.bookingId,
-            benefitsi_booking_reference: hold.publicReference,
-          },
-        },
-        success_url: `${baseUrl}/bookings/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/bookings/cancelled?booking=${encodeURIComponent(hold.publicReference)}`,
-        expires_at: Math.floor(Date.now() / 1000) + 35 * 60,
-      },
-      {
-        idempotencyKey: `benefitsi-booking-${idempotencyKey}`,
-      },
-    )
+    const session = await createDirectCheckout({
+      bookingId: hold.bookingId,
+      reference: hold.publicReference,
+      accountId: hold.stripeAccountId,
+      totalAmount: hold.totalAmount,
+      currency: hold.currency,
+      email: customerEmail,
+      expiresAt: hold.holdExpiresAt,
+      title: hold.offerTitle,
+      bookingSystem: "legacy",
+      successUrl: `${baseUrl}/bookings/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${baseUrl}/bookings/cancelled?booking=${encodeURIComponent(hold.publicReference)}`,
+      idempotencyKey: `benefitsi-booking-${idempotencyKey}`,
+    })
 
     const attachResult = await admin.rpc("attach_booking_checkout", {
       p_booking_id: hold.bookingId,
