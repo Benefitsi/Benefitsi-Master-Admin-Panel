@@ -24,10 +24,11 @@ const findingLabels: Record<string, string> = {
   page_error: 'Seitenfehler', link_check_failed: 'Linkprüfung fehlgeschlagen',
 }
 function Website({data}: {data: Record<string, unknown>}) {
-  const pages = list(data.pages), findings = list(data.findings)
+  const pages = Array.isArray(data.pages) ? data.pages : null
+  const findings = Array.isArray(data.findings) ? data.findings : null
   return <div className="space-y-2">
-    <p>{number(pages.length)} Seiten, {number(data.linksChecked)} Links geprüft. Noindex ist eine Beobachtung, keine automatische Änderung.</p>
-    {findings.length ? <ul className="list-disc space-y-1 pl-5">{findings.map((raw, index) => { const row = record(raw); return <li key={index}>{findingLabels[String(row.code)] ?? 'Befund'}: <WebLink value={row.url}/>{typeof row.status === 'number' ? ` · HTTP ${row.status}` : ''}</li> })}</ul> : <p>Keine Befunde erfasst.</p>}
+    <p>{pages ? number(pages.length) : 'Noch keine Daten'} Seiten, {number(data.linksChecked)} Links geprüft. Noindex ist eine Beobachtung, keine automatische Änderung.</p>
+    {findings === null ? <p>Befunde: Noch keine Daten</p> : findings.length ? <ul className="list-disc space-y-1 pl-5">{findings.map((raw, index) => { const row = record(raw); return <li key={index}>{findingLabels[String(row.code)] ?? 'Befund'}: <WebLink value={row.url}/>{typeof row.status === 'number' ? ` · HTTP ${row.status}` : ''}</li> })}</ul> : <p>Keine Befunde erfasst.</p>}
   </div>
 }
 function Gsc({data}: {data: Record<string, unknown>}) {
@@ -55,8 +56,8 @@ function Gbp({data}: {data: Record<string, unknown>}) {
     return <div key={index} className="border-l-2 border-[#b8dcff] pl-3">
       <p className="font-medium">{text(period.startDate)}–{text(period.endDate)} · 28 Tage</p>
       <ul className="mt-1 grid gap-x-5 sm:grid-cols-2">{Object.entries(gbpLabels).map(([key, label]) => {
-        const observed = record(coverage[key]), days = typeof observed.observedDays === 'number' ? observed.observedDays : 0
-        return <li key={key}>{label}: {number(metrics[key])} · {days}/28 Tage{observed.complete === true ? '' : ' (Teilsumme)'}</li>
+        const observed = record(coverage[key]), days = typeof observed.observedDays === 'number' && Number.isInteger(observed.observedDays) && observed.observedDays >= 0 && observed.observedDays <= 28 ? observed.observedDays : null
+        return <li key={key}>{label}: {number(metrics[key])} · {days === null ? 'Abdeckung: Noch keine Daten' : `${days}/28 Tage`}{days === null ? '' : observed.complete === false ? ' (Teilsumme)' : observed.complete === true ? '' : ' (Abdeckung unklar)'}</li>
       })}</ul>
     </div>
   })}<p className="text-xs text-zinc-500">Anruf-Klicks sind keine abgeschlossenen Anrufe. Teilsummen sind keine vollständigen 28-Tage-Werte.</p></div>

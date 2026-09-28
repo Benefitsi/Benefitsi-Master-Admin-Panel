@@ -93,7 +93,7 @@ test('GBP rejects dates outside the requested period, duplicate dates, and unsaf
 })
 
 test('PageSpeed reports laboratory scores with an explicit key', async () => {
-  const fetcher=async url=>json({lighthouseResult:{finalUrl:target.canonical_url,fetchTime:'2026-09-28T11:00:00Z',categories:{seo:{score:0.8}},audits:{}}})
+  const fetcher=async ()=>json({lighthouseResult:{finalUrl:target.canonical_url,fetchTime:'2026-09-28T11:00:00Z',categories:{seo:{score:0.8}},audits:{}}})
   const result=await collectPageSpeed(target,'key',{fetcher,clock})
   assert.equal(result.state,'partial')
   assert.equal(result.data.kind,'laboratory')
@@ -209,7 +209,7 @@ test('crawler does not dispatch after a DNS resolution exceeds its request limit
 })
 
 test('crawler reports missing title, noindex and broken local link without changing pages', async () => {
-  const fetcher=async (url,init)=> String(url).endsWith('/broken') ? new Response('',{status:404}) : new Response('<html><head><meta name="robots" content="noindex"></head><body><a href="/broken">broken</a></body></html>',{status:200,headers:{'content-type':'text/html'}})
+  const fetcher=async url=> String(url).endsWith('/broken') ? new Response('',{status:404}) : new Response('<html><head><meta name="robots" content="noindex"></head><body><a href="/broken">broken</a></body></html>',{status:200,headers:{'content-type':'text/html'}})
   const result=await collectWebsite(target,{resolve:async()=>['93.184.215.14'],fetcher,clock})
   assert.equal(result.state,'partial')
   assert.ok(result.data.findings.some(f=>f.code==='missing_title'))
