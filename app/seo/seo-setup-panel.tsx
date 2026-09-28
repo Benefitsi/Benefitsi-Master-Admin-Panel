@@ -35,7 +35,7 @@ function Submit({ children }: { children: React.ReactNode }) {
   return (
     <button
       disabled={pending}
-      className="rounded-md bg-teal-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+      className="rounded-md bg-[#118cff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0b75d9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff] disabled:opacity-50"
     >
       {pending ? 'Bitte warten …' : children}
     </button>
@@ -285,7 +285,7 @@ export function SeoSetupPanel({
                       href={provider.onboarding}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-sm font-medium text-teal-800 underline"
+                      className="text-sm font-medium text-[#0b75d9] underline"
                     >
                       Offizielle Einrichtung öffnen ↗
                     </a>
@@ -404,7 +404,7 @@ export function SeoSetupPanel({
                 {String(audit.evidence.observedAt ?? audit.created_at)}
               </p>
               <details className="mt-2">
-                <summary className="cursor-pointer text-teal-800">
+                <summary className="cursor-pointer text-[#0b75d9]">
                   Zeitraum und Messwerte ansehen
                 </summary>
                 <EvidenceDetails evidence={audit.evidence} />
