@@ -16,6 +16,7 @@ const publicPaths = new Set([
 // These endpoints authenticate their own service secret or Stripe signature.
 // New endpoints are admin-only until explicitly reviewed here.
 const machinePaths = new Set([
+  '/api/seo/collect',
   '/api/automation/tick', '/api/automation/worker',
   '/api/internal/knowledge/sync/start', '/api/internal/knowledge/sync/batch',
   '/api/internal/knowledge/sync/complete', '/api/internal/knowledge/sync/fail',

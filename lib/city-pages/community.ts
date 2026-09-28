@@ -1,6 +1,6 @@
 import "server-only"
 
-import { pendingNativeMeetups } from "./community-moderation"
+import { isHistoricalMeetup, pendingNativeMeetups } from "./community-moderation"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type JsonRow = Record<string, unknown>
@@ -65,6 +65,14 @@ export type NativeCommunityMeetup = {
   lifecycleStatus: string
   visibility: string
   locationPrivacy: string | null
+  createdAt: string
+  reports: CommunityMeetupReport[]
+}
+
+export type CommunityMeetupReport = {
+  id: string
+  reason: string
+  details: string | null
   createdAt: string
 }
 
@@ -133,8 +141,34 @@ export async function loadCityCommunityInbox(
     : { data: [], error: null }
 
   const warnings: string[] = []
+  if (submissionRows.length === 250) warnings.push("Die Einreichungen erreichen die Anzeigegrenze. Weitere Einreichungen können fehlen.")
   if (auditResult.error) {
     warnings.push("Der Statusverlauf konnte nicht geladen werden.")
+  }
+
+  // Reports have no city_id. The inner meetup relation scopes the private read.
+  const reportsResult = await admin.from("city_meetup_reports")
+    .select("id,meetup_id,reason,details,created_at,city_meetups!inner(city_id)")
+    .eq("status", "PENDING")
+    .eq("city_meetups.city_id", cityResult.data.id)
+    .order("created_at", { ascending: true })
+    .limit(251)
+  if (reportsResult.error) warnings.push("Offene Meldungen konnten nicht geladen werden. Die Inbox ist unvollständig.")
+  const reportRows = reportsResult.error ? [] : rows(reportsResult.data).slice(0, 250)
+  if (!reportsResult.error && rows(reportsResult.data).length > 250) warnings.push("Mehr als 250 offene Meldungen: Die Inbox zeigt nur einen Teil. Bitte weitere Meldungen gesondert prüfen.")
+  const reportedIds = [...new Set(reportRows.map(row => text(row.meetup_id)).filter((id): id is string => Boolean(id)))]
+  const reportMeetupsResult = reportedIds.length ? await admin.from("city_meetups")
+    .select("id,city_id,canonical_slug,title,description,host_user_id,start_at,end_at,meeting_point_label,max_participants,age_range,cost_description,activity_type,moderation_status,lifecycle_status,visibility,location_privacy,created_at")
+    .eq("city_id", cityResult.data.id)
+    .in("id", reportedIds) : { data: [], error: null }
+  if (reportMeetupsResult.error || (!reportMeetupsResult.error && rows(reportMeetupsResult.data).length !== reportedIds.length)) warnings.push("Gemeldete Treffen konnten nicht vollständig geladen werden. Die Inbox ist unvollständig.")
+  const reportsByMeetup = new Map<string, CommunityMeetupReport[]>()
+  for (const row of reportRows) {
+    const id = text(row.meetup_id)
+    if (!id) continue
+    const entries = reportsByMeetup.get(id) ?? []
+    entries.push({ id: String(row.id), reason: String(row.reason).slice(0, 40), details: text(row.details)?.slice(0, 2000) ?? null, createdAt: String(row.created_at) })
+    reportsByMeetup.set(id, entries)
   }
 
   // Query all linked IDs independently of the paginated inbox, so an older
@@ -145,13 +179,16 @@ export async function loadCityCommunityInbox(
     .in("moderation_status", ["PENDING", "FLAGGED"])
     .order("created_at", { ascending: true })
     .limit(250)
-  const nativeIds = rows(nativeResult.data).map(row => String(row.id))
+  if (!nativeResult.error && rows(nativeResult.data).length === 250) warnings.push("Die App-Treffen erreichen die Anzeigegrenze. Weitere Treffen können fehlen.")
+  const combinedRows = new Map<string, JsonRow>()
+  for (const row of [...(nativeResult.error ? [] : rows(nativeResult.data)), ...(reportMeetupsResult.error ? [] : rows(reportMeetupsResult.data))]) combinedRows.set(String(row.id), row)
+  const nativeIds = [...combinedRows.keys()]
   const linksResult = nativeIds.length ? await admin.from("city_community_submissions")
     .select("published_record_id").eq("city_id", cityResult.data.id)
     .in("published_record_id", nativeIds) : {data: [], error: null}
-  if (nativeResult.error) warnings.push("Die App-Treffen konnten nicht geladen werden. Die Einreichungen bleiben verfügbar.")
-  if (linksResult.error) warnings.push("Die Zuordnung zu Einreichungen konnte nicht geprüft werden. App-Treffen werden bis zur nächsten erfolgreichen Prüfung ausgeblendet, um doppelte Moderation zu vermeiden.")
-  const nativeRows = nativeResult.error || linksResult.error ? [] : rows(nativeResult.data)
+  if (nativeResult.error) warnings.push("Die App-Vorschläge konnten nicht geladen werden. Gemeldete Treffen und Einreichungen bleiben verfügbar.")
+  if (linksResult.error) warnings.push("Die Zuordnung zu Einreichungen konnte nicht geprüft werden. App-Treffen und ihre privaten Meldungen werden bis zur nächsten erfolgreichen Prüfung ausgeblendet, um doppelte Moderation zu vermeiden.")
+  const nativeRows = linksResult.error ? [] : [...combinedRows.values()]
   const hostIds = [...new Set(nativeRows.map(row => text(row.host_user_id)).filter((id): id is string => Boolean(id)))]
   const hostsResult = hostIds.length ? await admin.from("users").select("id,display_name").in("id", hostIds) : {data: [], error: null}
   if (hostsResult.error) warnings.push("Öffentliche Gastgebernamen konnten nicht geladen werden. Es werden keine Ersatzidentitäten erzeugt.")
@@ -167,10 +204,25 @@ export async function loadCityCommunityInbox(
     targetAudience: text(row.age_range), costDescription: text(row.cost_description), activityType: text(row.activity_type),
     moderationStatus: String(row.moderation_status), lifecycleStatus: String(row.lifecycle_status),
     visibility: String(row.visibility), locationPrivacy: text(row.location_privacy), createdAt: String(row.created_at),
+    reports: reportsByMeetup.get(String(row.id)) ?? [],
   }))
   const displayedLinkedIds = submissionRows.map(row => text(row.published_record_id)).filter((id): id is string => Boolean(id))
-  const nativeMeetups = pendingNativeMeetups(allPendingMeetups, displayedLinkedIds)
-  const pendingById = new Map(allPendingMeetups.map(meetup => [meetup.id, meetup]))
+  const eligibleMeetups = allPendingMeetups.filter(meetup => (
+    meetup.reports.length > 0 || (pendingNativeMeetups([meetup], []).length > 0 && !isHistoricalMeetup(meetup))
+  ))
+  const nativeMeetups = eligibleMeetups.filter(meetup => !displayedLinkedIds.includes(meetup.id))
+  const pendingById = new Map(eligibleMeetups.map(meetup => [meetup.id, meetup]))
+  const linkedOwnerByMeetup = new Map<string, JsonRow>()
+  for (const row of submissionRows) {
+    const meetupId = text(row.published_record_id)
+    if (!meetupId || !pendingById.has(meetupId)) continue
+    const current = linkedOwnerByMeetup.get(meetupId)
+    const pending = row.status === "needs_review"
+    if (!current || (pending && current.status !== "needs_review") ||
+        (pending === (current.status === "needs_review") && String(row.id) < String(current.id))) {
+      linkedOwnerByMeetup.set(meetupId, row)
+    }
+  }
 
   const auditBySubmission = new Map<string, CommunityAuditEntry[]>()
   for (const row of rows(auditResult.data)) {
@@ -221,7 +273,8 @@ export async function loadCityCommunityInbox(
       createdAt: String(row.created_at),
       updatedAt: String(row.updated_at),
       audit: auditBySubmission.get(String(row.id)) ?? [],
-      linkedMeetup: pendingById.get(String(row.published_record_id)) ?? null,
+      linkedMeetup: linkedOwnerByMeetup.get(String(row.published_record_id))?.id === row.id
+        ? pendingById.get(String(row.published_record_id)) ?? null : null,
     })),
     nativeMeetups,
     warnings,

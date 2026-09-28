@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { meetupApprovalBlockers, pendingNativeMeetups } from '../lib/city-pages/community-moderation.ts'
+import { isHistoricalMeetup, meetupApprovalBlockers, pendingNativeMeetups } from '../lib/city-pages/community-moderation.ts'
 const now = new Date('2026-09-17T10:00:00Z')
 const valid = {hostUserId:'743d7d74-5856-4ccd-b91a-907a8cecab90',startsAt:'2026-09-18T10:00:00Z',endsAt:null,meetingPoint:'Rathausplatz'}
 test('legacy meetups need a verified host, valid future start and public meeting point', () => {
@@ -29,4 +29,15 @@ test('unknown-end approval follows the Berlin day at midnight and DST boundaries
  assert.ok(meetupApprovalBlockers({...valid,startsAt:'2026-09-17T21:50:00Z'},new Date('2026-09-17T22:10:00Z')).length)
  assert.deepEqual(meetupApprovalBlockers({...valid,startsAt:'2026-10-25T00:30:00Z'},new Date('2026-10-25T01:30:00Z')),[])
  assert.ok(meetupApprovalBlockers({...valid,startsAt:'2026-10-24T21:30:00Z'},new Date('2026-10-25T01:30:00Z')).length)
+})
+
+test('historical report resolution follows terminal lifecycle and the Berlin end rule', () => {
+ const today = new Date('2026-09-28T10:00:00Z')
+ const base = {lifecycleStatus:'SCHEDULED',startsAt:'2026-09-28T07:00:00Z',endsAt:null}
+ assert.equal(isHistoricalMeetup(base,today),false)
+ assert.equal(isHistoricalMeetup({...base,startsAt:'2026-09-27T21:59:00Z'},today),true)
+ assert.equal(isHistoricalMeetup({...base,endsAt:'2026-09-28T09:59:59Z'},today),true)
+ assert.equal(isHistoricalMeetup({...base,endsAt:'2026-09-28T10:00:00Z'},today),false)
+ assert.equal(isHistoricalMeetup({...base,lifecycleStatus:'CANCELLED'},today),true)
+ assert.equal(isHistoricalMeetup({...base,lifecycleStatus:'COMPLETED'},today),true)
 })
