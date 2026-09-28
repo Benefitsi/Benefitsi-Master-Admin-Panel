@@ -7,7 +7,18 @@ export const asRecord = (value:unknown):Record<string,unknown> => { if(!isRecord
 export const nonnegative = (value:unknown,max=Infinity):number => { if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>max) throw new CollectorFailure('invalid_response'); return value }
 export const optionalNumber = (value:unknown,max=Infinity):number|null => value==null ? null : nonnegative(value,max)
 
-export async function requestJson(url:string,init:RequestInit,options:CollectorOptions={},timeoutMs=10000,maxBytes=2_000_000):Promise<Record<string,unknown>> {
+async function readJson(response:Response,maxBytes:number):Promise<Record<string,unknown>> {
+  const size=Number(response.headers.get('content-length'))
+  if(size>maxBytes) throw new CollectorFailure('invalid_response')
+  if(!response.body) return asRecord(await response.json())
+  const reader=response.body.getReader(); const chunks:Uint8Array[]=[]; let total=0
+  try { while(true){ const {done,value}=await reader.read();if(done)break;total+=value.length;if(total>maxBytes){await reader.cancel();throw new CollectorFailure('invalid_response')}chunks.push(value) } }
+  finally { reader.releaseLock() }
+  const bytes=new Uint8Array(total);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length}
+  return asRecord(JSON.parse(new TextDecoder().decode(bytes)))
+}
+
+export async function requestJson(url:string,init:RequestInit,options:CollectorOptions={},timeoutMs=10000,maxBytes=2_000_000,interpretOAuthTokenError=false):Promise<Record<string,unknown>> {
   const controller=new AbortController()
   const timer=setTimeout(()=>controller.abort(),timeoutMs)
   try {
@@ -16,15 +27,12 @@ export async function requestJson(url:string,init:RequestInit,options:CollectorO
     if(response.status===403) throw new CollectorFailure('forbidden')
     if(response.status===429) throw new CollectorFailure('rate_limited')
     if(response.status>=300 && response.status<400) throw new CollectorFailure('blocked')
+    if(interpretOAuthTokenError&&response.status===400){
+      const payload=await readJson(response,maxBytes)
+      if(['invalid_grant','invalid_client','unauthorized_client'].includes(payload.error as string))throw new CollectorFailure('auth_error')
+    }
     if(!response.ok) throw new CollectorFailure('provider_error')
-    const size=Number(response.headers.get('content-length'))
-    if(size>maxBytes) throw new CollectorFailure('invalid_response')
-    if(!response.body) return asRecord(await response.json())
-    const reader=response.body.getReader(); const chunks:Uint8Array[]=[]; let total=0
-    try { while(true){ const {done,value}=await reader.read();if(done)break;total+=value.length;if(total>maxBytes){await reader.cancel();throw new CollectorFailure('invalid_response')}chunks.push(value) } }
-    finally { reader.releaseLock() }
-    const bytes=new Uint8Array(total);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length}
-    return asRecord(JSON.parse(new TextDecoder().decode(bytes)))
+    return await readJson(response,maxBytes)
   } catch(error) {
     if(error instanceof SyntaxError) throw new CollectorFailure('invalid_response')
     if(controller.signal.aborted) throw new CollectorFailure('timeout')

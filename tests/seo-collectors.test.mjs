@@ -57,6 +57,51 @@ test('Google 403, 429, malformed, empty, and thrown secret-bearing errors are bo
   assert.doesNotMatch(JSON.stringify(result),/refresh-secret|token-secret|client-secret-value/)
 })
 
+for (const [provider,collect] of [
+  ['GSC',fetcher => collectGsc(target,'sc-domain:example.com',creds,{fetcher,clock})],
+  ['GBP',fetcher => collectGbp('locations/123',creds,{fetcher,clock})],
+]) {
+  test(`${provider} revoked refresh grant requires reconnect without downstream requests or secret disclosure`, async () => {
+    const requests=[]
+    const result=await collect(async (url,init) => {
+      requests.push(String(url))
+      assert.equal(new URL(String(url)).pathname,'/token')
+      assert.match(String(init.body),/grant_type=refresh_token/)
+      return json({error:'invalid_grant',error_description:'Token expired: refresh-secret client-secret-value'},400)
+    })
+    assert.equal(result.state,'auth_error')
+    assert.equal(result.data,null)
+    assert.deepEqual(requests,['https://oauth2.googleapis.com/token'])
+    assert.doesNotMatch(JSON.stringify(result),/refresh-secret|client-secret-value|Token expired|invalid_grant/)
+  })
+}
+
+test('Google token endpoint keeps rate limits, server errors and timeouts transient', async () => {
+  for (const [response,state] of [[json({error:'invalid_grant'},429),'rate_limited'],[json({error:'invalid_grant'},503),'provider_error']]) {
+    const result=await collectGsc(target,'sc-domain:example.com',creds,{fetcher:async()=>response,clock})
+    assert.equal(result.state,state)
+  }
+  const timeout=await collectGbp('locations/123',creds,{fetcher:async()=>{throw Object.assign(Error('deadline'),{name:'TimeoutError'})},clock})
+  assert.equal(timeout.state,'timeout')
+})
+
+test('ordinary Google API errors do not interpret OAuth payloads', async () => {
+  const result=await collectPageSpeed(target,'key',{fetcher:async()=>json({error:'invalid_grant'},400),clock})
+  assert.equal(result.state,'provider_error')
+})
+
+test('token error interpretation is allowlisted and keeps redirect and response-size limits', async () => {
+  for (const [response,state] of [
+    [json({error:'invalid_scope',error_description:'refresh-secret'},400),'provider_error'],
+    [new Response(null,{status:302,headers:{location:'https://unexpected.example/'}}),'blocked'],
+    [json({error:'invalid_grant',padding:'x'.repeat(17_000)},400),'invalid_response'],
+  ]) {
+    const result=await collectGsc(target,'sc-domain:example.com',creds,{fetcher:async()=>response,clock})
+    assert.equal(result.state,state)
+    assert.doesNotMatch(JSON.stringify(result),/refresh-secret|unexpected\.example/)
+  }
+})
+
 test('GBP keeps omitted metrics unknown and labels call clicks', async () => {
   const fetcher=googleFetch((url)=>{const day=new URL(String(url)).searchParams.get('dailyRange.start_date.day');const month=new URL(String(url)).searchParams.get('dailyRange.start_date.month');return json({multiDailyMetricTimeSeries:[{dailyMetricTimeSeries:[{dailyMetric:'CALL_CLICKS',timeSeries:{datedValues:[{date:{year:2026,month:Number(month),day:Number(day)},value:'4'}]}}]}]})})
   const result=await collectGbp('locations/123',creds,{fetcher,clock})
@@ -128,6 +173,19 @@ test('Bright full JSON distinguishes organic rank from global mixed-page rank', 
   assert.equal(result.data.organic[2].globalRank,5)
   assert.deepEqual(rankFromSerp(config,'cafe',result),{keyword:'cafe',state:'ranked',position:3,rankingUrl:'https://example.com/shop?ref=google'})
   assert.doesNotMatch(JSON.stringify(result),/api-secret/)
+})
+
+test('shared SERP evidence stores only search context and projects ranks for two targets', async () => {
+  const first={...context,version:1,subjectUrl:'https://www.example.com/shop/',keywords:['cafe','bakery'],partnerSince:'2020-01-01',packageStartedOn:'2021-01-01',baseline:{id:'frozen-baseline',results:[]}}
+  const second={...first,subjectUrl:'https://other.example/shop/',keywords:['cafe'],partnerSince:'2024-01-01',packageStartedOn:null,baseline:null}
+  const payload=serp()
+  payload.organic[1].link='https://www.example.com/shop/'
+  payload.organic[3].link='https://other.example/shop/'
+  const result=await fetchBrightSerp(first,'cafe',{apiKey:'k',zone:'z'},{fetcher:async()=>json(payload),clock})
+  assert.equal(result.state,'ok')
+  assert.deepEqual(result.data.context,{channel:'organic',locale:'de-DE',location:'Berlin,Berlin,Germany',device:'mobile',latitude:null,longitude:null})
+  assert.deepEqual(rankFromSerp(first,'cafe',result),{keyword:'cafe',state:'ranked',position:2,rankingUrl:'https://www.example.com/shop/'})
+  assert.deepEqual(rankFromSerp(second,'cafe',result),{keyword:'cafe',state:'ranked',position:4,rankingUrl:'https://other.example/shop/'})
 })
 
 test('SERP absence requires complete valid top ten and malformed positions stay unknown', async () => {

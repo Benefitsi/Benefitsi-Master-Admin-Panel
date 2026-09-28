@@ -44,7 +44,7 @@ function normalize(raw:Record<string,unknown>,keyword:string,context:SearchConte
   organic.sort((a,b)=>a.rank-b.rank)
   const retained=organic.filter(row=>row.rank<=10)
   const complete=retained.length===10&&retained.every((row,index)=>row.rank===index+1)
-  return {query:keyword,context:{...context},organic:retained,coverage:{depth:10,complete},rankKind:'organic'}
+  return {query:keyword,context:{channel:context.channel,locale:context.locale,location:context.location,device:context.device,latitude:context.latitude,longitude:context.longitude},organic:retained,coverage:{depth:10,complete},rankKind:'organic'}
 }
 export async function fetchBrightSerp(context:SearchContext,keyword:string,credentials:{apiKey:string;zone:string}|null|undefined,options:CollectorOptions={}):Promise<Observation>{
   const base=(state:Observation['state'],data:Record<string,unknown>|null=null,errorCode?:string)=>observation('bright_data','google_organic_top10_full_json_v1',state,options,data,errorCode)

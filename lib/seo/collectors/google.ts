@@ -15,7 +15,7 @@ function periods(options:CollectorOptions,timezone:string,delay:number){
   return [utcPeriod(end),current]
 }
 async function accessToken(credentials:GoogleCredentials,options:CollectorOptions,remaining:()=>number){
-  const payload=await requestJson('https://oauth2.googleapis.com/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:credentials.clientId,client_secret:credentials.clientSecret,refresh_token:credentials.refreshToken,grant_type:'refresh_token'})},options,remaining())
+  const payload=await requestJson('https://oauth2.googleapis.com/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:credentials.clientId,client_secret:credentials.clientSecret,refresh_token:credentials.refreshToken,grant_type:'refresh_token'})},options,remaining(),16_384,true)
   if(typeof payload.access_token!=='string'||!payload.access_token||payload.access_token.length>8192)throw new CollectorFailure('invalid_response')
   return payload.access_token
 }
