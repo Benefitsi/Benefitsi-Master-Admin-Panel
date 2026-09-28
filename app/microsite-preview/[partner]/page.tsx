@@ -1,3 +1,4 @@
+import { loadMicrositeCommerceActions } from "@/lib/commerce/microsite"
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { requireAdmin } from "@/lib/admin"
@@ -42,6 +43,7 @@ export default async function MicrositePreviewPage({
 
   return (
     <MicrositePreviewShell
+      commerceActions={await loadMicrositeCommerceActions(partner.id)}
       partner={partner}
       initialConfig={config}
       previewStorageKey={micrositePreviewStorageKey(partner)}

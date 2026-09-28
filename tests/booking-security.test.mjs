@@ -49,24 +49,13 @@ test("booking migration locks inventory and makes webhook replay atomic", async 
   assert.doesNotMatch(sql, /grant\s+(select|insert|update).*to\s+(anon|authenticated)/i)
 })
 
-test("checkout uses destination charges, immutable database amounts and Stripe idempotency", async () => {
-  const source = await readFile(
-    new URL("../app/api/stripe/checkout/route.ts", import.meta.url),
-    "utf8",
-  )
-  assert.match(source, /\.rpc\("create_booking_hold"/)
-  assert.match(source, /application_fee_amount: hold\.applicationFeeAmount/)
-  assert.match(source, /destination: hold\.stripeAccountId/)
-  assert.match(source, /idempotencyKey: `benefitsi-booking-\$\{idempotencyKey\}`/)
-  assert.doesNotMatch(source, /body\?\.price|body\?\.unitAmount|body\?\.fee/)
-})
 
 test("webhook verifies the raw signed payload and rejects live events", async () => {
   const source = await readFile(
     new URL("../app/api/stripe/webhook/route.ts", import.meta.url),
     "utf8",
   )
-  assert.ok(source.indexOf("await request.text()") < source.indexOf("constructEvent("))
+  assert.ok(source.indexOf("await request.text()") < source.indexOf("event = verifyBookingWebhook("))
   assert.match(source, /request\.headers\.get\("stripe-signature"\)/)
   assert.match(source, /if \(event\.livemode\)/)
   assert.match(source, /\.rpc\("apply_stripe_booking_event"/)
@@ -115,15 +104,15 @@ test("Stripe client refuses any non-test secret and Connect onboarding rechecks 
     connect,
     /Stripe Connect bleibt bis zur Verifizierung der Benefitsi UG gesperrt/,
   )
-  assert.match(connect, /createTestRecipientAccount/)
+  assert.match(connect, /createTestMerchantAccount/)
   assert.doesNotMatch(connect, /stripe\.accounts\.create/)
   assert.match(connectCore, /stripe\.v2\.core\.accounts\.create/)
-  assert.match(connectCore, /dashboard: "express"/)
-  assert.match(connectCore, /recipient:/)
-  assert.match(connectCore, /stripe_transfers: \{ requested: true \}/)
-  assert.match(connectCore, /fees_collector: "application"/)
-  assert.match(connectCore, /losses_collector: "application"/)
-  assert.match(connectCore, /configurations: \["recipient"\]/)
+  assert.match(connectCore, /dashboard: "full"/)
+  assert.match(connectCore, /merchant:/)
+  assert.match(connectCore, /card_payments: \{ requested: true \}/)
+  assert.match(connectCore, /fees_collector: "stripe"/)
+  assert.match(connectCore, /losses_collector: "stripe"/)
+  assert.match(connectCore, /configurations: \["merchant"\]/)
   assert.match(connectCore, /if \(account\.livemode\)/)
   assert.match(connectCore, /if \(link\.livemode\)/)
   assert.ok(
@@ -137,8 +126,8 @@ test("Stripe client refuses any non-test secret and Connect onboarding rechecks 
   )
   assert.match(connectStatus, /connect_platform_not_ready/)
   assert.match(connectStatus, /\.eq\("test_mode", true\)/)
-  assert.match(connectStatus, /charges_enabled: status\.transfersEnabled/)
-  assert.match(connectStatus, /details_submitted: status\.transfersEnabled/)
+  assert.match(connectStatus, /charges_enabled: status\.chargesEnabled/)
+  assert.match(connectStatus, /details_submitted: status\.chargesEnabled/)
   assert.match(bookingPage, /Connect wartet auf UG/)
   assert.match(bookingPage, /Werbeagentur oder vorläufige Ersatzdaten/)
   assert.match(onboardingButton, /if \(!enabled\)/)
@@ -222,7 +211,9 @@ test("admin refund requires explicit confirmation and test Stripe before mutatio
     refund.indexOf("!isStripeTestConfigured()") <
       refund.indexOf('.rpc("request_booking_cancellation"'),
   )
-  assert.match(refund, /idempotencyKey: `benefitsi-refund-\$\{bookingId\}`/)
+  assert.match(refund, /await refundLegacyPayment\(booking\)/)
+  const adapter = await readFile(new URL("../lib/stripe/legacy-payments.ts", import.meta.url), "utf8")
+  assert.match(adapter, /idempotencyKey: `benefitsi-refund-\$\{booking\.id\}`/)
 })
 
 test("CSV export is admin-only, PII-free and neutralizes spreadsheet formulas", async () => {

@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { getStripeTestClient } from "@/lib/stripe/config"
+import { retrieveLegacyCheckout } from "@/lib/stripe/legacy-payments"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export const dynamic = "force-dynamic"
 
@@ -13,7 +14,12 @@ export default async function BookingSuccessPage({
   let paid = false
   if (sessionId?.startsWith("cs_test_")) {
     try {
-      const session = await getStripeTestClient().checkout.sessions.retrieve(sessionId)
+      const booking = await createAdminClient().from("bookings")
+        .select("id,stripe_account_id,total_amount,currency,stripe_checkout_session_id,stripe_payment_intent_id")
+        .eq("stripe_checkout_session_id", sessionId)
+        .maybeSingle()
+      if (booking.error || !booking.data?.stripe_account_id) throw new Error("Buchung nicht gefunden")
+      const { session } = await retrieveLegacyCheckout(booking.data)
       reference = session.client_reference_id || ""
       paid = session.payment_status === "paid"
     } catch {

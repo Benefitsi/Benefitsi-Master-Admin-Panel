@@ -30,6 +30,7 @@ import {
   type MicrositeReadinessReport,
 } from "@/lib/microsite-readiness"
 import { applyMicrositeTemplatePreset, micrositeTemplateDescription, micrositeTemplatePresets, templateDefaults } from "@/lib/microsite-templates"
+import { MicrositeIntegrationProvider, type MicrositeCommerceAction } from "@/components/microsite/microsite-integration"
 import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
 import { PrintableStudioPanel } from "@/components/microsite/printable-studio-panel"
 import { LoadingSpinner } from "@/components/loading-ui"
@@ -1021,10 +1022,12 @@ function translateBuilderText(locale: BuilderLocale, text: string): string {
 }
 
 export function MicrositePanel({
+  commerceActions = [],
   partner,
   fullscreen = false,
   previewBasePath = "/microsite-preview",
 }: {
+  commerceActions?: MicrositeCommerceAction[]
   partner: PartnerWithDeals
   fullscreen?: boolean
   previewBasePath?: string
@@ -2398,12 +2401,14 @@ export function MicrositePanel({
                 zoom: previewZoom,
               }}
             >
-              <MicrositeRenderer
+              <MicrositeIntegrationProvider value={{ commerceActions }}>
+        <MicrositeRenderer
                 partner={partner}
                 config={config}
                 showAppDownloadPopup={false}
                 showMockDeals={!isOriginalFoodTemplate && config.builder.mockDealsPreview}
               />
+        </MicrositeIntegrationProvider>
             </div>
           </div>
         </div>

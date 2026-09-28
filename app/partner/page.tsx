@@ -86,6 +86,7 @@ export default async function PartnerDashboardPage({
               </Link>
             ) : null}
             <p className="max-w-full truncate text-sm text-zinc-600">{userName}</p>
+            {process.env.BENEFITSI_COMMERCE_ENABLED === "true" && <Link href="/partner/commerce" className="inline-flex h-10 items-center rounded-xl bg-[#087cd9] px-3 text-sm font-bold text-white">Bestellungen & Termine · Einstellungen</Link>}
             <AdminLanguageControl />
             <form action={signOutPartner}>
               <PendingSubmitButton
