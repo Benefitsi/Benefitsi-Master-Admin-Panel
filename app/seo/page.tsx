@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { getAdminSession } from "@/lib/admin"
+import { publicSeoTarget } from "@/lib/seo/seo-setup"
 import { getSeoOperationsData } from "@/lib/seo/seo-data"
 import { enqueueSeoAudit, enqueueSeoRankCheck } from "./actions"
 import { SeoDashboard } from "./seo-dashboard"
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic"
 export default async function SeoOperationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ started?: string; rank?: string; target?: string; error?: string }>
+  searchParams: Promise<{ started?: string; rank?: string; target?: string; error?: string; setup?: string; measurement?: string }>
 }) {
   const config = getSupabaseConfig()
   if (!config.isConfigured) return <SetupRequired />
@@ -71,8 +72,10 @@ export default async function SeoOperationsPage({
           </header>
 
           <div className="space-y-6 px-5 py-6 lg:px-8">
+            {params.setup === "1" && <p role="status" className="rounded-md bg-teal-50 p-3 text-sm text-teal-900">Profilvorbereitung gespeichert.</p>}
+            {params.measurement === "1" && <p role="status" className="rounded-md bg-teal-50 p-3 text-sm text-teal-900">Messversuch gespeichert. Den Zustand findest du bei den Messbelegen.</p>}
             <SeoDashboard
-              data={data}
+              data={{...data, targets:data.targets.map(publicSeoTarget)}}
               initialTargetId={params.target}
               started={params.started === "1"}
               rankStarted={params.rank === "1"}

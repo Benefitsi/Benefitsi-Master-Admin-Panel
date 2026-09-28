@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { SeoSetupPanel } from "./seo-setup-panel"
 import { useRouter } from "next/navigation"
 import {
   ArrowClockwise,
@@ -166,7 +167,7 @@ export function SeoDashboard({
   )
   const [query, setQuery] = useState("")
   const latestScores = useMemo(() => latestByTarget(data.scores), [data.scores])
-  const latestAudits = useMemo(() => latestByTarget(data.audits), [data.audits])
+  const latestAudits = useMemo(() => latestByTarget(data.audits.filter(audit => audit.methodology_version !== "benefitsi-google-measurement-v1")), [data.audits])
   const selectedTarget = data.targets.find((target) => target.id === selectedTargetId) ?? data.targets[0]
   const selectedScore = selectedTarget ? latestScores.get(selectedTarget.id) : undefined
   const selectedAudit = selectedTarget ? latestAudits.get(selectedTarget.id) : undefined
@@ -348,6 +349,8 @@ export function SeoDashboard({
                   <span>Abdeckung <strong className="font-mono text-zinc-800">{selectedScore ? `${Math.round(selectedScore.coverage * 100)}%` : "—"}</strong></span>
                   <span>Vertrauensgrad <strong className="font-mono text-zinc-800">{selectedScore ? `${Math.round(selectedScore.confidence * 100)}%` : "—"}</strong></span>
                 </div>
+
+                <div className="mt-5"><SeoSetupPanel key={`${selectedTarget.id}:${selectedTarget.updated_at}`} target={selectedTarget} audits={data.audits.filter(audit => audit.target_id === selectedTarget.id && audit.methodology_version === "benefitsi-google-measurement-v1").slice(0, 6)} /></div>
 
                 <ScoreImprovementRoadmap plans={selectedRoadmap} />
 
