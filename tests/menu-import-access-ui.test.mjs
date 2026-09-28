@@ -15,13 +15,13 @@ function compile(path, boundaries) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
     fileName: path,
   }).outputText
-  const module = { exports: {} }
+  const loaded = { exports: {} }
   new Function("require", "module", "exports", js)(id => {
     if (Object.hasOwn(boundaries, id)) return boundaries[id]
     if (id.startsWith("@/lib/")) return require(`../lib/${id.slice(6)}`)
     throw new Error(`Unmocked boundary ${id}`)
-  }, module, module.exports)
-  return module.exports
+  }, loaded, loaded.exports)
+  return loaded.exports
 }
 function runtime(action = noop, refresh = () => {}) {
   const actions = new Proxy({}, { get: () => action })
