@@ -48,6 +48,14 @@ export async function collectGsc(target:CollectorTarget,property:string,credenti
 
 const GBP_METRICS={businessImpressionsDesktopMaps:'BUSINESS_IMPRESSIONS_DESKTOP_MAPS',businessImpressionsMobileMaps:'BUSINESS_IMPRESSIONS_MOBILE_MAPS',businessImpressionsDesktopSearch:'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH',businessImpressionsMobileSearch:'BUSINESS_IMPRESSIONS_MOBILE_SEARCH',websiteClicks:'WEBSITE_CLICKS',callClicks:'CALL_CLICKS',directionRequests:'BUSINESS_DIRECTION_REQUESTS'} as const
 function gbpDate(value:string){const [year,month,day]=value.split('-');return{year:Number(year),month:Number(month),day:Number(day)}}
+function datedValueDate(value:unknown,period:{startDate:string;endDate:string}){
+  const date=asRecord(value)
+  const year=date.year,month=date.month,day=date.day
+  if(!Number.isInteger(year)||!Number.isInteger(month)||!Number.isInteger(day)||Number(year)<2000||Number(year)>2100||Number(month)<1||Number(month)>12||Number(day)<1||Number(day)>31)throw new CollectorFailure('invalid_response')
+  const formatted=`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+  if(new Date(`${formatted}T00:00:00Z`).toISOString().slice(0,10)!==formatted||formatted<period.startDate||formatted>period.endDate)throw new CollectorFailure('invalid_response')
+  return formatted
+}
 export async function collectGbp(location:string,credentials:GoogleCredentials|null|undefined,options:CollectorOptions={}):Promise<Observation>{
   const base=(state:Observation['state'],data:Record<string,unknown>|null=null)=>observation('google_business_profile','daily_metrics_28d_v1',state,options,data)
   if(!credentialsReady(credentials)||!location?.trim())return base('unconfigured')
@@ -61,10 +69,31 @@ export async function collectGbp(location:string,credentials:GoogleCredentials|n
       const payload=await requestJson(endpoint.href,{headers:{authorization:`Bearer ${token}`}},options,remaining())
       if(payload.multiDailyMetricTimeSeries!==undefined&&!Array.isArray(payload.multiDailyMetricTimeSeries))throw new CollectorFailure('invalid_response')
       const metrics:Record<string,number|null>=Object.fromEntries(Object.keys(GBP_METRICS).map(k=>[k,null]))
-      for(const group of (payload.multiDailyMetricTimeSeries as unknown[]|undefined)??[]){const entries=asRecord(group).dailyMetricTimeSeries;if(!Array.isArray(entries))throw new CollectorFailure('invalid_response');for(const raw of entries){const entry=asRecord(raw),name=Object.entries(GBP_METRICS).find(([,v])=>v===entry.dailyMetric)?.[0];if(!name)continue;const values=asRecord(entry.timeSeries).datedValues;if(!Array.isArray(values))throw new CollectorFailure('invalid_response');let sum=0;for(const rawValue of values){const value=asRecord(rawValue).value;if(!/^\d+$/.test(String(value)))throw new CollectorFailure('invalid_response');sum+=Number(value)}metrics[name]=values.length?sum:null}}
-      output.push({...period,metrics})
+      const seen:Record<string,Set<string>>=Object.fromEntries(Object.keys(GBP_METRICS).map(k=>[k,new Set<string>()]))
+      for(const group of (payload.multiDailyMetricTimeSeries as unknown[]|undefined)??[]){
+        const entries=asRecord(group).dailyMetricTimeSeries
+        if(!Array.isArray(entries))throw new CollectorFailure('invalid_response')
+        for(const raw of entries){
+          const entry=asRecord(raw),name=Object.entries(GBP_METRICS).find(([,v])=>v===entry.dailyMetric)?.[0]
+          if(!name)continue
+          const values=asRecord(entry.timeSeries).datedValues
+          if(!Array.isArray(values)||values.length>28)throw new CollectorFailure('invalid_response')
+          for(const rawValue of values){
+            const dated=asRecord(rawValue),date=datedValueDate(dated.date,period)
+            if(seen[name].has(date))throw new CollectorFailure('invalid_response')
+            seen[name].add(date)
+            const value=dated.value
+            if(value!==undefined&&(typeof value!=='string'||!/^\d+$/.test(value)))throw new CollectorFailure('invalid_response')
+            const numeric=value===undefined?0:Number(value)
+            if(!Number.isSafeInteger(numeric)||numeric<0||!Number.isSafeInteger((metrics[name]??0)+numeric))throw new CollectorFailure('invalid_response')
+            metrics[name]=(metrics[name]??0)+numeric
+          }
+        }
+      }
+      const coverage=Object.fromEntries(Object.keys(GBP_METRICS).map(name=>[name,{observedDays:seen[name].size,complete:seen[name].size===28}]))
+      output.push({...period,metrics,coverage})
     }
-    const all=output.flatMap(p=>Object.values(p.metrics));return base(all.every(v=>v===null)?'no_data':all.some(v=>v===null)?'partial':'ok',{location,periods:output,metricNotes:{callClicks:'Clicks on call button, not completed calls'}})
+    const all=output.flatMap(p=>Object.values(p.metrics));return base(all.every(v=>v===null)?'no_data':all.some(v=>v===null)||output.some(p=>Object.values(p.coverage).some(c=>!c.complete))?'partial':'ok',{location,periods:output,metricNotes:{callClicks:'Clicks on call button, not completed calls',partial:'Incomplete dated series are observed sums, not full 28-day totals.'}})
   }catch(error){return base(failureState(error))}
 }
 

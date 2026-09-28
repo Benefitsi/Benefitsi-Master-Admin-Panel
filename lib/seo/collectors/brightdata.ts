@@ -8,6 +8,7 @@ export function brightSearchUrl(context:SearchContext,keyword:string){
   url.searchParams.set('uule',context.location)
   url.searchParams.set('brd_mobile',context.device==='mobile'?'1':'0')
   url.searchParams.set('start','0')
+  url.searchParams.set('brd_json','1')
   return url.href
 }
 
@@ -19,26 +20,38 @@ function normalize(raw:Record<string,unknown>,keyword:string,context:SearchConte
   if(general.country_code!==undefined&&String(general.country_code).toLowerCase()!==context.locale.slice(-2).toLowerCase())throw new CollectorFailure('invalid_response','locale_mismatch')
   if(!Array.isArray(raw.organic)||raw.organic.length>100)throw new CollectorFailure('invalid_response')
   const seen=new Set<number>(),organic=[]
+  let priorGlobalRank=0
+  let usesInferredRank=false
+  let usesExplicitRank=false
   for(const [index,item] of raw.organic.entries()){
     const row=asRecord(item)
     // Current full JSON documentation specifies global_rank; organic array order is
     // the organic rank when an explicit rank field is absent.
+    usesInferredRank ||= row.rank===undefined
+    usesExplicitRank ||= row.rank!==undefined
     const rank=row.rank===undefined?index+1:row.rank
     if(!Number.isInteger(rank)||Number(rank)<1||Number(rank)>100||seen.has(Number(rank)))throw new CollectorFailure('invalid_response','invalid_rank')
     seen.add(Number(rank))
     const globalRank=row.global_rank===undefined?null:row.global_rank
     if(globalRank!==null&&(!Number.isInteger(globalRank)||Number(globalRank)<1))throw new CollectorFailure('invalid_response','invalid_global_rank')
+    if(row.rank===undefined&&globalRank!==null){
+      if(Number(globalRank)<=priorGlobalRank)throw new CollectorFailure('invalid_response','invalid_global_rank')
+      priorGlobalRank=Number(globalRank)
+    }
     organic.push({rank:Number(rank),globalRank:globalRank===null?null:Number(globalRank),link:validLink(row.link),title:typeof row.title==='string'?row.title.slice(0,300):null})
   }
-  const complete=organic.length>=10&&Array.from({length:10},(_,i)=>i+1).every(n=>seen.has(n))
-  return {query:keyword,context:{...context},organic:organic.slice(0,10),coverage:{depth:10,complete},rankKind:'organic'}
+  if(usesInferredRank&&usesExplicitRank)throw new CollectorFailure('invalid_response','mixed_rank_evidence')
+  organic.sort((a,b)=>a.rank-b.rank)
+  const retained=organic.filter(row=>row.rank<=10)
+  const complete=retained.length===10&&retained.every((row,index)=>row.rank===index+1)
+  return {query:keyword,context:{...context},organic:retained,coverage:{depth:10,complete},rankKind:'organic'}
 }
 export async function fetchBrightSerp(context:SearchContext,keyword:string,credentials:{apiKey:string;zone:string}|null|undefined,options:CollectorOptions={}):Promise<Observation>{
   const base=(state:Observation['state'],data:Record<string,unknown>|null=null,errorCode?:string)=>observation('bright_data','google_organic_top10_full_json_v1',state,options,data,errorCode)
   if(!credentials?.apiKey?.trim()||!credentials.zone?.trim())return base('unconfigured')
   if(context.channel!=='organic')return base('unsupported')
   try{
-    const payload=await requestJson('https://api.brightdata.com/request',{method:'POST',headers:{authorization:`Bearer ${credentials.apiKey}`,'content-type':'application/json'},body:JSON.stringify({zone:credentials.zone,url:brightSearchUrl(context,keyword),format:'json'})},options,20000,2_000_000)
+    const payload=await requestJson('https://api.brightdata.com/request',{method:'POST',headers:{authorization:`Bearer ${credentials.apiKey}`,'content-type':'application/json'},body:JSON.stringify({zone:credentials.zone,url:brightSearchUrl(context,keyword),format:'raw'})},options,20000,2_000_000)
     const data=normalize(payload,keyword,context)
     return base(data.organic.length?'ok':'no_data',data)
   }catch(error){return base(failureState(error),null,error instanceof CollectorFailure?error.code:undefined)}
@@ -64,5 +77,10 @@ export function rankFromSerp(config:ComparisonConfig,keyword:string,observation:
   const matchesFound=data.organic.filter((item:unknown)=>{try{return matches(config.subjectUrl,String(asRecord(item).link))}catch{return false}})
   if(matchesFound.length){const winner=asRecord(matchesFound[0]);const position=winner.rank;if(!Number.isInteger(position)||Number(position)<1||Number(position)>10)return unknown;return{keyword,state:'ranked',position:Number(position),rankingUrl:String(winner.link)}}
   const coverage=data.coverage
-  return coverage&&typeof coverage==='object'&&!Array.isArray(coverage)&&asRecord(coverage).complete===true&&asRecord(coverage).depth===10?{keyword,state:'outside',position:null,rankingUrl:null}:unknown
+  const tenRetained=data.organic.length===10&&data.organic.every((entry,index)=>{
+    if(!entry||typeof entry!=='object'||Array.isArray(entry))return false
+    const row=entry as Record<string,unknown>
+    return row.rank===index+1&&typeof row.link==='string'
+  })
+  return tenRetained&&coverage&&typeof coverage==='object'&&!Array.isArray(coverage)&&asRecord(coverage).complete===true&&asRecord(coverage).depth===10?{keyword,state:'outside',position:null,rankingUrl:null}:unknown
 }
