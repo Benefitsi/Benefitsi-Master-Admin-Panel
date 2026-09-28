@@ -1,3 +1,4 @@
+import { loadMicrositeCommerceActions } from "@/lib/commerce/microsite"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import type { Metadata } from "next"
@@ -88,6 +89,7 @@ export default async function PartnerMicrositePreviewPage({
 
   return (
     <MicrositePreviewShell
+      commerceActions={await loadMicrositeCommerceActions(partner.id)}
       partner={partner}
       initialConfig={configValue}
       previewStorageKey={micrositePreviewStorageKey(partner)}

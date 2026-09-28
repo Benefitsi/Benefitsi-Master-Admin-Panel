@@ -58,10 +58,6 @@ export default async function BookingsPage({
     (sum, booking) => sum + booking.totalAmount,
     0,
   )
-  const fees = confirmed.reduce(
-    (sum, booking) => sum + booking.applicationFeeAmount,
-    0,
-  )
   const alerts = bookingAlerts(data.bookings, data.providers)
 
   return (
@@ -70,6 +66,12 @@ export default async function BookingsPage({
       title="Booking Control"
       subtitle="Eigene Benefitsi-Buchungen mit Stripe Connect – ausschließlich Testmodus"
     >
+      {process.env.BENEFITSI_COMMERCE_ENABLED === "true" && (
+        <Link href="/commerce" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-[#061829]">
+          <span><strong className="block">Online-Bestellungen je Partner freischalten</strong><span className="mt-1 block text-sm">Speisekarte, Produkt- und Titelbilder, Vorlaufzeiten, Lieferung und Zeitfenster je Betrieb bearbeiten.</span></span>
+          <span className="font-bold text-blue-700">Einstellungen öffnen →</span>
+        </Link>
+      )}
       <section className="flex flex-col gap-3 rounded-3xl border border-[#061829]/10 bg-[#061829] p-5 text-white sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#17d4d7]">
@@ -143,11 +145,10 @@ export default async function BookingsPage({
         </section>
       ) : null}
 
-      <section className="grid overflow-hidden rounded-3xl border border-[#061829]/10 bg-white sm:grid-cols-4">
+      <section className="grid overflow-hidden rounded-3xl border border-[#061829]/10 bg-white sm:grid-cols-3">
         <Metric label="Anbieter" value={String(data.providers.length)} />
         <Metric label="Aktive Angebote" value={String(data.offers.filter((offer) => offer.status === "active").length)} />
         <Metric label="Bestätigtes Volumen" value={money(gross)} />
-        <Metric label="Benefitsi-Gebühr" value={money(fees)} />
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(18rem,.65fr)_minmax(0,1.35fr)]">
@@ -185,7 +186,7 @@ export default async function BookingsPage({
             <Eyebrow>Angebot</Eyebrow>
             <h2 className="mt-1 text-xl font-black">Buchbares Erlebnis vorbereiten</h2>
             <p className="mt-2 text-sm leading-6 text-[#617080]">
-              Das Angebot startet immer als Prüfentwurf. Preis und Benefitsi-Gebühr werden beim Hold unveränderbar in die Buchung kopiert.
+              Das Angebot startet immer als Prüfentwurf. Der Preis wird bei der Reservierung unveränderbar gespeichert. Kundenzahlungen erfolgen direkt auf dem Händlerkonto.
             </p>
             <form action={createBookingOffer}>
               <fieldset disabled={!data.migrationReady} className="mt-5 grid gap-3 disabled:opacity-50 sm:grid-cols-2">
@@ -208,7 +209,6 @@ export default async function BookingsPage({
                 <textarea name="description" required minLength={20} maxLength={5000} rows={4} className={inputClass} />
               </label>
               <Field name="priceEuro" label="Preis pro Platz (€)" type="number" min="1" step="0.01" required />
-              <Field name="feePercent" label="Benefitsi-Gebühr (%)" type="number" min="0" max="30" step="0.1" defaultValue="12" required />
               <Field name="startsAt" label="Beginn" type="datetime-local" required />
               <Field name="endsAt" label="Ende" type="datetime-local" required />
               <Field name="capacity" label="Kapazität" type="number" min="1" step="1" required />
@@ -261,7 +261,7 @@ export default async function BookingsPage({
                                 <div>
                                   <p className="font-black">{offer.title}</p>
                                   <p className="mt-1 text-sm text-[#617080]">
-                                    {money(offer.unitAmount)} · Gebühr {(offer.applicationFeeBps / 100).toLocaleString("de-DE")} % · {offer.cityName}
+                                    {money(offer.unitAmount)} · {offer.cityName}
                                   </p>
                                   <p className="mt-1 text-xs font-semibold text-[#526170]">
                                     {offer.status} · {offer.reviewStage} · {offer.canonicalPath}
@@ -315,7 +315,6 @@ export default async function BookingsPage({
                       <th className="px-5 py-3">Angebot</th>
                       <th className="px-5 py-3">Status</th>
                       <th className="px-5 py-3">Brutto</th>
-                      <th className="px-5 py-3">Gebühr</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#061829]/10">
@@ -329,7 +328,6 @@ export default async function BookingsPage({
                         <td className="px-5 py-4">{booking.offerTitle}</td>
                         <td className="px-5 py-4">{booking.state}</td>
                         <td className="px-5 py-4">{money(booking.totalAmount)}</td>
-                        <td className="px-5 py-4 font-bold text-[#0b75d9]">{money(booking.applicationFeeAmount)}</td>
                       </tr>
                     ))}
                   </tbody>

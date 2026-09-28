@@ -24,3 +24,13 @@ Patrick hat am 27.09.2026 ausdrücklich diese Ansicht als richtige Mikroseiten-V
 
 Der Stand von Web PR #40 vom 27.09.2026 war lediglich eine Teilintegration. Er ersetzte insbesondere Stempelkarte und App durch vereinfachte Web-Bausteine und wurde vom Nutzer als abweichend zurückgewiesen. Frühere Dokumentation, die diesen Stand als identisch mit der offiziellen Mikroseite bezeichnet, ist entsprechend überholt.
 
+
+## Ergänzung 28.09.2026: Buchung gehört in diese Vorlage
+
+Patrick hat beide konkreten Builder-Seiten nochmals bestätigt:
+- `https://admin.benefitsi.de/microsite-preview/knobi-doener-und-pizza-haus?source=builder&mode=light`
+- `https://admin.benefitsi.de/microsite-preview/da-michele-pizza-catering?source=builder&mode=light`
+
+Bestell-/Reservierungsaktionen sitzen in `MicrositeCommerceActions` im Original-Header und Hero. Eine separate Bestell-Microsite oder vorgeschaltete Buchungsleiste ist **keine** Umsetzung dieser Anforderung. Die Originalabschnitte bleiben erhalten. Der Webhost öffnet den gemeinsamen Checkout als Dialog. Admin-/Partner-Builder und deren Vorschauseiten laden die verfügbaren Aktionen erst nach ihrer bestehenden Zugriffsprüfung.
+
+Der lokale Vergleich verwendet ignorierte gespeicherte Partner-/Builder-Daten, keine automatisch übernommene ungespeicherte Browser-Arbeitsversion. Der reale Partner wird dabei nie zum Zahlungsempfänger eines Testkaufs aktiviert. Änderungen an einer lokalen Vorschau ändern die gehostete Admin-Seite erst nach einer ausdrücklich freigegebenen Veröffentlichung.

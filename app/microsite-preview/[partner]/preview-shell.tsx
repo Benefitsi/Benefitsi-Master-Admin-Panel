@@ -6,11 +6,13 @@ import {
   resolveMicrositeConfig,
   type MicrositeConfig,
 } from "@/lib/microsites"
+import { MicrositeIntegrationProvider, type MicrositeCommerceAction } from "@/components/microsite/microsite-integration"
 import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
 
 export function MicrositePreviewShell({
   partner,
   initialConfig,
+  commerceActions = [],
   previewStorageKey,
   useBuilderDraft,
   isMobile,
@@ -19,6 +21,7 @@ export function MicrositePreviewShell({
   previewBasePath = "/microsite-preview",
 }: {
   partner: PartnerWithDeals
+  commerceActions?: MicrositeCommerceAction[]
   initialConfig: MicrositeConfig
   previewStorageKey: string
   useBuilderDraft: boolean
@@ -115,6 +118,7 @@ export function MicrositePreviewShell({
         </div>
       </div>
       <div className={isMobile ? "mx-auto w-full min-w-0 max-w-[390px]" : "min-w-0"}>
+        <MicrositeIntegrationProvider value={{ commerceActions }}>
         <MicrositeRenderer
           partner={partner}
           config={displayedConfig}
@@ -124,6 +128,7 @@ export function MicrositePreviewShell({
             displayedConfig.builder.mockDealsPreview
           }
         />
+        </MicrositeIntegrationProvider>
       </div>
     </main>
   )

@@ -1,3 +1,4 @@
+import { loadMicrositeCommerceActions } from "@/lib/commerce/microsite"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { signOutPartner } from "../../actions"
@@ -98,6 +99,7 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
 
       <section className="mx-auto w-full max-w-[1800px] min-w-0 p-3 sm:p-5">
         {canEditPartnerMicrosite(portalSession, partner.id) ? <MicrositePanel
+            commerceActions={await loadMicrositeCommerceActions(partner.id)}
           key={`${partner.id ?? partner.name ?? "microsite"}-${partner.microsite?.draftVersion?.id ?? partner.microsite?.publishedVersion?.id ?? "new"}`}
           partner={partner}
           fullscreen

@@ -35,12 +35,13 @@ function partner(overrides = {}) {
 // Execute the actual server route with external session/data and client-component
 // boundaries isolated. Access predicates and config resolution stay real.
 function loadRoute(path, session, selectedPartner) {
-  const calls = { resolvedConfigs: [], shellProps: [], workspaceProps: [] }
+  const calls = { resolvedConfigs: [], shellProps: [], workspaceProps: [], commercePartners: [] }
   const PreviewShell = props => {
     calls.shellProps.push(props)
     return createElement("article", null, props.initialConfig.hero.headline)
   }
   const imports = {
+    "@/lib/commerce/microsite": { loadMicrositeCommerceActions: async id => {calls.commercePartners.push(id); return []} },
     "react/jsx-runtime": jsxRuntime,
     "next/link": { default: ({ children, ...props }) => createElement("a", props, children) },
     "next/navigation": {
@@ -76,7 +77,7 @@ function loadRoute(path, session, selectedPartner) {
   }).outputText
   const loadedModule = { exports: {} }
   vm.runInNewContext(compiled, {
-    module: loadedModule, exports: loadedModule.exports,
+    module: loadedModule, exports: loadedModule.exports, process: {env:{}},
     require: name => { assert.ok(imports[name], `unexpected boundary ${name}`); return imports[name] },
   })
   return { page: loadedModule.exports.default, calls }
@@ -120,6 +121,7 @@ for (const [name, query, version] of [
     assert.match(html, /Interne Vorschau nicht verfügbar/)
     assert.match(html, /href="\/partner"/)
     assert.equal(calls.resolvedConfigs.length, 0, "must not fabricate a default config or resolve a private draft")
+    assert.equal(calls.commercePartners.length, 0, "booking catalog must not be loaded before access is granted")
     assert.equal(calls.shellProps.length, 0, "must not mount the shell that reads a builder draft from local storage")
   })
 }

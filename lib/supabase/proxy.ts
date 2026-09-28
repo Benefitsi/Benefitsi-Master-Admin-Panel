@@ -45,6 +45,11 @@ export async function updateSession(request: NextRequest) {
     // them outside the browser-session gate lets Vercel/local cron reach the
     // route; the route-level timingSafeEqual check remains mandatory.
     pathname.startsWith("/api/automation/") ||
+    // The Web/App proxy authenticates with the shared server secret in each
+    // handler. It has no browser session; dashboard pages still require login.
+    pathname === "/api/commerce/catalog" ||
+    pathname === "/api/commerce/bookings" ||
+    pathname === "/api/commerce/status" ||
     pathname === "/p" ||
     // Knowledge ingestion authenticates with its source-bound token at the
     // route boundary; it must not depend on a browser cookie/session.

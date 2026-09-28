@@ -6,7 +6,9 @@ import { requireAdmin } from "@/lib/admin"
 import { canPublishBookingOffer } from "@/lib/bookings/contracts"
 import { loadBookingOperations } from "@/lib/bookings/data"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { getStripeTestClient, isStripeTestConfigured } from "@/lib/stripe/config"
+import { isStripeTestConfigured } from "@/lib/stripe/config"
+
+import { refundLegacyPayment } from "@/lib/stripe/legacy-payments"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -61,7 +63,7 @@ export async function createBookingOffer(formData: FormData) {
   const startsAt = value(formData, "startsAt", 80)
   const endsAt = value(formData, "endsAt", 80)
   const unitAmount = Math.round(Number(value(formData, "priceEuro", 20)) * 100)
-  const feeBps = Math.round(Number(value(formData, "feePercent", 10)) * 100)
+  const feeBps = 0 // Software is billed separately; customer payments carry no platform fee.
   const capacity = Number(value(formData, "capacity", 10))
 
   if (
@@ -158,7 +160,7 @@ export async function cancelOrRefundBooking(formData: FormData) {
   const admin = createAdminClient()
   const bookingResult = await admin
     .from("bookings")
-    .select("id,state,stripe_payment_intent_id,stripe_refund_id")
+    .select("id,state,stripe_account_id,total_amount,currency,stripe_checkout_session_id,stripe_payment_intent_id,stripe_refund_id")
     .eq("id", bookingId)
     .maybeSingle()
   if (bookingResult.error || !bookingResult.data) {
@@ -188,28 +190,14 @@ export async function cancelOrRefundBooking(formData: FormData) {
   if (!needsRefund) finish("success", "booking_cancelled")
 
   try {
-    const stripe = getStripeTestClient()
-    const refund = booking.stripe_refund_id
-      ? await stripe.refunds.retrieve(booking.stripe_refund_id)
-      : await stripe.refunds.create(
-          {
-            payment_intent: booking.stripe_payment_intent_id,
-            reason: "requested_by_customer",
-            metadata: {
-              benefitsi_booking_id: bookingId,
-              environment: "test",
-            },
-          },
-          { idempotencyKey: `benefitsi-refund-${bookingId}` },
-        )
+    const refund = await refundLegacyPayment(booking)
     const pending = await admin.rpc("mark_booking_refund_pending", {
       p_booking_id: bookingId,
       p_stripe_refund_id: refund.id,
       p_actor_id: identity.id,
       p_actor_profile: identity.profile,
     })
-    if (pending.error) finish("error", "refund_attach_failed")
-    finish("success", "test_refund_created")
+    if (pending.error) throw new Error("Erstattung konnte nicht verknüpft werden.")
   } catch (error) {
     console.error(
       "Stripe test refund failed:",
@@ -217,4 +205,5 @@ export async function cancelOrRefundBooking(formData: FormData) {
     )
     finish("error", "test_refund_failed")
   }
+  finish("success", "test_refund_created")
 }
