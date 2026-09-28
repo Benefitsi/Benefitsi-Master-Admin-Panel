@@ -11,6 +11,8 @@ import { AdminShell } from "./admin-shell"
 import { DashboardAutoRefresh } from "./dashboard-auto-refresh"
 
 export const dynamic = "force-dynamic"
+// Menu recognition has a 145-second request budget including native OCR.
+export const maxDuration = 180
 
 export default async function DashboardPage({
   searchParams,

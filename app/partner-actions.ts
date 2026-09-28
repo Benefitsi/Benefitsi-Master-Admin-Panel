@@ -2419,7 +2419,55 @@ async function authorizeAIMenuTarget(formData: FormData): Promise<PartnerActionA
   if (partnerId && partnerId !== access.partnerId) {
     return { ok: false, message: "Das Menü gehört nicht zum ausgewählten Partner." }
   }
+  if (!access.portalSession.isAdmin) {
+    const flag = await access.supabase.from("partner_feature_flags")
+      .select("enabled")
+      .eq("partner_id", access.partnerId)
+      .eq("feature_key", "menu_ai_import")
+      .maybeSingle()
+    if (flag.error) {
+      return { ok: false, message: "Die Freischaltung konnte nicht geprüft werden. Bitte später erneut versuchen." }
+    }
+    if (flag.data?.enabled !== true) {
+      return { ok: false, message: "Der Menüimport aus Foto / PDF ist für diesen Partner noch nicht freigeschaltet. Bitte wende dich an das Benefitsi-Team." }
+    }
+  }
   return { ...access, menuId }
+}
+
+export async function setPartnerMenuImportEnabled(
+  formData: FormData,
+): Promise<{ ok: boolean; message: string; enabled?: boolean }> {
+  const access = await authorizePartnerMutation(stringValue(formData, "partner_id"))
+  if (!access.ok) return access
+  if (!access.portalSession.isAdmin) {
+    return { ok: false, message: "Nur Admins können den Menüimport für Partner freischalten." }
+  }
+  const value = stringValue(formData, "enabled")
+  if (value !== "true" && value !== "false") {
+    return { ok: false, message: "Bitte eine gültige Freischaltung wählen." }
+  }
+  const partner = await access.supabase.from("partners").select("id").eq("id", access.partnerId).maybeSingle()
+  if (partner.error || !partner.data) return { ok: false, message: "Der Partner konnte nicht gefunden werden." }
+
+  const enabled = value === "true"
+  const saved = await access.supabase.from("partner_feature_flags").upsert({
+    partner_id: access.partnerId,
+    feature_key: "menu_ai_import",
+    enabled,
+    updated_at: new Date().toISOString(),
+    updated_by: access.portalSession.user.id,
+  }, { onConflict: "partner_id,feature_key" }).select("enabled").single()
+  if (saved.error || saved.data?.enabled !== enabled) {
+    return { ok: false, message: "Die Freischaltung konnte nicht gespeichert werden. Bitte erneut versuchen." }
+  }
+  revalidatePath("/")
+  revalidatePath("/partner")
+  return {
+    ok: true,
+    enabled,
+    message: enabled ? "Menüimport im Partner-Dashboard freigeschaltet." : "Menüimport im Partner-Dashboard deaktiviert.",
+  }
 }
 
 export async function previewAIMenuImport(

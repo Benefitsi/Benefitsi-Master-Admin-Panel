@@ -11,8 +11,9 @@ const draft = {
   categories: [{ name: "Speisen", items: [{ name: "Suppe", description: "Tomaten", price: 6.5, tags: [], allergens: [], note: "" }] }],
 }
 
-function fixture({ signedIn = true, owner = true, admin = false, missingMenu = false, alreadyExists = false, failItems = false } = {}) {
+function fixture({ signedIn = true, owner = true, admin = false, missingMenu = false, alreadyExists = false, failItems = false, enabled = true, flagError = false, missingPartner = false } = {}) {
   const writes = [], calls = [], invalidations = []
+  const feature = { enabled, error: flagError }
   const session = signedIn ? { user: { id: randomUUID() }, isAdmin: admin, ownedPartnerIds: owner ? ["partner-owned"] : [], partnerIds: ["partner-owned"] } : null
   const db = { from(table) {
     let operation, payload
@@ -21,7 +22,7 @@ function fixture({ signedIn = true, owner = true, admin = false, missingMenu = f
     query.select = () => query
     query.eq = (key, value) => { filters[key] = value; return query }
     for (const method of ["limit", "order", "maybeSingle", "single", "in"]) query[method] = () => query
-    for (const method of ["insert", "update", "delete"]) query[method] = value => { operation = method; payload = value; return query }
+    for (const method of ["insert", "update", "delete", "upsert"]) query[method] = value => { operation = method; payload = value; return query }
     query.then = (resolve, reject) => {
       let data = null, error = null
       if (operation) {
@@ -29,9 +30,19 @@ function fixture({ signedIn = true, owner = true, admin = false, missingMenu = f
         if (table === "menus" && operation === "insert") data = { id: "menu-created" }
         if (table === "menu_categories" && operation === "insert") data = payload.map((row, i) => ({ ...row, id: `category-${i}` }))
         if (table === "menu_items" && operation === "insert" && failItems) error = { message: "Synthetic item save failure" }
+        if (table === "partner_feature_flags") {
+          if (feature.error) error = { message: "Synthetic flag failure" }
+          else data = { enabled: payload.enabled }
+        }
       } else if (table === "menus") {
         data = filters.id ? (missingMenu ? null : { id: filters.id, partner_id: filters.id === "foreign-menu" ? "partner-other" : "partner-owned" }) : alreadyExists ? { id: "menu-existing" } : null
-      } else if (table === "partners") data = { id: "partner-owned", type: "Food & Drink" }
+      } else if (table === "partners") data = missingPartner ? null : { id: filters.id ?? "partner-owned", type: "Food & Drink" }
+      else if (table === "partner_feature_flags") {
+        assert.equal(filters.partner_id, "partner-owned")
+        assert.equal(filters.feature_key, "menu_ai_import")
+        data = feature.enabled === null ? null : { enabled: feature.enabled }
+        if (feature.error) error = { message: "Synthetic flag lookup failure" }
+      }
       else data = []
       return Promise.resolve({ data, error }).then(resolve, reject)
     }
@@ -71,8 +82,74 @@ function fixture({ signedIn = true, owner = true, admin = false, missingMenu = f
     input.append("menu_source", new File(["%PDF-1.7 test"], "menu.pdf", { type: "application/pdf" }))
     return input
   }
-  return { writes, calls, invalidations, actions, form }
+  return { writes, calls, invalidations, actions, form, feature }
 }
+
+test("partner import fails closed without an enabled flag, including direct calls and lookup errors", async () => {
+  for (const options of [{ enabled: false }, { enabled: null }, { enabled: "true" }, { flagError: true }]) {
+    const f = fixture(options)
+    for (const menuId of ["menu-owned", ""]) {
+      assert.equal((await f.actions.previewAIMenuImport(f.form({ menuId }))).ok, false)
+      assert.equal((await f.actions.confirmAIMenuImport(f.form({ menuId }))).ok, false)
+    }
+    assert.deepEqual(f.calls, [])
+    assert.deepEqual(f.writes, [])
+  }
+})
+
+test("revoking the partner flag after preview prevents confirmation", async () => {
+  const f = fixture()
+  assert.equal((await f.actions.previewAIMenuImport(f.form())).ok, true)
+  f.feature.enabled = false
+  assert.equal((await f.actions.confirmAIMenuImport(f.form())).ok, false)
+  assert.deepEqual(f.writes, [])
+})
+
+test("admins can import even if the partner flag is missing or unavailable", async () => {
+  const f = fixture({ owner: false, admin: true, enabled: null, flagError: true })
+  assert.equal((await f.actions.previewAIMenuImport(f.form())).ok, true)
+  assert.equal((await f.actions.confirmAIMenuImport(f.form())).ok, true)
+})
+
+test("only admins may enable or disable menu import for an existing partner", async () => {
+  for (const options of [{ signedIn: false }, {}, { owner: false }, { admin: true, missingPartner: true }]) {
+    const f = fixture(options)
+    const form = f.form()
+    form.set("enabled", "true")
+    assert.equal((await f.actions.setPartnerMenuImportEnabled(form)).ok, false)
+    assert.deepEqual(f.writes, [])
+  }
+  for (const enabled of ["true", "false"]) {
+    const f = fixture({ admin: true, owner: false })
+    const form = f.form()
+    form.set("enabled", enabled)
+    const result = await f.actions.setPartnerMenuImportEnabled(form)
+    assert.equal(result.ok, true, result.message)
+    assert.equal(result.enabled, enabled === "true")
+    assert.equal(f.writes.length, 1)
+    assert.equal(f.writes[0].table, "partner_feature_flags")
+    assert.equal(f.writes[0].payload.partner_id, "partner-owned")
+    assert.equal(f.writes[0].payload.feature_key, "menu_ai_import")
+    assert.equal(f.writes[0].payload.enabled, enabled === "true")
+    assert.ok(f.invalidations.includes("/partner"))
+    assert.ok(f.invalidations.includes("/"))
+  }
+})
+
+test("flag changes reject malformed input and report persistence errors", async () => {
+  const f = fixture({ admin: true })
+  for (const enabled of ["", "1", "yes"]) {
+    const form = f.form()
+    form.set("enabled", enabled)
+    assert.equal((await f.actions.setPartnerMenuImportEnabled(form)).ok, false)
+  }
+  assert.deepEqual(f.writes, [])
+  f.feature.error = true
+  const form = f.form()
+  form.set("enabled", "true")
+  assert.equal((await f.actions.setPartnerMenuImportEnabled(form)).ok, false)
+  assert.deepEqual(f.invalidations, [])
+})
 
 test("AI preview requires menu ownership or admin rights before provider calls", async () => {
   for (const options of [{ signedIn: false }, { owner: false }, { missingMenu: true }]) {

@@ -1,7 +1,9 @@
 # Reviewed menu import from photos and PDF
 
-Admins and partner owners can select **Karte aus Foto / PDF** in their existing
-menu editor. The same component is available before creating the first menu.
+Admins can select **Karte aus Foto / PDF** in their existing menu editor.
+Partner owners receive the same feature only after an admin enables
+**Menüimport im Partner-Dashboard** in that partner's **Menu Management** tab.
+The same import component is available before creating the first menu.
 Recognition produces a temporary, editable preview; it does not save menu rows.
 The final action checks ownership again and requires explicit confirmation.
 It appends reviewed categories/items and preserves existing menu metadata and
@@ -20,12 +22,38 @@ so missing prices cannot turn into zero through string-to-number conversion.
 - `M1_BRIDGE_URL` and `M1_BRIDGE_SECRET`: existing server-only bridge configuration.
 - Dedicated Hermes profile `benefitsi-menu`, using the existing MiniMax-M3.0
   credential on the M1. No Gemini credential is used for menu recognition.
-- No database migration or new storage bucket is required.
+- Apply `20260928072650_add_partner_menu_import_access.sql` before deploying the
+  application. No new storage bucket is required.
 - The authenticated Next server action sends originals to the exact bridge route
   `/hermes/menu-extract`. Apple Vision/PDFKit reads them locally on the M1.
   Only the resulting text, page numbers, confidence and coordinates reach MiniMax.
   Each request uses temporary files and a disposable Hermes home that are deleted
   on completion or failure. The file-selection screen discloses this processing.
+
+## Partner access
+
+`partner_feature_flags` stores the `menu_ai_import` entitlement per partner.
+No flags are seeded: missing rows mean disabled. Only authenticated admins can
+insert/update flags; owners can read their own flag and staff cannot manage it.
+The flag is separate from the owner-editable partner profile. Preview and final
+confirmation both verify the current owner and current flag; lookup errors fail
+closed. Admins can import regardless of the partner's flag.
+
+The deployed menu tables previously permitted only admin writes. The migration
+adds RLS policies allowing explicitly enabled owners to read and manage their
+own menus, categories and items, including correcting imported content and
+rolling back a failed import. Staff and other partners receive no additional
+rights. Item/category associations must stay within the same menu. Disabling
+the feature removes these new owner rights; existing admin/public policies and
+previously saved menu content remain in place. An already-running recognition
+may finish after revocation, but its draft cannot be confirmed by that owner.
+
+The menu routes declare `maxDuration = 180` to accommodate the bridge request's
+145-second budget. Roll out the additive migration first, then application code;
+the empty flag table keeps all partner access off during rollout. To roll back
+the application, first turn off any enabled flags to revoke the added owner
+database rights. Keep the additive table so the previous application can run
+without deleting any partner/menu data.
 
 Supports one PDF with up to eight pages or up to eight JPEG/PNG/WebP images,
 totaling at most **4 MiB**.
@@ -63,7 +91,13 @@ Dialog tests simulate server responses; they do not call Hermes or a database.
 During development, the complete test suite and production build passed. The
 browser flow was checked using synthetic menu data, including missing-price
 correction and confirmation at narrow widths. No production menu was modified.
-Production database persistence still needs a configured environment smoke test.
+The access migration and transactional SQL suite were verified on the existing
+staging project on 2026-09-28. The suite uses disposable admin, owner and staff
+identities and rolls back all fixtures. It exercises actual RLS for flag
+escalation, foreign menus/categories, import persistence, correction, revocation
+and cleanup. No production menu was modified. The rendered shared workspace is
+also tested for both existing and first-menu imports, with partner flags on/off
+and admin bypass; switch tests cover pending, success, error and unavailable state.
 
 ## M1 runtime
 
@@ -112,8 +146,8 @@ JPEG, WebP and PDF files; a nine-page PDF was rejected. Complete authenticated
 PNG and PDF requests through the active HTTP bridge and Hermes preserved both
 articles, the visible EUR price and a missing price as null, and cleaned their
 request directories. These synthetic round trips took 8.6 and 3.0 seconds
-respectively; this is a smoke test, not a latency guarantee. The source change
-for the dashboard remains on the local feature branch until it is published.
+respectively; this is a smoke test, not a latency guarantee. The dashboard
+release is tracked in PR #30.
 
 The existing persistence helper is not transactional: failed cleanup and
 simultaneous first-menu creation retain the pre-existing system limitations.

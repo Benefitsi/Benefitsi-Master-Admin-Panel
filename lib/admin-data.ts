@@ -317,6 +317,7 @@ export type FraudEvent = {
 }
 
 export type PartnerWithDeals = Partner & {
+  menu_ai_import_enabled?: boolean | null
   deals: Deal[]
   holidays: PartnerHoliday[]
   socials: PartnerSocial[]
@@ -370,6 +371,7 @@ export async function getDashboardData(
     qrTokensResult,
     micrositesResult,
     micrositeVersionsResult,
+    menuImportFlagsResult,
   ] = await Promise.all([
     supabase
       .from("partners")
@@ -425,9 +427,11 @@ export async function getDashboardData(
       .from("microsite_versions")
       .select("*")
       .order("version_number", { ascending: false, nullsFirst: false }),
+    supabase.from("partner_feature_flags").select("partner_id,enabled").eq("feature_key", "menu_ai_import"),
   ])
 
   const errors = [
+    menuImportFlagsResult.error ? "Die Menüimport-Freischaltungen konnten nicht geladen werden." : undefined,
     partnersResult.error?.message,
     dealsResult.error?.message,
     citiesResult.error?.message,
@@ -526,8 +530,11 @@ export async function getDashboardData(
   const visitsByPartner = groupByPartner(visits)
   const micrositeByPartner = annotateMicrosites(microsites, micrositeVersions)
 
+  const menuImportPartnerIds = new Set((menuImportFlagsResult.data ?? [])
+    .filter((flag) => flag.enabled === true).map((flag) => flag.partner_id))
   const partnersWithDeals = partners.map((partner) => ({
     ...partner,
+    menu_ai_import_enabled: menuImportFlagsResult.error ? null : menuImportPartnerIds.has(partner.id),
     deals: partner.id ? dealsByPartner.get(partner.id) ?? [] : [],
     holidays: partner.id ? holidaysByPartner.get(partner.id) ?? [] : [],
     socials: partner.id ? socialsByPartner.get(partner.id) ?? [] : [],
