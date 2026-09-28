@@ -1,6 +1,6 @@
 export type QualityRow = Record<string, unknown>
 export type PlaceQualityIssue = "address" | "phone" | "source" | "opening" | "never_verified" | "stale_verification"
-export type SourceQualityIssue = "missing_check" | "stale_check" | "source_failed" | "source_changed" | "stale_fields" | "unknown_fields"
+export type SourceQualityIssue = "missing_check" | "stale_check" | "proof_changed" | "unknown_state" | "source_failed" | "source_changed" | "stale_fields" | "unknown_fields"
 export type SourceSchedule = "due" | "current" | "disabled" | "external" | "excluded" | "unknown"
 
 const WINDOW_MS = 72 * 60 * 60 * 1000
@@ -98,15 +98,26 @@ export function buildDirectoryQuality(places: QualityRow[], sources: QualityRow[
     const receipt = matching[0]
     let schedule = sourceSchedule(source)
     const monitored = schedule === "due"
-    const dueAt = monitored ? iso(receipt ? timestamp(receipt.window_start) + WINDOW_MS : windowStart(nowMs)) : null
-    if (monitored && receipt && timestamp(receipt.window_start) === windowStart(nowMs)) schedule = "current"
+    // Source revisions do not change when a field proof changes or expires.
+    // Only the database inventory can bind this window to the current proof state.
+    const state = object(source.freshness_state)
+    const validState = state.id === source.id && state.city_id === source.city_id && state.url === source.url &&
+      revision !== null && timestampKey(state.source_updated_at) === revision &&
+      timestamp(state.window_start) === windowStart(nowMs) && /^[a-f0-9]{32}$/.test(text(state.proof_signature)) &&
+      typeof state.due === "boolean" && (state.due || Boolean(text(state.last_check_id)))
+    const currentReceipt = validState && matching.find((check) => check.id === state.last_check_id &&
+      check.proof_signature === state.proof_signature && timestamp(check.window_start) === timestamp(state.window_start))
+    if (monitored) schedule = !validState ? "unknown" : state.due ? "due" : currentReceipt ? "current" : "unknown"
+    const dueAt = schedule === "current" ? iso(windowStart(nowMs) + WINDOW_MS) : schedule === "due" ? iso(windowStart(nowMs)) : null
     const issues: SourceQualityIssue[] = []
+    if (monitored && schedule === "unknown") issues.push("unknown_state")
     if (monitored && !receipt) issues.push("missing_check")
-    if (monitored && receipt && schedule === "due") issues.push("stale_check")
+    if (monitored && receipt && schedule === "due") issues.push(timestamp(receipt.window_start) === windowStart(nowMs) ? "proof_changed" : "stale_check")
     if (receipt?.fetch_status === "failed") issues.push("source_failed")
     if (receipt?.comparison === "changed") issues.push("source_changed")
-    if (fields(receipt?.stale_fields).length) issues.push("stale_fields")
-    if (fields(receipt?.unknown_fields).length) issues.push("unknown_fields")
+    const evidence = validState ? state : receipt
+    if (fields(evidence?.stale_fields).length) issues.push("stale_fields")
+    if (fields(evidence?.unknown_fields).length) issues.push("unknown_fields")
     const config = object(source.parser_config)
     const scope = object(source.content_scope)
     const type = scope.entity_type === "PLACE" ? "places" : scope.entity_type === "BENEFIT" ? "benefits" : null
@@ -136,6 +147,7 @@ export function buildDirectoryQuality(places: QualityRow[], sources: QualityRow[
       unverifiedPlaces: placeTasks.filter((place) => place.issues.includes("never_verified")).length,
       totalSources: sources.length, sourcesNeedingAttention: sourceTasks.filter((source) => source.issues.length > 0).length,
       dueSources: sourceTasks.filter((source) => source.schedule === "due").length,
+      unknownSources: sourceTasks.filter((source) => source.schedule === "unknown").length,
       disabledSources: sourceTasks.filter((source) => source.schedule === "disabled").length,
     },
     places: placeTasks.slice(0, DISPLAY_LIMIT), sources: sourceTasks.slice(0, DISPLAY_LIMIT),

@@ -7,6 +7,7 @@ import { buildDirectoryQuality, type QualityRow } from "./quality"
 type QualityFilters = { city?: string; regionCityIds?: Set<string> }
 type ReadResult = { rows: QualityRow[]; complete: boolean; available: boolean }
 const PAGE_SIZE = 250
+const INVENTORY_CITY_LIMIT = 20
 
 export async function loadDirectoryQuality(filters: QualityFilters = {}, now = new Date()) {
   await requireAdmin()
@@ -62,16 +63,44 @@ export async function loadDirectoryQuality(filters: QualityFilters = {}, now = n
   const [places, sources, checks, controls] = await Promise.all([
     read("city_places", "id,city_id,name,status,address,contact_phone,source_url,opening_hours,opening_hours_note,last_verified_at,expires_at", "Verzeichniseinträge", 2000, cityIds),
     read("city_agent_sources", "id,city_id,slug,url,owner_name,active,enabled,cadence,parser_config,content_scope,updated_at", "Registrierte Quellen", 1000, cityIds),
-    read("city_source_freshness_checks", "id,city_id,source_id,source_revision,source_url,checked_at,window_start,fetch_status,http_status,comparison,source_sha256,error_code,stale_fields,unknown_fields,review_job_id", "M1-Prüfbelege", 5000, cityIds),
+    read("city_source_freshness_checks", "id,city_id,source_id,source_revision,source_url,checked_at,window_start,proof_signature,fetch_status,http_status,comparison,source_sha256,error_code,stale_fields,unknown_fields,review_job_id", "M1-Prüfbelege", 5000, cityIds),
     read("city_agent_city_controls", "city_id,operating_mode", "Stadt-Steuerung", 200, cityIds),
   ])
   const cityMap = new Map(selected.map((city) => [city.id, city]))
   const modes = new Map(controls.rows.map((control) => [control.city_id, control.operating_mode]))
+  const inventoryStates = new Map<unknown, QualityRow>()
+  const inventoryCities = selected.filter((city) => sources.rows.some((source) => source.city_id === city.id &&
+    source.active === true && source.enabled === true && source.cadence !== "manual" &&
+    (source.parser_config as QualityRow | null)?.cadence_owner === "m1_city_freshness") && modes.get(city.id) !== "DISABLED")
+  let inventoryComplete = inventoryCities.length <= INVENTORY_CITY_LIMIT
+  if (!inventoryComplete) warnings.push(`Aktueller M1-Prüfstatus: höchstens ${INVENTORY_CITY_LIMIT} Orte pro Auswertung. Bitte Ort oder Region eingrenzen.`)
+  // Share the read deadline and limit fan-out to four requests at a time.
+  for (let offset = 0; offset < Math.min(inventoryCities.length, INVENTORY_CITY_LIMIT); offset += 4) {
+    await Promise.all(inventoryCities.slice(offset, Math.min(offset + 4, INVENTORY_CITY_LIMIT)).map(async (city) => {
+      try {
+        const result = await admin.rpc("city_freshness_inventory", { p_city_slug: String(city.slug) }).abortSignal(signal)
+        const inventory = result.data as QualityRow | null
+        if (result.error || inventory?.schema_version !== 1 || inventory.city_id !== city.id || inventory.city_slug !== city.slug ||
+            inventory.city_profile !== `city-${city.slug}` || inventory.enabled !== true || inventory.interval_seconds !== 259200 ||
+            !Array.isArray(inventory.sources) || inventory.sources.length > 200 ||
+            inventory.sources.some((row: unknown) => !row || typeof row !== "object" || Array.isArray(row))) throw new Error("quality_inventory_failed")
+        for (const state of inventory.sources as QualityRow[]) inventoryStates.set(state.id, state)
+      } catch {
+        inventoryComplete = false
+        warnings.push(`${String(city.name)}: Aktueller M1-Prüfstatus konnte nicht geladen werden. Vorhandene Belege bestätigen keine aktuelle Fälligkeit.`)
+      }
+    }))
+  }
   const decorate = (row: QualityRow) => ({ ...row, city_slug: cityMap.get(row.city_id)?.slug, city_name: cityMap.get(row.city_id)?.name })
+  const quality = buildDirectoryQuality(places.rows.map(decorate), sources.rows.map((source) => ({ ...decorate(source),
+    city_mode: modes.get(source.city_id) ?? null, freshness_state: inventoryStates.get(source.id) ?? null })), checks.rows, now)
+  if (quality.counts.unknownSources > 0 && inventoryComplete) {
+    inventoryComplete = false
+    warnings.push("Aktueller M1-Prüfstatus nicht eindeutig belegt. Quellenrevision, Feldzustand und Prüfbeleg müssen übereinstimmen.")
+  }
   return {
-    quality: buildDirectoryQuality(places.rows.map(decorate), sources.rows.map((source) => ({ ...decorate(source), city_mode: modes.get(source.city_id) ?? null })), checks.rows, now),
-    cityOptions, scopeLabel, coverage: [cities, places, sources, checks, controls].every((result) => result.complete) ? "ready" as const : "partial" as const,
-    placesAvailable: places.available, checksAvailable: checks.available && checks.complete, warnings,
+    quality, cityOptions, scopeLabel, coverage: inventoryComplete && [cities, places, sources, checks, controls].every((result) => result.complete) ? "ready" as const : "partial" as const,
+    placesAvailable: places.available, checksAvailable: checks.available && checks.complete && inventoryComplete, warnings,
   }
 }
 

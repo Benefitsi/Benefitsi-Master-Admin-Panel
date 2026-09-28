@@ -8,11 +8,12 @@ const placeLabels: Record<PlaceQualityIssue, string> = {
 }
 const sourceLabels: Record<SourceQualityIssue, string> = {
   missing_check: "Kein passender M1-Beleg", stale_check: "Prüffenster verpasst", source_failed: "Abruf fehlgeschlagen",
+  proof_changed: "Aktueller Feldzustand noch ungeprüft", unknown_state: "Aktueller Prüfstatus nicht verfügbar",
   source_changed: "Quelle geändert", stale_fields: "Feldbelege abgelaufen", unknown_fields: "Feldbelege fehlen",
 }
 const scheduleLabels: Record<SourceSchedule, string> = {
   due: "M1-Prüfung fällig", current: "Aktuelles Prüffenster erfasst", disabled: "Prüfung deaktiviert",
-  external: "Anderer Prüfablauf", excluded: "Nicht für M1-Freshness freigegeben", unknown: "Stadt-Steuerung unbekannt",
+  external: "Anderer Prüfablauf", excluded: "Nicht für M1-Freshness freigegeben", unknown: "Aktueller M1-Prüfstatus unbekannt",
 }
 const comparisonLabels: Record<string, string> = { baseline: "Erster Quellenabgleich", unchanged: "Quelle unverändert", changed: "Quelle geändert", unverified: "Abruf unverifiziert" }
 const linkStyle = "inline-flex min-h-10 items-center text-sm font-bold text-[#0b75d9] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
