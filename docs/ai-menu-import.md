@@ -72,10 +72,14 @@ Allergens are transcribed only from the source, never inferred from ingredients.
 Source warnings/uncertainty notes stay visible during review but are not published;
 relevant variants and extra charges must be added to the editable item description.
 
-A completed model reply with malformed JSON gets one regeneration from the
-original OCR, with an explicit JSON-format correction. Both calls share the
-existing 110-second subprocess limit. Failed/partial runs, incomplete drafts and
-invalid schema values still fail validation; no menu values are patched locally.
+A completed model reply with malformed JSON or a schema-invalid draft marked
+complete gets at most one regeneration from the original OCR, with an explicit
+format correction. The runner reuses the bridge's exact schema validator, so
+extra fields (such as an observed `price_note`) are never silently discarded and
+missing fields/values are never filled locally. Both calls share the existing
+110-second subprocess limit. Failed/partial runs and drafts marked incomplete
+fail immediately. The regenerated draft must pass all completion, schema, type
+and size checks; there is no third attempt.
 The UI distinguishes known OCR errors from invalid agent output and transient
 service failures. Unknown upstream details are never shown to the user.
 
@@ -108,11 +112,18 @@ Source files live in `ops/menu-agent/`; the profile lives in
 `xcrun swiftc -O menu_ocr.swift -o menu-ocr` on macOS with the developer tools.
 The runner uses the existing Hermes virtual environment and only the central
 `MINIMAX_API_KEY`; no credentials are copied into this repository.
+It loads `validate_draft` from the existing `~/.arc-m1-bridge/benefitsi_menu_service.py`
+module. Install the bridge service before running the complete extraction test.
 
-After testing the staged runtime, `install_bridge.py --expected-sha256 <hash>`
+For a first installation, stage the profile/runtime and verify the native OCR
+and Python unit tests first. Then `install_bridge.py --expected-sha256 <hash>`
 patches the inspected `~/.arc-m1-bridge/m1_bridge.py` and installs the service
 alongside it. It refuses an unexpected or already-patched bridge and creates a
-dated rollback copy. The current `com.arc.m1-bridge` launch agent supervises
+dated rollback copy. Run full extraction tests after the service is installed.
+For an existing installation, test runner changes in a disposable profile copy
+against the installed service, then replace only the reviewed runner with a
+rollback copy; do not rerun the first-install script.
+The current `com.arc.m1-bridge` launch agent supervises
 `ArcM1Runtime.app`; restarting the supervisor alone does not reload Python.
 After ensuring the port-9130 listener has no active child calls, terminate only
 that confirmed bridge process and its confirmed `ArcM1Runtime` parent. The

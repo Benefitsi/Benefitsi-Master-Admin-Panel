@@ -20,26 +20,42 @@ def parse_result(result):
 
 
 def extract_draft(agent, document):
+    # Use the bridge's exact validator so the correction and final acceptance
+    # agree on required fields, bounds and types. Never normalize model values.
+    from benefitsi_menu_service import validate_draft
+
     source = "OCR_MENU_DATA\n" + json.dumps(document, ensure_ascii=False)
     instructions = "Strukturiere die OCR_MENU_DATA gemäß deinem Menü-Schema. Bewahre alle Artikel; unklare Felder bleiben leer. Antworte ausschließlich als JSON."
     result = agent.run_conversation(
         user_message=source, system_message=instructions,
     )
     try:
-        return parse_result(result)
+        draft = parse_result(result)
     except json.JSONDecodeError:
-        # Regenerate from the original OCR, never guess a repair to menu values.
-        # Only a completed response with invalid JSON gets one correction. The
-        # bridge's existing 110-second subprocess limit covers both calls.
-        result = agent.run_conversation(
-            user_message=("Die vorherige Antwort war kein gültiges JSON. Erstelle den vollständigen "
-                          "Menüentwurf aus den ursprünglichen OCR_MENU_DATA erneut. Achte besonders "
-                          "auf korrekt maskierte Anführungszeichen innerhalb von Texten. Verwende "
-                          "keine Markdown-Codeblöcke. Bewahre alle Kategorien und Artikel; erfinde "
-                          "keine fehlenden Werte.\n\n" + source),
-            system_message=instructions,
-        )
-        return parse_result(result)
+        correction = "Die vorherige Antwort war kein gültiges JSON."
+    else:
+        # A declared incomplete draft is not a formatting error. It must fail
+        # instead of being prompted into asserting that omitted data is complete.
+        if not isinstance(draft, dict) or draft.get("complete") is not True:
+            return validate_draft(draft)
+        try:
+            return validate_draft(draft)
+        except ValueError:
+            correction = "Die vorherige Antwort entsprach nicht dem vereinbarten Menü-Schema."
+
+    # At most one regeneration from the original OCR for JSON OR schema errors.
+    # The parent bridge's 110-second subprocess limit covers both calls.
+    result = agent.run_conversation(
+        user_message=(correction + " Erstelle den vollständigen Menüentwurf aus den ursprünglichen "
+                      "OCR_MENU_DATA erneut. Achte auf korrekt maskierte Anführungszeichen. "
+                      "Verwende keine Markdown-Codeblöcke. Jeder Artikel muss genau die Felder "
+                      "name, description, price, allergens, tags, note enthalten. Hinweise gehören "
+                      "in note; verwende keine zusätzlichen Felder. Bewahre alle Kategorien, Artikel "
+                      "und belegten Angaben; erfinde keine fehlenden Werte und kürze keine Artikel "
+                      "zur Einhaltung der Grenzen. Unklare Preise bleiben null.\n\n" + source),
+        system_message=instructions,
+    )
+    return validate_draft(parse_result(result))
 
 
 def run(document):
@@ -81,6 +97,8 @@ def run(document):
                         run_budget_seconds=90)
         if agent.tools:
             raise RuntimeError("Menu agent must have zero tools")
+        # Installed beside the authenticated bridge, outside the disposable home.
+        sys.path.insert(0, str(Path.home() / ".arc-m1-bridge"))
         return extract_draft(agent, document)
 
 
