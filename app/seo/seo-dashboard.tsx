@@ -234,7 +234,7 @@ export function SeoDashboard({
         <p className="text-sm font-medium text-[#0b75d9]">SEO-Betrieb</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-normal text-zinc-950">Sichtbarkeit als laufender Betrieb.</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">Hermes misst technische Gesundheit, Rankings, lokale Präsenz und AI-Zitate. Jede Empfehlung bleibt nachvollziehbar und menschlich freigabepflichtig.</p>
-        <Link href="/seo/partnervergleich" className="mt-4 inline-flex items-center gap-2 rounded-md bg-[#118cff] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0b75d9]">Partnervergleich · Vorher / Nachher <ArrowUpRight className="size-4" aria-hidden="true" /></Link>
+        <div className="mt-4 flex flex-wrap gap-3"><Link href="/seo/partnervergleich" className="inline-flex items-center gap-2 rounded-md bg-[#118cff] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0b75d9]">Partnervergleich · Vorher / Nachher <ArrowUpRight className="size-4" aria-hidden="true" /></Link><Link href={`/seo/automatisierung${selectedTarget ? `?target=${encodeURIComponent(selectedTarget.id)}` : ''}`} className="inline-flex items-center gap-2 rounded-md border border-[#b8dcff] px-4 py-2.5 text-sm font-semibold text-[#0b75d9] hover:bg-[#f3f8ff]">Automatisierung &amp; Wartung <ArrowUpRight className="size-4" aria-hidden="true" /></Link></div>
       </section>
 
         {requestedJobStatus ? (

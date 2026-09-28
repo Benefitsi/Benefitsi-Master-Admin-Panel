@@ -65,6 +65,8 @@ export default async function PartnerComparisonPage({
           </Link>
           <span className="text-zinc-400">/</span>
           <span className="font-medium">Partnervergleich</span>
+          <span className="text-zinc-400">/</span>
+          <Link href={`/seo/automatisierung${target ? `?target=${encodeURIComponent(target.id)}` : ''}`} className="text-[#0b75d9] hover:underline">Automatisierung &amp; Wartung</Link>
         </div>
         <section className="rounded-md border border-zinc-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-[#0b75d9]">
