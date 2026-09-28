@@ -3,11 +3,13 @@
 ## Release status
 
 Implementation verified locally against the production database, but **not deployed**.
-Base: production commit `175d20ea324f6f75371c04dbc0214892caaad423`.
+Base: initially `175d20ea324f6f75371c04dbc0214892caaad423`; integrated current main
+`e509499` including the server-authenticated commerce proxy fix.
 Target origins: `admin.benefitsi.de` and `partner.benefitsi.de`, same Vercel project.
-The partner domain has not been attached yet. Supabase redirect configuration is
-pending access to the production project; GitHub OAuth authorization requires
-explicit user approval. Do not promote before completing the steps below.
+The partner domain has not been attached yet. After explicit user OAuth approval,
+both exact recovery redirects were added in the production Supabase project.
+Generated recovery links were checked and retain the requested portal URL.
+Existing four redirect entries and the public Site URL were preserved.
 
 ## Implemented boundaries
 
@@ -26,7 +28,7 @@ explicit user approval. Do not promote before completing the steps below.
 
 ## Evidence
 
-- Full suite: **728 passed, 0 failed**. Includes identity collisions, role types,
+- Full suite: **730 passed, 0 failed**. Includes identity collisions, role types,
   revoked sessions, encoded routes, direct API requests, RSC/Server Action headers,
   opposite-host login replay, cookies, recovery URLs and billing return URLs.
 - Production build passed, including TypeScript checking.
@@ -53,8 +55,8 @@ explicit user approval. Do not promote before completing the steps below.
 
 1. In the existing production Supabase project, preserve all current redirect
    entries and Site URL; add the two exact callbacks documented in README.
-2. Verify generated recovery links actually retain those redirects. At audit
-   time they fell back to the public Site URL, so this is a release dependency.
+2. Verify generated recovery links actually retain those redirects. Initially they fell back to the public Site URL; after the configuration
+   change both exact callback URLs were verified successfully.
 3. Deploy the reviewed commit, then attach `partner.benefitsi.de` to the existing
    Vercel project. Existing Vercel nameservers/wildcard record were observed;
    verify domain ownership, TLS and resolution rather than replacing DNS blindly.
