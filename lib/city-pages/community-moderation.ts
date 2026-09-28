@@ -10,6 +10,14 @@ function berlinDateKey(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit"}).format(date)
 }
 
+export function isHistoricalMeetup(input: { lifecycleStatus: string; startsAt: string | null; endsAt: string | null }, now = new Date()) {
+  if (["CANCELLED", "COMPLETED"].includes(input.lifecycleStatus)) return true
+  const end = input.endsAt ? Date.parse(input.endsAt) : null
+  if (end !== null) return Number.isFinite(end) && end < now.getTime()
+  const start = Date.parse(input.startsAt ?? "")
+  return Number.isFinite(start) && berlinDateKey(new Date(start)) < berlinDateKey(now)
+}
+
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 /** UI preflight only; the authenticated database RPC remains authoritative. */
