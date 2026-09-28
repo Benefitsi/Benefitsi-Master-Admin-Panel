@@ -18,9 +18,9 @@ function load({authorized=true,globalEnabled=true,saveError=false}={}) {
   'next/navigation':{redirect:path=>{throw Object.assign(Error('redirect'),{path})}},
  }
  const compiled=ts.transpileModule(readFileSync(new URL('../app/commerce/actions.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText
- const module={exports:{}}
- vm.runInNewContext(compiled,{module,exports:module.exports,process:{env:{BENEFITSI_COMMERCE_ENABLED:globalEnabled?'true':'false'}},require:name=>{assert.ok(imports[name],name);return imports[name]}})
- return {action:module.exports.setPartnerOrdering,writes,filters,paths}
+ const loadedModule={exports:{}}
+ vm.runInNewContext(compiled,{module:loadedModule,exports:loadedModule.exports,process:{env:{BENEFITSI_COMMERCE_ENABLED:globalEnabled?'true':'false'}},require:name=>{assert.ok(imports[name],name);return imports[name]}})
+ return {action:loadedModule.exports.setPartnerOrdering,writes,filters,paths}
 }
 function form(enabled='true') {const f=new FormData();f.set('provider_id',provider);f.set('partner_id',partner);f.set('enabled',enabled);return f}
 test('only authenticated admins can change a partner ordering setting',async()=>{
