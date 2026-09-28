@@ -5,6 +5,15 @@ const provider = '11111111-1111-4111-8111-111111111111'
 const offering = '22222222-2222-4222-8222-222222222222'
 const slot = '33333333-3333-4333-8333-333333333333'
 const request = { partner_id:provider,offering_id:offering,slot_id:slot,quantity:2,items:[],customer:{name:' Anna ',email:'ANNA@example.de',phone:'01234',notes:''},payment_method:'pay_on_site',idempotency_key:'retry-key-1234567890' }
+test('selected deal is preserved but identity and discount must come from the server',()=>{
+ const parsed=parseBookingRequest({...request,deal_id:slot,customer_user_id:provider,session_token:'forged',discount_amount:1000,applied_deal:{id:slot,title:'forged'}})
+ assert.equal(parsed.deal_id,slot)
+ for(const key of ['customer_user_id','session_token','discount_amount','applied_deal']) assert.equal(key in parsed,false)
+ assert.throws(()=>parseBookingRequest({...request,deal_id:'invalid'}))
+ const result=safeBookingResult({booking:{discount_amount:600,applied_deal:{id:slot,title:'2 für 1'},customer_user_id:provider,deal_id:slot}})
+ assert.equal(result.booking.discount_amount,600);assert.equal(result.booking.applied_deal.title,'2 für 1')
+ assert.equal(result.booking.customer_user_id,undefined)
+})
 test('normalizes contact data but never accepts browser-supplied totals or provider IDs',()=>{
  const parsed=parseBookingRequest({...request,total_amount:1,provider_id:slot})
  assert.equal(parsed.customer.name,'Anna'); assert.equal(parsed.customer.email,'anna@example.de')

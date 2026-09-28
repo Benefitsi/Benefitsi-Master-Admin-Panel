@@ -13,7 +13,7 @@ const {updateSession}=loadTypescript('lib/supabase/proxy.ts',{
 })
 
 test('commerce proxy APIs reach their secret authentication without a browser cookie',async()=>{
- for(const path of ['/api/commerce/catalog','/api/commerce/bookings','/api/commerce/status','/api/commerce/notifications']){
+ for(const path of ['/api/commerce/catalog','/api/commerce/bookings','/api/commerce/status','/api/commerce/notifications','/api/commerce/account']){
   const response=await updateSession(new NextRequest('https://admin.benefitsi.test'+path))
   assert.equal(response.headers.get('location'),null,path)
   assert.equal(response.headers.get('x-middleware-next'),'1',path)

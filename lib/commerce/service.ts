@@ -4,6 +4,7 @@ import { createDirectCheckout, retrieveDirectCheckout, expireDirectCheckout, ref
 import { recoverableCheckout } from './checkout'
 import { record, parseBookingRequest, safeBookingResult, parseGuestAccess, uuid } from './requests'
 import { webOrigin } from './http'
+import { bookingCustomerIdentity } from './account-service'
 
 export async function providerForPartner(partnerId:string) {
   const admin=createAdminClient()
@@ -17,14 +18,17 @@ export async function publicCatalog(partnerId:string) {
   if(result.error) throw new Error('catalog_failed')
   return result.data
 }
-export async function createCommerceBooking(value:unknown) {
-  const input=parseBookingRequest(value)
+export async function createCommerceBooking(value:unknown,sessionToken?:string|null) {
+  const parsed=parseBookingRequest(value)
+  const customerId=sessionToken?await bookingCustomerIdentity(sessionToken,parsed.partner_id):undefined
+  if(parsed.deal_id&&!customerId)throw Error('account_login_required')
+  const input={...parsed,...(customerId?{customer_user_id:customerId}:{})}
   const {admin,provider}=await providerForPartner(input.partner_id)
   // SQL checks publication after resolving a matching idempotent replay.
   const offer=await admin.from('commerce_offerings').select('id').eq('id',input.offering_id).eq('provider_id',provider.id).maybeSingle()
   if(offer.error||!offer.data) throw new Error('not_found')
   const result=await admin.rpc('commerce_create_booking',{p_request:input})
-  if(result.error) throw new Error(result.error.message === 'food_ordering_disabled' ? 'food_ordering_disabled' : 'booking_failed')
+  if(result.error) throw new Error(/^(commerce_|deal_|invalid_deal_)/.test(result.error.message) ? result.error.message : result.error.message === 'food_ordering_disabled' ? 'food_ordering_disabled' : 'booking_failed')
   return checkoutResult(admin,result.data)
 }
 async function expireElapsedHold(admin:ReturnType<typeof createAdminClient>,booking:Record<string,unknown>) {
