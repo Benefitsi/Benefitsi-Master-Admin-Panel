@@ -1,16 +1,21 @@
-import test, {mock} from 'node:test'
+import test from 'node:test'
 import assert from 'node:assert/strict'
 import React from 'react'
 import {renderToStaticMarkup} from 'react-dom/server'
+import {loadTypescript} from './helpers/load-typescript.mjs'
+import * as config from '../lib/seo/collection-config.ts'
+import * as health from '../lib/seo/collection-health.ts'
 
-// The retry action needs Next's server runtime. These tests exercise the real
-// observation renderer and only replace that unrelated mutation boundary.
+// Exercise the real TSX with the repo's isolated loader. Only server runtime
+// boundaries are replaced; no process-wide module mocking or writes occur.
 const noWrite = async () => {}
-mock.module('../app/seo/automatisierung/actions.ts', {namedExports:{
+const actions = {
   retryCollectionRun:noWrite, configureCollectionSchedule:noWrite, disconnectGoogleCollection:noWrite,
   queueCollectionNow:noWrite, saveCollectionRuntime:noWrite, saveCollectionSettings:noWrite,
-}})
-const {Observations} = await import('../app/seo/automatisierung/observations.tsx')
+}
+const {Observations, WebLink} = loadTypescript('app/seo/automatisierung/observations.tsx', {
+  '@/lib/seo/collection-config':config, './actions':actions,
+})
 const run = (kind, data) => ({
   id:'run-1', target_id:'target-1', kind, status:'completed', state:'ok',
   observed_at:'2026-09-28T12:00:00Z', created_at:'2026-09-28T12:00:00Z',
@@ -46,14 +51,21 @@ test('explicit zero GBP coverage is displayed as zero observed days', () => {
 })
 
 test('configured Google connection still explains its required grant and read-only use', async () => {
-  mock.module('../lib/admin.ts', {namedExports:{requireAdmin:async()=>({adminSession:{profile:{display_name:'Admin'},user:{email:'admin@example.com'}}})}})
-  mock.module('../lib/seo/collection-store.ts', {namedExports:{getCollectionOverview:async()=>({
+  const overview = {
     health:{runtime:{enabled:true,monthly_request_limit:0,free_tier_confirmed:false,last_tick_started_at:null,last_tick_finished_at:null,last_tick_error:null,last_counts:{}},used:0,scheduler:null,queue:{queued:0,running:0,oldestQueuedAt:null},latest:[]},
     targets:[],targetCount:0,settings:[],selected:null,history:[],
     providers:{oauthReady:true,gsc:null,gbp:null,bright:false,psi:false},
-  })}})
-  mock.module('../app/admin-shell.tsx', {namedExports:{AdminShell:({children})=>React.createElement(React.Fragment,null,children)}})
-  const {default: CollectionAutomationPage} = await import('../app/seo/automatisierung/page.tsx')
+  }
+  const {default: CollectionAutomationPage} = loadTypescript('app/seo/automatisierung/page.tsx', {
+    'next/link':({children,href,...props})=>React.createElement('a',{href,...props},children),
+    '@/lib/admin':{requireAdmin:async()=>({adminSession:{profile:{display_name:'Admin'},user:{email:'admin@example.com'}}})},
+    '@/lib/seo/collection-store':{getCollectionOverview:async()=>overview},
+    '@/lib/seo/collection-health':health,
+    '@/lib/seo/seo-comparison':{readComparisonConfig:()=>null},
+    '@/app/admin-shell':{AdminShell:({children})=>React.createElement(React.Fragment,null,children)},
+    './actions':actions,
+    './observations':{Observations, WebLink},
+  })
   const html = renderToStaticMarkup(await CollectionAutomationPage({searchParams:Promise.resolve({})}))
   assert.match(html, /business\.manage/)
   assert.match(html, /liest die Daten nur/)
