@@ -187,6 +187,8 @@ export async function getSeoOperationsData(
         .select(
           "id,target_id,job_id,status,source_url,methodology_version,summary,scores,evidence,coverage,confidence,started_at,completed_at,created_at",
         )
+        .neq("methodology_version", "benefitsi-partner-rank-import-v1")
+        .neq("methodology_version", "benefitsi-partner-seo-event-v1")
         .order("created_at", { ascending: false })
         .limit(200),
       supabase
