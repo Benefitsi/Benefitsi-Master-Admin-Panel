@@ -2,14 +2,17 @@
 
 ## Release status
 
-Implementation verified locally against the production database, but **not deployed**.
-Base: initially `175d20ea324f6f75371c04dbc0214892caaad423`; integrated current main
-`e509499` including the server-authenticated commerce proxy fix.
-Target origins: `admin.benefitsi.de` and `partner.benefitsi.de`, same Vercel project.
-The partner domain has not been attached yet. After explicit user OAuth approval,
-both exact recovery redirects were added in the production Supabase project.
-Generated recovery links were checked and retain the requested portal URL.
-Existing four redirect entries and the public Site URL were preserved.
+PR #45 was merged and deployed as commit `bbc0d87` to production deployment
+`dpl_58EVVJvxtdZypHyRZt82t2FVgUho`. `partner.benefitsi.de` is attached to the
+existing Vercel project; both canonical domains resolve and serve valid HTTPS.
+Supabase preserves its four existing redirect entries and Site URL, plus the two
+exact portal recovery callbacks. Generated links and the live recovery callbacks
+were verified successfully.
+
+Live browser testing found that the partner form still submitted through the
+admin action. This follow-up binds the form to `partnerLogin` and includes a
+regression test that failed before the fix. The corrected full browser login was
+verified against the local production build; repeat it after the follow-up release.
 
 ## Implemented boundaries
 
@@ -28,7 +31,7 @@ Existing four redirect entries and the public Site URL were preserved.
 
 ## Evidence
 
-- Full suite: **730 passed, 0 failed**. Includes identity collisions, role types,
+- Full suite: **731 passed, 0 failed**. Includes identity collisions, role types,
   revoked sessions, encoded routes, direct API requests, RSC/Server Action headers,
   opposite-host login replay, cookies, recovery URLs and billing return URLs.
 - Production build passed, including TypeScript checking.
@@ -51,18 +54,21 @@ Existing four redirect entries and the public Site URL were preserved.
 - The temporary business, Auth account and generated profile were deleted after
   validation; a follow-up query confirmed all three absent. No test email sent.
 
-## Remaining activation steps
+## Live verification
 
-1. In the existing production Supabase project, preserve all current redirect
-   entries and Site URL; add the two exact callbacks documented in README.
-2. Verify generated recovery links actually retain those redirects. Initially they fell back to the public Site URL; after the configuration
-   change both exact callback URLs were verified successfully.
-3. Deploy the reviewed commit, then attach `partner.benefitsi.de` to the existing
-   Vercel project. Existing Vercel nameservers/wildcard record were observed;
-   verify domain ownership, TLS and resolution rather than replacing DNS blindly.
-4. Repeat anonymous and authenticated partner HTTP checks against both public
-   HTTPS hosts, verify login/recovery and a real administrator's access, then
-   remove all temporary test data. Confirm service callbacks retain their checks.
+The real temporary non-admin partner passed the same HTTP and database isolation
+checks on both canonical production HTTPS hosts. Its own dashboard returned 200;
+all tested admin pages and exports returned 403. Anonymous protected pages
+redirected to their correct login, APIs returned 401/403, and service endpoints
+rejected requests without their secrets. Cross-host redirects discarded queries.
+
+Both live recovery callbacks accepted a generated one-use token, redirected to
+the correct reset page and issued portal-specific Secure, host-only cookies.
+Token reuse was rejected and recovery did not grant the partner admin access.
+The initial deployment's error log scan returned no error entries.
+
+After deploying the login-form follow-up, repeat the real browser login and
+HTTP isolation checks and delete the new temporary test identity and business.
 
 ## Scope and residual risk
 
@@ -76,7 +82,8 @@ as an independent security boundary without further review.
 
 ## Rollback
 
-Before activation record the current Vercel production deployment. If the new
+Previous production deployment: `dpl_B3iMfVem2sUhF51KuGbZ2ohPNpYj`
+(commit `e509499`). If the new
 release fails, detach the new partner alias and restore that recorded deployment;
 this also restores the previous protection level and requires a follow-up fix.
 Leave existing Supabase URL entries intact. The two additional exact callbacks

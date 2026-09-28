@@ -16,3 +16,5 @@ Baseline: origin/main 175d20e is production dpl_ChMSwvbBQtzwYGrwESZccLyUAEPV. In
 Implementation and tests complete (728 passing); Supabase redirect configuration and production/domain activation remain pending. See `docs/security/2026-09-28-partner-domain-isolation.md` for evidence, scope and release steps.
 
 User explicitly approved GitHub OAuth; production Supabase callbacks added and verified. Latest main commerce-proxy changes integrated; 730 tests and production build pass. Domain attachment and live verification are next.
+
+PR45 merged and deployed; partner domain active. Production HTTP/RLS/recovery checks pass. Browser testing found a stale form action import, corrected in PR47 with red/green regression coverage; all 731 tests pass and corrected local browser login succeeds. Final production browser verification and test-data cleanup follow PR47 release.
