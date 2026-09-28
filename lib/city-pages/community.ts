@@ -187,7 +187,7 @@ export async function loadCityCommunityInbox(
     .select("published_record_id").eq("city_id", cityResult.data.id)
     .in("published_record_id", nativeIds) : {data: [], error: null}
   if (nativeResult.error) warnings.push("Die App-Vorschläge konnten nicht geladen werden. Gemeldete Treffen und Einreichungen bleiben verfügbar.")
-  if (linksResult.error) warnings.push("Die Zuordnung zu Einreichungen konnte nicht geprüft werden. App-Treffen werden bis zur nächsten erfolgreichen Prüfung ausgeblendet, um doppelte Moderation zu vermeiden.")
+  if (linksResult.error) warnings.push("Die Zuordnung zu Einreichungen konnte nicht geprüft werden. App-Treffen und ihre privaten Meldungen werden bis zur nächsten erfolgreichen Prüfung ausgeblendet, um doppelte Moderation zu vermeiden.")
   const nativeRows = linksResult.error ? [] : [...combinedRows.values()]
   const hostIds = [...new Set(nativeRows.map(row => text(row.host_user_id)).filter((id): id is string => Boolean(id)))]
   const hostsResult = hostIds.length ? await admin.from("users").select("id,display_name").in("id", hostIds) : {data: [], error: null}
@@ -212,6 +212,17 @@ export async function loadCityCommunityInbox(
   ))
   const nativeMeetups = eligibleMeetups.filter(meetup => !displayedLinkedIds.includes(meetup.id))
   const pendingById = new Map(eligibleMeetups.map(meetup => [meetup.id, meetup]))
+  const linkedOwnerByMeetup = new Map<string, JsonRow>()
+  for (const row of submissionRows) {
+    const meetupId = text(row.published_record_id)
+    if (!meetupId || !pendingById.has(meetupId)) continue
+    const current = linkedOwnerByMeetup.get(meetupId)
+    const pending = row.status === "needs_review"
+    if (!current || (pending && current.status !== "needs_review") ||
+        (pending === (current.status === "needs_review") && String(row.id) < String(current.id))) {
+      linkedOwnerByMeetup.set(meetupId, row)
+    }
+  }
 
   const auditBySubmission = new Map<string, CommunityAuditEntry[]>()
   for (const row of rows(auditResult.data)) {
@@ -262,7 +273,8 @@ export async function loadCityCommunityInbox(
       createdAt: String(row.created_at),
       updatedAt: String(row.updated_at),
       audit: auditBySubmission.get(String(row.id)) ?? [],
-      linkedMeetup: pendingById.get(String(row.published_record_id)) ?? null,
+      linkedMeetup: linkedOwnerByMeetup.get(String(row.published_record_id))?.id === row.id
+        ? pendingById.get(String(row.published_record_id)) ?? null : null,
     })),
     nativeMeetups,
     warnings,

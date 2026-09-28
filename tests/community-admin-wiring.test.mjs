@@ -22,7 +22,7 @@ test('native queue checks links outside inbox pagination and fetches only public
  assert.match(source,/\.in\("published_record_id", nativeIds\)/)
  assert.match(source,/linksResult\.error \? \[\]/)
  assert.match(source,/const nativeMeetups = eligibleMeetups\.filter/)
- assert.match(source,/linkedMeetup: pendingById\.get/)
+ assert.match(source,/linkedOwnerByMeetup\.get/)
  assert.match(source,/from\("users"\)\.select\("id,display_name"\)/)
  assert.doesNotMatch(source,/from\("users"\)\.select\("[^"\n]*(?:email|phone|\*)/)
  for(const field of ['host_user_id','event_ends_at','capacity','target_audience','cost_description','activity_type','event_timezone','published_record_id']) assert.ok(source.includes(field))

@@ -7,8 +7,7 @@ import { createElement } from 'react'
 import * as jsxRuntime from 'react/jsx-runtime'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { JSDOM } from 'jsdom'
-import { pendingNativeMeetups } from '../lib/city-pages/community-moderation.ts'
-import { isHistoricalMeetup } from '../lib/city-pages/community-moderation.ts'
+import { pendingNativeMeetups, isHistoricalMeetup, meetupApprovalBlockers } from '../lib/city-pages/community-moderation.ts'
 
 const cityId = 'cc576dac-2490-401c-8cc1-418d03795945'
 const actorId = 'e74c45e0-ca1b-42db-963f-54242cd2e0dd'
@@ -70,6 +69,34 @@ test('actual loader includes one-report approved and linked meetups once with pr
   assert.ok(reportQuery.select.includes('city_meetups!inner(city_id)'))
   assert.ok(reportQuery.filters.some(filter => filter[1] === 'city_meetups.city_id' && filter[2] === cityId))
   assert.ok(reportQuery.limit > 0 && reportQuery.limit <= 501)
+})
+
+test('two submissions for one meetup retain both rows but render one guarded report panel', async () => {
+  const pending = { ...submission, id: '589d028c-fcf0-4a33-a64e-a16bd4b69f18', status: 'needs_review', created_at: '2026-09-27T10:00:00Z', updated_at: '2026-09-27T10:00:00Z' }
+  const client = fakeClient({ cities: [{ id: cityId, name: 'Synthetic', slug: 'synthetic' }], city_community_submissions: [submission, pending], city_meetup_reports: [report(linkedId, 'SAFETY')], city_meetups: [meetup(linkedId)] })
+  const { loadCityCommunityInbox } = load('lib/city-pages/community.ts', { 'server-only': {}, './community-moderation': { pendingNativeMeetups, isHistoricalMeetup }, '@/lib/supabase/admin': { createAdminClient: () => client } })
+  const inbox = await loadCityCommunityInbox('synthetic')
+  assert.equal(inbox.submissions.length, 2)
+  assert.equal(inbox.nativeMeetups.length, 0)
+  assert.equal(inbox.submissions[0].linkedMeetup, null)
+  assert.equal(inbox.submissions[1].linkedMeetup?.id, linkedId)
+  const reversed = fakeClient({ cities: [{ id: cityId, name: 'Synthetic', slug: 'synthetic' }], city_community_submissions: [pending, submission], city_meetup_reports: [report(linkedId, 'SAFETY')], city_meetups: [meetup(linkedId)] })
+  const reversedInbox = await load('lib/city-pages/community.ts', { 'server-only': {}, './community-moderation': { pendingNativeMeetups, isHistoricalMeetup }, '@/lib/supabase/admin': { createAdminClient: () => reversed } }).loadCityCommunityInbox('synthetic')
+  assert.equal(reversedInbox.submissions.find(row => row.id === pending.id)?.linkedMeetup?.id, linkedId)
+  assert.equal(reversedInbox.submissions.find(row => row.id === submission.id)?.linkedMeetup, null)
+  const page = load('app/city-pages/[citySlug]/community/page.tsx', { 'react/jsx-runtime': jsxRuntime, 'next/link': { default: ({ children, ...props }) => createElement('a', props, children) }, 'next/navigation': { notFound: () => { throw Error('not found') } }, '@/app/admin-shell': { AdminShell: ({ children }) => createElement('main', null, children) }, '@/app/city-pages/[citySlug]/community/actions': { moderateCommunitySubmission() {}, moderateNativeMeetup() {}, resolveCommunityMeetupReports() {} }, '@/components/pending-submit-button': { PendingSubmitButton: ({ children, pendingLabel, ...props }) => { void pendingLabel; return createElement('button', props, children) } }, '@/lib/admin': { requireAdmin: async () => ({ adminSession: { user: { id: actorId } } }) }, '@/lib/city-pages/community': { loadCityCommunityInbox: async () => inbox }, '@/lib/city-pages/community-moderation': { meetupApprovalBlockers, isHistoricalMeetup } }).default
+  const document = new JSDOM(renderToStaticMarkup(await page({ params: Promise.resolve({ citySlug: 'synthetic' }), searchParams: Promise.resolve({}) }))).window.document
+  assert.equal((document.body.textContent.match(/Private fixture detail/g) ?? []).length, 1)
+  assert.equal(document.querySelectorAll('[name="meetupId"]').length, 0)
+  assert.match(document.body.textContent, /Verknüpften Vorschlag zuerst/)
+})
+
+test('failed link lookup explicitly warns that reported meetup panels are unavailable', async () => {
+  const client = fakeClient({ cities: [{ id: cityId, name: 'Synthetic', slug: 'synthetic' }], city_meetup_reports: [report(linkedId)], city_meetups: [meetup(linkedId)], errors: { city_community_submissions: query => query.filters.some(([op, field]) => op === 'in' && field === 'published_record_id') ? { message: 'synthetic link error' } : null } })
+  const { loadCityCommunityInbox } = load('lib/city-pages/community.ts', { 'server-only': {}, './community-moderation': { pendingNativeMeetups, isHistoricalMeetup }, '@/lib/supabase/admin': { createAdminClient: () => client } })
+  const inbox = await loadCityCommunityInbox('synthetic')
+  assert.equal(inbox.nativeMeetups.length, 0)
+  assert.ok(inbox.warnings.some(warning => /Meldungen/.test(warning) && /ausgeblendet/.test(warning)))
 })
 
 test('report read errors and cap boundaries are visible', async () => {

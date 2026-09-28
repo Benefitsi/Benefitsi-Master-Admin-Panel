@@ -1,6 +1,6 @@
 # Community report inbox — Admin source note
 
-The city Community inbox now loads pending meetup reports through their `city_meetups` city relation. It includes a reported meetup even when one report leaves its moderation status `APPROVED`. The private card shows a bounded reason, details and submission time without reporter identity. A linked submission and its meetup appear together; an older linked meetup outside the displayed submission page appears as one standalone card.
+The city Community inbox now loads pending meetup reports through their `city_meetups` city relation. It includes a reported meetup even when one report leaves its moderation status `APPROVED`. The private card shows a bounded reason, details and submission time without reporter identity. A linked submission and its meetup appear together; an older linked meetup outside the displayed submission page appears as one standalone card. When several displayed submissions reference the same meetup, its report panel appears on only one. A pending linked proposal takes priority so its decision gate remains visible; otherwise the smallest submission ID owns the panel.
 
 The report read is limited to 251 rows, displaying at most 250 with an explicit incomplete-read warning. The existing submission and app proposal caps also warn at their boundaries. Failed report or related meetup reads remain visible as warnings; auxiliary public host-name lookup can separately warn under existing service ACLs.
 
