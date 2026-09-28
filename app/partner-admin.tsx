@@ -2147,7 +2147,7 @@ function PartnerForm({
       noValidate
       onInput={() => {
         if (validationMessage) setValidationMessage("")
-        if (!state.ok && state.message) setDismissedActionState(state)
+        if (state.message) setDismissedActionState(state)
         refreshDirtyState()
       }}
       onChange={refreshDirtyState}
@@ -11164,6 +11164,9 @@ function MultiSelectField({
   return (
     <div className="min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
+      {selectedValues.map((value) => (
+        <input key={value} type="hidden" name={name} value={value} />
+      ))}
       <div ref={dropdownRef} className="relative">
         <button
           type="button"
@@ -11195,7 +11198,6 @@ function MultiSelectField({
               >
                 <input
                   type="checkbox"
-                  name={name}
                   value={option.value}
                   checked={checked}
                   onChange={(event) => {
