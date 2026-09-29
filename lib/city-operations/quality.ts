@@ -2,6 +2,7 @@ export type QualityRow = Record<string, unknown>
 export type PlaceQualityIssue = "address" | "phone" | "source" | "opening" | "never_verified" | "stale_verification"
 export type SourceQualityIssue = "missing_check" | "stale_check" | "proof_changed" | "unknown_state" | "source_failed" | "source_changed" | "stale_fields" | "unknown_fields"
 export type SourceSchedule = "due" | "current" | "disabled" | "external" | "excluded" | "unknown"
+export const directoryBusinessCategories = ["food", "grocery", "shopping", "health", "service"] as const
 
 const WINDOW_MS = 72 * 60 * 60 * 1000
 const PLACE_REVIEW_MS = 30 * 24 * 60 * 60 * 1000
@@ -55,7 +56,8 @@ function sourceSchedule(source: QualityRow): SourceSchedule {
 export function buildDirectoryQuality(places: QualityRow[], sources: QualityRow[], checks: QualityRow[], now = new Date()) {
   const nowMs = now.getTime()
   const nowKey = timestampKey(now.toISOString())!
-  const placeTasks = places.map((place) => {
+  const businessPlaces = places.filter((place) => directoryBusinessCategories.some((category) => category === place.category))
+  const placeTasks = businessPlaces.map((place) => {
     const issues: PlaceQualityIssue[] = []
     if (!text(place.address)) issues.push("address")
     if (!text(place.contact_phone)) issues.push("phone")
@@ -141,7 +143,7 @@ export function buildDirectoryQuality(places: QualityRow[], sources: QualityRow[
 
   return {
     counts: {
-      totalPlaces: places.length, placesNeedingAttention: placeTasks.length,
+      totalPlaces: businessPlaces.length, placesNeedingAttention: placeTasks.length,
       missingFields: placeTasks.reduce((sum, place) => sum + place.issues.filter((issue) => ["address", "phone", "source", "opening"].includes(issue)).length, 0),
       stalePlaces: placeTasks.filter((place) => place.issues.includes("stale_verification")).length,
       unverifiedPlaces: placeTasks.filter((place) => place.issues.includes("never_verified")).length,
