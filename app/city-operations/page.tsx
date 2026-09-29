@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import type { ReactNode } from "react"
 import { AdminShell } from "@/app/admin-shell"
 import { ReviewQueueRow } from "@/components/city-operations/review-ui"
+import { DirectoryQualityPanel } from "@/components/city-operations/quality-panel"
 import { requireAdmin } from "@/lib/admin"
 import {
   cityContentTypes,
@@ -12,6 +13,7 @@ import {
   type CityReviewStage,
 } from "@/lib/city-operations/contracts"
 import { loadCityOperationsData } from "@/lib/city-operations/data"
+import { loadDirectoryQuality } from "@/lib/city-operations/quality-data"
 
 export const dynamic = "force-dynamic"
 
@@ -58,12 +60,13 @@ export default async function CityOperationsPage({
     stage: params.stage,
     query: params.q,
   })
+  const qualityData = await loadDirectoryQuality({ city: params.city, regionCityIds })
   const cities = Array.from(
     new Map(
-      data.records.map((record) => [
-        record.citySlug,
-        { slug: record.citySlug, name: record.cityName },
-      ]),
+      [
+        ...data.records.map((record) => ({ slug: record.citySlug, name: record.cityName })),
+        ...qualityData.cityOptions,
+      ].map((city) => [city.slug, city]),
     ).values(),
   ).sort((a, b) => a.name.localeCompare(b.name, "de"))
   const adminName =
@@ -102,6 +105,8 @@ export default async function CityOperationsPage({
         <Metric label="Bereit zur Prüfung" value={readyCount} />
         <Metric label="Blockierende Fehler" value={blockingCount} />
       </section>
+
+      <DirectoryQualityPanel data={qualityData} />
 
       <section className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white shadow-[0_18px_50px_rgba(6,24,41,.06)]">
         <div className="border-b border-[#061829]/10 p-4 md:p-5">

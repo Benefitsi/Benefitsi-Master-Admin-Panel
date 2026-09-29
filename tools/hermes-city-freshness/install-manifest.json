@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release": "2026-09-22-city-source-freshness-v1",
+  "release": "2026-09-28-city-source-freshness-exact-hosts-v2",
   "status": "local_review_candidate",
   "production_installed": false,
   "disabled_by_default": true,
@@ -15,12 +15,17 @@
     {
       "source": "city_freshness_runner.py",
       "destination": "/Users/patrick/.hermes/projects/benefitsi/automation/city_freshness_runner.py",
-      "sha256": "d519b5a56f6d9c589c8295ab915da4a7563114d366d5b0eb4962aca3f80da464"
+      "sha256": "f4ac04d0943e0ed9b6b094f3f442f68f0b6a851eb1e44d5cc364326a1fb3a69b"
     },
     {
       "source": "city-freshness-config.json",
       "destination": "/Users/patrick/.hermes/projects/benefitsi/automation/city-freshness-config.json",
       "sha256": "a3935cdf847e904d9ef7487012964a94d26bf88492e1da4b4f99c77d793ebedd"
+    },
+    {
+      "source": "city-freshness-hosts.json",
+      "destination": "/Users/patrick/.hermes/projects/benefitsi/automation/city-freshness-hosts.json",
+      "sha256": "11b03d655a4e264678a2fcfc0323008d808ecbf9c456367c50904fce4bf3ef25"
     }
   ],
   "worker_hook": {
@@ -57,9 +62,13 @@
       "required_functions": [
         "_fetch_city_source",
         "_profile_city_scope",
-        "_admin_configuration"
+        "_admin_configuration",
+        "_approved_city_source_host"
       ],
-      "copy": false
+      "copy": false,
+      "required_constants": [
+        "APPROVED_CITY_SOURCE_EXACT_HOSTS"
+      ]
     }
   ],
   "must_not_replace": [
