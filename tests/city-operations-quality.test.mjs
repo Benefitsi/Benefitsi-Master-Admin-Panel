@@ -11,7 +11,7 @@ import { DirectoryQualityPanel } from "../components/city-operations/quality-pan
 const { buildDirectoryQuality, safeQualityUrl } = await import("../lib/city-operations/quality.ts")
 const now = new Date("2026-09-28T12:00:00Z")
 const state = (extra = {}) => ({ id: "source-1", city_id: "city-1", url: "https://example.org/cafe", source_updated_at: "2026-09-21T10:00:00Z", window_start: "2026-09-28T00:00:00Z", proof_signature: "a".repeat(32), due: false, last_check_id: "check-1", stale_fields: [], unknown_fields: [], ...extra })
-const place = (extra = {}) => ({ id: "place-1", city_id: "city-1", city_slug: "annweiler", city_name: "Annweiler", name: "Café", status: "active", address: "Hauptstraße 1", contact_phone: "06346 123", source_url: "https://example.org/cafe", opening_hours: [{ weekday: 1, closed: false, opens: "09:00", closes: "18:00" }], opening_hours_note: null, last_verified_at: "2026-09-27T12:00:00Z", expires_at: null, ...extra })
+const place = (extra = {}) => ({ id: "place-1", city_id: "city-1", city_slug: "annweiler", city_name: "Annweiler", name: "Café", category: "food", status: "active", address: "Hauptstraße 1", contact_phone: "06346 123", source_url: "https://example.org/cafe", opening_hours: [{ weekday: 1, closed: false, opens: "09:00", closes: "18:00" }], opening_hours_note: null, last_verified_at: "2026-09-27T12:00:00Z", expires_at: null, ...extra })
 const source = (extra = {}) => ({ id: "source-1", city_id: "city-1", city_slug: "annweiler", city_name: "Annweiler", slug: "cafe", owner_name: "Tourismus", url: "https://example.org/cafe", updated_at: "2026-09-21T10:00:00Z", active: true, enabled: true, cadence: "daily", city_mode: "REVIEW_ONLY", freshness_state: state(), parser_config: { cadence_owner: "m1_city_freshness", auto_publish: false, interval_seconds: 259200 }, content_scope: { entity_type: "PLACE", entity_id: "place-1" }, ...extra })
 const check = (extra = {}) => ({ id: "check-1", city_id: "city-1", source_id: "source-1", source_revision: "2026-09-21T10:00:00+00:00", source_url: "https://example.org/cafe", checked_at: "2026-09-28T10:00:00Z", window_start: "2026-09-28T00:00:00Z", fetch_status: "available", http_status: 200, comparison: "unchanged", proof_signature: "a".repeat(32), source_sha256: "a".repeat(64), stale_fields: [], unknown_fields: [], review_job_id: null, ...extra })
 
@@ -21,6 +21,20 @@ test("missing directory fields and never-verified records produce actionable edi
   assert.equal(result.places[0].editorHref, "/city-pages/annweiler/content/places/place-1")
   assert.equal(result.counts.placesNeedingAttention, 1)
   assert.equal(result.counts.missingFields, 4)
+})
+
+test("business gaps exclude rocks and streets while preserving every source check", () => {
+  const business = ["food", "grocery", "shopping", "health", "service"].map(category => place({ id: category, category, contact_phone: null }))
+  const sights = [place({ id: "rock", name: "Felsen", category: "excursion", address: null, contact_phone: null, opening_hours: [] }), place({ id: "street", name: "Gerbergasse", category: "sight", contact_phone: null, opening_hours: [] }), place({ id: "uncategorized", category: null, contact_phone: null })]
+  const rockSource = source({ content_scope: { entity_type: "PLACE", entity_id: "rock" } })
+  const result = buildDirectoryQuality([...business, ...sights], [rockSource], [check()], now)
+  assert.equal(result.counts.totalPlaces, 5)
+  assert.equal(result.counts.missingFields, 5)
+  assert.deepEqual(result.places.map(row => row.id).sort(), ["food", "grocery", "health", "service", "shopping"])
+  assert.equal(result.counts.totalSources, 1)
+  assert.equal(result.sources[0].latestCheck.id, "check-1")
+  assert.equal(result.sources[0].schedule, "current")
+  assert.equal(result.sources[0].editorHref, "/city-pages/annweiler/content/places/rock")
 })
 
 test("appointment notes and explicit closed days count as information, empty hour objects do not", () => {
@@ -161,7 +175,7 @@ function loaderFixture(options = {}) {
     let rows = [...(tables[table] ?? [])]
     let from = 0, to = 249
     const query = {
-      select() { return query }, order() { return query },
+      select(columns) { rows = rows.map(row => Object.fromEntries(columns.split(",").map(key => [key, row[key]]))); return query }, order() { return query },
       in(key, values) { calls.push(["in", table, key, values]); rows = rows.filter(row => values.includes(row[key])); return query },
       eq(key, value) { rows = rows.filter(row => row[key] === value); return query },
       range(start, end) { calls.push(["range", table, start, end]); from = start; to = end; return query },
@@ -207,6 +221,20 @@ test("city slugs resolve to IDs and combine with region filters before loading q
   assert.equal(empty.scopeLabel, "Keine passenden Orte")
 })
 
+test("business filtering happens before the row limit without restricting source freshness", async () => {
+  const rocks = Array.from({ length: 2001 }, (_, i) => place({ id: `rock-${i}`, category: "excursion", contact_phone: null }))
+  const fixture = loaderFixture({ tables: { city_places: [...rocks, place({ contact_phone: null })], city_agent_sources: [source({ content_scope: { entity_type: "PLACE", entity_id: "rock-0" } })] } })
+  const result = await fixture.run({ city: "annweiler" })
+  assert.equal(result.quality.counts.totalPlaces, 1)
+  assert.equal(result.quality.counts.placesNeedingAttention, 1)
+  assert.equal(result.coverage, "ready")
+  assert.equal(result.quality.counts.totalSources, 1)
+  assert.equal(result.quality.sources[0].latestCheck.id, "check-1")
+  assert.equal(result.quality.sources[0].schedule, "current")
+  assert.ok(fixture.calls.some(call => call[0] === "in" && call[1] === "city_places" && call[2] === "category"))
+  assert.equal(fixture.calls.some(call => call[0] === "in" && ["city_agent_sources", "city_source_freshness_checks"].includes(call[1]) && call[2] === "category"), false)
+})
+
 test("loader paginates even when the server page cap is smaller than requested", async () => {
   const fixture = loaderFixture({ serverCap: 100, tables: { city_places: Array.from({ length: 501 }, (_, i) => place({ id: String(i) })) } })
   const result = await fixture.run({ city: "annweiler" })
@@ -238,7 +266,7 @@ test("rendered panel stays collapsed, labels incomplete evidence, and only links
   assert.ok(dom.querySelector('a[href="/automation?city=city-1&status=needs_human"]'))
   assert.equal(dom.querySelector('a[href^="javascript:"]'), null)
   assert.equal(dom.querySelector("button,form"), null)
-  assert.match(dom.querySelector('[aria-label="Verzeichniseinträge mit Prüfbedarf"]').textContent, /Telefon fehlt/)
+  assert.match(dom.querySelector('[aria-label="Geschäftsverzeichnis mit Prüfbedarf"]').textContent, /Telefon fehlt/)
 })
 
 test("a changed field-state signature makes M1 due despite an existing receipt in this window", async () => {

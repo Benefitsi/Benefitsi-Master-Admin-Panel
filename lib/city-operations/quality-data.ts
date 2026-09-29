@@ -2,7 +2,7 @@ import "server-only"
 
 import { requireAdmin } from "../admin"
 import { createAdminClient } from "../supabase/admin"
-import { buildDirectoryQuality, type QualityRow } from "./quality"
+import { buildDirectoryQuality, directoryBusinessCategories, type QualityRow } from "./quality"
 
 type QualityFilters = { city?: string; regionCityIds?: Set<string> }
 type ReadResult = { rows: QualityRow[]; complete: boolean; available: boolean }
@@ -29,7 +29,7 @@ export async function loadDirectoryQuality(filters: QualityFilters = {}, now = n
       while (rows.length < limit) {
         let query = admin.from(table).select(select, { count: "exact" })
         if (cityIds) query = query.in("city_id", cityIds)
-        if (table === "city_places") query = query.in("status", ["draft", "needs_review", "active"])
+        if (table === "city_places") query = query.in("status", ["draft", "needs_review", "active"]).in("category", directoryBusinessCategories)
         if (table === "city_source_freshness_checks") query = query.order("checked_at", { ascending: false })
         query = query.order(table === "city_agent_city_controls" ? "city_id" : "id")
         const result = await query.range(rows.length, Math.min(rows.length + PAGE_SIZE, limit) - 1).abortSignal(signal)
@@ -61,7 +61,7 @@ export async function loadDirectoryQuality(filters: QualityFilters = {}, now = n
   const scopeLabel = !selected.length ? "Keine passenden Orte" : selected.length === 1 ? String(selected[0].name) : `${selected.length} Orte`
   if (!cityIds.length) return { quality: empty(), cityOptions, scopeLabel, coverage: cities.complete ? "ready" as const : "partial" as const, placesAvailable: true, checksAvailable: true, warnings }
   const [places, sources, checks, controls] = await Promise.all([
-    read("city_places", "id,city_id,name,status,address,contact_phone,source_url,opening_hours,opening_hours_note,last_verified_at,expires_at", "Verzeichniseinträge", 2000, cityIds),
+    read("city_places", "id,city_id,name,category,status,address,contact_phone,source_url,opening_hours,opening_hours_note,last_verified_at,expires_at", "Geschäftsverzeichnis", 2000, cityIds),
     read("city_agent_sources", "id,city_id,slug,url,owner_name,active,enabled,cadence,parser_config,content_scope,updated_at", "Registrierte Quellen", 1000, cityIds),
     read("city_source_freshness_checks", "id,city_id,source_id,source_revision,source_url,checked_at,window_start,proof_signature,fetch_status,http_status,comparison,source_sha256,error_code,stale_fields,unknown_fields,review_job_id", "M1-Prüfbelege", 5000, cityIds),
     read("city_agent_city_controls", "city_id,operating_mode", "Stadt-Steuerung", 200, cityIds),

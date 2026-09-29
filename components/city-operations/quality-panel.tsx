@@ -38,12 +38,13 @@ export function DirectoryQualityPanel({ data }: { data: DirectoryQualityData }) 
       <div className="border-t border-[#061829]/10 p-4 md:p-5">
         <p className="text-sm leading-6 text-[#617080]">
           Ort und Region gelten auch hier. Suche, Inhalt und Status filtern nur die Review-Queue.
+          Die Lückenprüfung umfasst Gastronomie, Nahversorgung, Handel, Gesundheit und Dienstleistungen. Die Quellenprüfung umfasst alle registrierten Quellen im gewählten Bereich.
           Ein erfolgreicher HTTP-Abruf bestätigt keine Feldangaben. Einträge werden nach 30 Tagen oder zum Ablaufdatum erneut vorgelegt; M1 nutzt feste 72-Stunden-Fenster. Zeiten: Europe/Berlin.
         </p>
         {warnings.map((warning) => <p key={warning} role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-950">{warning}</p>)}
         {coverage !== "unavailable" && <div className="mt-5 grid gap-6 lg:grid-cols-2">
-          <section aria-label="Verzeichniseinträge mit Prüfbedarf" className="min-w-0">
-            <h3 className="font-black">Verzeichnis · {counts.totalPlaces} geladene Einträge</h3>
+          <section aria-label="Geschäftsverzeichnis mit Prüfbedarf" className="min-w-0">
+            <h3 className="font-black">Geschäftsverzeichnis · {counts.totalPlaces} geladene Einträge</h3>
             <p className="mt-1 text-xs text-[#617080]">{counts.missingFields} fehlende Angaben · {counts.unverifiedPlaces} ohne Prüfdatum · {counts.stalePlaces} erneut fällig</p>
             <ul className="mt-3 max-h-[34rem] divide-y divide-[#061829]/10 overflow-y-auto">
               {quality.places.map((place) => <li key={place.id} className="py-3 first:pt-0">
@@ -56,7 +57,7 @@ export function DirectoryQualityPanel({ data }: { data: DirectoryQualityData }) 
                 </div>
               </li>)}
             </ul>
-            {!quality.places.length && <p className="mt-3 text-sm text-[#617080]">{data.placesAvailable ? counts.totalPlaces ? "Keine Lücken nach diesen Regeln in den geladenen Einträgen." : "Keine Verzeichniseinträge im gewählten Bereich." : "Verzeichnisprüfung nicht verfügbar."}</p>}
+            {!quality.places.length && <p className="mt-3 text-sm text-[#617080]">{data.placesAvailable ? counts.totalPlaces ? "Keine Lücken nach diesen Regeln in den geladenen Einträgen." : "Keine Geschäftsverzeichniseinträge im gewählten Bereich." : "Prüfung des Geschäftsverzeichnisses nicht verfügbar."}</p>}
             {quality.omittedPlaces > 0 && <p role="status" className="mt-3 text-sm font-semibold">{quality.omittedPlaces} weitere Einträge mit Prüfbedarf. Ort oder Region eingrenzen; die Zähler umfassen alle geladenen Einträge.</p>}
           </section>
           <section aria-label="Quellen und letzte Prüfbelege" className="min-w-0">
