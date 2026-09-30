@@ -1,212 +1,98 @@
-import Link from "next/link"
-import { redirect } from "next/navigation"
-import { signOutPartner } from "./actions"
-import { PartnerWorkspace } from "@/app/partner-admin"
-import { BrandLogo } from "@/components/brand-logo"
-import { PendingSubmitButton } from "@/components/pending-submit-button"
-import { AdminLanguageControl, AdminLanguageProvider } from "@/app/admin-language"
-import { PanelDataAutoRefresh } from "@/app/dashboard-auto-refresh"
-import { getDashboardData, type PartnerWithDeals } from "@/lib/admin-data"
 import {
-  filterPartnersForManagement,
-  filterPartnersForPortal,
-  getPartnerPortalSession,
-} from "@/lib/partner-portal"
-import { getSupabaseConfig } from "@/lib/supabase/config"
-import { createClient } from "@/lib/supabase/server"
-
-export const dynamic = "force-dynamic"
+  PartnerDashboard,
+  PartnerOverview,
+} from '@/components/partner/partner-dashboard'
+import { PartnerWorkspace } from '@/app/partner-admin'
+import { AdminLanguageProvider } from '@/app/admin-language'
+import { partnerPageContext } from '@/lib/partners/page-context'
+import { dashboardWindow, readDashboard } from '@/lib/partners/analytics'
+import { readPartnerWorkspace } from '@/lib/partners/workspace-data'
+import { canManageProfile } from '@/lib/partners/entitlements'
+import { signOutPartner } from './actions'
+export const dynamic = 'force-dynamic'
 export const maxDuration = 180
-
 export default async function PartnerDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
+  searchParams: Promise<Record<string, string | undefined>>
 }) {
-  const config = getSupabaseConfig()
-
-  if (!config.isConfigured) {
-    return <SetupRequired />
+  const query = await searchParams,
+    ctx = await partnerPageContext(query.partner)
+  const section = ['business', 'deals'].includes(query.section ?? '')
+    ? query.section!
+    : 'overview'
+  let statistics,
+    workspace,
+    error = ''
+  try {
+    if (section === 'overview')
+      statistics = await readDashboard(
+        ctx.client,
+        ctx.partnerId,
+        dashboardWindow('last7'),
+      )
+    else if (canManageProfile(ctx.rights))
+      workspace = await readPartnerWorkspace(ctx.client, ctx.partnerId)
+    else
+      error =
+        'Für diesen Bereich ist ein berechtigter Inhaber- oder Pro-Verwalterzugang erforderlich.'
+  } catch {
+    error =
+      'Die Daten konnten nicht geladen werden. Bitte versuche es erneut oder prüfe deine Berechtigung.'
   }
-
-  const supabase = await createClient()
-  const portalSession = await getPartnerPortalSession(supabase)
-
-  if (
-    !portalSession ||
-    (!portalSession.isAdmin && portalSession.partnerIds.length === 0)
-  ) {
-    redirect("/partner/login")
-  }
-
-  const dashboard = await getDashboardData(supabase)
-  const partners = filterPartnersForPortal(dashboard.partners, portalSession)
-  const managedPartners = filterPartnersForManagement(
-    dashboard.partners,
-    portalSession,
-  )
-  const managedPartnerIds = new Set(
-    managedPartners.map((partner) => partner.id).filter(Boolean),
-  )
-  const query = await searchParams
-  const requestedPartnerId = singleQueryValue(query.partner)
-  const requestedTab = singleQueryValue(query.tab)
-  const requestedView = singleQueryValue(query.view)
-  const initialManagedPartnerId = managedPartners.some(
-    (partner) => partner.id === requestedPartnerId,
-  )
-    ? requestedPartnerId
-    : managedPartners[0]?.id ?? ""
-  const micrositeOnlyPartners = partners.filter(
-    (partner) => !partner.id || !managedPartnerIds.has(partner.id),
-  )
-  const userName =
-    portalSession.profile?.display_name ||
-    portalSession.profile?.email ||
-    portalSession.user.email ||
-    "Partner"
-
   return (
-    <AdminLanguageProvider>
-    <main className="min-h-screen bg-[#f7f6f1] text-[#061829]">
-      <PanelDataAutoRefresh />
-      <div className="mx-auto max-w-6xl px-5 py-6 lg:px-8">
-        <header className="flex flex-col gap-4 rounded-2xl border border-[#061829]/10 bg-white px-5 py-5 shadow-[0_18px_48px_rgba(6,24,41,.05)] sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <BrandLogo className="h-auto w-44" priority />
-            <p className="mt-2 text-xs font-medium text-[#526170]">Partner Dashboard</p>
+    <AdminLanguageProvider
+      initialLanguage="de"
+      storageKey="benefitsi-partner-language"
+    >
+      <PartnerDashboard
+        {...ctx}
+        active={section}
+        signOut={
+          <form action={signOutPartner}>
+            <button className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              Abmelden
+            </button>
+          </form>
+        }
+      >
+        {error && (
+          <div
+            role="alert"
+            className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-5"
+          >
+            {error}
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            {portalSession.isAdmin ? (
-              <Link
-                href="/"
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-3 text-sm font-bold text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff]"
-              >
-                Admin panel
-              </Link>
-            ) : null}
-            <p className="max-w-full truncate text-sm text-zinc-600">{userName}</p>
-            {process.env.BENEFITSI_COMMERCE_ENABLED === "true" && <Link href="/partner/commerce" className="inline-flex h-10 items-center rounded-xl bg-[#087cd9] px-3 text-sm font-bold text-white">Bestellungen & Termine · Einstellungen</Link>}
-            <AdminLanguageControl />
-            <form action={signOutPartner}>
-              <PendingSubmitButton
-                pendingLabel="Signing out..."
-                className="h-10 w-full rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-bold text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff] sm:w-auto"
-              >
-                Sign out
-              </PendingSubmitButton>
-            </form>
-          </div>
-        </header>
-
-        <section className="mt-6 rounded-2xl border border-[#061829]/10 bg-white p-5">
-          <h1 className="text-2xl font-black tracking-[-0.035em] text-[#061829]">
-            Your partner microsites
-          </h1>
-          <p className="mt-2 text-sm text-zinc-600">
-            View the partner shops linked to your account. Owners can manage their partner profile, benefits, menu, and opening hours. Microsite changes and publishing are handled by the Benefitsi team.
-          </p>
-        </section>
-
-        {dashboard.errors.length > 0 ? (
-          <section className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            <p className="font-semibold">Supabase returned warnings</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              {dashboard.errors.map((error) => (
-                <li key={error}>{error}</li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        {managedPartners.length > 0 ? (
-          <section className="mt-6">
+        )}
+        {section === 'overview' && (
+          <PartnerOverview {...ctx} data={statistics} />
+        )}
+        {workspace && (
+          <>
+            <p className="mb-4 text-sm text-slate-500">
+              Microsite:{' '}
+              {workspace.partner.microsite?.status === 'published'
+                ? 'Veröffentlicht'
+                : workspace.partner.microsite?.status === 'pending_review'
+                  ? 'In Prüfung'
+                  : 'Entwurf'}{' '}
+              · Layoutänderungen und Veröffentlichung durch das Benefitsi-Team.
+            </p>
             <PartnerWorkspace
-              partners={managedPartners}
-              cities={dashboard.cities}
+              partners={[workspace.partner]}
+              cities={workspace.cities}
               owners={[]}
               initialMode="view"
-              initialPartnerId={initialManagedPartnerId}
-              initialSettingsTab={requestedTab}
-              initialView={requestedView === "microsite" ? "microsite" : "settings"}
+              initialPartnerId={ctx.partnerId}
+              initialSettingsTab={section === 'deals' ? 'deals' : query.tab}
+              initialView="settings"
               portalMode
-              micrositeEditingEnabled={portalSession.isAdmin}
-              adminAccess={portalSession.isAdmin}
+              micrositeEditingEnabled={false}
+              adminAccess={false}
             />
-          </section>
-        ) : null}
-
-        {micrositeOnlyPartners.length > 0 ? (
-          <MicrositeEditorCards partners={micrositeOnlyPartners} />
-        ) : null}
-
-        {partners.length === 0 ? (
-          <section className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            No partner shop is linked to this account yet.
-          </section>
-        ) : null}
-      </div>
-    </main>
+          </>
+        )}
+      </PartnerDashboard>
     </AdminLanguageProvider>
-  )
-}
-
-function singleQueryValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] ?? "" : value ?? ""
-}
-
-function MicrositeEditorCards({ partners }: { partners: PartnerWithDeals[] }) {
-  return (
-    <section className="mt-6 grid gap-4 md:grid-cols-2">
-      {partners.map((partner) => {
-        const identifier =
-          partner.microsite?.slug ||
-          partner.slug ||
-          partner.subdomain ||
-          partner.id ||
-          "partner"
-
-        return (
-          <article
-            key={partner.id || identifier}
-            className="rounded-2xl border border-[#061829]/10 bg-white p-5"
-          >
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#118cff]">
-              Partner
-            </p>
-            <h2 className="mt-1 text-lg font-semibold text-zinc-950">
-              {partner.name || partner.short_name || "Unnamed partner"}
-            </h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              {partner.city_name || partner.address || "No location set"}
-            </p>
-            <div className="mt-4 rounded-lg bg-sky-50 p-3 text-sm text-sky-950">
-              <p className="font-semibold">Interne Vorschau nicht verfügbar</p>
-              <p className="mt-1 leading-6">
-                Die interne Microsite-Vorschau ist nur mit dem Inhaberzugang oder
-                für das Benefitsi-Team verfügbar.
-              </p>
-            </div>
-          </article>
-        )
-      })}
-    </section>
-  )
-}
-
-function SetupRequired() {
-  return (
-    <main className="grid min-h-screen place-items-center bg-[#f6f7f4] px-5 text-zinc-950">
-      <section className="w-full max-w-xl rounded-md border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-medium text-teal-700">Benefitsi Partner Dashboard</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-normal">
-          Supabase env setup required
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-zinc-600">
-          Create `.env.local` from `.env.example`, then add your Supabase
-          publishable key.
-        </p>
-      </section>
-    </main>
   )
 }

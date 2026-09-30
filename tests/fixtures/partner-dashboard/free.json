@@ -1,0 +1,141 @@
+{
+  "as_of": "2026-09-30T10:18:40.782579+02:00",
+  "period": {
+    "to": "2026-09-30T10:18:40.782579+02:00",
+    "from": "2026-09-30T00:00:00+02:00",
+    "timezone": "Europe/Berlin",
+    "semantics": "[from,to)"
+  },
+  "series": {
+    "daily": {
+      "status": "empty",
+      "buckets": [
+        {
+          "start": "2026-09-30T00:00:00+02:00",
+          "visits": 0
+        }
+      ]
+    }
+  },
+  "metrics": {
+    "guests": {
+      "value": 0,
+      "status": "empty",
+      "sample_size": 0
+    },
+    "stamps": {
+      "value": 0,
+      "status": "empty",
+      "sample_size": 0
+    },
+    "visits": {
+      "value": 0,
+      "status": "empty",
+      "sample_size": 0
+    },
+    "feedback": {
+      "scope": {
+        "to": "2026-09-28T00:00:00+02:00",
+        "from": "2026-09-21T00:00:00+02:00",
+        "kind": "latest_completed_iso_week",
+        "timezone": "Europe/Berlin"
+      },
+      "issues": {},
+      "status": "empty",
+      "clarity": {},
+      "sample_size": 0,
+      "average_rating": null,
+      "response_count": 0,
+      "categories_status": "suppressed"
+    },
+    "open_cards": {
+      "scope": "current_stock",
+      "value": 1,
+      "status": "ok",
+      "sample_size": 1
+    },
+    "return_30d": {
+      "reason": "analytics.advanced",
+      "status": "locked"
+    },
+    "redemptions": {
+      "value": 0,
+      "status": "empty",
+      "sample_size": 0
+    },
+    "offer_conversion": {
+      "reason": "denominator_not_instrumented",
+      "status": "unavailable"
+    },
+    "returning_guests": {
+      "value": 0,
+      "status": "empty",
+      "sample_size": 0
+    },
+    "first_time_guests": {
+      "value": 0,
+      "status": "empty",
+      "sample_size": 0
+    },
+    "reward_redemptions": {
+      "reason": "reward_claim_coverage_unverified",
+      "status": "unavailable"
+    },
+    "card_completion_rate": {
+      "reason": "card_cohort_not_instrumented",
+      "status": "unavailable"
+    },
+    "returning_guest_share": {
+      "status": "no_data",
+      "sample_size": 0
+    }
+  },
+  "breakdowns": {
+    "reason": "analytics.advanced",
+    "status": "locked"
+  },
+  "comparison": {},
+  "partner_id": "11111111-1111-4111-8111-111111111111",
+  "definitions": {
+    "retention": "return_on_local_days_1_through_30_after_first_visit",
+    "comparison": "equal_local_wall_clock_duration",
+    "population": "reportable_completed_visits",
+    "feedback_scope": "latest_completed_iso_week",
+    "fine_segment_scope": "whole_completed_iso_weeks",
+    "segment_min_guests": 10,
+    "feedback_min_guests": 5,
+    "first_and_returning_can_overlap": true
+  },
+  "source_status": {
+    "stamps": "available",
+    "visits": "available",
+    "feedback": "available",
+    "open_cards": "available",
+    "redemptions": "available",
+    "reward_redemptions": "unavailable"
+  },
+  "comparison_period": null,
+  "definition_version": "partner-dashboard-v1",
+  "suppression_reasons": [
+    {
+      "metric": "return_30d",
+      "reason": "analytics.advanced",
+      "status": "locked"
+    },
+    {
+      "metric": "offer_conversion",
+      "reason": "denominator_not_instrumented",
+      "status": "unavailable"
+    },
+    {
+      "metric": "reward_redemptions",
+      "reason": "reward_claim_coverage_unverified",
+      "status": "unavailable"
+    },
+    {
+      "metric": "card_completion_rate",
+      "reason": "card_cohort_not_instrumented",
+      "status": "unavailable"
+    }
+  ]
+}

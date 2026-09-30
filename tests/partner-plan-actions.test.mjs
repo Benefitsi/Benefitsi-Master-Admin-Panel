@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import {loadTypescript} from './helpers/load-typescript.mjs'
+function fixture(allowed=true) {
+ const calls=[],client={rpc:async(name,args)=>{calls.push({name,args});return {data:null,error:null}}}
+ const code=loadTypescript('app/partner/plan-actions.ts',{'@/lib/admin':{requireAdmin:async()=>{if(!allowed)throw new Error('admin_required');return {supabase:client}}},'next/cache':{revalidatePath:()=>{}}})
+ const form=new FormData();form.set('partner_id','own');form.set('reason','Reviewed request');form.set('operation','override');form.set('mode','standard');form.set('feature','menu.ai_import')
+ return {code,calls,form}
+}
+test('direct tariff actions require current Benefitsi admin and never trust supplied role',async()=>{
+ const f=fixture(false);f.form.set('is_admin','true')
+ assert.equal((await f.code.updatePartnerPlan({},f.form)).ok,false)
+ assert.equal(f.calls.length,0)
+ await assert.rejects(f.code.loadPartnerPlanPanel('own'),/admin_required/)
+ await assert.rejects(f.code.loadPartnerDashboardPreview('own'),/admin_required/)
+})
+test('Tarifstandard really clears and German expiry date becomes Berlin midnight',async()=>{
+ const f=fixture()
+ assert.equal((await f.code.updatePartnerPlan({},f.form)).ok,true)
+ assert.equal(f.calls[0].name,'admin_clear_partner_entitlement_override')
+ f.form.set('mode','allow');f.form.set('valid_until','2099-10-01')
+ assert.equal((await f.code.updatePartnerPlan({},f.form)).ok,true)
+ assert.equal(f.calls[1].args.p_valid_until,'2099-09-30T22:00:00.000Z')
+})
+test('price form writes a reviewable draft in cents and cannot pass checkout credentials',async()=>{
+ const f=fixture();f.form.set('operation','draft_offer');f.form.set('offer_code','founder');f.form.set('version','2');f.form.set('plan_version','1');f.form.set('amount','24.90');f.form.set('setup','0');f.form.set('stripe_price_id','forged')
+ assert.equal((await f.code.updatePartnerPlan({},f.form)).ok,true)
+ assert.equal(f.calls[0].name,'admin_save_partner_catalog_draft')
+ assert.equal(f.calls[0].args.p_payload.unit_amount,2490)
+ assert.equal(f.calls[0].args.p_payload.stripe_price_id,undefined)
+})

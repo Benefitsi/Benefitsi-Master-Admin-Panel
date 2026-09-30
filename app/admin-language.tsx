@@ -1528,8 +1528,8 @@ export function isTranslationVariant(value: string, original: string) {
   )
 }
 
-export function AdminLanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<AdminLanguage>("en")
+export function AdminLanguageProvider({ children, initialLanguage = "en", storageKey = STORAGE_KEY }: { children: ReactNode; initialLanguage?: AdminLanguage; storageKey?: string }) {
+  const [language, setLanguageState] = useState<AdminLanguage>(initialLanguage)
   const [preferenceLoaded, setPreferenceLoaded] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const languageRef = useRef(language)
@@ -1540,7 +1540,7 @@ export function AdminLanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      const saved = window.localStorage.getItem(STORAGE_KEY)
+      const saved = window.localStorage.getItem(storageKey)
       if (saved === "en" || saved === "de") {
         setLanguageState(saved)
       }
@@ -1548,13 +1548,13 @@ export function AdminLanguageProvider({ children }: { children: ReactNode }) {
     }, 0)
 
     return () => window.clearTimeout(timeout)
-  }, [])
+  }, [storageKey])
 
   useEffect(() => {
     if (!preferenceLoaded) return
 
     languageRef.current = language
-    window.localStorage.setItem(STORAGE_KEY, language)
+    window.localStorage.setItem(storageKey, language)
     document.documentElement.lang = language
 
     const root = rootRef.current
@@ -1629,7 +1629,7 @@ export function AdminLanguageProvider({ children }: { children: ReactNode }) {
     observer.observe(root, { childList: true, characterData: true, subtree: true })
 
     return () => observer.disconnect()
-  }, [language, preferenceLoaded])
+  }, [language, preferenceLoaded, storageKey])
 
   const setLanguage = (nextLanguage: AdminLanguage) => {
     setLanguageState(nextLanguage)

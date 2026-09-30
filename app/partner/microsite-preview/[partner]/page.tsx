@@ -52,7 +52,7 @@ export default async function PartnerMicrositePreviewPage({
     redirect("/partner/login")
   }
 
-  const dashboard = await getDashboardData(supabase)
+  const dashboard = await getDashboardData(supabase, {includeActivity: false})
   const partner = findPreviewPartner(
     filterPartnersForPortal(dashboard.partners, portalSession),
     identifier,

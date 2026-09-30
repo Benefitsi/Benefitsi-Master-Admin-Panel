@@ -318,6 +318,7 @@ export type FraudEvent = {
 
 export type PartnerWithDeals = Partner & {
   menu_ai_import_enabled?: boolean | null
+  team_manage_enabled?: boolean
   deals: Deal[]
   holidays: PartnerHoliday[]
   socials: PartnerSocial[]
@@ -350,6 +351,7 @@ export type MenuItemAddon = {
 
 export async function getDashboardData(
   supabase: SupabaseClient,
+  options: { includeActivity?: boolean } = {},
 ): Promise<DashboardData> {
   const [
     partnersResult,
@@ -371,7 +373,6 @@ export async function getDashboardData(
     qrTokensResult,
     micrositesResult,
     micrositeVersionsResult,
-    menuImportFlagsResult,
   ] = await Promise.all([
     supabase
       .from("partners")
@@ -380,7 +381,7 @@ export async function getDashboardData(
       .order("id", { ascending: true }),
     supabase.from("deals").select("*"),
     supabase.from("cities").select("id,name,slug").order("name"),
-    fetchOwnerOptions(supabase),
+    options.includeActivity === false ? Promise.resolve({data: [], error: undefined}) : fetchOwnerOptions(supabase),
     supabase.from("partner_holidays").select("*").order("holiday_date"),
     supabase
       .from("partner_socials")
@@ -401,23 +402,23 @@ export async function getDashboardData(
       .from("menu_items")
       .select("*")
       .order("sort_order", { ascending: true, nullsFirst: false }),
-    supabase.from("stamp_cards_progress_view").select("*").limit(300),
-    supabase
+    options.includeActivity === false ? Promise.resolve({data: [], error: null}) : supabase.from("stamp_cards_progress_view").select("*").limit(300),
+    options.includeActivity === false ? Promise.resolve({data: [], error: null}) : supabase
       .from("visits")
       .select("*")
       .order("visited_at", { ascending: false, nullsFirst: false })
       .limit(200),
-    supabase
+    options.includeActivity === false ? Promise.resolve({data: [], error: null}) : supabase
       .from("deal_redemptions")
       .select("*")
       .order("redeemed_at", { ascending: false, nullsFirst: false })
       .limit(300),
-    supabase
+    options.includeActivity === false ? Promise.resolve({data: [], error: null}) : supabase
       .from("redemption_applied_benefits")
       .select("*")
       .order("created_at", { ascending: false, nullsFirst: false })
       .limit(500),
-    supabase
+    options.includeActivity === false ? Promise.resolve({data: [], error: null}) : supabase
       .from("qr_tokens")
       .select("*")
       .order("created_at", { ascending: false, nullsFirst: false })
@@ -427,11 +428,9 @@ export async function getDashboardData(
       .from("microsite_versions")
       .select("*")
       .order("version_number", { ascending: false, nullsFirst: false }),
-    supabase.from("partner_feature_flags").select("partner_id,enabled").eq("feature_key", "menu_ai_import"),
   ])
 
   const errors = [
-    menuImportFlagsResult.error ? "Die Menüimport-Freischaltungen konnten nicht geladen werden." : undefined,
     partnersResult.error?.message,
     dealsResult.error?.message,
     citiesResult.error?.message,
@@ -530,11 +529,14 @@ export async function getDashboardData(
   const visitsByPartner = groupByPartner(visits)
   const micrositeByPartner = annotateMicrosites(microsites, micrositeVersions)
 
-  const menuImportPartnerIds = new Set((menuImportFlagsResult.data ?? [])
-    .filter((flag) => flag.enabled === true).map((flag) => flag.partner_id))
+  const entitlementResults = await Promise.all(partners.map(async partner => {
+    const {data,error}=await supabase.rpc("get_partner_entitlements",{p_partner_id:partner.id})
+    return [partner.id,error ? null : data] as const
+  }))
+  const entitlementsByPartner = new Map(entitlementResults)
   const partnersWithDeals = partners.map((partner) => ({
     ...partner,
-    menu_ai_import_enabled: menuImportFlagsResult.error ? null : menuImportPartnerIds.has(partner.id),
+    menu_ai_import_enabled: entitlementsByPartner.get(partner.id)?.features?.["menu.ai_import"] === true,
     deals: partner.id ? dealsByPartner.get(partner.id) ?? [] : [],
     holidays: partner.id ? holidaysByPartner.get(partner.id) ?? [] : [],
     socials: partner.id ? socialsByPartner.get(partner.id) ?? [] : [],

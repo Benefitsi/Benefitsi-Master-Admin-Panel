@@ -6,16 +6,27 @@ import ts from "typescript"
 import * as menuImport from "../lib/menu-import.js"
 import * as config from "../lib/partner-config.ts"
 
+import entitlements from '../lib/partners/entitlements.ts'
+import quota from '../lib/partners/menu-quota.ts'
+import * as rewardConfig from '../lib/reward-config.ts'
+process.env.SUPABASE_SERVICE_ROLE_KEY='synthetic-test-worker'
 const draft = {
   name: "Speisekarte", currency: "EUR", complete: true, warnings: [],
   categories: [{ name: "Speisen", items: [{ name: "Suppe", description: "Tomaten", price: 6.5, tags: [], allergens: [], note: "" }] }],
 }
 
-function fixture({ signedIn = true, owner = true, admin = false, missingMenu = false, alreadyExists = false, failItems = false, enabled = true, flagError = false, missingPartner = false } = {}) {
+function fixture({ signedIn = true, owner = true, admin = false, missingMenu = false, alreadyExists = false, failItems = false, enabled = true, flagError = false, missingPartner = false, team = true } = {}) {
   const writes = [], calls = [], invalidations = []
   const feature = { enabled, error: flagError }
   const session = signedIn ? { user: { id: randomUUID() }, isAdmin: admin, ownedPartnerIds: owner ? ["partner-owned"] : [], partnerIds: ["partner-owned"] } : null
-  const db = { from(table) {
+  const rpcCalls=[]
+  const db = { async rpc(name,args) {
+    rpcCalls.push({name,args})
+    if(name==='get_partner_entitlements') return {data:{schema_version:1,partner_id:args.p_partner_id,features:{'menu.ai_import':feature.enabled,'team.manage':team}},error:feature.error?{message:'denied'}:null}
+    if(name==='reserve_partner_menu_ai_import') return {data:{reservation_id:'reservation',state:'reserved'},error:null}
+    if(name==='admin_set_partner_entitlement_override') return {data:'override',error:feature.error?{message:'denied'}:null}
+    return {data:'consumed',error:null}
+  }, from(table) {
     let operation, payload
     const filters = {}
     const query = {}
@@ -50,6 +61,10 @@ function fixture({ signedIn = true, owner = true, admin = false, missingMenu = f
   } }
   const boundaries = {
     "node:crypto": { randomUUID, randomInt },
+    "@/lib/partners/entitlements":entitlements,
+    "@/lib/partners/menu-quota":quota,
+    "@supabase/supabase-js":{createClient:()=>db},
+    "@/lib/supabase/config":{getSupabaseConfig:()=>({isConfigured:true,url:'https://synthetic.invalid'})},
     "next/cache": { revalidatePath: path => invalidations.push(path) },
     "next/server": { after: fn => fn() },
     "@/lib/partner-portal": {
@@ -58,6 +73,7 @@ function fixture({ signedIn = true, owner = true, admin = false, missingMenu = f
     },
     "@/lib/supabase/server": { createClient: async () => db },
     "@/lib/partner-config": config,
+    "@/lib/reward-config": rewardConfig,
     "@/lib/menu-import.js": menuImport,
     "@/lib/menu-ai-import": {
       extractMenuFromFiles: async files => { calls.push(files); return structuredClone(draft) },
@@ -75,6 +91,8 @@ function fixture({ signedIn = true, owner = true, admin = false, missingMenu = f
   assert.equal(typeof actions.confirmAIMenuImport, "function", "confirm action must exist")
   function form({ menuId = "menu-owned", partnerId = "partner-owned", confirmed = true, value = draft } = {}) {
     const input = new FormData()
+    input.set("reason", "Documented test")
+    input.set("valid_until", "2099-12-31T00:00:00Z")
     input.set("menu_id", menuId)
     input.set("partner_id", partnerId)
     input.set("menu_draft", JSON.stringify(value))
@@ -82,10 +100,10 @@ function fixture({ signedIn = true, owner = true, admin = false, missingMenu = f
     input.append("menu_source", new File(["%PDF-1.7 test"], "menu.pdf", { type: "application/pdf" }))
     return input
   }
-  return { writes, calls, invalidations, actions, form, feature }
+  return { writes, calls, invalidations, actions, form, feature, rpcCalls }
 }
 
-test("partner import fails closed without an enabled flag, including direct calls and lookup errors", async () => {
+test("partner import fails closed without an effective central entitlement, including direct calls and lookup errors", async () => {
   for (const options of [{ enabled: false }, { enabled: null }, { enabled: "true" }, { flagError: true }]) {
     const f = fixture(options)
     for (const menuId of ["menu-owned", ""]) {
@@ -97,7 +115,7 @@ test("partner import fails closed without an enabled flag, including direct call
   }
 })
 
-test("revoking the partner flag after preview prevents confirmation", async () => {
+test("revoking the central entitlement after preview prevents confirmation", async () => {
   const f = fixture()
   assert.equal((await f.actions.previewAIMenuImport(f.form())).ok, true)
   f.feature.enabled = false
@@ -105,10 +123,10 @@ test("revoking the partner flag after preview prevents confirmation", async () =
   assert.deepEqual(f.writes, [])
 })
 
-test("admins can import even if the partner flag is missing or unavailable", async () => {
+test("admins also need a readable enabled central entitlement before AI work", async () => {
   const f = fixture({ owner: false, admin: true, enabled: null, flagError: true })
-  assert.equal((await f.actions.previewAIMenuImport(f.form())).ok, true)
-  assert.equal((await f.actions.confirmAIMenuImport(f.form())).ok, true)
+  assert.equal((await f.actions.previewAIMenuImport(f.form())).ok, false)
+  assert.equal((await f.actions.confirmAIMenuImport(f.form())).ok, false)
 })
 
 test("only admins may enable or disable menu import for an existing partner", async () => {
@@ -126,11 +144,11 @@ test("only admins may enable or disable menu import for an existing partner", as
     const result = await f.actions.setPartnerMenuImportEnabled(form)
     assert.equal(result.ok, true, result.message)
     assert.equal(result.enabled, enabled === "true")
-    assert.equal(f.writes.length, 1)
-    assert.equal(f.writes[0].table, "partner_feature_flags")
-    assert.equal(f.writes[0].payload.partner_id, "partner-owned")
-    assert.equal(f.writes[0].payload.feature_key, "menu_ai_import")
-    assert.equal(f.writes[0].payload.enabled, enabled === "true")
+    assert.equal(f.writes.length, 0)
+    assert.equal(f.rpcCalls[0].name, "admin_set_partner_entitlement_override")
+    assert.equal(f.rpcCalls[0].args.p_partner_id, "partner-owned")
+    assert.equal(f.rpcCalls[0].args.p_effect, enabled === "true" ? "allow" : "deny")
+    assert.equal(f.rpcCalls[0].args.p_reason, "Documented test")
     assert.ok(f.invalidations.includes("/partner"))
     assert.ok(f.invalidations.includes("/"))
   }
@@ -163,13 +181,14 @@ test("AI preview requires menu ownership or admin rights before provider calls",
   assert.deepEqual(f.calls, [])
 })
 
-test("AI preview for an owner or admin returns a draft without any database writes", async () => {
+test("AI preview for an owner or admin returns a draft without menu writes and with central quota accounting", async () => {
   for (const options of [{}, { owner: false, admin: true }]) {
     const f = fixture(options)
     const result = await f.actions.previewAIMenuImport(f.form())
     assert.equal(result.ok, true)
     assert.equal(result.draft.categories[0].items[0].price, 6.5)
     assert.equal(f.calls.length, 1)
+    assert.deepEqual(f.rpcCalls.map(c=>c.name),["get_partner_entitlements","reserve_partner_menu_ai_import","finish_partner_menu_ai_import"])
     assert.deepEqual(f.writes, [])
   }
 })
@@ -234,4 +253,22 @@ test("failed item persistence rolls back only imported content and the newly-cre
     assert.equal(f.writes.filter(w => w.table === "menus" && w.operation === "delete").length, menuId ? 0 : 1)
     assert.ok(f.writes.some(w => w.table === "menu_categories" && w.operation === "delete"))
   }
+})
+
+test("team add uses exact-email authenticated RPC without a browser-supplied target user id",async()=>{
+ const f=fixture();const form=f.form();form.set('email',' Person@Example.Invalid ');form.set('role','scanner');form.set('user_id','forged-target')
+ const result=await f.actions.savePartnerStaff({},form)
+ assert.equal(result.ok,true,result.message)
+ assert.deepEqual(f.writes,[])
+ const rpc=f.rpcCalls.find(c=>c.name==='add_partner_team_member_by_email')
+ assert.ok(rpc)
+ assert.deepEqual(rpc.args,{p_partner_id:'partner-owned',p_email:'person@example.invalid',p_role:'scanner'})
+})
+test("team add checks session, ownership and team entitlement before mutation",async()=>{
+ for(const options of [{signedIn:false},{owner:false},{team:false}]){
+  const f=fixture(options),form=f.form();form.set('email','person@example.invalid');form.set('role','scanner')
+  assert.equal((await f.actions.savePartnerStaff({},form)).ok,false)
+  assert.equal(f.rpcCalls.some(c=>c.name==='add_partner_team_member_by_email'),false)
+  assert.deepEqual(f.writes,[])
+ }
 })

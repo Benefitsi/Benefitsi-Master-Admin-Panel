@@ -41,6 +41,15 @@ function loadRoute(path, session, selectedPartner) {
     return createElement("article", null, props.initialConfig.hero.headline)
   }
   const imports = {
+    "@/components/partner/partner-dashboard": {PartnerDashboard:({children,name})=>createElement('main',null,name,children),PartnerOverview:()=>null},
+    "@/components/partner/partner-statistics": {PartnerStatistics:()=>null},
+    "@/lib/partners/page-context": {partnerPageContext:async()=>{
+      if(!session || (!session.isAdmin&&!session.ownedPartnerIds.length)) throw Object.assign(new Error('redirect'),{path:'/partner/login'})
+      return {client:{},session,partners:[{id:partnerId,name:selectedPartner.name}],partnerId,name:selectedPartner.name,rights:{role:session.isAdmin?'benefitsi_admin':'owner',plan_code:'free',features:{}}}
+    }},
+    "@/lib/partners/analytics": {dashboardWindow:()=>({}),readDashboard:async()=>({})},
+    "@/lib/partners/workspace-data": {readPartnerWorkspace:async()=>({partner:selectedPartner,cities:[]})},
+    "@/lib/partners/entitlements": {canManageProfile:()=>true},
     "@/lib/commerce/microsite": { loadMicrositeCommerceActions: async id => {calls.commercePartners.push(id); return []} },
     "react/jsx-runtime": jsxRuntime,
     "next/link": { default: ({ children, ...props }) => createElement("a", props, children) },
@@ -154,18 +163,15 @@ test("unrelated account still receives not-found and anonymous access returns to
   await assert.rejects(anonymous.page(previewProps({})), error => error.path === "/partner/login")
 })
 
-test("staff dashboard explains the unavailable internal preview without offering a direct or builder detour", async () => {
+test("scanner has no management landing page and is directed to sign-in", async () => {
   const { page, calls } = loadRoute("../app/partner/page.tsx", staffSession, partner())
-  const html = renderToStaticMarkup(await page({ searchParams: Promise.resolve({}) }))
-  assert.match(html, /Synthetic shop/)
-  assert.match(html, /Interne Vorschau nicht verfügbar/)
-  assert.doesNotMatch(html, /href="\/partner\/microsite-(?:preview|builder)\//)
-  assert.equal(calls.workspaceProps.length, 0)
+  await assert.rejects(page({searchParams:Promise.resolve({})}),error=>error.path==='/partner/login')
+  assert.equal(calls.workspaceProps.length,0)
 })
 
 test("owner dashboard keeps its partner workspace", async () => {
   const { page, calls } = loadRoute("../app/partner/page.tsx", { ...staffSession, ownedPartnerIds: [partnerId] }, partner())
-  renderToStaticMarkup(await page({ searchParams: Promise.resolve({}) }))
+  renderToStaticMarkup(await page({ searchParams: Promise.resolve({section:"business"}) }))
   assert.equal(calls.workspaceProps.length, 1)
   assert.equal(calls.workspaceProps[0].partners[0].id, partnerId)
   assert.equal(calls.workspaceProps[0].micrositeEditingEnabled, false)

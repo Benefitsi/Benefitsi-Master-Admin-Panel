@@ -27,7 +27,7 @@ export default async function PartnerLoginPage() {
   }
 
   return (
-    <AdminLanguageProvider>
+    <AdminLanguageProvider initialLanguage="de" storageKey="benefitsi-partner-language">
     <main className="min-h-screen bg-[#f7f6f1] text-[#061829]">
       <div className="fixed right-4 top-4 z-20">
         <AdminLanguageControl />
@@ -36,20 +36,20 @@ export default async function PartnerLoginPage() {
         <section className="hidden bg-[#061829] p-10 text-white lg:flex lg:flex-col lg:justify-between">
           <div>
             <BrandLogo surface="dark" className="h-auto w-48" priority />
-            <p className="mt-3 text-sm font-medium text-white/55">Partner Microsites</p>
+            <p className="mt-3 text-sm font-medium text-white/55">Benefitsi Partner</p>
           </div>
 
           <div className="max-w-xl">
             <p className="mb-4 text-sm font-bold uppercase tracking-[0.14em] text-[#17d4d7]">
-              Partner self-service
+              Dein Partnerbereich
             </p>
             <h1 className="max-w-lg text-5xl font-black leading-[1.05] tracking-[-0.05em]">
-              Edit your microsite content without affecting other partners.
+              Dein Betrieb. Deine Vorteile. Dein Überblick.
             </h1>
           </div>
 
           <div className="grid grid-cols-4">
-            {[["", "Only your assigned partner shop is accessible"]].map(
+            {[["", "Zugang nur für deine berechtigten Betriebe"]].map(
               ([value, label]) => (
                 <div
                   key={label}
@@ -67,12 +67,12 @@ export default async function PartnerLoginPage() {
           <div className="w-full max-w-md rounded-2xl border border-[#061829]/10 bg-white p-6 shadow-[0_24px_70px_rgba(6,24,41,.08)] sm:p-8">
             <div className="mb-8">
               <BrandLogo className="mb-7 h-auto w-44 lg:hidden" priority />
-              <p className="text-sm font-bold text-[#118cff]">Partner Microsites</p>
+              <p className="text-sm font-bold text-[#118cff]">Benefitsi Partner</p>
               <h2 className="mt-2 text-2xl font-black tracking-[-0.035em] text-[#061829]">
-                Partner sign in
+                Im Partnerbereich anmelden
               </h2>
               <p className="mt-2 text-sm leading-6 text-zinc-600">
-                Use your linked Supabase account to access your microsite dashboard.
+                Verwalte dein Profil, Menü und deine Öffnungszeiten. Individuelles Microsite-Layout und Veröffentlichung übernimmt das Benefitsi-Team.
               </p>
             </div>
 
@@ -100,13 +100,13 @@ async function NonPartnerSessionNotice() {
 
   return (
     <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-      <p className="font-medium">The current account is not linked to a partner shop.</p>
+      <p className="font-medium">Für dieses Konto ist kein berechtigter Betrieb hinterlegt. Scannerzugänge verwenden die Benefitsi App.</p>
       <form action={signOutPartner} className="mt-2">
         <PendingSubmitButton
-          pendingLabel="Signing out..."
+          pendingLabel="Abmelden …"
           className="h-9 rounded-md bg-amber-900 px-3 text-xs font-semibold text-white transition hover:bg-amber-950"
         >
-          Sign out of this account
+          Dieses Konto abmelden
         </PendingSubmitButton>
       </form>
     </div>

@@ -21,6 +21,7 @@ export type PartnerPortalSession = {
   isPartner: boolean
   partnerIds: string[]
   ownedPartnerIds: string[]
+  managedPartnerIds?: string[]
 }
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
@@ -50,7 +51,7 @@ export async function getPartnerPortalSession(
       email: user.email ?? null,
     }),
   ])
-  const { partnerIds, ownedPartnerIds } = await getAccessiblePartnerIds(
+  const { partnerIds, ownedPartnerIds, managedPartnerIds } = await getAccessiblePartnerIds(
     client,
     user.id,
   )
@@ -65,6 +66,7 @@ export async function getPartnerPortalSession(
     isPartner: isPartnerProfile(profile) || partnerIds.length > 0,
     partnerIds,
     ownedPartnerIds,
+    managedPartnerIds,
   }
 }
 
@@ -93,7 +95,7 @@ export function canManagePartner(
     return false
   }
 
-  return session.isAdmin || session.ownedPartnerIds.includes(partnerId)
+  return session.isAdmin || (session.managedPartnerIds ?? session.ownedPartnerIds).includes(partnerId)
 }
 
 // Match the deployed microsites/microsite_versions admin-only write policies.
@@ -125,7 +127,7 @@ export function filterPartnersForManagement(
     return partners
   }
 
-  const managedIds = new Set(session.ownedPartnerIds)
+  const managedIds = new Set(session.managedPartnerIds ?? session.ownedPartnerIds)
   return partners.filter((partner) => Boolean(partner.id && managedIds.has(partner.id)))
 }
 
@@ -143,55 +145,17 @@ async function getAccessiblePartnerIds(
   supabase: SupabaseClient,
   userId: string,
 ) {
-  const identities = [userId].filter(Boolean)
-
-  if (identities.length === 0) {
-    return { partnerIds: [], ownedPartnerIds: [] }
+  const partnerIds: string[] = [], ownedPartnerIds: string[] = [], managedPartnerIds: string[] = []
+  const memberships = await supabase.from("partner_memberships").select("partner_id,role,status").eq("user_id", userId).eq("status", "active").in("role", ["owner", "admin"])
+  if (memberships.error) return {partnerIds, ownedPartnerIds, managedPartnerIds}
+  for (const membership of memberships.data ?? []) {
+    // Reconcile the membership against persisted ownership and current tariff in DB.
+    if (membership.status !== "active" || !["owner", "admin"].includes(membership.role)) continue
+    const {data, error} = await supabase.rpc("get_partner_entitlements", {p_partner_id: membership.partner_id})
+    if (error || !data || data.partner_id !== membership.partner_id) continue
+    partnerIds.push(membership.partner_id)
+    if (data.role === "owner") ownedPartnerIds.push(membership.partner_id)
+    if (data.role === "owner" || (data.role === "admin" && data.plan_code === "pro")) managedPartnerIds.push(membership.partner_id)
   }
-
-  const [ownersResult, staffResult] = await Promise.all([
-    supabase.from("partners").select("id,owner_id").in("owner_id", identities),
-    supabase
-      .from("partner_staff")
-      .select("partner_id,user_id,active")
-      .in("user_id", identities),
-  ])
-  const partnerIds = new Set<string>()
-  const ownedPartnerIds = new Set<string>()
-
-  if (ownersResult.error) {
-    console.error(
-      "Partner portal owner linkage lookup failed:",
-      ownersResult.error.message,
-    )
-  } else {
-    for (const row of ownersResult.data ?? []) {
-      if (typeof row.id === "string" && row.id) {
-        partnerIds.add(row.id)
-        ownedPartnerIds.add(row.id)
-      }
-    }
-  }
-
-  if (staffResult.error) {
-    console.error(
-      "Partner portal staff linkage lookup failed:",
-      staffResult.error.message,
-    )
-  } else {
-    for (const row of staffResult.data ?? []) {
-      if (row.active !== true) {
-        continue
-      }
-
-      if (typeof row.partner_id === "string" && row.partner_id) {
-        partnerIds.add(row.partner_id)
-      }
-    }
-  }
-
-  return {
-    partnerIds: Array.from(partnerIds),
-    ownedPartnerIds: Array.from(ownedPartnerIds),
-  }
+  return {partnerIds, ownedPartnerIds, managedPartnerIds}
 }
