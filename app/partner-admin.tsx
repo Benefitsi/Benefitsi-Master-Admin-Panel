@@ -629,7 +629,7 @@ export function PartnerWorkspace({
           }
         />
         <LiveMetric
-          label="Featured partners"
+          label={portalMode ? "Featured by Benefitsi" : "Featured partners"}
           value={featuredPartners}
           active={partnerFilter === "featured"}
           onClick={() =>
@@ -1011,7 +1011,9 @@ function PartnerDetail({
         title={partner.name || "Untitled partner"}
         description={
           activeView === "settings"
-            ? "Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields."
+            ? portalMode
+              ? "Manage your business information, benefits, menu, opening hours, and media."
+              : "Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields."
             : "Edit the public microsite separately from the partner settings."
         }
         aside={
@@ -2481,11 +2483,13 @@ function PartnerForm({
             name="active"
             defaultChecked={partner ? isPartnerActive(partner) : true}
           />
-          <CheckboxField
-            label="Featured"
-            name="is_featured"
-            defaultChecked={partner?.is_featured ?? false}
-          />
+          {!portalMode ? (
+            <CheckboxField
+              label="Featured"
+              name="is_featured"
+              defaultChecked={partner?.is_featured ?? false}
+            />
+          ) : null}
         </div>
         <TextAreaField
           label="Description"
