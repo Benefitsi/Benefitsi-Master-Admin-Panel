@@ -18,6 +18,12 @@ function valueLabel(key: string, metric: Metric) {
       : { maximumFractionDigits: 0 }),
   }).format(metric.value)
 }
+const feedbackCategoryLabels: Record<string, string> = {
+  clear: 'Verständlich', mostly_clear: 'Überwiegend verständlich', unclear: 'Unverständlich',
+  none: 'Keine Probleme', deal: 'Problem mit dem Angebot', stamp: 'Problem mit dem Stempel',
+  scan: 'Problem beim Scannen', other: 'Sonstiges',
+}
+
 export function PartnerStatistics({
   data,
   compact = false,
@@ -204,7 +210,7 @@ export function PartnerStatistics({
               {Object.entries({ ...feedback.clarity, ...feedback.issues }).map(
                 ([key, count]) => (
                   <div key={key}>
-                    <dt>{key}</dt>
+                    <dt>{Object.hasOwn(feedbackCategoryLabels, key) ? feedbackCategoryLabels[key] : 'Weitere Kategorie'}</dt>
                     <dd>{count}</dd>
                   </div>
                 ),

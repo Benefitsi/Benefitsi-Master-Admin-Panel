@@ -84,3 +84,28 @@ test('timely free-phase exit removes future paid obligation wording from Founder
  assert.doesNotMatch(html,/Bezahlte Mindestlaufzeit bis/)
  assert.match(html,/Erste Zahlung entfällt/)
 })
+
+test('retained expired price is historical while an active offer remains current',()=>{
+ const data=billing(true)
+ assert.match(render(h(PartnerPlanSummary,{data})),/Aktuelles Preisangebot/)
+ data.entitlements.plan_code='free';data.entitlements.state='free';data.subscription.state='expired'
+ const html=render(h(PartnerPlanSummary,{data}))
+ assert.match(html,/Gespeichertes Vertragsangebot/);assert.doesNotMatch(html,/Aktuelles Preisangebot/);assert.match(html,/19,90/)
+})
+test('feedback canonical categories are German, unknown codes safe, suppression retained',()=>{
+ const data=structuredClone(pro)
+ data.metrics.feedback={status:'ok',categories_status:'ok',clarity:{clear:5,mostly_clear:6,unclear:7},issues:{none:8,deal:9,stamp:10,scan:11,other:12,constructor:13}}
+ let html=render(h(PartnerStatistics,{data}))
+ for(const label of ['Verständlich','Überwiegend verständlich','Unverständlich','Keine Probleme','Problem mit dem Angebot','Problem mit dem Stempel','Problem beim Scannen','Sonstiges','Weitere Kategorie'])assert.ok(html.includes(label),label)
+ for(const count of [5,6,7,8,9,10,11,12,13])assert.match(html,new RegExp('<dd>'+count+'</dd>'))
+ assert.doesNotMatch(html,/unexpected_code|>clear<|>none</)
+ data.metrics.feedback.categories_status='suppressed'
+ html=render(h(PartnerStatistics,{data}));assert.doesNotMatch(html,/Problem beim Scannen|Weitere Kategorie/)
+})
+test('Founder draft approval derives annual versus monthly interval from supported offer code',()=>{
+ for(const [code,amount,label] of [['founder',1990,'monatlich'],['founder_annual',19900,'jährlich im Voraus']]){
+  const data=billing(true);data.drafts[0].payload={offer_code:code,version:2,unit_amount:amount}
+  const html=render(h(PartnerPlanPanel,{partnerId,initialData:data}))
+  assert.match(html,new RegExp((amount/100).toFixed(2).replace('.',',')+'[^<]* '+label+', zzgl. MwSt.'))
+ }
+})

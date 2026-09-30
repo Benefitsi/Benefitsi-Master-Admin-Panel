@@ -87,7 +87,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
         {sub?.grace_until && <p className="mt-3 text-sm text-amber-800">Übergangsfrist bei ausstehender Zahlung: bis {formatBerlin(sub.grace_until)}.</p>}
         <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-slate-500">Aktuelles Preisangebot</dt>
+            <dt className="text-slate-500">{sub?.offer && rights.plan_code === 'free' ? 'Gespeichertes Vertragsangebot' : 'Aktuelles Preisangebot'}</dt>
             <dd className="font-semibold">
               {sub?.offer
                 ? `${sub.offer.offer_code.startsWith('founder') ? 'Founder' : 'Standard'} · ${priceLabel(sub.offer)} / ${sub.offer.billing_interval === 'year' ? 'Jahr im Voraus' : 'Monat'} zzgl. MwSt. · Version ${sub.offer.version}`
@@ -648,7 +648,7 @@ export function PartnerPlanPanel({
                     style: 'currency',
                     currency: 'EUR',
                   }).format(Number(d.payload.unit_amount) / 100)}{' '}
-                  monatlich, zzgl. MwSt. · Einrichtung{' '}
+                  {d.payload.offer_code === 'founder_annual' ? 'jährlich im Voraus' : 'monatlich'}, zzgl. MwSt. · Einrichtung{' '}
                   {Number(d.payload.setup_amount ?? 0) / 100} EUR · Tarifversion{' '}
                   {String(d.payload.plan_version ?? 'Zusatzmodul')}
                 </p>
