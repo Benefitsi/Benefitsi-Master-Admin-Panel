@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { requirePartnerBaseUrl } from '@/lib/stripe/config';
 import { stripeId, partnerEventCustomer, validatePartnerPrice, validatePartnerPortal, type PartnerContract, type BillingEnvironment, type PreviousBilling } from './partner-billing-contracts';
+import { isFounder, ensureFounderSubscription, founderTrialCancellation, validateFounderSchedule } from './partner-founder';
 import { assertDedicatedCustomer, readPartnerSubscription, type BillingSnapshot } from './partner-billing-provider';
 type Context = {
     trial_quota_window: {
@@ -14,6 +15,7 @@ type Context = {
     environment: BillingEnvironment;
     customer_id: string | null;
     contracts: PartnerContract[];
+    closed_founders?: PartnerContract[];
     subscription: PreviousBilling | null;
     configuration: {
         enabled: boolean;
@@ -50,12 +52,32 @@ async function owner(partner: string, checkout = true) {
     return client;
 }
 type Command = (action: string, data: Record<string, unknown>) => Promise<unknown>;
-type Mutation = { id: string; contract_id: string; subscription_id: string; operation: 'cancel' | 'update' | null; params: Stripe.SubscriptionUpdateParams | null; idempotency_key: string };
+type Mutation = { id: string; contract_id: string; subscription_id: string; operation: 'cancel' | 'update' | 'schedule_trial_cancel' | null; params: Stripe.SubscriptionUpdateParams & { schedule_id?: string; update?: Stripe.SubscriptionScheduleUpdateParams } | null; idempotency_key: string };
 async function executeMutation(c: Context, stripe: Stripe, command: Command, mutation: Mutation) {
     // A prepared order has never been dispatched. Recovery can discard it and read fresh state.
     if (!mutation.operation) { await command('mutation_finish', { id: mutation.id, outcome: 'not_dispatched' }); return; }
     const contract = c.contracts.find(x => x.id === mutation.contract_id && x.subscription_id === mutation.subscription_id);
     if (!contract || !c.customer_id) throw Error('billing_mutation_target_unknown');
+    if (mutation.operation === 'schedule_trial_cancel') {
+        const schedule = validateFounderSchedule(await stripe.subscriptionSchedules.retrieve(mutation.params!.schedule_id!), contract, c.customer_id);
+        const end = Math.floor(Date.parse(contract.cancellation_at!) / 1000);
+        if (schedule.status === 'active' && (schedule.end_behavior !== 'cancel' || schedule.phases[0].end_date !== end)) {
+            const result = await stripe.subscriptionSchedules.update(schedule.id, mutation.params!.update!, { idempotencyKey: mutation.idempotency_key });
+            validateFounderSchedule(result, contract, c.customer_id);
+            if (result.end_behavior !== 'cancel' || result.phases[0]?.end_date !== end || result.phases[0]?.trial_end !== end) throw Error('founder_cancellation_unconfirmed');
+        } else if (!['active', 'canceled', 'completed'].includes(schedule.status) && !(schedule.status === 'released' && Date.now() / 1000 >= end)) throw Error('founder_cancellation_unconfirmed');
+        const subscription = await stripe.subscriptions.retrieve(mutation.subscription_id);
+        if (subscription.id !== mutation.subscription_id || stripeId(subscription.customer) !== c.customer_id || subscription.livemode !== (c.environment === 'live')) throw Error('billing_mutation_target_mismatch');
+        if (Date.now() / 1000 >= end && subscription.status !== 'canceled') {
+            // Timely trial exit persists even if the provider crossed the paid boundary first.
+            // Stop future renewal of this exact known subscription; invoice review is separate.
+            const canceled = await stripe.subscriptions.cancel(subscription.id, { invoice_now: false, prorate: false }, { idempotencyKey: `${mutation.idempotency_key}:late-exit` });
+            if (canceled.id !== mutation.subscription_id || canceled.status !== 'canceled') throw Error('founder_cancellation_unconfirmed');
+        }
+        if (Date.now() / 1000 >= end && (schedule.end_behavior !== 'cancel' || schedule.phases[0].end_date !== end || schedule.status === 'released')) await command('founder_late_exit_review', { contract_id: contract.id });
+        await command('mutation_finish', { id: mutation.id, outcome: 'confirmed' });
+        return;
+    }
     const sub = await stripe.subscriptions.retrieve(mutation.subscription_id);
     if (stripeId(sub.customer) !== c.customer_id || sub.livemode !== (c.environment === 'live')) throw Error('billing_mutation_target_mismatch');
     const params = mutation.params!;
@@ -71,7 +93,7 @@ async function executeMutation(c: Context, stripe: Stripe, command: Command, mut
 async function beginMutation(command: Command, contract: PartnerContract, reason: string) {
     return await command('mutation_begin', { contract_id: contract.id, subscription_id: contract.subscription_id, reason }) as Mutation;
 }
-async function dispatchMutation(c: Context, stripe: Stripe, command: Command, mutation: Mutation, operation: 'cancel' | 'update', params: Record<string, unknown>) {
+async function dispatchMutation(c: Context, stripe: Stripe, command: Command, mutation: Mutation, operation: 'cancel' | 'update' | 'schedule_trial_cancel', params: Record<string, unknown>) {
     // SQL checks the current unexpired fence immediately before authorizing immutable dispatch.
     const saved = await command('mutation_plan', { id: mutation.id, operation, params }) as Mutation;
     await executeMutation(c, stripe, command, saved);
@@ -154,10 +176,12 @@ export async function createPartnerCheckout(partner: string, offer: string, vers
                 throw Error('billing_addon_requires_pro');
         }
         const baseUrl = requirePartnerBaseUrl();
-        const checkout = await stripe.checkout.sessions.create({ mode: 'subscription', customer: c.customer_id,
+        const checkout = await stripe.checkout.sessions.create({ customer: c.customer_id,
+            ...(isFounder(contract) ? { mode: 'setup' as const, currency: 'eur', setup_intent_data: { metadata: { benefitsi_partner_contract: id } } } : { mode: 'subscription' as const,
             line_items: [{ price: contract.offer.stripe_price_id, quantity: 1 }, ...(contract.offer.setup_amount ? [{ price: contract.offer.stripe_setup_price_id!, quantity: 1 }] : [])],
-            client_reference_id: id, metadata: { benefitsi_partner_contract: id }, subscription_data: { metadata: { benefitsi_partner_contract: id }, ...(contract.offer.addon_code && c.trial_quota_window ? { billing_cycle_anchor: Math.floor(Date.parse(c.trial_quota_window.period_end) / 1000), proration_behavior: 'create_prorations' as const } : {}), ...(contract.trial_end ? { trial_end: Math.floor(Date.parse(contract.trial_end) / 1000), trial_settings: { end_behavior: { missing_payment_method: 'cancel' as const } } } : {}) },
-            payment_method_collection: 'always', expires_at: Math.floor(Date.parse(contract.expires_at) / 1000),
+            subscription_data: { metadata: { benefitsi_partner_contract: id }, ...(contract.offer.addon_code && c.trial_quota_window ? { billing_cycle_anchor: Math.floor(Date.parse(c.trial_quota_window.period_end) / 1000), proration_behavior: 'create_prorations' as const } : {}) },
+            payment_method_collection: 'always' as const }),
+            client_reference_id: id, metadata: { benefitsi_partner_contract: id }, expires_at: Math.floor(Date.parse(contract.expires_at) / 1000),
             success_url: `${baseUrl}/partner/billing?partner=${encodeURIComponent(partner)}`, cancel_url: `${baseUrl}/partner/billing?partner=${encodeURIComponent(partner)}`,
         }, { idempotencyKey: `partner-saas-checkout:${id}` });
         if (checkout.livemode !== (c.environment === 'live') || !checkout.url || stripeId(checkout.customer) !== c.customer_id)
@@ -182,6 +206,10 @@ function baseLapsed(base: BillingSnapshot) {
 async function reconcile(c: Context, stripe: Stripe, command: (action: string, data: Record<string, unknown>) => Promise<unknown>, eventId: string) {
     if (!c.customer_id)
         return { pending: true };
+    for (const contract of c.closed_founders || []) {
+        const evidence = await closedFounderObjects(stripe, c.customer_id, contract);
+        if (evidence.objects.length) await command('founder_closed_object_review', { contract_id: contract.id, ...evidence });
+    }
     const commands: {
         action: string;
         data: Record<string, unknown>;
@@ -220,7 +248,13 @@ async function reconcile(c: Context, stripe: Stripe, command: (action: string, d
             if (checkout.status !== 'complete')
                 continue;
         }
+        if (isFounder(contract) && !await ensureFounderSubscription(stripe, contract, c.customer_id, command)) continue;
+        if (isFounder(contract) && contract.cancellation_at) await cancelFounder(c, stripe, command, contract);
         const data = await readPartnerSubscription(stripe, contract, c.customer_id, contract.offer.addon_code ? null : c.subscription);
+        if (!contract.subscription_id) {
+            await command('bind_subscription', { ...data, checkout_id: contract.checkout_id });
+            contract.subscription_id = String(data.subscription_id);
+        }
         snapshots.push({ contract, data });
     }
     const baseEntry = snapshots.find(s => !s.contract.offer.addon_code);
@@ -262,7 +296,7 @@ export async function handlePartnerBillingWebhook(payload: string, signature: st
     }
     if (event.livemode !== (process.env.BENEFITSI_PARTNER_BILLING_ENVIRONMENT === 'live') || event.account)
         throw Error('billing_event_environment_mismatch');
-    if (!['checkout.session.completed', 'checkout.session.expired', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted', 'customer.subscription.paused', 'customer.subscription.resumed', 'customer.subscription.trial_will_end', 'invoice.paid', 'invoice.payment_failed', 'invoice.payment_action_required', 'charge.refunded', 'charge.dispute.created', 'charge.dispute.closed'].includes(event.type))
+    if (!['subscription_schedule.created', 'subscription_schedule.updated', 'subscription_schedule.canceled', 'subscription_schedule.completed', 'subscription_schedule.released', 'checkout.session.completed', 'checkout.session.expired', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted', 'customer.subscription.paused', 'customer.subscription.resumed', 'customer.subscription.trial_will_end', 'invoice.paid', 'invoice.payment_failed', 'invoice.payment_action_required', 'charge.refunded', 'charge.dispute.created', 'charge.dispute.closed'].includes(event.type))
         return { ignored: true };
     let customer = partnerEventCustomer(event);
     if (event.type.startsWith('charge.dispute.')) {
@@ -290,6 +324,18 @@ export async function createPartnerPortal(partner: string) {
         return { url: (await stripe.billingPortal.sessions.create({ customer: c.customer_id, configuration: config.id, return_url: `${requirePartnerBaseUrl()}/partner/billing?partner=${encodeURIComponent(partner)}` })).url };
     });
 }
+async function cancelFounder(c: Context, stripe: Stripe, command: Command, contract: PartnerContract) {
+    const mutation = await beginMutation(command, contract, 'owner_cancel');
+    const snapshot = await readPartnerSubscription(stripe, contract, c.customer_id!, c.subscription);
+    Object.assign(contract, await command('founder_cancel_terms', { contract_id: contract.id, period_end: snapshot.period_end }));
+    if (snapshot.state === 'canceled') { await command('mutation_finish', { id: mutation.id, outcome: 'not_dispatched' }); return; }
+    const end = Math.floor(Date.parse(contract.cancellation_at!) / 1000);
+    if (end <= Math.floor(Date.parse(contract.trial_end!) / 1000)) {
+        const schedule = await stripe.subscriptionSchedules.retrieve(contract.schedule_id!);
+        const update = founderTrialCancellation(schedule, contract, c.customer_id!);
+        await dispatchMutation(c, stripe, command, mutation, 'schedule_trial_cancel', { schedule_id: schedule.id, update });
+    } else await dispatchMutation(c, stripe, command, mutation, 'update', { cancel_at: end, proration_behavior: 'none' });
+}
 export async function cancelPartnerSubscription(partner: string, offerCode: string) {
     await owner(partner, false);
     const eventId = `cancel:${randomUUID()}`;
@@ -299,6 +345,10 @@ export async function cancelPartnerSubscription(partner: string, offerCode: stri
         const contract = latestContracts(c.contracts).find(x => x.offer.offer_code === offerCode);
         if (!contract?.subscription_id)
             throw Error('billing_subscription_missing');
+        if (isFounder(contract)) {
+            await cancelFounder(c, stripe, command, contract);
+            return reconcile(c, stripe, command, eventId);
+        }
         const mutation = await beginMutation(command, contract, 'owner_cancel');
         await readPartnerSubscription(stripe, contract, c.customer_id, c.subscription);
         await dispatchMutation(c, stripe, command, mutation, 'update', { cancel_at_period_end: true, proration_behavior: 'none' });
@@ -322,4 +372,46 @@ export async function reconcileAllPartnerBilling() {
 export async function recoverPartnerBilling(partner: string) {
     await owner(partner, false);
     return reconcilePartnerBilling(partner);
+}
+
+/** Called only by the Admin-guarded review action; no provider mutations. */
+export async function verifyFailedFounderActivation(partner: string) {
+    return locked(partner, `activation-review:${randomUUID()}`, 'activation-review', async (c, stripe, command) => {
+        const contract = latestContracts(c.contracts).find(x => isFounder(x) && x.state === 'pending');
+        if (!contract || contract.schedule_id || contract.subscription_id || contract.activated_at || !contract.trial_start || Date.parse(contract.trial_start) >= Date.now() || !c.customer_id) throw Error('founder_activation_not_unbound');
+        for await (const schedule of stripe.subscriptionSchedules.list({ customer: c.customer_id, limit: 100 }))
+            if (schedule.metadata?.benefitsi_partner_contract === contract.id) throw Error('founder_schedule_found_reconcile_required');
+        for await (const subscription of stripe.subscriptions.list({ customer: c.customer_id, status: 'all', limit: 100 }))
+            if (subscription.metadata?.benefitsi_partner_contract === contract.id) throw Error('founder_subscription_found_reconcile_required');
+        await command('founder_activation_absence', { contract_id: contract.id });
+    });
+}
+
+async function closedFounderObjects(stripe: Stripe, customer: string, contract: PartnerContract) {
+    const objects: string[] = [], subscriptionIds = new Set<string>(); let active = false;
+    for await (const schedule of stripe.subscriptionSchedules.list({ customer, limit: 100 })) {
+        if (schedule.metadata?.benefitsi_partner_contract !== contract.id) continue;
+        if (stripeId(schedule.customer) !== customer || schedule.livemode !== (contract.offer.environment === 'live')) throw Error('founder_closed_object_mismatch');
+        objects.push(schedule.id);active ||= ['not_started','active'].includes(schedule.status);
+        const id = stripeId(schedule.subscription) || stripeId(schedule.released_subscription); if (id) subscriptionIds.add(id);
+    }
+    for await (const subscription of stripe.subscriptions.list({ customer, status: 'all', limit: 100 }))
+        if (subscription.metadata?.benefitsi_partner_contract === contract.id) subscriptionIds.add(subscription.id);
+    for (const id of subscriptionIds) {
+        const subscription = await stripe.subscriptions.retrieve(id);
+        if (stripeId(subscription.customer) !== customer || subscription.livemode !== (contract.offer.environment === 'live')) throw Error('founder_closed_object_mismatch');
+        objects.push(subscription.id);active ||= subscription.status !== 'canceled';
+    }
+    return { objects, active_objects: active };
+}
+/** Admin-reviewed provider cancellation is verified before the audit review can close. */
+export async function verifyClosedFounderReview(partner: string) {
+    return locked(partner, `closed-founder-review:${randomUUID()}`, 'closed-founder-review', async (c, stripe, command) => {
+        if (!c.customer_id || !c.closed_founders?.length) throw Error('closed_founder_contract_required');
+        for (const contract of c.closed_founders) {
+            const evidence = await closedFounderObjects(stripe, c.customer_id, contract);
+            if (evidence.active_objects) throw Error('provider_cancellation_unconfirmed');
+            await command('founder_closed_objects_checked', { contract_id: contract.id });
+        }
+    });
 }

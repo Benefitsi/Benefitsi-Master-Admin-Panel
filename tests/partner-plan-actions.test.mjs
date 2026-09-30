@@ -3,7 +3,7 @@ import test from 'node:test'
 import {loadTypescript} from './helpers/load-typescript.mjs'
 function fixture(allowed=true) {
  const calls=[],client={rpc:async(name,args)=>{calls.push({name,args});return {data:null,error:null}}}
- const code=loadTypescript('app/partner/plan-actions.ts',{'@/lib/admin':{requireAdmin:async()=>{if(!allowed)throw new Error('admin_required');return {supabase:client}}},'next/cache':{revalidatePath:()=>{}}})
+ const code=loadTypescript('app/partner/plan-actions.ts',{'@/lib/admin':{requireAdmin:async()=>{if(!allowed)throw new Error('admin_required');return {supabase:client}}},'@/lib/stripe/partner-billing':{verifyFailedFounderActivation:async(partner)=>calls.push({name:'verify_absence',partner}),verifyClosedFounderReview:async(partner)=>calls.push({name:'verify_closed',partner})},'next/cache':{revalidatePath:()=>{}}})
  const form=new FormData();form.set('partner_id','own');form.set('reason','Reviewed request');form.set('operation','override');form.set('mode','standard');form.set('feature','menu.ai_import')
  return {code,calls,form}
 }
@@ -37,4 +37,14 @@ test('Founder decision uses current admin, verified city and documentary reason'
  const denied=fixture(false);denied.form.set('operation','founder_eligibility')
  assert.equal((await denied.code.updatePartnerPlan({},denied.form)).ok,false)
  assert.equal(denied.calls.length,0)
+})
+
+test('Admin activation recovery requires terminal-failure evidence before scoped provider absence check',async()=>{
+ const f=fixture();f.form.set('operation','failed_founder_activation');f.form.set('request_id','req_proven')
+ assert.equal((await f.code.updatePartnerPlan({},f.form)).ok,false);assert.equal(f.calls.length,0)
+ f.form.set('terminal_failure','confirmed')
+ assert.equal((await f.code.updatePartnerPlan({},f.form)).ok,true)
+ assert.equal(f.calls[0].name,'verify_absence');assert.equal(f.calls[1].name,'admin_close_failed_founder_activation')
+ const denied=fixture(false);denied.form.set('operation','failed_founder_activation');denied.form.set('terminal_failure','confirmed')
+ assert.equal((await denied.code.updatePartnerPlan({},denied.form)).ok,false);assert.equal(denied.calls.length,0)
 })

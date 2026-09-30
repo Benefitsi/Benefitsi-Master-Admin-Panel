@@ -1,4 +1,5 @@
 'use server'
+import { verifyFailedFounderActivation, verifyClosedFounderReview } from '@/lib/stripe/partner-billing'
 import { revalidatePath } from 'next/cache'
 import {
   berlinMidnight,
@@ -42,7 +43,14 @@ export async function updatePartnerPlan(
     else {
       let rpc = '',
         args: Record<string, unknown> = {}
-      if (operation === 'founder_eligibility') {
+      if (operation === 'failed_founder_activation') {
+        if (value('terminal_failure') !== 'confirmed') throw new Error('terminal_failure_required')
+        await verifyFailedFounderActivation(partner)
+        rpc='admin_close_failed_founder_activation'; args={p_partner_id:partner,p_request_id:value('request_id'),p_evidence:reason}
+      } else if (operation === 'billing_review' || operation === 'closed_founder_review') {
+        if (operation === 'closed_founder_review') await verifyClosedFounderReview(partner)
+        rpc='admin_record_partner_billing_review'; args={p_partner_id:partner,p_evidence:reason}
+      } else if (operation === 'founder_eligibility') {
         if(!['true','false'].includes(value('eligible'))) throw new Error('decision_required')
         rpc='admin_set_partner_founder_eligibility'
         args={p_partner_id:partner,p_city_id:value('city_id'),p_evidence:reason,p_eligible:value('eligible')==='true'}
@@ -128,7 +136,7 @@ export async function updatePartnerPlan(
     revalidatePath('/partner', 'layout')
     return {
       ok: true,
-      message: 'Gespeichert. Die wirksamen Rechte wurden aktualisiert.',
+      message: 'Gespeichert. Die aktuellen Tarif- und Abrechnungsdaten wurden neu geladen.',
     }
   } catch {
     return {

@@ -24,6 +24,13 @@ export type PartnerContract = {
     expires_at: string;
     trial_start: string | null;
     trial_end: string | null;
+    schedule_id?: string | null;
+    setup_intent_id?: string | null;
+    payment_method_id?: string | null;
+    activated_at?: string | null;
+    cancellation_at?: string | null;
+    cancellation_requested_at?: string | null;
+    paid_minimum_end?: string | null;
     agreement: Record<string, string>;
 };
 export type PreviousBilling = {

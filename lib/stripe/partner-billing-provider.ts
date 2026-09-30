@@ -1,4 +1,5 @@
 import type Stripe from 'stripe';
+import { isFounder, validateFounderSchedule } from './partner-founder';
 import { billingState, stripeId, validatePartnerPrice, type PartnerContract, type PreviousBilling } from './partner-billing-contracts';
 export type BillingSnapshot = Record<string, unknown> & {
     state: string;
@@ -9,7 +10,7 @@ const iso = (seconds: number) => new Date(seconds * 1000).toISOString();
 /** Full provider reads use the installed dahlia item-period / invoice-parent contract. */
 export async function readPartnerSubscription(stripe: Stripe, contract: PartnerContract, customerId: string, previous: PreviousBilling | null): Promise<BillingSnapshot> {
     const checkout = contract.checkout_id ? await stripe.checkout.sessions.retrieve(contract.checkout_id) : null;
-    if (checkout && (checkout.livemode !== (contract.offer.environment === 'live') || stripeId(checkout.customer) !== customerId || checkout.mode !== 'subscription'))
+    if (checkout && (checkout.livemode !== (contract.offer.environment === 'live') || stripeId(checkout.customer) !== customerId || checkout.mode !== (isFounder(contract) ? 'setup' : 'subscription')))
         throw Error('billing_checkout_mismatch');
     const subscriptionId = contract.subscription_id || stripeId(checkout?.subscription);
     if (!subscriptionId || (contract.state !== 'accepted' && checkout?.status !== 'complete'))
@@ -19,11 +20,13 @@ export async function readPartnerSubscription(stripe: Stripe, contract: PartnerC
         throw Error('billing_subscription_mismatch');
     const item = subscription.items.data[0];
     validatePartnerPrice(item.price, contract.offer, false, false);
-    if (item.quantity !== 1 || subscription.discounts.length || subscription.pause_collection || subscription.schedule)
+    if (item.quantity !== 1 || subscription.discounts.length || subscription.pause_collection || (subscription.schedule && (!isFounder(contract) || stripeId(subscription.schedule) !== contract.schedule_id)))
         throw Error('billing_unapproved_subscription_change');
-    const trialAccepted = contract.offer.offer_code === 'founder' && !!contract.trial_start && !!contract.trial_end && subscription.trial_end === Date.parse(contract.trial_end) / 1000;
+    if (isFounder(contract) && contract.schedule_id) validateFounderSchedule(await stripe.subscriptionSchedules.retrieve(contract.schedule_id), contract, customerId);
+    const expectedTrialEnd = Math.min(Date.parse(contract.trial_end || ''), Date.parse(contract.cancellation_at || contract.trial_end || '')) / 1000;
+    const trialAccepted = isFounder(contract) && !!contract.activated_at && subscription.trial_start === Date.parse(contract.activated_at) / 1000 && !!contract.trial_end && [expectedTrialEnd, Date.parse(contract.trial_end) / 1000].includes(subscription.trial_end || 0);
     const start = subscription.status === 'trialing' && trialAccepted ? Date.parse(contract.trial_start!) / 1000 : item.current_period_start;
-    const end = subscription.status === 'trialing' && trialAccepted ? subscription.trial_end! : Math.min(item.current_period_end, subscription.cancel_at || Infinity);
+    const end = subscription.status === 'trialing' && trialAccepted ? expectedTrialEnd : Math.min(item.current_period_end, subscription.cancel_at || Infinity);
     let paidThrough: string | null = null, risk: string | null = null, failureAt: number | undefined, firstPayment: string | null = null;
     const invoiceId = stripeId(subscription.latest_invoice);
     if (invoiceId) {
@@ -63,7 +66,7 @@ export async function readPartnerSubscription(stripe: Stripe, contract: PartnerC
         if (!risk && invoice.status === 'paid' && invoice.amount_due > 0 && verifiedAmount >= invoice.amount_due && line)
             paidThrough = iso(end);
     }
-    const state = billingState({ status: risk ? 'unpaid' : subscription.status, paidThrough, periodEnd: end * 1000, periodStart: start * 1000, failureAt, trialAccepted }, previous);
+    const state = billingState({ status: contract.cancellation_at && Date.parse(contract.cancellation_at) <= Date.now() ? 'canceled' : risk ? 'unpaid' : subscription.status, paidThrough, periodEnd: end * 1000, periodStart: start * 1000, failureAt, trialAccepted }, previous);
     return { ...state, first_payment_at: firstPayment, contract_id: contract.id, subscription_id: subscription.id, customer_id: customerId, environment: contract.offer.environment, price_id: item.price.id, item_id: item.id, period_start: iso(start), period_end: iso(end), checkout_complete: checkout?.status === 'complete', cancel_at_period_end: subscription.cancel_at_period_end || !!subscription.cancel_at, risk };
 }
 export async function assertDedicatedCustomer(stripe: Stripe, customerId: string, contracts: PartnerContract[]) {

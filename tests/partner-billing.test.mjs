@@ -67,9 +67,11 @@ test('customer portal isolation checks every subscription and every invoice',asy
  await assert.rejects(()=>assertDedicatedCustomer(invoices,'cus_partner',[contract]),/not_dedicated/)
 })
 test('trial grant requires exact accepted dates and expires without a paid agreement',async()=>{
- const accepted={...contract,trial_start:new Date(start*1000).toISOString(),trial_end:new Date(end*1000).toISOString(),offer:{...contract.offer,offer_code:'founder'}}
- assert.equal((await readPartnerSubscription(provider({status:'trialing',trial_end:end}),accepted,'cus_partner',null)).state,'trialing')
- assert.equal((await readPartnerSubscription(provider({status:'trialing',trial_end:end+1}),accepted,'cus_partner',null)).state,'incomplete')
+ const accepted={...contract,activated_at:new Date(start*1000).toISOString(),trial_start:new Date(start*1000).toISOString(),trial_end:new Date(end*1000).toISOString(),offer:{...contract.offer,offer_code:'founder'}}
+ const valid=provider({status:'trialing',trial_start:start,trial_end:end});valid.checkout.sessions.retrieve=async()=>({mode:'setup',customer:'cus_partner',livemode:false,status:'complete'});
+ assert.equal((await readPartnerSubscription(valid,accepted,'cus_partner',null)).state,'trialing')
+ const invalid=provider({status:'trialing',trial_start:start,trial_end:end+1});invalid.checkout.sessions=valid.checkout.sessions;
+ assert.equal((await readPartnerSubscription(invalid,accepted,'cus_partner',null)).state,'incomplete')
 })
 test('signature verification rejects invalid and live payloads at a test contract boundary',async()=>{
  const Stripe=(await import('stripe')).default
@@ -83,6 +85,7 @@ test('signature verification rejects invalid and live payloads at a test contrac
 import {loadTypescript} from './helpers/load-typescript.mjs'
 import * as contractsModule from '../lib/stripe/partner-billing-contracts.ts'
 import * as providerModule from '../lib/stripe/partner-billing-provider.ts'
+import * as founderModule from '../lib/stripe/partner-founder.ts'
 async function engine(run,{status='active',addon=false}={}) {
  const saved={...process.env},commands=[],mutations=[]
  Object.assign(process.env,{BENEFITSI_PARTNER_BILLING_ENABLED:'true',BENEFITSI_PARTNER_BILLING_ENVIRONMENT:'test',BENEFITSI_PARTNER_STRIPE_SECRET_KEY:'sk_test_local_fixture',BENEFITSI_PARTNER_BILLING_WEBHOOK_SECRET:'whsec_local_fixture'})
@@ -108,7 +111,7 @@ async function engine(run,{status='active',addon=false}={}) {
    if(name==='partner_billing_command'){
     if(args.p_fence!==store.fence||!store.held)return {error:{message:'stale_billing_fence'}}
     commands.push(args);const a=args.p_action,d=args.p_data
-    if(a==='mutation_begin'){store.mutation={...d,id:'mutation-'+commands.length,params:null,operation:null};return {data:store.mutation}}
+    if(a==='mutation_begin'){if(!ctx.contracts.some(c=>c.id===d.contract_id&&c.subscription_id===d.subscription_id&&d.subscription_id))return {error:{message:'billing_mutation_contract_required'}};store.mutation={...d,id:'mutation-'+commands.length,params:null,operation:null};return {data:store.mutation}}
     if(a==='mutation_plan'){store.mutation={...store.mutation,...d,idempotency_key:'key-'+d.id};return {data:store.mutation}}
     if(a==='mutation_finish')store.mutation=null
     if(a==='batch')applied.add(d.event_id)
@@ -119,7 +122,7 @@ async function engine(run,{status='active',addon=false}={}) {
   }})},
   '@/lib/supabase/server':{createClient:async()=>({rpc:async(name)=>({data:name==='prepare_partner_billing_checkout'?'contract':{enabled:true}})})},
   '@/lib/stripe/config':{requirePartnerBaseUrl:()=> 'https://partner.example.invalid'},
-  './partner-billing-contracts':contractsModule,'./partner-billing-provider':providerModule,
+  './partner-billing-contracts':contractsModule,'./partner-billing-provider':providerModule,'./partner-founder':founderModule,
  })
  try {await run({api,commands,mutations,mock,store,secret:'whsec_local_fixture',ctx})} finally {for(const key of Object.keys(process.env))if(!(key in saved))delete process.env[key];Object.assign(process.env,saved)}
 }
@@ -256,4 +259,76 @@ test('unknown persisted provider target keeps recovery blocked and visible to la
  const saved=structuredClone(store.mutation)
  await assert.rejects(()=>api.recoverPartnerBilling('partner'),/unknown target/)
  assert.deepEqual(structuredClone(store.mutation),saved)
+}))
+
+test('completed pending addon binds verified subscription before coordinated cancellation and retries',async()=>{
+ for(const lapsed of [false,true])await engine(async({api,mock,ctx,mutations})=>{
+  ctx.contracts[1]={...ctx.contracts[1],state:'pending',subscription_id:null}
+  const retrieve=mock.subscriptions.retrieve;let ended=false
+  mock.subscriptions.retrieve=async id=>({...await retrieve(id),...(id==='sub_partner'? lapsed?{status:'unpaid'}:{cancel_at_period_end:true}:ended?{status:'canceled'}:{})})
+  mock.subscriptions.cancel=async(id,params)=>{mutations.push({id,params});ended=true;return {...await retrieve(id),id,status:'canceled'}}
+  await api.reconcilePartnerBilling('partner','completed-addon')
+  assert.equal(ctx.contracts[1].subscription_id,'sub_addon')
+  assert.equal(mutations[0].id,'sub_addon')
+  await api.reconcilePartnerBilling('partner','addon-retry')
+ },{addon:true})
+})
+test('Founder Checkout collects a payment method without starting a subscription or trial',()=>engine(async({api,mock,ctx})=>{
+ ctx.contracts=[{...contract,offer:{...contract.offer,offer_code:'founder'},state:'pending',subscription_id:null,checkout_id:null,expires_at:new Date(Date.now()+3600000).toISOString()}]
+ ctx.configuration.portal_configuration_id='bpc_safe';mock.subscriptions.list=()=>iterable([])
+ mock.prices={retrieve:async()=>price}
+ mock.billingPortal={configurations:{retrieve:async()=>({id:'bpc_safe',active:true,livemode:false,features:{subscription_update:{enabled:false},subscription_cancel:{enabled:false},invoice_history:{enabled:true},payment_method_update:{enabled:true}}})}}
+ mock.checkout.sessions.create=async params=>{assert.equal(params.mode,'setup');assert.equal(params.subscription_data,undefined);assert.equal(params.line_items,undefined);return {id:'cs_setup',livemode:false,customer:'cus_partner',url:'https://checkout.stripe.com/fixture'}}
+ await api.createPartnerCheckout('partner','founder',1,'terms')
+}))
+function founderEngine(f,annual=false) {
+ const trialStart=Math.floor(Date.now()/1000)-150*86400,trialEnd=Math.floor(Date.now()/1000)+60
+ const c={...contract,offer:{...contract.offer,offer_code:annual?'founder_annual':'founder',billing_interval:annual?'year':'month',unit_amount:annual?19900:1990},schedule_id:'sub_sched_founder',setup_intent_id:'seti_founder',payment_method_id:'pm_founder',activated_at:new Date(trialStart*1000).toISOString(),trial_start:new Date(trialStart*1000).toISOString(),trial_end:new Date(trialEnd*1000).toISOString(),cancellation_at:new Date(trialEnd*1000).toISOString(),paid_minimum_end:new Date((trialEnd+365*86400)*1000).toISOString()}
+ f.ctx.contracts=[c]
+ const schedule={id:c.schedule_id,customer:'cus_partner',livemode:false,metadata:{benefitsi_partner_contract:c.id},status:'active',subscription:'sub_partner',end_behavior:'release',default_settings:{default_payment_method:'pm_founder',collection_method:'charge_automatically'},phases:[{start_date:trialStart,end_date:trialEnd,trial_end:trialEnd,items:[{price:'price_pro',quantity:1,metadata:{}}],metadata:{benefitsi_partner_contract:c.id},proration_behavior:'none'}]}
+ let canceled=false,paid=false
+ const read=f.mock.subscriptions.retrieve
+ f.mock.subscriptions.retrieve=async id=>({...await read(id),status:canceled?'canceled':paid?'active':'trialing',schedule:paid?null:schedule.id,trial_start:trialStart,trial_end:schedule.phases[0].trial_end,cancel_at:schedule.end_behavior==='cancel'?schedule.phases[0].end_date:null,items:{has_more:false,data:[{...subscription.items.data[0],price:{...price,unit_amount:c.offer.unit_amount,recurring:{...price.recurring,interval:c.offer.billing_interval}}}]}})
+ f.mock.checkout.sessions.retrieve=async()=>({id:'cs_partner',mode:'setup',status:'complete',livemode:false,customer:'cus_partner',setup_intent:'seti_founder'})
+ f.mock.subscriptionSchedules={retrieve:async()=>schedule,update:async(id,params)=>{assert.equal(id,schedule.id);assert.equal(params.proration_behavior,'none');assert.equal(params.phases[0].trial_end,params.phases[0].end_date);Object.assign(schedule,params);return schedule}}
+ f.mock.subscriptions.cancel=async(id,params)=>{assert.equal(id,c.subscription_id);assert.deepEqual(structuredClone(params),{invoice_now:false,prorate:false});canceled=true;return f.mock.subscriptions.retrieve(id)}
+ return {c,schedule,setPaid:()=>{paid=true;schedule.status='completed';schedule.subscription=null;schedule.released_subscription='sub_partner'}}
+}
+test('Founder month and year exit in sixth free month preserves trial-only phase and saved end on retry',async()=>{
+ for(const annual of [false,true])await engine(async f=>{
+  const {c,schedule}=founderEngine(f,annual)
+  await f.api.cancelPartnerSubscription('partner',c.offer.offer_code)
+  assert.equal(schedule.end_behavior,'cancel');assert.equal(schedule.phases[0].end_date,Date.parse(c.trial_end)/1000)
+  assert.equal(schedule.phases[0].trial_end,schedule.phases[0].end_date)
+  await f.api.reconcilePartnerBilling('partner','founder-retry')
+  assert.equal(schedule.phases[0].end_date,Date.parse(c.cancellation_at)/1000)
+  assert.equal(f.commands.find(x=>x.p_action==='batch').p_data.commands[0].data.state,'trialing')
+ })
+})
+test('timely Founder cancellation rejected after transition survives recovery and cannot grant paid term',()=>engine(async f=>{
+ const {c,schedule,setPaid}=founderEngine(f,true)
+ const deadline=Math.floor(Date.now()/1000)+1
+ c.trial_end=c.cancellation_at=new Date(deadline*1000).toISOString();schedule.phases[0].end_date=schedule.phases[0].trial_end=deadline
+ f.mock.subscriptionSchedules.update=async()=>{setPaid();await new Promise(r=>setTimeout(r,Math.max(0,deadline*1000-Date.now()+10)));throw Error('provider phase already completed')}
+ await assert.rejects(()=>f.api.cancelPartnerSubscription('partner','founder_annual'),/phase already completed/)
+ assert.equal(f.store.mutation.operation,'schedule_trial_cancel')
+ await f.api.recoverPartnerBilling('partner')
+ assert.ok(f.commands.some(x=>x.p_action==='founder_late_exit_review'))
+ assert.equal(f.commands.find(x=>x.p_action==='batch').p_data.commands[0].data.state,'canceled')
+ await f.api.recoverPartnerBilling('partner')
+ assert.equal(f.store.mutation,null)
+}))
+test('late provider objects for a closed Founder intent enter review without admitting or granting it',()=>engine(async f=>{
+ const closed={...contract,id:'closed-founder',state:'expired',offer:{...contract.offer,offer_code:'founder'},trial_start:new Date(Date.now()-3600000).toISOString(),setup_intent_id:'seti_closed',subscription_id:null,schedule_id:null}
+ f.ctx.contracts=[];f.ctx.closed_founders=[closed]
+ const schedule={id:'sub_sched_late',metadata:{benefitsi_partner_contract:closed.id},customer:'cus_partner',livemode:false,status:'active',subscription:'sub_late'}
+ f.mock.subscriptionSchedules={list:()=>iterable([schedule])}
+ f.mock.subscriptions.list=()=>iterable([])
+ await f.api.reconcilePartnerBilling('partner','late-closed-object')
+ assert.ok(f.commands.some(x=>x.p_action==='founder_closed_object_review'&&x.p_data.active_objects))
+ assert.equal(f.commands.find(x=>x.p_action==='batch').p_data.commands.length,0)
+ await assert.rejects(()=>f.api.verifyClosedFounderReview('partner'),/cancellation_unconfirmed/)
+ schedule.status='canceled';const retrieve=f.mock.subscriptions.retrieve;f.mock.subscriptions.retrieve=async id=>({...await retrieve(id),status:'canceled'})
+ await f.api.verifyClosedFounderReview('partner')
+ assert.ok(f.commands.some(x=>x.p_action==='founder_closed_objects_checked'))
 }))

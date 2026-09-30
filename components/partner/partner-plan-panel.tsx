@@ -53,6 +53,7 @@ const reasons: Record<string, string> = {
 export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
   const rights = data.entitlements,
     sub = data.subscription
+  const freeExit = !!sub?.trial_end && !!data.founder_cancellation && Date.parse(data.founder_cancellation.requested_at) < Date.parse(sub.trial_end) && Date.parse(data.founder_cancellation.effective_at) <= Date.parse(sub.trial_end)
   return (
     <div className="space-y-5">
       <section className={box}>
@@ -73,6 +74,11 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
             : 'Eigene Microsite und erweiterte Auswertungen. Layout und Veröffentlichung betreut das Benefitsi-Team.'}
         </p>
         {data.billing_readiness && !data.billing_readiness.enabled && <p className="mt-3 text-sm text-amber-800">Abrechnung ist noch gesperrt. {data.billing_readiness.reason === 'billing_portal_required' ? 'Die Konfiguration des Rechnungsportals fehlt.' : 'Verbindliche Vertragsbedingungen und die Abrechnungsfreigabe müssen vor einem Checkout vorliegen.'}</p>}
+        {data.founder_readiness === false && <p className="mt-3 text-sm text-amber-800">Founder-Abschlüsse sind bis zur geprüften Konfiguration der Aktivierung, Gratis-Kündigung und bezahlten Mindestlaufzeit gesperrt.</p>}
+        {data.founder_activation_review?.required && <p role="alert" className="mt-3 text-sm text-amber-800">Unerwartetes Provider-Abo nach geschlossenem Founder-Abschluss. Benefitsi prüft Kündigung und mögliche Rechnung; daraus entstehen keine Pro-Rechte oder ein neuer Founder-Zeitraum.</p>}
+        {data.pending_founder && <p className="mt-3 text-sm">Founder-Abschluss ausstehend. {data.pending_founder.planned_activation ? `Geplante Aktivierung: ${formatBerlin(data.pending_founder.planned_activation)}. Pro beginnt erst mit bestätigter Abo-Aktivierung. Der Abrechnungsabgleich prüft dies erneut.` : 'Zahlungsmethode und Vereinbarung müssen noch bestätigt werden; die Gratisphase hat nicht begonnen.'}</p>}
+        {data.founder_cancellation && <p role="status" className="mt-3 text-sm text-amber-800">Kündigung eingegangen am {formatBerlin(data.founder_cancellation.requested_at)} zum {formatBerlin(data.founder_cancellation.effective_at)}. {data.billing_recovery?.pending ? 'Abwicklung / Bestätigung ausstehend.' : 'Aktuellen Vertragsstatus unten beachten.'} {data.founder_cancellation.billing_review_required && 'Benefitsi muss die Rechnung oder Zahlung nach dem rechtzeitigen Ausstieg prüfen und korrigieren; eine Erstattung ist noch nicht bestätigt.'}</p>}
+        {sub?.activated_at && sub.trial_end && sub.paid_minimum_end && <p className="mt-3 text-sm">Founder aktiviert: {formatBerlin(sub.activated_at)}. Gratisphase bis {formatBerlin(sub.trial_end)}. {freeExit ? 'Rechtzeitiger Ausstieg aus der Gratisphase: Keine Verpflichtung zur bezahlten Zwölfmonatslaufzeit. Erste Zahlung entfällt; eine dennoch entstandene Provider-Abrechnung wird gesondert geprüft.' : `Nur bei Fortsetzung: erste Zahlung ${formatBerlin(sub.trial_end)} und zwölf Monate bezahlte Mindestlaufzeit bis ${formatBerlin(sub.paid_minimum_end)}.`} {sub.cancellation_at && `Vereinbarte Kündigung: ${formatBerlin(sub.cancellation_at)}.`}</p>}
         {data.billing_recovery?.pending && <p role="alert" className="mt-3 text-sm text-amber-800">Eine Kündigungsbestätigung ist noch offen. Weitere Abrechnungsänderungen warten auf den Ergebnisabgleich. Der Owner kann den gespeicherten Auftrag unter „Abrechnung verwalten“ fortsetzen; der automatische Abgleich versucht dies ebenfalls. Bei anhaltendem Fehler prüft Benefitsi das protokollierte Provider-Ergebnis.</p>}
         {sub?.grace_until && <p className="mt-3 text-sm text-amber-800">Übergangsfrist bei ausstehender Zahlung: bis {formatBerlin(sub.grace_until)}.</p>}
         <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
@@ -80,7 +86,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
             <dt className="text-slate-500">Aktuelles Preisangebot</dt>
             <dd className="font-semibold">
               {sub?.offer
-                ? `${sub.offer.offer_code === 'founder' ? 'Founder' : 'Standard'} · ${priceLabel(sub.offer)} / Monat zzgl. MwSt. · Version ${sub.offer.version}`
+                ? `${sub.offer.offer_code.startsWith('founder') ? 'Founder' : 'Standard'} · ${priceLabel(sub.offer)} / ${sub.offer.billing_interval === 'year' ? 'Jahr im Voraus' : 'Monat'} zzgl. MwSt. · Version ${sub.offer.version}`
                 : sub?.source === 'admin_freegrant'
                   ? 'Kostenlos · keine Rechnung'
                   : 'Free · kostenlos'}
@@ -130,8 +136,8 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                     {sub.trial_end
                       ? `Testphase bis ${formatBerlin(sub.trial_end)}. `
                       : ''}
-                    {sub.first_payment_at
-                      ? formatBerlin(sub.first_payment_at)
+                    {freeExit ? 'Erste Zahlung entfällt wegen rechtzeitigem Gratis-Exit.' : sub.first_payment_at
+                      ? `${sub.activated_at ? 'Bei Fortsetzung: ' : ''}${formatBerlin(sub.first_payment_at)}`
                       : 'Erster Zahlungstermin noch nicht bestätigt'}
                   </dd>
                 </div>
@@ -139,7 +145,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
               <div>
                 <dt className="text-slate-500">Kündigung</dt>
                 <dd>
-                  {sub.cancel_at_period_end
+                  {sub.cancellation_at ? `Vereinbart zum ${formatBerlin(sub.cancellation_at)}${data.billing_recovery?.pending ? ' · Provider-Bestätigung ausstehend' : ''}` : sub.cancel_at_period_end
                     ? `Zum ${formatBerlin(sub.period_end)}`
                     : 'Keine Kündigung zum Periodenende'}
                 </dd>
@@ -230,6 +236,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                     {
                       standard: 'Pro Standard',
                       founder: 'Pro Founder',
+                      founder_annual: 'Pro Founder (Jahreszahlung)',
                       commerce: 'Bestellungen & Termine',
                       seo: 'SEO-Monitoring',
                     } as Record<string, string>
@@ -238,7 +245,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                 · v{o.version}
               </span>
               <strong>
-                {priceLabel(o)} / Monat zzgl. MwSt.
+                {priceLabel(o)} / {o.billing_interval === 'year' ? 'Jahr im Voraus' : 'Monat'} zzgl. MwSt.
                 {o.setup_amount > 0
                   ? ` + ${new Intl.NumberFormat('de-DE', { style: 'currency', currency: o.currency }).format(o.setup_amount / 100)} Einrichtung`
                   : ''}
@@ -375,6 +382,10 @@ export function PartnerPlanPanel({
         Sichere Admin-Vorschau der wirksamen Partnerrechte. Du bleibst im
         Admin-Bereich; Partner-Sitzungen werden nicht übernommen.
       </div>
+      {!!data.billing_cases?.length && <details className={box}><summary>Referenzen für die Admin-Abrechnungsprüfung</summary><pre className="mt-3 overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(data.billing_cases,null,2)}</pre></details>}
+      {data.founder_activation_review?.required && <section className={box}><h3 className="font-bold">Verspätetes Founder-Providerobjekt</h3><p>Im Stripe-Dashboard den zum geschlossenen Vertrag gehörenden Schedule und dessen Subscription anhand des Audit-Eintrags prüfen und ohne weitere Abrechnung beenden. Entstandene Rechnungen / Zahlungen gesondert prüfen und gemäß Vereinbarung korrigieren; keine automatische Erstattung. Erst dann den belegten Abschluss protokollieren. Der Server prüft, dass kein zugehöriger Schedule oder Subscription weiterläuft.</p><ChangeForm operation="closed_founder_review" partnerId={partnerId} onSaved={reload} reasonLabel="Providerobjekte, Kündigungsnachweis und Rechnungs-/Korrekturergebnis" label="Geprüften Provider-Abschluss protokollieren">{null}</ChangeForm></section>}
+      {data.pending_founder?.recovery_required && <section className={box}><h3 className="font-bold">Unbestätigte Founder-Aktivierung prüfen</h3><p>Den ursprünglichen Schedule-Erstellungsrequest im Stripe-Dashboard prüfen. Nur bei nachgewiesenem endgültigem Fehlschlag ohne erstelltes Abo darf dieser Intent geschlossen werden. Ein Timeout oder abgelaufener Termin allein reicht nicht. Der Server prüft Schedule und Subscription erneut; vorhandene Objekte müssen abgeglichen werden.</p><ChangeForm operation="failed_founder_activation" partnerId={partnerId} onSaved={reload} reasonLabel="Endgültiges Provider-Ergebnis und Prüfbeleg (mindestens 30 Zeichen)" label="Nie aktivierten Intent nach Prüfung schließen"><label>Stripe-Request-Referenz<input className={input} name="request_id" required pattern="req_[A-Za-z0-9]+"/></label><label><input type="checkbox" name="terminal_failure" value="confirmed" required/> Endgültiger Provider-Fehlschlag belegt, kein noch laufender Request.</label></ChangeForm></section>}
+      {data.founder_cancellation?.billing_review_required && <section className={box}><h3 className="font-bold">Founder-Abrechnungsprüfung</h3><p>Rechtzeitig eingegangene Kündigung mit verspäteter Provider-Abwicklung. Im Stripe-Dashboard die zum Vertrag gehörende Subscription und erste Rechnung / Zahlung prüfen. Offene unberechtigte Rechnung nach Prüfung stornieren; bereits bezahlte Beträge gemäß geprüfter Kundenvereinbarung korrigieren. Hier erst nach belegter Korrektur oder bestätigtem fehlendem Zahlungsbedarf abschließen. Keine automatische Erstattung.</p><ChangeForm operation="billing_review" partnerId={partnerId} onSaved={reload} reasonLabel="Rechnungs-/Zahlungsreferenz, geprüftes Ergebnis und Korrekturbeleg" label="Abrechnungsprüfung protokollieren">{null}</ChangeForm></section>}
       <PartnerPlanSummary data={data} />
       <section className={box}>
         <h3 className="mb-3 text-lg font-bold">Founder-Zulassung · Annweiler</h3>
@@ -522,7 +533,7 @@ export function PartnerPlanPanel({
             Angebot
             <select name="offer_code" className={input}>
               <option value="standard">Pro Standard</option>
-              <option value="founder">Pro Founder</option>
+              <option value="founder">Pro Founder (monatlich)</option><option value="founder_annual">Pro Founder (jährlich im Voraus)</option>
               <option value="commerce">Bestellungen & Termine</option>
               <option value="seo">SEO-Monitoring</option>
             </select>
@@ -542,7 +553,7 @@ export function PartnerPlanPanel({
               value={1}
             />
             <Field
-              label="Monatspreis in EUR, zzgl. MwSt."
+              label="Preis in EUR je gewähltem Intervall, zzgl. MwSt."
               name="amount"
               type="number"
               min={0}
@@ -685,7 +696,7 @@ export function PartnerPlanPanel({
           <label className="text-sm">
             Code
             <select name="code" className={input}>
-              {['standard', 'founder', 'commerce', 'seo', 'pro'].map((c) => (
+              {['standard', 'founder', 'founder_annual', 'commerce', 'seo', 'pro'].map((c) => (
                 <option key={c}>{c}</option>
               ))}
             </select>
