@@ -332,3 +332,75 @@ test('late provider objects for a closed Founder intent enter review without adm
  await f.api.verifyClosedFounderReview('partner')
  assert.ok(f.commands.some(x=>x.p_action==='founder_closed_objects_checked'))
 }))
+
+for (const boundary of ['monthly','final']) for (const paid of [false,true]) {
+ test(`pre-dispatch Founder read failure recovers after ${boundary} end with ${paid?'paid':'trialing'} provider`,()=>engine(async f=>{
+  const {c,schedule,setPaid}=founderEngine(f,true)
+  const initialNow=Date.now(),effective=Math.floor(initialNow/1000)+1
+  c.cancellation_requested_at=new Date(initialNow).toISOString()
+  c.cancellation_at=new Date(effective*1000).toISOString()
+  if(boundary==='final')c.trial_end=new Date(effective*1000).toISOString()
+  schedule.phases[0].end_date=schedule.phases[0].trial_end=Date.parse(c.trial_end)/1000
+  const originalEnd=c.cancellation_at,receipt=c.cancellation_requested_at
+  const read=f.mock.subscriptions.retrieve
+  f.mock.subscriptions.retrieve=async()=>{throw Error('first provider read unavailable')}
+  await assert.rejects(()=>f.api.cancelPartnerSubscription('partner','founder_annual'),/first provider read unavailable/)
+  assert.equal(f.store.mutation.operation,null)
+  const preparedId=f.store.mutation.id
+  let cancelAttempts=0,confirmed=false
+  f.mock.subscriptions.retrieve=async id=>({...await read(id),...(confirmed?{status:'canceled'}:{})})
+  f.mock.subscriptionSchedules.update=async()=>{throw Error('must not backdate completed cancellation phase')}
+  f.mock.subscriptionSchedules.cancel=async(id,params)=>{
+   assert.equal(id,schedule.id);assert.deepEqual(structuredClone(params),{invoice_now:false,prorate:false})
+   cancelAttempts++;if(cancelAttempts===1)throw Error('cancellation transport unknown')
+   confirmed=true;schedule.status='canceled';return schedule
+  }
+  const cancel=f.mock.subscriptions.cancel
+  f.mock.subscriptions.cancel=async(id,params)=>{cancelAttempts++;if(cancelAttempts===1)throw Error('cancellation transport unknown');confirmed=true;return cancel(id,params)}
+  await new Promise(resolve=>setTimeout(resolve,Math.max(0,effective*1000-Date.now()+20)))
+  if(paid){
+   setPaid();schedule.status='released'
+   f.mock.invoices.retrieve=async id=>({id,customer:'cus_partner',livemode:false,parent:{subscription_details:{subscription:c.subscription_id}},status:'paid',amount_due:c.offer.unit_amount,status_transitions:{paid_at:effective}})
+   f.mock.invoicePayments.list=({invoice})=>iterable([{invoice,livemode:false,amount_paid:c.offer.unit_amount,payment:{charge:'ch_paid'}}])
+  }
+  // Contractual expiry must never masquerade as actual provider termination.
+  const observed=await readPartnerSubscription(f.mock,c,'cus_partner',null)
+  assert.equal(observed.state,'canceled')
+  await assert.rejects(()=>f.api.recoverPartnerBilling('partner'),/cancellation transport unknown/)
+  assert.equal(observed.provider_status,paid?'active':'trialing')
+  if(paid)assert.equal(observed.first_payment_at,new Date(effective*1000).toISOString())
+  assert.equal(f.store.mutation.id,preparedId,'prepared order remains actionable across takeover')
+  assert.equal(f.store.mutation.operation,'schedule_trial_cancel')
+  assert.ok(f.commands.some(x=>x.p_action==='founder_late_exit_review'),'uncertainty is visible before dispatch')
+  const saved=structuredClone(f.store.mutation)
+  await f.api.recoverPartnerBilling('partner')
+  assert.equal(f.store.mutation,null)
+  assert.equal((await f.mock.subscriptions.retrieve(c.subscription_id)).status,'canceled')
+  assert.equal(c.cancellation_at,originalEnd);assert.equal(c.cancellation_requested_at,receipt)
+  assert.equal(f.commands.filter(x=>x.p_action==='mutation_plan').length,1,'recovery retains exact planned operation')
+  assert.equal(saved.params.schedule_id,c.schedule_id)
+  const snapshot=f.commands.find(x=>x.p_action==='batch').p_data.commands[0].data
+  assert.equal(snapshot.state,'canceled');assert.equal(snapshot.provider_status,'canceled')
+  await f.api.recoverPartnerBilling('partner')
+  assert.equal(cancelAttempts,2,'confirmed termination is not dispatched again')
+ }))
+}
+
+test('lost overdue schedule cancellation response recovers actual termination without repeating dispatch',()=>engine(async f=>{
+ const {c,schedule}=founderEngine(f)
+ c.cancellation_at=new Date(Date.now()-1000).toISOString()
+ let dispatches=0,canceled=false
+ const read=f.mock.subscriptions.retrieve
+ f.mock.subscriptions.retrieve=async id=>({...await read(id),...(canceled?{status:'canceled'}:{})})
+ f.mock.subscriptionSchedules.update=async()=>{throw Error('cannot backdate a phase')}
+ f.mock.subscriptionSchedules.cancel=async()=>{
+  dispatches++;schedule.status='canceled';canceled=true
+  throw Error('response lost after provider cancellation')
+ }
+ await assert.rejects(()=>f.api.cancelPartnerSubscription('partner','founder'),/response lost/)
+ assert.equal(f.store.mutation.operation,'schedule_trial_cancel')
+ assert.ok(f.commands.some(x=>x.p_action==='founder_late_exit_review'))
+ await f.api.recoverPartnerBilling('partner')
+ assert.equal(dispatches,1);assert.equal(f.store.mutation,null)
+ assert.equal(f.commands.find(x=>x.p_action==='batch').p_data.commands[0].data.provider_status,'canceled')
+}))

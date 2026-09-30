@@ -3,6 +3,7 @@ import { isFounder, validateFounderSchedule } from './partner-founder';
 import { billingState, stripeId, validatePartnerPrice, type PartnerContract, type PreviousBilling } from './partner-billing-contracts';
 export type BillingSnapshot = Record<string, unknown> & {
     state: string;
+    provider_status: Stripe.Subscription.Status;
     period_end: string;
     cancel_at_period_end: boolean;
 };
@@ -67,7 +68,7 @@ export async function readPartnerSubscription(stripe: Stripe, contract: PartnerC
             paidThrough = iso(end);
     }
     const state = billingState({ status: contract.cancellation_at && Date.parse(contract.cancellation_at) <= Date.now() ? 'canceled' : risk ? 'unpaid' : subscription.status, paidThrough, periodEnd: end * 1000, periodStart: start * 1000, failureAt, trialAccepted }, previous);
-    return { ...state, first_payment_at: firstPayment, contract_id: contract.id, subscription_id: subscription.id, customer_id: customerId, environment: contract.offer.environment, price_id: item.price.id, item_id: item.id, period_start: iso(start), period_end: iso(end), checkout_complete: checkout?.status === 'complete', cancel_at_period_end: subscription.cancel_at_period_end || !!subscription.cancel_at, risk };
+    return { ...state, provider_status: subscription.status, first_payment_at: firstPayment, contract_id: contract.id, subscription_id: subscription.id, customer_id: customerId, environment: contract.offer.environment, price_id: item.price.id, item_id: item.id, period_start: iso(start), period_end: iso(end), checkout_complete: checkout?.status === 'complete', cancel_at_period_end: subscription.cancel_at_period_end || !!subscription.cancel_at, risk };
 }
 export async function assertDedicatedCustomer(stripe: Stripe, customerId: string, contracts: PartnerContract[]) {
     const customer = await stripe.customers.retrieve(customerId);

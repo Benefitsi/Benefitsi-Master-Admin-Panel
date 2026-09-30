@@ -54,14 +54,26 @@ async function owner(partner: string, checkout = true) {
 type Command = (action: string, data: Record<string, unknown>) => Promise<unknown>;
 type Mutation = { id: string; contract_id: string; subscription_id: string; operation: 'cancel' | 'update' | 'schedule_trial_cancel' | null; params: Stripe.SubscriptionUpdateParams & { schedule_id?: string; update?: Stripe.SubscriptionScheduleUpdateParams } | null; idempotency_key: string };
 async function executeMutation(c: Context, stripe: Stripe, command: Command, mutation: Mutation) {
-    // A prepared order has never been dispatched. Recovery can discard it and read fresh state.
-    if (!mutation.operation) { await command('mutation_finish', { id: mutation.id, outcome: 'not_dispatched' }); return; }
     const contract = c.contracts.find(x => x.id === mutation.contract_id && x.subscription_id === mutation.subscription_id);
     if (!contract || !c.customer_id) throw Error('billing_mutation_target_unknown');
+    if (!mutation.operation) {
+        // A timely Founder receipt remains actionable even before the first provider read.
+        if (isFounder(contract) && contract.cancellation_at) return cancelFounder(c, stripe, command, contract, mutation);
+        await command('mutation_finish', { id: mutation.id, outcome: 'not_dispatched' });
+        return;
+    }
     if (mutation.operation === 'schedule_trial_cancel') {
         const schedule = validateFounderSchedule(await stripe.subscriptionSchedules.retrieve(mutation.params!.schedule_id!), contract, c.customer_id);
         const end = Math.floor(Date.parse(contract.cancellation_at!) / 1000);
-        if (schedule.status === 'active' && (schedule.end_behavior !== 'cancel' || schedule.phases[0].end_date !== end)) {
+        if (Date.now() / 1000 >= end) {
+            // Never rewrite a phase into the past. Preserve the exact saved order and
+            // record uncertainty before dispatch so a lost response keeps Admin review.
+            await command('founder_late_exit_review', { contract_id: contract.id });
+            if (['active', 'not_started'].includes(schedule.status)) {
+                const result = validateFounderSchedule(await stripe.subscriptionSchedules.cancel(schedule.id, { invoice_now: false, prorate: false }, { idempotencyKey: `${mutation.idempotency_key}:overdue-schedule` }), contract, c.customer_id);
+                if (result.status !== 'canceled') throw Error('founder_cancellation_unconfirmed');
+            } else if (!['canceled', 'completed', 'released'].includes(schedule.status)) throw Error('founder_cancellation_unconfirmed');
+        } else if (schedule.status === 'active' && (schedule.end_behavior !== 'cancel' || schedule.phases[0].end_date !== end)) {
             const result = await stripe.subscriptionSchedules.update(schedule.id, mutation.params!.update!, { idempotencyKey: mutation.idempotency_key });
             validateFounderSchedule(result, contract, c.customer_id);
             if (result.end_behavior !== 'cancel' || result.phases[0]?.end_date !== end || result.phases[0]?.trial_end !== end) throw Error('founder_cancellation_unconfirmed');
@@ -74,7 +86,6 @@ async function executeMutation(c: Context, stripe: Stripe, command: Command, mut
             const canceled = await stripe.subscriptions.cancel(subscription.id, { invoice_now: false, prorate: false }, { idempotencyKey: `${mutation.idempotency_key}:late-exit` });
             if (canceled.id !== mutation.subscription_id || canceled.status !== 'canceled') throw Error('founder_cancellation_unconfirmed');
         }
-        if (Date.now() / 1000 >= end && (schedule.end_behavior !== 'cancel' || schedule.phases[0].end_date !== end || schedule.status === 'released')) await command('founder_late_exit_review', { contract_id: contract.id });
         await command('mutation_finish', { id: mutation.id, outcome: 'confirmed' });
         return;
     }
@@ -324,11 +335,11 @@ export async function createPartnerPortal(partner: string) {
         return { url: (await stripe.billingPortal.sessions.create({ customer: c.customer_id, configuration: config.id, return_url: `${requirePartnerBaseUrl()}/partner/billing?partner=${encodeURIComponent(partner)}` })).url };
     });
 }
-async function cancelFounder(c: Context, stripe: Stripe, command: Command, contract: PartnerContract) {
-    const mutation = await beginMutation(command, contract, 'owner_cancel');
+async function cancelFounder(c: Context, stripe: Stripe, command: Command, contract: PartnerContract, prepared?: Mutation): Promise<void> {
+    const mutation = prepared || await beginMutation(command, contract, 'owner_cancel');
     const snapshot = await readPartnerSubscription(stripe, contract, c.customer_id!, c.subscription);
     Object.assign(contract, await command('founder_cancel_terms', { contract_id: contract.id, period_end: snapshot.period_end }));
-    if (snapshot.state === 'canceled') { await command('mutation_finish', { id: mutation.id, outcome: 'not_dispatched' }); return; }
+    if (snapshot.provider_status === 'canceled') { await command('mutation_finish', { id: mutation.id, outcome: 'not_dispatched' }); return; }
     const end = Math.floor(Date.parse(contract.cancellation_at!) / 1000);
     if (end <= Math.floor(Date.parse(contract.trial_end!) / 1000)) {
         const schedule = await stripe.subscriptionSchedules.retrieve(contract.schedule_id!);
