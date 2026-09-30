@@ -9,6 +9,16 @@ import { dashboardWindow, readDashboard } from '@/lib/partners/analytics'
 import { readPartnerWorkspace } from '@/lib/partners/workspace-data'
 import { canManageProfile } from '@/lib/partners/entitlements'
 import { signOutPartner } from './actions'
+import type { MicrositeStatus } from '@/lib/microsites'
+const micrositeStatusLabels = new Map<string, string>(
+  Object.entries({
+    draft: 'Entwurf',
+    review: 'In Prüfung',
+    approved: 'Freigegeben',
+    published: 'Veröffentlicht',
+    archived: 'Archiviert',
+  } satisfies Record<MicrositeStatus, string>),
+)
 export const dynamic = 'force-dynamic'
 export const maxDuration = 180
 export default async function PartnerDashboardPage({
@@ -71,11 +81,10 @@ export default async function PartnerDashboardPage({
           <>
             <p className="mb-4 text-sm text-slate-500">
               Microsite:{' '}
-              {workspace.partner.microsite?.status === 'published'
-                ? 'Veröffentlicht'
-                : workspace.partner.microsite?.status === 'pending_review'
-                  ? 'In Prüfung'
-                  : 'Entwurf'}{' '}
+              {workspace.partner.microsite
+                ? micrositeStatusLabels.get(workspace.partner.microsite.status ?? '') ??
+                  'Status nicht verfügbar'
+                : 'Noch nicht angelegt'}{' '}
               · Layoutänderungen und Veröffentlichung durch das Benefitsi-Team.
             </p>
             <PartnerWorkspace

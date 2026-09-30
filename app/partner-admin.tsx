@@ -7291,7 +7291,7 @@ function PartnerStaffCard({
           >
             {editing ? "Close" : "Edit access"}
           </button>
-          {staff.id ? <DeletePartnerStaffForm staffId={staff.id} /> : null}
+          {staff.id ? <DeletePartnerStaffForm staffId={staff.id} partnerId={partner.id ?? ""} /> : null}
         </div>
       </div>
       {editing ? (
@@ -10670,7 +10670,7 @@ function DeleteMilestoneForm({
   )
 }
 
-function DeletePartnerStaffForm({ staffId }: { staffId: string }) {
+function DeletePartnerStaffForm({ staffId, partnerId }: { staffId: string; partnerId: string }) {
   const [state, formAction] = useActionState(deletePartnerStaff, initialState)
   const { language } = useAdminLanguage()
 
@@ -10690,6 +10690,7 @@ function DeletePartnerStaffForm({ staffId }: { staffId: string }) {
       }}
     >
       <input type="hidden" name="id" value={staffId} />
+      <input type="hidden" name="partner_id" value={partnerId} />
       <ActionMessage state={state} />
       <SubmitButton
         label="Remove"

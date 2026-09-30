@@ -1470,7 +1470,7 @@ export async function savePartnerStaff(
   formData: FormData,
 ): Promise<PartnerActionState> {
   const id = stringValue(formData, "id")
-  const access = await authorizePartnerRowMutation("partner_staff",id,stringValue(formData,"partner_id"))
+  const access = await authorizePartnerMutation(stringValue(formData,"partner_id"))
   if (!access.ok) return {ok:false,message:access.message}
   const {supabase}=access
   try { const rights=await readEntitlements(supabase,access.partnerId); if(rights.features["team.manage"]!==true) return {ok:false,message:"Teamverwaltung ist derzeit gesperrt."} }
@@ -1483,15 +1483,27 @@ export async function savePartnerStaff(
     revalidatePath("/partner")
     return {ok:true,message:"Teamzugang für das registrierte Konto gespeichert. Es wurde keine Einladung versendet."}
   }
-  if (!id && !access.portalSession.isAdmin) return {ok:false,message:"Bitte die registrierte E-Mail-Adresse angeben."}
+  if (id) {
+    const { data, error } = await supabase.rpc("update_partner_team_member", {
+      p_partner_id: access.partnerId,
+      p_staff_id: id,
+      p_role: stringValue(formData, "role"),
+      p_active: true,
+    })
+    if (error || data !== id) return {
+      ok: false,
+      message: error?.message.includes("team_members_limit")
+        ? "Das Teamkontingent ist ausgeschöpft."
+        : "Teamzugang nicht gespeichert. Bitte Zugriff und Berechtigung prüfen.",
+    }
+    revalidatePath("/")
+    revalidatePath("/partner")
+    return {ok:true,message:"Teamzugang gespeichert."}
+  }
+  if (!access.portalSession.isAdmin) return {ok:false,message:"Bitte die registrierte E-Mail-Adresse angeben."}
   const now = new Date().toISOString()
   const payload = parsePartnerStaffPayload(formData)
   payload.partner_id = access.partnerId
-  if(id) {
-    const stored=await supabase.from("partner_staff").select("user_id").eq("id",id).eq("partner_id",access.partnerId).maybeSingle()
-    if(stored.error||!stored.data?.user_id) return {ok:false,message:"Der Teamzugang konnte nicht bestätigt werden."}
-    payload.user_id=stored.data.user_id
-  }
   const validationMessage = validatePartnerStaffPayload(payload)
 
   if (validationMessage) {
@@ -1501,11 +1513,9 @@ export async function savePartnerStaff(
   const mutationPayload = {
     ...payload,
     updated_at: now,
-    ...(id ? {} : { created_at: now }),
+    created_at: now,
   }
-  const result = id
-    ? await supabase.from("partner_staff").update(mutationPayload).eq("id", id)
-    : await supabase.from("partner_staff").insert(mutationPayload)
+  const result = await supabase.from("partner_staff").insert(mutationPayload)
 
   if (result.error) {
     return { ok: false, message: result.error.message }
@@ -1515,7 +1525,7 @@ export async function savePartnerStaff(
 
   return {
     ok: true,
-    message: id ? "Staff access updated." : "Staff access added.",
+    message: "Staff access added.",
   }
 }
 
@@ -1524,7 +1534,7 @@ export async function deletePartnerStaff(
   formData: FormData,
 ): Promise<PartnerActionState> {
   const id = stringValue(formData, "id")
-  const access = await authorizePartnerRowMutation("partner_staff",id,stringValue(formData,"partner_id"))
+  const access = await authorizePartnerMutation(stringValue(formData,"partner_id"))
   if (!access.ok) return {ok:false,message:access.message}
   const {supabase}=access
   try { const rights=await readEntitlements(supabase,access.partnerId); if(rights.features["team.manage"]!==true) return {ok:false,message:"Teamverwaltung ist derzeit gesperrt."} }
@@ -1534,15 +1544,16 @@ export async function deletePartnerStaff(
     return { ok: false, message: "Staff access id is required." }
   }
 
-  const result = await supabase.from("partner_staff").delete().eq("id", id)
-
-  if (result.error) {
-    return { ok: false, message: result.error.message }
+  const { data, error } = await supabase.rpc("delete_partner_team_member", {
+    p_partner_id: access.partnerId,
+    p_staff_id: id,
+  })
+  if (error || data !== id) {
+    return {ok:false,message:"Teamzugang nicht entfernt. Bitte Zugriff und Berechtigung prüfen."}
   }
-
   revalidatePath("/")
-
-  return { ok: true, message: "Staff access removed." }
+  revalidatePath("/partner")
+  return {ok:true,message:"Teamzugang entfernt."}
 }
 
 export async function saveOpeningHour(

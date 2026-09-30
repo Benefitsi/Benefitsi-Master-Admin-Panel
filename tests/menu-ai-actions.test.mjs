@@ -15,7 +15,7 @@ const draft = {
   categories: [{ name: "Speisen", items: [{ name: "Suppe", description: "Tomaten", price: 6.5, tags: [], allergens: [], note: "" }] }],
 }
 
-function fixture({ signedIn = true, owner = true, admin = false, missingMenu = false, alreadyExists = false, failItems = false, enabled = true, flagError = false, missingPartner = false, team = true } = {}) {
+function fixture({ signedIn = true, owner = true, admin = false, missingMenu = false, alreadyExists = false, failItems = false, enabled = true, flagError = false, missingPartner = false, team = true, teamResult = "staff-row", teamError = null } = {}) {
   const writes = [], calls = [], invalidations = []
   const feature = { enabled, error: flagError }
   const session = signedIn ? { user: { id: randomUUID() }, isAdmin: admin, ownedPartnerIds: owner ? ["partner-owned"] : [], partnerIds: ["partner-owned"] } : null
@@ -23,6 +23,7 @@ function fixture({ signedIn = true, owner = true, admin = false, missingMenu = f
   const db = { async rpc(name,args) {
     rpcCalls.push({name,args})
     if(name==='get_partner_entitlements') return {data:{schema_version:1,partner_id:args.p_partner_id,features:{'menu.ai_import':feature.enabled,'team.manage':team}},error:feature.error?{message:'denied'}:null}
+    if(['update_partner_team_member','delete_partner_team_member'].includes(name)) return {data:teamResult,error:teamError}
     if(name==='reserve_partner_menu_ai_import') return {data:{reservation_id:'reservation',state:'reserved'},error:null}
     if(name==='admin_set_partner_entitlement_override') return {data:'override',error:feature.error?{message:'denied'}:null}
     return {data:'consumed',error:null}
@@ -272,3 +273,26 @@ test("team add checks session, ownership and team entitlement before mutation",a
   assert.deepEqual(f.writes,[])
  }
 })
+
+for(const [action,rpc] of [['savePartnerStaff','update_partner_team_member'],['deletePartnerStaff','delete_partner_team_member']]) {
+ test(`${action} changes a scoped teammate despite self-only raw SELECT policy`,async()=>{
+  const f=fixture(),form=f.form();form.set('id','staff-row');form.set('role','admin');form.set('active','true');form.set('user_id','forged-target')
+  const result=await f.actions[action]({},form)
+  assert.equal(result.ok,true,result.message)
+  assert.deepEqual(f.writes,[])
+  const call=f.rpcCalls.find(c=>c.name===rpc)
+  assert.deepEqual(call?.args,{p_partner_id:'partner-owned',p_staff_id:'staff-row',...(action==='savePartnerStaff'?{p_role:'admin',p_active:true}:{})})
+  assert.ok(f.invalidations.includes('/partner'))
+ })
+ test(`${action} fails closed for denied scope, revoked entitlement or missing RPC target`,async()=>{
+  for(const options of [{signedIn:false},{owner:false},{team:false},{flagError:true},{teamResult:null},{teamResult:'other-row'},{teamError:{message:'team_member_unavailable'}}]){
+   const f=fixture(options),form=f.form();form.set('id','staff-row');form.set('role','scanner');form.set('active','true')
+   assert.equal((await f.actions[action]({},form)).ok,false)
+   assert.deepEqual(f.writes,[])
+   assert.deepEqual(f.invalidations,[])
+  }
+  const f=fixture(),form=f.form({partnerId:'foreign'});form.set('id','staff-row');form.set('role','scanner')
+  assert.equal((await f.actions[action]({},form)).ok,false)
+  assert.equal(f.rpcCalls.some(c=>c.name===rpc),false)
+ })
+}

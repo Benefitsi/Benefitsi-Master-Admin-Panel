@@ -176,3 +176,12 @@ test("owner dashboard keeps its partner workspace", async () => {
   assert.equal(calls.workspaceProps[0].partners[0].id, partnerId)
   assert.equal(calls.workspaceProps[0].micrositeEditingEnabled, false)
 })
+
+for(const [status,label] of [['draft','Entwurf'],['review','In Prüfung'],['approved','Freigegeben'],['published','Veröffentlicht'],['archived','Archiviert'],[null,'Status nicht verfügbar'],['unexpected','Status nicht verfügbar']]) {
+ test(`owner dashboard renders actual microsite status ${status}`,async()=>{
+  const selected=partner();selected.microsite.status=status
+  const {page}=loadRoute('../app/partner/page.tsx',{...staffSession,ownedPartnerIds:[partnerId]},selected)
+  const html=renderToStaticMarkup(await page({searchParams:Promise.resolve({section:'business'})}))
+  assert.match(html,new RegExp(`Microsite: ${label}`))
+ })
+}

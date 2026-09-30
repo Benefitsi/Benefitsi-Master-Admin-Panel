@@ -74,4 +74,9 @@ test("scoped partner team form adds existing accounts by email without a user di
  assert.match(html,/type="email"/)
  assert.match(html,/name="email"/)
  assert.doesNotMatch(html,/User ID/)
+ partner.staff=[{id:'staff-row',partner_id:'partner-a',user_id:'member',role:'scanner',active:true}]
+ const existingHtml=renderToStaticMarkup(React.createElement(PartnerWorkspace,{partners:[partner],cities:[],owners:[],initialPartnerId:partner.id,initialSettingsTab:'access',portalMode:true,adminAccess:false}))
+ const removal=[...existingHtml.matchAll(/<form[^>]*>[^]*?<\/form>/g)].map(match=>match[0]).find(form=>form.includes('name="id" value="staff-row"'))
+ assert.ok(removal)
+ assert.match(removal,/name="partner_id" value="partner-a"/)
 })
