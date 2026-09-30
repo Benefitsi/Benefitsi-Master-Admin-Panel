@@ -39,8 +39,11 @@ export type BillingSummary = {
     first_payment_at: string | null
     cancel_at_period_end: boolean
     payment_status: string
+    grace_until?: string | null
     offer: PriceOffer | null
   }
+  billing_readiness?: {enabled:boolean;reason:string}
+  addons?: {offer_code:string;state:string;valid_until:string;cancel_at_period_end:boolean}[]
   feature_exceptions?: {
     feature_key: string
     effect: string
@@ -56,6 +59,7 @@ export type BillingSummary = {
   catalog: { schema_version: number; offers: PriceOffer[] }
 }
 export type PlanPanel = BillingSummary & {
+  founder?: {campaign_city_id:string|null;campaign_city_name:string|null;eligible:boolean;evidence:string|null;decided_at:string|null;admitted:boolean}
   overrides: {
     feature_key: string
     effect: string

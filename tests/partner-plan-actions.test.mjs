@@ -29,3 +29,12 @@ test('price form writes a reviewable draft in cents and cannot pass checkout cre
  assert.equal(f.calls[0].args.p_payload.unit_amount,2490)
  assert.equal(f.calls[0].args.p_payload.stripe_price_id,undefined)
 })
+test('Founder decision uses current admin, verified city and documentary reason',async()=>{
+ const f=fixture();f.form.set('operation','founder_eligibility');f.form.set('city_id','campaign-city');f.form.set('eligible','true')
+ assert.equal((await f.code.updatePartnerPlan({},f.form)).ok,true)
+ assert.equal(f.calls[0].name,'admin_set_partner_founder_eligibility')
+ assert.deepEqual(JSON.parse(JSON.stringify(f.calls[0].args)),{p_partner_id:'own',p_city_id:'campaign-city',p_evidence:'Reviewed request',p_eligible:true})
+ const denied=fixture(false);denied.form.set('operation','founder_eligibility')
+ assert.equal((await denied.code.updatePartnerPlan({},denied.form)).ok,false)
+ assert.equal(denied.calls.length,0)
+})

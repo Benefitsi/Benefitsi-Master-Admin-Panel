@@ -72,6 +72,8 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
             ? 'Dein Standardprofil in der Stadt. Profil, Menü und Öffnungszeiten bleiben manuell bearbeitbar.'
             : 'Eigene Microsite und erweiterte Auswertungen. Layout und Veröffentlichung betreut das Benefitsi-Team.'}
         </p>
+        {data.billing_readiness && !data.billing_readiness.enabled && <p className="mt-3 text-sm text-amber-800">Abrechnung ist noch gesperrt. Verbindliche Vertragsbedingungen und die Abrechnungsfreigabe müssen vor einem Checkout vorliegen.</p>}
+        {sub?.grace_until && <p className="mt-3 text-sm text-amber-800">Übergangsfrist bei ausstehender Zahlung: bis {formatBerlin(sub.grace_until)}.</p>}
         <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-slate-500">Aktuelles Preisangebot</dt>
@@ -109,6 +111,8 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                 <dd>
                   {sub.source === 'admin_freegrant'
                     ? 'Admin-Testfreigabe ohne Rechnung'
+                    : ['unpaid','paused','incomplete'].includes(sub.payment_status)
+                      ? 'Keine aktive Zahlungsfreigabe'
                     : sub.payment_status === 'past_due'
                       ? 'Zahlung ausstehend'
                       : sub.paid_through
@@ -142,6 +146,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
             </>
           )}
         </dl>
+        {(data.addons || []).map(addon=><p key={addon.offer_code} className="mt-3 text-sm">{addon.offer_code}: {addon.state==='active'?'aktiv':'inaktiv'} · {addon.cancel_at_period_end?'gekündigt zum':'Zeitraum bis'} {formatBerlin(addon.valid_until)}</p>)}
       </section>
       <section className={box}>
         <h3 className="font-bold">Deine Funktionen</h3>
@@ -210,8 +215,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
       <section className={box}>
         <h3 className="font-bold">Veröffentlichte Preisangebote</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Neue Angebote ändern dein bestehendes Abo nicht. Buchung und
-          Zahlungsverwaltung sind noch nicht verfügbar.
+          Neue Angebote ändern dein bestehendes Abo nicht. Buchung und Zahlungsverwaltung setzen eine gesonderte Abrechnungsfreigabe voraus.
         </p>
         <ul className="mt-4 space-y-3">
           {data.catalog.offers.map((o) => (
@@ -280,12 +284,14 @@ function ChangeForm({
   partnerId,
   children,
   label = 'Speichern',
+  reasonLabel = 'Grund der Änderung',
   onSaved,
 }: {
   operation: string
   partnerId: string
   children: React.ReactNode
   label?: string
+  reasonLabel?: string
   onSaved: () => void
 }) {
   const [state, action, pending] = useActionState(updatePartnerPlan, {
@@ -300,7 +306,7 @@ function ChangeForm({
       <input type="hidden" name="operation" value={operation} />
       <input type="hidden" name="partner_id" value={partnerId} />
       {children}
-      <Field label="Grund der Änderung" name="reason" />
+      <Field label={reasonLabel} name="reason" />
       <p
         role="status"
         className={
@@ -369,6 +375,18 @@ export function PartnerPlanPanel({
         Admin-Bereich; Partner-Sitzungen werden nicht übernommen.
       </div>
       <PartnerPlanSummary data={data} />
+      <section className={box}>
+        <h3 className="mb-3 text-lg font-bold">Founder-Zulassung · Annweiler</h3>
+        <p className="mb-3 text-sm text-slate-600">Prüfe die tatsächliche Verbindung zur Kampagnenstadt. Profiladresse oder Stadtangabe des Inhabers allein reichen nicht. Die Entscheidung reserviert noch keinen Platz und schließt keinen Vertrag ab.</p>
+        {data.founder?.campaign_city_id ? <>
+          <p className="mb-3 text-sm">Kampagnenstadt: {data.founder.campaign_city_name}. Aktuelle Entscheidung: {data.founder.eligible?'berechtigt':'nicht bestätigt'}.{data.founder.admitted?' Ein Founder-Vertrag wurde bereits angenommen; kein erneuter Testzeitraum.':''}</p>
+          {data.founder.evidence && <p className="mb-3 text-sm">Letzter Nachweis: {data.founder.evidence}{data.founder.decided_at?` · ${formatBerlin(data.founder.decided_at)}`:''}</p>}
+          <ChangeForm operation="founder_eligibility" partnerId={partnerId} onSaved={reload} reasonLabel="Geprüfter Annweiler-Nachweis und Entscheidungsgrund" label="Founder-Entscheidung speichern">
+            <input type="hidden" name="city_id" value={data.founder.campaign_city_id}/>
+            <label className="block text-sm font-medium">Entscheidung<select name="eligible" className={input} defaultValue={data.founder.eligible?'true':'false'}><option value="false">Nicht berechtigt / Bestätigung widerrufen</option><option value="true">Annweiler-Zugehörigkeit geprüft und bestätigt</option></select></label>
+          </ChangeForm>
+        </> : <p role="status" className="text-sm text-amber-800">Die verifizierte Kampagnenstadt ist noch nicht eingerichtet. Die Founder-Zulassung bleibt gesperrt; Vertrags- und Zahlungsfreigabe sind zusätzlich erforderlich.</p>}
+      </section>
       <section className={box}>
         <h3 className="mb-3 text-lg font-bold">
           Partneransicht · letzte 7 Tage

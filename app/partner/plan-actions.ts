@@ -42,7 +42,11 @@ export async function updatePartnerPlan(
     else {
       let rpc = '',
         args: Record<string, unknown> = {}
-      if (operation === 'grant') {
+      if (operation === 'founder_eligibility') {
+        if(!['true','false'].includes(value('eligible'))) throw new Error('decision_required')
+        rpc='admin_set_partner_founder_eligibility'
+        args={p_partner_id:partner,p_city_id:value('city_id'),p_evidence:reason,p_eligible:value('eligible')==='true'}
+      } else if (operation === 'grant') {
         rpc = 'admin_grant_partner_plan'
         args = {
           p_partner_id: partner,

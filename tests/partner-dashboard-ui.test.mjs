@@ -38,3 +38,16 @@ test('billing reads authoritative pinned amounts and distinguishes freegrant fro
  const html=render(h(PartnerPlanSummary,{data}))
  assert.match(html,/Kostenlos · keine Rechnung/);assert.match(html,/Admin-Testfreigabe ohne Rechnung/)
 })
+test('admin Founder control displays verified campaign and evidence, or explains missing setup',()=>{
+ const data=billing(true)
+ let html=render(h(PartnerPlanPanel,{partnerId,initialData:data}))
+ assert.match(html,/verifizierte Kampagnenstadt ist noch nicht eingerichtet/)
+ assert.doesNotMatch(html,/name="operation" value="founder_eligibility"/)
+ data.founder={campaign_city_id:'campaign-city',campaign_city_name:'Annweiler',eligible:true,evidence:'Editorial site visit confirmed',decided_at:'2026-09-30T10:00:00Z',admitted:false}
+ html=render(h(PartnerPlanPanel,{partnerId,initialData:data}))
+ assert.match(html,/Founder-Entscheidung speichern/)
+ assert.match(html,/Geprüfter Annweiler-Nachweis und Entscheidungsgrund/)
+ assert.match(html,/Editorial site visit confirmed/)
+ assert.match(html,/name="city_id" value="campaign-city"/)
+ assert.match(html,/name="operation" value="founder_eligibility"/)
+})
