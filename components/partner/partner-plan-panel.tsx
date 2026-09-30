@@ -140,7 +140,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                     {sub.trial_end
                       ? `Testphase bis ${formatBerlin(sub.trial_end)}. `
                       : ''}
-                    {freeExit ? 'Erste Zahlung entfällt wegen rechtzeitigem Kündigung während der Gratisphase.' : sub.first_payment_at
+                    {freeExit ? 'Erste Zahlung entfällt wegen rechtzeitiger Kündigung während der Gratisphase.' : sub.first_payment_at
                       ? `${sub.activated_at ? 'Bei Fortsetzung: ' : ''}${formatBerlin(sub.first_payment_at)}`
                       : 'Erster Zahlungstermin noch nicht bestätigt'}
                   </dd>

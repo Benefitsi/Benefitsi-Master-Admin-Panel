@@ -10,8 +10,8 @@ import ts from "typescript"
 
 const require = createRequire(import.meta.url)
 const noop = async () => ({ ok: false, message: "Test boundary" })
-function compile(path, boundaries) {
-  const js = ts.transpileModule(readFileSync(new URL(path, import.meta.url), "utf8"), {
+function compile(path, boundaries, testExports = "") {
+  const js = ts.transpileModule(readFileSync(new URL(path, import.meta.url), "utf8") + testExports, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
     fileName: path,
   }).outputText
@@ -79,4 +79,26 @@ test("scoped partner team form adds existing accounts by email without a user di
  const removal=[...existingHtml.matchAll(/<form[^>]*>[^]*?<\/form>/g)].map(match=>match[0]).find(form=>form.includes('name="id" value="staff-row"'))
  assert.ok(removal)
  assert.match(removal,/name="partner_id" value="partner-a"/)
+})
+
+
+test("existing deal editor lets Owner select which excess Free offer to deactivate", async () => {
+ const dom=new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>',{url:'http://localhost'})
+ const previous={window:globalThis.window,document:globalThis.document,HTMLElement:globalThis.HTMLElement,IS_REACT_ACT_ENVIRONMENT:globalThis.IS_REACT_ACT_ENVIRONMENT}
+ Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true})
+ const root=require('react-dom/client').createRoot(document.getElementById('root'))
+ try {
+  const boundaries=runtime();boundaries['@/components/menu-ai-import-dialog']={MenuAiImportDialog:()=>null};boundaries['@/components/partner/partner-plan-panel']={PartnerPlanPanel:()=>null}
+  const {DealsPanel}=compile('../app/partner-admin.tsx',boundaries,'\nexport { DealsPanel };')
+  const partner={id:'synthetic-free',name:'Synthetic Free over limit',visits:[],deals:['keep','selected','other'].map(id=>({id,partner_id:'synthetic-free',type:'discount',discount_type:'percent',discount_value:10,active:true,premium_only:false}))}
+  await act(async()=>root.render(React.createElement(DealsPanel,{partner,embedded:true})))
+  const cards=document.querySelectorAll('[role="button"]');assert.equal(cards.length,3)
+  await act(async()=>cards[1].dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true})))
+  const checkbox=document.querySelector('[role="dialog"] input[name="active"]');assert.ok(checkbox);assert.equal(checkbox.checked,true)
+  await act(async()=>checkbox.click())
+  const form=checkbox.closest('form'),payload=new dom.window.FormData(form)
+  assert.equal(payload.get('id'),'selected');assert.equal(payload.get('partner_id'),'synthetic-free');assert.equal(payload.has('active'),false)
+  assert.equal(partner.deals.length,3);assert.equal(partner.deals[0].active,true);assert.equal(partner.deals[2].active,true)
+  // This verifies actual selection/form serialization; authenticated DB behavior is the PG release test.
+ } finally {await act(async()=>root.unmount());Object.assign(globalThis,previous);dom.window.close()}
 })
