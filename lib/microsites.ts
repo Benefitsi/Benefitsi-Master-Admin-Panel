@@ -1,3 +1,4 @@
+import {validateRichMedia,type RichMedia} from './microsite-rich-media'
 import { categoryMicrositeThemes } from "./microsite-category-themes"
 import {
   defaultMicrositeCopyForPartner,
@@ -23,6 +24,9 @@ export type MicrositeAsset = {
 }
 
 export type MicrositeConfig = {
+  richMedia?: RichMedia | null
+  richMediaTour?: RichMedia | null
+  mediaPermitted?: boolean
   template: MicrositeTemplateId
   language: MicrositeLanguage
   appearance: {
@@ -344,6 +348,9 @@ export function resolveMicrositeConfig(
 
   return {
     ...fallback,
+    richMedia: validateRichMedia(config.richMedia),
+    richMediaTour: validateRichMedia(config.richMediaTour)?.kind !== "video" ? validateRichMedia(config.richMediaTour) : null,
+    mediaPermitted: config.mediaPermitted === true,
     template: sanitizeTemplateId(config.template, fallback.template),
     language: sanitizeMicrositeLanguage(config.language, fallback.language),
     navigation: { links: fallback.navigation.links.map((link) => {

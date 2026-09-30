@@ -317,6 +317,7 @@ export type FraudEvent = {
 }
 
 export type PartnerWithDeals = Partner & {
+  media_rich_enabled?: boolean | null
   menu_ai_import_enabled?: boolean | null
   team_manage_enabled?: boolean
   deals: Deal[]
@@ -536,6 +537,7 @@ export async function getDashboardData(
   const entitlementsByPartner = new Map(entitlementResults)
   const partnersWithDeals = partners.map((partner) => ({
     ...partner,
+    media_rich_enabled: entitlementsByPartner.get(partner.id)?.plan_code === "pro" && entitlementsByPartner.get(partner.id)?.features?.["media.rich"] === true,
     menu_ai_import_enabled: entitlementsByPartner.get(partner.id)?.features?.["menu.ai_import"] === true,
     deals: partner.id ? dealsByPartner.get(partner.id) ?? [] : [],
     holidays: partner.id ? holidaysByPartner.get(partner.id) ?? [] : [],

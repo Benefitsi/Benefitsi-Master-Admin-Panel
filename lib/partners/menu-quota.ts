@@ -4,7 +4,7 @@ export async function runMeteredImport<T>(
   client: SupabaseClient,
   partnerId: string,
   requestKey: string,
-  extract: () => Promise<T>,
+  extract: (reservationId: string) => Promise<T>,
   finish: (
     partner: string,
     reservation: string,
@@ -21,7 +21,7 @@ export async function runMeteredImport<T>(
     throw new Error('Dieser Import wurde bereits bearbeitet.')
   let draft: T
   try {
-    draft = await extract()
+    draft = await extract(data.reservation_id)
   } catch (error) {
     await finish(partnerId, data.reservation_id, false)
     throw error

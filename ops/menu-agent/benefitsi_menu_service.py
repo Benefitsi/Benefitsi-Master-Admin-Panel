@@ -154,6 +154,9 @@ def validate_draft(draft):
 
 
 def extract_menu(data, *, ocr=None, agent=None):
+    if isinstance(data, dict) and data.get("schemaVersion") == 2:
+        from bounded_menu_adapter import extract_v2
+        return extract_v2(data)
     files = _files(data)
     if not _SLOT.acquire(blocking=False):
         raise MenuAgentBusy("Der Menü-Agent ist ausgelastet.")

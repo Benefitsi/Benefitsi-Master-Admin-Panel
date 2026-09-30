@@ -1,5 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- Microsite assets are admin-selected storage URLs and may use partner-specific hosts. */
 "use client"
+import {MicrositeRichMedia} from "./microsite-rich-media"
+import {approvedRichMedia,mediaNavigation} from "@/lib/microsite-rich-media"
 
 import { MicrositeLink, MicrositeCommerceActions, useMicrositeIntegration } from "./microsite-integration"
 
@@ -1360,7 +1362,7 @@ function SiteHeader({
   const navStyle = config.elementStyles["navigation.group"] ?? {}
   const [menuOpen, setMenuOpen] = useState(false)
   const hasBenefits = hasMicrositeBenefitContent(partner, config)
-  const navLinks = config.navigation.links.filter(
+  const navLinks = mediaNavigation(config.navigation.links, (approvedRichMedia(config.richMedia,config.mediaPermitted) || approvedRichMedia(config.richMediaTour,config.mediaPermitted))).filter(
     (link) => hasBenefits || !["deals", "stempelkarte"].includes(link.anchor),
   )
 
@@ -3188,6 +3190,8 @@ function AboutContactSection({
         </div>
       </div>
 
+      <MicrositeRichMedia media={config.richMedia} tour={config.richMediaTour} permitted={config.mediaPermitted} />
+
       <div
         id="kontakt"
         className="premium-reveal relative z-[2] mx-auto mt-10 max-w-6xl scroll-mt-24 overflow-hidden rounded-[1.65rem] bg-[#101010] p-3 text-white shadow-[0_30px_90px_rgba(15,23,42,.26)]"
@@ -3550,6 +3554,7 @@ function FooterSection({
           title={siteCopy(config, "Der Partner", "The partner")}
           links={[
             { label: siteCopy(config, "Über uns", "About us"), href: "#ueber-uns" },
+            ...((approvedRichMedia(config.richMedia,config.mediaPermitted) || approvedRichMedia(config.richMediaTour,config.mediaPermitted)) ? [{label:"Einblicke",href:"#einblicke"}] : []),
             { label: siteCopy(config, "Kontakt & Route", "Contact & directions"), href: "#kontakt" },
           ]}
         />

@@ -51,6 +51,8 @@ def main():
     patched = patched_bridge(raw.decode())
     service = Path(__file__).with_name("benefitsi_menu_service.py")
     compile(service.read_text(), service.name, "exec")
+    adapter = service.with_name("bounded_menu_adapter.py")
+    compile(adapter.read_text(), adapter.name, "exec")
     runtime = Path.home() / ".hermes/profiles/benefitsi-menu/runtime"
     if not (runtime / "menu-ocr").is_file() or not (runtime / "hermes_menu_runner.py").is_file():
         raise SystemExit("Tested menu runtime must be installed first")
@@ -61,8 +63,13 @@ def main():
     target = bridge.with_name(service.name)
     if target.exists():
         raise SystemExit("Service already exists; inspect before updating")
+    adapter_target = bridge.with_name(adapter.name)
+    if adapter_target.exists():
+        raise SystemExit("Bounded adapter already exists; inspect before updating")
     shutil.copy2(service, target)
     os.chmod(target, 0o600)
+    shutil.copy2(adapter, adapter_target)
+    os.chmod(adapter_target, 0o600)
     with tempfile.NamedTemporaryFile(dir=bridge.parent, delete=False) as staged:
         staged.write(patched.encode())
     try:

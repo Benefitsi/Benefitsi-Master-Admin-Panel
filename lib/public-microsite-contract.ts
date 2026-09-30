@@ -1,3 +1,4 @@
+import {validateRichMedia,approvedRichMedia,type RichMedia} from './microsite-rich-media'
 /** Public contract v1. Kept byte-identical in Admin and Web; the optional
  * two-app verification checks this as well as the actual producer/consumer.
  * Editable/private config stays outside this projection. Never interpret HTML.
@@ -15,6 +16,7 @@ const fields = {
 type Group<K extends keyof typeof fields> = Record<(typeof fields)[K][number], string>
 export type PublicMicrositeStyle = Partial<Record<"fontSize" | "maxWidth" | "height" | "gap" | "xOffset" | "marginTop" | "marginBottom" | "imageScale" | "iconSize", number>> & { color?: string; bold?: boolean; italic?: boolean; underline?: boolean; fontFamily?: string }
 export type PublicMicrositeConfig = {
+  richMedia?: RichMedia; richMediaTour?: RichMedia; mediaPermitted?: boolean;
   schema: typeof PUBLIC_MICROSITE_SCHEMA; version: 1; template: string; language: "de" | "en";
   appearance: { mode: "light" | "dark" };
   branding: Group<"branding"> & { paletteMode?: "auto" | "manual" };
@@ -121,6 +123,8 @@ export function createPublicMicrositeSnapshot(value: unknown): PublicMicrositeCo
   }
   const hero = record(input.hero), deals = record(input.deals), seo = record(input.seo)
   return {
+    ...(approvedRichMedia(input.richMediaTour,true)?.kind !== "video" && approvedRichMedia(input.richMediaTour,true) ? {richMediaTour:approvedRichMedia(input.richMediaTour,true)!,mediaPermitted:input.mediaPermitted===true} : {}),
+    ...(approvedRichMedia(input.richMedia,true) ? {richMedia:validateRichMedia(input.richMedia)!,mediaPermitted:input.mediaPermitted===true} : {}),
     schema: PUBLIC_MICROSITE_SCHEMA, version: 1, template: text(input.template), language: input.language === "en" ? "en" : "de",
     appearance: { mode: record(input.appearance).mode === "dark" ? "dark" : "light" },
     branding: { ...projectGroup(input, "branding"), paletteMode: record(input.branding).paletteMode === "manual" ? "manual" : "auto" },
@@ -163,6 +167,8 @@ export function isModernMicrositeConfig(value: unknown) {
  * builder/printable/asset-library metadata does not participate in this gate. */
 export function publicMicrositePublishBlockers(value: unknown): string[] {
   const input = record(value), blockers: string[] = []
+  if(input.richMediaTour && (!approvedRichMedia(input.richMediaTour,true) || validateRichMedia(input.richMediaTour)?.kind==="video" || (input.richMedia && validateRichMedia(input.richMedia)?.kind!=="video"))) blockers.push("Einblicke: zusätzlich zum Video ist höchstens eine freigegebene 360°-/Tourquelle erlaubt")
+  if(input.richMedia && !approvedRichMedia(input.richMedia,true)) blockers.push("Einblicke: gültige Video-/Tourquelle, Poster und redaktionelle Freigabe erforderlich")
   if (input.template !== "restaurant-premium") blockers.push(`Template „${text(input.template) || "unbekannt"}“: öffentliche Darstellung noch nicht freigegeben (unterstützt: restaurant-premium)`)
   if (!createPublicMicrositeSnapshot(input)) blockers.push("Hero-Überschrift: gültiger öffentlicher Inhalt fehlt")
   for (const [key, raw] of Object.entries(record(input.elementText))) {

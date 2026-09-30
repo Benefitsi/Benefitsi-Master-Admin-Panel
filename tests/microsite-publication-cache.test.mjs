@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto"
 import test from "node:test"
 import ts from "typescript"
 import { resolveMicrositeConfig } from "../lib/microsites.ts"
+import * as richMedia from "../lib/microsite-rich-media.ts"
 import * as publicContract from "../lib/public-microsite-contract.ts"
 
 export function publicationFixture({ authorized = true, delivery = { ok: true }, writeError = false } = {}) {
@@ -30,9 +31,10 @@ export function publicationFixture({ authorized = true, delivery = { ok: true },
     "node:crypto": { randomUUID }, "next/cache": { revalidatePath(path) { localInvalidations.push(path) } }, sharp: {},
     "@/lib/microsites": { resolveMicrositeConfig },
     "@/lib/public-microsite-contract": publicContract,
+    "@/lib/microsite-rich-media": richMedia,
     "@/lib/admin-data": { getDashboardData: async () => ({ partners: [partner], errors: [] }) },
     "@/lib/microsite-readiness": { createMicrositeReadinessReport: () => ({ items: [] }) },
-    "@/lib/partner-portal": { canEditPartnerMicrosite: () => authorized, getPartnerPortalSession: async () => ({ isAdmin: authorized }) },
+    "@/lib/partner-portal": { canEditPartnerMicrosite: () => authorized, getPartnerPortalSession: async () => ({ isAdmin: authorized,user:{id:"synthetic-admin"} }) },
     "@/lib/supabase/server": { createClient: async () => db },
     "@/lib/public-web-revalidation": { invalidatePublicPartner: async (...args) => {
       invalidations.push({ args, publicState: { ...microsite }, writes: writes.length })

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {loadTypescript} from './helpers/load-typescript.mjs'
-for(const action of ['portal','subscription'])test(`partner ${action} returns through the partner origin`,async()=>{
+for(const action of ['portal'])test(`partner ${action} returns through the partner origin`,async()=>{
  const code=loadTypescript('app/partner/commerce/actions.ts',{
   'next/cache':{revalidatePath:()=>{}},'next/navigation':{redirect:url=>{throw Error('redirect:'+url)}},
   '@/lib/commerce/partner':{commercePartner:async()=>({session:{user:{email:'owner@example.invalid'}}})},

@@ -49,6 +49,10 @@ const reasons: Record<string, string> = {
   operational_deny: 'Betriebliche Sperre',
   publication_blocked: 'Betrieb noch nicht freigegeben',
   addon: 'Zusatzmodul',
+  pro_required: 'Aktiver Pro-Tarif erforderlich',
+  verified_cost_required: 'Kosten- und Betriebsfreigabe ausstehend',
+  measurement_source_missing: 'Messzugang noch nicht bereit',
+  maximum_five_keywords: 'SEO ist auf höchstens fünf Keywords begrenzt',
 }
 export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
   const rights = data.entitlements,
@@ -153,7 +157,8 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
             </>
           )}
         </dl>
-        {(data.addons || []).map(addon=><p key={addon.offer_code} className="mt-3 text-sm">{addon.offer_code}: {addon.state==='active'?'aktiv':'inaktiv'} · {addon.cancel_at_period_end?'gekündigt zum':'Zeitraum bis'} {formatBerlin(addon.valid_until)}</p>)}
+        <p className="text-sm"><a className="underline" href={`/partner/seo?partner=${rights.partner_id}`}>SEO Monitor und Quellenstatus</a></p>
+        {(data.addons || []).map(addon=><p key={addon.offer_code} className="mt-3 text-sm">{addon.offer_code==='commerce'?'Bestellungen & Termine':'SEO Monitor'}: Vertrag {addon.state==='active'?'gekauft':'inaktiv'} · Nutzung {rights.features[addon.offer_code==='commerce'?'commerce':'seo.monitor']?'aktiv':`gesperrt (${reasons[rights.reason_codes[addon.offer_code==='commerce'?'commerce':'seo.monitor']] ?? 'Einrichtung oder Freigabe ausstehend'})`} · {addon.cancel_at_period_end?'gekündigt zum':'Zeitraum bis'} {formatBerlin(addon.valid_until)}</p>)}
       </section>
       <section className={box}>
         <h3 className="font-bold">Deine Funktionen</h3>

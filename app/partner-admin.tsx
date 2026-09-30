@@ -1137,7 +1137,7 @@ function PartnerDetail({
                 <DealsPanel partner={partner} embedded />
               </div>
             ) : null}
-            {settingsTab === "menu" ? <MenuPanel partner={partner} adminAccess={adminAccess} embedded /> : null}
+            {settingsTab === "menu" ? <MenuPanel partner={partner} embedded /> : null}
             {settingsTab === "access" ? (
               <PartnerStaffPanel partner={partner} users={owners} embedded />
             ) : null}
@@ -8103,11 +8103,9 @@ function HolidayEditorDialog({
 function MenuPanel({
   partner,
   embedded = false,
-  adminAccess = false,
 }: {
   partner: PartnerWithDeals
   embedded?: boolean
-  adminAccess?: boolean
 }) {
   if (!partnerTypeSupportsMenu(partner.type)) {
     return null

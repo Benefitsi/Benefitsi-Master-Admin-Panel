@@ -2505,7 +2505,8 @@ export async function previewAIMenuImport(
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!config.isConfigured || !serviceKey) return {ok:false,message:"Der KI-Import ist vorübergehend nicht verfügbar."}
     const worker = createSupabaseClient(config.url, serviceKey, {auth:{persistSession:false,autoRefreshToken:false}})
-    const draft = await runMeteredImport(access.supabase, access.partnerId, randomUUID(), () => extractMenuFromFiles(sources, {
+    const draft = await runMeteredImport(access.supabase, access.partnerId, randomUUID(), (operationId) => extractMenuFromFiles(sources, {
+      operationId,
       bridgeUrl: process.env.M1_BRIDGE_URL?.trim() ?? "",
       bridgeSecret: process.env.M1_BRIDGE_SECRET?.trim() ?? "",
     }), async (partnerId,reservationId,success) => {
@@ -2516,6 +2517,17 @@ export async function previewAIMenuImport(
   } catch (error) {
     return { ok: false, message: error instanceof Error && error.message.includes("quota_exceeded") ? "Dein KI-Importkontingent ist ausgeschöpft. Bitte prüfe Tarif & Module." : error instanceof Error && error.message.includes("feature_denied") ? "Der KI-Import ist aktuell nicht freigeschaltet." : error instanceof Error ? error.message : "Die Speisekarte konnte nicht erkannt werden." }
   }
+}
+
+export async function recoverAIMenuImport(formData: FormData): Promise<{ok:boolean;message:string;draft?:AiMenuDraft}> {
+  const access=await authorizeAIMenuTarget(formData)
+  if(!access.ok) return {ok:false,message:access.message}
+  try {
+    const {data,error}=await access.supabase.rpc("get_partner_menu_ai_recovery",{p_partner_id:access.partnerId})
+    if(error || !data?.reservation_id) return {ok:false,message:"Kein wiederherstellbarer Import vorhanden."}
+    const draft=await extractMenuFromFiles([], {operationId:data.reservation_id,recover:true,bridgeUrl:process.env.M1_BRIDGE_URL?.trim()??"",bridgeSecret:process.env.M1_BRIDGE_SECRET?.trim()??""})
+    return {ok:true,message:"Gespeichertes Ergebnis wiederhergestellt. Bitte vor Veröffentlichung prüfen.",draft}
+  } catch {return {ok:false,message:"Das Ergebnis ist noch nicht bestätigt. Benefitsi muss den offenen Auftrag prüfen; es wird keine neue KI-Anfrage ausgelöst."}}
 }
 
 export async function confirmAIMenuImport(formData: FormData): Promise<PartnerActionState> {
