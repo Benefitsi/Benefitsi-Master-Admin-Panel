@@ -5,6 +5,7 @@ import hashlib
 import http.client
 import json
 import os
+import queue
 from pathlib import Path
 import sqlite3
 import socket
@@ -25,25 +26,50 @@ No tools, URLs, markdown or omitted items. If complete extraction is impossible 
 
 
 def post_json(host, path, payload, headers, seconds=90):
-    """No retries or redirects; wall deadline covers sending and all reads."""
+    """One attempt; wall deadline includes DNS/connect, sending and reads.
+
+    A stalled resolver may outlive the caller in a daemon thread, but cancellation
+    is checked after connect and auto-open is disabled before any request. It can
+    never start a late/reconnected request after the operation timed out.
+    """
     conn = http.client.HTTPSConnection(host, timeout=seconds)
+    cancelled = threading.Event()
+    outcomes = queue.Queue(maxsize=1)
+
     def abort():
+        cancelled.set()
         if conn.sock:
             try: conn.sock.shutdown(socket.SHUT_RDWR)
             except OSError: pass
         conn.close()
-    timer = threading.Timer(seconds, abort)
-    timer.start()
+
+    def perform():
+        try:
+            conn.connect()
+            # request() must not reopen a socket closed by the deadline thread.
+            conn.auto_open = 0
+            if cancelled.is_set():
+                raise TimeoutError('provider_deadline_exceeded')
+            conn.request('POST', path, body=payload, headers=headers)
+            response = conn.getresponse()
+            raw = response.read(MAX_RESPONSE + 1)
+            if len(raw) > MAX_RESPONSE or response.status != 200:
+                raise RuntimeError('provider_outcome_unconfirmed')
+            outcomes.put((True, json.loads(raw)))
+        except Exception as error:
+            outcomes.put((False, error))
+        finally:
+            conn.close()
+
+    threading.Thread(target=perform, daemon=True).start()
     try:
-        conn.request('POST', path, body=payload, headers=headers)
-        response = conn.getresponse()
-        raw = response.read(MAX_RESPONSE + 1)
-        if len(raw) > MAX_RESPONSE or response.status != 200:
-            raise RuntimeError('provider_outcome_unconfirmed')
-        return json.loads(raw)
-    finally:
-        timer.cancel()
-        conn.close()
+        success, result = outcomes.get(timeout=seconds)
+    except queue.Empty:
+        abort()
+        raise TimeoutError('provider_deadline_exceeded') from None
+    if not success:
+        raise result
+    return result
 
 
 def db_rpc(name, data):

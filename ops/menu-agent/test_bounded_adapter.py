@@ -1,6 +1,6 @@
-import json,os,tempfile,unittest,uuid
+import json,os,tempfile,unittest,uuid,threading,time
 from unittest.mock import patch
-from bounded_menu_adapter import extract_v2,provider_draft,MODEL,MAX_BODY
+from bounded_menu_adapter import extract_v2,provider_draft,post_json,MODEL,MAX_BODY
 DRAFT={'name':'Synthetic','currency':'EUR','complete':True,'warnings':[],'categories':[{'name':'Food','items':[{'name':'Test','description':'','price':1,'allergens':[],'tags':[],'note':''}]}]}
 class Adapter(unittest.TestCase):
  def setUp(self):
@@ -36,4 +36,20 @@ class Adapter(unittest.TestCase):
  def test_unknown_rate_acceptance_never_calls_provider(self):
   with patch.dict(os.environ,{},clear=True):
    with self.assertRaisesRegex(RuntimeError,'verified_payg'):provider_draft({},transport=lambda *a:self.fail())
+ def test_stalled_connect_returns_at_deadline_and_never_sends_late(self):
+  connected=threading.Event();finished=threading.Event();calls=[]
+  class Connection:
+   sock=None
+   def __init__(self,*a,**k):pass
+   def connect(self):connected.wait(1)
+   def request(self,*a,**k):calls.append('request')
+   def getresponse(self):raise RuntimeError('should not read')
+   def close(self):
+    if connected.is_set():finished.set()
+  with patch('bounded_menu_adapter.http.client.HTTPSConnection',Connection):
+   start=time.monotonic()
+   with self.assertRaises(TimeoutError):post_json('synthetic.invalid','/',b'{}',{},seconds=.03)
+   self.assertLess(time.monotonic()-start,.3)
+   connected.set();self.assertTrue(finished.wait(.3))
+   self.assertEqual(calls,[])
 if __name__=='__main__':unittest.main()
