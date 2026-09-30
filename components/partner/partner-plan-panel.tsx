@@ -79,11 +79,11 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
         </p>
         {data.billing_readiness && !data.billing_readiness.enabled && <p className="mt-3 text-sm text-amber-800">Abrechnung ist noch gesperrt. {data.billing_readiness.reason === 'billing_portal_required' ? 'Die Konfiguration des Rechnungsportals fehlt.' : 'Verbindliche Vertragsbedingungen und die Abrechnungsfreigabe müssen vor einem Checkout vorliegen.'}</p>}
         {data.founder_readiness === false && <p className="mt-3 text-sm text-amber-800">Founder-Abschlüsse sind bis zur geprüften Konfiguration der Aktivierung, Gratis-Kündigung und bezahlten Mindestlaufzeit gesperrt.</p>}
-        {data.founder_activation_review?.required && <p role="alert" className="mt-3 text-sm text-amber-800">Unerwartetes Provider-Abo nach geschlossenem Founder-Abschluss. Benefitsi prüft Kündigung und mögliche Rechnung; daraus entstehen keine Pro-Rechte oder ein neuer Founder-Zeitraum.</p>}
+        {data.founder_activation_review?.required && <p role="alert" className="mt-3 text-sm text-amber-800">Unerwartetes Abonnement beim Zahlungsdienstleister nach geschlossenem Founder-Abschluss. Benefitsi prüft Kündigung und mögliche Rechnung; daraus entstehen keine Pro-Rechte oder ein neuer Founder-Zeitraum.</p>}
         {data.pending_founder && <p className="mt-3 text-sm">Founder-Abschluss ausstehend. {data.pending_founder.planned_activation ? `Geplante Aktivierung: ${formatBerlin(data.pending_founder.planned_activation)}. Pro beginnt erst mit bestätigter Abo-Aktivierung. Der Abrechnungsabgleich prüft dies erneut.` : 'Zahlungsmethode und Vereinbarung müssen noch bestätigt werden; die Gratisphase hat nicht begonnen.'}</p>}
         {data.founder_cancellation && <p role="status" className="mt-3 text-sm text-amber-800">Kündigung eingegangen am {formatBerlin(data.founder_cancellation.requested_at)} zum {formatBerlin(data.founder_cancellation.effective_at)}. {data.billing_recovery?.pending ? 'Abwicklung / Bestätigung ausstehend.' : 'Aktuellen Vertragsstatus unten beachten.'} {data.founder_cancellation.billing_review_required && 'Benefitsi muss die Rechnung oder Zahlung nach dem rechtzeitigen Ausstieg prüfen und korrigieren; eine Erstattung ist noch nicht bestätigt.'}</p>}
-        {sub?.activated_at && sub.trial_end && sub.paid_minimum_end && <p className="mt-3 text-sm">Founder aktiviert: {formatBerlin(sub.activated_at)}. Gratisphase bis {formatBerlin(sub.trial_end)}. {freeExit ? 'Rechtzeitiger Ausstieg aus der Gratisphase: Keine Verpflichtung zur bezahlten Zwölfmonatslaufzeit. Erste Zahlung entfällt; eine dennoch entstandene Provider-Abrechnung wird gesondert geprüft.' : `Nur bei Fortsetzung: erste Zahlung ${formatBerlin(sub.trial_end)} und zwölf Monate bezahlte Mindestlaufzeit bis ${formatBerlin(sub.paid_minimum_end)}.`} {sub.cancellation_at && `Vereinbarte Kündigung: ${formatBerlin(sub.cancellation_at)}.`}</p>}
-        {data.billing_recovery?.pending && <p role="alert" className="mt-3 text-sm text-amber-800">Eine Kündigungsbestätigung ist noch offen. Weitere Abrechnungsänderungen warten auf den Ergebnisabgleich. Der Owner kann den gespeicherten Auftrag unter „Abrechnung verwalten“ fortsetzen; der automatische Abgleich versucht dies ebenfalls. Bei anhaltendem Fehler prüft Benefitsi das protokollierte Provider-Ergebnis.</p>}
+        {sub?.activated_at && sub.trial_end && sub.paid_minimum_end && <p className="mt-3 text-sm">Founder aktiviert: {formatBerlin(sub.activated_at)}. Gratisphase bis {formatBerlin(sub.trial_end)}. {freeExit ? 'Rechtzeitiger Ausstieg aus der Gratisphase: Keine Verpflichtung zur bezahlten Zwölfmonatslaufzeit. Erste Zahlung entfällt; eine dennoch entstandene Abrechnung des Zahlungsdienstleisters wird gesondert geprüft.' : `Nur bei Fortsetzung: erste Zahlung ${formatBerlin(sub.trial_end)} und zwölf Monate bezahlte Mindestlaufzeit bis ${formatBerlin(sub.paid_minimum_end)}.`} {sub.cancellation_at && `Vereinbarte Kündigung: ${formatBerlin(sub.cancellation_at)}.`}</p>}
+        {data.billing_recovery?.pending && <p role="alert" className="mt-3 text-sm text-amber-800">Eine Kündigungsbestätigung ist noch offen. Weitere Abrechnungsänderungen warten auf den Ergebnisabgleich. Du kannst den gespeicherten Auftrag unter „Abrechnung verwalten“ fortsetzen; der automatische Abgleich versucht dies ebenfalls. Bei anhaltendem Fehler prüft Benefitsi das protokollierte Ergebnis des Zahlungsdienstleisters.</p>}
         {sub?.grace_until && <p className="mt-3 text-sm text-amber-800">Übergangsfrist bei ausstehender Zahlung: bis {formatBerlin(sub.grace_until)}.</p>}
         <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
           <div>
@@ -140,7 +140,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                     {sub.trial_end
                       ? `Testphase bis ${formatBerlin(sub.trial_end)}. `
                       : ''}
-                    {freeExit ? 'Erste Zahlung entfällt wegen rechtzeitigem Gratis-Exit.' : sub.first_payment_at
+                    {freeExit ? 'Erste Zahlung entfällt wegen rechtzeitigem Kündigung während der Gratisphase.' : sub.first_payment_at
                       ? `${sub.activated_at ? 'Bei Fortsetzung: ' : ''}${formatBerlin(sub.first_payment_at)}`
                       : 'Erster Zahlungstermin noch nicht bestätigt'}
                   </dd>
@@ -149,7 +149,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
               <div>
                 <dt className="text-slate-500">Kündigung</dt>
                 <dd>
-                  {sub.cancellation_at ? `Vereinbart zum ${formatBerlin(sub.cancellation_at)}${data.billing_recovery?.pending ? ' · Provider-Bestätigung ausstehend' : ''}` : sub.cancel_at_period_end
+                  {sub.cancellation_at ? `Vereinbart zum ${formatBerlin(sub.cancellation_at)}${data.billing_recovery?.pending ? ' · Bestätigung des Zahlungsdienstleisters ausstehend' : ''}` : sub.cancel_at_period_end
                     ? `Zum ${formatBerlin(sub.period_end)}`
                     : 'Keine Kündigung zum Periodenende'}
                 </dd>

@@ -84,6 +84,7 @@ function createPublicMicrositeClient(options = {}) {
     },
     partners: {
       data: {
+        is_active: true,
         id: "partner-1",
         name: "Public shop",
         phone: "+49 123 456789",
@@ -188,6 +189,10 @@ function createPublicMicrositeClient(options = {}) {
 
   return {
     client: {
+      async rpc(name) {
+        assert.equal(name,'get_public_microsites_v1');
+        return {error:null,data:options.denied ? [] : [{...results.microsites.data,config:results.microsite_versions.data.config}]};
+      },
       from(table) {
         return createQuery(results[table], selections)
       },
@@ -248,6 +253,7 @@ test("public microsites fall back to the legacy deal projection during rollout",
   const base = createPublicMicrositeClient()
   let dealReads = 0
   const client = {
+    rpc: base.client.rpc,
     from(table) {
       if (table !== "deals") {
         return base.client.from(table)
@@ -518,3 +524,9 @@ test("public microsites sanitize unsafe social URLs and derive WhatsApp safely",
     "https://www.instagram.com/public-shop/",
   )
 })
+
+test("denied public projection cannot read retained raw configuration", async () => {
+ const {client}=createPublicMicrositeClient({denied:true});
+ client.from=()=>{throw new Error('raw fallback forbidden')};
+ assert.equal(await getPublishedMicrositePage(client,'public-shop'),null);
+});

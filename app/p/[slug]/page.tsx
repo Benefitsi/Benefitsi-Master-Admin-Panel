@@ -1,4 +1,4 @@
-import { notFound, permanentRedirect } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import type { Metadata } from "next"
 import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
 import { canonicalPartnerSlug } from "@/lib/partner-paths"
@@ -47,7 +47,7 @@ export default async function PublishedPartnerMicrositePage({
     const webBaseUrl = (
       process.env.NEXT_PUBLIC_BENEFITSI_WEB_URL?.trim() || "https://benefitsi.de"
     ).replace(/\/+$/, "")
-    permanentRedirect(
+    redirect(
       `${webBaseUrl}/partner/${encodeURIComponent(canonicalPartnerSlug(slug))}`,
     )
   }
