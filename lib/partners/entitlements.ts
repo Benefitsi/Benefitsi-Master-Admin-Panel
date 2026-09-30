@@ -42,6 +42,7 @@ export type BillingSummary = {
     grace_until?: string | null
     offer: PriceOffer | null
   }
+  billing_recovery?: {pending:boolean;status:string;created_at:string} | null
   billing_readiness?: {enabled:boolean;reason:string}
   addons?: {offer_code:string;state:string;valid_until:string;cancel_at_period_end:boolean}[]
   feature_exceptions?: {

@@ -72,7 +72,8 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
             ? 'Dein Standardprofil in der Stadt. Profil, Menü und Öffnungszeiten bleiben manuell bearbeitbar.'
             : 'Eigene Microsite und erweiterte Auswertungen. Layout und Veröffentlichung betreut das Benefitsi-Team.'}
         </p>
-        {data.billing_readiness && !data.billing_readiness.enabled && <p className="mt-3 text-sm text-amber-800">Abrechnung ist noch gesperrt. Verbindliche Vertragsbedingungen und die Abrechnungsfreigabe müssen vor einem Checkout vorliegen.</p>}
+        {data.billing_readiness && !data.billing_readiness.enabled && <p className="mt-3 text-sm text-amber-800">Abrechnung ist noch gesperrt. {data.billing_readiness.reason === 'billing_portal_required' ? 'Die Konfiguration des Rechnungsportals fehlt.' : 'Verbindliche Vertragsbedingungen und die Abrechnungsfreigabe müssen vor einem Checkout vorliegen.'}</p>}
+        {data.billing_recovery?.pending && <p role="alert" className="mt-3 text-sm text-amber-800">Eine Kündigungsbestätigung ist noch offen. Weitere Abrechnungsänderungen warten auf den Ergebnisabgleich. Der Owner kann den gespeicherten Auftrag unter „Abrechnung verwalten“ fortsetzen; der automatische Abgleich versucht dies ebenfalls. Bei anhaltendem Fehler prüft Benefitsi das protokollierte Provider-Ergebnis.</p>}
         {sub?.grace_until && <p className="mt-3 text-sm text-amber-800">Übergangsfrist bei ausstehender Zahlung: bis {formatBerlin(sub.grace_until)}.</p>}
         <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
           <div>

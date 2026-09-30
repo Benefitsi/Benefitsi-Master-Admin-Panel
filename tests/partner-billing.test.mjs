@@ -87,7 +87,7 @@ async function engine(run,{status='active',addon=false}={}) {
  const saved={...process.env},commands=[],mutations=[]
  Object.assign(process.env,{BENEFITSI_PARTNER_BILLING_ENABLED:'true',BENEFITSI_PARTNER_BILLING_ENVIRONMENT:'test',BENEFITSI_PARTNER_STRIPE_SECRET_KEY:'sk_test_local_fixture',BENEFITSI_PARTNER_BILLING_WEBHOOK_SECRET:'whsec_local_fixture'})
  const mock=provider({status});const canceled=new Map()
- mock.subscriptions.update=async(id,params)=>{mutations.push({id,params});canceled.set(id,params);return subscription}
+ mock.subscriptions.update=async(id,params)=>{mutations.push({id,params});canceled.set(id,params);return {...subscription,id,cancel_at_period_end:!!params.cancel_at_period_end,cancel_at:params.cancel_at}}
  const originalRetrieve=mock.subscriptions.retrieve
  mock.subscriptions.retrieve=async id=>({...await originalRetrieve(),id,latest_invoice:'in_'+id,cancel_at_period_end:!!canceled.get(id)?.cancel_at_period_end,cancel_at:canceled.get(id)?.cancel_at,...(id==='sub_addon'?{items:{has_more:false,data:[{...subscription.items.data[0],price:{...price,id:'price_addon'}}]}}:{})})
  mock.checkout.sessions.retrieve=async(id)=>({customer:'cus_partner',mode:'subscription',livemode:false,status:'complete',subscription:id==='cs_addon'?'sub_addon':'sub_partner'})
@@ -98,20 +98,30 @@ async function engine(run,{status='active',addon=false}={}) {
  mock.webhooks=new Stripe('sk_test_local_fixture').webhooks
  const extra={...contract,id:'addon',checkout_id:'cs_addon',subscription_id:'sub_addon',offer:{...contract.offer,offer_code:'commerce',addon_code:'commerce',stripe_price_id:'price_addon'}}
  const ctx={partner_id:'partner',environment:'test',customer_id:'cus_partner',contracts:addon?[contract,extra]:[contract],configuration:{enabled:true},subscription:{state:'active',paid_through:new Date(end*1000).toISOString(),past_due_since:null}}
- const applied=new Set()
+ const applied=new Set(),store={fence:0,held:false,mutation:null}
+ store.expire=()=>{store.held=false}
  const api=loadTypescript('lib/stripe/partner-billing.ts',{
   'stripe':class {constructor(){return mock}},
   '@/lib/supabase/admin':{createAdminClient:()=>({rpc:async(name,args)=>{
    if(name==='partner_billing_context')return {data:ctx}
-   if(name==='partner_billing_claim')return {data:applied.has(args.p_event_id)?{duplicate:true}:{fence:1}}
-   if(name==='partner_billing_command'){commands.push(args);if(args.p_action==='batch')applied.add(args.p_data.event_id);return {data:{ok:true}}}
+   if(name==='partner_billing_claim') {if(applied.has(args.p_event_id))return {data:{duplicate:true}};if(store.held)return {error:{message:'billing_busy'}};store.held=true;return {data:{fence:++store.fence,recovery:store.mutation}}}
+   if(name==='partner_billing_command'){
+    if(args.p_fence!==store.fence||!store.held)return {error:{message:'stale_billing_fence'}}
+    commands.push(args);const a=args.p_action,d=args.p_data
+    if(a==='mutation_begin'){store.mutation={...d,id:'mutation-'+commands.length,params:null,operation:null};return {data:store.mutation}}
+    if(a==='mutation_plan'){store.mutation={...store.mutation,...d,idempotency_key:'key-'+d.id};return {data:store.mutation}}
+    if(a==='mutation_finish')store.mutation=null
+    if(a==='batch')applied.add(d.event_id)
+    if(['batch','complete','failed'].includes(a))store.held=false
+    return {data:{ok:true}}
+   }
    throw Error('unexpected RPC '+name)
   }})},
   '@/lib/supabase/server':{createClient:async()=>({rpc:async(name)=>({data:name==='prepare_partner_billing_checkout'?'contract':{enabled:true}})})},
   '@/lib/stripe/config':{requirePartnerBaseUrl:()=> 'https://partner.example.invalid'},
   './partner-billing-contracts':contractsModule,'./partner-billing-provider':providerModule,
  })
- try {await run({api,commands,mutations,mock,secret:'whsec_local_fixture',ctx})} finally {for(const key of Object.keys(process.env))if(!(key in saved))delete process.env[key];Object.assign(process.env,saved)}
+ try {await run({api,commands,mutations,mock,store,secret:'whsec_local_fixture',ctx})} finally {for(const key of Object.keys(process.env))if(!(key in saved))delete process.env[key];Object.assign(process.env,saved)}
 }
 test('webhook uses actual signature/environment checks; duplicate invoice event applies once',()=>engine(async({api,mock,secret,commands})=>{
  const payload=JSON.stringify({id:'evt_fixture',livemode:false,type:'invoice.paid',data:{object:{customer:'cus_partner'}}})
@@ -188,3 +198,62 @@ test('pending expiry reconciles missing responses; a completed Checkout is admit
 test('expired initial payment normalizes to canceled, allowing a new standard checkout without a trial reset',()=>{
  assert.equal(billingState({status:'incomplete_expired',paidThrough:null,periodEnd:Date.now()-1,trialAccepted:false},null).state,'canceled')
 })
+
+test('expired production worker cannot cancel addon after newer paid recovery commits',()=>engine(async({api,mock,mutations,store})=>{
+ const retrieve=mock.subscriptions.retrieve;let firstBase=true,firstAddon=true,release,entered
+ const gate=new Promise(r=>release=r),blocked=new Promise(r=>entered=r)
+ mock.subscriptions.retrieve=async id=>{
+  const sub=await retrieve(id)
+  if(id==='sub_partner'&&firstBase){firstBase=false;return {...sub,status:'unpaid'}}
+  if(id==='sub_addon'&&firstAddon){firstAddon=false;entered();await gate}
+  return sub
+ }
+ mock.subscriptions.cancel=async(id,params)=>{mutations.push({id,params});return {...await retrieve(id),status:'canceled'}}
+ const stale=api.reconcilePartnerBilling('partner','old').then(()=>null,e=>e)
+ await blocked;store.expire();await api.reconcilePartnerBilling('partner','recovered');release()
+ assert.match((await stale).message,/stale_billing_fence/)
+ assert.equal(mutations.length,0)
+},{addon:true}))
+test('unknown update result is retained and recovered using the exact immutable order',()=>engine(async({api,mock,store,mutations,commands})=>{
+ const update=mock.subscriptions.update;let first=true
+ mock.subscriptions.update=async(id,params,options)=>{
+  if(first){first=false;throw Error('simulated ambiguous transport timeout')}
+  assert.equal(options.idempotencyKey,store.mutation.idempotency_key)
+  return update(id,params)
+ }
+ await assert.rejects(()=>api.cancelPartnerSubscription('partner','standard'),/timeout/)
+ const saved=structuredClone(store.mutation)
+ assert.deepEqual(saved.params,{cancel_at_period_end:true,proration_behavior:'none'})
+ await api.recoverPartnerBilling('partner')
+ assert.equal(store.mutation,null);assert.equal(mutations[0].id,saved.subscription_id)
+ assert.deepEqual(structuredClone(mutations[0].params),saved.params)
+ assert.ok(commands.some(c=>c.p_action==='mutation_finish'))
+}))
+test('late dispatched request after identical takeover cannot change target or cancellation end',()=>engine(async({api,mock,store,mutations})=>{
+ const update=mock.subscriptions.update;let first=true,release,entered
+ const gate=new Promise(r=>release=r),blocked=new Promise(r=>entered=r)
+ mock.subscriptions.update=async(id,params,options)=>{
+  if(first){first=false;entered();await gate}
+  return update(id,params,options)
+ }
+ const old=api.cancelPartnerSubscription('partner','standard').then(()=>null,e=>e)
+ await blocked;const saved=structuredClone(store.mutation);store.expire()
+ await api.recoverPartnerBilling('partner');release()
+ assert.match((await old).message,/stale_billing_fence/)
+ assert.equal(mutations.length,2)
+ assert.deepEqual(mutations[0],mutations[1]);assert.equal(mutations[1].id,saved.subscription_id)
+ assert.equal((await mock.subscriptions.retrieve(saved.subscription_id)).cancel_at_period_end,true)
+}))
+test('base recovery during barrier recheck aborts a previously inferred addon cancellation',()=>engine(async({api,mock,mutations})=>{
+ const retrieve=mock.subscriptions.retrieve;let first=true
+ mock.subscriptions.retrieve=async id=>{const sub=await retrieve(id);if(id==='sub_partner'&&first){first=false;return {...sub,status:'unpaid'}}return sub}
+ await api.reconcilePartnerBilling('partner')
+ assert.equal(mutations.length,0)
+},{addon:true}))
+test('unknown persisted provider target keeps recovery blocked and visible to later attempts',()=>engine(async({api,mock,store})=>{
+ mock.subscriptions.update=async()=>{throw Error('unknown target')}
+ await assert.rejects(()=>api.cancelPartnerSubscription('partner','standard'),/unknown target/)
+ const saved=structuredClone(store.mutation)
+ await assert.rejects(()=>api.recoverPartnerBilling('partner'),/unknown target/)
+ assert.deepEqual(structuredClone(store.mutation),saved)
+}))

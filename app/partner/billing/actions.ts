@@ -1,6 +1,6 @@
 'use server';
 import { redirect } from 'next/navigation';
-import { createPartnerCheckout, createPartnerPortal, cancelPartnerSubscription } from '@/lib/stripe/partner-billing';
+import { createPartnerCheckout, createPartnerPortal, cancelPartnerSubscription, recoverPartnerBilling } from '@/lib/stripe/partner-billing';
 export async function partnerBillingAction(form: FormData) {
     const partner = String(form.get('partner_id') || ''), action = String(form.get('operation') || '');
     let url = `/partner/billing?partner=${encodeURIComponent(partner)}`;
@@ -17,6 +17,8 @@ export async function partnerBillingAction(form: FormData) {
             if ('url' in result)
                 url = result.url;
         }
+        else if (action === 'recover')
+            await recoverPartnerBilling(partner);
         else if (action === 'cancel')
             await cancelPartnerSubscription(partner, String(form.get('offer')));
         else

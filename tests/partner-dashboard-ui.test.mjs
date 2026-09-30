@@ -51,3 +51,18 @@ test('admin Founder control displays verified campaign and evidence, or explains
  assert.match(html,/name="city_id" value="campaign-city"/)
  assert.match(html,/name="operation" value="founder_eligibility"/)
 })
+// Billing controls load with a stubbed server action, never a provider connection.
+import {loadTypescript} from './helpers/load-typescript.mjs'
+const {PartnerBillingControls}=loadTypescript('components/partner/partner-billing-controls.tsx',{'@/app/partner/billing/actions':{partnerBillingAction:async()=>{}}})
+test('owner billing hides conflicting plans and addon purchases without an eligible ready Pro base',()=>{
+ const offers=[...billing(true).catalog.offers,{...billing(true).catalog.offers[0],offer_code:'commerce',plan_code:null,addon_code:'commerce'}]
+ const readiness={enabled:true,terms:{version:'v1'},founder_eligible:true,founder_admitted:true,module_readiness:{commerce:true}}
+ let html=render(h(PartnerBillingControls,{partner:partnerId,offers,readiness,currentOffers:['founder'],canBuyAddons:true,error:false}))
+ assert.doesNotMatch(html,/name="offer" value="standard"/)
+ assert.match(html,/Pro Founder zum Periodenende kündigen/)
+ assert.match(html,/Bestellungen &amp; Termine/)
+ html=render(h(PartnerBillingControls,{partner:partnerId,offers,readiness,currentOffers:[],canBuyAddons:false,error:false}))
+ assert.doesNotMatch(html,/name="offer" value="commerce"/)
+ html=render(h(PartnerBillingControls,{partner:partnerId,offers,readiness:{...readiness,module_readiness:{commerce:false}},currentOffers:['founder'],canBuyAddons:true,error:false}))
+ assert.doesNotMatch(html,/name="offer" value="commerce"/)
+})

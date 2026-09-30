@@ -33,7 +33,7 @@ function transport(environment?: BillingEnvironment) {
     const key = process.env.BENEFITSI_PARTNER_STRIPE_SECRET_KEY?.trim();
     if (!key?.startsWith(configured === 'live' ? 'sk_live_' : 'sk_test_'))
         throw Error('billing_transport_environment_mismatch');
-    return new Stripe(key, { apiVersion: '2026-06-24.dahlia', appInfo: { name: 'Benefitsi Partner SaaS', version: '1' } });
+    return new Stripe(key, { apiVersion: '2026-06-24.dahlia', timeout: 30000, maxNetworkRetries: 0, appInfo: { name: 'Benefitsi Partner SaaS', version: '1' } });
 }
 async function context(partner: string): Promise<Context> {
     const c = await rpc<Context>('partner_billing_context', { p_partner_id: partner });
@@ -49,10 +49,38 @@ async function owner(partner: string, checkout = true) {
         throw Error(error?.message || data?.reason || 'billing_unavailable');
     return client;
 }
+type Command = (action: string, data: Record<string, unknown>) => Promise<unknown>;
+type Mutation = { id: string; contract_id: string; subscription_id: string; operation: 'cancel' | 'update' | null; params: Stripe.SubscriptionUpdateParams | null; idempotency_key: string };
+async function executeMutation(c: Context, stripe: Stripe, command: Command, mutation: Mutation) {
+    // A prepared order has never been dispatched. Recovery can discard it and read fresh state.
+    if (!mutation.operation) { await command('mutation_finish', { id: mutation.id, outcome: 'not_dispatched' }); return; }
+    const contract = c.contracts.find(x => x.id === mutation.contract_id && x.subscription_id === mutation.subscription_id);
+    if (!contract || !c.customer_id) throw Error('billing_mutation_target_unknown');
+    const sub = await stripe.subscriptions.retrieve(mutation.subscription_id);
+    if (stripeId(sub.customer) !== c.customer_id || sub.livemode !== (c.environment === 'live')) throw Error('billing_mutation_target_mismatch');
+    const params = mutation.params!;
+    // These immutable operations only shorten renewal; no resume/update from client input.
+    const matches = (value: Stripe.Subscription) => value.status === 'canceled' || (mutation.operation === 'update' && (params.cancel_at_period_end === true ? value.cancel_at_period_end : value.cancel_at === params.cancel_at));
+    let result = sub;
+    if (!matches(sub)) result = mutation.operation === 'cancel'
+        ? await stripe.subscriptions.cancel(mutation.subscription_id, { invoice_now: false, prorate: false }, { idempotencyKey: mutation.idempotency_key })
+        : await stripe.subscriptions.update(mutation.subscription_id, params, { idempotencyKey: mutation.idempotency_key });
+    if (result.id !== mutation.subscription_id || !matches(result)) throw Error('billing_mutation_outcome_unknown');
+    await command('mutation_finish', { id: mutation.id, outcome: 'confirmed' });
+}
+async function beginMutation(command: Command, contract: PartnerContract, reason: string) {
+    return await command('mutation_begin', { contract_id: contract.id, subscription_id: contract.subscription_id, reason }) as Mutation;
+}
+async function dispatchMutation(c: Context, stripe: Stripe, command: Command, mutation: Mutation, operation: 'cancel' | 'update', params: Record<string, unknown>) {
+    // SQL checks the current unexpired fence immediately before authorizing immutable dispatch.
+    const saved = await command('mutation_plan', { id: mutation.id, operation, params }) as Mutation;
+    await executeMutation(c, stripe, command, saved);
+}
 async function locked<T>(partner: string, eventId: string, fingerprint: string, work: (c: Context, stripe: Stripe, command: (action: string, data: Record<string, unknown>) => Promise<unknown>) => Promise<T>) {
     const claim = await rpc<{
         duplicate?: boolean;
         fence: number;
+        recovery?: Mutation;
     }>('partner_billing_claim', { p_partner_id: partner, p_event_id: eventId, p_fingerprint: fingerprint });
     if (claim.duplicate)
         return { duplicate: true };
@@ -61,7 +89,9 @@ async function locked<T>(partner: string, eventId: string, fingerprint: string, 
         finalized = true; return result; };
     try {
         const c = await context(partner);
-        const result = await work(c, transport(c.environment), command);
+        const stripe = transport(c.environment);
+        if (claim.recovery) await executeMutation(c, stripe, command, claim.recovery);
+        const result = await work(c, stripe, command);
         if (!finalized)
             await command('complete', { event_id: eventId });
         return result;
@@ -146,6 +176,9 @@ function latestContracts(contracts: PartnerContract[]) {
     }
     return [...newest.values()];
 }
+function baseLapsed(base: BillingSnapshot) {
+    return !['active', 'trialing', 'past_due'].includes(base.state) || (base.state === 'past_due' && (!base.past_due_since || Date.parse(String(base.past_due_since)) + 7 * 86400000 <= Date.now()));
+}
 async function reconcile(c: Context, stripe: Stripe, command: (action: string, data: Record<string, unknown>) => Promise<unknown>, eventId: string) {
     if (!c.customer_id)
         return { pending: true };
@@ -190,19 +223,25 @@ async function reconcile(c: Context, stripe: Stripe, command: (action: string, d
         const data = await readPartnerSubscription(stripe, contract, c.customer_id, contract.offer.addon_code ? null : c.subscription);
         snapshots.push({ contract, data });
     }
-    const base = snapshots.find(s => !s.contract.offer.addon_code)?.data;
-    const baseLapsed = base && (!['active', 'trialing', 'past_due'].includes(base.state) || (base.state === 'past_due' && (!base.past_due_since || Date.parse(String(base.past_due_since)) + 7 * 86400000 <= Date.now())));
+    const baseEntry = snapshots.find(s => !s.contract.offer.addon_code);
     for (const s of snapshots) {
-        if (s.contract.offer.addon_code && base && s.data.state !== 'canceled' && (baseLapsed || base.cancel_at_period_end)) {
-            const subId = String(s.data.subscription_id);
-            if (baseLapsed)
-                await stripe.subscriptions.cancel(subId, { invoice_now: false, prorate: false });
+        const oldBase = baseEntry?.data;
+        if (s.contract.offer.addon_code && oldBase && s.data.state !== 'canceled' && (baseLapsed(oldBase) || oldBase.cancel_at_period_end)) {
+            const mutation = await beginMutation(command, s.contract, 'base_renewal_ended');
+            // The durable barrier excludes newer snapshots before this fresh authoritative read.
+            baseEntry!.data = await readPartnerSubscription(stripe, baseEntry!.contract, c.customer_id, c.subscription);
+            const base = baseEntry!.data;
+            s.data = await readPartnerSubscription(stripe, s.contract, c.customer_id, null);
+            if (s.data.state === 'canceled' || (!baseLapsed(base) && !base.cancel_at_period_end))
+                await command('mutation_finish', { id: mutation.id, outcome: 'not_dispatched' });
+            else if (baseLapsed(base))
+                await dispatchMutation(c, stripe, command, mutation, 'cancel', { invoice_now: false, prorate: false });
             else
-                await stripe.subscriptions.update(subId, { cancel_at: Math.floor(Math.min(Date.parse(base.period_end), Date.parse(s.data.period_end)) / 1000), proration_behavior: 'none' }, { idempotencyKey: `partner-base-cancel:${subId}:${base.period_end}` });
+                await dispatchMutation(c, stripe, command, mutation, 'update', { cancel_at: Math.floor(Math.min(Date.parse(base.period_end), Date.parse(s.data.period_end)) / 1000), proration_behavior: 'none' });
             s.data = await readPartnerSubscription(stripe, s.contract, c.customer_id, null);
         }
-        commands.push({ action: 'apply', data: { ...s.data, event_id: eventId } });
     }
+    for (const s of snapshots) commands.push({ action: 'apply', data: { ...s.data, event_id: eventId } });
     // All commercial rows and event completion commit in a single DB transaction.
     await command('batch', { commands, event_id: eventId });
     return { received: true };
@@ -260,8 +299,9 @@ export async function cancelPartnerSubscription(partner: string, offerCode: stri
         const contract = latestContracts(c.contracts).find(x => x.offer.offer_code === offerCode);
         if (!contract?.subscription_id)
             throw Error('billing_subscription_missing');
+        const mutation = await beginMutation(command, contract, 'owner_cancel');
         await readPartnerSubscription(stripe, contract, c.customer_id, c.subscription);
-        await stripe.subscriptions.update(contract.subscription_id, { cancel_at_period_end: true, proration_behavior: 'none' }, { idempotencyKey: `partner-cancel:${contract.id}` });
+        await dispatchMutation(c, stripe, command, mutation, 'update', { cancel_at_period_end: true, proration_behavior: 'none' });
         return reconcile(c, stripe, command, eventId);
     });
 }
@@ -277,4 +317,9 @@ export async function reconcileAllPartnerBilling() {
         }
     }
     return { checked: targets.length, failed: failures.length };
+}
+
+export async function recoverPartnerBilling(partner: string) {
+    await owner(partner, false);
+    return reconcilePartnerBilling(partner);
 }
