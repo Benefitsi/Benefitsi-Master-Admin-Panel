@@ -1,5 +1,6 @@
-import json,os,tempfile,unittest,uuid,threading,time
+import json,os,tempfile,unittest,uuid,threading,time,base64,sqlite3
 from unittest.mock import patch
+from contextlib import closing
 from bounded_menu_adapter import extract_v2,provider_draft,post_json,MODEL,MAX_BODY
 DRAFT={'name':'Synthetic','currency':'EUR','complete':True,'warnings':[],'categories':[{'name':'Food','items':[{'name':'Test','description':'','price':1,'allergens':[],'tags':[],'note':''}]}]}
 class Adapter(unittest.TestCase):
@@ -10,6 +11,21 @@ class Adapter(unittest.TestCase):
   self.calls.append(name)
   if name.startswith('begin'): return dict(dispatch=True,model=MODEL,service_tier='standard',max_tokens=24000,max_body_bytes=MAX_BODY)
  def extract(self,data,agent):return {**{k:v for k,v in data.items() if k!='files'},'draft':DRAFT}
+ def test_busy_shared_worker_has_no_attempt_and_can_retry(self):
+  import benefitsi_menu_service as service
+  self.data['files']=[{'mimeType':'image/png','data':base64.b64encode(b'\x89PNG\r\n\x1a\nsynthetic').decode()}]
+  service._SLOT.acquire()
+  try:
+   with patch.object(service,'native_ocr',side_effect=AssertionError('busy must not OCR')):
+    with self.assertRaises(service.MenuAgentBusy):extract_v2(self.data,rpc=self.rpc,database=self.db)
+   self.assertEqual(self.calls,[])
+   with closing(sqlite3.connect(self.db)) as db:self.assertEqual(db.execute('select count(*) from operations').fetchone()[0],0)
+  finally:service._SLOT.release()
+  with patch.object(service,'native_ocr',return_value={'pages':[{'lines':[{'text':'Synthetic item 1 EUR'}]}]}),patch('bounded_menu_adapter.provider_draft',return_value=DRAFT) as generate:
+   self.assertEqual(extract_v2(self.data,rpc=self.rpc,database=self.db)['draft'],DRAFT)
+   self.assertEqual(generate.call_count,1)
+  self.assertEqual(self.calls,['begin_partner_menu_ai_attempt','complete_partner_menu_ai_attempt'])
+  self.assertTrue(service._SLOT.acquire(blocking=False));service._SLOT.release()
  def test_success_db_failure_recovers_cached_without_generation(self):
   def fail_finish(name,data):
    result=self.rpc(name,data)

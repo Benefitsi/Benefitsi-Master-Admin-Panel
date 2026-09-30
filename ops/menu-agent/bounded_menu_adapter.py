@@ -112,7 +112,7 @@ def extract_v2(data, *, rpc=db_rpc, extract=None, database=None):
     Cached successful draft is written durably BEFORE DB finalization. Recovery
     only returns that stored draft; it never calls OCR or the provider.
     """
-    from benefitsi_menu_service import extract_menu
+    from benefitsi_menu_service import extract_menu, _SLOT, MenuAgentBusy
     operation = data.get('requestId')
     if str(uuid.UUID(operation)) != operation:
         raise ValueError('invalid_operation')
@@ -126,6 +126,7 @@ def extract_v2(data, *, rpc=db_rpc, extract=None, database=None):
     path = Path(filename)
     if path.is_symlink():
         raise ValueError('invalid_journal_path')
+    admitted = False
     db = sqlite3.connect(path, timeout=5)
     os.chmod(path, 0o600)
     try:
@@ -146,6 +147,11 @@ def extract_v2(data, *, rpc=db_rpc, extract=None, database=None):
         if recover:
             db.rollback()
             raise ValueError('operation_result_unavailable')
+        # Shared-worker contention is proven pre-dispatch: no billable attempt
+        # or uncertain journal entry may be created until admission succeeds.
+        if not _SLOT.acquire(blocking=False):
+            raise MenuAgentBusy('Der Menü-Agent ist ausgelastet.')
+        admitted = True
         permit = rpc('begin_partner_menu_ai_attempt', {'p_reservation_id':operation})
         if permit.get('dispatch') is not True or permit.get('model') != MODEL or permit.get('max_tokens') != MAX_OUTPUT or permit.get('max_body_bytes') != MAX_BODY or permit.get('service_tier') != 'standard':
             db.rollback()
@@ -153,7 +159,7 @@ def extract_v2(data, *, rpc=db_rpc, extract=None, database=None):
         db.execute('insert into operations(id,fingerprint,state,result) values(?,?,?,null)', (operation,fingerprint,'uncertain'))
         db.commit()
         try:
-            result = (extract or extract_menu)({**data,'schemaVersion':1}, agent=provider_draft)
+            result = extract({**data,'schemaVersion':1}, agent=provider_draft) if extract else extract_menu({**data,'schemaVersion':1}, agent=provider_draft, _admitted=True)
             result['schemaVersion'] = 2
             result['adapter'] = 'minimax-m3-bounded-v2'
         except ValueError:
@@ -168,3 +174,5 @@ def extract_v2(data, *, rpc=db_rpc, extract=None, database=None):
         return result
     finally:
         db.close()
+        if admitted:
+            _SLOT.release()
