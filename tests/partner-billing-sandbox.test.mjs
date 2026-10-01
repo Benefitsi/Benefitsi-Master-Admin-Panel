@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { boundary, encodeForm, buildRequest, cliEnvironment, SandboxTransport, assertOwned, waitReady } from '../scripts/partner-billing-sandbox-transport.mjs';
 import { offlinePlan, main, advance, assertTeardownOwnership } from '../scripts/partner-billing-sandbox.mjs';
-import { createEngine, assertProjection } from '../scripts/partner-billing-sandbox-engine.mjs';
+import { createEngine, providerAdapter, assertProjection } from '../scripts/partner-billing-sandbox-engine.mjs';
 const metadata = {
     benefitsi_release: boundary.release, benefitsi_scope: boundary.scope, benefitsi_role: 'month/continue', benefitsi_partner_contract: 'task12-month-continue'
 };
@@ -56,6 +56,102 @@ test('exact argv rejects arbitrary routes, flags, metadata, cards, target change
     assert.equal(env.OTHER, 'okay');
     assert.equal(env.STRIPE_CLI_TELEMETRY_OPTOUT, '1');
 });
+test('fixed role-bearing bootstrap and actual Sourceadapter keys remain exact argv values with strict ASCII/length bounds', () => temporary(async (work) => {
+    const customers = new Map(), setups = new Map(), schedules = new Map(), dispatchedKeys = [];
+    let t;
+    const invoke = async (argv) => {
+        if (argv[0] === '--version')
+            return 'stripe version 1.44.0';
+        if (argv[1] === '/v1/account')
+            return { id: boundary.account, charges_enabled: false };
+        if (argv[1] === '/v1/balance')
+            return { livemode: false };
+        if (argv[1].startsWith('/v1/test_helpers/test_clocks/')) {
+            const interval = argv[1].endsWith('clock_month') ? 'month' : 'year';
+            return {
+                ...clock, id: `clock_${interval}`, name: boundary.clockNames[interval]
+            };
+        }
+        if (argv[0] === 'post') {
+            const key = argv[argv.indexOf('--idempotency') + 1];
+            dispatchedKeys.push(key);
+            const record = Object.values(t.state.requests).find(r => r.key === key);
+            assert.equal(record.status, 'dispatching');
+            const o = record.descriptor.owner, suffix = o.role.replace(/[^a-z]/g, '');
+            const metadata = {
+                benefitsi_release: boundary.release, benefitsi_scope: boundary.scope, benefitsi_role: o.role, benefitsi_partner_contract: o.contract
+            };
+            if (record.op === 'customer.create') {
+                const value = {
+                    id: `cus_${suffix}`, test_clock: o.clock, livemode: false, metadata
+                };
+                customers.set(value.id, value);
+                return value;
+            }
+            if (record.op === 'setup.create') {
+                const value = {
+                    id: `seti_${suffix}`, customer: o.customer, livemode: false, metadata, status: 'succeeded', payment_method: `pm_${suffix}`
+                };
+                setups.set(value.id, value);
+                return value;
+            }
+            if (record.op === 'schedule.create') {
+                const params = structuredClone(record.descriptor.params);
+                const value = {
+                    ...params, id: `sub_sched_${suffix}`, livemode: false, subscription: null, status: 'not_started', phases: [{ ...params.phases[0], start_date: params.start_date }]
+                };
+                schedules.set(value.id, value);
+                return value;
+            }
+            throw Error('offline_unexpected_mutation');
+        }
+        const objectId = argv[1].split('/').at(-1);
+        if (customers.has(objectId))
+            return customers.get(objectId);
+        if (setups.has(objectId))
+            return setups.get(objectId);
+        if (schedules.has(objectId))
+            return schedules.get(objectId);
+        if (argv[1] === '/v1/subscription_schedules')
+            return { data: [], has_more: false };
+        throw Error('offline_unexpected_read');
+    };
+    t = await SandboxTransport.open({
+        work, mode: 'execute', invoke
+    });
+    try {
+        t.state.clocks = { month: 'clock_month', year: 'clock_year' };
+        for (const interval of ['month', 'year'])
+            for (const caseId of ['continue', 'trial_exit', 'late_exit']) {
+                const role = `${interval}/${caseId}`, contract = `task12-${interval}-${caseId}`;
+                await t.mutate('customer.create', { owner: {
+                        role, contract, clock: t.state.clocks[interval]
+                    } }, `customer:${role}`);
+                const owned = t.state.owners[role];
+                await t.mutate('setup.create', { owner: owned, payment_method: boundary.cards[0] }, `setup:${role}:visa`);
+                const engine = createEngine({
+                    interval, caseId, customer: owned.customer, setup: owned.setup, stripe: providerAdapter(t, owned), now: boundary.seconds.frozen
+                });
+                await engine.run('reconcile');
+                assert.ok(owned.schedule);
+                assert.ok(dispatchedKeys.includes(`task12:customer:${role}`));
+                assert.ok(dispatchedKeys.includes(`task12:setup:${role}:visa`));
+                assert.ok(dispatchedKeys.includes(`task12:engine:partner-founder-activation:${contract}`));
+                assert.equal(t.state.requests[`customer:${role}`].key, `task12:customer:${role}`);
+                assert.equal(t.state.requests[`setup:${role}:visa`].key, `task12:setup:${role}:visa`);
+            }
+        assert.equal(dispatchedKeys.length, 18);
+        const args = { owner: { ...owner, customer: undefined } };
+        const maximumKey = 'x'.repeat(199) + '/';
+        const argv = buildRequest('customer.create', args, maximumKey);
+        assert.equal(argv[argv.indexOf('--idempotency') + 1], maximumKey);
+        for (const bad of [maximumKey + 'x', 'task12:customer:month/continue\n', 'task12:customer:month/continue\r', 'task12:customer:month/continue\t', 'task12:customer:month/continue\0', 'task12:customer:month/continue --live', 'task12:customer:month/continue;stripe', 'task12:customer:month/continue$(x)'])
+            assert.throws(() => buildRequest('customer.create', args, bad), /invalid_idempotency_key/);
+    }
+    finally {
+        await t.close();
+    }
+}));
 test('ownership excludes foreign clocks, customers, contract markers, live and deleted objects', () => {
     assertOwned('clock', clock, { interval: 'month', clock: clock.id });
     assertOwned('customer', customer, owner);

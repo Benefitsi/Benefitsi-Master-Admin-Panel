@@ -306,7 +306,7 @@ export function buildRequest(op, args = {}, key) {
     }
     if (method !== 'get' && !key)
         fail('idempotency_required');
-    if (key && !/^[a-zA-Z0-9:._-]{1,200}$/.test(key))
+    if (key && !/^[a-zA-Z0-9:._\/-]{1,200}$/.test(key))
         fail('invalid_idempotency_key');
     // Accepted generic args are narrowed per operation, so an ignored flag/body cannot be smuggled in.
     const readArguments = {
