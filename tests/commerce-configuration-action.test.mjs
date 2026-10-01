@@ -4,6 +4,7 @@ import test from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
 import * as requests from '../lib/commerce/requests.ts'
+import * as times from '../lib/commerce/time.ts'
 
 const owner='11111111-1111-4111-8111-111111111111'
 const foreign='22222222-2222-4222-8222-222222222222'
@@ -11,10 +12,10 @@ function load() {
  const authorized=[],writes=[]
  const imports={
   '@/lib/commerce/requests':requests,
-  '@/lib/commerce/time':{}, '@/lib/commerce/service':{},
+  '@/lib/commerce/time':times, '@/lib/commerce/service':{},
   '@/lib/commerce/partner':{commercePartner:async id=>{
    authorized.push(id);assert.equal(id,owner)
-   return {admin:{from:table=>({insert:async data=>{writes.push({table,data});return {error:null}}})}}
+   return {admin:{from:table=>({insert:async data=>{writes.push({table,data});return {error:null}}}),rpc:async(name,args)=>{writes.push({name,args});return {error:null,data:4}}}}
   }},
   'next/cache':{revalidatePath:()=>{}},
   'next/navigation':{redirect:path=>{throw Object.assign(Error('redirect'),{path})}},
@@ -22,7 +23,7 @@ function load() {
  const compiled=ts.transpileModule(readFileSync(new URL('../app/partner/commerce/actions.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText
  const loadedModule={exports:{}}
  vm.runInNewContext(compiled,{module:loadedModule,exports:loadedModule.exports,require:name=>{assert.ok(imports[name],name);return imports[name]}})
- return {save:loadedModule.exports.saveCommerceConfiguration,authorized,writes}
+ return {save:loadedModule.exports.saveCommerceConfiguration,series:loadedModule.exports.saveFoodPickupTimes,authorized,writes}
 }
 function resource() {
  const form=new FormData()
@@ -33,6 +34,19 @@ test('duplicate provider fields cannot authorize one tenant and insert into anot
  const d=load(),form=resource();form.append('provider_id',foreign)
  await assert.rejects(d.save(form),e=>e.path?.endsWith('&error=save'))
  assert.equal(d.writes.length,0)
+})
+test('five-minute pickup series authorizes the provider before the atomic tenant-bound RPC',async()=>{
+ const d=load(),form=new FormData()
+ for(const [key,value] of Object.entries({entity:'slot',provider_id:owner,offering_id:owner,resource_id:owner,capacity:'2',starts_at:'2026-10-02T12:00',ends_at:'2026-10-02T13:00'}))form.set(key,value)
+ await assert.rejects(d.series(form),e=>e.path===`/partner/commerce?provider=${owner}`)
+ assert.deepEqual(d.authorized,[owner]);assert.equal(d.writes.length,1)
+ assert.equal(d.writes[0].name,'commerce_create_food_slot_series')
+ assert.equal(d.writes[0].args.p_provider_id,owner)
+ assert.equal(d.writes[0].args.p_starts_at,'2026-10-02T10:00:00.000Z')
+ assert.equal(d.writes[0].args.p_capacity,2)
+ const duplicate=load();form.append('provider_id',foreign)
+ await assert.rejects(duplicate.series(form),e=>e.path?.endsWith('&error=save'))
+ assert.equal(duplicate.writes.length,0)
 })
 test('valid configuration is inserted with the same provider that was authorized',async()=>{
  const d=load();await assert.rejects(d.save(resource()),e=>e.path===`/partner/commerce?provider=${owner}`)

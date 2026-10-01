@@ -48,6 +48,23 @@ export async function toggleCommerceConfiguration(form:FormData) {
   } catch {failed=true}
   revalidatePath('/partner/commerce');redirect(destination(providerId,failed?'save':undefined))
 }
+export async function saveFoodPickupTimes(form:FormData) {
+  let providerId=value(form,'provider_id'),failed=false
+  try {
+    const input=configurationFormInput(form)
+    if(input.entity!=='slot')throw Error('invalid_entity')
+    input.starts_at=berlinDateTime(value(form,'starts_at'));input.ends_at=berlinDateTime(value(form,'ends_at'))
+    const parsed=parseConfiguration(input)
+    providerId=parsed.providerId
+    const {admin}=await commercePartner(providerId)
+    const saved=await admin.rpc('commerce_create_food_slot_series',{
+      p_provider_id:providerId,p_offering_id:parsed.data.offering_id,p_resource_id:parsed.data.resource_id,
+      p_starts_at:parsed.data.starts_at,p_ends_at:parsed.data.ends_at,p_capacity:parsed.data.capacity,
+    })
+    if(saved.error)throw Error('save_failed')
+  }catch{failed=true}
+  revalidatePath('/partner/commerce');redirect(destination(providerId,failed?'save':undefined))
+}
 export async function transitionCommerceBooking(form:FormData) {
   const providerId=value(form,'provider_id');let failed=false
   try {

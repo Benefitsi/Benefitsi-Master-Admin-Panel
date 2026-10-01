@@ -4,6 +4,7 @@ import { getPartnerPortalSession, canManagePartner } from '@/lib/partner-portal'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { uuid } from './requests'
+import { readPickupSlots } from './pickup-slots'
 export async function commercePartner(providerId?:string) {
   if(process.env.BENEFITSI_COMMERCE_ENABLED!=='true') throw new Error('commerce_disabled')
   const session=await getPartnerPortalSession(await createClient())
@@ -27,7 +28,7 @@ export async function commerceDashboard(providerId?:string) {
   const context=await commercePartner(providerId)
   if(!context.provider) return {...context,offerings:[],resources:[],menu:[],slots:[],bookings:[],deals:[],dealRules:[],dealConfigurationAvailable:false}
   const id=context.provider.id
-  const results=await Promise.all(['commerce_offerings','commerce_resources','commerce_menu_items','commerce_slots','commerce_bookings'].map(table=>context.admin.from(table).select('*').eq('provider_id',id).order(table==='commerce_slots'?'starts_at':'created_at',{ascending:table==='commerce_slots'}).limit(table==='commerce_bookings'?250:1000)))
+  const results=await Promise.all(['commerce_offerings','commerce_resources','commerce_menu_items','commerce_slots','commerce_bookings'].map(table=>table==='commerce_slots'?readPickupSlots(context.admin,id):context.admin.from(table).select('*').eq('provider_id',id).order('created_at',{ascending:false}).limit(table==='commerce_bookings'?250:1000)))
   if(results.some(r=>r.error)) throw new Error('commerce_migration_required')
   let deals:Record<string,unknown>[]=[],dealRules:Record<string,unknown>[]=[],dealConfigurationAvailable=false
   if(context.provider.test_mode) {
