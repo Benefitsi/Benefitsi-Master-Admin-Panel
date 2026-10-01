@@ -41,6 +41,77 @@
   "signedWebhook": false,
   "realAgreement": false,
   "livePayment": false,
+  "cliBudget": {
+    "total": 1500,
+    "cleanupReserve": 200,
+    "execution": 1300
+  },
+  "invoiceSettlement": {
+    "delaySeconds": 7200,
+    "plans": [
+      {
+        "interval": "month",
+        "key": "month:first-paid",
+        "boundaryAt": 1785492000,
+        "settledAt": 1785499200
+      },
+      {
+        "interval": "month",
+        "key": "month:failed",
+        "boundaryAt": 1788170400,
+        "settledAt": 1788177600
+      },
+      {
+        "interval": "month",
+        "key": "month:paid-month-9",
+        "boundaryAt": 1793440800,
+        "settledAt": 1793448000
+      },
+      {
+        "interval": "month",
+        "key": "month:paid-month-11",
+        "boundaryAt": 1798711200,
+        "settledAt": 1798718400
+      },
+      {
+        "interval": "month",
+        "key": "month:paid-month-13",
+        "boundaryAt": 1803808800,
+        "settledAt": 1803816000
+      },
+      {
+        "interval": "month",
+        "key": "month:paid-month-15",
+        "boundaryAt": 1809079200,
+        "settledAt": 1809086400
+      },
+      {
+        "interval": "month",
+        "key": "month:paid-month-17",
+        "boundaryAt": 1814349600,
+        "settledAt": 1814356800
+      },
+      {
+        "interval": "month",
+        "key": "month:minimum-complete",
+        "boundaryAt": 1817028000,
+        "settledAt": 1817035200
+      },
+      {
+        "interval": "year",
+        "key": "year:first-paid",
+        "boundaryAt": 1785492000,
+        "settledAt": 1785499200
+      },
+      {
+        "interval": "year",
+        "key": "year:minimum-complete",
+        "boundaryAt": 1817028000,
+        "settledAt": 1817035200
+      }
+    ],
+    "graceTarget": "recorded actual past_due_since + seven days"
+  },
   "scenarios": [
     "month/continue",
     "month/trial_exit",

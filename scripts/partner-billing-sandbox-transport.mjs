@@ -4,6 +4,10 @@ import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { mkdir, open, readFile, rename, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
+// Root ruling before any Task12 provider effect: fixed cap, no reset/dynamic expansion.
+export const cliBudget = Object.freeze({
+    total: 1500, cleanupReserve: 200, execution: 1300
+});
 const dates = {
     frozen: '2026-01-31T10:50:00Z', activation: '2026-01-31T11:00:00Z', trialEnd: '2026-07-31T10:00:00Z', paidMinimumEnd: '2027-07-31T10:00:00Z', trialExit: '2026-02-28T11:00:00Z'
 };
@@ -474,9 +478,9 @@ export class SandboxTransport {
         }
     }
     async call(argv) {
-        if (++this.calls > 1000 || (this.mode !== 'inspect' && (this.state.calls || 0) >= 1000))
+        if (++this.calls > cliBudget.total || (this.mode !== 'inspect' && (this.state.calls || 0) >= cliBudget.total))
             fail('cli_budget_exhausted');
-        if (this.mode === 'execute' && (this.state.calls || 0) >= 900)
+        if (this.mode === 'execute' && (this.state.calls || 0) >= cliBudget.execution)
             fail('cleanup_budget_reserved');
         if (this.mode !== 'inspect') {
             this.state.calls = (this.state.calls || 0) + 1;
@@ -534,6 +538,33 @@ export class SandboxTransport {
         assertOwned('clock', await this.read('clock.read', { id: o.clock }), o);
         if (o.customer)
             assertOwned('customer', await this.read('customer.read', { id: o.customer }), o);
+    }
+    // Dispatch-boundary guard, shared by initial DELETE and every still-present retry.
+    async assertClockDeletionOwnership(interval) {
+        const clock = this.state.clocks[interval];
+        assert.ok(clock, 'cleanup_confirmed_clock_required');
+        const owners = Object.values(this.state.owners).filter(o => o.clock === clock);
+        assert.ok(owners.length <= 3, 'cleanup_customer_budget');
+        const attached = (await this.list('customer.list')).filter(c => c.test_clock === clock);
+        assert.deepEqual(attached.map(c => c.id).sort(), owners.map(o => o.customer).sort(), 'foreign_customer_on_owned_clock');
+        for (const owner of owners) {
+            await this.ownership(owner);
+            const schedules = await this.list('schedule.list', { owner }), subscriptions = await this.list('subscription.list', { owner });
+            for (const schedule of schedules) {
+                assertOwned('schedule', schedule, owner);
+                assert.equal(schedule.id, owner.schedule);
+            }
+            for (const sub of subscriptions) {
+                assertOwned('subscription', sub, owner);
+                if (!owner.subscription) {
+                    assert.ok(schedules.some(schedule => schedule.id === owner.schedule && [schedule.subscription, schedule.released_subscription].includes(sub.id)), 'cleanup_subscription_binding_required');
+                    owner.subscription = sub.id;
+                    await this.save();
+                }
+                assert.equal(sub.id, owner.subscription);
+            }
+        }
+        return owners;
     }
     budget(op, args, record) {
         const mappings = {
@@ -696,14 +727,6 @@ export class SandboxTransport {
             assertOwned('subscription', await this.read('subscription.read', { id: args.id }), args.owner);
         if (op === 'schedule.update' || op === 'schedule.cancel')
             assertOwned('schedule', await this.read('schedule.read', { id: args.id }), args.owner);
-        if (op === 'clock.delete') {
-            const attached = (await this.list('customer.list')).filter(c => c.test_clock === args.id);
-            const owned = Object.values(this.state.owners).filter(o => o.clock === args.id);
-            if (attached.length > 3 || !same(attached.map(c => c.id).sort(), owned.map(o => o.customer).sort()))
-                fail('foreign_customer_on_owned_clock');
-            for (const customer of attached)
-                assertOwned('customer', customer, owned.find(o => o.customer === customer.id));
-        }
         if (op === 'clock.advance') {
             const c = await this.read('clock.read', { id: args.id });
             if (c.status !== 'ready' || c.frozen_time >= args.target)
@@ -730,6 +753,8 @@ export class SandboxTransport {
             if (i.customer !== args.owner.customer || i.livemode !== false || i.parent?.subscription_details?.subscription !== args.owner.subscription || i.status !== 'open')
                 fail('foreign_invoice');
         }
+        if (op === 'clock.delete')
+            await this.assertClockDeletionOwnership(args.owner.role.split('/')[0]);
         const r = record || {
             op, role: args.owner?.role || args.interval, target, hash, key, descriptor: structuredClone(args), objectId: args.id || args.owner?.customer || args.owner?.clock || null, clockTarget: args.target || null, started: this.now(), attempts: 0
         };

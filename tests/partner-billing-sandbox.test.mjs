@@ -306,6 +306,8 @@ test('lost owned clock DELETE response resolves absence without a second DELETE'
             return { data: exists ? [customer] : [], has_more: false };
         if (argv[1] === '/v1/customers/cus_owned')
             return customer;
+        if (['/v1/subscription_schedules', '/v1/subscriptions'].includes(argv[1]))
+            return { data: [], has_more: false };
         if (argv[0] === 'delete') {
             exists = false;
             deletes++;
@@ -443,6 +445,204 @@ test('request ownership requires confirmed registry IDs and rejects a supplied f
         await assert.rejects(() => t.ownership(owner), /unconfirmed_customer_owner/);
         t.state.owners[owner.role] = { ...owner, paymentMethod: 'pm_owned' };
         await assert.rejects(() => t.ownership({ ...owner, paymentMethod: 'pm_foreign' }), /unconfirmed_owner_field/);
+    }
+    finally {
+        await t.close();
+    }
+}));
+test('I2: pending still-present DELETE freshly rejects foreign schedule or subscription before retry', async () => {
+    for (const foreignKind of ['schedule', 'subscription'])
+        await temporary(async (work) => {
+            let deletes = 0, scopeReads = 0, foreign = false;
+            const owned = {
+                ...owner, schedule: 'sub_sched_owned', subscription: 'sub_owned'
+            };
+            const schedule = {
+                id: owned.schedule, customer: owned.customer, livemode: false, metadata, subscription: owned.subscription
+            };
+            const sub = {
+                id: owned.subscription, customer: owned.customer, livemode: false, metadata
+            };
+            const invoke = async (argv) => {
+                if (argv[0] === '--version')
+                    return 'stripe version 1.44.0';
+                if (argv[1] === '/v1/account')
+                    return { id: boundary.account, charges_enabled: false };
+                if (argv[1] === '/v1/balance')
+                    return { livemode: false };
+                if (argv[0] === 'get' && argv[1] === '/v1/test_helpers/test_clocks/clock_owned')
+                    return clock;
+                if (argv[1] === '/v1/test_helpers/test_clocks')
+                    return { data: [clock], has_more: false };
+                if (argv[1] === '/v1/customers')
+                    return { data: [customer], has_more: false };
+                if (argv[1] === '/v1/customers/cus_owned')
+                    return customer;
+                if (argv[1] === '/v1/subscription_schedules') {
+                    scopeReads++;
+                    return { data: foreign && foreignKind === 'schedule' ? [{ ...schedule, metadata: {} }] : [schedule], has_more: false };
+                }
+                if (argv[1] === '/v1/subscriptions') {
+                    scopeReads++;
+                    return { data: foreign && foreignKind === 'subscription' ? [{ ...sub, metadata: {} }] : [sub], has_more: false };
+                }
+                if (argv[0] === 'delete') {
+                    deletes++;
+                    throw Error('unknown still present');
+                }
+                throw Error('unexpected');
+            };
+            const t = await SandboxTransport.open({
+                work, mode: 'cleanup', invoke
+            });
+            try {
+                t.state.clocks.month = clock.id;
+                t.state.owners[owner.role] = owned;
+                await assert.rejects(() => t.mutate('clock.delete', { owner: owned, id: clock.id }, 'cleanup:month'), /outcome_unknown/);
+                foreign = true;
+                scopeReads = 0;
+                await assert.rejects(() => t.mutate('clock.delete', { owner: owned, id: clock.id }, 'cleanup:month'), /not_owned_marker/);
+                assert.equal(deletes, 1);
+                assert.ok(scopeReads > 0);
+            }
+            finally {
+                await t.close();
+            }
+        });
+});
+test('I1: ready clock with draft invoice advances only to immutable approved settlement; unknown resumes unchanged', async () => {
+    for (const settledStatus of ['paid', 'open'])
+        await temporary(async (work) => {
+            const module = await import('../scripts/partner-billing-sandbox.mjs');
+            assert.equal(typeof module.settledInvoiceCheckpoint, 'function');
+            let frozen = boundary.seconds.trialEnd - 1, lose = true, settlementPosts = 0;
+            const settled = boundary.seconds.trialEnd + 7200, owned = { ...owner, subscription: 'sub_owned' };
+            const invoke = async (argv) => {
+                if (argv[0] === '--version')
+                    return 'stripe version 1.44.0';
+                if (argv[1] === '/v1/account')
+                    return { id: boundary.account, charges_enabled: false };
+                if (argv[1] === '/v1/balance')
+                    return { livemode: false };
+                if (argv[1] === '/v1/customers/cus_owned')
+                    return customer;
+                if (argv[1] === '/v1/subscriptions/sub_owned')
+                    return {
+                        id: 'sub_owned', customer: customer.id, metadata, livemode: false, latest_invoice: 'in_owned'
+                    };
+                if (argv[1] === '/v1/invoices/in_owned')
+                    return {
+                        id: 'in_owned', customer: customer.id, livemode: false, parent: { subscription_details: { subscription: 'sub_owned' } }, status: frozen < settled ? 'draft' : settledStatus, amount_due: 1990
+                    };
+                if (argv[0] === 'post') {
+                    frozen = Number(argv.find(x => x.startsWith('frozen_time=')).split('=')[1]);
+                    if (frozen === settled) {
+                        settlementPosts++;
+                        if (lose) {
+                            lose = false;
+                            throw Error('unknown advance');
+                        }
+                    }
+                    return { ...clock, frozen_time: frozen };
+                }
+                if (argv[1] === '/v1/test_helpers/test_clocks/clock_owned')
+                    return {
+                        ...clock, frozen_time: frozen, status: 'ready'
+                    };
+                throw Error('unexpected');
+            };
+            let t = await SandboxTransport.open({
+                work, mode: 'execute', invoke
+            });
+            try {
+                t.state.clocks.month = clock.id;
+                t.state.owners[owner.role] = owned;
+                const plan = {
+                    interval: 'month', key: 'month:first-paid', boundaryAt: boundary.seconds.trialEnd, settledAt: settled
+                };
+                let paidReads = 0;
+                const paid = async () => {
+                    paidReads++;
+                    assert.equal((await t.read('invoice.read', { id: 'in_owned' })).status, settledStatus);
+                    return { settledProof: settledStatus };
+                };
+                await assert.rejects(() => module.settledInvoiceCheckpoint(t, plan, paid), /outcome_unknown/);
+                await t.close();
+                t = await SandboxTransport.open({
+                    work, mode: 'execute', invoke
+                });
+                assert.equal(t.state.checkpoints['month:first-paid:boundary'].invoiceStatus, 'draft');
+                assert.equal(paidReads, 0);
+                await assert.rejects(() => module.settledInvoiceCheckpoint(t, {
+                    ...plan, boundaryAt: plan.boundaryAt + 1, settledAt: settled + 1
+                }, paid), /settlement_plan_changed/);
+                await module.settledInvoiceCheckpoint(t, plan, paid);
+                assert.equal(settlementPosts, 1);
+                assert.equal(paidReads, 1);
+                assert.equal(t.state.checkpoints['month:first-paid'].settledProof, settledStatus);
+            }
+            finally {
+                await t.close();
+            }
+        });
+});
+test('offline budget measures unchanged actual Source groups, historical infeasibility and Root-approved bounded margin', async () => {
+    const { measureSourceGroups, workflowBudget } = await import('../scripts/partner-billing-sandbox-budget.mjs');
+    const measured = await measureSourceGroups();
+    assert.deepEqual(Object.fromEntries(Object.entries(measured).map(([name, group]) => [name, group.calls])), {
+        planned: 4, reconcileTrial: 7, readerPaid: 7, reconcilePaid: 9, reconcileFailed: 7, cancelTrial: 24, reconcileCanceledTrial: 12, lateRecoveryLost: 11, lateRecoveryConfirmed: 18, reconcileCanceledPaid: 16, cancelPaid: 26
+    });
+    const budget = workflowBudget(measured);
+    assert.equal(budget.executionMinimum, 1086);
+    assert.equal(budget.cleanupMinimum, 47);
+    assert.equal(budget.pollingMargin, 66);
+    assert.equal(budget.executionWithPolling, 1152);
+    assert.equal(budget.historicalBudget.repairedExecutionWithPollingOverCap, 252);
+    assert.equal(budget.historicalBudget.feasible, false);
+    assert.equal(budget.feasible, true);
+    assert.equal(budget.totalCap, 1500);
+    assert.equal(budget.executionCap, 1300);
+    assert.equal(budget.cleanupReserve, 200);
+    assert.equal(budget.executionMargin, 148);
+    assert.equal(budget.cleanupThreePassMargin, 59);
+    assert.equal(budget.originalPostReconcileReaderCalls, 0);
+    assert.equal(budget.repairedPostReconcileReaderCalls, 0);
+});
+test('Root fixed 1500-call cap reserves 200 cleanup calls and durable resume never resets the counter', () => temporary(async (work) => {
+    let dispatched = 0;
+    const invoke = async () => {
+        dispatched++;
+        return 'offline-only';
+    };
+    let t = await SandboxTransport.open({
+        work, mode: 'execute', invoke
+    });
+    try {
+        t.state.calls = 1299;
+        await t.save();
+        await t.call(['--version']);
+        assert.equal(t.state.calls, 1300);
+        await assert.rejects(() => t.call(['--version']), /cleanup_budget_reserved/);
+        assert.equal(dispatched, 1);
+        await t.close();
+        t = await SandboxTransport.open({
+            work, mode: 'cleanup', invoke
+        });
+        assert.equal(t.state.calls, 1300);
+        // Fixture represents previously consumed cleanup calls; no actual CLI loop is needed.
+        t.state.calls = 1499;
+        await t.save();
+        await t.call(['--version']);
+        assert.equal(t.state.calls, 1500);
+        await assert.rejects(() => t.call(['--version']), /cli_budget_exhausted/);
+        assert.equal(dispatched, 2);
+        await t.close();
+        t = await SandboxTransport.open({
+            work, mode: 'cleanup', invoke
+        });
+        assert.equal(t.state.calls, 1500);
+        await assert.rejects(() => t.call(['--version']), /cli_budget_exhausted/);
+        assert.equal(dispatched, 2);
     }
     finally {
         await t.close();

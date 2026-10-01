@@ -1,0 +1,226 @@
+{
+  "label": "offline Source call-shape and fixed-checkpoint cost proof; NOT provider or Hosted acceptance",
+  "assumptions": [
+    "one page per bounded list",
+    "one InvoicePayment via PaymentIntent/Charge for each paid invoice",
+    "all nominal mutations confirmed on first dispatch",
+    "includes deliberately lost Source cancellation response, whose CLI dispatch is already confirmed",
+    "nominal settlement target is boundary+7200 seconds"
+  ],
+  "groups": {
+    "planned": {
+      "calls": 4,
+      "operations": {
+        "setup.read": 1,
+        "schedule.list": 1,
+        "schedule.create": 1,
+        "schedule.read": 1
+      }
+    },
+    "reconcileTrial": {
+      "calls": 7,
+      "operations": {
+        "schedule.read": 2,
+        "subscription.read": 2,
+        "invoice.read": 1,
+        "invoice.lines": 1,
+        "invoice.payments": 1
+      }
+    },
+    "readerPaid": {
+      "calls": 7,
+      "operations": {
+        "subscription.read": 1,
+        "schedule.read": 1,
+        "invoice.read": 1,
+        "invoice.lines": 1,
+        "invoice.payments": 1,
+        "intent.read": 1,
+        "charge.read": 1
+      }
+    },
+    "reconcilePaid": {
+      "calls": 9,
+      "operations": {
+        "schedule.read": 2,
+        "subscription.read": 2,
+        "invoice.read": 1,
+        "invoice.lines": 1,
+        "invoice.payments": 1,
+        "intent.read": 1,
+        "charge.read": 1
+      }
+    },
+    "reconcileFailed": {
+      "calls": 7,
+      "operations": {
+        "schedule.read": 2,
+        "subscription.read": 2,
+        "invoice.read": 1,
+        "invoice.lines": 1,
+        "invoice.payments": 1
+      }
+    },
+    "cancelTrial": {
+      "calls": 24,
+      "operations": {
+        "subscription.read": 6,
+        "schedule.read": 8,
+        "invoice.read": 3,
+        "invoice.lines": 3,
+        "invoice.payments": 3,
+        "schedule.update": 1
+      }
+    },
+    "reconcileCanceledTrial": {
+      "calls": 12,
+      "operations": {
+        "schedule.read": 3,
+        "subscription.read": 3,
+        "invoice.read": 2,
+        "invoice.lines": 2,
+        "invoice.payments": 2
+      }
+    },
+    "lateRecoveryLost": {
+      "calls": 11,
+      "operations": {
+        "subscription.read": 2,
+        "schedule.read": 3,
+        "invoice.read": 1,
+        "invoice.lines": 1,
+        "invoice.payments": 1,
+        "intent.read": 1,
+        "charge.read": 1,
+        "subscription.cancel": 1
+      }
+    },
+    "lateRecoveryConfirmed": {
+      "calls": 18,
+      "operations": {
+        "schedule.read": 4,
+        "subscription.read": 4,
+        "invoice.read": 2,
+        "invoice.lines": 2,
+        "invoice.payments": 2,
+        "intent.read": 2,
+        "charge.read": 2
+      }
+    },
+    "reconcileCanceledPaid": {
+      "calls": 16,
+      "operations": {
+        "schedule.read": 3,
+        "subscription.read": 3,
+        "invoice.read": 2,
+        "invoice.lines": 2,
+        "invoice.payments": 2,
+        "intent.read": 2,
+        "charge.read": 2
+      }
+    },
+    "cancelPaid": {
+      "calls": 26,
+      "operations": {
+        "subscription.read": 6,
+        "schedule.read": 4,
+        "invoice.read": 3,
+        "invoice.lines": 3,
+        "invoice.payments": 3,
+        "intent.read": 3,
+        "charge.read": 3,
+        "subscription.update": 1
+      }
+    }
+  },
+  "rows": [
+    {
+      "operation": "Inspect (version/account/balance + four inventories)",
+      "calls": 7
+    },
+    {
+      "operation": "Bootstrap (two clocks, six customers, six SetupIntents)",
+      "calls": 74
+    },
+    {
+      "operation": "Planned schedules (six Source runs + create ownership + price/schedule proofs)",
+      "calls": 66
+    },
+    {
+      "operation": "Clock control month (23 changed targets, four same-time steps)",
+      "calls": 215
+    },
+    {
+      "operation": "Clock control year (seven ordinary changes, three isolated annual changes, two same-time steps)",
+      "calls": 100
+    },
+    {
+      "operation": "Activation/FEB/MAR/MAY/JUL trial reconciles (six activation, eight continuation)",
+      "calls": 126
+    },
+    {
+      "operation": "Trial cancellation (two Source commands)",
+      "calls": 60
+    },
+    {
+      "operation": "Timely canceled trial Source proofs (two)",
+      "calls": 28
+    },
+    {
+      "operation": "Boundary observations (ten subscription/latest-invoice pairs)",
+      "calls": 20
+    },
+    {
+      "operation": "Settled positive Source proofs (two first, five samples, two minimum, one recovery)",
+      "calls": 110
+    },
+    {
+      "operation": "Late settled invoice SourceReader proofs (two)",
+      "calls": 18
+    },
+    {
+      "operation": "Late Source loss/recovery (two pairs + fresh cancellation ownership + direct subscription proof)",
+      "calls": 72
+    },
+    {
+      "operation": "Canceled paid Source proofs (two late, two termination)",
+      "calls": 72
+    },
+    {
+      "operation": "Decline and fixed-grace Source proofs (three)",
+      "calls": 27
+    },
+    {
+      "operation": "Decline/recovery SetupIntent, defaults and invoice pay",
+      "calls": 27
+    },
+    {
+      "operation": "Paid cancellation (two Source commands)",
+      "calls": 64
+    }
+  ],
+  "originalExecutionMinimum": 956,
+  "originalPostReconcileReaderCalls": 0,
+  "repairedPostReconcileReaderCalls": 0,
+  "historicalBudget": {
+    "totalCap": 1000,
+    "cleanupReserve": 100,
+    "executionCap": 900,
+    "originalExecutionOverCap": 56,
+    "repairedExecutionWithPollingOverCap": 252,
+    "feasible": false
+  },
+  "executionMinimum": 1086,
+  "cleanupMinimum": 47,
+  "totalMinimum": 1133,
+  "pollingMargin": 66,
+  "executionWithPolling": 1152,
+  "cleanupReserve": 200,
+  "totalCap": 1500,
+  "executionCap": 1300,
+  "executionMargin": 148,
+  "cleanupThreePassMargin": 59,
+  "feasible": true,
+  "extraPaginationOrUnknownTransportOutcome": "additional cost, never resets or enlarges journal cap",
+  "runnerOnlyRedundancy": "Clock.advance reads the clock before ownership, again within ownership, again for mutation validation, then for ready proof. Snapshot adds a fresh clock and invoice-list proof; no duplicate post-reconcile SourceReader."
+}

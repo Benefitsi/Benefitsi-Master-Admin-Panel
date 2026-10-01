@@ -3,14 +3,53 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir, open, rename } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
-import { boundary, marker, requestHash, assertOwned, SandboxTransport, waitReady } from './partner-billing-sandbox-transport.mjs';
+import { boundary, cliBudget, marker, requestHash, assertOwned, SandboxTransport, waitReady } from './partner-billing-sandbox-transport.mjs';
 import { createEngine, providerAdapter, assertProjection } from './partner-billing-sandbox-engine.mjs';
 const directory = fileURLToPath(new URL('../docs/partners/task12/', import.meta.url));
 const iso = n => new Date(n * 1000).toISOString();
 const seconds = v => Date.parse(v) / 1000;
+export const invoiceSettlementSeconds = 7200;
+export function invoiceCheckpointPlans(interval) {
+    const entries = [['first-paid', boundary.seconds.trialEnd], ...(interval === 'month' ? [['failed', seconds('2026-08-31T10:00:00Z')], ...['2026-10-31', '2026-12-31', '2027-02-28', '2027-04-30', '2027-06-30'].map((day, index) => [`paid-month-${[9, 11, 13, 15, 17][index]}`, seconds(`${day}T10:00:00Z`)])] : []), ['minimum-complete', boundary.seconds.paidMinimumEnd]];
+    return entries.map(([suffix, boundaryAt]) => ({
+        interval, key: `${interval}:${suffix}`, boundaryAt, settledAt: boundaryAt + invoiceSettlementSeconds
+    }));
+}
+async function registerSettlementPlan(t, plan) {
+    assert.ok(['month', 'year'].includes(plan.interval));
+    assert.equal(plan.settledAt, plan.boundaryAt + invoiceSettlementSeconds, 'unapproved_settlement_target');
+    const saved = (t.state.invoicePlans ||= {})[plan.key];
+    if (saved)
+        assert.equal(requestHash(saved), requestHash(plan), 'settlement_plan_changed');
+    else {
+        t.state.invoicePlans[plan.key] = structuredClone(plan);
+        await t.save();
+    }
+}
+export async function settledInvoiceCheckpoint(t, plan, onSettled) {
+    await registerSettlementPlan(t, plan);
+    await step(t, `${plan.key}:boundary`, plan.interval, plan.boundaryAt, async (now) => {
+        const owner = t.state.owners[`${plan.interval}/continue`];
+        const sub = await t.read('subscription.read', { id: owner.subscription });
+        assertOwned('subscription', sub, owner);
+        const invoiceId = typeof sub.latest_invoice === 'string' ? sub.latest_invoice : sub.latest_invoice?.id;
+        const invoice = invoiceId ? await t.read('invoice.read', { id: invoiceId }) : null;
+        if (invoice) {
+            assert.equal(invoice.customer, owner.customer);
+            assert.equal(invoice.livemode, false);
+            assert.equal(invoice.parent?.subscription_details?.subscription, owner.subscription);
+        }
+        return {
+            boundaryObserved: true, settled: false, projectionApplied: false, subscriptionStatus: sub.status, invoice: invoiceId || null, invoiceStatus: invoice?.status || null, frozen: iso(now)
+        };
+    });
+    return step(t, plan.key, plan.interval, plan.settledAt, onSettled);
+}
 export function offlinePlan() {
     return {
-        status: 'pending', mode: 'offline', providerExecuted: false, ...boundary, scenarios: ['month/continue', 'month/trial_exit', 'month/late_exit', 'year/continue', 'year/trial_exit', 'year/late_exit'], proofGates: {
+        status: 'pending', mode: 'offline', providerExecuted: false, ...boundary, cliBudget, invoiceSettlement: {
+            delaySeconds: invoiceSettlementSeconds, plans: ['month', 'year'].flatMap(invoiceCheckpointPlans), graceTarget: 'recorded actual past_due_since + seven days'
+        }, scenarios: ['month/continue', 'month/trial_exit', 'month/late_exit', 'year/continue', 'year/trial_exit', 'year/late_exit'], proofGates: {
             providerLifecycle: 'pending', sourceEngineWithFixtureSql: 'pending', hostedDb: false, hostedCheckout: false, signedWebhook: false, realAgreement: false, operations: false, production: false
         }, commands: ['node scripts/partner-billing-sandbox.mjs', 'node scripts/partner-billing-sandbox.mjs inspect', 'node scripts/partner-billing-sandbox.mjs execute --reviewed=partner-dashboard-task12-2026-10-01', 'node scripts/partner-billing-sandbox.mjs cleanup --reviewed=partner-dashboard-task12-2026-10-01']
     };
@@ -115,12 +154,14 @@ async function step(t, key, interval, at, run) {
     await t.checkpoint(key, { at: iso(now), ...result });
     return result;
 }
-async function snapshot(t, e, o, label, { expect, amount, positive = false } = {}) {
+async function snapshot(t, e, o, label, { expect, amount, positive = false, readOnly = false } = {}) {
     const time = await freshTime(t, o.role.split('/')[0]);
     e.setTime(time);
     for (const data of Object.values(e.observations))
         data.clear();
-    await e.run('reconcile');
+    const readOnlyState = readOnly ? await e.readOnlySnapshot() : null;
+    if (!readOnly)
+        await e.run('reconcile');
     const sub = e.observations.subscriptions.get(o.subscription);
     assertOwned('subscription', sub, o);
     const invoiceId = typeof sub.latest_invoice === 'string' ? sub.latest_invoice : sub.latest_invoice?.id;
@@ -152,7 +193,7 @@ async function snapshot(t, e, o, label, { expect, amount, positive = false } = {
         }
         verified = invoice.status === 'paid' && paid >= invoice.amount_due;
     }
-    const s = e.state.subscription;
+    const s = readOnlyState || e.state.subscription;
     const proof = {
         label, role: o.role, clock: o.clock, frozen: iso(time), subscription: o.subscription, providerStatus: sub.status, trialStart: sub.trial_start ? iso(sub.trial_start) : null, trialEnd: sub.trial_end ? iso(sub.trial_end) : null, periodStart: s?.period_start, periodEnd: s?.period_end, projection: s ? {
             state: s.state, paidThrough: s.paid_through, firstPaymentAt: s.first_payment_at, pastDueSince: s.past_due_since
@@ -160,7 +201,7 @@ async function snapshot(t, e, o, label, { expect, amount, positive = false } = {
             id: invoice.id, status: invoice.status, amountDue: invoice.amount_due, amountPaid: invoice.amount_paid, paidAt: invoice.status_transitions?.paid_at ? iso(invoice.status_transitions.paid_at) : null, positiveChargeVerified: verified
         } : null, invoiceSummary: invoices.map(i => ({
             id: i.id, status: i.status, amountDue: i.amount_due, amountPaid: i.amount_paid
-        })), fixtureSql: true, fixturePaidTermEntered: e.state.enteredPaidTerm, hosted: false
+        })), fixtureSql: true, readOnlySourceReader: readOnly, fixturePaidTermEntered: e.state.enteredPaidTerm, hosted: false
     };
     t.state.proofs.push(proof);
     await t.save();
@@ -199,6 +240,7 @@ async function bootstrap(t) {
     }
 }
 async function lifecycle(t, interval) {
+    const plans = Object.fromEntries(invoiceCheckpointPlans(interval).map(plan => [plan.key, plan]));
     const b = boundary.seconds, cont = t.state.owners[`${interval}/continue`], trial = t.state.owners[`${interval}/trial_exit`], late = t.state.owners[`${interval}/late_exit`];
     await step(t, `${interval}:planned`, interval, b.frozen, async (now) => {
         for (const caseId of ['continue', 'trial_exit', 'late_exit']) {
@@ -257,7 +299,7 @@ async function lifecycle(t, interval) {
         assert.equal(e.state.cancellation.cancellation_at, boundary.trialEnd);
         return { savedExactBarrier: true, receipt: iso(now) };
     });
-    await step(t, `${interval}:first-paid`, interval, b.trialEnd + 1, async (now) => {
+    await settledInvoiceCheckpoint(t, plans[`${interval}:first-paid`], async (now) => {
         const p = await snapshot(t, engineFor(t, interval, 'continue', now), cont, 'first positive invoice', {
             expect: 'active', amount: interval === 'month' ? 1990 : 19900, positive: true
         });
@@ -268,8 +310,12 @@ async function lifecycle(t, interval) {
                 (t.state.fixtureSignals ||= {})[signal] = { at: iso(now), knownSubscription: late.subscription };
                 await t.save();
             } });
-        if (!signaled)
+        if (!signaled) {
+            await snapshot(t, e, late, 'late exit first invoice settled before processing', {
+                readOnly: true, amount: interval === 'month' ? 1990 : 19900, positive: true
+            });
             await assert.rejects(() => e.run('recover'), /fixture_response_lost_after_confirmed_cancellation/);
+        }
         assert.ok(t.state.fixtureSignals?.[signal], 'lost_response_fixture_not_proven');
         const before = Object.values(t.state.requests).filter(r => r.op === 'subscription.cancel' && r.role === late.role).reduce((n, r) => n + r.attempts, 0);
         await e.run('recover');
@@ -285,7 +331,7 @@ async function lifecycle(t, interval) {
         };
     });
     if (interval === 'month') {
-        await step(t, 'month:decline-default', interval, b.trialEnd + 1, async () => {
+        await step(t, 'month:decline-default', interval, plans['month:first-paid'].settledAt, async () => {
             if (!cont.declineSetup)
                 await t.mutate('setup.create', { owner: cont, payment_method: boundary.cards[1] }, 'setup:month/continue:decline');
             await t.mutate('subscription.update', {
@@ -293,7 +339,7 @@ async function lifecycle(t, interval) {
             }, 'decline:month/continue');
             return { declineDefaultOwned: true };
         });
-        await step(t, 'month:failed', interval, seconds('2026-08-31T10:00:01Z'), async (now) => {
+        await settledInvoiceCheckpoint(t, plans['month:failed'], async (now) => {
             const e = engineFor(t, interval, 'continue', now);
             const p = await snapshot(t, e, cont, 'failed renewal', {
                 expect: 'past_due', amount: 1990, positive: false
@@ -304,14 +350,17 @@ async function lifecycle(t, interval) {
             assert.equal(e.state.subscription.past_due_since, since);
             return { pastDueSince: since, invoice: p.invoice.id };
         });
-        await step(t, 'month:grace-seven-days', interval, seconds('2026-09-07T10:00:01Z'), async (now) => {
+        const failure = seconds(t.state.checkpoints['month:failed'].pastDueSince);
+        assert.ok(Number.isFinite(failure) && failure <= plans['month:failed'].settledAt, 'fixed_failure_timestamp_required');
+        const graceAt = failure + 7 * 86400;
+        await step(t, 'month:grace-seven-days', interval, graceAt, async (now) => {
             const e = engineFor(t, interval, 'continue', now);
             const p = await snapshot(t, e, cont, 'seven days overdue', { expect: 'past_due' });
             assert.equal(p.projection.pastDueSince, t.state.checkpoints['month:failed'].pastDueSince);
             assert.ok(seconds(iso(now)) - seconds(p.projection.pastDueSince) >= 7 * 86400);
             return { fixedGraceObserved: true, hostedRightsAcceptance: false };
         });
-        await step(t, 'month:recovered', interval, seconds('2026-09-07T10:00:01Z'), async (now) => {
+        await step(t, 'month:recovered', interval, graceAt, async (now) => {
             await t.mutate('subscription.update', {
                 owner: cont, id: cont.subscription, params: { default_payment_method: cont.paymentMethod }
             }, 'recover-default:month/continue');
@@ -326,17 +375,15 @@ async function lifecycle(t, interval) {
             return { providerRecovery: true };
         });
     }
-    // Advance in bounded calendar months (each <=62 days), proving all intervening invoices.
+    // Fixed sample boundaries; actual source/provider periods remain authoritative.
     if (interval === 'month')
-        for (const month of [9, 11, 13, 15, 17]) {
-            const year = 2026 + Math.floor(month / 12), m = month % 12;
-            const at = Date.UTC(year, m + 1, 0, 10) / 1000 + 1;
-            await step(t, `${interval}:paid-month-${month}`, interval, at, async (now) => {
+        for (const plan of invoiceCheckpointPlans(interval).filter(p => p.key.includes(':paid-month-'))) {
+            await settledInvoiceCheckpoint(t, plan, async (now) => {
                 await snapshot(t, engineFor(t, interval, 'continue', now), cont, `paid continuation ${iso(now)}`, { expect: 'active', positive: true });
                 return { providerPaidContinuation: true };
             });
         }
-    await step(t, `${interval}:minimum-complete`, interval, b.paidMinimumEnd + 1, async (now) => {
+    await settledInvoiceCheckpoint(t, plans[`${interval}:minimum-complete`], async (now) => {
         const e = engineFor(t, interval, 'continue', now);
         const p = await snapshot(t, e, cont, 'paid twelve months complete', {
             expect: 'active', amount: interval === 'month' ? 1990 : 19900, positive: true
@@ -365,6 +412,9 @@ async function lifecycle(t, interval) {
 async function execute(t) {
     await inspect(t);
     await t.recoverRequests();
+    for (const interval of ['month', 'year'])
+        for (const plan of invoiceCheckpointPlans(interval))
+            await registerSettlementPlan(t, plan);
     await bootstrap(t);
     for (const interval of ['month', 'year'])
         await lifecycle(t, interval);
@@ -382,31 +432,7 @@ async function execute(t) {
     return resources;
 }
 export async function assertTeardownOwnership(t, interval) {
-    const clock = t.state.clocks[interval];
-    assert.ok(clock, 'cleanup_confirmed_clock_required');
-    const owners = Object.values(t.state.owners).filter(o => o.clock === clock);
-    assert.ok(owners.length <= 3, 'cleanup_customer_budget');
-    const all = await t.list('customer.list');
-    const attached = all.filter(c => c.test_clock === clock);
-    assert.deepEqual(attached.map(c => c.id).sort(), owners.map(o => o.customer).sort(), 'foreign_customer_on_owned_clock');
-    for (const o of owners) {
-        await t.ownership(o);
-        const schedules = await t.list('schedule.list', { owner: o }), subscriptions = await t.list('subscription.list', { owner: o });
-        for (const s of schedules) {
-            assertOwned('schedule', s, o);
-            assert.equal(s.id, o.schedule);
-        }
-        for (const s of subscriptions) {
-            assertOwned('subscription', s, o);
-            if (!o.subscription) {
-                assert.ok(schedules.some(schedule => schedule.id === o.schedule && [schedule.subscription, schedule.released_subscription].includes(s.id)), 'cleanup_subscription_binding_required');
-                o.subscription = s.id;
-                await t.save();
-            }
-            assert.equal(s.id, o.subscription);
-        }
-    }
-    return owners;
+    return SandboxTransport.prototype.assertClockDeletionOwnership.call(t, interval);
 }
 async function cleanup(t) {
     await inspect(t);
@@ -424,7 +450,7 @@ async function cleanup(t) {
             await t.mutate('clock.delete', { owner: clockOwner, id: clock }, key);
             continue;
         }
-        const owners = await assertTeardownOwnership(t, interval);
+        const owners = Object.values(t.state.owners).filter(o => o.clock === clock);
         const clockOwner = owners[0] || {
             clock, role: `${interval}/continue`, contract: `task12-${interval}-continue`
         };

@@ -173,6 +173,9 @@ export function createEngine({ interval, caseId, customer, setup, stripe, now, s
             Object.assign(contract, state.cancellation);
             await persist();
         },
+        async readOnlySnapshot() {
+            return provider.readPartnerSubscription(adapter, contract, customer, state.subscription);
+        },
         async run(action) {
             if (running)
                 throw Error('fixture_expected_serial_execution');
