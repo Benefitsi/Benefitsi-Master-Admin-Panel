@@ -144,6 +144,8 @@ function validateBridgePlan(t, owner, plan, pending) {
 async function approvedAprilBridge(t, owner, fresh, semantic, target) {
     assert.ok(semantic === aprilBridge.parent && target === aprilBridge.final && owner.role === 'month/continue', 'unapproved_clock_bridge');
     const pending = t.state.requests[semantic];
+    if (fresh.status === 'ready' && fresh.frozen_time < aprilBridge.target)
+        t.assertRetryEligible(pending, { dispatch: true });
     let plan = t.state.clockBridges?.april2027;
     if (plan) validateBridgePlan(t, owner, plan, pending);
     else {
@@ -209,16 +211,17 @@ export async function advance(t, interval, target, key) {
         fresh = await waitReady(() => t.read('clock.read', { id }), target, current);
         assertOwned('clock', fresh, owner);
     }
+    const dispatchGuard = semantic === `advance:month:${aprilBridge.key}` ? { beforeDispatch: () => t.assertRetryEligible(t.state.requests[aprilBridge.parent], { dispatch: true }) } : undefined;
     if (pending && pending.status !== 'confirmed')
         await t.mutate('clock.advance', {
             owner, id, target
-        }, semantic);
+        }, semantic, dispatchGuard);
     else if (current < target) {
         if (fresh.status !== 'ready')
             throw Error('clock_not_ready');
         await t.mutate('clock.advance', {
             owner, id, target
-        }, semantic);
+        }, semantic, dispatchGuard);
     }
     const c = await waitReady(() => t.read('clock.read', { id }), target, current);
     return c.frozen_time;

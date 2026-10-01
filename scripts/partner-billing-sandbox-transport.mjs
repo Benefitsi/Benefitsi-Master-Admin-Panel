@@ -703,7 +703,14 @@ export class SandboxTransport {
                 fail('invoice_pay_unconfirmed');
         }
     }
-    async mutate(op, args, semanticKey) {
+    assertRetryEligible(record, { dispatch = false } = {}) {
+        if (!record) return;
+        if (record.status !== 'confirmed' && this.now() - record.started >= 23 * 3600000)
+            fail('uncertainty_expired');
+        if (dispatch && record.attempts >= 3)
+            fail('retry_budget_exhausted');
+    }
+    async mutate(op, args, semanticKey, { beforeDispatch } = {}) {
         if (this.mode === 'inspect')
             fail('read_only');
         if (this.mode === 'cleanup' && op !== 'clock.delete')
@@ -716,8 +723,7 @@ export class SandboxTransport {
             fail('request_changed');
         const target = this.budget(op, args, record);
         if (record) {
-            if (record.status !== 'confirmed' && this.now() - record.started >= 23 * 3600000)
-                fail('uncertainty_expired');
+            this.assertRetryEligible(record);
             const resolved = await this.resolve(op, args);
             if (resolved) {
                 await this.confirm(op, args, resolved);
@@ -729,8 +735,7 @@ export class SandboxTransport {
             }
             if (record.status === 'confirmed')
                 fail('confirmed_result_missing');
-            if (record.attempts >= 3)
-                fail('retry_budget_exhausted');
+            this.assertRetryEligible(record, { dispatch: true });
         }
         await this.attest();
         if (args.owner)
@@ -770,6 +775,7 @@ export class SandboxTransport {
         }
         if (op === 'clock.delete')
             await this.assertClockDeletionOwnership(args.owner.role.split('/')[0]);
+        beforeDispatch?.();
         const r = record || {
             op, role: args.owner?.role || args.interval, target, hash, key, descriptor: structuredClone(args), objectId: args.id || args.owner?.customer || args.owner?.clock || null, clockTarget: args.target || null, started: this.now(), attempts: 0
         };

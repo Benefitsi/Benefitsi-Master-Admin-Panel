@@ -448,10 +448,35 @@ test('approved April period bridge preserves pending original order and resumes 
         const original = { op: 'clock.advance', role: o.role, descriptor: structuredClone(args), objectId: o.clock, clockTarget: target, key: fullKey,
             hash: requestHash(buildRequest('clock.advance', args, fullKey)), started: Date.now() - 1000, dispatched: Date.now() - 500, failed: Date.now() - 100, status: 'unknown', attempts: 2, checkpoint: 'month:paid-month-13' };
         t.state.requests[semantic] = structuredClone(original); await t.save();
+        for (const [field, value, error] of [
+            ['started', Date.now() - 24 * 3600000, /uncertainty_expired/],
+            ['attempts', 3, /retry_budget_exhausted/]
+        ]) {
+            t.state.requests[semantic][field] = value;
+            const before = structuredClone(t.state.requests[semantic]);
+            await assert.rejects(() => advance(t, 'month', target, 'month:paid-month-15:boundary'), error);
+            assert.equal(posts.length, 0, 'ineligible initial parent cannot create a bridge effect');
+            assert.deepEqual(t.state.requests[semantic], before);
+            assert.equal(t.state.clockBridges, undefined);
+            t.state.requests[semantic] = structuredClone(original);
+        }
         loseBridge = true;
         await assert.rejects(() => advance(t, 'month', target, 'month:paid-month-15:boundary'), /mutation_outcome_unknown/);
         assert.deepEqual(t.state.requests[semantic], original, 'original two-attempt order untouched until approved bridge is ready');
         assert.equal(posts.length, 1); assert.equal(posts[0].next, bridge);
+        const savedState = structuredClone(t.state);
+        current = from;
+        delete t.state.requests['advance:month:technical-bridge:april-2027'];
+        const expired = Date.now() - 24 * 3600000;
+        t.state.requests[semantic].started = expired;
+        t.state.clockBridges.april2027.original.started = expired;
+        t.state.clockBridges.april2027.originalHash = requestHash(t.state.clockBridges.april2027.original);
+        const expiredOriginal = structuredClone(t.state.requests[semantic]);
+        await assert.rejects(() => advance(t, 'month', target, 'month:paid-month-15:boundary'), /uncertainty_expired/);
+        assert.equal(posts.length, 1, 'expired saved-plan parent cannot add another bridge POST');
+        assert.deepEqual(t.state.requests[semantic], expiredOriginal);
+        assert.equal(t.state.clockBridges.april2027.ready, undefined);
+        t.state = savedState; current = bridge;
         const bridgeRecord = Object.values(t.state.requests).find(r => r.op === 'clock.advance' && r.clockTarget === bridge);
         assert.equal(bridgeRecord.attempts, 1);
         for (const bad of [
