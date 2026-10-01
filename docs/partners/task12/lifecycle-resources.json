@@ -1,7 +1,7 @@
 {
-  "status": "pending",
+  "status": "failed_or_unknown",
   "mode": "offline",
-  "providerExecuted": false,
+  "providerExecuted": true,
   "account": "acct_1T3ZuLH0Ev7iKGq0",
   "api": "2026-06-24.dahlia",
   "cli": "1.44.0",
@@ -135,5 +135,1243 @@
     "node scripts/partner-billing-sandbox.mjs inspect",
     "node scripts/partner-billing-sandbox.mjs execute --reviewed=partner-dashboard-task12-2026-10-01",
     "node scripts/partner-billing-sandbox.mjs cleanup --reviewed=partner-dashboard-task12-2026-10-01"
-  ]
+  ],
+  "proofs": [
+    {
+      "label": "activation",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-01-31T11:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "trialing",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-07-31T10:00:00.000Z",
+      "projection": {
+        "state": "trialing",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+        "status": "draft",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": null,
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "draft",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "activation",
+      "role": "month/trial_exit",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-01-31T11:00:00.000Z",
+      "subscription": "sub_1ULqpXH0Ev7iKGq0DFEwC42m",
+      "providerStatus": "trialing",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-07-31T10:00:00.000Z",
+      "projection": {
+        "state": "trialing",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpXH0Ev7iKGq0BmLMfXt7",
+        "status": "draft",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": null,
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpXH0Ev7iKGq0BmLMfXt7",
+          "status": "draft",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "activation",
+      "role": "month/late_exit",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-01-31T11:00:00.000Z",
+      "subscription": "sub_1ULqpYH0Ev7iKGq0wfEbwZlc",
+      "providerStatus": "trialing",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-07-31T10:00:00.000Z",
+      "projection": {
+        "state": "trialing",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpZH0Ev7iKGq0wf9GyPwu",
+        "status": "draft",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": null,
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpZH0Ev7iKGq0wf9GyPwu",
+          "status": "draft",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "activation",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-01-31T11:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "trialing",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-07-31T10:00:00.000Z",
+      "projection": {
+        "state": "trialing",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+        "status": "draft",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": null,
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "draft",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "activation",
+      "role": "month/trial_exit",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-01-31T11:00:00.000Z",
+      "subscription": "sub_1ULqpXH0Ev7iKGq0DFEwC42m",
+      "providerStatus": "trialing",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-02-28T11:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-02-28T11:00:00.000Z",
+      "projection": {
+        "state": "trialing",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpXH0Ev7iKGq0BmLMfXt7",
+        "status": "draft",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": null,
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpXH0Ev7iKGq0BmLMfXt7",
+          "status": "draft",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "activation",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-01-31T11:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "trialing",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-07-31T10:00:00.000Z",
+      "projection": {
+        "state": "trialing",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+        "status": "draft",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": null,
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "draft",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "activation",
+      "role": "month/trial_exit",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-01-31T11:00:00.000Z",
+      "subscription": "sub_1ULqpXH0Ev7iKGq0DFEwC42m",
+      "providerStatus": "trialing",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-02-28T11:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-02-28T11:00:00.000Z",
+      "projection": {
+        "state": "trialing",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpXH0Ev7iKGq0BmLMfXt7",
+        "status": "draft",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": null,
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpXH0Ev7iKGq0BmLMfXt7",
+          "status": "draft",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "activation",
+      "role": "month/late_exit",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-01-31T11:00:00.000Z",
+      "subscription": "sub_1ULqpYH0Ev7iKGq0wfEbwZlc",
+      "providerStatus": "trialing",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-07-31T10:00:00.000Z",
+      "projection": {
+        "state": "trialing",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpZH0Ev7iKGq0wf9GyPwu",
+        "status": "draft",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": null,
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpZH0Ev7iKGq0wf9GyPwu",
+          "status": "draft",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "timely trial exit",
+      "role": "month/trial_exit",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-02-28T11:00:00.000Z",
+      "subscription": "sub_1ULqpXH0Ev7iKGq0DFEwC42m",
+      "providerStatus": "canceled",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-02-28T11:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-02-28T11:00:00.000Z",
+      "projection": {
+        "state": "canceled",
+        "paidThrough": null,
+        "firstPaymentAt": "2026-01-31T12:00:00.000Z",
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpXH0Ev7iKGq0BmLMfXt7",
+        "status": "paid",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": "2026-01-31T12:00:00.000Z",
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpXH0Ev7iKGq0BmLMfXt7",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "timely trial exit",
+      "role": "month/trial_exit",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-02-28T11:00:00.000Z",
+      "subscription": "sub_1ULqpXH0Ev7iKGq0DFEwC42m",
+      "providerStatus": "canceled",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-02-28T11:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-02-28T11:00:00.000Z",
+      "projection": {
+        "state": "canceled",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpXH0Ev7iKGq0BmLMfXt7",
+        "status": "paid",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": "2026-01-31T12:00:00.000Z",
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpXH0Ev7iKGq0BmLMfXt7",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "February28",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-02-28T11:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "trialing",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-07-31T10:00:00.000Z",
+      "projection": {
+        "state": "trialing",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+        "status": "paid",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": "2026-01-31T12:00:00.000Z",
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "March31/DST",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-03-31T10:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "trialing",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-07-31T10:00:00.000Z",
+      "projection": {
+        "state": "trialing",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+        "status": "paid",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": "2026-01-31T12:00:00.000Z",
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "may",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-05-31T10:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "trialing",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-07-31T10:00:00.000Z",
+      "projection": {
+        "state": "trialing",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+        "status": "paid",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": "2026-01-31T12:00:00.000Z",
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "july",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-07-31T09:59:59.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "trialing",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-01-31T11:00:00.000Z",
+      "periodEnd": "2026-07-31T10:00:00.000Z",
+      "projection": {
+        "state": "trialing",
+        "paidThrough": null,
+        "firstPaymentAt": null,
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+        "status": "paid",
+        "amountDue": 0,
+        "amountPaid": 0,
+        "paidAt": "2026-01-31T12:00:00.000Z",
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "first positive invoice",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-07-31T12:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "active",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-07-31T10:00:00.000Z",
+      "periodEnd": "2026-08-31T10:00:00.000Z",
+      "projection": {
+        "state": "active",
+        "paidThrough": "2026-08-31T10:00:00.000Z",
+        "firstPaymentAt": "2026-07-31T11:00:00.000Z",
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULs2tH0Ev7iKGq0TOc8jNTx",
+        "status": "paid",
+        "amountDue": 1990,
+        "amountPaid": 1990,
+        "paidAt": "2026-07-31T11:00:00.000Z",
+        "positiveChargeVerified": true
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULs2tH0Ev7iKGq0TOc8jNTx",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": true,
+      "hosted": false
+    },
+    {
+      "label": "late exit first invoice settled before processing",
+      "role": "month/late_exit",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-07-31T12:00:00.000Z",
+      "subscription": "sub_1ULqpYH0Ev7iKGq0wfEbwZlc",
+      "providerStatus": "active",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-07-31T10:00:00.000Z",
+      "periodEnd": "2026-08-31T10:00:00.000Z",
+      "projection": {
+        "state": "canceled",
+        "paidThrough": null,
+        "firstPaymentAt": "2026-07-31T11:00:00.000Z",
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULs2vH0Ev7iKGq0eoUv3Bqq",
+        "status": "paid",
+        "amountDue": 1990,
+        "amountPaid": 1990,
+        "paidAt": "2026-07-31T11:00:00.000Z",
+        "positiveChargeVerified": true
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULs2vH0Ev7iKGq0eoUv3Bqq",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULqpZH0Ev7iKGq0wf9GyPwu",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": true,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "first positive invoice",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-07-31T12:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "active",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-07-31T10:00:00.000Z",
+      "periodEnd": "2026-08-31T10:00:00.000Z",
+      "projection": {
+        "state": "active",
+        "paidThrough": "2026-08-31T10:00:00.000Z",
+        "firstPaymentAt": "2026-07-31T11:00:00.000Z",
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULs2tH0Ev7iKGq0TOc8jNTx",
+        "status": "paid",
+        "amountDue": 1990,
+        "amountPaid": 1990,
+        "paidAt": "2026-07-31T11:00:00.000Z",
+        "positiveChargeVerified": true
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULs2tH0Ev7iKGq0TOc8jNTx",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": true,
+      "hosted": false
+    },
+    {
+      "label": "late exit after first invoice",
+      "role": "month/late_exit",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-07-31T12:00:00.000Z",
+      "subscription": "sub_1ULqpYH0Ev7iKGq0wfEbwZlc",
+      "providerStatus": "canceled",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-07-31T10:00:00.000Z",
+      "periodEnd": "2026-08-31T10:00:00.000Z",
+      "projection": {
+        "state": "canceled",
+        "paidThrough": null,
+        "firstPaymentAt": "2026-07-31T11:00:00.000Z",
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULs2vH0Ev7iKGq0eoUv3Bqq",
+        "status": "paid",
+        "amountDue": 1990,
+        "amountPaid": 1990,
+        "paidAt": "2026-07-31T11:00:00.000Z",
+        "positiveChargeVerified": true
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULs2vH0Ev7iKGq0eoUv3Bqq",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULqpZH0Ev7iKGq0wf9GyPwu",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": false,
+      "hosted": false
+    },
+    {
+      "label": "failed renewal",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-08-31T12:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "past_due",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-08-31T10:00:00.000Z",
+      "periodEnd": "2026-09-30T10:00:00.000Z",
+      "projection": {
+        "state": "past_due",
+        "paidThrough": "2026-08-31T10:00:00.000Z",
+        "firstPaymentAt": null,
+        "pastDueSince": "2026-08-31T11:00:00.000Z"
+      },
+      "invoice": {
+        "id": "in_1ULsPQH0Ev7iKGq0pcuHpUDw",
+        "status": "open",
+        "amountDue": 1990,
+        "amountPaid": 0,
+        "paidAt": null,
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULsPQH0Ev7iKGq0pcuHpUDw",
+          "status": "open",
+          "amountDue": 1990,
+          "amountPaid": 0
+        },
+        {
+          "id": "in_1ULs2tH0Ev7iKGq0TOc8jNTx",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": true,
+      "hosted": false
+    },
+    {
+      "label": "repeat failed renewal",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-08-31T12:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "past_due",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-08-31T10:00:00.000Z",
+      "periodEnd": "2026-09-30T10:00:00.000Z",
+      "projection": {
+        "state": "past_due",
+        "paidThrough": "2026-08-31T10:00:00.000Z",
+        "firstPaymentAt": null,
+        "pastDueSince": "2026-08-31T11:00:00.000Z"
+      },
+      "invoice": {
+        "id": "in_1ULsPQH0Ev7iKGq0pcuHpUDw",
+        "status": "open",
+        "amountDue": 1990,
+        "amountPaid": 0,
+        "paidAt": null,
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULsPQH0Ev7iKGq0pcuHpUDw",
+          "status": "open",
+          "amountDue": 1990,
+          "amountPaid": 0
+        },
+        {
+          "id": "in_1ULs2tH0Ev7iKGq0TOc8jNTx",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": true,
+      "hosted": false
+    },
+    {
+      "label": "seven days overdue",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-09-07T11:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "past_due",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-08-31T10:00:00.000Z",
+      "periodEnd": "2026-09-30T10:00:00.000Z",
+      "projection": {
+        "state": "past_due",
+        "paidThrough": "2026-08-31T10:00:00.000Z",
+        "firstPaymentAt": null,
+        "pastDueSince": "2026-08-31T11:00:00.000Z"
+      },
+      "invoice": {
+        "id": "in_1ULsPQH0Ev7iKGq0pcuHpUDw",
+        "status": "open",
+        "amountDue": 1990,
+        "amountPaid": 0,
+        "paidAt": null,
+        "positiveChargeVerified": false
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULsPQH0Ev7iKGq0pcuHpUDw",
+          "status": "open",
+          "amountDue": 1990,
+          "amountPaid": 0
+        },
+        {
+          "id": "in_1ULs2tH0Ev7iKGq0TOc8jNTx",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": true,
+      "hosted": false
+    },
+    {
+      "label": "payment recovered",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-09-07T11:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "active",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-08-31T10:00:00.000Z",
+      "periodEnd": "2026-09-30T10:00:00.000Z",
+      "projection": {
+        "state": "active",
+        "paidThrough": "2026-09-30T10:00:00.000Z",
+        "firstPaymentAt": "2026-09-07T11:00:00.000Z",
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULsPQH0Ev7iKGq0pcuHpUDw",
+        "status": "paid",
+        "amountDue": 1990,
+        "amountPaid": 1990,
+        "paidAt": "2026-09-07T11:00:00.000Z",
+        "positiveChargeVerified": true
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULsPQH0Ev7iKGq0pcuHpUDw",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULs2tH0Ev7iKGq0TOc8jNTx",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": true,
+      "hosted": false
+    },
+    {
+      "label": "paid continuation 2026-10-31T12:00:00.000Z",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-10-31T12:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "active",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-10-31T10:00:00.000Z",
+      "periodEnd": "2026-11-30T10:00:00.000Z",
+      "projection": {
+        "state": "active",
+        "paidThrough": "2026-11-30T10:00:00.000Z",
+        "firstPaymentAt": "2026-10-31T11:00:00.000Z",
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULsQdH0Ev7iKGq0Pml1oDA4",
+        "status": "paid",
+        "amountDue": 1990,
+        "amountPaid": 1990,
+        "paidAt": "2026-10-31T11:00:00.000Z",
+        "positiveChargeVerified": true
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULsQdH0Ev7iKGq0Pml1oDA4",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULsQVH0Ev7iKGq0SvXo8D8L",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULsPQH0Ev7iKGq0pcuHpUDw",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULs2tH0Ev7iKGq0TOc8jNTx",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": true,
+      "hosted": false
+    },
+    {
+      "label": "paid continuation 2026-12-31T12:00:00.000Z",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2026-12-31T12:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "active",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2026-12-31T10:00:00.000Z",
+      "periodEnd": "2027-01-31T10:00:00.000Z",
+      "projection": {
+        "state": "active",
+        "paidThrough": "2027-01-31T10:00:00.000Z",
+        "firstPaymentAt": "2026-12-31T11:00:00.000Z",
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULsRBH0Ev7iKGq0zzhsNJXu",
+        "status": "paid",
+        "amountDue": 1990,
+        "amountPaid": 1990,
+        "paidAt": "2026-12-31T11:00:00.000Z",
+        "positiveChargeVerified": true
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULsRBH0Ev7iKGq0zzhsNJXu",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULsR3H0Ev7iKGq0BjZOWNU6",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULsQdH0Ev7iKGq0Pml1oDA4",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULsQVH0Ev7iKGq0SvXo8D8L",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULsPQH0Ev7iKGq0pcuHpUDw",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULs2tH0Ev7iKGq0TOc8jNTx",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": true,
+      "hosted": false
+    },
+    {
+      "label": "paid continuation 2027-02-28T12:00:00.000Z",
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "frozen": "2027-02-28T12:00:00.000Z",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD",
+      "providerStatus": "active",
+      "trialStart": "2026-01-31T11:00:00.000Z",
+      "trialEnd": "2026-07-31T10:00:00.000Z",
+      "periodStart": "2027-02-28T10:00:00.000Z",
+      "periodEnd": "2027-03-31T10:00:00.000Z",
+      "projection": {
+        "state": "active",
+        "paidThrough": "2027-03-31T10:00:00.000Z",
+        "firstPaymentAt": "2027-02-28T11:00:00.000Z",
+        "pastDueSince": null
+      },
+      "invoice": {
+        "id": "in_1ULsRgH0Ev7iKGq0DfLwREyi",
+        "status": "paid",
+        "amountDue": 1990,
+        "amountPaid": 1990,
+        "paidAt": "2027-02-28T11:00:00.000Z",
+        "positiveChargeVerified": true
+      },
+      "invoiceSummary": [
+        {
+          "id": "in_1ULsRgH0Ev7iKGq0DfLwREyi",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULsRYH0Ev7iKGq0A82yv6vM",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULsRBH0Ev7iKGq0zzhsNJXu",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULsR3H0Ev7iKGq0BjZOWNU6",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULsQdH0Ev7iKGq0Pml1oDA4",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULsQVH0Ev7iKGq0SvXo8D8L",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULsPQH0Ev7iKGq0pcuHpUDw",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULs2tH0Ev7iKGq0TOc8jNTx",
+          "status": "paid",
+          "amountDue": 1990,
+          "amountPaid": 1990
+        },
+        {
+          "id": "in_1ULqpWH0Ev7iKGq0pbvudazo",
+          "status": "paid",
+          "amountDue": 0,
+          "amountPaid": 0
+        }
+      ],
+      "fixtureSql": true,
+      "readOnlySourceReader": false,
+      "fixturePaidTermEntered": true,
+      "hosted": false
+    }
+  ],
+  "ownedResources": [
+    {
+      "role": "month/continue",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "customer": "cus_VMZynze4nuiHtk",
+      "schedule": "sub_sched_1ULqpJH0Ev7iKGq0bHvpigls",
+      "subscription": "sub_1ULqpWH0Ev7iKGq0YdW9qSuD"
+    },
+    {
+      "role": "month/trial_exit",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "customer": "cus_VMZyDzyEertcew",
+      "schedule": "sub_sched_1ULqpMH0Ev7iKGq0mSFQbrTC",
+      "subscription": "sub_1ULqpXH0Ev7iKGq0DFEwC42m"
+    },
+    {
+      "role": "month/late_exit",
+      "clock": "clock_1ULqfAH0Ev7iKGq061V7rCyY",
+      "customer": "cus_VMZyWNMDxGdO8o",
+      "schedule": "sub_sched_1ULqpQH0Ev7iKGq0Zk9uJU1V",
+      "subscription": "sub_1ULqpYH0Ev7iKGq0wfEbwZlc"
+    },
+    {
+      "role": "year/continue",
+      "clock": "clock_1ULqp2H0Ev7iKGq0AgZAIViF",
+      "customer": "cus_VMZzuWuqldU33e"
+    },
+    {
+      "role": "year/trial_exit",
+      "clock": "clock_1ULqp2H0Ev7iKGq0AgZAIViF",
+      "customer": "cus_VMZzGXKpAh3Xo0"
+    },
+    {
+      "role": "year/late_exit",
+      "clock": "clock_1ULqp2H0Ev7iKGq0AgZAIViF",
+      "customer": "cus_VMZzSeGUVrmohS"
+    }
+  ],
+  "failure": {
+    "code": "mutation_outcome_unknown",
+    "at": "2026-10-01T23:34:50.767Z"
+  },
+  "cleanup": {
+    "confirmed": true,
+    "at": "2026-10-01T23:36:12.245Z"
+  },
+  "acceptance": {
+    "status": "partial",
+    "provider_data": "real_isolated_stripe_sandbox",
+    "contract_rpc_and_checkout_boundary": "synthetic_fixture",
+    "monthly": {
+      "free_phase_and_finalized_zero_invoices": "verified",
+      "timely_trial_exit_without_positive_charge": "verified",
+      "positive_first_payment_eur_cents": 1990,
+      "late_processing_without_duplicate_cancel": "verified",
+      "failed_renewal_fixed_past_due_and_seven_days": "verified",
+      "successful_payment_recovery": "verified",
+      "positive_continuation_invoices_verified": 8,
+      "last_verified_paid_checkpoint": "2027-02-28T12:00:00.000Z",
+      "technical_march_bridge": "ready_without_payment_or_source_checkpoint",
+      "full_minimum_term_and_termination": "pending"
+    },
+    "annual_lifecycle": "not_executed",
+    "terminal_original_april_advance": {
+      "status": "unknown",
+      "attempts": 3,
+      "replacement_request_created": false,
+      "fourth_attempt_sent": false,
+      "cleanup_archive_is_lifecycle_success": false
+    },
+    "source_correction": {
+      "zero_trial_invoice_first_payment_is_null": true,
+      "first_payment_requires_verified_positive_payment": true
+    },
+    "durable_runner_and_cleanup_calls": 981,
+    "fixed_limits": {
+      "total": 1500,
+      "execution": 1300,
+      "cleanup_reserve": 200
+    },
+    "owned_cleanup": {
+      "status": "confirmed",
+      "clocks_deleted": 2,
+      "one_delete_dispatch_per_clock": true,
+      "customers_individually_confirmed_deleted": 6
+    },
+    "post_cleanup_integrity": {
+      "catalog_objects_unchanged": 9,
+      "existing_unclocked_customer_count": 5,
+      "existing_customer_ids_and_full_objects_unchanged": true,
+      "task11_journal_bytes_unchanged": 2,
+      "stage_project": "klfaqrrbigjtcgrslkkl",
+      "stage_hashes_unchanged": {
+        "offers": "fd086af356a56bcd0741e7bdf99a6815",
+        "modules": "f97609802853d7c803a232f52f33efff",
+        "runtime": "7474ee4d2a1eb27b96aa138ad9be7c60",
+        "configuration": "6e763f19a882e0dacc65beccfb5bd9ed"
+      },
+      "billing_enabled": false,
+      "checkout_enabled": false,
+      "terms_ready": false
+    },
+    "overall_provider_acceptance": "pending",
+    "hosted_database_checkout_webhook_operations_and_real_agreement_acceptance": false,
+    "production_approved": false
+  }
 }
