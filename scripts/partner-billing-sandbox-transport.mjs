@@ -832,9 +832,79 @@ export class SandboxTransport {
             fail('mutation_outcome_unknown');
         }
     }
+    validateCleanupDelete(semanticKey, record) {
+        const args = record.descriptor, owner = args?.owner, interval = role(owner).role.split('/')[0];
+        assert.ok(record.op === 'clock.delete' && semanticKey === `cleanup:${interval}` && record.key === `task12:${semanticKey}` && record.role === owner.role && args.id === owner.clock && record.objectId === owner.clock, 'cleanup_delete_identity_changed');
+        assert.equal(record.hash, requestHash(buildRequest('clock.delete', args, record.key)), 'cleanup_delete_wire_changed');
+        assert.ok(Number.isInteger(record.started) && Number.isInteger(record.dispatched) && record.dispatched >= record.started && Number.isInteger(record.attempts) && record.attempts >= 1 && record.attempts <= 3, 'cleanup_prior_dispatch_required');
+        assert.ok(['unknown', 'dispatching', 'confirmed'].includes(record.status), 'cleanup_delete_status_changed');
+        if (record.status === 'confirmed') assert.ok(record.id === owner.clock && Number.isInteger(record.confirmed), 'cleanup_confirmed_delete_required');
+        const created = this.state.requests[`clock:${interval}`];
+        assert.ok(created?.op === 'clock.create' && created.status === 'confirmed' && created.id === owner.clock && created.role === interval && created.key === `task12:clock:${interval}` && created.descriptor?.interval === interval && created.hash === requestHash(buildRequest('clock.create', created.descriptor, created.key)), 'cleanup_confirmed_clock_required');
+        const registered = this.state.owners[owner.role];
+        assert.ok(registered && registered.clock === owner.clock, 'cleanup_delete_owner_changed');
+        for (const field of ['role', 'clock', 'contract', 'customer', 'subscription', 'schedule', 'setup', 'paymentMethod'])
+            assert.equal(owner[field], registered[field], 'cleanup_delete_owner_changed');
+        assert.ok(this.state.clocks[interval] === owner.clock || (record.status === 'confirmed' && this.state.clocks[interval] === null), 'cleanup_delete_clock_changed');
+        return interval;
+    }
+    async recoverCleanupDeletes() {
+        for (const [semanticKey, record] of Object.entries(this.state.requests)) {
+            if (record.op !== 'clock.delete') continue;
+            this.validateCleanupDelete(semanticKey, record);
+            if (record.status === 'confirmed') continue;
+            const resolved = await this.resolve(record.op, record.descriptor);
+            if (!resolved) {
+                this.assertRetryEligible(record);
+                continue; // The caller retries only through the existing complete DELETE ownership guard.
+            }
+            await this.confirm(record.op, record.descriptor, resolved);
+            record.status = 'confirmed'; record.id = resolved.id; record.confirmed = this.now();
+            await this.save();
+        }
+    }
+    async archiveCleanupSuperseded(semanticKey, record) {
+        if (record.op !== 'clock.advance') return false;
+        const args = record.descriptor, owner = args?.owner, interval = role(owner).role.split('/')[0];
+        const deletionKey = `cleanup:${interval}`, deletion = this.state.requests[deletionKey], saved = this.state.cleanupSuperseded?.[semanticKey];
+        if (!deletion || deletion.status !== 'confirmed') {
+            assert.ok(!saved, 'cleanup_superseded_delete_missing');
+            return false;
+        }
+        this.validateCleanupDelete(deletionKey, deletion);
+        assert.ok(record.status === 'unknown' && record.role === owner.role && owner.role === `${interval}/continue` && semanticKey.startsWith(`advance:${interval}:`) && record.key === `task12:${semanticKey}` && args.id === owner.clock && record.objectId === owner.clock && record.clockTarget === args.target && owner.clock === deletion.descriptor.id && Number.isInteger(record.started) && record.started <= deletion.dispatched && Number.isInteger(record.attempts) && record.attempts >= 1 && record.attempts <= 3, 'cleanup_original_order_changed');
+        assert.equal(record.hash, requestHash(buildRequest(record.op, args, record.key)), 'cleanup_original_wire_changed');
+        const registered = this.state.owners[owner.role];
+        assert.ok(registered, 'cleanup_original_owner_changed');
+        for (const field of ['role', 'clock', 'contract', 'customer', 'subscription', 'schedule', 'setup', 'paymentMethod'])
+            assert.equal(owner[field], registered[field], 'cleanup_original_owner_changed');
+        if (saved) {
+            assert.equal(saved.originalHash, requestHash(record), 'cleanup_original_archive_changed');
+            assert.equal(saved.originalHash, requestHash(saved.original), 'cleanup_original_archive_changed');
+            assert.equal(saved.confirmedDeleteHash, requestHash(deletion), 'cleanup_delete_archive_changed');
+            assert.equal(saved.confirmedDeleteHash, requestHash(saved.confirmedDelete), 'cleanup_delete_archive_changed');
+            assert.ok(saved.deletionKey === deletionKey && saved.lineage === 'cleanup-superseded' && saved.lifecycleSuccess === false && saved.freshAbsence.clock === owner.clock && saved.freshAbsence.absent === true && saved.freshAbsenceHash === requestHash(saved.freshAbsence), 'cleanup_absence_archive_changed');
+        }
+        const clocks = await this.list('clock.list');
+        assert.ok(!clocks.some(c => c.id === owner.clock || c.name === boundary.clockNames[interval]), 'cleanup_absence_unconfirmed');
+        if (!saved) {
+            const freshAbsence = { clock: owner.clock, absent: true, observedAt: this.now(), inventoryIdsHash: requestHash(clocks.map(c => c.id).sort()) };
+            (this.state.cleanupSuperseded ||= {})[semanticKey] = {
+                lineage: 'cleanup-superseded', lifecycleSuccess: false,
+                original: structuredClone(record), originalHash: requestHash(record),
+                confirmedDelete: structuredClone(deletion), confirmedDeleteHash: requestHash(deletion), deletionKey,
+                freshAbsence, freshAbsenceHash: requestHash(freshAbsence)
+            };
+            await this.save();
+        }
+        return true;
+    }
     async recoverRequests() {
+        if (this.mode === 'cleanup') await this.recoverCleanupDeletes();
         for (const [semanticKey, record] of Object.entries(this.state.requests)) {
             if (record.status === 'confirmed' || record.cleanupAbsent)
+                continue;
+            if (this.mode === 'cleanup' && (record.op === 'clock.delete' || await this.archiveCleanupSuperseded(semanticKey, record)))
                 continue;
             if (!record.descriptor)
                 fail('saved_request_descriptor_required');

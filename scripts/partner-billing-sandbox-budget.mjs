@@ -177,6 +177,8 @@ export function workflowBudget(groups) {
         cleanupThreePassMargin: cliBudget.cleanupReserve - 3 * cleanupMinimum,
         feasible: executionMinimum + pollingMargin <= cliBudget.execution && cleanupMinimum <= cliBudget.cleanupReserve,
         extraPaginationOrUnknownTransportOutcome: 'additional cost, never resets or enlarges journal cap',
+        cleanupSupersededRecovery: 'existing one list GET to resolve each pending clock DELETE, plus one additional fresh clock.list GET per archived unknown advance on each cleanup recovery pass; no nominal workflow addition',
+        rootPostCleanupAbsenceProof: 'nine additional counted read calls: attestation three plus six known customer absence reads',
         runnerOnlyRedundancy: 'Clock.advance reads the clock before ownership, again within ownership, again for mutation validation, then for ready proof. Snapshot adds a fresh clock and invoice-list proof; no duplicate post-reconcile SourceReader.'
     };
 }

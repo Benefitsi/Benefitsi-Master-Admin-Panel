@@ -763,6 +763,54 @@ test('lost owned clock DELETE response resolves absence without a second DELETE'
         await t.close();
     }
 }));
+test('cleanup resolves dispatched DELETE before unchanged old advance on gone clock and archives separate absence lineage', () => temporary(async work => {
+    let present = false, mutations = 0, missingReads = 0;
+    const yearClock = { ...clock, id: 'clock_year', name: boundary.clockNames.year };
+    const invoke = async argv => {
+        if (argv[0] !== 'get') { mutations++; throw Error('cleanup recovery must not dispatch'); }
+        if (argv[1] === '/v1/test_helpers/test_clocks') return { data: present ? [clock, yearClock] : [yearClock], has_more: false };
+        if (argv[1] === '/v1/test_helpers/test_clocks/clock_owned') { missingReads++; if (!present) throw Error('actual deleted clock cannot be read'); return clock; }
+        throw Error('unexpected');
+    };
+    const t = await SandboxTransport.open({ work, mode: 'cleanup', invoke });
+    const now = Date.now(), semantic = 'advance:month:month:paid-month-15:boundary', target = Date.parse('2027-04-30T10:00:00Z') / 1000;
+    const args = { owner, id: clock.id, target }, deleteArgs = { owner, id: clock.id };
+    const original = { op: 'clock.advance', role: owner.role, key: `task12:${semantic}`, hash: requestHash(buildRequest('clock.advance', args, `task12:${semantic}`)), descriptor: args, objectId: clock.id, clockTarget: target, started: now - 2000, dispatched: now - 1500, failed: now - 1490, attempts: 3, status: 'unknown' };
+    const deletion = { op: 'clock.delete', role: owner.role, key: 'task12:cleanup:month', hash: requestHash(buildRequest('clock.delete', deleteArgs, 'task12:cleanup:month')), descriptor: deleteArgs, objectId: clock.id, clockTarget: null, started: now - 1000, dispatched: now - 1000, failed: now - 990, attempts: 1, status: 'unknown' };
+    try {
+        t.state.calls = 933; t.state.clocks.month = clock.id; t.state.clocks.year = yearClock.id; t.state.owners[owner.role] = structuredClone(owner);
+        t.state.requests = {
+            [semantic]: structuredClone(original),
+            'clock:month': { op: 'clock.create', role: 'month', key: 'task12:clock:month', hash: requestHash(buildRequest('clock.create', { interval: 'month' }, 'task12:clock:month')), descriptor: { interval: 'month' }, id: clock.id, status: 'confirmed', attempts: 1 },
+            'cleanup:month': structuredClone(deletion)
+        };
+        await t.recoverRequests();
+        assert.equal(mutations, 0); assert.equal(missingReads, 0); assert.equal(t.state.calls, 935);
+        assert.deepEqual(t.state.requests[semantic], original);
+        assert.equal(t.state.requests['cleanup:month'].status, 'confirmed'); assert.equal(t.state.requests['cleanup:month'].attempts, 1);
+        assert.equal(t.state.clocks.month, null); assert.equal(t.state.clocks.year, yearClock.id);
+        const archived = t.state.cleanupSuperseded[semantic];
+        assert.deepEqual(archived.original, original); assert.equal(archived.originalHash, requestHash(original));
+        assert.equal(archived.confirmedDelete.status, 'confirmed'); assert.equal(archived.freshAbsence.clock, clock.id);
+        assert.equal(archived.lifecycleSuccess, false); assert.equal(t.state.checkpoints['month:paid-month-15:boundary'], undefined);
+        const saved = structuredClone(t.state);
+        await t.recoverRequests();
+        assert.equal(t.state.calls, 936); assert.deepEqual(t.state.cleanupSuperseded, saved.cleanupSuperseded);
+        assert.deepEqual(t.state.requests[semantic], original); assert.equal(mutations, 0);
+        for (const bad of [
+            () => { t.state.requests[semantic].descriptor.target++; },
+            () => { t.state.requests[semantic].started--; },
+            () => { t.state.requests['cleanup:month'].descriptor.owner.contract = 'foreign'; },
+            () => { t.state.requests['cleanup:month'].dispatched = undefined; },
+            () => { delete t.state.requests['cleanup:month']; }
+        ]) {
+            t.state = structuredClone(saved); bad();
+            await assert.rejects(() => t.recoverRequests()); assert.equal(mutations, 0);
+        }
+        t.state = structuredClone(saved); present = true;
+        await assert.rejects(() => t.recoverRequests(), /cleanup_absence_unconfirmed/); assert.equal(mutations, 0);
+    } finally { await t.close(); }
+}));
 test('actual source engine activates only at exact clock time and preserves a late barrier after lost cancellation', async () => {
     const iterable = data => ({ async *[Symbol.asyncIterator]() {
             yield* data;
