@@ -44,6 +44,15 @@ const role = o => {
 export const marker = o => ({
     benefitsi_release: boundary.release, benefitsi_scope: boundary.scope, benefitsi_role: role(o).role, benefitsi_partner_contract: o.contract
 });
+/** Provider clock ceiling only; contractual dates continue to come from the actual Source. */
+export function twoMonthClockLimit(seconds) {
+    const date = new Date(seconds * 1000), day = date.getUTCDate();
+    date.setUTCDate(1);
+    date.setUTCMonth(date.getUTCMonth() + 2);
+    const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+    date.setUTCDate(Math.min(day, last));
+    return date.getTime() / 1000;
+}
 export function encodeForm(body) {
     const rows = [];
     function walk(v, key) {
@@ -738,7 +747,7 @@ export class SandboxTransport {
                 fail('unsafe_clock_advance');
             previousClockTime = c.frozen_time;
             const longAnnual = args.owner.role === 'year/continue' && c.frozen_time >= boundary.seconds.trialEnd + 1 && this.state.checkpoints['year:first-paid'];
-            if (args.target - c.frozen_time > (longAnnual ? 2 * 366 : 62) * 86400)
+            if (longAnnual ? args.target - c.frozen_time > 2 * 366 * 86400 : args.target > twoMonthClockLimit(c.frozen_time))
                 fail('unsafe_clock_advance');
             if (longAnnual) {
                 for (const caseId of ['trial_exit', 'late_exit']) {

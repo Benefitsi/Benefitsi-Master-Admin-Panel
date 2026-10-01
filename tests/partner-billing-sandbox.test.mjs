@@ -410,6 +410,76 @@ test('ready clocks past an unrecorded checkpoint cannot fabricate historical suc
         ...clock, frozen_time: boundary.seconds.trialEnd, status: 'ready'
     }), boundary.seconds.trialExit, boundary.seconds.activation), /clock_time_mismatch/);
 });
+test('approved April period bridge preserves pending original order and resumes unknown bridge at the same target', () => temporary(async work => {
+    const from = Date.parse('2027-02-28T12:00:00Z') / 1000, bridge = Date.parse('2027-03-31T10:00:00Z') / 1000, target = Date.parse('2027-04-30T10:00:00Z') / 1000;
+    const o = { ...owner, subscription: 'sub_owned', invoices: ['in_owned'] }, semantic = 'advance:month:month:paid-month-15:boundary';
+    const args = { owner: o, id: o.clock, target }, fullKey = `task12:${semantic}`;
+    let current = from, loseBridge = false;
+    const posts = [];
+    const price = { id: boundary.prices.month, active: true, livemode: false, currency: 'eur', unit_amount: 1990, tax_behavior: 'exclusive', type: 'recurring', recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' } };
+    const sub = { id: o.subscription, customer: o.customer, livemode: false, metadata, status: 'active', items: { has_more: false, data: [{ quantity: 1, price, current_period_start: from - 7200, current_period_end: bridge }] } };
+    const invoke = async argv => {
+        if (argv[0] === '--version') return 'stripe version 1.44.0';
+        if (argv[1] === '/v1/account') return { id: boundary.account, charges_enabled: false };
+        if (argv[1] === '/v1/balance') return { livemode: false };
+        if (argv[1] === '/v1/customers/cus_owned') return customer;
+        if (argv[1] === '/v1/subscriptions/sub_owned') return sub;
+        if (argv[0] === 'post') {
+            const next = Number(argv.find(x => x.startsWith('frozen_time=')).split('=')[1]);
+            posts.push({ next, key: argv[argv.indexOf('--idempotency') + 1] });
+            if (current === from && next === target) throw Error('actual two-calendar-month rejection fixture');
+            current = next;
+            if (loseBridge && next === bridge) { loseBridge = false; throw Error('unknown bridge response'); }
+            return next === target ? { ...clock, status: 'advancing', frozen_time: bridge } : { ...clock, frozen_time: current };
+        }
+        if (argv[1] === '/v1/test_helpers/test_clocks/clock_owned') return { ...clock, frozen_time: current };
+        throw Error('unexpected');
+    };
+    const t = await SandboxTransport.open({ work, mode: 'execute', invoke });
+    try {
+        t.state.calls = 839; t.state.clocks.month = clock.id; t.state.owners[o.role] = o;
+        const e = createEngine({ interval: 'month', caseId: 'continue', customer: o.customer, setup: 'seti_owned', stripe: {}, now: from });
+        Object.assign(e.contract, { state: 'accepted', subscription_id: o.subscription });
+        t.state.fixtures[o.role] = { contract: e.contract };
+        t.state.checkpoints['month:paid-month-13'] = { at: new Date(from * 1000).toISOString(), providerPaidContinuation: true };
+        t.state.proofs.push({ label: `paid continuation ${new Date(from * 1000).toISOString()}`, role: o.role, clock: o.clock, frozen: new Date(from * 1000).toISOString(), subscription: o.subscription,
+            providerStatus: 'active', periodEnd: new Date(bridge * 1000).toISOString(), projection: { state: 'active', paidThrough: new Date(bridge * 1000).toISOString() },
+            invoice: { id: 'in_owned', status: 'paid', amountDue: 1990, amountPaid: 1990, positiveChargeVerified: true }, fixtureSql: true, readOnlySourceReader: false, hosted: false });
+        const original = { op: 'clock.advance', role: o.role, descriptor: structuredClone(args), objectId: o.clock, clockTarget: target, key: fullKey,
+            hash: requestHash(buildRequest('clock.advance', args, fullKey)), started: Date.now() - 1000, dispatched: Date.now() - 500, failed: Date.now() - 100, status: 'unknown', attempts: 2, checkpoint: 'month:paid-month-13' };
+        t.state.requests[semantic] = structuredClone(original); await t.save();
+        loseBridge = true;
+        await assert.rejects(() => advance(t, 'month', target, 'month:paid-month-15:boundary'), /mutation_outcome_unknown/);
+        assert.deepEqual(t.state.requests[semantic], original, 'original two-attempt order untouched until approved bridge is ready');
+        assert.equal(posts.length, 1); assert.equal(posts[0].next, bridge);
+        const bridgeRecord = Object.values(t.state.requests).find(r => r.op === 'clock.advance' && r.clockTarget === bridge);
+        assert.equal(bridgeRecord.attempts, 1);
+        for (const bad of [
+            () => { t.state.clockBridges.april2027.target++; },
+            () => { t.state.proofs[0].periodEnd = new Date(target * 1000).toISOString(); },
+            () => { t.state.requests[semantic].descriptor.owner.customer = 'cus_foreign'; },
+            () => { Object.values(t.state.requests).find(r => r.clockTarget === bridge).descriptor.target++; },
+            () => { Object.values(t.state.requests).find(r => r.clockTarget === bridge).descriptor.owner.customer = 'cus_foreign'; }
+        ]) {
+            const savedPlan = structuredClone(t.state.clockBridges), savedProofs = structuredClone(t.state.proofs), savedRequests = structuredClone(t.state.requests);
+            bad();
+            await assert.rejects(() => advance(t, 'month', target, 'month:paid-month-15:boundary'));
+            assert.equal(posts.length, 1);
+            t.state.clockBridges = savedPlan; t.state.proofs = savedProofs; t.state.requests = savedRequests;
+        }
+        await assert.rejects(() => advance(t, 'month', Date.parse('2028-01-31T10:00:00Z') / 1000, 'unapproved-future'), /unapproved_clock_bridge/);
+        assert.equal(posts.length, 1);
+        const module = await import('../scripts/partner-billing-sandbox.mjs');
+        await module.recoverClockAdvances(t);
+        assert.equal(current, target); assert.equal(posts.length, 2); assert.equal(posts[1].key, fullKey);
+        assert.equal(t.state.requests[semantic].attempts, 3); assert.equal(t.state.requests[semantic].hash, original.hash); assert.equal(t.state.requests[semantic].started, original.started);
+        assert.equal(Object.values(t.state.requests).find(r => r.clockTarget === bridge).attempts, 1); assert.equal(t.state.proofs.length, 1); assert.equal(t.state.checkpoints['month:paid-month-15:boundary'], undefined);
+        assert.equal(t.state.clockBridges.april2027.ready.projectionApplied, false);
+        assert.equal(t.state.clockBridges.april2027.ready.frozen_time, bridge);
+        await advance(t, 'month', target, 'month:paid-month-15:boundary');
+        assert.equal(posts.length, 2, 'ready original acknowledgement resolves without another dispatch');
+    } finally { await t.close(); }
+}));
 test('strict schedule bodies accept actual source empty-array cancellation and reject altered amount metadata', () => {
     const e = createEngine({
         interval: 'month', caseId: 'continue', customer: 'cus_owned', setup: 'seti_owned', stripe: {}, now: boundary.seconds.frozen
@@ -950,13 +1020,16 @@ test('offline budget measures unchanged actual Source groups, historical infeasi
         planned: 4, reconcileTrial: 7, readerPaid: 7, reconcilePaid: 9, reconcileFailed: 7, cancelTrial: 24, reconcileCanceledTrial: 12, lateRecoveryLost: 11, lateRecoveryConfirmed: 18, reconcileCanceledPaid: 16, cancelPaid: 26
     });
     const budget = workflowBudget(measured);
-    assert.equal(budget.executionMinimum, 1119);
+    assert.equal(budget.executionMinimum, 1136);
     assert.equal(budget.cleanupMinimum, 47);
-    assert.equal(budget.pollingMargin, 66);
-    assert.equal(budget.executionWithPolling, 1185);
+    assert.equal(budget.pollingMargin, 68);
+    assert.equal(budget.executionWithPolling, 1204);
     assert.equal(budget.historicalBudget.repairedExecutionWithPollingOverCap, 252);
     assert.equal(budget.originalExecutionMinimum, 956);
     assert.equal(budget.historicalBudget.currentExecutionWithPollingOverOldCap, 285);
+    assert.equal(budget.historicalBudget.preBridgeExecutionMinimum, 1119);
+    assert.equal(budget.historicalBudget.preBridgeExecutionWithPolling, 1185);
+    assert.equal(budget.historicalBudget.bridgeExecutionWithPollingOverOldCap, 304);
     assert.equal(budget.historicalBudget.firstSettlementFixExecutionMinimum, 1086);
     assert.equal(budget.historicalBudget.firstSettlementFixExecutionWithPolling, 1152);
     assert.equal(budget.historicalBudget.feasible, false);
@@ -964,7 +1037,7 @@ test('offline budget measures unchanged actual Source groups, historical infeasi
     assert.equal(budget.totalCap, 1500);
     assert.equal(budget.executionCap, 1300);
     assert.equal(budget.cleanupReserve, 200);
-    assert.equal(budget.executionMargin, 115);
+    assert.equal(budget.executionMargin, 96);
     assert.equal(budget.cleanupThreePassMargin, 59);
     assert.equal(budget.originalPostReconcileReaderCalls, 0);
     assert.equal(budget.repairedPostReconcileReaderCalls, 0);

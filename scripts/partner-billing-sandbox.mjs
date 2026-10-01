@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir, open, rename } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
-import { boundary, cliBudget, marker, requestHash, buildRequest, assertOwned, SandboxTransport, waitReady } from './partner-billing-sandbox-transport.mjs';
+import { boundary, cliBudget, marker, requestHash, buildRequest, twoMonthClockLimit, assertOwned, SandboxTransport, waitReady } from './partner-billing-sandbox-transport.mjs';
 import { createEngine, providerAdapter, assertProjection } from './partner-billing-sandbox-engine.mjs';
 const directory = fileURLToPath(new URL('../docs/partners/task12/', import.meta.url));
 const iso = n => new Date(n * 1000).toISOString();
@@ -113,15 +113,102 @@ async function freshTime(t, interval) {
     assert.equal(c.status, 'ready', 'clock_not_ready');
     return c.frozen_time;
 }
+const aprilBridge = Object.freeze({ from: seconds('2027-02-28T12:00:00Z'), target: seconds('2027-03-31T10:00:00Z'), final: seconds('2027-04-30T10:00:00Z'), parent: 'advance:month:month:paid-month-15:boundary', key: 'technical-bridge:april-2027' });
+function validateBridgePlan(t, owner, plan, pending) {
+    assert.ok(plan.parent === aprilBridge.parent && plan.from === aprilBridge.from && plan.target === aprilBridge.target && plan.final === aprilBridge.final && plan.clock === owner.clock, 'bridge_plan_changed');
+    const args = { owner, id: owner.clock, target: plan.final };
+    assert.equal(plan.parentHash, requestHash(buildRequest('clock.advance', args, `task12:${plan.parent}`)), 'bridge_original_wire_changed');
+    assert.equal(requestHash(plan.proof), plan.proofHash, 'bridge_original_proof_changed');
+    assert.equal(requestHash(t.state.proofs[plan.proofIndex]), plan.proofHash, 'bridge_saved_proof_changed');
+    if (plan.original) {
+        assert.equal(requestHash(plan.original), plan.originalHash, 'bridge_original_archive_changed');
+        assert.ok(pending, 'bridge_original_order_missing');
+        const stable = ({ status, attempts, dispatched, failed, id, confirmed, clockAcknowledgement, ...rest }) => rest;
+        assert.equal(requestHash(stable(pending)), requestHash(stable(plan.original)), 'bridge_original_order_changed');
+        assert.ok(pending.attempts >= plan.original.attempts && pending.attempts <= plan.original.attempts + 1, 'bridge_original_attempt_changed');
+        if (pending.clockAcknowledgement) assert.ok(pending.clockAcknowledgement.id === owner.clock && pending.clockAcknowledgement.target === plan.final && pending.clockAcknowledgement.previous_time === plan.target && pending.clockAcknowledgement.frozen_time >= plan.target && pending.clockAcknowledgement.frozen_time <= plan.final, 'bridge_original_ack_changed');
+    }
+    if (pending) {
+        assert.ok(pending.op === 'clock.advance' && pending.role === owner.role && pending.hash === plan.parentHash && pending.key === `task12:${plan.parent}` && pending.descriptor.id === owner.clock && pending.descriptor.target === plan.final && pending.clockTarget === plan.final, 'bridge_original_order_changed');
+        for (const field of ['role', 'clock', 'contract', 'customer', 'subscription', 'schedule', 'setup', 'paymentMethod'])
+            assert.equal(pending.descriptor.owner[field], owner[field], 'bridge_original_owner_changed');
+    }
+    if (plan.ready) assert.ok(plan.ready.clock === owner.clock && plan.ready.frozen_time === plan.target && plan.ready.status === 'ready' && plan.ready.projectionApplied === false && plan.ready.billingCheckpoint === false && plan.readyHash === requestHash(plan.ready), 'bridge_ready_changed');
+    const childKey = `advance:month:${aprilBridge.key}`, child = t.state.requests[childKey];
+    if (child) {
+        assert.ok(child.op === 'clock.advance' && child.role === owner.role && child.key === `task12:${childKey}` && child.descriptor.id === owner.clock && child.descriptor.target === plan.target && child.clockTarget === plan.target && child.hash === requestHash(buildRequest('clock.advance', { owner, id: owner.clock, target: plan.target }, child.key)), 'bridge_child_order_changed');
+        for (const field of ['role', 'clock', 'contract', 'customer', 'subscription', 'schedule', 'setup', 'paymentMethod'])
+            assert.equal(child.descriptor.owner[field], owner[field], 'bridge_child_owner_changed');
+    }
+}
+async function approvedAprilBridge(t, owner, fresh, semantic, target) {
+    assert.ok(semantic === aprilBridge.parent && target === aprilBridge.final && owner.role === 'month/continue', 'unapproved_clock_bridge');
+    const pending = t.state.requests[semantic];
+    let plan = t.state.clockBridges?.april2027;
+    if (plan) validateBridgePlan(t, owner, plan, pending);
+    else {
+        assert.equal(fresh.frozen_time, aprilBridge.from, 'bridge_original_clock_changed');
+        assert.equal(fresh.status, 'ready');
+        if (pending) assert.ok(pending.status === 'unknown' && pending.attempts === 2 && pending.checkpoint === 'month:paid-month-13', 'bridge_original_rejection_required');
+        const proofIndex = t.state.proofs.findLastIndex(p => p.role === owner.role && p.label === `paid continuation ${iso(aprilBridge.from)}`), proof = t.state.proofs[proofIndex];
+        assert.ok(t.state.checkpoints['month:paid-month-13']?.at === iso(aprilBridge.from) && t.state.checkpoints['month:paid-month-13'].providerPaidContinuation, 'bridge_prior_checkpoint_missing');
+        assert.ok(proof?.clock === owner.clock && proof.subscription === owner.subscription && proof.frozen === iso(aprilBridge.from) && proof.providerStatus === 'active' && proof.periodEnd === iso(aprilBridge.target) && proof.projection?.state === 'active' && proof.projection.paidThrough === proof.periodEnd && proof.invoice?.status === 'paid' && proof.invoice.amountDue === 1990 && proof.invoice.amountPaid >= 1990 && proof.invoice.positiveChargeVerified && owner.invoices.includes(proof.invoice.id) && proof.fixtureSql === true && proof.readOnlySourceReader === false && proof.hosted === false, 'bridge_genuine_period_proof_required');
+        const args = { owner, id: owner.clock, target };
+        plan = { parent: semantic, parentHash: requestHash(buildRequest('clock.advance', args, `task12:${semantic}`)), clock: owner.clock, from: aprilBridge.from, target: aprilBridge.target, final: target,
+            proofIndex, proof: structuredClone(proof), proofHash: requestHash(proof), ...(pending ? { original: structuredClone(pending), originalHash: requestHash(pending) } : {}) };
+        validateBridgePlan(t, owner, plan, pending);
+    }
+    assert.ok(fresh.frozen_time >= plan.from && fresh.frozen_time <= plan.target, 'bridge_clock_already_passed');
+    await t.attest(); await t.ownership(owner);
+    const sub = await t.read('subscription.read', { id: owner.subscription });
+    assertOwned('subscription', sub, owner);
+    assert.ok(sub.status === 'active' && sub.items?.has_more === false && sub.items.data.length === 1 && sub.items.data[0].quantity === 1, 'bridge_monthly_item_changed');
+    const fixture = t.state.fixtures[owner.role];
+    const engine = createEngine({ interval: 'month', caseId: 'continue', customer: owner.customer, setup: owner.setup, stripe: {}, now: fresh.frozen_time, saved: fixture });
+    assert.ok(engine.contract.state === 'accepted' && engine.contract.subscription_id === owner.subscription && engine.contract.offer.stripe_price_id === boundary.prices.month && engine.contract.offer.billing_interval === 'month' && engine.contract.offer.unit_amount === 1990, 'bridge_contract_or_price_changed');
+    engine.source.validatePartnerPrice(sub.items.data[0].price, engine.contract.offer, false, false);
+    if (!t.state.clockBridges?.april2027) {
+        assert.equal(sub.items.data[0].current_period_end, plan.target, 'bridge_actual_period_changed');
+        assert.ok(plan.target > fresh.frozen_time && plan.target < target && plan.target <= twoMonthClockLimit(fresh.frozen_time), 'bridge_date_unapproved');
+        plan.observedPeriodEnd = sub.items.data[0].current_period_end;
+        (t.state.clockBridges ||= {}).april2027 = plan;
+        await t.save();
+    }
+    await advance(t, 'month', plan.target, aprilBridge.key);
+    const ready = await t.read('clock.read', { id: owner.clock });
+    assertOwned('clock', ready, owner);
+    assert.ok(ready.status === 'ready' && ready.frozen_time === plan.target, 'bridge_ready_not_proven');
+    if (!plan.ready) {
+        plan.ready = { clock: owner.clock, frozen_time: ready.frozen_time, status: ready.status, projectionApplied: false, billingCheckpoint: false };
+        plan.readyHash = requestHash(plan.ready);
+        await t.save();
+    } else assert.equal(plan.readyHash, requestHash(plan.ready), 'bridge_ready_changed');
+    validateBridgePlan(t, owner, plan, t.state.requests[semantic]);
+    return ready;
+}
 export async function advance(t, interval, target, key) {
     const owner = t.state.owners[`${interval}/continue`], id = owner.clock;
-    const fresh = await t.read('clock.read', { id });
+    let fresh = await t.read('clock.read', { id });
     assertOwned('clock', fresh, owner);
-    const current = fresh.frozen_time;
+    let current = fresh.frozen_time;
     if (current > target)
         throw Error('checkpoint_clock_already_passed');
     const semantic = `advance:${interval}:${key}`;
     const pending = t.state.requests[semantic];
+    const bridgePlan = t.state.clockBridges?.april2027;
+    if (semantic === aprilBridge.parent && bridgePlan) {
+        validateBridgePlan(t, owner, bridgePlan, pending);
+        if (current > bridgePlan.target) assert.ok(bridgePlan.ready && bridgePlan.readyHash === requestHash(bridgePlan.ready), 'bridge_past_ready_unproven');
+    }
+    if (interval === 'month' && (target > twoMonthClockLimit(current) || (semantic === aprilBridge.parent && bridgePlan && current <= bridgePlan.target))) {
+        fresh = await approvedAprilBridge(t, owner, fresh, semantic, target);
+        current = fresh.frozen_time;
+    }
+    if (fresh.status === 'advancing') {
+        assert.ok(pending, 'unrecorded_advancing_clock');
+        fresh = await waitReady(() => t.read('clock.read', { id }), target, current);
+        assertOwned('clock', fresh, owner);
+    }
     if (pending && pending.status !== 'confirmed')
         await t.mutate('clock.advance', {
             owner, id, target
@@ -135,6 +222,17 @@ export async function advance(t, interval, target, key) {
     }
     const c = await waitReady(() => t.read('clock.read', { id }), target, current);
     return c.frozen_time;
+}
+export async function recoverClockAdvances(t) {
+    for (const [semantic, record] of Object.entries(t.state.requests)) {
+        if (record.op !== 'clock.advance' || record.status === 'confirmed') continue;
+        const interval = record.role?.split('/')[0], prefix = `advance:${interval}:`;
+        assert.ok(['month', 'year'].includes(interval) && semantic.startsWith(prefix) && record.descriptor?.target === record.clockTarget, 'pending_clock_order_changed');
+        if (semantic === `advance:month:${aprilBridge.key}`) {
+            assert.ok(t.state.clockBridges?.april2027, 'unapproved_bridge_recovery');
+            await advance(t, 'month', aprilBridge.final, 'month:paid-month-15:boundary');
+        } else await advance(t, interval, record.clockTarget, semantic.slice(prefix.length));
+    }
 }
 function engineFor(t, interval, caseId, now, options) {
     const o = t.state.owners[`${interval}/${caseId}`];
@@ -527,6 +625,7 @@ async function lifecycle(t, interval) {
 }
 async function execute(t) {
     await inspect(t);
+    await recoverClockAdvances(t);
     await t.recoverRequests();
     for (const interval of ['month', 'year'])
         for (const plan of invoiceCheckpointPlans(interval))

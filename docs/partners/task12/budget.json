@@ -6,7 +6,8 @@
     "all nominal mutations confirmed on first dispatch",
     "includes deliberately lost Source cancellation response, whose CLI dispatch is already confirmed",
     "nominal settlement target is boundary+7200 seconds",
-    "each changed target acknowledges advancing before one fresh ready confirmation; further polling consumes margin"
+    "each changed target acknowledges advancing before one fresh ready confirmation; further polling consumes margin",
+    "one approved March period-end bridge adds 17 calls and no Source projection or billing checkpoint"
   ],
   "groups": {
     "planned": {
@@ -156,8 +157,12 @@
       "calls": 100
     },
     {
-      "operation": "Transport fresh ready proof after advancing acknowledgement (all 33 changed targets)",
+      "operation": "Transport fresh ready proof after advancing acknowledgement (original 33 changed targets)",
       "calls": 33
+    },
+    {
+      "operation": "Approved April technical bridge (six fresh guards, ten clock-control calls, one ready evidence GET)",
+      "calls": 17
     },
     {
       "operation": "Activation/FEB/MAR/MAY/JUL trial reconciles (six activation, eight continuation)",
@@ -216,17 +221,20 @@
     "firstSettlementFixExecutionWithPolling": 1152,
     "repairedExecutionWithPollingOverCap": 252,
     "currentExecutionWithPollingOverOldCap": 285,
+    "preBridgeExecutionMinimum": 1119,
+    "preBridgeExecutionWithPolling": 1185,
+    "bridgeExecutionWithPollingOverOldCap": 304,
     "feasible": false
   },
-  "executionMinimum": 1119,
+  "executionMinimum": 1136,
   "cleanupMinimum": 47,
-  "totalMinimum": 1166,
-  "pollingMargin": 66,
-  "executionWithPolling": 1185,
+  "totalMinimum": 1183,
+  "pollingMargin": 68,
+  "executionWithPolling": 1204,
   "cleanupReserve": 200,
   "totalCap": 1500,
   "executionCap": 1300,
-  "executionMargin": 115,
+  "executionMargin": 96,
   "cleanupThreePassMargin": 59,
   "feasible": true,
   "extraPaginationOrUnknownTransportOutcome": "additional cost, never resets or enlarges journal cap",
