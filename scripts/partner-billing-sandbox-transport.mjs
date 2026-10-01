@@ -48,8 +48,11 @@ export function encodeForm(body) {
     const rows = [];
     function walk(v, key) {
         if (Array.isArray(v)) {
-            if (!v.length)
-                rows.push([key, '']);
+            if (!v.length) {
+                // Stripe cannot unset this phase field; Source keeps [] as logical no additions.
+                if (!/^phases\[\d+\]\[add_invoice_items\]$/.test(key))
+                    rows.push([key, '']);
+            }
             else
                 v.forEach((value, i) => walk(value, `${key}[${i}]`));
         }

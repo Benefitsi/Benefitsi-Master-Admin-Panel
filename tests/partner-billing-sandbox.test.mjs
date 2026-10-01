@@ -430,10 +430,25 @@ test('strict schedule bodies accept actual source empty-array cancellation and r
         ...params, id: owned.schedule, livemode: false, default_settings: params.default_settings, phases: [{ ...params.phases[0], start_date: boundary.seconds.activation }]
     };
     const canceled = e.source.founderTrialCancellation(schedule, e.contract, owned.customer);
+    const logicalParams = structuredClone(canceled);
     const update = buildRequest('schedule.update', {
         owner: owned, id: owned.schedule, params: canceled
     }, 'key');
     assert.ok(update.includes('phases[0][discounts]='));
+    assert.ok(update.includes('phases[0][default_tax_rates]='));
+    assert.equal(update.includes('phases[0][add_invoice_items]='), false);
+    assert.deepEqual(structuredClone(canceled), logicalParams);
+    const actualFields = update.filter((_, index) => update[index - 1] === '-d');
+    assert.deepEqual(actualFields, [
+        'end_behavior=cancel', 'proration_behavior=none',
+        `phases[0][start_date]=${boundary.seconds.activation}`,
+        `phases[0][end_date]=${boundary.seconds.trialExit}`,
+        `phases[0][trial_end]=${boundary.seconds.trialExit}`,
+        `phases[0][items][0][price]=${boundary.prices.month}`, 'phases[0][items][0][quantity]=1',
+        'phases[0][currency]=eur', 'phases[0][discounts]=', 'phases[0][default_tax_rates]=',
+        'phases[0][proration_behavior]=none',
+        ...Object.entries(metadata).map(([name, value]) => `phases[0][metadata][${name}]=${value}`)
+    ].sort((a, b) => a.localeCompare(b, 'en')));
 });
 test('resume of advancing clock resolves the exact intent, never dispatches twice', () => temporary(async (work) => {
     const key = 'advance:month:activation';
