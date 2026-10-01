@@ -4,7 +4,7 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { boundary, encodeForm, buildRequest, cliEnvironment, SandboxTransport, assertOwned, waitReady, requestHash } from '../scripts/partner-billing-sandbox-transport.mjs';
-import { offlinePlan, main, advance, assertTeardownOwnership, assertActivationSnapshot } from '../scripts/partner-billing-sandbox.mjs';
+import { offlinePlan, main, advance, assertTeardownOwnership, assertActivationSnapshot, proveLateCancellationLoss } from '../scripts/partner-billing-sandbox.mjs';
 import { createEngine, providerAdapter, assertProjection } from '../scripts/partner-billing-sandbox-engine.mjs';
 const metadata = {
     benefitsi_release: boundary.release, benefitsi_scope: boundary.scope, benefitsi_role: 'month/continue', benefitsi_partner_contract: 'task12-month-continue'
@@ -701,6 +701,94 @@ test('actual source engine activates only at exact clock time and preserves a la
     assert.equal(e.contract.paid_minimum_end, boundary.paidMinimumEnd);
     assert.equal(e.state.enteredPaidTerm, false);
     assert.equal(e.state.mutation, null);
+});
+test('late cancellation loss uses original paid proof and fresh unknown resolution, including startup recovery and intentional annual fixture', async () => {
+    async function fixture(interval, run) {
+        await temporary(async work => {
+            const o = { ...owner, role: `${interval}/late_exit`, contract: `task12-${interval}-late_exit`, schedule: 'sub_sched_owned', subscription: 'sub_owned', setup: 'seti_owned', paymentMethod: 'pm_owned', invoices: ['in_owned'] };
+            const semantic = `engine:fixture:${o.contract}:4:late-exit`, params = { invoice_now: false, prorate: false }, args = { owner: o, id: o.subscription, params };
+            const now = boundary.seconds.trialEnd + 7200, wall = now * 1000 + 1000, amount = interval === 'month' ? 1990 : 19900;
+            let canceled = true, deletes = 0, unknownDelete = false;
+            const sub = () => ({ id: o.subscription, customer: o.customer, livemode: false, metadata: { ...metadata, benefitsi_role: o.role, benefitsi_partner_contract: o.contract }, status: canceled ? 'canceled' : 'active' });
+            const invoke = async argv => {
+                if (argv[0] === '--version') return 'stripe version 1.44.0';
+                if (argv[1] === '/v1/account') return { id: boundary.account, charges_enabled: false };
+                if (argv[1] === '/v1/balance') return { livemode: false };
+                if (argv[1] === `/v1/test_helpers/test_clocks/${o.clock}`) return { ...clock, name: boundary.clockNames[interval], frozen_time: now };
+                if (argv[1] === `/v1/customers/${o.customer}`) return { ...customer, metadata: sub().metadata };
+                if (argv[0] === 'delete') { deletes++; canceled = true; if (unknownDelete) throw Error('synthetic_cli_response_unknown'); return sub(); }
+                assert.equal(argv[0], 'get'); assert.equal(argv[1], `/v1/subscriptions/${o.subscription}`); return sub();
+            };
+            const t = await SandboxTransport.open({ work, mode: 'execute', invoke, now: () => wall });
+            try {
+                const receipt = new Date((boundary.seconds.trialEnd - 1) * 1000).toISOString();
+                t.state.calls = 515; t.state.owners[o.role] = o; t.state.clocks[interval] = o.clock;
+                t.state.checkpoints[`${interval}:late-receipt`] = { at: receipt, savedExactBarrier: true, receipt };
+                t.state.checkpoints[`${interval}:first-paid:boundary`] = { at: boundary.trialEnd };
+                const engine = createEngine({ interval, caseId: 'late_exit', customer: o.customer, setup: o.setup, stripe: {}, now });
+                Object.assign(engine.contract, { state: 'accepted', subscription_id: o.subscription, schedule_id: o.schedule, payment_method_id: o.paymentMethod, cancellation_at: boundary.trialEnd, cancellation_requested_at: receipt });
+                const original = engine.source.founderScheduleParams(engine.contract, o.customer);
+                const update = engine.source.founderTrialCancellation({ ...original, id: o.schedule, livemode: false, phases: [{ ...original.phases[0], start_date: boundary.seconds.activation }] }, engine.contract, o.customer);
+                t.state.fixtures[o.role] = { contract: engine.contract, cancellation: { cancellation_at: boundary.trialEnd, cancellation_requested_at: receipt },
+                    mutation: { operation: 'schedule_trial_cancel', contract_id: o.contract, subscription_id: o.subscription, idempotency_key: `fixture:${o.contract}:4`, params: { schedule_id: o.schedule, update } } };
+                t.state.proofs.push({ label: 'late exit first invoice settled before processing', role: o.role, clock: o.clock, subscription: o.subscription,
+                    frozen: new Date(now * 1000).toISOString(), providerStatus: 'active', readOnlySourceReader: true, fixtureSql: true, hosted: false, fixturePaidTermEntered: false,
+                    trialStart: new Date(boundary.seconds.activation * 1000).toISOString(), trialEnd: new Date(boundary.seconds.trialEnd * 1000).toISOString(), periodStart: new Date(boundary.seconds.trialEnd * 1000).toISOString(), periodEnd: interval === 'month' ? '2026-08-31T10:00:00.000Z' : '2027-07-31T10:00:00.000Z',
+                    invoice: { id: 'in_owned', status: 'paid', amountDue: amount, amountPaid: amount, positiveChargeVerified: true, paidAt: new Date((boundary.seconds.trialEnd + 3600) * 1000).toISOString() },
+                    projection: { firstPaymentAt: new Date((boundary.seconds.trialEnd + 3600) * 1000).toISOString() } });
+                t.state.requests[semantic] = { op: 'subscription.cancel', role: o.role, descriptor: structuredClone(args), objectId: o.subscription,
+                    key: `task12:${semantic}`, hash: requestHash(buildRequest('subscription.cancel', args, `task12:${semantic}`)), status: 'unknown', attempts: 1,
+                    started: wall - 1000, failed: wall - 100, checkpoint: `${interval}:first-paid:boundary` };
+                await t.save();
+                await run({ t, o, now, semantic, params, sub, setCanceled: value => { canceled = value; }, loseDelete: () => { unknownDelete = true; }, deletes: () => deletes, work });
+            } finally { await t.close(); }
+        });
+    }
+    for (const startup of [false, true]) await fixture('month', async f => {
+        const r = f.t.state.requests[f.semantic], failure = r.failed, proof = structuredClone(f.t.state.proofs[0]);
+        if (startup) await f.t.recoverRequests();
+        const signal = await proveLateCancellationLoss(f.t, f.o, f.now);
+        assert.equal(signal.lineage, 'genuine_unknown_cancellation_resolved'); assert.equal(signal.failedAt, failure);
+        assert.equal(r.status, 'confirmed'); assert.equal(r.attempts, 1); assert.equal(r.failed, failure); assert.equal(f.deletes(), 0);
+        assert.equal(f.t.state.calls, startup ? 517 : 516); assert.deepEqual(f.t.state.proofs[0], proof);
+        const saved = JSON.parse(await readFile(join(f.work, 'journal.json'), 'utf8'));
+        assert.equal(saved.fixtureSignals['month:lost-cancellation'].originalOutcome.failed, failure);
+        f.t.state.fixtures[f.o.role].mutation = null;
+        assert.deepEqual(await proveLateCancellationLoss(f.t, f.o, f.now), signal);
+        assert.equal(f.deletes(), 0);
+        r.failed++;
+        await assert.rejects(() => proveLateCancellationLoss(f.t, f.o, f.now), /late_loss_failure_history_changed/);
+        r.failed = failure;
+    });
+    for (const interval of ['month', 'year']) await fixture(interval, async f => {
+        delete f.t.state.requests[f.semantic]; f.loseDelete();
+        const adapter = providerAdapter(f.t, f.o, { loseCancellation: true, onLoss: () => proveLateCancellationLoss(f.t, f.o, f.now, { intentional: true }) });
+        // The original runner's marker-only assertion fails on an actual transport unknown.
+        await assert.rejects(() => assert.rejects(() => adapter.subscriptions.cancel(f.o.subscription, f.params, { idempotencyKey: `fixture:${f.o.contract}:4:late-exit` }), /fixture_response_lost_after_confirmed_cancellation/), /did not match/);
+        assert.equal(f.deletes(), 1); assert.equal(f.t.state.requests[f.semantic].status, 'unknown');
+        await proveLateCancellationLoss(f.t, f.o, f.now);
+        assert.equal(f.deletes(), 1); assert.equal(f.t.state.requests[f.semantic].attempts, 1);
+        assert.equal(f.t.state.fixtureSignals[`${interval}:lost-cancellation`].lineage, 'genuine_unknown_cancellation_resolved');
+    });
+    for (const change of [
+        f => { f.t.state.proofs = []; },
+        f => { f.t.state.proofs[0].providerStatus = 'canceled'; },
+        f => { f.t.state.proofs[0].invoice.positiveChargeVerified = false; },
+        f => { f.t.state.requests[f.semantic].descriptor.params.invoice_now = true; },
+        f => { f.t.state.requests[f.semantic].descriptor.owner.customer = 'cus_foreign'; },
+        f => { f.setCanceled(false); }
+    ]) await fixture('month', async f => {
+        change(f); await assert.rejects(() => proveLateCancellationLoss(f.t, f.o, f.now));
+        assert.equal(f.deletes(), 0); assert.equal(f.t.state.requests[f.semantic].status, 'unknown'); assert.equal(f.t.state.fixtureSignals, undefined);
+    });
+    await fixture('year', async f => {
+        delete f.t.state.requests[f.semantic];
+        const adapter = providerAdapter(f.t, f.o, { loseCancellation: true, onLoss: () => proveLateCancellationLoss(f.t, f.o, f.now, { intentional: true }) });
+        await assert.rejects(() => adapter.subscriptions.cancel(f.o.subscription, f.params, { idempotencyKey: `fixture:${f.o.contract}:4:late-exit` }), /fixture_response_lost_after_confirmed_cancellation/);
+        assert.equal(f.deletes(), 1); assert.equal(f.t.state.fixtureSignals['year:lost-cancellation'].lineage, 'intentional_fixture_after_confirmed_cancellation');
+        assert.equal(f.t.state.requests[f.semantic].attempts, 1);
+        await proveLateCancellationLoss(f.t, f.o, f.now); assert.equal(f.deletes(), 1);
+    });
 });
 test('request ownership requires confirmed registry IDs and rejects a supplied foreign payment method', () => temporary(async (work) => {
     const t = await SandboxTransport.open({

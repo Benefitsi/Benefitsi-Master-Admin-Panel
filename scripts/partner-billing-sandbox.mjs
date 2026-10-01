@@ -264,6 +264,69 @@ export function assertActivationSnapshot(state, owner, proof, engine, priorProof
     assert.equal(record.hash, requestHash(buildRequest(record.op, args, record.key)), 'activation_order_wire_changed');
     assert.ok(args.params.end_behavior === 'cancel' && args.params.proration_behavior === 'none' && args.params.phases.length === 1 && args.params.phases[0].start_date === boundary.seconds.activation && args.params.phases[0].end_date === boundary.seconds.trialExit && args.params.phases[0].trial_end === boundary.seconds.trialExit, 'activation_order_phase_changed');
 }
+function lateCancellationEvidence(state, owner, now) {
+    const interval = owner.role.split('/')[0], fixture = state.fixtures[owner.role], receipt = iso(boundary.seconds.trialEnd - 1);
+    assert.equal(owner.role, `${interval}/late_exit`);
+    assert.equal(now, boundary.seconds.trialEnd + invoiceSettlementSeconds, 'late_loss_clock_changed');
+    assert.equal(state.clocks[interval], owner.clock);
+    assert.equal(requestHash(state.owners[owner.role]), requestHash(owner));
+    assert.ok(state.checkpoints[`${interval}:late-receipt`]?.savedExactBarrier && state.checkpoints[`${interval}:late-receipt`].receipt === receipt && state.checkpoints[`${interval}:late-receipt`].at === receipt, 'late_loss_receipt_missing');
+    assert.ok(fixture?.contract?.id === owner.contract && fixture.contract.state === 'accepted' && fixture.contract.subscription_id === owner.subscription && fixture.contract.schedule_id === owner.schedule && fixture.contract.trial_start === boundary.activation && fixture.contract.trial_end === boundary.trialEnd && fixture.contract.cancellation_at === boundary.trialEnd && fixture.contract.cancellation_requested_at === receipt && fixture.cancellation?.cancellation_at === boundary.trialEnd && fixture.cancellation.cancellation_requested_at === receipt, 'late_loss_barrier_changed');
+    const candidates = Object.entries(state.requests).filter(([, r]) => r.op === 'subscription.cancel' && r.role === owner.role);
+    assert.equal(candidates.length, 1, 'late_loss_original_order_required');
+    const [semantic, record] = candidates[0], args = record.descriptor;
+    const prefix = `engine:fixture:${owner.contract}:`;
+    assert.ok(semantic.startsWith(prefix) && /^[1-9]\d*:late-exit$/.test(semantic.slice(prefix.length)) && record.key === `task12:${semantic}`, 'late_loss_key_changed');
+    assert.ok(record.attempts === 1 && args?.id === owner.subscription && record.objectId === owner.subscription && record.checkpoint === `${interval}:first-paid:boundary`, 'late_loss_target_or_attempt_changed');
+    for (const field of ['role', 'clock', 'contract', 'customer', 'schedule', 'subscription', 'setup', 'paymentMethod'])
+        assert.equal(args.owner[field], owner[field], 'late_loss_owner_changed');
+    assert.equal(requestHash(args.params), requestHash({ invoice_now: false, prorate: false }), 'late_loss_body_changed');
+    assert.equal(record.hash, requestHash(buildRequest(record.op, args, record.key)), 'late_loss_wire_changed');
+    const signal = state.fixtureSignals?.[`${interval}:lost-cancellation`];
+    if (fixture.mutation) {
+        assert.ok(fixture.mutation.operation === 'schedule_trial_cancel' && fixture.mutation.contract_id === owner.contract && fixture.mutation.subscription_id === owner.subscription && `engine:${fixture.mutation.idempotency_key}:late-exit` === semantic, 'late_loss_source_order_changed');
+        assert.equal(fixture.mutation.params?.schedule_id, owner.schedule);
+        const phase = fixture.mutation.params.update?.phases?.[0];
+        assert.ok(phase?.start_date === boundary.seconds.activation && phase.end_date === boundary.seconds.trialEnd && phase.trial_end === boundary.seconds.trialEnd, 'late_loss_source_phase_changed');
+    } else assert.ok(signal?.semanticKey === semantic, 'late_loss_source_order_missing');
+    const proofIndex = signal?.preProcessingProofIndex ?? state.proofs.findIndex(p => p.label === 'late exit first invoice settled before processing' && p.role === owner.role);
+    const proof = state.proofs[proofIndex], amount = interval === 'month' ? 1990 : 19900;
+    assert.ok(proof?.label === 'late exit first invoice settled before processing' && proof.role === owner.role && proof.clock === owner.clock && proof.subscription === owner.subscription && proof.frozen === iso(now) && proof.providerStatus === 'active' && proof.trialStart === iso(boundary.seconds.activation) && proof.trialEnd === iso(boundary.seconds.trialEnd) && proof.periodStart === iso(boundary.seconds.trialEnd) && seconds(proof.periodEnd) > now && proof.readOnlySourceReader === true && proof.fixtureSql === true && proof.hosted === false && proof.fixturePaidTermEntered === false, 'late_loss_original_paid_proof_missing');
+    assert.ok(proof.invoice?.status === 'paid' && proof.invoice.amountDue === amount && proof.invoice.amountPaid >= amount && proof.invoice.positiveChargeVerified === true && owner.invoices.includes(proof.invoice.id) && seconds(proof.invoice.paidAt) >= boundary.seconds.trialEnd && seconds(proof.invoice.paidAt) <= now && proof.projection?.firstPaymentAt === proof.invoice.paidAt, 'late_loss_original_paid_proof_changed');
+    if (signal) {
+        assert.ok(record.status === 'confirmed' && record.id === owner.subscription, 'late_loss_signal_unconfirmed');
+        assert.ok(signal.knownSubscription === owner.subscription && signal.semanticKey === semantic && signal.requestHash === record.hash && signal.attempts === record.attempts && signal.preProcessingProofHash === requestHash(proof), 'late_loss_signal_changed');
+        assert.ok(['intentional_fixture_after_confirmed_cancellation', 'genuine_unknown_cancellation_resolved'].includes(signal.lineage), 'late_loss_lineage_missing');
+        if (signal.lineage === 'genuine_unknown_cancellation_resolved') {
+            assert.ok(signal.failedAt === record.failed && requestHash(signal.originalOutcome) === signal.originalOutcomeHash, 'late_loss_failure_history_changed');
+            const stable = ({ status, id, confirmed, ...rest }) => rest;
+            assert.equal(requestHash(stable(signal.originalOutcome)), requestHash(stable(record)), 'late_loss_original_order_changed');
+        }
+    }
+    return { semantic, record, proofIndex, proof, signal };
+}
+export async function proveLateCancellationLoss(t, owner, now, { intentional = false } = {}) {
+    const evidence = lateCancellationEvidence(t.state, owner, now), { semantic, record, proofIndex, proof, signal } = evidence;
+    if (signal) return signal;
+    const genuine = Number.isFinite(record.failed) && record.failed >= record.started;
+    assert.ok(genuine || intentional, 'late_loss_not_proven');
+    const originalOutcome = structuredClone(record);
+    if (genuine) {
+        assert.ok(['unknown', 'confirmed'].includes(record.status), 'late_loss_outcome_changed');
+        // Read/confirm only: never invoke mutate, even when startup already resolved this unknown.
+        const canceled = await t.resolve(record.op, record.descriptor);
+        assertOwned('subscription', canceled, owner);
+        assert.equal(canceled.status, 'canceled', 'late_loss_provider_not_canceled');
+        await t.confirm(record.op, record.descriptor, canceled);
+        Object.assign(record, { status: 'confirmed', id: canceled.id, confirmed: record.confirmed || t.now() });
+    } else assert.ok(!('failed' in record) && record.status === 'confirmed' && record.id === owner.subscription, 'late_loss_intentional_confirmation_missing');
+    const value = { lineage: genuine ? 'genuine_unknown_cancellation_resolved' : 'intentional_fixture_after_confirmed_cancellation', at: iso(now), knownSubscription: owner.subscription,
+        semanticKey: semantic, requestHash: record.hash, attempts: record.attempts, preProcessingProofIndex: proofIndex, preProcessingProofHash: requestHash(proof),
+        ...(genuine ? { failedAt: record.failed, originalOutcome, originalOutcomeHash: requestHash(originalOutcome), executionFailure: structuredClone(t.state.failure || null) } : {}) };
+    (t.state.fixtureSignals ||= {})[`${owner.role.split('/')[0]}:lost-cancellation`] = value;
+    await t.save();
+    return value;
+}
 async function bootstrap(t) {
     for (const interval of ['month', 'year']) {
         if (!t.state.clocks[interval]) {
@@ -350,16 +413,26 @@ async function lifecycle(t, interval) {
         const signal = `${interval}:lost-cancellation`;
         const signaled = !!t.state.fixtureSignals?.[signal];
         const e = engineFor(t, interval, 'late_exit', now, { loseCancellation: !signaled, onLoss: async () => {
-                (t.state.fixtureSignals ||= {})[signal] = { at: iso(now), knownSubscription: late.subscription };
-                await t.save();
+                await proveLateCancellationLoss(t, late, now, { intentional: true });
             } });
         if (!signaled) {
-            await snapshot(t, e, late, 'late exit first invoice settled before processing', {
-                readOnly: true, amount: interval === 'month' ? 1990 : 19900, positive: true
-            });
-            await assert.rejects(() => e.run('recover'), /fixture_response_lost_after_confirmed_cancellation/);
+            const priorCancellation = Object.values(t.state.requests).some(r => r.op === 'subscription.cancel' && r.role === late.role);
+            if (priorCancellation) await proveLateCancellationLoss(t, late, now);
+            else {
+                await snapshot(t, e, late, 'late exit first invoice settled before processing', {
+                    readOnly: true, amount: interval === 'month' ? 1990 : 19900, positive: true
+                });
+                try {
+                    await e.run('recover');
+                    throw Error('lost_response_fixture_not_proven');
+                } catch (error) {
+                    if (error.message === 'mutation_outcome_unknown') await proveLateCancellationLoss(t, late, now);
+                    else if (error.message !== 'fixture_response_lost_after_confirmed_cancellation') throw error;
+                }
+            }
         }
         assert.ok(t.state.fixtureSignals?.[signal], 'lost_response_fixture_not_proven');
+        await proveLateCancellationLoss(t, late, now);
         const before = Object.values(t.state.requests).filter(r => r.op === 'subscription.cancel' && r.role === late.role).reduce((n, r) => n + r.attempts, 0);
         await e.run('recover');
         const after = Object.values(t.state.requests).filter(r => r.op === 'subscription.cancel' && r.role === late.role).reduce((n, r) => n + r.attempts, 0);
