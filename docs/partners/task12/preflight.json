@@ -16,8 +16,11 @@
       "customers": {
         "count": 5,
         "has_more": false,
-        "ids_sha256": "96f56f0982c7cace23a014dcb58d97612d945eaf9e2d29ed86ad7e036fd6ebb3",
-        "existing_task12_marked": 0
+        "ids_sha256": "e848d3fec60233a0674fba27b68b7d3de4ee2c81b1a54dd02624d0e5c7961f8d",
+        "existing_task12_marked": 0,
+        "ids_serialization": "SHA-256 of UTF-8 compact JSON.stringify(sorted string ID array), with no whitespace",
+        "legacy_ids_sha256": "96f56f0982c7cace23a014dcb58d97612d945eaf9e2d29ed86ad7e036fd6ebb3",
+        "legacy_ids_serialization": "Python json.dumps(sorted string ID array), default separators with spaces after commas"
       },
       "schedules": {
         "count": 0,
@@ -170,6 +173,24 @@
     "existing_unclocked_customer_count": 5,
     "ids_sha256": "96f56f0982c7cace23a014dcb58d97612d945eaf9e2d29ed86ad7e036fd6ebb3",
     "full_objects_sha256": "a0a94dc284e7833855c650baf726879017683586fcb2d23647d316afd827c238",
+    "pii_persisted": false,
+    "ids_serialization": "legacy Python default JSON; original before hash preserved",
+    "full_objects_serialization": "legacy Python default sorted JSON; original before hash preserved"
+  },
+  "customer_inventory_serialization_correction": {
+    "observed_at": "2026-10-01T20:26:44.422082+00:00",
+    "read_only": true,
+    "provider_mutation": false,
+    "original_customer_count": 5,
+    "all_unclocked": true,
+    "legacy_ids_unchanged": true,
+    "legacy_full_objects_unchanged": true,
+    "legacy_full_objects_sha256": "a0a94dc284e7833855c650baf726879017683586fcb2d23647d316afd827c238",
+    "legacy_full_objects_serialization": "Python default sorted JSON",
+    "compact_ids_sha256": "e848d3fec60233a0674fba27b68b7d3de4ee2c81b1a54dd02624d0e5c7961f8d",
+    "compact_full_objects_sha256": "dc9e5812fa629e564f3dac87b92a7997163e70a7de0f6ce74fad255985b206eb",
+    "compact_full_objects_serialization": "compact sorted JSON",
+    "cause": "serialization whitespace mismatch only; original five customer IDs and full objects unchanged",
     "pii_persisted": false
   }
 }
