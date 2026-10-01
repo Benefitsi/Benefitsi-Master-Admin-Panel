@@ -389,6 +389,15 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                   / {o.billing_interval === "year" ? "Jahr im Voraus" : "Monat"}{" "}
                   · zzgl. MwSt.
                 </p>
+                {o.setup_amount > 0 && (
+                  <p className="mt-2 text-sm">
+                    {new Intl.NumberFormat("de-DE", {
+                      style: "currency",
+                      currency: o.currency,
+                    }).format(o.setup_amount / 100)}{" "}
+                    Einrichtung
+                  </p>
+                )}
                 <ul className="mt-5 space-y-2 text-sm">
                   <li>Eigene Microsite</li>
                   <li>365 Tage Auswertung</li>
