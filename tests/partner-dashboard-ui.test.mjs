@@ -97,7 +97,7 @@ test('feedback canonical categories are German, unknown codes safe, suppression 
  data.metrics.feedback={status:'ok',categories_status:'ok',clarity:{clear:5,mostly_clear:6,unclear:7},issues:{none:8,deal:9,stamp:10,scan:11,other:12,constructor:13}}
  let html=render(h(PartnerStatistics,{data}))
  for(const label of ['Verständlich','Überwiegend verständlich','Unverständlich','Keine Probleme','Problem mit dem Angebot','Problem mit dem Stempel','Problem beim Scannen','Sonstiges','Weitere Kategorie'])assert.ok(html.includes(label),label)
- for(const count of [5,6,7,8,9,10,11,12,13])assert.match(html,new RegExp('<dd>'+count+'</dd>'))
+ for(const count of [5,6,7,8,9,10,11,12,13])assert.match(html,new RegExp('<dd[^>]*>'+count+'</dd>'))
  assert.doesNotMatch(html,/unexpected_code|>clear<|>none</)
  data.metrics.feedback.categories_status='suppressed'
  html=render(h(PartnerStatistics,{data}));assert.doesNotMatch(html,/Problem beim Scannen|Weitere Kategorie/)

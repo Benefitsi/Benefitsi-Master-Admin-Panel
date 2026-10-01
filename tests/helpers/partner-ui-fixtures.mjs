@@ -8,6 +8,9 @@ export function loadUi(relative) {
  const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true},fileName:relative}).outputText
  const m={exports:{}}
  new Function('require','module','exports',js)(id=>{
+  if(id==='@/app/admin-language')return loadUi('app/admin-language.tsx')
+  if(id==='@/app/partner/actions')return {signOutPartner:async()=>{}}
+  if(id==='next/navigation')return {useRouter:()=>({refresh:()=>{}})}
   if(id==='@/app/partner/plan-actions')return {loadPartnerPlanPanel:async()=>{throw new Error('Synthetic preview has no server connection')},updatePartnerPlan:async()=>({ok:false,message:'Statische Vorschau – keine Änderung gespeichert.'})}
   if(id.startsWith('@/')){const base=id.slice(2);return loadUi(base+(base.startsWith('components/')?'.tsx':'.ts'))}
   return require(id)

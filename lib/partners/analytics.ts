@@ -163,7 +163,7 @@ export const metricLabels: Record<string, string> = {
   guests: 'Gäste',
   first_time_guests: 'Erstmalige Gäste',
   returning_guests: 'Wiederkehrende Gäste',
-  returning_guest_share: 'Anteil wiederkehrender Gäste',
+  returning_guest_share: 'Wiederkehranteil',
   stamps: 'Stempel',
   redemptions: 'Einlösungen',
   open_cards: 'Offene Stempelkarten',

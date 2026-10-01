@@ -616,7 +616,7 @@ export function PartnerWorkspace({
   return (
     <section id="partners" className="partner-management-brand space-y-3">
       <ToastViewport />
-      <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
+      {!portalMode &&       <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
         <LiveMetric label="Partners" value={partnerCount} />
         <LiveMetric
           label="Active partners"
@@ -639,10 +639,10 @@ export function PartnerWorkspace({
           }
         />
         <LiveMetric label="Benefits" value={dealCount} />
-      </div>
+      </div>}
 
-      <div className="grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]">
-        <aside className="self-start overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]">
+      <div className={portalMode ? "min-w-0" : "grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]"}>
+        {!portalMode &&         <aside className="self-start overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]">
           <div className="border-b border-zinc-200 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -758,7 +758,7 @@ export function PartnerWorkspace({
               </div>
             )}
           </div>
-        </aside>
+        </aside>}
 
         <section className="min-w-0">
           {mode === "create" ? (
