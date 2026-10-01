@@ -136,12 +136,14 @@ export async function measureSourceGroups() {
 export function workflowBudget(groups) {
     // SDK mutations already count their dispatch; add only transport attestation and fresh ownership reads.
     const sdk = (name, overhead = 0) => groups[name].calls + overhead;
+    const changedTargets = 23 + 7 + 3;
     const rows = [
         ['Inspect (version/account/balance + four inventories)', 7],
         ['Bootstrap (two clocks, six customers, six SetupIntents)', 2 * 4 + 6 * 5 + 6 * 6],
         ['Planned schedules (six Source runs + create ownership + price/schedule proofs)', 6 * (sdk('planned', 5) + 2)],
         ['Clock control month (23 changed targets, four same-time steps)', 23 * 9 + 4 * 2],
         ['Clock control year (seven ordinary changes, three isolated annual changes, two same-time steps)', 7 * 9 + 3 * 11 + 2 * 2],
+        ['Transport fresh ready proof after advancing acknowledgement (all 33 changed targets)', changedTargets],
         ['Activation/FEB/MAR/MAY/JUL trial reconciles (six activation, eight continuation)', 14 * (sdk('reconcileTrial') + 2)],
         ['Trial cancellation (two Source commands)', 2 * sdk('cancelTrial', 6)],
         ['Timely canceled trial Source proofs (two)', 2 * (sdk('reconcileCanceledTrial') + 2)],
@@ -157,16 +159,15 @@ export function workflowBudget(groups) {
     const executionMinimum = rows.reduce((sum, [, calls]) => sum + calls, 0);
     // Each clock DELETE includes attestation3, initial owner2, full gate13, dispatch1; inspect7/final lists2.
     const cleanupMinimum = 7 + 2 * (3 + 2 + 13 + 1) + 2;
-    const changedTargets = 23 + 7 + 3;
     const pollingMargin = changedTargets * 2; // two additional ready reads per advancement
     return {
         label: 'offline Source call-shape and fixed-checkpoint cost proof; NOT provider or Hosted acceptance',
-        assumptions: ['one page per bounded list', 'one InvoicePayment via PaymentIntent/Charge for each paid invoice', 'all nominal mutations confirmed on first dispatch', 'includes deliberately lost Source cancellation response, whose CLI dispatch is already confirmed', 'nominal settlement target is boundary+7200 seconds'],
+        assumptions: ['one page per bounded list', 'one InvoicePayment via PaymentIntent/Charge for each paid invoice', 'all nominal mutations confirmed on first dispatch', 'includes deliberately lost Source cancellation response, whose CLI dispatch is already confirmed', 'nominal settlement target is boundary+7200 seconds', 'each changed target acknowledges advancing before one fresh ready confirmation; further polling consumes margin'],
         groups, rows: rows.map(([operation, calls]) => ({ operation, calls })),
-        originalExecutionMinimum: executionMinimum - (8 * 9 + 2 * 10) - 20 - 18,
+        originalExecutionMinimum: 956, // Immutable historical estimate before settlement/acknowledgement repairs.
         originalPostReconcileReaderCalls: 0, repairedPostReconcileReaderCalls: 0,
         historicalBudget: {
-            totalCap: 1000, cleanupReserve: 100, executionCap: 900, originalExecutionOverCap: 56, repairedExecutionWithPollingOverCap: 252, feasible: false
+            totalCap: 1000, cleanupReserve: 100, executionCap: 900, originalExecutionOverCap: 56, firstSettlementFixExecutionMinimum: 1086, firstSettlementFixExecutionWithPolling: 1152, repairedExecutionWithPollingOverCap: 252, currentExecutionWithPollingOverOldCap: executionMinimum + pollingMargin - 900, feasible: false
         },
         executionMinimum, cleanupMinimum, totalMinimum: executionMinimum + cleanupMinimum,
         pollingMargin, executionWithPolling: executionMinimum + pollingMargin,

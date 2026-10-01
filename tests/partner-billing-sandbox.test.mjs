@@ -238,6 +238,100 @@ test('clock readiness must be fresh, monotone and bounded; advancing is no check
         }, timeout: 2
     }), /clock_not_ready/);
 });
+test('acknowledged advancing clock with old frozen time waits freshly for the same target; failures retain unknown', async () => {
+    for (const outcome of ['ready', 'mismatch', 'timeout', 'reverse', 'foreign'])
+        await temporary(async (work) => {
+            let posted = false, posts = 0, polls = 0, wall = 0, providerOutcome = outcome;
+            const target = boundary.seconds.activation, semantic = 'advance:month:month:activation';
+            const invoke = async (argv) => {
+                if (argv[0] === '--version')
+                    return 'stripe version 1.44.0';
+                if (argv[1] === '/v1/account')
+                    return { id: boundary.account, charges_enabled: false };
+                if (argv[1] === '/v1/balance')
+                    return { livemode: false };
+                if (argv[1] === '/v1/customers/cus_owned')
+                    return customer;
+                if (argv[0] === 'post') {
+                    posted = true;
+                    posts++;
+                    assert.equal(argv[argv.indexOf('--idempotency') + 1], `task12:${semantic}`);
+                    return {
+                        ...clock, status: 'advancing', frozen_time: boundary.seconds.frozen
+                    };
+                }
+                if (argv[1] === '/v1/test_helpers/test_clocks/clock_owned') {
+                    if (!posted)
+                        return clock;
+                    polls++;
+                    if (providerOutcome === 'timeout') {
+                        wall += 120001;
+                        return { ...clock, status: 'advancing' };
+                    }
+                    if (providerOutcome === 'reverse')
+                        return {
+                            ...clock, status: 'advancing', frozen_time: boundary.seconds.frozen - 1
+                        };
+                    if (providerOutcome === 'foreign')
+                        return {
+                            ...clock, id: 'clock_foreign', status: 'ready', frozen_time: target
+                        };
+                    return {
+                        ...clock, status: 'ready', frozen_time: providerOutcome === 'mismatch' ? target + 1 : target
+                    };
+                }
+                throw Error('offline_unexpected_read');
+            };
+            let t = await SandboxTransport.open({
+                work, mode: 'execute', invoke, now: () => wall
+            });
+            try {
+                t.state.clocks.month = clock.id;
+                t.state.owners[owner.role] = owner;
+                const request = () => t.mutate('clock.advance', {
+                    owner, id: clock.id, target
+                }, semantic);
+                if (outcome === 'ready') {
+                    const result = await request();
+                    assert.equal(result.status, 'ready');
+                    assert.equal(result.frozen_time, target);
+                    assert.equal(t.state.requests[semantic].status, 'confirmed');
+                }
+                else {
+                    await assert.rejects(request, /mutation_outcome_unknown/);
+                    assert.equal(t.state.requests[semantic].status, 'unknown');
+                }
+                assert.equal(posts, 1);
+                assert.equal(polls, 1);
+                assert.equal(t.state.requests[semantic].attempts, 1);
+                assert.equal(t.state.requests[semantic].clockTarget, target);
+                assert.equal(t.state.requests[semantic].key, `task12:${semantic}`);
+                assert.equal(t.state.requests[semantic].descriptor.target, target);
+                assert.equal(t.state.requests[semantic].clockAcknowledgement.frozen_time, boundary.seconds.frozen);
+                assert.deepEqual(t.state.checkpoints, {});
+                const savedHash = t.state.requests[semantic].hash;
+                if (outcome !== 'ready') {
+                    providerOutcome = 'ready';
+                    await t.close();
+                    t = await SandboxTransport.open({
+                        work, mode: 'execute', invoke, now: () => wall
+                    });
+                    const result = await t.mutate('clock.advance', {
+                        owner, id: clock.id, target
+                    }, semantic);
+                    assert.equal(result.frozen_time, target);
+                    assert.equal(t.state.requests[semantic].status, 'confirmed');
+                    assert.equal(t.state.requests[semantic].attempts, 1);
+                    assert.equal(t.state.requests[semantic].hash, savedHash);
+                    assert.equal(posts, 1);
+                    assert.deepEqual(t.state.checkpoints, {});
+                }
+            }
+            finally {
+                await t.close();
+            }
+        });
+});
 test('projection rejects provisional zero/manual first payment and incomplete paid rights', () => {
     assert.throws(() => assertProjection({
         state: 'trialing', paid_through: null, first_payment_at: '2026-01-31'
@@ -689,17 +783,21 @@ test('offline budget measures unchanged actual Source groups, historical infeasi
         planned: 4, reconcileTrial: 7, readerPaid: 7, reconcilePaid: 9, reconcileFailed: 7, cancelTrial: 24, reconcileCanceledTrial: 12, lateRecoveryLost: 11, lateRecoveryConfirmed: 18, reconcileCanceledPaid: 16, cancelPaid: 26
     });
     const budget = workflowBudget(measured);
-    assert.equal(budget.executionMinimum, 1086);
+    assert.equal(budget.executionMinimum, 1119);
     assert.equal(budget.cleanupMinimum, 47);
     assert.equal(budget.pollingMargin, 66);
-    assert.equal(budget.executionWithPolling, 1152);
+    assert.equal(budget.executionWithPolling, 1185);
     assert.equal(budget.historicalBudget.repairedExecutionWithPollingOverCap, 252);
+    assert.equal(budget.originalExecutionMinimum, 956);
+    assert.equal(budget.historicalBudget.currentExecutionWithPollingOverOldCap, 285);
+    assert.equal(budget.historicalBudget.firstSettlementFixExecutionMinimum, 1086);
+    assert.equal(budget.historicalBudget.firstSettlementFixExecutionWithPolling, 1152);
     assert.equal(budget.historicalBudget.feasible, false);
     assert.equal(budget.feasible, true);
     assert.equal(budget.totalCap, 1500);
     assert.equal(budget.executionCap, 1300);
     assert.equal(budget.cleanupReserve, 200);
-    assert.equal(budget.executionMargin, 148);
+    assert.equal(budget.executionMargin, 115);
     assert.equal(budget.cleanupThreePassMargin, 59);
     assert.equal(budget.originalPostReconcileReaderCalls, 0);
     assert.equal(budget.repairedPostReconcileReaderCalls, 0);

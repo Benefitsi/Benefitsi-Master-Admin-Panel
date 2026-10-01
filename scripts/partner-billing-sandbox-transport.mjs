@@ -727,10 +727,13 @@ export class SandboxTransport {
             assertOwned('subscription', await this.read('subscription.read', { id: args.id }), args.owner);
         if (op === 'schedule.update' || op === 'schedule.cancel')
             assertOwned('schedule', await this.read('schedule.read', { id: args.id }), args.owner);
+        let previousClockTime;
         if (op === 'clock.advance') {
             const c = await this.read('clock.read', { id: args.id });
-            if (c.status !== 'ready' || c.frozen_time >= args.target)
+            assertOwned('clock', c, args.owner);
+            if (c.status !== 'ready' || !Number.isInteger(c.frozen_time) || c.frozen_time >= args.target)
                 fail('unsafe_clock_advance');
+            previousClockTime = c.frozen_time;
             const longAnnual = args.owner.role === 'year/continue' && c.frozen_time >= boundary.seconds.trialEnd + 1 && this.state.checkpoints['year:first-paid'];
             if (args.target - c.frozen_time > (longAnnual ? 2 * 366 : 62) * 86400)
                 fail('unsafe_clock_advance');
@@ -765,7 +768,28 @@ export class SandboxTransport {
         r.checkpoint = Object.keys(this.state.checkpoints).at(-1) || null;
         await this.save();
         try {
-            const result = await this.call(argv);
+            let result = await this.call(argv);
+            if (op === 'clock.advance' && result.status === 'advancing') {
+                assertOwned('clock', result, args.owner);
+                if (!Number.isInteger(result.frozen_time) || result.frozen_time < previousClockTime || result.frozen_time > args.target)
+                    fail('clock_ack_time_mismatch');
+                r.clockAcknowledgement = {
+                    id: result.id, name: result.name, livemode: result.livemode, status: result.status,
+                    frozen_time: result.frozen_time, previous_time: previousClockTime, target: args.target, observedAt: this.now()
+                };
+                await this.save();
+                let observedTime = result.frozen_time;
+                result = await waitReady(async () => {
+                    const fresh = await this.read('clock.read', { id: args.id });
+                    assertOwned('clock', fresh, args.owner);
+                    if (!Number.isInteger(fresh.frozen_time) || fresh.frozen_time > args.target)
+                        fail('clock_time_mismatch');
+                    if (fresh.frozen_time < observedTime)
+                        fail('clock_reversed');
+                    observedTime = fresh.frozen_time;
+                    return fresh;
+                }, args.target, previousClockTime, { now: this.now });
+            }
             await this.confirm(op, args, result);
             r.status = 'confirmed';
             r.id = result.id;
