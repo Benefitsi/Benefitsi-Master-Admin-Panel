@@ -132,7 +132,7 @@ function scheduleBody(params, o, update = false) {
 /** Every operation owns its path and allowed request shape; callers cannot supply CLI flags. */
 export function buildRequest(op, args = {}, key) {
     let method = 'get', path, body = {};
-    keys(args, ['owner', 'id', 'interval', 'params', 'payment_method', 'target', 'starting_after']);
+    keys(args, ['owner', 'id', 'interval', 'params', 'payment_method', 'target', 'starting_after', 'clockFilter']);
     const o = args.owner;
     if (o)
         role(o);
@@ -186,6 +186,8 @@ export function buildRequest(op, args = {}, key) {
             break;
         case 'customer.list':
             path = '/v1/customers';
+            if (Object.hasOwn(args, 'clockFilter')) body.test_clock = id(args.clockFilter, 'clock');
+            if (Object.hasOwn(args, 'starting_after')) id(args.starting_after, 'cus');
             page();
             break;
         case 'customer.read':
@@ -322,7 +324,7 @@ export function buildRequest(op, args = {}, key) {
         fail('invalid_idempotency_key');
     // Accepted generic args are narrowed per operation, so an ignored flag/body cannot be smuggled in.
     const readArguments = {
-        'clock.list': ['starting_after'], 'customer.list': ['starting_after'], 'setup.list': ['owner', 'starting_after'], 'schedule.list': ['owner', 'starting_after'], 'subscription.list': ['owner', 'starting_after'], 'invoice.list': ['owner', 'starting_after'], 'invoice.lines': ['id', 'starting_after'], 'invoice.payments': ['id', 'starting_after']
+        'clock.list': ['starting_after'], 'customer.list': ['starting_after', 'clockFilter'], 'setup.list': ['owner', 'starting_after'], 'schedule.list': ['owner', 'starting_after'], 'subscription.list': ['owner', 'starting_after'], 'invoice.list': ['owner', 'starting_after'], 'invoice.lines': ['id', 'starting_after'], 'invoice.payments': ['id', 'starting_after']
     };
     const allowed = {
         'clock.create': ['interval'], 'clock.advance': ['owner', 'id', 'target'], 'clock.delete': ['owner', 'id'], 'customer.create': ['owner'], 'setup.create': ['owner', 'payment_method'], 'schedule.create': ['owner', 'params'], 'schedule.update': ['owner', 'id', 'params'], 'schedule.cancel': ['owner', 'id', 'params'], 'subscription.cancel': ['owner', 'id', 'params'], 'subscription.update': ['owner', 'id', 'params'], 'invoice.pay': ['owner', 'id', 'payment_method']
@@ -523,6 +525,13 @@ export class SandboxTransport {
             const response = await this.read(op, { ...args, ...(cursor ? { starting_after: cursor } : {}) });
             if (!Array.isArray(response.data) || response.data.length > 100)
                 fail('invalid_inventory');
+            if (op === 'customer.list') {
+                if (typeof response.has_more !== 'boolean') fail('invalid_inventory');
+                for (const c of response.data) {
+                    id(c.id, 'cus');
+                    if (args.clockFilter && c.test_clock !== args.clockFilter) fail('foreign_customer_inventory');
+                }
+            }
             objects.push(...response.data);
             if (!response.has_more)
                 return objects;
@@ -557,9 +566,10 @@ export class SandboxTransport {
         assert.ok(clock, 'cleanup_confirmed_clock_required');
         const owners = Object.values(this.state.owners).filter(o => o.clock === clock);
         assert.ok(owners.length <= 3, 'cleanup_customer_budget');
-        const attached = (await this.list('customer.list')).filter(c => c.test_clock === clock);
+        const attached = await this.list('customer.list', { clockFilter: clock });
         assert.deepEqual(attached.map(c => c.id).sort(), owners.map(o => o.customer).sort(), 'foreign_customer_on_owned_clock');
         for (const owner of owners) {
+            assertOwned('customer', attached.find(c => c.id === owner.customer), owner);
             await this.ownership(owner);
             const schedules = await this.list('schedule.list', { owner }), subscriptions = await this.list('subscription.list', { owner });
             for (const schedule of schedules) {
@@ -605,7 +615,7 @@ export class SandboxTransport {
             return matches[0] || null;
         }
         if (op === 'customer.create') {
-            matches = (await this.list('customer.list')).filter(c => c.test_clock === o.clock && same(c.metadata && Object.fromEntries(Object.keys(marker(o)).map(k => [k, c.metadata[k]])), marker(o)));
+            matches = (await this.list('customer.list', { clockFilter: o.clock })).filter(c => c.test_clock === o.clock && same(c.metadata && Object.fromEntries(Object.keys(marker(o)).map(k => [k, c.metadata[k]])), marker(o)));
             if (matches.length > 1)
                 fail('ownership_conflict');
             return matches[0] || null;

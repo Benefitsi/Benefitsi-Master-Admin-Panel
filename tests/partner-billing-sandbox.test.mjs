@@ -657,6 +657,69 @@ test('teardown rejects a foreign customer even if own clock name and own IDs all
             }] };
     await assert.rejects(() => assertTeardownOwnership(t, 'month'), /foreign_customer_on_owned_clock/);
 });
+test('clock-filtered teardown sees customers omitted by default inventory and rejects extra, missing or mismarked owners', () => temporary(async work => {
+    let variant = 'valid', deletes = 0;
+    const owners = ['continue', 'trial_exit', 'late_exit'].map((caseId, i) => ({ ...owner, role: `month/${caseId}`, contract: `task12-month-${caseId}`, customer: `cus_own${i}` }));
+    const ownedCustomers = owners.map(o => ({ ...customer, id: o.customer, metadata: { ...metadata, benefitsi_role: o.role, benefitsi_partner_contract: o.contract } }));
+    const baseline = Array.from({ length: 5 }, (_, i) => ({ id: `cus_old${i}`, test_clock: null, livemode: false, metadata: {} }));
+    const invoke = async argv => {
+        if (argv[0] === '--version') return 'stripe version 1.44.0';
+        if (argv[1] === '/v1/account') return { id: boundary.account, charges_enabled: false };
+        if (argv[1] === '/v1/balance') return { livemode: false };
+        if (argv[0] === 'get' && argv[1] === '/v1/test_helpers/test_clocks/clock_owned') return clock;
+        if (argv[1] === '/v1/customers') {
+            if (!argv.includes(`test_clock=${clock.id}`)) return { data: baseline, has_more: false };
+            const rows = structuredClone(ownedCustomers);
+            if (variant === 'extra') rows.push({ ...customer, id: 'cus_foreign', metadata: {} });
+            if (variant === 'missing') rows.pop();
+            if (variant === 'marker') rows[0].metadata.benefitsi_partner_contract = 'foreign';
+            if (variant === 'clock') rows[0].test_clock = 'clock_foreign';
+            return { data: rows, has_more: false };
+        }
+        if (argv[1].startsWith('/v1/customers/')) return ownedCustomers.find(c => argv[1].endsWith(c.id));
+        if (['/v1/subscription_schedules', '/v1/subscriptions'].includes(argv[1])) return { data: [], has_more: false };
+        if (argv[0] === 'delete') { deletes++; return { id: clock.id, deleted: true }; }
+        throw Error('unexpected');
+    };
+    const t = await SandboxTransport.open({ work, mode: 'cleanup', invoke });
+    try {
+        t.state.clocks.month = clock.id;
+        for (const o of owners) t.state.owners[o.role] = o;
+        assert.deepEqual((await t.list('customer.list')).map(c => c.id), baseline.map(c => c.id));
+        for (variant of ['extra', 'missing', 'marker', 'clock']) {
+            await assert.rejects(() => t.mutate('clock.delete', { owner: owners[0], id: clock.id }, 'cleanup:month'));
+            assert.equal(deletes, 0); assert.equal(t.state.requests['cleanup:month'], undefined);
+        }
+        variant = 'valid';
+        assert.equal((await t.mutate('clock.delete', { owner: owners[0], id: clock.id }, 'cleanup:month')).deleted, true);
+        assert.equal(deletes, 1);
+    } finally { await t.close(); }
+}));
+test('unknown clock customer creation resolves through filtered paginated reads without another POST', () => temporary(async work => {
+    const unbound = { clock: clock.id, role: owner.role, contract: owner.contract }, args = { owner: unbound }, key = 'customer:month/continue';
+    let posts = 0, pages = 0;
+    const invoke = async argv => {
+        if (argv[0] === 'post') { posts++; throw Error('unapproved duplicate customer'); }
+        if (argv[1] === '/v1/customers') {
+            if (!argv.includes(`test_clock=${clock.id}`)) return { data: [], has_more: false };
+            pages++;
+            if (!argv.includes('starting_after=cus_unrelated')) return { data: [{ ...customer, id: 'cus_unrelated', metadata: {} }], has_more: true };
+            return { data: [customer], has_more: false };
+        }
+        throw Error('unexpected');
+    };
+    const t = await SandboxTransport.open({ work, mode: 'execute', invoke });
+    try {
+        t.state.clocks.month = clock.id;
+        t.state.requests[key] = { op: 'customer.create', role: owner.role, descriptor: args, key: `task12:${key}`, hash: requestHash(buildRequest('customer.create', args, `task12:${key}`)), started: Date.now(), attempts: 1, status: 'unknown' };
+        const found = await t.mutate('customer.create', args, key);
+        assert.equal(found.id, customer.id); assert.equal(posts, 0); assert.equal(pages, 2);
+        assert.equal(t.state.requests[key].attempts, 1); assert.equal(t.state.requests[key].status, 'confirmed');
+        for (const bad of [{ clockFilter: 'clock_owned --live' }, { clockFilter: null }, { clockFilter: clock.id, starting_after: 'sub_foreign' }, { clockFilter: clock.id, limit: 1 }, { test_clock: clock.id }])
+            assert.throws(() => buildRequest('customer.list', bad));
+        assert.ok(buildRequest('customer.list', { clockFilter: clock.id, starting_after: 'cus_owned' }).includes(`test_clock=${clock.id}`));
+    } finally { await t.close(); }
+}));
 test('lost owned clock DELETE response resolves absence without a second DELETE', () => temporary(async (work) => {
     let exists = true, deletes = 0;
     const invoke = async (argv) => {
