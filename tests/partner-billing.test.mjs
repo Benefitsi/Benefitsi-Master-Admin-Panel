@@ -49,6 +49,57 @@ test('verified invoice/charge and item-level periods grant paid active state',as
  const s=await readPartnerSubscription(provider(),contract,'cus_partner',null)
  assert.equal(s.state,'active');assert.equal(s.period_end,new Date(end*1000).toISOString())
 })
+test('finalized zero-EUR Founder trial invoice with paid_at never becomes a first payment after provider cancellation',async()=>{
+ const activation=Date.parse('2026-01-31T11:00:00Z')/1000,exit=Date.parse('2026-02-28T11:00:00Z')/1000,paidAt=activation+3600
+ const founder={...contract,id:'founder-zero-fixture',offer:{...contract.offer,offer_code:'founder',unit_amount:1990},
+  trial_start:new Date(activation*1000).toISOString(),activated_at:new Date(activation*1000).toISOString(),
+  trial_end:'2026-07-31T10:00:00Z',cancellation_at:new Date(exit*1000).toISOString(),schedule_id:'sub_sched_zero',payment_method_id:'pm_zero'}
+ const params=founderModule.founderScheduleParams(founder,'cus_partner')
+ const schedule={...params,id:founder.schedule_id,livemode:false,status:'canceled',end_behavior:'cancel',
+  phases:[{...params.phases[0],start_date:activation,end_date:exit,trial_end:exit}]}
+ const mock=provider({status:'canceled',trial_start:activation,trial_end:exit,schedule:schedule.id,cancel_at:exit,
+  items:{has_more:false,data:[{...subscription.items.data[0],price:{...price,unit_amount:1990},current_period_start:activation,current_period_end:exit}]}})
+ mock.checkout.sessions.retrieve=async()=>({mode:'setup',customer:'cus_partner',livemode:false,status:'complete'})
+ mock.subscriptionSchedules={retrieve:async()=>schedule}
+ mock.invoices.retrieve=async()=>({id:'in_paid',customer:'cus_partner',livemode:false,parent:{subscription_details:{subscription:'sub_partner'}},
+  status:'paid',amount_due:0,amount_paid:0,status_transitions:{paid_at:paidAt,finalized_at:paidAt}})
+ mock.invoices.listLineItems=()=>iterable([{pricing:{price_details:{price:'price_pro'}},period:{start:activation,end:exit},quantity:1}])
+ mock.invoicePayments.list=()=>iterable([])
+ const previous={state:'canceled',paid_through:null,past_due_since:null,first_payment_at:new Date(paidAt*1000).toISOString()}
+ const s=await readPartnerSubscription(mock,founder,'cus_partner',previous)
+ assert.equal(s.provider_status,'canceled');assert.equal(s.state,'canceled')
+ assert.equal(s.first_payment_at,null);assert.equal(s.paid_through,null);assert.equal(s.past_due_since,null)
+ assert.equal(s.period_start,new Date(activation*1000).toISOString());assert.equal(s.period_end,new Date(exit*1000).toISOString())
+})
+test('first payment uses the same positive verified charge and matching period line gate as paid rights',async()=>{
+ const paidAt=start+10,first=new Date(paidAt*1000).toISOString()
+ const paidProvider=()=>{
+  const mock=provider(),read=mock.invoices.retrieve
+  mock.invoices.retrieve=async()=>({...await read(),amount_paid:2990,status_transitions:{paid_at:paidAt}})
+  return mock
+ }
+ const valid=await readPartnerSubscription(paidProvider(),contract,'cus_partner',null)
+ assert.equal(valid.first_payment_at,first);assert.equal(valid.paid_through,new Date(end*1000).toISOString());assert.equal(valid.state,'active')
+ const noTimestamp=paidProvider(),read=noTimestamp.invoices.retrieve
+ noTimestamp.invoices.retrieve=async()=>({...await read(),status_transitions:{}})
+ const missing=await readPartnerSubscription(noTimestamp,contract,'cus_partner',null)
+ assert.equal(missing.first_payment_at,null);assert.equal(missing.paid_through,valid.paid_through)
+ const cases=[
+  ['manual out-of-band',m=>{m.invoicePayments.list=()=>iterable([{invoice:'in_paid',livemode:false,amount_paid:2990,payment:{}}])}],
+  ['no verified charge',m=>{m.charges.retrieve=async()=>({customer:'cus_partner',livemode:false,paid:false,amount_refunded:0,disputed:false})}],
+  ['insufficient verified amount',m=>{m.invoicePayments.list=()=>iterable([{invoice:'in_paid',livemode:false,amount_paid:1,payment:{charge:'ch_paid'}}])}],
+  ['wrong price line',m=>{m.invoices.listLineItems=()=>iterable([{pricing:{price_details:{price:'price_other'}},period:{start,end},quantity:1}])}],
+  ['wrong period line',m=>{m.invoices.listLineItems=()=>iterable([{pricing:{price_details:{price:'price_pro'}},period:{start,end:end-1},quantity:1}])}],
+  ['refunded',m=>{m.charges.retrieve=async()=>({customer:'cus_partner',livemode:false,paid:true,amount_refunded:2990,disputed:false})}],
+  ['disputed',m=>{m.charges.retrieve=async()=>({customer:'cus_partner',livemode:false,paid:true,amount_refunded:0,disputed:true})}]
+ ]
+ for(const [label,change] of cases){
+  const mock=paidProvider();change(mock)
+  const s=await readPartnerSubscription(mock,contract,'cus_partner',null)
+  assert.equal(s.first_payment_at,null,label);assert.equal(s.paid_through,null,label)
+  assert.equal(s.state,['refunded','disputed'].includes(label)?'unpaid':'incomplete',label)
+ }
+})
 test('foreign subscription, unknown price and legacy Commerce cannot mutate Partner',async()=>{
  for(const patch of [{customer:'cus_foreign'},{metadata:{benefitsi_billing_provider_id:'commerce'}},{items:{has_more:false,data:[{...subscription.items.data[0],price:{...price,id:'price_unknown'}}]}}]) await assert.rejects(()=>readPartnerSubscription(provider(patch),contract,'cus_partner',null))
 })

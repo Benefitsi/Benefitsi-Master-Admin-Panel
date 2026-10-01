@@ -35,8 +35,6 @@ export async function readPartnerSubscription(stripe: Stripe, contract: PartnerC
         failureAt = (invoice.status_transitions?.finalized_at || invoice.created) * 1000;
         if (stripeId(invoice.customer) !== customerId || invoice.livemode !== subscription.livemode || stripeId(invoice.parent?.subscription_details?.subscription) !== subscription.id)
             throw Error('billing_invoice_mismatch');
-        if (invoice.status_transitions?.paid_at)
-            firstPayment = iso(invoice.status_transitions.paid_at);
         const lines = [];
         for await (const line of stripe.invoices.listLineItems(invoiceId, { limit: 100 }))
             lines.push(line);
@@ -64,8 +62,11 @@ export async function readPartnerSubscription(stripe: Stripe, contract: PartnerC
             if (charge.paid)
                 verifiedAmount += payment.amount_paid || 0;
         }
-        if (!risk && invoice.status === 'paid' && invoice.amount_due > 0 && verifiedAmount >= invoice.amount_due && line)
+        if (!risk && invoice.status === 'paid' && invoice.amount_due > 0 && verifiedAmount >= invoice.amount_due && line) {
             paidThrough = iso(end);
+            if (invoice.status_transitions?.paid_at)
+                firstPayment = iso(invoice.status_transitions.paid_at);
+        }
     }
     const state = billingState({ status: contract.cancellation_at && Date.parse(contract.cancellation_at) <= Date.now() ? 'canceled' : risk ? 'unpaid' : subscription.status, paidThrough, periodEnd: end * 1000, periodStart: start * 1000, failureAt, trialAccepted }, previous);
     return { ...state, provider_status: subscription.status, first_payment_at: firstPayment, contract_id: contract.id, subscription_id: subscription.id, customer_id: customerId, environment: contract.offer.environment, price_id: item.price.id, item_id: item.id, period_start: iso(start), period_end: iso(end), checkout_complete: checkout?.status === 'complete', cancel_at_period_end: subscription.cancel_at_period_end || !!subscription.cancel_at, risk };
