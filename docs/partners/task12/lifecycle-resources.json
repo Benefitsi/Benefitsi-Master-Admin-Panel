@@ -1,6 +1,6 @@
 {
   "status": "failed_or_unknown",
-  "mode": "offline",
+  "mode": "executed",
   "providerExecuted": true,
   "account": "acct_1T3ZuLH0Ev7iKGq0",
   "api": "2026-06-24.dahlia",
