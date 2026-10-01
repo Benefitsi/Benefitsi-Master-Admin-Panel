@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir, open, rename } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
-import { boundary, cliBudget, marker, requestHash, assertOwned, SandboxTransport, waitReady } from './partner-billing-sandbox-transport.mjs';
+import { boundary, cliBudget, marker, requestHash, buildRequest, assertOwned, SandboxTransport, waitReady } from './partner-billing-sandbox-transport.mjs';
 import { createEngine, providerAdapter, assertProjection } from './partner-billing-sandbox-engine.mjs';
 const directory = fileURLToPath(new URL('../docs/partners/task12/', import.meta.url));
 const iso = n => new Date(n * 1000).toISOString();
@@ -221,6 +221,49 @@ async function snapshot(t, e, o, label, { expect, amount, positive = false, read
     }
     return proof;
 }
+export function assertActivationSnapshot(state, owner, proof, engine, priorProofCount) {
+    const activation = iso(boundary.seconds.activation), fullEnd = iso(boundary.seconds.trialEnd), exitEnd = iso(boundary.seconds.trialExit);
+    const interval = owner.role.split('/')[0];
+    assert.ok(['month', 'year'].includes(interval));
+    assert.equal(state.clocks[interval], owner.clock);
+    assert.equal(requestHash(state.owners[owner.role]), requestHash(owner));
+    assert.ok(Number.isInteger(priorProofCount) && priorProofCount >= 0 && state.proofs.length === priorProofCount + 1);
+    assert.equal(state.proofs[priorProofCount], proof, 'activation_fresh_snapshot_required');
+    const trialProof = (p, end) =>
+        p?.label === 'activation' && p.role === owner.role && p.clock === owner.clock && p.subscription === owner.subscription &&
+        p.frozen === activation && p.providerStatus === 'trialing' && p.trialStart === activation && p.trialEnd === end &&
+        p.periodStart === activation && p.periodEnd === end && p.projection?.state === 'trialing' &&
+        p.projection.paidThrough === null && p.projection.firstPaymentAt === null && p.projection.pastDueSince === null &&
+        p.invoice?.amountDue === 0 && p.invoice.amountPaid === 0 && p.invoice.positiveChargeVerified === false &&
+        Array.isArray(p.invoiceSummary) && p.invoiceSummary.every(i => i.amountDue === 0 && i.amountPaid === 0) &&
+        p.fixtureSql === true && p.readOnlySourceReader === false && p.fixturePaidTermEntered === false && p.hosted === false;
+    const source = engine.state.subscription, contract = engine.contract;
+    assert.ok(source && source.environment === 'test' && source.contract_id === owner.contract && source.customer_id === owner.customer && source.subscription_id === owner.subscription, 'activation_source_identity_changed');
+    assert.equal(source.provider_status, proof.providerStatus);
+    assert.equal(source.state, proof.projection?.state);
+    assert.equal(source.paid_through, proof.projection?.paidThrough);
+    assert.equal(source.first_payment_at, proof.projection?.firstPaymentAt);
+    assert.equal(source.past_due_since, proof.projection?.pastDueSince);
+    assert.equal(source.period_start, proof.periodStart); assert.equal(source.period_end, proof.periodEnd);
+    if (proof.trialEnd === fullEnd) {
+        assert.ok(trialProof(proof, fullEnd), 'original_activation_proof_required');
+        return;
+    }
+    assert.equal(owner.role, `${interval}/trial_exit`, 'activation_trial_exit_replay_only');
+    assert.ok(trialProof(proof, exitEnd), 'activation_replay_boundary_changed');
+    assert.ok(state.proofs.slice(0, priorProofCount).some(p => trialProof(p, fullEnd)), 'original_activation_proof_required');
+    assert.equal(requestHash(state.fixtures[owner.role]?.contract), requestHash(contract), 'activation_saved_terms_changed');
+    assert.ok(contract.id === owner.contract && contract.state === 'accepted' && contract.schedule_id === owner.schedule && contract.subscription_id === owner.subscription && contract.payment_method_id === owner.paymentMethod && contract.activated_at === boundary.activation && contract.trial_start === boundary.activation && contract.trial_end === boundary.trialEnd && contract.cancellation_at === boundary.trialExit, 'activation_cancellation_terms_changed');
+    const orders = Object.entries(state.requests).filter(([, r]) => r.op === 'schedule.update' && r.role === owner.role && r.descriptor?.id === owner.schedule);
+    assert.equal(orders.length, 1, 'activation_confirmed_cancellation_required');
+    const [semantic, record] = orders[0], args = record.descriptor;
+    assert.ok(semantic.startsWith(`engine:fixture:${owner.contract}:`) && /^[1-9]\d*$/.test(semantic.slice(`engine:fixture:${owner.contract}:`.length)), 'activation_order_key_changed');
+    assert.ok(record.status === 'confirmed' && record.checkpoint === `${interval}:planned` && record.key === `task12:${semantic}` && record.id === owner.schedule && record.objectId === owner.schedule && Number.isInteger(record.attempts) && record.attempts >= 1 && record.attempts <= 3, 'activation_confirmed_cancellation_required');
+    for (const field of ['role', 'clock', 'contract', 'customer', 'schedule', 'subscription', 'setup', 'paymentMethod'])
+        assert.equal(args.owner[field], owner[field], 'activation_order_owner_changed');
+    assert.equal(record.hash, requestHash(buildRequest(record.op, args, record.key)), 'activation_order_wire_changed');
+    assert.ok(args.params.end_behavior === 'cancel' && args.params.proration_behavior === 'none' && args.params.phases.length === 1 && args.params.phases[0].start_date === boundary.seconds.activation && args.params.phases[0].end_date === boundary.seconds.trialExit && args.params.phases[0].trial_end === boundary.seconds.trialExit, 'activation_order_phase_changed');
+}
 async function bootstrap(t) {
     for (const interval of ['month', 'year']) {
         if (!t.state.clocks[interval]) {
@@ -261,9 +304,9 @@ async function lifecycle(t, interval) {
         for (const caseId of ['continue', 'trial_exit', 'late_exit']) {
             const e = engineFor(t, interval, caseId, now);
             const o = t.state.owners[`${interval}/${caseId}`];
+            const priorProofCount = t.state.proofs.length;
             const p = await snapshot(t, e, o, 'activation', { expect: 'trialing' });
-            assert.equal(p.trialStart, iso(b.activation));
-            assert.equal(p.trialEnd, iso(b.trialEnd));
+            assertActivationSnapshot(t.state, o, p, e, priorProofCount);
         }
         const e = engineFor(t, interval, 'trial_exit', now);
         await e.setCancellation(boundary.trialExit);

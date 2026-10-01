@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { boundary, encodeForm, buildRequest, cliEnvironment, SandboxTransport, assertOwned, waitReady } from '../scripts/partner-billing-sandbox-transport.mjs';
-import { offlinePlan, main, advance, assertTeardownOwnership } from '../scripts/partner-billing-sandbox.mjs';
+import { boundary, encodeForm, buildRequest, cliEnvironment, SandboxTransport, assertOwned, waitReady, requestHash } from '../scripts/partner-billing-sandbox-transport.mjs';
+import { offlinePlan, main, advance, assertTeardownOwnership, assertActivationSnapshot } from '../scripts/partner-billing-sandbox.mjs';
 import { createEngine, providerAdapter, assertProjection } from '../scripts/partner-billing-sandbox-engine.mjs';
 const metadata = {
     benefitsi_release: boundary.release, benefitsi_scope: boundary.scope, benefitsi_role: 'month/continue', benefitsi_partner_contract: 'task12-month-continue'
@@ -449,6 +449,70 @@ test('strict schedule bodies accept actual source empty-array cancellation and r
         'phases[0][proration_behavior]=none',
         ...Object.entries(metadata).map(([name, value]) => `phases[0][metadata][${name}]=${value}`)
     ].sort((a, b) => a.localeCompare(b, 'en')));
+});
+test('activation replay accepts shortened trial only with original full proof and exact confirmed Source cancellation', () => {
+    for (const interval of ['month', 'year']) {
+        const activation = new Date(boundary.seconds.activation * 1000).toISOString();
+        const fullEnd = new Date(boundary.seconds.trialEnd * 1000).toISOString();
+        const exitEnd = new Date(boundary.seconds.trialExit * 1000).toISOString();
+        const owned = { ...owner, role: `${interval}/trial_exit`, contract: `task12-${interval}-trial_exit`, schedule: 'sub_sched_owned', subscription: 'sub_owned', setup: 'seti_owned', paymentMethod: 'pm_owned' };
+        const e = createEngine({ interval, caseId: 'trial_exit', customer: owned.customer, setup: owned.setup, stripe: {}, now: boundary.seconds.activation });
+        Object.assign(e.contract, { state: 'accepted', schedule_id: owned.schedule, subscription_id: owned.subscription, payment_method_id: owned.paymentMethod, activated_at: boundary.activation, cancellation_at: boundary.trialExit });
+        const schedule = { ...e.source.founderScheduleParams(e.contract, owned.customer), id: owned.schedule, livemode: false,
+            metadata: { ...metadata, benefitsi_role: owned.role, benefitsi_partner_contract: owned.contract },
+            phases: [{ ...e.source.founderScheduleParams(e.contract, owned.customer).phases[0], start_date: boundary.seconds.activation,
+                metadata: { ...metadata, benefitsi_role: owned.role, benefitsi_partner_contract: owned.contract } }] };
+        const params = e.source.founderTrialCancellation(schedule, e.contract, owned.customer);
+        const descriptor = { owner: owned, id: owned.schedule, params };
+        const key = `engine:fixture:${owned.contract}:3`;
+        const full = { label: 'activation', role: owned.role, clock: owned.clock, frozen: activation, subscription: owned.subscription,
+            providerStatus: 'trialing', trialStart: activation, trialEnd: fullEnd, periodStart: activation, periodEnd: fullEnd,
+            projection: { state: 'trialing', paidThrough: null, firstPaymentAt: null, pastDueSince: null },
+            invoice: { amountDue: 0, amountPaid: 0, positiveChargeVerified: false }, invoiceSummary: [{ amountDue: 0, amountPaid: 0 }],
+            fixtureSql: true, readOnlySourceReader: false, fixturePaidTermEntered: false, hosted: false };
+        const shortened = { ...structuredClone(full), trialEnd: exitEnd, periodEnd: exitEnd };
+        const fixture = { contract: e.contract };
+        const record = { op: 'schedule.update', role: owned.role, status: 'confirmed', key: `task12:${key}`, descriptor,
+            hash: requestHash(buildRequest('schedule.update', descriptor, `task12:${key}`)),
+            objectId: owned.schedule, id: owned.schedule, attempts: 3, checkpoint: `${interval}:planned` };
+        const state = { owners: { [owned.role]: owned }, clocks: { [interval]: owned.clock }, fixtures: { [owned.role]: fixture }, proofs: [full, shortened], requests: { [key]: record } };
+        e.state.subscription = { state: 'trialing', paid_through: null, first_payment_at: null, past_due_since: null,
+            provider_status: 'trialing', contract_id: owned.contract, subscription_id: owned.subscription, customer_id: owned.customer,
+            environment: 'test', period_start: activation, period_end: exitEnd };
+        assert.doesNotThrow(() => assertActivationSnapshot(state, owned, shortened, e, 1));
+        for (const change of [
+            s => { s.proofs[0].trialEnd = exitEnd; }, s => { s.proofs[0].clock = 'clock_foreign'; },
+            s => { s.requests[key].status = 'unknown'; }, s => { s.requests[key].role = `${interval}/continue`; },
+            s => { s.requests[key].descriptor.id = 'sub_sched_foreign'; },
+            s => { s.requests[key].descriptor.params.phases[0].end_date = boundary.seconds.trialEnd; },
+            s => { s.requests[key].descriptor.params.phases[0].trial_end--; },
+            s => {
+                s.requests[key].descriptor.params.phases[0].end_date = boundary.seconds.trialEnd;
+                s.requests[key].descriptor.params.phases[0].trial_end = boundary.seconds.trialEnd;
+                s.requests[key].hash = requestHash(buildRequest('schedule.update', s.requests[key].descriptor, s.requests[key].key));
+            },
+            s => { s.requests[key].checkpoint = `${interval}:later`; },
+            s => { s.fixtures[owned.role].contract.cancellation_at = boundary.trialEnd; },
+            s => { s.proofs[1].frozen = fullEnd; }, s => { s.proofs[1].trialStart = exitEnd; }
+        ]) {
+            const bad = structuredClone(state); change(bad);
+            assert.throws(() => assertActivationSnapshot(bad, owned, bad.proofs[1], { contract: bad.fixtures[owned.role].contract, state: e.state }, 1));
+        }
+        const missing = structuredClone(state); missing.proofs = [missing.proofs[1]];
+        assert.throws(() => assertActivationSnapshot(missing, owned, missing.proofs[0], e, 0));
+        const wrongCase = { ...owned, role: `${interval}/late_exit`, contract: `task12-${interval}-late_exit` };
+        const wrongCaseProofs = state.proofs.map(p => ({ ...p, role: wrongCase.role }));
+        const wrongCaseState = { ...state, owners: { [wrongCase.role]: wrongCase }, proofs: wrongCaseProofs };
+        const wrongCaseEngine = { contract: e.contract, state: { ...e.state, subscription: { ...e.state.subscription, contract_id: wrongCase.contract } } };
+        assert.throws(() => assertActivationSnapshot(wrongCaseState, wrongCase, wrongCaseProofs[1], wrongCaseEngine, 1), /activation_trial_exit_replay_only/);
+        const stale = { ...e.state, subscription: { ...e.state.subscription, period_end: fullEnd } };
+        assert.throws(() => assertActivationSnapshot(state, owned, shortened, { contract: e.contract, state: stale }, 1));
+        e.state.subscription.period_end = fullEnd;
+        const first = { ...state, proofs: [full], requests: {} };
+        assert.doesNotThrow(() => assertActivationSnapshot(first, owned, full, e, 0));
+        const wrongFull = { ...structuredClone(full), trialEnd: exitEnd, periodEnd: exitEnd };
+        assert.throws(() => assertActivationSnapshot({ ...first, proofs: [wrongFull] }, owned, wrongFull, e, 0));
+    }
 });
 test('resume of advancing clock resolves the exact intent, never dispatches twice', () => temporary(async (work) => {
     const key = 'advance:month:activation';
