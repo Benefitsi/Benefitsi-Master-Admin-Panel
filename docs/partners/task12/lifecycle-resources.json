@@ -1,0 +1,68 @@
+{
+  "status": "pending",
+  "mode": "offline",
+  "providerExecuted": false,
+  "account": "acct_1T3ZuLH0Ev7iKGq0",
+  "api": "2026-06-24.dahlia",
+  "cli": "1.44.0",
+  "release": "partner-dashboard-task12-2026-10-01",
+  "scope": "isolated_sandbox_lifecycle",
+  "frozen": "2026-01-31T10:50:00Z",
+  "activation": "2026-01-31T11:00:00Z",
+  "trialEnd": "2026-07-31T10:00:00Z",
+  "paidMinimumEnd": "2027-07-31T10:00:00Z",
+  "trialExit": "2026-02-28T11:00:00Z",
+  "seconds": {
+    "frozen": 1769856600,
+    "activation": 1769857200,
+    "trialEnd": 1785492000,
+    "paidMinimumEnd": 1817028000,
+    "trialExit": 1772276400
+  },
+  "cards": [
+    "pm_card_visa",
+    "pm_card_chargeCustomerFail"
+  ],
+  "maximum": {
+    "clocks": 2,
+    "customers": 6,
+    "schedules": 6,
+    "setupIntents": 7
+  },
+  "prices": {
+    "month": "price_1ULmg4H0Ev7iKGq0RLhEADeI",
+    "year": "price_1ULmg6H0Ev7iKGq021h3wOpB"
+  },
+  "clockNames": {
+    "month": "Benefitsi Task12 Founder/month 2026-10-01 NONLIVE",
+    "year": "Benefitsi Task12 Founder/year 2026-10-01 NONLIVE"
+  },
+  "hostedDb": false,
+  "signedWebhook": false,
+  "realAgreement": false,
+  "livePayment": false,
+  "scenarios": [
+    "month/continue",
+    "month/trial_exit",
+    "month/late_exit",
+    "year/continue",
+    "year/trial_exit",
+    "year/late_exit"
+  ],
+  "proofGates": {
+    "providerLifecycle": "pending",
+    "sourceEngineWithFixtureSql": "pending",
+    "hostedDb": false,
+    "hostedCheckout": false,
+    "signedWebhook": false,
+    "realAgreement": false,
+    "operations": false,
+    "production": false
+  },
+  "commands": [
+    "node scripts/partner-billing-sandbox.mjs",
+    "node scripts/partner-billing-sandbox.mjs inspect",
+    "node scripts/partner-billing-sandbox.mjs execute --reviewed=partner-dashboard-task12-2026-10-01",
+    "node scripts/partner-billing-sandbox.mjs cleanup --reviewed=partner-dashboard-task12-2026-10-01"
+  ]
+}
