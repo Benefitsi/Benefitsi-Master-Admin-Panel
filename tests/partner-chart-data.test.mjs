@@ -186,3 +186,24 @@ test("header retains language/signout and gates platform admin and commerce navi
     else process.env.BENEFITSI_COMMERCE_ENABLED = old;
   }
 });
+test("chart ticks and dates use CSS-sized HTML labels outside the scaled graphic", () => {
+  const { VisitChart } = loadUi("components/partner/partner-charts.tsx");
+  const series = {
+    status: "ok",
+    buckets: [
+      { start: "2026-09-21T00:00:00+02:00", visits: 24 },
+      { start: "2026-09-27T00:00:00+02:00", visits: 60 },
+    ],
+  };
+  const doc = new JSDOM(render(h(VisitChart, { series }))).window.document;
+  assert.equal(doc.querySelectorAll("svg text").length, 0);
+  assert.match(
+    doc.querySelector('[aria-label="Achse: Besuche"]').className,
+    /text-xs/,
+  );
+  const range = doc.querySelector('[aria-label="Zeitraum der Besuchswerte"]');
+  assert.match(range.className, /text-xs/);
+  assert.match(range.textContent, /21.09.2026/);
+  assert.match(range.textContent, /27.09.2026/);
+  assert.equal(doc.querySelectorAll("tbody tr").length, 2);
+});

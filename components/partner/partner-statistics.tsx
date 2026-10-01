@@ -78,8 +78,16 @@ export function PartnerStatistics({
                   index === 0 ? "mb-4 text-[#17d4d7]" : "mb-4 text-[#118cff]"
                 }
               />
-              <h3 className="text-sm font-medium sm:text-base">
-                {metricLabels[key]}
+              <h3 className="text-sm font-medium [overflow-wrap:normal] sm:text-base">
+                {key === "returning_guest_share" ? (
+                  <>
+                    Wiederkehr
+                    <wbr />
+                    anteil
+                  </>
+                ) : (
+                  metricLabels[key]
+                )}
               </h3>
               <p className="mt-2 text-3xl font-bold tracking-tight xl:text-4xl">
                 {valueLabel(key, metric)}

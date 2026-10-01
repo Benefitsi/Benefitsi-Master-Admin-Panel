@@ -10,6 +10,6 @@ The generator renders `PartnerDashboard`, `PartnerOverview`, `PartnerStatisticsT
 
 For each `free`, `pro`, `founder`, `expired`, and `demo` scenario: `NAME-overview.html`, `NAME-statistics.html`, `NAME-billing.html`, `NAME-business.html`, `NAME-deals.html`, `NAME-admin.html`. `NAME.html` aliases statistics. Existing canonical `release-v1.json` remains unchanged. `visual-demo.json` is a separately labelled, manually authored synthetic seven-day fixture, also copied byte-for-byte into App tests. Its visits sum to 280 in daily, weekly and monthly projections; 40 guests, 12 returning guests, authoritative share 0.3 and 14 redemptions. No production fallback references it.
 
-The overview displays the provided aggregate's exact range; production overview remains the existing seven-day request, whereas native home remains Today. Statistics is comparable only for the same explicit selected period. Protected statuses never become numeric zero.
+The overview displays the provided aggregate's exact range; production overview remains the existing seven-day request, and native Home now uses the same seven-day request. Statistics is comparable only for the same explicit selected period. Protected statuses never become numeric zero.
 
 Root/controller owns loopback serving and browser acceptance. The generator does not start or change a server and never connects to a live service.

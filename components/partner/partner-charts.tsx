@@ -30,82 +30,80 @@ export function VisitChart({
     .join(" ");
   return (
     <>
-      <svg
-        role="img"
-        aria-label={`Besuchsverlauf: ${buckets.length} Zeitwerte; exakte Werte in der Tabelle`}
-        viewBox="0 0 720 250"
-        className="mt-5 w-full overflow-visible"
-      >
-        <defs>
-          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-            <stop stopColor="#118cff" stopOpacity=".22" />
-            <stop offset="1" stopColor="#118cff" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[0, 0.5, 1].map((n) => (
-          <g key={n}>
-            <line
-              x1="48"
-              x2="672"
-              y1={y(max * n)}
-              y2={y(max * n)}
-              stroke="#e2e8f0"
-            />
-            <text
-              x="38"
-              y={y(max * n) + 5}
-              textAnchor="end"
-              fontSize="13"
-              fill="#64748b"
+      <div className="mt-6 flex gap-3" data-chart-plot>
+        <div
+          className="relative w-9 shrink-0 text-xs text-slate-500"
+          aria-label="Achse: Besuche"
+        >
+          {[1, 0.5, 0].map((n) => (
+            <span
+              key={n}
+              className="absolute right-0 -translate-y-1/2"
+              style={{ top: `${(1 - n) * 100}%` }}
             >
               {Math.round(max * n)}
-            </text>
-          </g>
-        ))}
-        <path
-          d={`${line} L${x(buckets.length - 1)},210 L${x(0)},210 Z`}
-          fill={`url(#${id})`}
-        />
-        <path
-          d={line}
-          fill="none"
-          stroke="#118cff"
-          strokeWidth="3"
-          strokeLinejoin="round"
-        />
-        {buckets.length <= 40 &&
-          buckets.map((b, i) => (
-            <circle
-              key={b.start}
-              cx={x(i)}
-              cy={y(b.visits)}
-              r="4"
-              fill="#118cff"
-            >
-              <title>{`${formatBerlin(b.start)}: ${b.visits} Besuche`}</title>
-            </circle>
+            </span>
           ))}
-        {[
-          ...new Set([
-            0,
-            Math.floor((buckets.length - 1) / 2),
-            buckets.length - 1,
-          ]),
-        ].map((i) => (
-          <text
-            key={i}
-            x={x(i)}
-            y="240"
-            textAnchor={
-              i === 0 ? "start" : i === buckets.length - 1 ? "end" : "middle"
-            }
-            fontSize="13"
-            fill="#64748b"
-          >
-            {formatBerlin(buckets[i].start)}
-          </text>
-        ))}
-      </svg>
+        </div>
+        <svg
+          role="img"
+          aria-label={`Besuchsverlauf: ${buckets.length} Zeitwerte; exakte Werte in der Tabelle`}
+          viewBox="48 36 624 174"
+          preserveAspectRatio="none"
+          className="h-44 min-w-0 flex-1 overflow-visible sm:h-56"
+        >
+          <defs>
+            <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+              <stop stopColor="#118cff" stopOpacity=".22" />
+              <stop offset="1" stopColor="#118cff" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {[0, 0.5, 1].map((n) => (
+            <g key={n}>
+              <line
+                x1="48"
+                x2="672"
+                y1={y(max * n)}
+                y2={y(max * n)}
+                stroke="#e2e8f0"
+              />
+            </g>
+          ))}
+          <path
+            d={`${line} L${x(buckets.length - 1)},210 L${x(0)},210 Z`}
+            fill={`url(#${id})`}
+          />
+          <path
+            d={line}
+            fill="none"
+            stroke="#118cff"
+            strokeWidth="3"
+            vectorEffect="non-scaling-stroke"
+            strokeLinejoin="round"
+          />
+          {buckets.length <= 40 &&
+            buckets.map((b, i) => (
+              <circle
+                key={b.start}
+                cx={x(i)}
+                cy={y(b.visits)}
+                r="4"
+                fill="#118cff"
+              >
+                <title>{`${formatBerlin(b.start)}: ${b.visits} Besuche`}</title>
+              </circle>
+            ))}
+        </svg>
+      </div>
+      <div
+        className="mt-3 flex flex-wrap justify-between gap-x-4 gap-y-1 pl-12 text-xs text-slate-500"
+        aria-label="Zeitraum der Besuchswerte"
+      >
+        <span>{formatBerlin(buckets[0].start)}</span>
+        {buckets.length > 1 && (
+          <span>{formatBerlin(buckets[buckets.length - 1].start)}</span>
+        )}
+      </div>
       <details className="mt-3 text-sm">
         <summary className="cursor-pointer text-sky-800">
           Exakte Werte anzeigen
