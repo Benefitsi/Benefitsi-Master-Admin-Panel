@@ -53,7 +53,7 @@ for(const [name,scenario] of Object.entries(fixture.scenarios)){
     assert.equal(parsed.limit,usage.data.limit)
     const html=renderToStaticMarkup(await PartnerDropUsage({client,partnerId:scenario.partner_id}))
     assert.match(html,usage.data.limit===null?/vorläufig/:/1 von 1 genutzt/)
-    assert.match(html,usage.data.next_available_at?/Nächste Veröffentlichung möglich ab/:/Veröffentlichung aktuell möglich/)
+    assert.match(html,usage.data.next_available_at?/Monatskontingent ausgeschöpft/:/Nach aktuellem Monatskontingent verfügbar/)
    }
    for(const exporting of [false,true]){
     const rpc=exporting?'export_partner_dashboard':'get_partner_dashboard'
@@ -78,4 +78,21 @@ for(const [name,scenario] of Object.entries(fixture.scenarios)){
    assert.equal(result.ok,expected)
   })
  }
+}
+for(const [name,scenario] of Object.entries(fixture.catalog_publications ?? {})){
+ test(`actual Admin published ${name} survives entitlement/quota/feedback consumers and rendering`,async()=>{
+  assert.equal(scenario.draft_status,'published');assert.equal(scenario.publish_outcome.error,null)
+  const client={rpc:async(rpc,args)=>{assert.equal(args.p_partner_id,scenario.partner_id);return structuredClone(scenario.owner[rpc])}}
+  const rights=await ent.readEntitlements(client,scenario.partner_id)
+  const usage=await ent.readDealDropUsage(client,scenario.partner_id)
+  assert.equal(usage.limit,{finite:2,unlimited:null,free_zero:0,free_high:1,free_null:1}[name])
+  assert.equal(usage.provisional,false)
+  assert.equal(ent.canManageFeedback(rights),name==='finite')
+  const settings=await feedback.readFeedbackSettings(client,scenario.partner_id)
+  assert.equal(settings.available,name==='finite')
+  const html=renderToStaticMarkup(await PartnerDropUsage({client,partnerId:scenario.partner_id}))
+  if(name==='free_zero')assert.match(html,/Unter dem aktuellen Kontingent sind keine Veröffentlichungen möglich/)
+  if(name==='unlimited'){assert.match(html,/ohne Monatslimit/);assert.doesNotMatch(html,/vorläufig/)}
+  assert.doesNotMatch(html,/Nächste Veröffentlichung möglich ab/)
+ })
 }
