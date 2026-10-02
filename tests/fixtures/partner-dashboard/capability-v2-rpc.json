@@ -2,8 +2,8 @@
   "fixture_version": "partner-capability-v2-rpc-20261002",
   "synthetic": true,
   "source": "actual isolated PostgreSQL17 RPC JSON; composed baseline harness, auth stubs and simulated billing provider evidence; never hosted",
-  "generated_at": "2026-10-02 15:17:35.274619+02",
-  "database_source_head": "9ed3c2ba9584f63f2bde8fcacc21b4c9af3dec13",
+  "generated_at": "2026-10-02 15:54:40.153878+02",
+  "database_source_head": "a20bf4e8271a7dda6e8343e64a7dddb8090fbaed",
   "applied_whole_migrations_in_order": [
     {
       "path": "supabase/migrations/20260831114821_offline_pin_customer_redemption.sql",
@@ -168,6 +168,10 @@
     {
       "path": "supabase/migrations/20261002115743_partner_catalog_v2.sql",
       "sha256": "d165fbc87fd6d86e841e35f7db4c219d64f94ad0bf5b122e12ef33bef11507d3"
+    },
+    {
+      "path": "supabase/migrations/20261002134331_partner_plan_catalog_publication.sql",
+      "sha256": "0f7aa82441e2dffc1b173d21d7acb4b10270592c0c2c21d728c819fc9698bdcb"
     }
   ],
   "baseline_extraction": {
@@ -179,11 +183,16 @@
     "public.get_partner_price_catalog()": "abb774c0af4e3521721a4200c2036c50c70ccaee36d9914f45c0d88e8831078e",
     "public.get_partner_entitlements(p_partner_id uuid)": "e885b42a1ab534dd5e439997fc50bdc3a1de742b0eecda0b60d271e13642fa2c",
     "public.get_partner_deal_drop_usage(p_partner_id uuid)": "32ad5846d7e35d6495ce2f607014619de7ab179bac757b834ac4af08d119d62f",
-    "private.resolve_partner_entitlements(p_partner_id uuid)": "579e9a0474cc42db157f946a8041cb6ad60d33923eeb39d77d9c978ec8d0af26",
+    "public.admin_get_partner_plan_panel(p_partner_id uuid)": "342a5fbe006ea1271de9934c076b0a71033ceb4cefef040f353890eef671400c",
+    "private.resolve_partner_entitlements(p_partner_id uuid)": "7affa3dd7091a90d74df1c653ca030ef6eda093dcf6317a0c5a6c9dd87c3a2d7",
     "public.get_partner_feedback_settings(p_partner_id uuid)": "4e85781390ac6530c988edc2bc9718643c32b55f8f02ffa570da13ffddbca79a",
+    "private.resolve_partner_entitlements_v1(p_partner_id uuid)": "7a68d987b7300a374d8903f176c93cba4cd8acd4334ee718e6422125d171f189",
     "public.partner_post_scan_feedback_summary(p_partner_id uuid)": "6cd13d8c17923ff41129c4bc0ea3b43fcd64ffed48a7bfad18cd3ebd3e0561c9",
     "private.partner_dashboard_feedback(p uuid, a timestamp with time zone)": "7ba6ebcb876a72349578b44c526a47d55b6b8a56299e6028c7d2b690fe2243c6",
+    "public.admin_publish_partner_catalog_draft(p_draft_id uuid, p_reason text)": "ac354449ca358d42c691081647bd308522dc067b36b239071807348ef9abc562",
+    "public.admin_save_partner_catalog_draft(p_kind text, p_payload jsonb, p_reason text)": "f6db724213947e5cb7b7bf52e8ada327d6be8f279f01c528d2545c1cbce14e57",
     "public.set_partner_feedback_reward(p_partner_id uuid, p_enabled boolean, p_deal_id uuid)": "590592c5e7bff491e24b09ac70a7135666539768433410bfda2399bb354079ae",
+    "public.admin_publish_partner_plan(p_plan_code text, p_version integer, p_features jsonb, p_limits jsonb, p_reason text)": "399dce338c673b5a7de4b341156c2fa35586102e1b3154b01f0b684a6d999f09",
     "public.get_partner_dashboard(p_partner_id uuid, p_from timestamp with time zone, p_to timestamp with time zone, p_timezone text)": "c523fbe1c849a0b356b4e0c8fd3493595a30e5684997de1bc7b920b14e703b4b",
     "public.export_partner_dashboard(p_partner_id uuid, p_from timestamp with time zone, p_to timestamp with time zone, p_timezone text)": "cb99cc63cdd39e5b01e9e2a6050de68ef4ab2d1c4fe1a19aa886b40862d0e470"
   },
@@ -240,7 +249,7 @@
         "plan_code": null,
         "addon_code": "commerce",
         "offer_code": "commerce",
-        "valid_from": "2026-10-02T15:17:32.060284+02:00",
+        "valid_from": "2026-10-02T15:54:36.875759+02:00",
         "unit_amount": 1490,
         "valid_until": null,
         "plan_version": null,
@@ -255,7 +264,7 @@
         "plan_code": "pro",
         "addon_code": null,
         "offer_code": "founder",
-        "valid_from": "2026-10-02T15:17:32.060284+02:00",
+        "valid_from": "2026-10-02T15:54:36.875759+02:00",
         "unit_amount": 1990,
         "valid_until": null,
         "plan_version": 1,
@@ -270,7 +279,7 @@
         "plan_code": "pro",
         "addon_code": null,
         "offer_code": "founder_annual",
-        "valid_from": "2026-10-02T15:17:32.291874+02:00",
+        "valid_from": "2026-10-02T15:54:37.059274+02:00",
         "unit_amount": 19900,
         "valid_until": null,
         "plan_version": 1,
@@ -285,7 +294,7 @@
         "plan_code": null,
         "addon_code": "seo.monitor",
         "offer_code": "seo",
-        "valid_from": "2026-10-02T15:17:32.060284+02:00",
+        "valid_from": "2026-10-02T15:54:36.875759+02:00",
         "unit_amount": 1990,
         "valid_until": null,
         "plan_version": null,
@@ -300,7 +309,7 @@
         "plan_code": "pro",
         "addon_code": null,
         "offer_code": "standard",
-        "valid_from": "2026-10-02T15:17:32.060284+02:00",
+        "valid_from": "2026-10-02T15:54:36.875759+02:00",
         "unit_amount": 2990,
         "valid_until": null,
         "plan_version": 1,
@@ -347,7 +356,7 @@
   },
   "scenarios": {
     "free": {
-      "partner_id": "0c09aeeb-aa4c-4a52-9c73-954101f417cf",
+      "partner_id": "8cdb9838-c5d5-4ba7-8891-70128cfabd75",
       "actors": {
         "owner": {
           "get_partner_entitlements": {
@@ -360,7 +369,7 @@
                 "deal_drops_monthly": 1,
                 "menu_ai_imports_monthly": 0
               },
-              "version": "92bcc0f22f9dc31344c3d9a349fbce92",
+              "version": "4a6433cfe8772af2bbbaf3af599ab888",
               "features": {
                 "commerce": false,
                 "crm.manage": false,
@@ -377,7 +386,7 @@
               },
               "plan_code": "free",
               "offer_code": null,
-              "partner_id": "0c09aeeb-aa4c-4a52-9c73-954101f417cf",
+              "partner_id": "8cdb9838-c5d5-4ba7-8891-70128cfabd75",
               "environment": "live",
               "valid_until": null,
               "plan_version": 1,
@@ -409,7 +418,7 @@
               "timezone": "Europe/Berlin",
               "remaining": 0,
               "resets_at": "2026-11-01T00:00:00+01:00",
-              "partner_id": "0c09aeeb-aa4c-4a52-9c73-954101f417cf",
+              "partner_id": "8cdb9838-c5d5-4ba7-8891-70128cfabd75",
               "month_start": "2026-10-01",
               "provisional": false,
               "schema_version": 1,
@@ -440,9 +449,9 @@
           },
           "get_partner_dashboard": {
             "data": {
-              "as_of": "2026-10-02T15:17:32.82577+02:00",
+              "as_of": "2026-10-02T15:54:37.456746+02:00",
               "period": {
-                "to": "2026-10-02T15:17:32.82577+02:00",
+                "to": "2026-10-02T15:54:37.456746+02:00",
                 "from": "2026-09-26T00:00:00+02:00",
                 "timezone": "Europe/Berlin",
                 "semantics": "[from,to)"
@@ -553,7 +562,7 @@
                 "status": "locked"
               },
               "comparison": {},
-              "partner_id": "0c09aeeb-aa4c-4a52-9c73-954101f417cf",
+              "partner_id": "8cdb9838-c5d5-4ba7-8891-70128cfabd75",
               "definitions": {
                 "retention": "return_on_local_days_1_through_30_after_first_visit",
                 "comparison": "equal_local_wall_clock_duration",
@@ -623,7 +632,7 @@
                 "deal_drops_monthly": 1,
                 "menu_ai_imports_monthly": 0
               },
-              "version": "e1a179b04ce5723d8b1cf8c683ef5fae",
+              "version": "c2675520152d69909a128e07e7f16d56",
               "features": {
                 "commerce": false,
                 "crm.manage": false,
@@ -640,7 +649,7 @@
               },
               "plan_code": "free",
               "offer_code": null,
-              "partner_id": "0c09aeeb-aa4c-4a52-9c73-954101f417cf",
+              "partner_id": "8cdb9838-c5d5-4ba7-8891-70128cfabd75",
               "environment": "live",
               "valid_until": null,
               "plan_version": 1,
@@ -672,7 +681,7 @@
               "timezone": "Europe/Berlin",
               "remaining": 0,
               "resets_at": "2026-11-01T00:00:00+01:00",
-              "partner_id": "0c09aeeb-aa4c-4a52-9c73-954101f417cf",
+              "partner_id": "8cdb9838-c5d5-4ba7-8891-70128cfabd75",
               "month_start": "2026-10-01",
               "provisional": false,
               "schema_version": 1,
@@ -821,7 +830,7 @@
       }
     },
     "pro": {
-      "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+      "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
       "actors": {
         "owner": {
           "get_partner_entitlements": {
@@ -834,7 +843,7 @@
                 "deal_drops_monthly": null,
                 "menu_ai_imports_monthly": 2
               },
-              "version": "c4d39cf3eb3d0bad47c925eb6b1cb85d",
+              "version": "73fa087fbcce247cc8b2b963b41e4036",
               "features": {
                 "commerce": false,
                 "crm.manage": true,
@@ -851,9 +860,9 @@
               },
               "plan_code": "pro",
               "offer_code": "standard",
-              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
               "environment": "live",
-              "valid_until": "2026-10-31T15:17:33.226082+01:00",
+              "valid_until": "2026-10-31T15:54:37.771473+01:00",
               "plan_version": 1,
               "reason_codes": {
                 "_plan": "subscription",
@@ -883,7 +892,7 @@
               "timezone": "Europe/Berlin",
               "remaining": null,
               "resets_at": "2026-11-01T00:00:00+01:00",
-              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
               "month_start": "2026-10-01",
               "provisional": true,
               "schema_version": 1,
@@ -895,7 +904,7 @@
             "data": {
               "deal_id": null,
               "enabled": false,
-              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
               "available_deals": [],
               "reward_valid_days": 30
             },
@@ -905,7 +914,7 @@
             "data": {
               "deal_id": null,
               "enabled": false,
-              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
               "available_deals": [],
               "reward_valid_days": 30
             },
@@ -935,9 +944,9 @@
           },
           "get_partner_dashboard": {
             "data": {
-              "as_of": "2026-10-02T15:17:33.516291+02:00",
+              "as_of": "2026-10-02T15:54:37.999179+02:00",
               "period": {
-                "to": "2026-10-02T15:17:33.516291+02:00",
+                "to": "2026-10-02T15:54:37.999179+02:00",
                 "from": "2026-09-26T00:00:00+02:00",
                 "timezone": "Europe/Berlin",
                 "semantics": "[from,to)"
@@ -1122,7 +1131,7 @@
                   "relative_change": -1.0
                 }
               },
-              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
               "definitions": {
                 "retention": "return_on_local_days_1_through_30_after_first_visit",
                 "comparison": "equal_local_wall_clock_duration",
@@ -1143,7 +1152,7 @@
               },
               "comparison_period": {
                 "to": "2026-09-26T00:00:00+02:00",
-                "from": "2026-09-19T08:42:26.483709+02:00",
+                "from": "2026-09-19T08:05:22.000821+02:00",
                 "status": "ok",
                 "timezone": "Europe/Berlin"
               },
@@ -1175,9 +1184,9 @@
           },
           "export_partner_dashboard": {
             "data": {
-              "as_of": "2026-10-02T15:17:33.535245+02:00",
+              "as_of": "2026-10-02T15:54:38.015255+02:00",
               "period": {
-                "to": "2026-10-02T15:17:33.535245+02:00",
+                "to": "2026-10-02T15:54:38.015255+02:00",
                 "from": "2026-09-26T00:00:00+02:00",
                 "timezone": "Europe/Berlin",
                 "semantics": "[from,to)"
@@ -1362,7 +1371,7 @@
                   "relative_change": -1.0
                 }
               },
-              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
               "definitions": {
                 "retention": "return_on_local_days_1_through_30_after_first_visit",
                 "comparison": "equal_local_wall_clock_duration",
@@ -1383,7 +1392,7 @@
               },
               "comparison_period": {
                 "to": "2026-09-26T00:00:00+02:00",
-                "from": "2026-09-19T08:42:26.464755+02:00",
+                "from": "2026-09-19T08:05:21.984745+02:00",
                 "status": "ok",
                 "timezone": "Europe/Berlin"
               },
@@ -1425,7 +1434,7 @@
                 "deal_drops_monthly": null,
                 "menu_ai_imports_monthly": 2
               },
-              "version": "0cfbbdfc993c7c7a8626f9e016e8c0d7",
+              "version": "0589d34bc5ab14b5524edf0bffd6e130",
               "features": {
                 "commerce": false,
                 "crm.manage": true,
@@ -1442,9 +1451,9 @@
               },
               "plan_code": "pro",
               "offer_code": "standard",
-              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
               "environment": "live",
-              "valid_until": "2026-10-31T15:17:33.226082+01:00",
+              "valid_until": "2026-10-31T15:54:37.771473+01:00",
               "plan_version": 1,
               "reason_codes": {
                 "_plan": "subscription",
@@ -1474,7 +1483,7 @@
               "timezone": "Europe/Berlin",
               "remaining": null,
               "resets_at": "2026-11-01T00:00:00+01:00",
-              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
               "month_start": "2026-10-01",
               "provisional": true,
               "schema_version": 1,
@@ -1486,7 +1495,7 @@
             "data": {
               "deal_id": null,
               "enabled": false,
-              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
               "available_deals": [],
               "reward_valid_days": 30
             },
@@ -1496,7 +1505,7 @@
             "data": {
               "deal_id": null,
               "enabled": false,
-              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
               "available_deals": [],
               "reward_valid_days": 30
             },
@@ -1526,9 +1535,9 @@
           },
           "get_partner_dashboard": {
             "data": {
-              "as_of": "2026-10-02T15:17:33.627535+02:00",
+              "as_of": "2026-10-02T15:54:38.090808+02:00",
               "period": {
-                "to": "2026-10-02T15:17:33.627535+02:00",
+                "to": "2026-10-02T15:54:38.090808+02:00",
                 "from": "2026-09-26T00:00:00+02:00",
                 "timezone": "Europe/Berlin",
                 "semantics": "[from,to)"
@@ -1713,7 +1722,7 @@
                   "relative_change": -1.0
                 }
               },
-              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
               "definitions": {
                 "retention": "return_on_local_days_1_through_30_after_first_visit",
                 "comparison": "equal_local_wall_clock_duration",
@@ -1734,7 +1743,7 @@
               },
               "comparison_period": {
                 "to": "2026-09-26T00:00:00+02:00",
-                "from": "2026-09-19T08:42:26.372465+02:00",
+                "from": "2026-09-19T08:05:21.909192+02:00",
                 "status": "ok",
                 "timezone": "Europe/Berlin"
               },
@@ -1766,9 +1775,9 @@
           },
           "export_partner_dashboard": {
             "data": {
-              "as_of": "2026-10-02T15:17:33.646928+02:00",
+              "as_of": "2026-10-02T15:54:38.106799+02:00",
               "period": {
-                "to": "2026-10-02T15:17:33.646928+02:00",
+                "to": "2026-10-02T15:54:38.106799+02:00",
                 "from": "2026-09-26T00:00:00+02:00",
                 "timezone": "Europe/Berlin",
                 "semantics": "[from,to)"
@@ -1953,7 +1962,7 @@
                   "relative_change": -1.0
                 }
               },
-              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "partner_id": "3cc040e8-a764-431a-b88c-3d5a131c1447",
               "definitions": {
                 "retention": "return_on_local_days_1_through_30_after_first_visit",
                 "comparison": "equal_local_wall_clock_duration",
@@ -1974,7 +1983,7 @@
               },
               "comparison_period": {
                 "to": "2026-09-26T00:00:00+02:00",
-                "from": "2026-09-19T08:42:26.353072+02:00",
+                "from": "2026-09-19T08:05:21.893201+02:00",
                 "status": "ok",
                 "timezone": "Europe/Berlin"
               },
@@ -2110,7 +2119,7 @@
       }
     },
     "founder": {
-      "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+      "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
       "actors": {
         "owner": {
           "get_partner_entitlements": {
@@ -2123,7 +2132,7 @@
                 "deal_drops_monthly": null,
                 "menu_ai_imports_monthly": 2
               },
-              "version": "22afe23207c4b44a3430fe2e1916efec",
+              "version": "685dba3d50e00b21e3eceabafcd8109f",
               "features": {
                 "commerce": false,
                 "crm.manage": true,
@@ -2140,9 +2149,9 @@
               },
               "plan_code": "pro",
               "offer_code": "founder_annual",
-              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
               "environment": "live",
-              "valid_until": "2026-11-02T15:17:33+01:00",
+              "valid_until": "2026-11-02T15:54:38+01:00",
               "plan_version": 1,
               "reason_codes": {
                 "_plan": "trial",
@@ -2172,7 +2181,7 @@
               "timezone": "Europe/Berlin",
               "remaining": null,
               "resets_at": "2026-11-01T00:00:00+01:00",
-              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
               "month_start": "2026-10-01",
               "provisional": true,
               "schema_version": 1,
@@ -2184,7 +2193,7 @@
             "data": {
               "deal_id": null,
               "enabled": false,
-              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
               "available_deals": [],
               "reward_valid_days": 30
             },
@@ -2194,7 +2203,7 @@
             "data": {
               "deal_id": null,
               "enabled": false,
-              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
               "available_deals": [],
               "reward_valid_days": 30
             },
@@ -2224,9 +2233,9 @@
           },
           "get_partner_dashboard": {
             "data": {
-              "as_of": "2026-10-02T15:17:34.26297+02:00",
+              "as_of": "2026-10-02T15:54:38.589342+02:00",
               "period": {
-                "to": "2026-10-02T15:17:34.26297+02:00",
+                "to": "2026-10-02T15:54:38.589342+02:00",
                 "from": "2026-09-26T00:00:00+02:00",
                 "timezone": "Europe/Berlin",
                 "semantics": "[from,to)"
@@ -2411,7 +2420,7 @@
                   "relative_change": -1.0
                 }
               },
-              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
               "definitions": {
                 "retention": "return_on_local_days_1_through_30_after_first_visit",
                 "comparison": "equal_local_wall_clock_duration",
@@ -2432,7 +2441,7 @@
               },
               "comparison_period": {
                 "to": "2026-09-26T00:00:00+02:00",
-                "from": "2026-09-19T08:42:25.73703+02:00",
+                "from": "2026-09-19T08:05:21.410658+02:00",
                 "status": "ok",
                 "timezone": "Europe/Berlin"
               },
@@ -2464,9 +2473,9 @@
           },
           "export_partner_dashboard": {
             "data": {
-              "as_of": "2026-10-02T15:17:34.281928+02:00",
+              "as_of": "2026-10-02T15:54:38.605239+02:00",
               "period": {
-                "to": "2026-10-02T15:17:34.281928+02:00",
+                "to": "2026-10-02T15:54:38.605239+02:00",
                 "from": "2026-09-26T00:00:00+02:00",
                 "timezone": "Europe/Berlin",
                 "semantics": "[from,to)"
@@ -2651,7 +2660,7 @@
                   "relative_change": -1.0
                 }
               },
-              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
               "definitions": {
                 "retention": "return_on_local_days_1_through_30_after_first_visit",
                 "comparison": "equal_local_wall_clock_duration",
@@ -2672,7 +2681,7 @@
               },
               "comparison_period": {
                 "to": "2026-09-26T00:00:00+02:00",
-                "from": "2026-09-19T08:42:25.718072+02:00",
+                "from": "2026-09-19T08:05:21.394761+02:00",
                 "status": "ok",
                 "timezone": "Europe/Berlin"
               },
@@ -2714,7 +2723,7 @@
                 "deal_drops_monthly": null,
                 "menu_ai_imports_monthly": 2
               },
-              "version": "f14d900e93c040e6af7e92c31cc33c07",
+              "version": "0341fa07706009497d795d4759bf4eaf",
               "features": {
                 "commerce": false,
                 "crm.manage": true,
@@ -2731,9 +2740,9 @@
               },
               "plan_code": "pro",
               "offer_code": "founder_annual",
-              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
               "environment": "live",
-              "valid_until": "2026-11-02T15:17:33+01:00",
+              "valid_until": "2026-11-02T15:54:38+01:00",
               "plan_version": 1,
               "reason_codes": {
                 "_plan": "trial",
@@ -2763,7 +2772,7 @@
               "timezone": "Europe/Berlin",
               "remaining": null,
               "resets_at": "2026-11-01T00:00:00+01:00",
-              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
               "month_start": "2026-10-01",
               "provisional": true,
               "schema_version": 1,
@@ -2775,7 +2784,7 @@
             "data": {
               "deal_id": null,
               "enabled": false,
-              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
               "available_deals": [],
               "reward_valid_days": 30
             },
@@ -2785,7 +2794,7 @@
             "data": {
               "deal_id": null,
               "enabled": false,
-              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
               "available_deals": [],
               "reward_valid_days": 30
             },
@@ -2815,9 +2824,9 @@
           },
           "get_partner_dashboard": {
             "data": {
-              "as_of": "2026-10-02T15:17:34.373543+02:00",
+              "as_of": "2026-10-02T15:54:38.679359+02:00",
               "period": {
-                "to": "2026-10-02T15:17:34.373543+02:00",
+                "to": "2026-10-02T15:54:38.679359+02:00",
                 "from": "2026-09-26T00:00:00+02:00",
                 "timezone": "Europe/Berlin",
                 "semantics": "[from,to)"
@@ -3002,7 +3011,7 @@
                   "relative_change": -1.0
                 }
               },
-              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
               "definitions": {
                 "retention": "return_on_local_days_1_through_30_after_first_visit",
                 "comparison": "equal_local_wall_clock_duration",
@@ -3023,7 +3032,7 @@
               },
               "comparison_period": {
                 "to": "2026-09-26T00:00:00+02:00",
-                "from": "2026-09-19T08:42:25.626457+02:00",
+                "from": "2026-09-19T08:05:21.320641+02:00",
                 "status": "ok",
                 "timezone": "Europe/Berlin"
               },
@@ -3055,9 +3064,9 @@
           },
           "export_partner_dashboard": {
             "data": {
-              "as_of": "2026-10-02T15:17:34.393994+02:00",
+              "as_of": "2026-10-02T15:54:38.69529+02:00",
               "period": {
-                "to": "2026-10-02T15:17:34.393994+02:00",
+                "to": "2026-10-02T15:54:38.69529+02:00",
                 "from": "2026-09-26T00:00:00+02:00",
                 "timezone": "Europe/Berlin",
                 "semantics": "[from,to)"
@@ -3242,7 +3251,7 @@
                   "relative_change": -1.0
                 }
               },
-              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "partner_id": "d5c08b52-2e92-4dbd-86e2-2ac0ef505548",
               "definitions": {
                 "retention": "return_on_local_days_1_through_30_after_first_visit",
                 "comparison": "equal_local_wall_clock_duration",
@@ -3263,7 +3272,7 @@
               },
               "comparison_period": {
                 "to": "2026-09-26T00:00:00+02:00",
-                "from": "2026-09-19T08:42:25.606006+02:00",
+                "from": "2026-09-19T08:05:21.30471+02:00",
                 "status": "ok",
                 "timezone": "Europe/Berlin"
               },
@@ -3399,7 +3408,7 @@
       }
     },
     "expired": {
-      "partner_id": "c6221756-c0e9-417f-9f28-08434a4f170d",
+      "partner_id": "2ec75f2f-b6eb-4d6c-9f89-af5cf005ae18",
       "actors": {
         "owner": {
           "get_partner_entitlements": {
@@ -3412,7 +3421,7 @@
                 "deal_drops_monthly": 1,
                 "menu_ai_imports_monthly": 0
               },
-              "version": "fda0366bd580f318db97fc27124fb114",
+              "version": "966161b810e6a073de1f763968d0a99c",
               "features": {
                 "commerce": false,
                 "crm.manage": false,
@@ -3429,7 +3438,7 @@
               },
               "plan_code": "free",
               "offer_code": null,
-              "partner_id": "c6221756-c0e9-417f-9f28-08434a4f170d",
+              "partner_id": "2ec75f2f-b6eb-4d6c-9f89-af5cf005ae18",
               "environment": "live",
               "valid_until": null,
               "plan_version": 1,
@@ -3461,7 +3470,7 @@
               "timezone": "Europe/Berlin",
               "remaining": 0,
               "resets_at": "2026-11-01T00:00:00+01:00",
-              "partner_id": "c6221756-c0e9-417f-9f28-08434a4f170d",
+              "partner_id": "2ec75f2f-b6eb-4d6c-9f89-af5cf005ae18",
               "month_start": "2026-10-01",
               "provisional": false,
               "schema_version": 1,
@@ -3492,9 +3501,9 @@
           },
           "get_partner_dashboard": {
             "data": {
-              "as_of": "2026-10-02T15:17:34.984653+02:00",
+              "as_of": "2026-10-02T15:54:39.158798+02:00",
               "period": {
-                "to": "2026-10-02T15:17:34.984653+02:00",
+                "to": "2026-10-02T15:54:39.158798+02:00",
                 "from": "2026-09-26T00:00:00+02:00",
                 "timezone": "Europe/Berlin",
                 "semantics": "[from,to)"
@@ -3605,7 +3614,7 @@
                 "status": "locked"
               },
               "comparison": {},
-              "partner_id": "c6221756-c0e9-417f-9f28-08434a4f170d",
+              "partner_id": "2ec75f2f-b6eb-4d6c-9f89-af5cf005ae18",
               "definitions": {
                 "retention": "return_on_local_days_1_through_30_after_first_visit",
                 "comparison": "equal_local_wall_clock_duration",
@@ -3675,7 +3684,7 @@
                 "deal_drops_monthly": 1,
                 "menu_ai_imports_monthly": 0
               },
-              "version": "d4a23482729f7be824f6afecb9764394",
+              "version": "fd44e2f0a0e13da297eb043685b3c983",
               "features": {
                 "commerce": false,
                 "crm.manage": false,
@@ -3692,7 +3701,7 @@
               },
               "plan_code": "free",
               "offer_code": null,
-              "partner_id": "c6221756-c0e9-417f-9f28-08434a4f170d",
+              "partner_id": "2ec75f2f-b6eb-4d6c-9f89-af5cf005ae18",
               "environment": "live",
               "valid_until": null,
               "plan_version": 1,
@@ -3724,7 +3733,7 @@
               "timezone": "Europe/Berlin",
               "remaining": 0,
               "resets_at": "2026-11-01T00:00:00+01:00",
-              "partner_id": "c6221756-c0e9-417f-9f28-08434a4f170d",
+              "partner_id": "2ec75f2f-b6eb-4d6c-9f89-af5cf005ae18",
               "month_start": "2026-10-01",
               "provisional": false,
               "schema_version": 1,
@@ -3868,6 +3877,604 @@
               "code": "42501",
               "message": "partner_access_denied"
             }
+          }
+        }
+      }
+    }
+  },
+  "admin_action_source": {
+    "head": "a5ffcd416d3fe2e294c3c3a0190c54a0bd27e455",
+    "files": [
+      {
+        "path": "app/partner/plan-actions.ts",
+        "sha256": "f0f661ce0f3b407b851e2a14ecb5f408dd8420a1f6941ee27c9fd4bf1e6af55f"
+      },
+      {
+        "path": "tests/helpers/capture-partner-plan-drafts.mjs",
+        "sha256": "6956d9d458fa96188300d6c08f6d81802244ad7c971bca1947df23bc8a3e004f"
+      }
+    ]
+  },
+  "catalog_publications": {
+    "finite": {
+      "partner_id": "e9970f67-9b93-45fa-bcda-ea3fb5af3869",
+      "admin_save_args": {
+        "p_kind": "plan",
+        "p_reason": "Lifecycle regression",
+        "p_payload": {
+          "plan_code": "pro",
+          "version": 2,
+          "features": {
+            "microsite.publish": false,
+            "media.rich": false,
+            "analytics.basic": true,
+            "analytics.advanced": false,
+            "analytics.export": false,
+            "feedback.manage": true,
+            "marketing.manage": false,
+            "crm.manage": true,
+            "team.manage": false,
+            "menu.ai_import": false,
+            "commerce": false,
+            "seo.monitor": false
+          },
+          "limits": {
+            "deal_drops_monthly": 2,
+            "team_members": 10,
+            "analytics_days": 365,
+            "menu_ai_imports_monthly": 2
+          }
+        }
+      },
+      "save_outcome": {
+        "data": "51270796-9d2e-49e2-a10f-cb1fe566f6ed",
+        "error": null
+      },
+      "publish_outcome": {
+        "data": null,
+        "error": null
+      },
+      "draft_status": "published",
+      "owner": {
+        "get_partner_entitlements": {
+          "data": {
+            "role": "owner",
+            "state": "manual_grant",
+            "limits": {
+              "team_members": 10,
+              "analytics_days": 365,
+              "deal_drops_monthly": 2,
+              "menu_ai_imports_monthly": 2
+            },
+            "version": "f1e2703bb83b23426eefc47a8b1e54b5",
+            "features": {
+              "commerce": false,
+              "crm.manage": true,
+              "media.rich": false,
+              "seo.monitor": false,
+              "team.manage": false,
+              "menu.ai_import": false,
+              "analytics.basic": true,
+              "feedback.manage": true,
+              "analytics.export": false,
+              "marketing.manage": false,
+              "microsite.publish": false,
+              "analytics.advanced": false
+            },
+            "plan_code": "pro",
+            "offer_code": null,
+            "partner_id": "e9970f67-9b93-45fa-bcda-ea3fb5af3869",
+            "environment": "live",
+            "valid_until": "2026-10-03T15:54:39.664381+02:00",
+            "plan_version": 2,
+            "reason_codes": {
+              "_plan": "manual_grant",
+              "commerce": "release_blocked",
+              "crm.manage": "subscription",
+              "media.rich": "plan_required",
+              "seo.monitor": "release_blocked",
+              "team.manage": "plan_required",
+              "menu.ai_import": "verified_cost_required",
+              "analytics.basic": "manual_grant",
+              "feedback.manage": "subscription",
+              "analytics.export": "plan_required",
+              "marketing.manage": "plan_required",
+              "microsite.publish": "plan_required",
+              "analytics.advanced": "plan_required"
+            },
+            "schema_version": 1,
+            "capability_policy_version": 2,
+            "deal_drop_limit_provisional": false
+          },
+          "error": null
+        },
+        "get_partner_deal_drop_usage": {
+          "data": {
+            "used": 0,
+            "limit": 2,
+            "timezone": "Europe/Berlin",
+            "remaining": 2,
+            "resets_at": "2026-11-01T00:00:00+01:00",
+            "partner_id": "e9970f67-9b93-45fa-bcda-ea3fb5af3869",
+            "month_start": "2026-10-01",
+            "provisional": false,
+            "schema_version": 1,
+            "next_available_at": null
+          },
+          "error": null
+        },
+        "get_partner_feedback_settings": {
+          "data": {
+            "deal_id": null,
+            "enabled": false,
+            "partner_id": "e9970f67-9b93-45fa-bcda-ea3fb5af3869",
+            "available_deals": [],
+            "reward_valid_days": 30
+          },
+          "error": null
+        }
+      }
+    },
+    "unlimited": {
+      "partner_id": "7ca84ff6-ba7f-41ab-bce8-a01a150d7b45",
+      "admin_save_args": {
+        "p_kind": "plan",
+        "p_reason": "Lifecycle regression",
+        "p_payload": {
+          "plan_code": "pro",
+          "version": 3,
+          "features": {
+            "microsite.publish": false,
+            "media.rich": false,
+            "analytics.basic": true,
+            "analytics.advanced": false,
+            "analytics.export": false,
+            "feedback.manage": false,
+            "marketing.manage": true,
+            "crm.manage": false,
+            "team.manage": false,
+            "menu.ai_import": false,
+            "commerce": false,
+            "seo.monitor": false
+          },
+          "limits": {
+            "deal_drops_monthly": null,
+            "team_members": 10,
+            "analytics_days": 365,
+            "menu_ai_imports_monthly": 2
+          }
+        }
+      },
+      "save_outcome": {
+        "data": "93859e17-97f6-42f2-aa10-c1c2faa9bbba",
+        "error": null
+      },
+      "publish_outcome": {
+        "data": null,
+        "error": null
+      },
+      "draft_status": "published",
+      "owner": {
+        "get_partner_entitlements": {
+          "data": {
+            "role": "owner",
+            "state": "manual_grant",
+            "limits": {
+              "team_members": 10,
+              "analytics_days": 365,
+              "deal_drops_monthly": null,
+              "menu_ai_imports_monthly": 2
+            },
+            "version": "302fa0388147b481ede1044b38ed8ee2",
+            "features": {
+              "commerce": false,
+              "crm.manage": false,
+              "media.rich": false,
+              "seo.monitor": false,
+              "team.manage": false,
+              "menu.ai_import": false,
+              "analytics.basic": true,
+              "feedback.manage": false,
+              "analytics.export": false,
+              "marketing.manage": true,
+              "microsite.publish": false,
+              "analytics.advanced": false
+            },
+            "plan_code": "pro",
+            "offer_code": null,
+            "partner_id": "7ca84ff6-ba7f-41ab-bce8-a01a150d7b45",
+            "environment": "live",
+            "valid_until": "2026-10-03T15:54:39.781304+02:00",
+            "plan_version": 3,
+            "reason_codes": {
+              "_plan": "manual_grant",
+              "commerce": "release_blocked",
+              "crm.manage": "plan_required",
+              "media.rich": "plan_required",
+              "seo.monitor": "release_blocked",
+              "team.manage": "plan_required",
+              "menu.ai_import": "verified_cost_required",
+              "analytics.basic": "manual_grant",
+              "feedback.manage": "plan_required",
+              "analytics.export": "plan_required",
+              "marketing.manage": "subscription",
+              "microsite.publish": "plan_required",
+              "analytics.advanced": "plan_required"
+            },
+            "schema_version": 1,
+            "capability_policy_version": 2,
+            "deal_drop_limit_provisional": false
+          },
+          "error": null
+        },
+        "get_partner_deal_drop_usage": {
+          "data": {
+            "used": 0,
+            "limit": null,
+            "timezone": "Europe/Berlin",
+            "remaining": null,
+            "resets_at": "2026-11-01T00:00:00+01:00",
+            "partner_id": "7ca84ff6-ba7f-41ab-bce8-a01a150d7b45",
+            "month_start": "2026-10-01",
+            "provisional": false,
+            "schema_version": 1,
+            "next_available_at": null
+          },
+          "error": null
+        },
+        "get_partner_feedback_settings": {
+          "data": null,
+          "error": {
+            "code": "P0001",
+            "message": "Not authorized for this partner"
+          }
+        }
+      }
+    },
+    "free_zero": {
+      "partner_id": "7ac90148-e228-4d07-a534-7bf9530ea9b9",
+      "admin_save_args": {
+        "p_kind": "plan",
+        "p_reason": "Lifecycle regression",
+        "p_payload": {
+          "plan_code": "free",
+          "version": 2,
+          "features": {
+            "microsite.publish": false,
+            "media.rich": false,
+            "analytics.basic": true,
+            "analytics.advanced": false,
+            "analytics.export": false,
+            "feedback.manage": true,
+            "marketing.manage": false,
+            "crm.manage": true,
+            "team.manage": false,
+            "menu.ai_import": false,
+            "commerce": false,
+            "seo.monitor": false
+          },
+          "limits": {
+            "deal_drops_monthly": 0,
+            "team_members": 10,
+            "analytics_days": 365,
+            "menu_ai_imports_monthly": 2
+          }
+        }
+      },
+      "save_outcome": {
+        "data": "a76f474e-6817-46ce-88e9-5fe568c32852",
+        "error": null
+      },
+      "publish_outcome": {
+        "data": null,
+        "error": null
+      },
+      "draft_status": "published",
+      "owner": {
+        "get_partner_entitlements": {
+          "data": {
+            "role": "owner",
+            "state": "free",
+            "limits": {
+              "team_members": 10,
+              "analytics_days": 365,
+              "deal_drops_monthly": 0,
+              "menu_ai_imports_monthly": 2
+            },
+            "version": "a8f4c80d768510363e9ba9a16f90c993",
+            "features": {
+              "commerce": false,
+              "crm.manage": false,
+              "media.rich": false,
+              "seo.monitor": false,
+              "team.manage": false,
+              "menu.ai_import": false,
+              "analytics.basic": true,
+              "feedback.manage": false,
+              "analytics.export": false,
+              "marketing.manage": false,
+              "microsite.publish": false,
+              "analytics.advanced": false
+            },
+            "plan_code": "free",
+            "offer_code": null,
+            "partner_id": "7ac90148-e228-4d07-a534-7bf9530ea9b9",
+            "environment": "live",
+            "valid_until": null,
+            "plan_version": 2,
+            "reason_codes": {
+              "_plan": "free",
+              "commerce": "pro_required",
+              "crm.manage": "pro_required",
+              "media.rich": "pro_required",
+              "seo.monitor": "pro_required",
+              "team.manage": "plan_required",
+              "menu.ai_import": "verified_cost_required",
+              "analytics.basic": "free",
+              "feedback.manage": "pro_required",
+              "analytics.export": "plan_required",
+              "marketing.manage": "pro_required",
+              "microsite.publish": "pro_required",
+              "analytics.advanced": "plan_required"
+            },
+            "schema_version": 1,
+            "capability_policy_version": 2,
+            "deal_drop_limit_provisional": false
+          },
+          "error": null
+        },
+        "get_partner_deal_drop_usage": {
+          "data": {
+            "used": 0,
+            "limit": 0,
+            "timezone": "Europe/Berlin",
+            "remaining": 0,
+            "resets_at": "2026-11-01T00:00:00+01:00",
+            "partner_id": "7ac90148-e228-4d07-a534-7bf9530ea9b9",
+            "month_start": "2026-10-01",
+            "provisional": false,
+            "schema_version": 1,
+            "next_available_at": "2026-11-01T00:00:00+01:00"
+          },
+          "error": null
+        },
+        "get_partner_feedback_settings": {
+          "data": null,
+          "error": {
+            "code": "P0001",
+            "message": "Not authorized for this partner"
+          }
+        }
+      }
+    },
+    "free_high": {
+      "partner_id": "41a31a8e-2861-44d9-ac2f-18f2972dc57c",
+      "admin_save_args": {
+        "p_kind": "plan",
+        "p_reason": "Lifecycle regression",
+        "p_payload": {
+          "plan_code": "free",
+          "version": 3,
+          "features": {
+            "microsite.publish": false,
+            "media.rich": false,
+            "analytics.basic": true,
+            "analytics.advanced": false,
+            "analytics.export": false,
+            "feedback.manage": true,
+            "marketing.manage": false,
+            "crm.manage": true,
+            "team.manage": false,
+            "menu.ai_import": false,
+            "commerce": false,
+            "seo.monitor": false
+          },
+          "limits": {
+            "deal_drops_monthly": 9,
+            "team_members": 10,
+            "analytics_days": 365,
+            "menu_ai_imports_monthly": 2
+          }
+        }
+      },
+      "save_outcome": {
+        "data": "76243c0f-3d1b-4647-9a7a-61d7d8f1bfbb",
+        "error": null
+      },
+      "publish_outcome": {
+        "data": null,
+        "error": null
+      },
+      "draft_status": "published",
+      "owner": {
+        "get_partner_entitlements": {
+          "data": {
+            "role": "owner",
+            "state": "free",
+            "limits": {
+              "team_members": 10,
+              "analytics_days": 365,
+              "deal_drops_monthly": 1,
+              "menu_ai_imports_monthly": 2
+            },
+            "version": "f802734d342c42157381101ea305a921",
+            "features": {
+              "commerce": false,
+              "crm.manage": false,
+              "media.rich": false,
+              "seo.monitor": false,
+              "team.manage": false,
+              "menu.ai_import": false,
+              "analytics.basic": true,
+              "feedback.manage": false,
+              "analytics.export": false,
+              "marketing.manage": false,
+              "microsite.publish": false,
+              "analytics.advanced": false
+            },
+            "plan_code": "free",
+            "offer_code": null,
+            "partner_id": "41a31a8e-2861-44d9-ac2f-18f2972dc57c",
+            "environment": "live",
+            "valid_until": null,
+            "plan_version": 3,
+            "reason_codes": {
+              "_plan": "free",
+              "commerce": "pro_required",
+              "crm.manage": "pro_required",
+              "media.rich": "pro_required",
+              "seo.monitor": "pro_required",
+              "team.manage": "plan_required",
+              "menu.ai_import": "verified_cost_required",
+              "analytics.basic": "free",
+              "feedback.manage": "pro_required",
+              "analytics.export": "plan_required",
+              "marketing.manage": "pro_required",
+              "microsite.publish": "pro_required",
+              "analytics.advanced": "plan_required"
+            },
+            "schema_version": 1,
+            "capability_policy_version": 2,
+            "deal_drop_limit_provisional": false
+          },
+          "error": null
+        },
+        "get_partner_deal_drop_usage": {
+          "data": {
+            "used": 0,
+            "limit": 1,
+            "timezone": "Europe/Berlin",
+            "remaining": 1,
+            "resets_at": "2026-11-01T00:00:00+01:00",
+            "partner_id": "41a31a8e-2861-44d9-ac2f-18f2972dc57c",
+            "month_start": "2026-10-01",
+            "provisional": false,
+            "schema_version": 1,
+            "next_available_at": null
+          },
+          "error": null
+        },
+        "get_partner_feedback_settings": {
+          "data": null,
+          "error": {
+            "code": "P0001",
+            "message": "Not authorized for this partner"
+          }
+        }
+      }
+    },
+    "free_null": {
+      "partner_id": "21e61580-54f6-4052-9e11-8b45fa2c5e52",
+      "admin_save_args": {
+        "p_kind": "plan",
+        "p_reason": "Lifecycle regression",
+        "p_payload": {
+          "plan_code": "free",
+          "version": 4,
+          "features": {
+            "microsite.publish": false,
+            "media.rich": false,
+            "analytics.basic": true,
+            "analytics.advanced": false,
+            "analytics.export": false,
+            "feedback.manage": true,
+            "marketing.manage": false,
+            "crm.manage": true,
+            "team.manage": false,
+            "menu.ai_import": false,
+            "commerce": false,
+            "seo.monitor": false
+          },
+          "limits": {
+            "deal_drops_monthly": null,
+            "team_members": 10,
+            "analytics_days": 365,
+            "menu_ai_imports_monthly": 2
+          }
+        }
+      },
+      "save_outcome": {
+        "data": "98272c7e-d171-4b63-8474-da9871ea3dc1",
+        "error": null
+      },
+      "publish_outcome": {
+        "data": null,
+        "error": null
+      },
+      "draft_status": "published",
+      "owner": {
+        "get_partner_entitlements": {
+          "data": {
+            "role": "owner",
+            "state": "free",
+            "limits": {
+              "team_members": 10,
+              "analytics_days": 365,
+              "deal_drops_monthly": 1,
+              "menu_ai_imports_monthly": 2
+            },
+            "version": "273f32d636b0b48f47e562bdac9ee14d",
+            "features": {
+              "commerce": false,
+              "crm.manage": false,
+              "media.rich": false,
+              "seo.monitor": false,
+              "team.manage": false,
+              "menu.ai_import": false,
+              "analytics.basic": true,
+              "feedback.manage": false,
+              "analytics.export": false,
+              "marketing.manage": false,
+              "microsite.publish": false,
+              "analytics.advanced": false
+            },
+            "plan_code": "free",
+            "offer_code": null,
+            "partner_id": "21e61580-54f6-4052-9e11-8b45fa2c5e52",
+            "environment": "live",
+            "valid_until": null,
+            "plan_version": 4,
+            "reason_codes": {
+              "_plan": "free",
+              "commerce": "pro_required",
+              "crm.manage": "pro_required",
+              "media.rich": "pro_required",
+              "seo.monitor": "pro_required",
+              "team.manage": "plan_required",
+              "menu.ai_import": "verified_cost_required",
+              "analytics.basic": "free",
+              "feedback.manage": "pro_required",
+              "analytics.export": "plan_required",
+              "marketing.manage": "pro_required",
+              "microsite.publish": "pro_required",
+              "analytics.advanced": "plan_required"
+            },
+            "schema_version": 1,
+            "capability_policy_version": 2,
+            "deal_drop_limit_provisional": false
+          },
+          "error": null
+        },
+        "get_partner_deal_drop_usage": {
+          "data": {
+            "used": 0,
+            "limit": 1,
+            "timezone": "Europe/Berlin",
+            "remaining": 1,
+            "resets_at": "2026-11-01T00:00:00+01:00",
+            "partner_id": "21e61580-54f6-4052-9e11-8b45fa2c5e52",
+            "month_start": "2026-10-01",
+            "provisional": false,
+            "schema_version": 1,
+            "next_available_at": null
+          },
+          "error": null
+        },
+        "get_partner_feedback_settings": {
+          "data": null,
+          "error": {
+            "code": "P0001",
+            "message": "Not authorized for this partner"
           }
         }
       }
