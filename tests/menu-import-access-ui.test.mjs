@@ -39,6 +39,7 @@ function runtime(action = noop, refresh = () => {}) {
     "@/app/admin-language": { useAdminLanguage: () => ({ language: "de" }) },
     "@/lib/supabase/client": { createClient: () => { throw new Error("Unexpected browser DB access") } },
     "@/components/loading-ui": { LoadingSpinner: () => null },
+    "@/components/partner/partner-feedback-settings-loader": { PartnerFeedbackSettingsLoader: () => null },
   }
 }
 
