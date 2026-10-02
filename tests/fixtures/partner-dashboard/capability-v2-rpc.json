@@ -1,0 +1,3876 @@
+{
+  "fixture_version": "partner-capability-v2-rpc-20261002",
+  "synthetic": true,
+  "source": "actual isolated PostgreSQL17 RPC JSON; composed baseline harness, auth stubs and simulated billing provider evidence; never hosted",
+  "generated_at": "2026-10-02 15:17:35.274619+02",
+  "database_source_head": "9ed3c2ba9584f63f2bde8fcacc21b4c9af3dec13",
+  "applied_whole_migrations_in_order": [
+    {
+      "path": "supabase/migrations/20260831114821_offline_pin_customer_redemption.sql",
+      "sha256": "5e92dff6384268d50a8d92c705124498c9cba1372f893179989f46dcd56a2b50"
+    },
+    {
+      "path": "supabase/migrations/20260831114833_offline_pin_extensions_search_path.sql",
+      "sha256": "aef94b8d75be400773786b48fd3f705a0f0eb06c732f2ab1f855168f5826e394"
+    },
+    {
+      "path": "supabase/migrations/20260831114837_offline_pin_idempotency_hardening.sql",
+      "sha256": "857417f9ebca49a0b12c9a9c6404f02afbe5a5f8af565637a2340d32b8181a32"
+    },
+    {
+      "path": "supabase/migrations/20260912185519_notification_partial_index_inference.sql",
+      "sha256": "cb26dfe6b02bbb1cd90d4efdd2056146e02a0e8c6aa9278e56a07b84c0c3b2b8"
+    },
+    {
+      "path": "supabase/migrations/20260912185519_notification_partial_index_inference.sql",
+      "sha256": "cb26dfe6b02bbb1cd90d4efdd2056146e02a0e8c6aa9278e56a07b84c0c3b2b8"
+    },
+    {
+      "path": "supabase/migrations/20260912193949_staff_checkout_atomic_rewards.sql",
+      "sha256": "88a40985953f44d5a333f7bdd76b9087f47774276fc6e3fda21ecf902e257909"
+    },
+    {
+      "path": "supabase/migrations/20260912193949_staff_checkout_atomic_rewards.sql",
+      "sha256": "88a40985953f44d5a333f7bdd76b9087f47774276fc6e3fda21ecf902e257909"
+    },
+    {
+      "path": "supabase/migrations/20260922071813_commerce_booking_core.sql",
+      "sha256": "68504bb6b9894e6bbaed4f2f12890151b555ebf2caf7512d9b4a7b4129136bac"
+    },
+    {
+      "path": "supabase/migrations/20260927064038_commerce_food_ordering.sql",
+      "sha256": "da4521007f925e92b90a1811febb7135c3b8f3325a51c9fa04162f633a298376"
+    },
+    {
+      "path": "supabase/migrations/20260927091821_commerce_offering_settings.sql",
+      "sha256": "c3c08207b62d4385b8911d29f49c925ef4dc1f886a0404832fa826eceb606d58"
+    },
+    {
+      "path": "supabase/migrations/20260928104706_commerce_partner_ordering_gate.sql",
+      "sha256": "721ee0aa52e1457cbdb6ee380d055baa9fd200232d3c8b3343936de41e00cda1"
+    },
+    {
+      "path": "supabase/migrations/20260928150330_commerce_account_deals.sql",
+      "sha256": "b62c8da16b300032fd45b3a421c22bd4a03b34faf311016569641c75c6aecf95"
+    },
+    {
+      "path": "supabase/migrations/20260928164111_commerce_account_profile_context.sql",
+      "sha256": "9c43fe44bfc1159dd15654e94d071a88738ce4535ad16830e4630a3fbe7129ab"
+    },
+    {
+      "path": "supabase/migrations/20260930194451_commerce_partner_entry_projection.sql",
+      "sha256": "cbe50f8fc84d13f5836ea3213ba5e6f40213a3086575ceebf676fb21f667248f"
+    },
+    {
+      "path": "supabase/migrations/20261001094159_commerce_five_minute_food_slots.sql",
+      "sha256": "9c6130ff8899a9ef4687e156c038c68cc674cc6949decad41d3218262e7bda0f"
+    },
+    {
+      "path": "supabase/migrations/20261001100517_commerce_catalog_capacity_index.sql",
+      "sha256": "a47e207b8a1909ada3fe46dd340f5ddf997f314531f487644db55fec9be9e8c1"
+    },
+    {
+      "path": "supabase/migrations/20260831114826_post_scan_feedback.sql",
+      "sha256": "80049bdf4d2b734a3da018e66b01d9229b2b26cd159de213f095a7bcf015d693"
+    },
+    {
+      "path": "supabase/migrations/20260930072158_partner_plans_entitlements.sql",
+      "sha256": "721e72a5077e9a338da73e6075e333cbf7b0769ca8b070bf98ff839ff58cf036"
+    },
+    {
+      "path": "supabase/migrations/20260930074918_partner_entitlement_mutation_guards.sql",
+      "sha256": "9b96b094f7626064208bd7d3f164728384d1c0dc40e2815ceb59de4eec865ab2"
+    },
+    {
+      "path": "supabase/migrations/20260930075853_partner_entitlement_owner_revocation.sql",
+      "sha256": "27fc1aaadc57a341976690a2361a89be204b6149cf17ad28a723395b54690fb4"
+    },
+    {
+      "path": "supabase/migrations/20260930081100_partner_dashboard_metrics.sql",
+      "sha256": "86e217e3fbfb668a73cfc8102c618e43af34b8e3fe47cad6f95b0a3e3b0d2ce9"
+    },
+    {
+      "path": "supabase/migrations/20260930081101_partner_dashboard_access_cutover.sql",
+      "sha256": "614ef0cd21525ec1a0c452d6fe987237dad44894e2bbddc005abe5afdffe04aa"
+    },
+    {
+      "path": "supabase/migrations/20260930083339_partner_dashboard_dst_comparison.sql",
+      "sha256": "40d17e7dbebd20d000d4bcaa492cdc4fb5b9f30d88502b5c7e15fbcd6e43f2b8"
+    },
+    {
+      "path": "supabase/migrations/20260930090000_partner_web_admin.sql",
+      "sha256": "2cd10a1923bf652b9aaf2f63e3dfb3e52d7c3155bad5651d2430a515210c7445"
+    },
+    {
+      "path": "supabase/migrations/20260930120000_partner_web_admin_team_mutations.sql",
+      "sha256": "ae39753433ddb18a0e84cd79cc1a168dd9947c9e6d6783bdaa6e224fc380cfde"
+    },
+    {
+      "path": "supabase/migrations/20260930130000_partner_scanner_authority.sql",
+      "sha256": "f933253a5aaf55cda1f2d01012dea0390201ebcaf5c06a866dd57070e2c73d72"
+    },
+    {
+      "path": "supabase/migrations/20260930140000_partner_authoritative_billing.sql",
+      "sha256": "797dbdada454d43e53094cba2ea7b43fd464bf88f4b47fffd00233e9371c6887"
+    },
+    {
+      "path": "supabase/migrations/20260930143000_partner_billing_review_fixes.sql",
+      "sha256": "78357ff16a462a4fa0116187db6fca8e8c097ce387dcd3e90448588237569761"
+    },
+    {
+      "path": "supabase/migrations/20260930144500_partner_billing_checkout_binding.sql",
+      "sha256": "9371679166561d9c86fe9e82517ea6afead03a08b16d8f7840c5db4a1b123a90"
+    },
+    {
+      "path": "supabase/migrations/20260930150000_partner_founder_activation_terms.sql",
+      "sha256": "50879b131c247e94da71fdf69e443e1b458f6642a2753728eb7718caefb89014"
+    },
+    {
+      "path": "supabase/migrations/20260930160000_partner_founder_provider_evidence.sql",
+      "sha256": "44b20fc203d097cd764a80db4dcf518d254ca182465bfa8122e212ee31c97a01"
+    },
+    {
+      "path": "supabase/migrations/20260920072631_public_microsite_projection.sql",
+      "sha256": "77f3b85da293dc9cf2231afdb70346a772ca9e8bc558869c4646b153effc666c"
+    },
+    {
+      "path": "supabase/migrations/20260928135128_seo_collection_pipeline.sql",
+      "sha256": "68819f5f3c33a7b136d3e4ecb0ae94656cd4338cb09ebf24e57fcb9f6b893efe"
+    },
+    {
+      "path": "supabase/migrations/20260930170000_partner_guarded_modules.sql",
+      "sha256": "31d7826fd57799cf3f038ad1a4ee73619532f39031c60d67511871c0691abb50"
+    },
+    {
+      "path": "supabase/migrations/20260930180000_partner_guarded_modules_fix1.sql",
+      "sha256": "37ab65c6b8f2cb00cd00a8b7e71e684d84813d6e18d92c9bd5803c9747f917ef"
+    },
+    {
+      "path": "supabase/migrations/20260930190000_partner_public_integration.sql",
+      "sha256": "37b369af2e3453e5dffa217f71894c1189ae2b27676fee6b08217be2290a4d84"
+    },
+    {
+      "path": "supabase/migrations/20260930200000_partner_deal_trigger_authority.sql",
+      "sha256": "0bc2467299538fd30168c4e1de86bfbe45a98eb91d1e482131af1351daff36bf"
+    },
+    {
+      "path": "supabase/migrations/20260831114846_post_scan_feedback_trigger_fail_open.sql",
+      "sha256": "ba0ce993e3ad8d0176e88eb39b0b8c62fb671b0554f6d926e718893c9b731128"
+    },
+    {
+      "path": "supabase/migrations/20261001203515_post_scan_feedback_rewards.sql",
+      "sha256": "487024896092d000a822ee8c80ae39b744b73b356747d65c959815b618a65ca6"
+    },
+    {
+      "path": "supabase/migrations/20261001205006_post_scan_feedback_reward_legacy_authorization.sql",
+      "sha256": "e33c0936a68d508064b5171d60993154422c801d1c7bb7e773110c1fd31e7b67"
+    },
+    {
+      "path": "supabase/migrations/20261002115743_partner_catalog_v2.sql",
+      "sha256": "d165fbc87fd6d86e841e35f7db4c219d64f94ad0bf5b122e12ef33bef11507d3"
+    }
+  ],
+  "baseline_extraction": {
+    "path": "supabase/migrations/20260820000000_benefitsi_database_baseline_20260820.sql",
+    "sha256": "5e6381abd945bdba57b0cb7f9264278573ac5e1936977aec50807fdc3f812150",
+    "scope": "existing OfflinePinBehavior table/function/trigger extraction and ReleaseAcceptance selected policy/grant extraction; excludes hosted extensions/storage; not full baseline replay"
+  },
+  "function_sha256": {
+    "public.get_partner_price_catalog()": "abb774c0af4e3521721a4200c2036c50c70ccaee36d9914f45c0d88e8831078e",
+    "public.get_partner_entitlements(p_partner_id uuid)": "e885b42a1ab534dd5e439997fc50bdc3a1de742b0eecda0b60d271e13642fa2c",
+    "public.get_partner_deal_drop_usage(p_partner_id uuid)": "32ad5846d7e35d6495ce2f607014619de7ab179bac757b834ac4af08d119d62f",
+    "private.resolve_partner_entitlements(p_partner_id uuid)": "579e9a0474cc42db157f946a8041cb6ad60d33923eeb39d77d9c978ec8d0af26",
+    "public.get_partner_feedback_settings(p_partner_id uuid)": "4e85781390ac6530c988edc2bc9718643c32b55f8f02ffa570da13ffddbca79a",
+    "public.partner_post_scan_feedback_summary(p_partner_id uuid)": "6cd13d8c17923ff41129c4bc0ea3b43fcd64ffed48a7bfad18cd3ebd3e0561c9",
+    "private.partner_dashboard_feedback(p uuid, a timestamp with time zone)": "7ba6ebcb876a72349578b44c526a47d55b6b8a56299e6028c7d2b690fe2243c6",
+    "public.set_partner_feedback_reward(p_partner_id uuid, p_enabled boolean, p_deal_id uuid)": "590592c5e7bff491e24b09ac70a7135666539768433410bfda2399bb354079ae",
+    "public.get_partner_dashboard(p_partner_id uuid, p_from timestamp with time zone, p_to timestamp with time zone, p_timezone text)": "c523fbe1c849a0b356b4e0c8fd3493595a30e5684997de1bc7b920b14e703b4b",
+    "public.export_partner_dashboard(p_partner_id uuid, p_from timestamp with time zone, p_to timestamp with time zone, p_timezone text)": "cb99cc63cdd39e5b01e9e2a6050de68ef4ab2d1c4fe1a19aa886b40862d0e470"
+  },
+  "public_catalog": {
+    "plans": [
+      {
+        "limits": {
+          "team_members": 3,
+          "active_offers": 1,
+          "analytics_days": 30,
+          "menu_ai_imports_monthly": 0
+        },
+        "version": 1,
+        "features": {
+          "commerce": false,
+          "media.rich": false,
+          "seo.monitor": false,
+          "team.manage": true,
+          "menu.ai_import": false,
+          "analytics.basic": true,
+          "analytics.export": false,
+          "microsite.publish": false,
+          "analytics.advanced": false
+        },
+        "plan_code": "free"
+      },
+      {
+        "limits": {
+          "team_members": 10,
+          "active_offers": 10,
+          "analytics_days": 365,
+          "menu_ai_imports_monthly": 2
+        },
+        "version": 1,
+        "features": {
+          "commerce": false,
+          "media.rich": true,
+          "seo.monitor": false,
+          "team.manage": true,
+          "menu.ai_import": true,
+          "analytics.basic": true,
+          "analytics.export": true,
+          "microsite.publish": true,
+          "analytics.advanced": true
+        },
+        "plan_code": "pro"
+      }
+    ],
+    "offers": [
+      {
+        "status": "published",
+        "version": 1,
+        "currency": "eur",
+        "plan_code": null,
+        "addon_code": "commerce",
+        "offer_code": "commerce",
+        "valid_from": "2026-10-02T15:17:32.060284+02:00",
+        "unit_amount": 1490,
+        "valid_until": null,
+        "plan_version": null,
+        "setup_amount": 0,
+        "tax_behavior": "exclusive",
+        "billing_interval": "month"
+      },
+      {
+        "status": "published",
+        "version": 1,
+        "currency": "eur",
+        "plan_code": "pro",
+        "addon_code": null,
+        "offer_code": "founder",
+        "valid_from": "2026-10-02T15:17:32.060284+02:00",
+        "unit_amount": 1990,
+        "valid_until": null,
+        "plan_version": 1,
+        "setup_amount": 0,
+        "tax_behavior": "exclusive",
+        "billing_interval": "month"
+      },
+      {
+        "status": "published",
+        "version": 1,
+        "currency": "eur",
+        "plan_code": "pro",
+        "addon_code": null,
+        "offer_code": "founder_annual",
+        "valid_from": "2026-10-02T15:17:32.291874+02:00",
+        "unit_amount": 19900,
+        "valid_until": null,
+        "plan_version": 1,
+        "setup_amount": 0,
+        "tax_behavior": "exclusive",
+        "billing_interval": "year"
+      },
+      {
+        "status": "published",
+        "version": 1,
+        "currency": "eur",
+        "plan_code": null,
+        "addon_code": "seo.monitor",
+        "offer_code": "seo",
+        "valid_from": "2026-10-02T15:17:32.060284+02:00",
+        "unit_amount": 1990,
+        "valid_until": null,
+        "plan_version": null,
+        "setup_amount": 4900,
+        "tax_behavior": "exclusive",
+        "billing_interval": "month"
+      },
+      {
+        "status": "published",
+        "version": 1,
+        "currency": "eur",
+        "plan_code": "pro",
+        "addon_code": null,
+        "offer_code": "standard",
+        "valid_from": "2026-10-02T15:17:32.060284+02:00",
+        "unit_amount": 2990,
+        "valid_until": null,
+        "plan_version": 1,
+        "setup_amount": 0,
+        "tax_behavior": "exclusive",
+        "billing_interval": "month"
+      }
+    ],
+    "founder_terms": {
+      "trial_months": 6,
+      "campaign_city": "Annweiler",
+      "annual_renewal": "yearly",
+      "monthly_renewal": "monthly_after_minimum",
+      "trial_start_rule": "subscription_activation",
+      "campaign_capacity": 10,
+      "trial_cancellation": "monthly_activation_anchor",
+      "paid_minimum_anchor": "trial_end",
+      "paid_minimum_months": 12
+    },
+    "future_modules": [
+      {
+        "code": "extra_ai",
+        "label": "Zusatzimports",
+        "imports": 5,
+        "purchasable": false,
+        "unit_amount": 990
+      },
+      {
+        "code": "sponsored",
+        "days": 7,
+        "label": "Sponsored-Platzierung",
+        "purchasable": false,
+        "unit_amount": 990
+      },
+      {
+        "code": "lucky_scan",
+        "label": "Lucky Scan",
+        "purchasable": false,
+        "unit_amount": null
+      }
+    ],
+    "schema_version": 1,
+    "catalog_version": "2026-09-30.1"
+  },
+  "scenarios": {
+    "free": {
+      "partner_id": "0c09aeeb-aa4c-4a52-9c73-954101f417cf",
+      "actors": {
+        "owner": {
+          "get_partner_entitlements": {
+            "data": {
+              "role": "owner",
+              "state": "free",
+              "limits": {
+                "team_members": 3,
+                "analytics_days": 30,
+                "deal_drops_monthly": 1,
+                "menu_ai_imports_monthly": 0
+              },
+              "version": "92bcc0f22f9dc31344c3d9a349fbce92",
+              "features": {
+                "commerce": false,
+                "crm.manage": false,
+                "media.rich": false,
+                "seo.monitor": false,
+                "team.manage": true,
+                "menu.ai_import": false,
+                "analytics.basic": true,
+                "feedback.manage": false,
+                "analytics.export": false,
+                "marketing.manage": false,
+                "microsite.publish": false,
+                "analytics.advanced": false
+              },
+              "plan_code": "free",
+              "offer_code": null,
+              "partner_id": "0c09aeeb-aa4c-4a52-9c73-954101f417cf",
+              "environment": "live",
+              "valid_until": null,
+              "plan_version": 1,
+              "reason_codes": {
+                "_plan": "free",
+                "commerce": "pro_required",
+                "crm.manage": "pro_required",
+                "media.rich": "pro_required",
+                "seo.monitor": "pro_required",
+                "team.manage": "free",
+                "menu.ai_import": "verified_cost_required",
+                "analytics.basic": "free",
+                "feedback.manage": "pro_required",
+                "analytics.export": "plan_required",
+                "marketing.manage": "pro_required",
+                "microsite.publish": "pro_required",
+                "analytics.advanced": "plan_required"
+              },
+              "schema_version": 1,
+              "capability_policy_version": 2,
+              "deal_drop_limit_provisional": false
+            },
+            "error": null
+          },
+          "get_partner_deal_drop_usage": {
+            "data": {
+              "used": 1,
+              "limit": 1,
+              "timezone": "Europe/Berlin",
+              "remaining": 0,
+              "resets_at": "2026-11-01T00:00:00+01:00",
+              "partner_id": "0c09aeeb-aa4c-4a52-9c73-954101f417cf",
+              "month_start": "2026-10-01",
+              "provisional": false,
+              "schema_version": 1,
+              "next_available_at": "2026-11-01T00:00:00+01:00"
+            },
+            "error": null
+          },
+          "get_partner_feedback_settings": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "set_partner_feedback_reward": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "feedback_pro_required"
+            }
+          },
+          "get_partner_dashboard": {
+            "data": {
+              "as_of": "2026-10-02T15:17:32.82577+02:00",
+              "period": {
+                "to": "2026-10-02T15:17:32.82577+02:00",
+                "from": "2026-09-26T00:00:00+02:00",
+                "timezone": "Europe/Berlin",
+                "semantics": "[from,to)"
+              },
+              "series": {
+                "daily": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-26T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-27T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-29T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-30T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-02T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                }
+              },
+              "metrics": {
+                "guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "stamps": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "visits": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "feedback": {
+                  "issues": {},
+                  "reason": "feedback_pro_required",
+                  "status": "unavailable",
+                  "clarity": {},
+                  "average_rating": null,
+                  "response_count": null
+                },
+                "open_cards": {
+                  "scope": "current_stock",
+                  "value": 1,
+                  "status": "ok",
+                  "sample_size": 1
+                },
+                "return_30d": {
+                  "reason": "analytics.advanced",
+                  "status": "locked"
+                },
+                "redemptions": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "offer_conversion": {
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "first_time_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "reward_redemptions": {
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                "card_completion_rate": {
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guest_share": {
+                  "status": "no_data",
+                  "sample_size": 0
+                }
+              },
+              "breakdowns": {
+                "reason": "analytics.advanced",
+                "status": "locked"
+              },
+              "comparison": {},
+              "partner_id": "0c09aeeb-aa4c-4a52-9c73-954101f417cf",
+              "definitions": {
+                "retention": "return_on_local_days_1_through_30_after_first_visit",
+                "comparison": "equal_local_wall_clock_duration",
+                "population": "reportable_completed_visits",
+                "feedback_scope": "latest_completed_iso_week",
+                "fine_segment_scope": "whole_completed_iso_weeks",
+                "segment_min_guests": 10,
+                "feedback_min_guests": 5,
+                "first_and_returning_can_overlap": true
+              },
+              "source_status": {
+                "stamps": "available",
+                "visits": "available",
+                "feedback": "unavailable",
+                "open_cards": "available",
+                "redemptions": "available",
+                "reward_redemptions": "unavailable"
+              },
+              "comparison_period": null,
+              "definition_version": "partner-dashboard-v1",
+              "suppression_reasons": [
+                {
+                  "metric": "feedback",
+                  "reason": "feedback_pro_required",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "return_30d",
+                  "reason": "analytics.advanced",
+                  "status": "locked"
+                },
+                {
+                  "metric": "offer_conversion",
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "reward_redemptions",
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "card_completion_rate",
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                }
+              ]
+            },
+            "error": null
+          },
+          "export_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "analytics_export_denied"
+            }
+          }
+        },
+        "admin": {
+          "get_partner_entitlements": {
+            "data": {
+              "role": "admin",
+              "state": "free",
+              "limits": {
+                "team_members": 3,
+                "analytics_days": 30,
+                "deal_drops_monthly": 1,
+                "menu_ai_imports_monthly": 0
+              },
+              "version": "e1a179b04ce5723d8b1cf8c683ef5fae",
+              "features": {
+                "commerce": false,
+                "crm.manage": false,
+                "media.rich": false,
+                "seo.monitor": false,
+                "team.manage": false,
+                "menu.ai_import": false,
+                "analytics.basic": false,
+                "feedback.manage": false,
+                "analytics.export": false,
+                "marketing.manage": false,
+                "microsite.publish": false,
+                "analytics.advanced": false
+              },
+              "plan_code": "free",
+              "offer_code": null,
+              "partner_id": "0c09aeeb-aa4c-4a52-9c73-954101f417cf",
+              "environment": "live",
+              "valid_until": null,
+              "plan_version": 1,
+              "reason_codes": {
+                "_plan": "free",
+                "commerce": "owner_required",
+                "crm.manage": "owner_required",
+                "media.rich": "owner_required",
+                "seo.monitor": "owner_required",
+                "team.manage": "owner_required",
+                "menu.ai_import": "owner_required",
+                "analytics.basic": "owner_required",
+                "feedback.manage": "owner_required",
+                "analytics.export": "owner_required",
+                "marketing.manage": "owner_required",
+                "microsite.publish": "owner_required",
+                "analytics.advanced": "owner_required"
+              },
+              "schema_version": 1,
+              "capability_policy_version": 2,
+              "deal_drop_limit_provisional": false
+            },
+            "error": null
+          },
+          "get_partner_deal_drop_usage": {
+            "data": {
+              "used": 1,
+              "limit": 1,
+              "timezone": "Europe/Berlin",
+              "remaining": 0,
+              "resets_at": "2026-11-01T00:00:00+01:00",
+              "partner_id": "0c09aeeb-aa4c-4a52-9c73-954101f417cf",
+              "month_start": "2026-10-01",
+              "provisional": false,
+              "schema_version": 1,
+              "next_available_at": "2026-11-01T00:00:00+01:00"
+            },
+            "error": null
+          },
+          "get_partner_feedback_settings": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "set_partner_feedback_reward": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "feedback_pro_required"
+            }
+          },
+          "get_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "analytics_basic_denied"
+            }
+          },
+          "export_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "analytics_export_denied"
+            }
+          }
+        },
+        "scanner": {
+          "get_partner_entitlements": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_deal_drop_usage": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_feedback_settings": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "set_partner_feedback_reward": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "export_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          }
+        },
+        "foreign": {
+          "get_partner_entitlements": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_deal_drop_usage": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_feedback_settings": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "set_partner_feedback_reward": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "export_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          }
+        }
+      }
+    },
+    "pro": {
+      "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+      "actors": {
+        "owner": {
+          "get_partner_entitlements": {
+            "data": {
+              "role": "owner",
+              "state": "subscription",
+              "limits": {
+                "team_members": 10,
+                "analytics_days": 365,
+                "deal_drops_monthly": null,
+                "menu_ai_imports_monthly": 2
+              },
+              "version": "c4d39cf3eb3d0bad47c925eb6b1cb85d",
+              "features": {
+                "commerce": false,
+                "crm.manage": true,
+                "media.rich": true,
+                "seo.monitor": false,
+                "team.manage": true,
+                "menu.ai_import": false,
+                "analytics.basic": true,
+                "feedback.manage": true,
+                "analytics.export": true,
+                "marketing.manage": true,
+                "microsite.publish": true,
+                "analytics.advanced": true
+              },
+              "plan_code": "pro",
+              "offer_code": "standard",
+              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "environment": "live",
+              "valid_until": "2026-10-31T15:17:33.226082+01:00",
+              "plan_version": 1,
+              "reason_codes": {
+                "_plan": "subscription",
+                "commerce": "release_blocked",
+                "crm.manage": "subscription",
+                "media.rich": "subscription",
+                "seo.monitor": "release_blocked",
+                "team.manage": "subscription",
+                "menu.ai_import": "verified_cost_required",
+                "analytics.basic": "subscription",
+                "feedback.manage": "subscription",
+                "analytics.export": "subscription",
+                "marketing.manage": "subscription",
+                "microsite.publish": "subscription",
+                "analytics.advanced": "subscription"
+              },
+              "schema_version": 1,
+              "capability_policy_version": 2,
+              "deal_drop_limit_provisional": true
+            },
+            "error": null
+          },
+          "get_partner_deal_drop_usage": {
+            "data": {
+              "used": 1,
+              "limit": null,
+              "timezone": "Europe/Berlin",
+              "remaining": null,
+              "resets_at": "2026-11-01T00:00:00+01:00",
+              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "month_start": "2026-10-01",
+              "provisional": true,
+              "schema_version": 1,
+              "next_available_at": null
+            },
+            "error": null
+          },
+          "get_partner_feedback_settings": {
+            "data": {
+              "deal_id": null,
+              "enabled": false,
+              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "available_deals": [],
+              "reward_valid_days": 30
+            },
+            "error": null
+          },
+          "set_partner_feedback_reward": {
+            "data": {
+              "deal_id": null,
+              "enabled": false,
+              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "available_deals": [],
+              "reward_valid_days": 30
+            },
+            "error": null
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": {
+              "scope": {
+                "to": "2026-09-28T00:00:00+02:00",
+                "from": "2026-09-21T00:00:00+02:00",
+                "kind": "latest_completed_iso_week",
+                "timezone": "Europe/Berlin"
+              },
+              "issues": {
+                "none": 5
+              },
+              "status": "ok",
+              "clarity": {
+                "clear": 5
+              },
+              "sample_size": 5,
+              "average_rating": 4.0,
+              "response_count": 5,
+              "categories_status": "ok"
+            },
+            "error": null
+          },
+          "get_partner_dashboard": {
+            "data": {
+              "as_of": "2026-10-02T15:17:33.516291+02:00",
+              "period": {
+                "to": "2026-10-02T15:17:33.516291+02:00",
+                "from": "2026-09-26T00:00:00+02:00",
+                "timezone": "Europe/Berlin",
+                "semantics": "[from,to)"
+              },
+              "series": {
+                "daily": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-26T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-27T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-29T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-30T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-02T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "weekly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-21T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "monthly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                }
+              },
+              "metrics": {
+                "guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "stamps": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "visits": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "feedback": {
+                  "scope": {
+                    "to": "2026-09-28T00:00:00+02:00",
+                    "from": "2026-09-21T00:00:00+02:00",
+                    "kind": "latest_completed_iso_week",
+                    "timezone": "Europe/Berlin"
+                  },
+                  "issues": {
+                    "none": 5
+                  },
+                  "status": "ok",
+                  "clarity": {
+                    "clear": 5
+                  },
+                  "sample_size": 5,
+                  "average_rating": 4.0,
+                  "response_count": 5,
+                  "categories_status": "ok"
+                },
+                "open_cards": {
+                  "scope": "current_stock",
+                  "value": 1,
+                  "status": "ok",
+                  "sample_size": 1
+                },
+                "return_30d": {
+                  "scope": "whole_matured_iso_cohort_weeks",
+                  "status": "not_yet_evaluable",
+                  "sample_size": 0
+                },
+                "redemptions": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "offer_conversion": {
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "first_time_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "reward_redemptions": {
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                "card_completion_rate": {
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guest_share": {
+                  "status": "no_data",
+                  "sample_size": 0
+                }
+              },
+              "breakdowns": {
+                "scope": "whole_completed_iso_weeks",
+                "weeks": [],
+                "status": "not_yet_evaluable"
+              },
+              "comparison": {
+                "guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "stamps": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "visits": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "redemptions": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "returning_guests": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "first_time_guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                }
+              },
+              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "definitions": {
+                "retention": "return_on_local_days_1_through_30_after_first_visit",
+                "comparison": "equal_local_wall_clock_duration",
+                "population": "reportable_completed_visits",
+                "feedback_scope": "latest_completed_iso_week",
+                "fine_segment_scope": "whole_completed_iso_weeks",
+                "segment_min_guests": 10,
+                "feedback_min_guests": 5,
+                "first_and_returning_can_overlap": true
+              },
+              "source_status": {
+                "stamps": "available",
+                "visits": "available",
+                "feedback": "available",
+                "open_cards": "available",
+                "redemptions": "available",
+                "reward_redemptions": "unavailable"
+              },
+              "comparison_period": {
+                "to": "2026-09-26T00:00:00+02:00",
+                "from": "2026-09-19T08:42:26.483709+02:00",
+                "status": "ok",
+                "timezone": "Europe/Berlin"
+              },
+              "definition_version": "partner-dashboard-v1",
+              "suppression_reasons": [
+                {
+                  "metric": "return_30d",
+                  "reason": "not_yet_evaluable",
+                  "status": "not_yet_evaluable"
+                },
+                {
+                  "metric": "offer_conversion",
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "reward_redemptions",
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "card_completion_rate",
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                }
+              ]
+            },
+            "error": null
+          },
+          "export_partner_dashboard": {
+            "data": {
+              "as_of": "2026-10-02T15:17:33.535245+02:00",
+              "period": {
+                "to": "2026-10-02T15:17:33.535245+02:00",
+                "from": "2026-09-26T00:00:00+02:00",
+                "timezone": "Europe/Berlin",
+                "semantics": "[from,to)"
+              },
+              "series": {
+                "daily": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-26T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-27T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-29T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-30T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-02T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "weekly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-21T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "monthly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                }
+              },
+              "metrics": {
+                "guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "stamps": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "visits": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "feedback": {
+                  "scope": {
+                    "to": "2026-09-28T00:00:00+02:00",
+                    "from": "2026-09-21T00:00:00+02:00",
+                    "kind": "latest_completed_iso_week",
+                    "timezone": "Europe/Berlin"
+                  },
+                  "issues": {
+                    "none": 5
+                  },
+                  "status": "ok",
+                  "clarity": {
+                    "clear": 5
+                  },
+                  "sample_size": 5,
+                  "average_rating": 4.0,
+                  "response_count": 5,
+                  "categories_status": "ok"
+                },
+                "open_cards": {
+                  "scope": "current_stock",
+                  "value": 1,
+                  "status": "ok",
+                  "sample_size": 1
+                },
+                "return_30d": {
+                  "scope": "whole_matured_iso_cohort_weeks",
+                  "status": "not_yet_evaluable",
+                  "sample_size": 0
+                },
+                "redemptions": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "offer_conversion": {
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "first_time_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "reward_redemptions": {
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                "card_completion_rate": {
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guest_share": {
+                  "status": "no_data",
+                  "sample_size": 0
+                }
+              },
+              "breakdowns": {
+                "scope": "whole_completed_iso_weeks",
+                "weeks": [],
+                "status": "not_yet_evaluable"
+              },
+              "comparison": {
+                "guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "stamps": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "visits": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "redemptions": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "returning_guests": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "first_time_guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                }
+              },
+              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "definitions": {
+                "retention": "return_on_local_days_1_through_30_after_first_visit",
+                "comparison": "equal_local_wall_clock_duration",
+                "population": "reportable_completed_visits",
+                "feedback_scope": "latest_completed_iso_week",
+                "fine_segment_scope": "whole_completed_iso_weeks",
+                "segment_min_guests": 10,
+                "feedback_min_guests": 5,
+                "first_and_returning_can_overlap": true
+              },
+              "source_status": {
+                "stamps": "available",
+                "visits": "available",
+                "feedback": "available",
+                "open_cards": "available",
+                "redemptions": "available",
+                "reward_redemptions": "unavailable"
+              },
+              "comparison_period": {
+                "to": "2026-09-26T00:00:00+02:00",
+                "from": "2026-09-19T08:42:26.464755+02:00",
+                "status": "ok",
+                "timezone": "Europe/Berlin"
+              },
+              "definition_version": "partner-dashboard-v1",
+              "suppression_reasons": [
+                {
+                  "metric": "return_30d",
+                  "reason": "not_yet_evaluable",
+                  "status": "not_yet_evaluable"
+                },
+                {
+                  "metric": "offer_conversion",
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "reward_redemptions",
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "card_completion_rate",
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                }
+              ]
+            },
+            "error": null
+          }
+        },
+        "admin": {
+          "get_partner_entitlements": {
+            "data": {
+              "role": "admin",
+              "state": "subscription",
+              "limits": {
+                "team_members": 10,
+                "analytics_days": 365,
+                "deal_drops_monthly": null,
+                "menu_ai_imports_monthly": 2
+              },
+              "version": "0cfbbdfc993c7c7a8626f9e016e8c0d7",
+              "features": {
+                "commerce": false,
+                "crm.manage": true,
+                "media.rich": true,
+                "seo.monitor": false,
+                "team.manage": true,
+                "menu.ai_import": false,
+                "analytics.basic": true,
+                "feedback.manage": true,
+                "analytics.export": true,
+                "marketing.manage": true,
+                "microsite.publish": true,
+                "analytics.advanced": true
+              },
+              "plan_code": "pro",
+              "offer_code": "standard",
+              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "environment": "live",
+              "valid_until": "2026-10-31T15:17:33.226082+01:00",
+              "plan_version": 1,
+              "reason_codes": {
+                "_plan": "subscription",
+                "commerce": "release_blocked",
+                "crm.manage": "subscription",
+                "media.rich": "subscription",
+                "seo.monitor": "release_blocked",
+                "team.manage": "subscription",
+                "menu.ai_import": "verified_cost_required",
+                "analytics.basic": "subscription",
+                "feedback.manage": "subscription",
+                "analytics.export": "subscription",
+                "marketing.manage": "subscription",
+                "microsite.publish": "subscription",
+                "analytics.advanced": "subscription"
+              },
+              "schema_version": 1,
+              "capability_policy_version": 2,
+              "deal_drop_limit_provisional": true
+            },
+            "error": null
+          },
+          "get_partner_deal_drop_usage": {
+            "data": {
+              "used": 1,
+              "limit": null,
+              "timezone": "Europe/Berlin",
+              "remaining": null,
+              "resets_at": "2026-11-01T00:00:00+01:00",
+              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "month_start": "2026-10-01",
+              "provisional": true,
+              "schema_version": 1,
+              "next_available_at": null
+            },
+            "error": null
+          },
+          "get_partner_feedback_settings": {
+            "data": {
+              "deal_id": null,
+              "enabled": false,
+              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "available_deals": [],
+              "reward_valid_days": 30
+            },
+            "error": null
+          },
+          "set_partner_feedback_reward": {
+            "data": {
+              "deal_id": null,
+              "enabled": false,
+              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "available_deals": [],
+              "reward_valid_days": 30
+            },
+            "error": null
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": {
+              "scope": {
+                "to": "2026-09-28T00:00:00+02:00",
+                "from": "2026-09-21T00:00:00+02:00",
+                "kind": "latest_completed_iso_week",
+                "timezone": "Europe/Berlin"
+              },
+              "issues": {
+                "none": 5
+              },
+              "status": "ok",
+              "clarity": {
+                "clear": 5
+              },
+              "sample_size": 5,
+              "average_rating": 4.0,
+              "response_count": 5,
+              "categories_status": "ok"
+            },
+            "error": null
+          },
+          "get_partner_dashboard": {
+            "data": {
+              "as_of": "2026-10-02T15:17:33.627535+02:00",
+              "period": {
+                "to": "2026-10-02T15:17:33.627535+02:00",
+                "from": "2026-09-26T00:00:00+02:00",
+                "timezone": "Europe/Berlin",
+                "semantics": "[from,to)"
+              },
+              "series": {
+                "daily": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-26T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-27T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-29T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-30T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-02T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "weekly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-21T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "monthly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                }
+              },
+              "metrics": {
+                "guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "stamps": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "visits": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "feedback": {
+                  "scope": {
+                    "to": "2026-09-28T00:00:00+02:00",
+                    "from": "2026-09-21T00:00:00+02:00",
+                    "kind": "latest_completed_iso_week",
+                    "timezone": "Europe/Berlin"
+                  },
+                  "issues": {
+                    "none": 5
+                  },
+                  "status": "ok",
+                  "clarity": {
+                    "clear": 5
+                  },
+                  "sample_size": 5,
+                  "average_rating": 4.0,
+                  "response_count": 5,
+                  "categories_status": "ok"
+                },
+                "open_cards": {
+                  "scope": "current_stock",
+                  "value": 1,
+                  "status": "ok",
+                  "sample_size": 1
+                },
+                "return_30d": {
+                  "scope": "whole_matured_iso_cohort_weeks",
+                  "status": "not_yet_evaluable",
+                  "sample_size": 0
+                },
+                "redemptions": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "offer_conversion": {
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "first_time_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "reward_redemptions": {
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                "card_completion_rate": {
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guest_share": {
+                  "status": "no_data",
+                  "sample_size": 0
+                }
+              },
+              "breakdowns": {
+                "scope": "whole_completed_iso_weeks",
+                "weeks": [],
+                "status": "not_yet_evaluable"
+              },
+              "comparison": {
+                "guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "stamps": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "visits": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "redemptions": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "returning_guests": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "first_time_guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                }
+              },
+              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "definitions": {
+                "retention": "return_on_local_days_1_through_30_after_first_visit",
+                "comparison": "equal_local_wall_clock_duration",
+                "population": "reportable_completed_visits",
+                "feedback_scope": "latest_completed_iso_week",
+                "fine_segment_scope": "whole_completed_iso_weeks",
+                "segment_min_guests": 10,
+                "feedback_min_guests": 5,
+                "first_and_returning_can_overlap": true
+              },
+              "source_status": {
+                "stamps": "available",
+                "visits": "available",
+                "feedback": "available",
+                "open_cards": "available",
+                "redemptions": "available",
+                "reward_redemptions": "unavailable"
+              },
+              "comparison_period": {
+                "to": "2026-09-26T00:00:00+02:00",
+                "from": "2026-09-19T08:42:26.372465+02:00",
+                "status": "ok",
+                "timezone": "Europe/Berlin"
+              },
+              "definition_version": "partner-dashboard-v1",
+              "suppression_reasons": [
+                {
+                  "metric": "return_30d",
+                  "reason": "not_yet_evaluable",
+                  "status": "not_yet_evaluable"
+                },
+                {
+                  "metric": "offer_conversion",
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "reward_redemptions",
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "card_completion_rate",
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                }
+              ]
+            },
+            "error": null
+          },
+          "export_partner_dashboard": {
+            "data": {
+              "as_of": "2026-10-02T15:17:33.646928+02:00",
+              "period": {
+                "to": "2026-10-02T15:17:33.646928+02:00",
+                "from": "2026-09-26T00:00:00+02:00",
+                "timezone": "Europe/Berlin",
+                "semantics": "[from,to)"
+              },
+              "series": {
+                "daily": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-26T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-27T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-29T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-30T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-02T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "weekly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-21T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "monthly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                }
+              },
+              "metrics": {
+                "guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "stamps": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "visits": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "feedback": {
+                  "scope": {
+                    "to": "2026-09-28T00:00:00+02:00",
+                    "from": "2026-09-21T00:00:00+02:00",
+                    "kind": "latest_completed_iso_week",
+                    "timezone": "Europe/Berlin"
+                  },
+                  "issues": {
+                    "none": 5
+                  },
+                  "status": "ok",
+                  "clarity": {
+                    "clear": 5
+                  },
+                  "sample_size": 5,
+                  "average_rating": 4.0,
+                  "response_count": 5,
+                  "categories_status": "ok"
+                },
+                "open_cards": {
+                  "scope": "current_stock",
+                  "value": 1,
+                  "status": "ok",
+                  "sample_size": 1
+                },
+                "return_30d": {
+                  "scope": "whole_matured_iso_cohort_weeks",
+                  "status": "not_yet_evaluable",
+                  "sample_size": 0
+                },
+                "redemptions": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "offer_conversion": {
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "first_time_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "reward_redemptions": {
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                "card_completion_rate": {
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guest_share": {
+                  "status": "no_data",
+                  "sample_size": 0
+                }
+              },
+              "breakdowns": {
+                "scope": "whole_completed_iso_weeks",
+                "weeks": [],
+                "status": "not_yet_evaluable"
+              },
+              "comparison": {
+                "guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "stamps": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "visits": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "redemptions": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "returning_guests": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "first_time_guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                }
+              },
+              "partner_id": "df012ed1-da43-4384-9c26-4ccc12f459d3",
+              "definitions": {
+                "retention": "return_on_local_days_1_through_30_after_first_visit",
+                "comparison": "equal_local_wall_clock_duration",
+                "population": "reportable_completed_visits",
+                "feedback_scope": "latest_completed_iso_week",
+                "fine_segment_scope": "whole_completed_iso_weeks",
+                "segment_min_guests": 10,
+                "feedback_min_guests": 5,
+                "first_and_returning_can_overlap": true
+              },
+              "source_status": {
+                "stamps": "available",
+                "visits": "available",
+                "feedback": "available",
+                "open_cards": "available",
+                "redemptions": "available",
+                "reward_redemptions": "unavailable"
+              },
+              "comparison_period": {
+                "to": "2026-09-26T00:00:00+02:00",
+                "from": "2026-09-19T08:42:26.353072+02:00",
+                "status": "ok",
+                "timezone": "Europe/Berlin"
+              },
+              "definition_version": "partner-dashboard-v1",
+              "suppression_reasons": [
+                {
+                  "metric": "return_30d",
+                  "reason": "not_yet_evaluable",
+                  "status": "not_yet_evaluable"
+                },
+                {
+                  "metric": "offer_conversion",
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "reward_redemptions",
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "card_completion_rate",
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                }
+              ]
+            },
+            "error": null
+          }
+        },
+        "scanner": {
+          "get_partner_entitlements": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_deal_drop_usage": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_feedback_settings": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "set_partner_feedback_reward": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "export_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          }
+        },
+        "foreign": {
+          "get_partner_entitlements": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_deal_drop_usage": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_feedback_settings": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "set_partner_feedback_reward": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "export_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          }
+        }
+      }
+    },
+    "founder": {
+      "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+      "actors": {
+        "owner": {
+          "get_partner_entitlements": {
+            "data": {
+              "role": "owner",
+              "state": "trial",
+              "limits": {
+                "team_members": 10,
+                "analytics_days": 365,
+                "deal_drops_monthly": null,
+                "menu_ai_imports_monthly": 2
+              },
+              "version": "22afe23207c4b44a3430fe2e1916efec",
+              "features": {
+                "commerce": false,
+                "crm.manage": true,
+                "media.rich": true,
+                "seo.monitor": false,
+                "team.manage": true,
+                "menu.ai_import": false,
+                "analytics.basic": true,
+                "feedback.manage": true,
+                "analytics.export": true,
+                "marketing.manage": true,
+                "microsite.publish": true,
+                "analytics.advanced": true
+              },
+              "plan_code": "pro",
+              "offer_code": "founder_annual",
+              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "environment": "live",
+              "valid_until": "2026-11-02T15:17:33+01:00",
+              "plan_version": 1,
+              "reason_codes": {
+                "_plan": "trial",
+                "commerce": "release_blocked",
+                "crm.manage": "subscription",
+                "media.rich": "trial",
+                "seo.monitor": "release_blocked",
+                "team.manage": "trial",
+                "menu.ai_import": "verified_cost_required",
+                "analytics.basic": "trial",
+                "feedback.manage": "subscription",
+                "analytics.export": "trial",
+                "marketing.manage": "subscription",
+                "microsite.publish": "trial",
+                "analytics.advanced": "trial"
+              },
+              "schema_version": 1,
+              "capability_policy_version": 2,
+              "deal_drop_limit_provisional": true
+            },
+            "error": null
+          },
+          "get_partner_deal_drop_usage": {
+            "data": {
+              "used": 1,
+              "limit": null,
+              "timezone": "Europe/Berlin",
+              "remaining": null,
+              "resets_at": "2026-11-01T00:00:00+01:00",
+              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "month_start": "2026-10-01",
+              "provisional": true,
+              "schema_version": 1,
+              "next_available_at": null
+            },
+            "error": null
+          },
+          "get_partner_feedback_settings": {
+            "data": {
+              "deal_id": null,
+              "enabled": false,
+              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "available_deals": [],
+              "reward_valid_days": 30
+            },
+            "error": null
+          },
+          "set_partner_feedback_reward": {
+            "data": {
+              "deal_id": null,
+              "enabled": false,
+              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "available_deals": [],
+              "reward_valid_days": 30
+            },
+            "error": null
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": {
+              "scope": {
+                "to": "2026-09-28T00:00:00+02:00",
+                "from": "2026-09-21T00:00:00+02:00",
+                "kind": "latest_completed_iso_week",
+                "timezone": "Europe/Berlin"
+              },
+              "issues": {
+                "none": 5
+              },
+              "status": "ok",
+              "clarity": {
+                "clear": 5
+              },
+              "sample_size": 5,
+              "average_rating": 4.0,
+              "response_count": 5,
+              "categories_status": "ok"
+            },
+            "error": null
+          },
+          "get_partner_dashboard": {
+            "data": {
+              "as_of": "2026-10-02T15:17:34.26297+02:00",
+              "period": {
+                "to": "2026-10-02T15:17:34.26297+02:00",
+                "from": "2026-09-26T00:00:00+02:00",
+                "timezone": "Europe/Berlin",
+                "semantics": "[from,to)"
+              },
+              "series": {
+                "daily": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-26T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-27T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-29T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-30T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-02T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "weekly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-21T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "monthly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                }
+              },
+              "metrics": {
+                "guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "stamps": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "visits": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "feedback": {
+                  "scope": {
+                    "to": "2026-09-28T00:00:00+02:00",
+                    "from": "2026-09-21T00:00:00+02:00",
+                    "kind": "latest_completed_iso_week",
+                    "timezone": "Europe/Berlin"
+                  },
+                  "issues": {
+                    "none": 5
+                  },
+                  "status": "ok",
+                  "clarity": {
+                    "clear": 5
+                  },
+                  "sample_size": 5,
+                  "average_rating": 4.0,
+                  "response_count": 5,
+                  "categories_status": "ok"
+                },
+                "open_cards": {
+                  "scope": "current_stock",
+                  "value": 1,
+                  "status": "ok",
+                  "sample_size": 1
+                },
+                "return_30d": {
+                  "scope": "whole_matured_iso_cohort_weeks",
+                  "status": "not_yet_evaluable",
+                  "sample_size": 0
+                },
+                "redemptions": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "offer_conversion": {
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "first_time_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "reward_redemptions": {
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                "card_completion_rate": {
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guest_share": {
+                  "status": "no_data",
+                  "sample_size": 0
+                }
+              },
+              "breakdowns": {
+                "scope": "whole_completed_iso_weeks",
+                "weeks": [],
+                "status": "not_yet_evaluable"
+              },
+              "comparison": {
+                "guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "stamps": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "visits": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "redemptions": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "returning_guests": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "first_time_guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                }
+              },
+              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "definitions": {
+                "retention": "return_on_local_days_1_through_30_after_first_visit",
+                "comparison": "equal_local_wall_clock_duration",
+                "population": "reportable_completed_visits",
+                "feedback_scope": "latest_completed_iso_week",
+                "fine_segment_scope": "whole_completed_iso_weeks",
+                "segment_min_guests": 10,
+                "feedback_min_guests": 5,
+                "first_and_returning_can_overlap": true
+              },
+              "source_status": {
+                "stamps": "available",
+                "visits": "available",
+                "feedback": "available",
+                "open_cards": "available",
+                "redemptions": "available",
+                "reward_redemptions": "unavailable"
+              },
+              "comparison_period": {
+                "to": "2026-09-26T00:00:00+02:00",
+                "from": "2026-09-19T08:42:25.73703+02:00",
+                "status": "ok",
+                "timezone": "Europe/Berlin"
+              },
+              "definition_version": "partner-dashboard-v1",
+              "suppression_reasons": [
+                {
+                  "metric": "return_30d",
+                  "reason": "not_yet_evaluable",
+                  "status": "not_yet_evaluable"
+                },
+                {
+                  "metric": "offer_conversion",
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "reward_redemptions",
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "card_completion_rate",
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                }
+              ]
+            },
+            "error": null
+          },
+          "export_partner_dashboard": {
+            "data": {
+              "as_of": "2026-10-02T15:17:34.281928+02:00",
+              "period": {
+                "to": "2026-10-02T15:17:34.281928+02:00",
+                "from": "2026-09-26T00:00:00+02:00",
+                "timezone": "Europe/Berlin",
+                "semantics": "[from,to)"
+              },
+              "series": {
+                "daily": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-26T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-27T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-29T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-30T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-02T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "weekly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-21T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "monthly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                }
+              },
+              "metrics": {
+                "guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "stamps": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "visits": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "feedback": {
+                  "scope": {
+                    "to": "2026-09-28T00:00:00+02:00",
+                    "from": "2026-09-21T00:00:00+02:00",
+                    "kind": "latest_completed_iso_week",
+                    "timezone": "Europe/Berlin"
+                  },
+                  "issues": {
+                    "none": 5
+                  },
+                  "status": "ok",
+                  "clarity": {
+                    "clear": 5
+                  },
+                  "sample_size": 5,
+                  "average_rating": 4.0,
+                  "response_count": 5,
+                  "categories_status": "ok"
+                },
+                "open_cards": {
+                  "scope": "current_stock",
+                  "value": 1,
+                  "status": "ok",
+                  "sample_size": 1
+                },
+                "return_30d": {
+                  "scope": "whole_matured_iso_cohort_weeks",
+                  "status": "not_yet_evaluable",
+                  "sample_size": 0
+                },
+                "redemptions": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "offer_conversion": {
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "first_time_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "reward_redemptions": {
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                "card_completion_rate": {
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guest_share": {
+                  "status": "no_data",
+                  "sample_size": 0
+                }
+              },
+              "breakdowns": {
+                "scope": "whole_completed_iso_weeks",
+                "weeks": [],
+                "status": "not_yet_evaluable"
+              },
+              "comparison": {
+                "guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "stamps": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "visits": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "redemptions": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "returning_guests": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "first_time_guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                }
+              },
+              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "definitions": {
+                "retention": "return_on_local_days_1_through_30_after_first_visit",
+                "comparison": "equal_local_wall_clock_duration",
+                "population": "reportable_completed_visits",
+                "feedback_scope": "latest_completed_iso_week",
+                "fine_segment_scope": "whole_completed_iso_weeks",
+                "segment_min_guests": 10,
+                "feedback_min_guests": 5,
+                "first_and_returning_can_overlap": true
+              },
+              "source_status": {
+                "stamps": "available",
+                "visits": "available",
+                "feedback": "available",
+                "open_cards": "available",
+                "redemptions": "available",
+                "reward_redemptions": "unavailable"
+              },
+              "comparison_period": {
+                "to": "2026-09-26T00:00:00+02:00",
+                "from": "2026-09-19T08:42:25.718072+02:00",
+                "status": "ok",
+                "timezone": "Europe/Berlin"
+              },
+              "definition_version": "partner-dashboard-v1",
+              "suppression_reasons": [
+                {
+                  "metric": "return_30d",
+                  "reason": "not_yet_evaluable",
+                  "status": "not_yet_evaluable"
+                },
+                {
+                  "metric": "offer_conversion",
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "reward_redemptions",
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "card_completion_rate",
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                }
+              ]
+            },
+            "error": null
+          }
+        },
+        "admin": {
+          "get_partner_entitlements": {
+            "data": {
+              "role": "admin",
+              "state": "trial",
+              "limits": {
+                "team_members": 10,
+                "analytics_days": 365,
+                "deal_drops_monthly": null,
+                "menu_ai_imports_monthly": 2
+              },
+              "version": "f14d900e93c040e6af7e92c31cc33c07",
+              "features": {
+                "commerce": false,
+                "crm.manage": true,
+                "media.rich": true,
+                "seo.monitor": false,
+                "team.manage": true,
+                "menu.ai_import": false,
+                "analytics.basic": true,
+                "feedback.manage": true,
+                "analytics.export": true,
+                "marketing.manage": true,
+                "microsite.publish": true,
+                "analytics.advanced": true
+              },
+              "plan_code": "pro",
+              "offer_code": "founder_annual",
+              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "environment": "live",
+              "valid_until": "2026-11-02T15:17:33+01:00",
+              "plan_version": 1,
+              "reason_codes": {
+                "_plan": "trial",
+                "commerce": "release_blocked",
+                "crm.manage": "subscription",
+                "media.rich": "trial",
+                "seo.monitor": "release_blocked",
+                "team.manage": "trial",
+                "menu.ai_import": "verified_cost_required",
+                "analytics.basic": "trial",
+                "feedback.manage": "subscription",
+                "analytics.export": "trial",
+                "marketing.manage": "subscription",
+                "microsite.publish": "trial",
+                "analytics.advanced": "trial"
+              },
+              "schema_version": 1,
+              "capability_policy_version": 2,
+              "deal_drop_limit_provisional": true
+            },
+            "error": null
+          },
+          "get_partner_deal_drop_usage": {
+            "data": {
+              "used": 1,
+              "limit": null,
+              "timezone": "Europe/Berlin",
+              "remaining": null,
+              "resets_at": "2026-11-01T00:00:00+01:00",
+              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "month_start": "2026-10-01",
+              "provisional": true,
+              "schema_version": 1,
+              "next_available_at": null
+            },
+            "error": null
+          },
+          "get_partner_feedback_settings": {
+            "data": {
+              "deal_id": null,
+              "enabled": false,
+              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "available_deals": [],
+              "reward_valid_days": 30
+            },
+            "error": null
+          },
+          "set_partner_feedback_reward": {
+            "data": {
+              "deal_id": null,
+              "enabled": false,
+              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "available_deals": [],
+              "reward_valid_days": 30
+            },
+            "error": null
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": {
+              "scope": {
+                "to": "2026-09-28T00:00:00+02:00",
+                "from": "2026-09-21T00:00:00+02:00",
+                "kind": "latest_completed_iso_week",
+                "timezone": "Europe/Berlin"
+              },
+              "issues": {
+                "none": 5
+              },
+              "status": "ok",
+              "clarity": {
+                "clear": 5
+              },
+              "sample_size": 5,
+              "average_rating": 4.0,
+              "response_count": 5,
+              "categories_status": "ok"
+            },
+            "error": null
+          },
+          "get_partner_dashboard": {
+            "data": {
+              "as_of": "2026-10-02T15:17:34.373543+02:00",
+              "period": {
+                "to": "2026-10-02T15:17:34.373543+02:00",
+                "from": "2026-09-26T00:00:00+02:00",
+                "timezone": "Europe/Berlin",
+                "semantics": "[from,to)"
+              },
+              "series": {
+                "daily": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-26T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-27T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-29T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-30T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-02T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "weekly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-21T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "monthly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                }
+              },
+              "metrics": {
+                "guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "stamps": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "visits": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "feedback": {
+                  "scope": {
+                    "to": "2026-09-28T00:00:00+02:00",
+                    "from": "2026-09-21T00:00:00+02:00",
+                    "kind": "latest_completed_iso_week",
+                    "timezone": "Europe/Berlin"
+                  },
+                  "issues": {
+                    "none": 5
+                  },
+                  "status": "ok",
+                  "clarity": {
+                    "clear": 5
+                  },
+                  "sample_size": 5,
+                  "average_rating": 4.0,
+                  "response_count": 5,
+                  "categories_status": "ok"
+                },
+                "open_cards": {
+                  "scope": "current_stock",
+                  "value": 1,
+                  "status": "ok",
+                  "sample_size": 1
+                },
+                "return_30d": {
+                  "scope": "whole_matured_iso_cohort_weeks",
+                  "status": "not_yet_evaluable",
+                  "sample_size": 0
+                },
+                "redemptions": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "offer_conversion": {
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "first_time_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "reward_redemptions": {
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                "card_completion_rate": {
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guest_share": {
+                  "status": "no_data",
+                  "sample_size": 0
+                }
+              },
+              "breakdowns": {
+                "scope": "whole_completed_iso_weeks",
+                "weeks": [],
+                "status": "not_yet_evaluable"
+              },
+              "comparison": {
+                "guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "stamps": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "visits": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "redemptions": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "returning_guests": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "first_time_guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                }
+              },
+              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "definitions": {
+                "retention": "return_on_local_days_1_through_30_after_first_visit",
+                "comparison": "equal_local_wall_clock_duration",
+                "population": "reportable_completed_visits",
+                "feedback_scope": "latest_completed_iso_week",
+                "fine_segment_scope": "whole_completed_iso_weeks",
+                "segment_min_guests": 10,
+                "feedback_min_guests": 5,
+                "first_and_returning_can_overlap": true
+              },
+              "source_status": {
+                "stamps": "available",
+                "visits": "available",
+                "feedback": "available",
+                "open_cards": "available",
+                "redemptions": "available",
+                "reward_redemptions": "unavailable"
+              },
+              "comparison_period": {
+                "to": "2026-09-26T00:00:00+02:00",
+                "from": "2026-09-19T08:42:25.626457+02:00",
+                "status": "ok",
+                "timezone": "Europe/Berlin"
+              },
+              "definition_version": "partner-dashboard-v1",
+              "suppression_reasons": [
+                {
+                  "metric": "return_30d",
+                  "reason": "not_yet_evaluable",
+                  "status": "not_yet_evaluable"
+                },
+                {
+                  "metric": "offer_conversion",
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "reward_redemptions",
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "card_completion_rate",
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                }
+              ]
+            },
+            "error": null
+          },
+          "export_partner_dashboard": {
+            "data": {
+              "as_of": "2026-10-02T15:17:34.393994+02:00",
+              "period": {
+                "to": "2026-10-02T15:17:34.393994+02:00",
+                "from": "2026-09-26T00:00:00+02:00",
+                "timezone": "Europe/Berlin",
+                "semantics": "[from,to)"
+              },
+              "series": {
+                "daily": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-26T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-27T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-29T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-30T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-02T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "weekly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-21T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                },
+                "monthly": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                }
+              },
+              "metrics": {
+                "guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "stamps": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "visits": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "feedback": {
+                  "scope": {
+                    "to": "2026-09-28T00:00:00+02:00",
+                    "from": "2026-09-21T00:00:00+02:00",
+                    "kind": "latest_completed_iso_week",
+                    "timezone": "Europe/Berlin"
+                  },
+                  "issues": {
+                    "none": 5
+                  },
+                  "status": "ok",
+                  "clarity": {
+                    "clear": 5
+                  },
+                  "sample_size": 5,
+                  "average_rating": 4.0,
+                  "response_count": 5,
+                  "categories_status": "ok"
+                },
+                "open_cards": {
+                  "scope": "current_stock",
+                  "value": 1,
+                  "status": "ok",
+                  "sample_size": 1
+                },
+                "return_30d": {
+                  "scope": "whole_matured_iso_cohort_weeks",
+                  "status": "not_yet_evaluable",
+                  "sample_size": 0
+                },
+                "redemptions": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "offer_conversion": {
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "first_time_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "reward_redemptions": {
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                "card_completion_rate": {
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guest_share": {
+                  "status": "no_data",
+                  "sample_size": 0
+                }
+              },
+              "breakdowns": {
+                "scope": "whole_completed_iso_weeks",
+                "weeks": [],
+                "status": "not_yet_evaluable"
+              },
+              "comparison": {
+                "guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "stamps": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "visits": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                },
+                "redemptions": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "returning_guests": {
+                  "status": "no_comparison",
+                  "previous": 0,
+                  "absolute_change": 0
+                },
+                "first_time_guests": {
+                  "status": "ok",
+                  "previous": 5,
+                  "absolute_change": -5,
+                  "relative_change": -1.0
+                }
+              },
+              "partner_id": "4f2d0309-81da-45d3-8b62-9d33ff8e1b13",
+              "definitions": {
+                "retention": "return_on_local_days_1_through_30_after_first_visit",
+                "comparison": "equal_local_wall_clock_duration",
+                "population": "reportable_completed_visits",
+                "feedback_scope": "latest_completed_iso_week",
+                "fine_segment_scope": "whole_completed_iso_weeks",
+                "segment_min_guests": 10,
+                "feedback_min_guests": 5,
+                "first_and_returning_can_overlap": true
+              },
+              "source_status": {
+                "stamps": "available",
+                "visits": "available",
+                "feedback": "available",
+                "open_cards": "available",
+                "redemptions": "available",
+                "reward_redemptions": "unavailable"
+              },
+              "comparison_period": {
+                "to": "2026-09-26T00:00:00+02:00",
+                "from": "2026-09-19T08:42:25.606006+02:00",
+                "status": "ok",
+                "timezone": "Europe/Berlin"
+              },
+              "definition_version": "partner-dashboard-v1",
+              "suppression_reasons": [
+                {
+                  "metric": "return_30d",
+                  "reason": "not_yet_evaluable",
+                  "status": "not_yet_evaluable"
+                },
+                {
+                  "metric": "offer_conversion",
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "reward_redemptions",
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "card_completion_rate",
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                }
+              ]
+            },
+            "error": null
+          }
+        },
+        "scanner": {
+          "get_partner_entitlements": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_deal_drop_usage": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_feedback_settings": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "set_partner_feedback_reward": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "export_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          }
+        },
+        "foreign": {
+          "get_partner_entitlements": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_deal_drop_usage": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_feedback_settings": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "set_partner_feedback_reward": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "export_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          }
+        }
+      }
+    },
+    "expired": {
+      "partner_id": "c6221756-c0e9-417f-9f28-08434a4f170d",
+      "actors": {
+        "owner": {
+          "get_partner_entitlements": {
+            "data": {
+              "role": "owner",
+              "state": "free",
+              "limits": {
+                "team_members": 3,
+                "analytics_days": 30,
+                "deal_drops_monthly": 1,
+                "menu_ai_imports_monthly": 0
+              },
+              "version": "fda0366bd580f318db97fc27124fb114",
+              "features": {
+                "commerce": false,
+                "crm.manage": false,
+                "media.rich": false,
+                "seo.monitor": false,
+                "team.manage": true,
+                "menu.ai_import": false,
+                "analytics.basic": true,
+                "feedback.manage": false,
+                "analytics.export": false,
+                "marketing.manage": false,
+                "microsite.publish": false,
+                "analytics.advanced": false
+              },
+              "plan_code": "free",
+              "offer_code": null,
+              "partner_id": "c6221756-c0e9-417f-9f28-08434a4f170d",
+              "environment": "live",
+              "valid_until": null,
+              "plan_version": 1,
+              "reason_codes": {
+                "_plan": "subscription_expired",
+                "commerce": "pro_required",
+                "crm.manage": "pro_required",
+                "media.rich": "pro_required",
+                "seo.monitor": "pro_required",
+                "team.manage": "free",
+                "menu.ai_import": "verified_cost_required",
+                "analytics.basic": "free",
+                "feedback.manage": "pro_required",
+                "analytics.export": "plan_required",
+                "marketing.manage": "pro_required",
+                "microsite.publish": "pro_required",
+                "analytics.advanced": "plan_required"
+              },
+              "schema_version": 1,
+              "capability_policy_version": 2,
+              "deal_drop_limit_provisional": false
+            },
+            "error": null
+          },
+          "get_partner_deal_drop_usage": {
+            "data": {
+              "used": 1,
+              "limit": 1,
+              "timezone": "Europe/Berlin",
+              "remaining": 0,
+              "resets_at": "2026-11-01T00:00:00+01:00",
+              "partner_id": "c6221756-c0e9-417f-9f28-08434a4f170d",
+              "month_start": "2026-10-01",
+              "provisional": false,
+              "schema_version": 1,
+              "next_available_at": "2026-11-01T00:00:00+01:00"
+            },
+            "error": null
+          },
+          "get_partner_feedback_settings": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "set_partner_feedback_reward": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "feedback_pro_required"
+            }
+          },
+          "get_partner_dashboard": {
+            "data": {
+              "as_of": "2026-10-02T15:17:34.984653+02:00",
+              "period": {
+                "to": "2026-10-02T15:17:34.984653+02:00",
+                "from": "2026-09-26T00:00:00+02:00",
+                "timezone": "Europe/Berlin",
+                "semantics": "[from,to)"
+              },
+              "series": {
+                "daily": {
+                  "status": "empty",
+                  "buckets": [
+                    {
+                      "start": "2026-09-26T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-27T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-28T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-29T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-09-30T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-01T00:00:00+02:00",
+                      "visits": 0
+                    },
+                    {
+                      "start": "2026-10-02T00:00:00+02:00",
+                      "visits": 0
+                    }
+                  ]
+                }
+              },
+              "metrics": {
+                "guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "stamps": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "visits": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "feedback": {
+                  "issues": {},
+                  "reason": "feedback_pro_required",
+                  "status": "unavailable",
+                  "clarity": {},
+                  "average_rating": null,
+                  "response_count": null
+                },
+                "open_cards": {
+                  "scope": "current_stock",
+                  "value": 1,
+                  "status": "ok",
+                  "sample_size": 1
+                },
+                "return_30d": {
+                  "reason": "analytics.advanced",
+                  "status": "locked"
+                },
+                "redemptions": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "offer_conversion": {
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "first_time_guests": {
+                  "value": 0,
+                  "status": "empty",
+                  "sample_size": 0
+                },
+                "reward_redemptions": {
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                "card_completion_rate": {
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                },
+                "returning_guest_share": {
+                  "status": "no_data",
+                  "sample_size": 0
+                }
+              },
+              "breakdowns": {
+                "reason": "analytics.advanced",
+                "status": "locked"
+              },
+              "comparison": {},
+              "partner_id": "c6221756-c0e9-417f-9f28-08434a4f170d",
+              "definitions": {
+                "retention": "return_on_local_days_1_through_30_after_first_visit",
+                "comparison": "equal_local_wall_clock_duration",
+                "population": "reportable_completed_visits",
+                "feedback_scope": "latest_completed_iso_week",
+                "fine_segment_scope": "whole_completed_iso_weeks",
+                "segment_min_guests": 10,
+                "feedback_min_guests": 5,
+                "first_and_returning_can_overlap": true
+              },
+              "source_status": {
+                "stamps": "available",
+                "visits": "available",
+                "feedback": "unavailable",
+                "open_cards": "available",
+                "redemptions": "available",
+                "reward_redemptions": "unavailable"
+              },
+              "comparison_period": null,
+              "definition_version": "partner-dashboard-v1",
+              "suppression_reasons": [
+                {
+                  "metric": "feedback",
+                  "reason": "feedback_pro_required",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "return_30d",
+                  "reason": "analytics.advanced",
+                  "status": "locked"
+                },
+                {
+                  "metric": "offer_conversion",
+                  "reason": "denominator_not_instrumented",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "reward_redemptions",
+                  "reason": "reward_claim_coverage_unverified",
+                  "status": "unavailable"
+                },
+                {
+                  "metric": "card_completion_rate",
+                  "reason": "card_cohort_not_instrumented",
+                  "status": "unavailable"
+                }
+              ]
+            },
+            "error": null
+          },
+          "export_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "analytics_export_denied"
+            }
+          }
+        },
+        "admin": {
+          "get_partner_entitlements": {
+            "data": {
+              "role": "admin",
+              "state": "free",
+              "limits": {
+                "team_members": 3,
+                "analytics_days": 30,
+                "deal_drops_monthly": 1,
+                "menu_ai_imports_monthly": 0
+              },
+              "version": "d4a23482729f7be824f6afecb9764394",
+              "features": {
+                "commerce": false,
+                "crm.manage": false,
+                "media.rich": false,
+                "seo.monitor": false,
+                "team.manage": false,
+                "menu.ai_import": false,
+                "analytics.basic": false,
+                "feedback.manage": false,
+                "analytics.export": false,
+                "marketing.manage": false,
+                "microsite.publish": false,
+                "analytics.advanced": false
+              },
+              "plan_code": "free",
+              "offer_code": null,
+              "partner_id": "c6221756-c0e9-417f-9f28-08434a4f170d",
+              "environment": "live",
+              "valid_until": null,
+              "plan_version": 1,
+              "reason_codes": {
+                "_plan": "subscription_expired",
+                "commerce": "owner_required",
+                "crm.manage": "owner_required",
+                "media.rich": "owner_required",
+                "seo.monitor": "owner_required",
+                "team.manage": "owner_required",
+                "menu.ai_import": "owner_required",
+                "analytics.basic": "owner_required",
+                "feedback.manage": "owner_required",
+                "analytics.export": "owner_required",
+                "marketing.manage": "owner_required",
+                "microsite.publish": "owner_required",
+                "analytics.advanced": "owner_required"
+              },
+              "schema_version": 1,
+              "capability_policy_version": 2,
+              "deal_drop_limit_provisional": false
+            },
+            "error": null
+          },
+          "get_partner_deal_drop_usage": {
+            "data": {
+              "used": 1,
+              "limit": 1,
+              "timezone": "Europe/Berlin",
+              "remaining": 0,
+              "resets_at": "2026-11-01T00:00:00+01:00",
+              "partner_id": "c6221756-c0e9-417f-9f28-08434a4f170d",
+              "month_start": "2026-10-01",
+              "provisional": false,
+              "schema_version": 1,
+              "next_available_at": "2026-11-01T00:00:00+01:00"
+            },
+            "error": null
+          },
+          "get_partner_feedback_settings": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "set_partner_feedback_reward": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "feedback_pro_required"
+            }
+          },
+          "get_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "analytics_basic_denied"
+            }
+          },
+          "export_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "analytics_export_denied"
+            }
+          }
+        },
+        "scanner": {
+          "get_partner_entitlements": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_deal_drop_usage": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_feedback_settings": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "set_partner_feedback_reward": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "export_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          }
+        },
+        "foreign": {
+          "get_partner_entitlements": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_deal_drop_usage": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_feedback_settings": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "set_partner_feedback_reward": {
+            "data": null,
+            "error": {
+              "code": "P0001",
+              "message": "Not authorized for this partner"
+            }
+          },
+          "partner_post_scan_feedback_summary": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "get_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          },
+          "export_partner_dashboard": {
+            "data": null,
+            "error": {
+              "code": "42501",
+              "message": "partner_access_denied"
+            }
+          }
+        }
+      }
+    }
+  }
+}
