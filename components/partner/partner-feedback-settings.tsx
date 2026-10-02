@@ -34,7 +34,7 @@ export function PartnerFeedbackSettings({ partnerId, initial }: {
       </div>
       <span className="hidden rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 sm:block">Optional</span>
     </header>
-    {!initial.available || !settings ? <p className="px-5 py-6 text-sm text-slate-600 sm:px-7">Feedback-Belohnungen sind für diesen Betrieb noch nicht verfügbar.</p> :
+    {!initial.available || !settings ? <p className="px-5 py-6 text-sm text-slate-600 sm:px-7">{initial.reason === 'feedback_pro_required' ? 'Besuchsfeedback ist nur mit Pro und passendem Verwaltungsrecht verfügbar.' : 'Feedback-Belohnungen sind für diesen Betrieb noch nicht verfügbar.'}</p> :
       <div className="grid gap-7 p-5 sm:p-7 lg:grid-cols-[1.1fr_1fr]">
         <form onSubmit={event => {
           event.preventDefault()

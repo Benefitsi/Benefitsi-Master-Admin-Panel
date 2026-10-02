@@ -86,12 +86,12 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
         <dl className="mt-6 grid gap-4 sm:grid-cols-3">
           {[
             ["analytics_days", "Tage Auswertung"],
-            ["active_offers", "Aktive Vorteile"],
+            ["deal_drops_monthly", "Deal Drops je Kalendermonat"],
             ["team_members", "Teammitglieder"],
           ].map(([key, label]) => (
             <div key={key} className="rounded-2xl bg-white/5 p-4">
               <dd className="text-3xl font-bold">
-                {rights.limits[key] ?? "—"}
+                {key === 'deal_drops_monthly' && rights.limits[key] === null ? 'Ohne Monatslimit (vorläufig)' : rights.limits[key] ?? '—'}
               </dd>
               <dt className="mt-1 text-sm text-slate-300">{label}</dt>
             </div>
@@ -100,6 +100,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
       </section>
       <section className={box}>
         <h3 className="text-lg font-bold">Vertrag & Abrechnung</h3>
+        <p>Normale Angebote und Happy Hour ohne Mengenlimit. Der vereinbarte Vertragspreis bleibt auch bei Verlängerung bestehen; Änderungen benötigen ein neues Angebot und ausdrückliche Zustimmung.</p>
         {data.billing_readiness && !data.billing_readiness.enabled && (
           <p className="mt-3 text-sm text-amber-800">
             Abrechnung ist noch gesperrt.{" "}
@@ -323,7 +324,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
             <div key={key}>
               <dt className="text-sm text-slate-500">{label}</dt>
               <dd className="text-2xl font-bold">
-                {rights.limits[key] ?? "—"}
+                {key === 'deal_drops_monthly' && rights.limits[key] === null ? 'Ohne Monatslimit (vorläufig)' : rights.limits[key] ?? '—'}
               </dd>
             </div>
           ))}
@@ -359,7 +360,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
             <ul className="mt-5 space-y-2 text-sm">
               <li>Standardprofil auf der Stadtseite</li>
               <li>30 Tage Auswertung</li>
-              <li>1 aktiver Vorteil · 3 Teammitglieder</li>
+              <li>Normale Angebote und Happy Hour unbegrenzt · 1 Deal Drop je Kalendermonat · 3 Teammitglieder</li>
               <li>Keine eigene Microsite</li>
             </ul>
           </article>
@@ -401,7 +402,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                 <ul className="mt-5 space-y-2 text-sm">
                   <li>Eigene Microsite</li>
                   <li>365 Tage Auswertung</li>
-                  <li>10 aktive Vorteile · 10 Teammitglieder</li>
+                  <li>Normale Angebote und Happy Hour unbegrenzt · Deal Drops vorläufig ohne Monatslimit · 10 Teammitglieder</li>
                   <li>2 KI-Importe / Monat, nur nach Freigabe</li>
                 </ul>
                 {o.offer_code.startsWith("founder") && (
@@ -484,6 +485,7 @@ function Field({
   value,
   min,
   step,
+  required = true,
 }: {
   label: string;
   name: string;
@@ -491,6 +493,7 @@ function Field({
   value?: string | number;
   min?: number;
   step?: string;
+  required?: boolean;
 }) {
   return (
     <label className="block text-sm font-medium">
@@ -502,7 +505,7 @@ function Field({
         defaultValue={value}
         min={min}
         step={step}
-        required
+        required={required}
       />
     </label>
   );
@@ -972,7 +975,7 @@ export function PartnerPlanPanel({
           </fieldset>
           <div className="grid gap-4 sm:grid-cols-2">
             {Object.entries(limitLabels).map(([key, label]) => (
-              <Field key={key} label={label} name={key} type="number" min={0} />
+              <Field key={key} label={key === "deal_drops_monthly" ? `${label} (leer = vorläufig unbegrenzt bei Pro)` : label} name={key} type="number" min={0} required={key !== "deal_drops_monthly"} />
             ))}
           </div>
           <p className="text-sm text-slate-500">
@@ -1025,10 +1028,10 @@ export function PartnerPlanPanel({
                     </li>
                   ))}
                   {Object.entries(
-                    (d.payload.limits ?? {}) as Record<string, number>,
+                    (d.payload.limits ?? {}) as Record<string, number | null>,
                   ).map(([key, value]) => (
                     <li key={key}>
-                      {limitLabels[key]}: {value}
+                      {limitLabels[key] ?? "Historischer Grenzwert"}: {value === null ? "Ohne Monatslimit (vorläufig)" : value}
                     </li>
                   ))}
                 </ul>

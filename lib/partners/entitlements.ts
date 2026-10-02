@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 export type Entitlements = {
   schema_version: number
+  capability_policy_version?: number
+  deal_drop_limit_provisional?: boolean
   partner_id: string
   role: string
   plan_code: string
@@ -10,7 +12,7 @@ export type Entitlements = {
   valid_until: string | null
   version: string
   features: Record<string, boolean>
-  limits: Record<string, number>
+  limits: Record<string, number | null>
   reason_codes: Record<string, string>
 }
 export type PriceOffer = {
@@ -93,7 +95,7 @@ export type PlanPanel = BillingSummary & {
     plan_code: string
     version: number
     features: Record<string, boolean>
-    limits: Record<string, number>
+    limits: Record<string, number | null>
   }[]
   archives: { kind: string; code: string; version: number }[]
 }
@@ -178,14 +180,38 @@ export const featureLabels: Record<string, string> = {
   'analytics.basic': 'Basisstatistik',
   'analytics.advanced': 'Erweiterte Statistik',
   'analytics.export': 'Statistikexport',
+  'feedback.manage': 'Besuchsfeedback verwalten',
+  'marketing.manage': 'Partnerwerbung · noch nicht verfügbar',
+  'crm.manage': 'CRM · noch nicht verfügbar',
   'team.manage': 'Team verwalten',
   'menu.ai_import': 'Menüimport mit KI',
   commerce: 'Bestellungen & Termine',
   'seo.monitor': 'SEO-Monitoring',
 }
 export const limitLabels: Record<string, string> = {
-  active_offers: 'Aktive Vorteile',
+  deal_drops_monthly: 'Deal Drops je Kalendermonat',
   team_members: 'Teammitglieder',
   analytics_days: 'Statistiktage',
   menu_ai_imports_monthly: 'KI-Importe je Zeitraum',
+}
+
+export type DealDropUsage = {
+  schema_version: 1; partner_id: string; timezone: 'Europe/Berlin';
+  month_start: string; used: number; limit: number | null; remaining: number | null;
+  resets_at: string; next_available_at: string | null; provisional: boolean;
+}
+export async function readDealDropUsage(client: SupabaseClient, partnerId: string): Promise<DealDropUsage> {
+  const { data, error } = await client.rpc('get_partner_deal_drop_usage', { p_partner_id: partnerId })
+  const count = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v >= 0
+  if (error) throw new Error(error.message)
+  if (!data || data.schema_version !== 1 || data.partner_id !== partnerId || data.timezone !== 'Europe/Berlin' ||
+      !count(data.used) || !(data.limit === null || count(data.limit)) ||
+      !(data.remaining === null || count(data.remaining)) || typeof data.provisional !== 'boolean' ||
+      !Number.isFinite(Date.parse(data.resets_at)) ||
+      !(data.next_available_at === null || Number.isFinite(Date.parse(data.next_available_at))))
+    throw new Error('Drop-Verbrauch konnte nicht geladen werden.')
+  return data
+}
+export function canManageFeedback(rights: Entitlements) {
+  return canManageProfile(rights) && rights.features?.['feedback.manage'] === true
 }

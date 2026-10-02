@@ -1,3 +1,4 @@
+import { PartnerDropUsage } from '@/components/partner/partner-drop-usage';
 import {
   PartnerDashboard,
   PartnerOverview,
@@ -61,6 +62,7 @@ export default async function PartnerDashboardPage({
         </form>
       }
     >
+      {section === "deals" && <PartnerDropUsage client={ctx.client} partnerId={ctx.partnerId} />}
       {error && (
         <div
           role="alert"

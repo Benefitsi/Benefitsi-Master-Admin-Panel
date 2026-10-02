@@ -1,3 +1,4 @@
+import { readEntitlements, canManageFeedback } from '@/lib/partners/entitlements'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type FeedbackRewardDeal = {
@@ -17,6 +18,7 @@ export type FeedbackSettings = {
 }
 
 export type FeedbackSettingsRead = {
+  reason?: string
   available: boolean
   settings: FeedbackSettings | null
 }
@@ -26,11 +28,14 @@ export async function readFeedbackSettings(
   partnerId: string,
 ): Promise<FeedbackSettingsRead> {
   if (!validUuid(partnerId)) throw new Error('Bitte einen gültigen Betrieb auswählen.')
+  const rights = await readEntitlements(client, partnerId)
+  if (!canManageFeedback(rights)) return { available: false, reason: 'feedback_pro_required', settings: null }
   const { data, error } = await client.rpc('get_partner_feedback_settings', {
     p_partner_id: partnerId,
   })
   if (error && ['PGRST202', '42883'].includes(error.code))
     return { available: false, settings: null }
+  if (error?.message?.includes('feedback_pro_required')) return { available: false, reason: 'feedback_pro_required', settings: null }
   if (error) throw new Error('Feedback-Einstellungen konnten nicht geladen werden. Bitte Berechtigung prüfen.')
   return { available: true, settings: normalizeSettings(data, partnerId) }
 }
@@ -43,6 +48,8 @@ export async function saveFeedbackSettings(
   if (typeof input.enabled !== 'boolean') throw new Error('Bitte eine gültige Einstellung auswählen.')
   if (input.enabled && !validUuid(input.dealId ?? ''))
     throw new Error('Bitte einen geeigneten Vorteil für die Belohnung auswählen.')
+  if (!canManageFeedback(await readEntitlements(client, input.partnerId)))
+    throw new Error('Besuchsfeedback benötigt Pro und einen berechtigten Verwaltungszugang.')
   const { data, error } = await client.rpc('set_partner_feedback_reward', {
     p_partner_id: input.partnerId,
     p_enabled: input.enabled,

@@ -1,0 +1,133 @@
+{
+  "fixture_version": "partner-capability-v2",
+  "synthetic": true,
+  "source": "Hand-authored client contract examples from approved DB cb1c293 and task-1-contract.md; not a fresh RPC export",
+  "schema_version": 1,
+  "capability_policy_version": 2,
+  "scenarios": {
+    "free": {
+      "entitlements": {
+        "schema_version": 1,
+        "capability_policy_version": 2,
+        "partner_id": "11111111-1111-4111-8111-111111111111",
+        "role": "owner",
+        "plan_code": "free",
+        "plan_version": 1,
+        "deal_drop_limit_provisional": false,
+        "features": {
+          "feedback.manage": false,
+          "marketing.manage": false,
+          "crm.manage": false
+        },
+        "limits": {
+          "deal_drops_monthly": 1
+        }
+      },
+      "drop_usage": {
+        "schema_version": 1,
+        "partner_id": "11111111-1111-4111-8111-111111111111",
+        "timezone": "Europe/Berlin",
+        "month_start": "2026-10-01",
+        "used": 1,
+        "limit": 1,
+        "remaining": 0,
+        "resets_at": "2026-10-31T23:00:00Z",
+        "next_available_at": "2026-10-31T23:00:00Z",
+        "provisional": false
+      }
+    },
+    "pro": {
+      "entitlements": {
+        "schema_version": 1,
+        "capability_policy_version": 2,
+        "partner_id": "11111111-1111-4111-8111-111111111111",
+        "role": "owner",
+        "plan_code": "pro",
+        "plan_version": 1,
+        "deal_drop_limit_provisional": true,
+        "features": {
+          "feedback.manage": true,
+          "marketing.manage": true,
+          "crm.manage": true
+        },
+        "limits": {
+          "deal_drops_monthly": null
+        }
+      },
+      "drop_usage": {
+        "schema_version": 1,
+        "partner_id": "11111111-1111-4111-8111-111111111111",
+        "timezone": "Europe/Berlin",
+        "month_start": "2026-10-01",
+        "used": 1,
+        "limit": null,
+        "remaining": null,
+        "resets_at": "2026-10-31T23:00:00Z",
+        "next_available_at": null,
+        "provisional": true
+      }
+    },
+    "founder": {
+      "entitlements": {
+        "schema_version": 1,
+        "capability_policy_version": 2,
+        "partner_id": "11111111-1111-4111-8111-111111111111",
+        "role": "owner",
+        "plan_code": "pro",
+        "plan_version": 1,
+        "deal_drop_limit_provisional": true,
+        "features": {
+          "feedback.manage": true,
+          "marketing.manage": true,
+          "crm.manage": true
+        },
+        "limits": {
+          "deal_drops_monthly": null
+        }
+      },
+      "drop_usage": {
+        "schema_version": 1,
+        "partner_id": "11111111-1111-4111-8111-111111111111",
+        "timezone": "Europe/Berlin",
+        "month_start": "2026-10-01",
+        "used": 1,
+        "limit": null,
+        "remaining": null,
+        "resets_at": "2026-10-31T23:00:00Z",
+        "next_available_at": null,
+        "provisional": true
+      }
+    },
+    "expired": {
+      "entitlements": {
+        "schema_version": 1,
+        "capability_policy_version": 2,
+        "partner_id": "11111111-1111-4111-8111-111111111111",
+        "role": "owner",
+        "plan_code": "free",
+        "plan_version": 1,
+        "deal_drop_limit_provisional": false,
+        "features": {
+          "feedback.manage": false,
+          "marketing.manage": false,
+          "crm.manage": false
+        },
+        "limits": {
+          "deal_drops_monthly": 1
+        }
+      },
+      "drop_usage": {
+        "schema_version": 1,
+        "partner_id": "11111111-1111-4111-8111-111111111111",
+        "timezone": "Europe/Berlin",
+        "month_start": "2026-10-01",
+        "used": 1,
+        "limit": 1,
+        "remaining": 0,
+        "resets_at": "2026-10-31T23:00:00Z",
+        "next_available_at": "2026-10-31T23:00:00Z",
+        "provisional": false
+      }
+    }
+  }
+}

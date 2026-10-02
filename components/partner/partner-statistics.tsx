@@ -183,7 +183,7 @@ export function PartnerStatistics({
                 : "—"}
             </p>
             <p className="mt-1 text-sm text-slate-600">
-              {statusLabels[feedback.status]}
+              {feedback.reason === 'feedback_pro_required' ? 'Besuchsfeedback ist eine Pro-Leistung.' : statusLabels[feedback.status]}
               {["ok", "empty"].includes(feedback.status) &&
               typeof feedback.response_count === "number"
                 ? ` · ${feedback.response_count} Antworten`

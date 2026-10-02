@@ -93,6 +93,9 @@ export async function updatePartnerPlan(
             'analytics.basic',
             'analytics.advanced',
             'analytics.export',
+            'feedback.manage',
+            'marketing.manage',
+            'crm.manage',
             'team.manage',
             'menu.ai_import',
             'commerce',
@@ -101,11 +104,11 @@ export async function updatePartnerPlan(
         )
         const limits = Object.fromEntries(
           [
-            'active_offers',
+            'deal_drops_monthly',
             'team_members',
             'analytics_days',
             'menu_ai_imports_monthly',
-          ].map((key) => [key, Number(value(key))]),
+          ].map((key) => [key, key === 'deal_drops_monthly' && value(key).trim() === '' ? null : Number(value(key))]),
         )
         args = {
           p_kind: 'plan',

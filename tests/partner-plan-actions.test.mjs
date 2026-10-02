@@ -48,3 +48,13 @@ test('Admin activation recovery requires terminal-failure evidence before scoped
  const denied=fixture(false);denied.form.set('operation','failed_founder_activation');denied.form.set('terminal_failure','confirmed')
  assert.equal((await denied.code.updatePartnerPlan({},denied.form)).ok,false);assert.equal(denied.calls.length,0)
 })
+
+test('new capability draft preserves nullable Pro drop limit and independent rights',async()=>{
+ const f=fixture();f.form.set('operation','draft_plan');f.form.set('plan_code','pro');f.form.set('version','2');f.form.set('deal_drops_monthly','');f.form.set('feedback.manage','on')
+ assert.equal((await f.code.updatePartnerPlan({},f.form)).ok,true)
+ const p=f.calls[0].args.p_payload
+ assert.equal(p.limits.deal_drops_monthly,null)
+ assert.equal(p.limits.active_offers,undefined)
+ assert.equal(p.features['feedback.manage'],true)
+ assert.equal(p.features['marketing.manage'],false)
+})
