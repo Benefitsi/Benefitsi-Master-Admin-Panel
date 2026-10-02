@@ -494,8 +494,8 @@ test('approved April period bridge preserves pending original order and resumes 
         }
         await assert.rejects(() => advance(t, 'month', Date.parse('2028-01-31T10:00:00Z') / 1000, 'unapproved-future'), /unapproved_clock_bridge/);
         assert.equal(posts.length, 1);
-        const module = await import('../scripts/partner-billing-sandbox.mjs');
-        await module.recoverClockAdvances(t);
+        const sandboxModule = await import('../scripts/partner-billing-sandbox.mjs');
+        await sandboxModule.recoverClockAdvances(t);
         assert.equal(current, target); assert.equal(posts.length, 2); assert.equal(posts[1].key, fullKey);
         assert.equal(t.state.requests[semantic].attempts, 3); assert.equal(t.state.requests[semantic].hash, original.hash); assert.equal(t.state.requests[semantic].started, original.started);
         assert.equal(Object.values(t.state.requests).find(r => r.clockTarget === bridge).attempts, 1); assert.equal(t.state.proofs.length, 1); assert.equal(t.state.checkpoints['month:paid-month-15:boundary'], undefined);
@@ -1076,8 +1076,8 @@ test('I2: pending still-present DELETE freshly rejects foreign schedule or subsc
 test('I1: ready clock with draft invoice advances only to immutable approved settlement; unknown resumes unchanged', async () => {
     for (const settledStatus of ['paid', 'open'])
         await temporary(async (work) => {
-            const module = await import('../scripts/partner-billing-sandbox.mjs');
-            assert.equal(typeof module.settledInvoiceCheckpoint, 'function');
+            const sandboxModule = await import('../scripts/partner-billing-sandbox.mjs');
+            assert.equal(typeof sandboxModule.settledInvoiceCheckpoint, 'function');
             let frozen = boundary.seconds.trialEnd - 1, lose = true, settlementPosts = 0;
             const settled = boundary.seconds.trialEnd + 7200, owned = { ...owner, subscription: 'sub_owned' };
             const invoke = async (argv) => {
@@ -1129,17 +1129,17 @@ test('I1: ready clock with draft invoice advances only to immutable approved set
                     assert.equal((await t.read('invoice.read', { id: 'in_owned' })).status, settledStatus);
                     return { settledProof: settledStatus };
                 };
-                await assert.rejects(() => module.settledInvoiceCheckpoint(t, plan, paid), /outcome_unknown/);
+                await assert.rejects(() => sandboxModule.settledInvoiceCheckpoint(t, plan, paid), /outcome_unknown/);
                 await t.close();
                 t = await SandboxTransport.open({
                     work, mode: 'execute', invoke
                 });
                 assert.equal(t.state.checkpoints['month:first-paid:boundary'].invoiceStatus, 'draft');
                 assert.equal(paidReads, 0);
-                await assert.rejects(() => module.settledInvoiceCheckpoint(t, {
+                await assert.rejects(() => sandboxModule.settledInvoiceCheckpoint(t, {
                     ...plan, boundaryAt: plan.boundaryAt + 1, settledAt: settled + 1
                 }, paid), /settlement_plan_changed/);
-                await module.settledInvoiceCheckpoint(t, plan, paid);
+                await sandboxModule.settledInvoiceCheckpoint(t, plan, paid);
                 assert.equal(settlementPosts, 1);
                 assert.equal(paidReads, 1);
                 assert.equal(t.state.checkpoints['month:first-paid'].settledProof, settledStatus);
