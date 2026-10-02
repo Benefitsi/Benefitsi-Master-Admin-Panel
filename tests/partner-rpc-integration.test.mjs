@@ -16,9 +16,14 @@ for(const [name,scenario] of Object.entries(fixture.scenarios)){
  for(const [role,outcomes] of Object.entries(scenario.actors)){
   test(`actual PG ${name}/${role} replays entitlement, quota, feedback read/write/action, dashboard/export`,async()=>{
    const calls=[]
+   const window=scenario.actors.owner.get_partner_dashboard.data.period
    const client={rpc:async(rpc,args)=>{
     assert.equal(args.p_partner_id,scenario.partner_id)
     assert.ok(Object.hasOwn(outcomes,rpc),rpc)
+    if(['get_partner_dashboard','export_partner_dashboard'].includes(rpc)){
+     assert.equal(args.p_from,window.from);assert.equal(args.p_to,window.to);assert.equal(args.p_timezone,'Europe/Berlin')
+    }
+    if(outcomes[rpc].error)assert.equal(outcomes[rpc].error.code,'42501')
     calls.push(rpc)
     return structuredClone(outcomes[rpc])
    }}
@@ -52,9 +57,9 @@ for(const [name,scenario] of Object.entries(fixture.scenarios)){
    }
    for(const exporting of [false,true]){
     const rpc=exporting?'export_partner_dashboard':'get_partner_dashboard'
-    if(outcomes[rpc].error)await assert.rejects(()=>readDashboard(client,scenario.partner_id,{},exporting))
+    if(outcomes[rpc].error)await assert.rejects(()=>readDashboard(client,scenario.partner_id,window,exporting))
     else {
-     const data=await readDashboard(client,scenario.partner_id,{},exporting)
+     const data=await readDashboard(client,scenario.partner_id,window,exporting)
      assert.equal(data.metrics.feedback.status,outcomes[rpc].data.metrics.feedback.status)
      const csv=dashboardCsv(data)
      assert.doesNotMatch(csv,/user_id|stripe_customer|request_id/)
