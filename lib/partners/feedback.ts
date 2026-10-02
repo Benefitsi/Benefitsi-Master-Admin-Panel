@@ -1,4 +1,4 @@
-import { readEntitlements, canManageFeedback } from '@/lib/partners/entitlements'
+import { readEntitlements, canManageFeedback, canManageProfile } from '@/lib/partners/entitlements'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type FeedbackRewardDeal = {
@@ -29,6 +29,7 @@ export async function readFeedbackSettings(
 ): Promise<FeedbackSettingsRead> {
   if (!validUuid(partnerId)) throw new Error('Bitte einen gültigen Betrieb auswählen.')
   const rights = await readEntitlements(client, partnerId)
+  if (!canManageProfile(rights)) throw new Error('Für Besuchsfeedback fehlt die Verwaltungsberechtigung.')
   if (!canManageFeedback(rights)) return { available: false, reason: 'feedback_pro_required', settings: null }
   const { data, error } = await client.rpc('get_partner_feedback_settings', {
     p_partner_id: partnerId,

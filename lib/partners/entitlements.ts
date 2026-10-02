@@ -110,7 +110,10 @@ export async function readEntitlements(
     error ||
     !data ||
     data.partner_id !== partnerId ||
-    data.schema_version !== 1
+    data.schema_version !== 1 ||
+    typeof data.role !== 'string' || !data.role.trim() ||
+    !data.features || typeof data.features !== 'object' || Array.isArray(data.features) ||
+    Object.values(data.features).some(value => typeof value !== 'boolean')
   )
     throw new Error(error?.message ?? 'Rechte konnten nicht geladen werden.')
   return data
@@ -202,16 +205,34 @@ export type DealDropUsage = {
 }
 export async function readDealDropUsage(client: SupabaseClient, partnerId: string): Promise<DealDropUsage> {
   const { data, error } = await client.rpc('get_partner_deal_drop_usage', { p_partner_id: partnerId })
-  const count = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v >= 0
+  const count = (v: unknown) => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0
+  const calendarDate = (value: string) => {
+    const date = new Date(`${value}T00:00:00Z`)
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+  }
+  const timestamp = (value: unknown): value is string => typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(value) &&
+    calendarDate(value.slice(0, 10)) && Number.isFinite(Date.parse(value))
+  const required = ['schema_version', 'partner_id', 'timezone', 'month_start', 'used', 'limit', 'remaining', 'resets_at', 'next_available_at', 'provisional']
   if (error) throw new Error(error.message)
-  if (!data || data.schema_version !== 1 || data.partner_id !== partnerId || data.timezone !== 'Europe/Berlin' ||
+  if (!data || typeof data !== 'object' || Array.isArray(data) ||
+      !required.every(key => Object.hasOwn(data, key)) ||
+      data.schema_version !== 1 || data.partner_id !== partnerId || data.timezone !== 'Europe/Berlin' ||
+      typeof data.month_start !== 'string' || !/^\d{4}-\d{2}-01$/.test(data.month_start) || !calendarDate(data.month_start) ||
       !count(data.used) || !(data.limit === null || count(data.limit)) ||
       !(data.remaining === null || count(data.remaining)) || typeof data.provisional !== 'boolean' ||
-      !Number.isFinite(Date.parse(data.resets_at)) ||
-      !(data.next_available_at === null || Number.isFinite(Date.parse(data.next_available_at))))
+      !timestamp(data.resets_at) || !(data.next_available_at === null || timestamp(data.next_available_at)))
+    throw new Error('Drop-Verbrauch konnte nicht geladen werden.')
+  const expectedRemaining = data.limit === null ? null : Math.max(data.limit - data.used, 0)
+  const exhausted = expectedRemaining === 0
+  if (data.remaining !== expectedRemaining || (exhausted
+      ? data.next_available_at === null || data.next_available_at !== data.resets_at
+      : data.next_available_at !== null))
     throw new Error('Drop-Verbrauch konnte nicht geladen werden.')
   return data
 }
 export function canManageFeedback(rights: Entitlements) {
+  if (typeof rights.features?.['feedback.manage'] !== 'boolean')
+    throw new Error('Feedback-Rechte konnten nicht geladen werden.')
   return canManageProfile(rights) && rights.features?.['feedback.manage'] === true
 }
