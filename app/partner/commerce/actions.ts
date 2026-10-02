@@ -84,11 +84,12 @@ export async function transitionCommerceBooking(form:FormData) {
 
 export async function openSoftwareBilling(form:FormData) {
   const providerId=value(form,'provider_id')
-  const {session}=await commercePartner(providerId)
-  const {createSoftwareSubscription,createSoftwareBillingPortal}=await import('@/lib/stripe/software-billing')
+  const {provider}=await commercePartner(providerId)
+  if(value(form,'billing_action')!=='portal') redirect(`/partner/billing?partner=${provider?.partner_id ?? ''}`)
+  const {createSoftwareBillingPortal}=await import('@/lib/stripe/software-billing')
   const {requirePartnerBaseUrl}=await import('@/lib/stripe/config')
   let url=''
-  try {url=value(form,'billing_action')==='portal'?await createSoftwareBillingPortal(providerId,requirePartnerBaseUrl()):await createSoftwareSubscription(providerId,session.user.email||'',requirePartnerBaseUrl())}catch {redirect(destination(providerId,'billing'))}
+  try {url=await createSoftwareBillingPortal(providerId,requirePartnerBaseUrl())}catch {redirect(destination(providerId,'billing'))}
   redirect(url)
 }
 

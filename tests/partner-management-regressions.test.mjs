@@ -119,7 +119,7 @@ test("active and featured partner metrics filter the list, with featured limited
 
   assert.match(code, /const \[partnerFilter, setPartnerFilter\]/)
   assert.match(code, /label="Active partners"[\s\S]*active=\{partnerFilter === "active"\}[\s\S]*onClick=/)
-  assert.match(code, /label="Featured partners"[\s\S]*active=\{partnerFilter === "featured"\}[\s\S]*onClick=/)
+  assert.match(code, /value=\{featuredPartners\}[\s\S]*active=\{partnerFilter === "featured"\}[\s\S]*onClick=/)
   assert.match(code, /partnerFilter === "active" && !isPartnerActive\(partner\)/)
   assert.match(code, /partnerFilter === "featured"[\s\S]*isPartnerActive\(partner\) && partner\.is_featured/)
   assert.match(code, /isPartnerActive\(partner\) && partner\.is_featured/)

@@ -14,7 +14,13 @@ const settings = {
   deal_id: null,
   available_deals: [{ id: dealId, title: '10 % beim nächsten Besuch', description: 'Einmalig für dein Feedback.', terms: 'Ab 10 € Bestellwert.', expires_at: null }],
 }
-const { readFeedbackSettings, saveFeedbackSettings } = loadTypescript('lib/partners/feedback.ts')
+const feedback = loadTypescript('lib/partners/feedback.ts')
+// These DTO tests model an authorized Pro owner; direct-action tests below exercise real gates.
+const authorized = client => ({rpc: (name, params) => name === 'get_partner_entitlements'
+  ? Promise.resolve({data:{schema_version:1,partner_id:partnerId,role:'owner',plan_code:'pro',features:{'feedback.manage':true}}})
+  : client.rpc(name,params)})
+const readFeedbackSettings = (client,id) => feedback.readFeedbackSettings(authorized(client),id)
+const saveFeedbackSettings = (client,input) => feedback.saveFeedbackSettings(authorized(client),input)
 const { PartnerFeedbackSettings } = loadTypescript('components/partner/partner-feedback-settings.tsx', {
   '@/app/partner/feedback-actions': { updateFeedbackReward: async () => ({ ok: true, message: 'Gespeichert.' }) },
 })
@@ -78,14 +84,14 @@ test('unavailable and empty candidates prevent enabling an unfulfillable gift', 
   assert.match(html, /disabled=""/)
 })
 
-function actionHarness({ session, role = 'owner', plan = 'free', fail = false, legacy = false }) {
+function actionHarness({ session, role = 'owner', plan = 'pro', fail = false, legacy = false }) {
   const calls = []
   let revalidated = false
   const client = { rpc: async (name, params) => {
     calls.push({ name, params })
     if (name === 'get_partner_entitlements') return legacy
       ? { data: null, error: { code: 'PGRST202' } }
-      : { data: { schema_version: 1, partner_id: partnerId, role, plan_code: plan }, error: null }
+      : { data: { schema_version: 1, partner_id: partnerId, role, plan_code: plan, features: {'feedback.manage': plan === 'pro'} }, error: null }
     if (role === 'cashier' || (role === 'admin' && plan !== 'pro'))
       return { data: null, error: { code: '42501' } }
     return fail ? { data: null, error: { code: '22023' } } : { data: { ...settings, enabled: params.p_enabled, deal_id: params.p_deal_id }, error: null }
@@ -114,18 +120,18 @@ test('direct server-action requests deny missing and foreign partner sessions', 
 
 test('the authoritative reward RPC denies cashier and Free team-admin direct posts', async () => {
   for (const role of ['cashier', 'admin']) {
-    const fixture = actionHarness({ session: { isAdmin: false, partnerIds: [partnerId] }, role })
+    const fixture = actionHarness({ session: { isAdmin: false, partnerIds: [partnerId] }, role, plan: 'free' })
     assert.equal((await fixture.action()).ok, false)
-    assert.equal(fixture.calls.filter(call => call.name === 'set_partner_feedback_reward').length, 1)
+    assert.equal(fixture.calls.filter(call => call.name === 'set_partner_feedback_reward').length, 0)
     assert.equal(fixture.revalidated(), false)
   }
 })
 
-test('owner and global admin can save on the Production schema without the new entitlement API', async () => {
+test('owner and global admin fail closed without the entitlement API', async () => {
   for (const isAdmin of [false, true]) {
     const fixture = actionHarness({ session: { isAdmin, partnerIds: isAdmin ? [] : [partnerId] }, legacy: true })
-    assert.equal((await fixture.action()).ok, true)
-    assert.deepEqual(fixture.calls.map(call => call.name), ['set_partner_feedback_reward'])
+    assert.equal((await fixture.action()).ok, false)
+    assert.deepEqual(fixture.calls.map(call => call.name), ['get_partner_entitlements'])
   }
 })
 
@@ -143,7 +149,7 @@ test('configuration failure returns an actionable error and no saved confirmatio
   const fixture = actionHarness({ session: { isAdmin: false, partnerIds: [partnerId] }, fail: true })
   const result = await fixture.action()
   assert.equal(result.ok, false)
-  assert.match(result.message, /erneut versuchen/)
+  assert.match(result.message, /gespeichert|erneut versuchen/)
   assert.equal(fixture.revalidated(), false)
 })
 

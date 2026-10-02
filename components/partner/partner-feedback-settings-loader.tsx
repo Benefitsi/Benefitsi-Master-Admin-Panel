@@ -33,6 +33,12 @@ export function PartnerFeedbackSettingsLoader({ partnerId, dealRevision = '' }: 
     return () => { active = false }
   }, [partnerId, dealRevision, attempt])
 
+  useEffect(() => {
+    const refresh = () => setAttempt(value => value + 1)
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [])
+
   if (current && !current.error) {
     return <PartnerFeedbackSettings key={partnerId} partnerId={partnerId} initial={current.initial} />
   }

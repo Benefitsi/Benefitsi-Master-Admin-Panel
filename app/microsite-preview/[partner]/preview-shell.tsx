@@ -121,7 +121,7 @@ export function MicrositePreviewShell({
         <MicrositeIntegrationProvider value={{ commerceActions }}>
         <MicrositeRenderer
           partner={partner}
-          config={displayedConfig}
+          config={{...displayedConfig,mediaPermitted:partner.media_rich_enabled===true}}
           showMockDeals={
             useBuilderDraft &&
             displayedConfig.template !== "restaurant-premium" &&

@@ -10,8 +10,8 @@ import ts from "typescript"
 
 const require = createRequire(import.meta.url)
 const noop = async () => ({ ok: false, message: "Test boundary" })
-function compile(path, boundaries) {
-  const js = ts.transpileModule(readFileSync(new URL(path, import.meta.url), "utf8"), {
+function compile(path, boundaries, testExports = "") {
+  const js = ts.transpileModule(readFileSync(new URL(path, import.meta.url), "utf8") + testExports, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
     fileName: path,
   }).outputText
@@ -46,10 +46,10 @@ function runtime(action = noop, refresh = () => {}) {
 test("the real shared workspace gates both import entry points for partner owners", () => {
   const boundaries = runtime()
   boundaries["@/components/menu-ai-import-dialog"] = compile("../components/menu-ai-import-dialog.tsx", boundaries)
-  boundaries["@/components/partner-menu-import-access"] = compile("../components/partner-menu-import-access.tsx", boundaries)
+  boundaries["@/components/partner/partner-plan-panel"] = {PartnerPlanPanel:()=>null}
   const { PartnerWorkspace } = compile("../app/partner-admin.tsx", boundaries)
   for (const hasMenu of [false, true]) {
-    for (const [adminAccess, enabled, expected] of [[true, false, true], [false, false, false], [false, null, false], [false, true, true]]) {
+    for (const [adminAccess, enabled, expected] of [[true, false, false], [false, false, false], [false, null, false], [false, true, true]]) {
       const partner = {
         id: "partner-a", name: "Test Restaurant", type: "Food & Drink", category: [],
         deals: [], holidays: [], socials: [], reward_milestones: [], staff: [], opening_hours: [],
@@ -62,56 +62,44 @@ test("the real shared workspace gates both import entry points for partner owner
         initialSettingsTab: "menu", portalMode: !adminAccess, adminAccess,
       }))
       assert.equal(html.includes("Karte aus Foto / PDF"), expected, JSON.stringify({ adminAccess, enabled, hasMenu }))
-      assert.equal(html.includes('role="switch"'), adminAccess)
+      assert.equal(html.includes('role="switch"'), false)
     }
   }
 })
 
-async function mount(t, enabled, action) {
-  const dom = new JSDOM('<div id="root"></div>')
-  const previous = new Map()
-  for (const [name, value] of Object.entries({ window: dom.window, document: dom.window.document, IS_REACT_ACT_ENVIRONMENT: true })) {
-    previous.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
-    Object.defineProperty(globalThis, name, { configurable: true, writable: true, value })
-  }
-  let refreshes = 0
-  const { PartnerMenuImportAccess } = compile("../components/partner-menu-import-access.tsx", runtime(action, () => refreshes++))
-  const { createRoot } = await import("react-dom/client")
-  const root = createRoot(document.getElementById("root"))
-  await act(async () => root.render(React.createElement(PartnerMenuImportAccess, { partnerId: "partner-a", enabled })))
-  t.after(async () => {
-    await act(async () => root.unmount())
-    dom.window.close()
-    for (const [name, descriptor] of previous) {
-      if (descriptor) Object.defineProperty(globalThis, name, descriptor)
-      else delete globalThis[name]
-    }
-  })
-  return { button: document.querySelector('[role="switch"]'), document, refreshes: () => refreshes }
-}
-
-test("the access switch displays only confirmed changes and blocks duplicate submissions", async t => {
-  const requests = []
-  let resolve
-  const f = await mount(t, false, form => { requests.push(form); return new Promise(done => { resolve = done }) })
-  await act(async () => { f.button.click(); f.button.click() })
-  assert.equal(requests.length, 1)
-  assert.equal(requests[0].get("partner_id"), "partner-a")
-  assert.equal(requests[0].get("enabled"), "true")
-  assert.equal(f.button.disabled, true)
-  assert.equal(f.button.getAttribute("aria-checked"), "false")
-  await act(async () => resolve({ ok: true, enabled: true, message: "Freigeschaltet" }))
-  assert.equal(f.button.getAttribute("aria-checked"), "true")
-  assert.equal(f.refreshes(), 1)
-  await act(async () => f.button.click())
-  assert.equal(requests[1].get("enabled"), "false")
-  await act(async () => resolve({ ok: false, message: "Nicht gespeichert" }))
-  assert.equal(f.button.getAttribute("aria-checked"), "true")
-  assert.equal(f.document.querySelector('[role="alert"]').textContent, "Nicht gespeichert")
+test("scoped partner team form adds existing accounts by email without a user directory",()=>{
+ const boundaries=runtime();boundaries['@/components/menu-ai-import-dialog']={MenuAiImportDialog:()=>null};boundaries['@/components/partner/partner-plan-panel']={PartnerPlanPanel:()=>null}
+ const {PartnerWorkspace}=compile('../app/partner-admin.tsx',boundaries)
+ const partner={id:'partner-a',name:'Test shop',type:'Food & Drink',category:[],deals:[],holidays:[],socials:[],reward_milestones:[],staff:[],opening_hours:[],menus:[],stamp_progress:[],visits:[],fraud_events:[],microsite:null,team_manage_enabled:true}
+ const html=renderToStaticMarkup(React.createElement(PartnerWorkspace,{partners:[partner],cities:[],owners:[],initialPartnerId:partner.id,initialSettingsTab:'access',portalMode:true,adminAccess:false}))
+ assert.match(html,/type="email"/)
+ assert.match(html,/name="email"/)
+ assert.doesNotMatch(html,/User ID/)
+ partner.staff=[{id:'staff-row',partner_id:'partner-a',user_id:'member',role:'scanner',active:true}]
+ const existingHtml=renderToStaticMarkup(React.createElement(PartnerWorkspace,{partners:[partner],cities:[],owners:[],initialPartnerId:partner.id,initialSettingsTab:'access',portalMode:true,adminAccess:false}))
+ const removal=[...existingHtml.matchAll(/<form[^>]*>[^]*?<\/form>/g)].map(match=>match[0]).find(form=>form.includes('name="id" value="staff-row"'))
+ assert.ok(removal)
+ assert.match(removal,/name="partner_id" value="partner-a"/)
 })
 
-test("an unavailable flag cannot be changed from an unknown state", async t => {
-  const f = await mount(t, null, () => { throw new Error("must not submit") })
-  assert.equal(f.button.disabled, true)
-  assert.match(f.document.querySelector('[role="alert"]').textContent, /nicht geladen/)
+
+test("existing deal editor lets Owner select which excess Free offer to deactivate", async () => {
+ const dom=new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>',{url:'http://localhost'})
+ const previous={window:globalThis.window,document:globalThis.document,HTMLElement:globalThis.HTMLElement,IS_REACT_ACT_ENVIRONMENT:globalThis.IS_REACT_ACT_ENVIRONMENT}
+ Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true})
+ const root=require('react-dom/client').createRoot(document.getElementById('root'))
+ try {
+  const boundaries=runtime();boundaries['@/components/menu-ai-import-dialog']={MenuAiImportDialog:()=>null};boundaries['@/components/partner/partner-plan-panel']={PartnerPlanPanel:()=>null}
+  const {DealsPanel}=compile('../app/partner-admin.tsx',boundaries,'\nexport { DealsPanel };')
+  const partner={id:'synthetic-free',name:'Synthetic Free over limit',visits:[],deals:['keep','selected','other'].map(id=>({id,partner_id:'synthetic-free',type:'discount',discount_type:'percent',discount_value:10,active:true,premium_only:false}))}
+  await act(async()=>root.render(React.createElement(DealsPanel,{partner,embedded:true})))
+  const cards=document.querySelectorAll('[role="button"]');assert.equal(cards.length,3)
+  await act(async()=>cards[1].dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true})))
+  const checkbox=document.querySelector('[role="dialog"] input[name="active"]');assert.ok(checkbox);assert.equal(checkbox.checked,true)
+  await act(async()=>checkbox.click())
+  const form=checkbox.closest('form'),payload=new dom.window.FormData(form)
+  assert.equal(payload.get('id'),'selected');assert.equal(payload.get('partner_id'),'synthetic-free');assert.equal(payload.has('active'),false)
+  assert.equal(partner.deals.length,3);assert.equal(partner.deals[0].active,true);assert.equal(partner.deals[2].active,true)
+  // This verifies actual selection/form serialization; authenticated DB behavior is the PG release test.
+ } finally {await act(async()=>root.unmount());Object.assign(globalThis,previous);dom.window.close()}
 })

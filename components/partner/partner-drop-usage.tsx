@@ -1,0 +1,17 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { readDealDropUsage, type DealDropUsage } from '@/lib/partners/entitlements'
+export async function PartnerDropUsage({ client, partnerId }: { client: SupabaseClient; partnerId: string }) {
+  let usage: DealDropUsage
+  try {
+    usage = await readDealDropUsage(client, partnerId)
+  } catch {
+    return <p role="alert">Drop-Verbrauch konnte nicht geladen werden. Bitte erneut laden; die Veröffentlichung wird serverseitig geprüft.</p>
+  }
+  const date = (value: string) => new Intl.DateTimeFormat('de-DE', {timeZone:'Europe/Berlin', dateStyle:'medium', timeStyle:'short'}).format(new Date(value))
+  return <section className="mb-5 rounded-xl border bg-white p-5" aria-label="Deal-Drop-Verbrauch">
+    <h2 className="font-bold">Deal Drops · Kalendermonat Europe/Berlin</h2>
+    <p>{usage.limit === null ? `${usage.used} veröffentlicht · ohne Monatslimit${usage.provisional ? ' (vorläufig, konfigurierbar)' : ''}` : `${usage.used} von ${usage.limit} genutzt`}</p>
+    <p>{usage.limit === 0 ? 'Unter dem aktuellen Kontingent sind keine Veröffentlichungen möglich.' : usage.next_available_at ? 'Monatskontingent ausgeschöpft; im neuen Zeitraum wird die Veröffentlichung erneut geprüft.' : 'Nach aktuellem Monatskontingent verfügbar; Veröffentlichung wird serverseitig geprüft.'} Neuer Monat ab {date(usage.resets_at)}.</p>
+    <p>Entwürfe zählen nicht. Die aktive Veröffentlichung zählt sofort, auch bei späterem Gültigkeitsbeginn. Pausieren oder Löschen erstattet keinen Platz. Normale Angebote und Happy Hour bleiben unbegrenzt.</p>
+  </section>
+}

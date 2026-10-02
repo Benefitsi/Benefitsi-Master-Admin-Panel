@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useId, useRef, useState, useTransition, type FormEvent } from "react"
 import { AlertCircle, ArrowUpRight, Camera, ChevronDown, ChevronLeft, ChevronRight, Info, List, Pencil, ScanText, Trash2, X, ZoomIn, ZoomOut } from "lucide-react"
 import { useAdminLanguage } from "@/app/admin-language"
-import { confirmAIMenuImport, previewAIMenuImport } from "@/app/partner-actions"
+import { confirmAIMenuImport, previewAIMenuImport, recoverAIMenuImport } from "@/app/partner-actions"
 import { LoadingSpinner } from "@/components/loading-ui"
 import type { AiMenuDraft } from "@/lib/menu-ai-types"
 
@@ -231,8 +231,8 @@ export function MenuAiImportDialog({
     replaceSources([...sourcesRef.current, ...files.map((file) => ({ file, url: URL.createObjectURL(file) }))])
   }
 
-  function preview() {
-    if (!sources.length || busyRef.current) return
+  function preview(recover = false) {
+    if ((!recover && !sources.length) || busyRef.current) return
     const version = ++requestVersion.current
     busyRef.current = "preview"
     setBusy("preview")
@@ -243,7 +243,7 @@ export function MenuAiImportDialog({
     sources.forEach((source) => form.append("menu_source", source.file))
     startTransition(async () => {
       try {
-        const result = await previewAIMenuImport(form)
+        const result = await (recover ? recoverAIMenuImport(form) : previewAIMenuImport(form))
         if (version !== requestVersion.current) return
         if (!result.ok || !result.draft) {
           setError(result.message || text("Die Karte konnte nicht erkannt werden. Bitte ein schärferes Foto versuchen.", "The menu could not be recognized. Try a clearer photo."))
@@ -383,6 +383,7 @@ export function MenuAiImportDialog({
       className={`fixed inset-0 m-auto max-h-[94dvh] w-[calc(100%-1rem)] overflow-hidden rounded-2xl border border-zinc-200 bg-white p-0 text-zinc-900 shadow-2xl open:flex open:flex-col backdrop:bg-[#061829]/65 backdrop:backdrop-blur-sm sm:w-[calc(100%-2rem)] ${draft ? "h-[94dvh] max-w-[1600px]" : "max-w-2xl"}`}
     >
       {open ? <>
+        <button type="button" disabled={!!busy} onClick={()=>preview(true)} className="m-3 rounded-lg border p-2 text-sm">Letztes Importergebnis wiederherstellen (ohne neue KI-Anfrage)</button>
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-200 bg-white px-4 py-3 sm:px-5">
           <div>
             <h3 ref={heading} tabIndex={-1} id={`${id}-title`} className="text-lg font-bold text-zinc-950 outline-none">{text("Speisekarte digitalisieren", "Digitize your menu")}</h3>
@@ -481,7 +482,7 @@ export function MenuAiImportDialog({
           <p className="text-xs leading-5 text-zinc-500">{text("Mit „Vorschau erstellen“ werden die Dateien auf dem Benefitsi-M1 ausgelesen. Nur der erkannte Text wird vom Hermes-Menü-Agenten zur Strukturierung an MiniMax gesendet. Es wird noch nichts in deiner Speisekarte gespeichert.", "Selecting “Create preview” reads the files on the Benefitsi M1. The Hermes menu agent sends only the recognized text to MiniMax for structuring. Nothing is saved to your menu yet.")}</p>
           {error ? <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p> : null}
           {uncertainSave ? <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{text("Bitte lade die Seite neu und prüfe den letzten Import, bevor du eine weitere Karte importierst.", "Reload the page and check the last import before importing another menu.")}</p> : null}
-          <div className="flex flex-wrap justify-end gap-3"><button type="button" className={secondaryClass} onClick={close}>{text("Abbrechen", "Cancel")}</button><button type="button" className={primaryClass} disabled={!sources.length || Boolean(busy) || uncertainSave} onClick={preview}>{busy === "preview" ? <><LoadingSpinner className="size-4" />{text("Wird erkannt …", "Recognizing…")}</> : text("Vorschau erstellen", "Create preview")}</button></div>
+          <div className="flex flex-wrap justify-end gap-3"><button type="button" className={secondaryClass} onClick={close}>{text("Abbrechen", "Cancel")}</button><button type="button" className={primaryClass} disabled={!sources.length || Boolean(busy) || uncertainSave} onClick={()=>preview()}>{busy === "preview" ? <><LoadingSpinner className="size-4" />{text("Wird erkannt …", "Recognizing…")}</> : text("Vorschau erstellen", "Create preview")}</button></div>
           {busy === "preview" ? <p role="status" className="text-sm text-zinc-600">{text("Die Karte wird gelesen. Das kann einen Moment dauern. Du kannst die Vorschau jederzeit abbrechen.", "Reading the menu may take a moment. You can cancel the preview at any time.")}</p> : null}
         </div>}
       </> : null}

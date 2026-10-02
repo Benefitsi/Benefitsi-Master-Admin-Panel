@@ -1,0 +1,988 @@
+{
+  "fixture_version": "visual-demo-2026-10-01",
+  "description": "Manually authored synthetic visual demonstration, not DB output or real business data. Same unchanged aggregate schema; 7 day visit sum = 280. Separate from canonical release fixture. No production fallback.",
+  "scenarios": {
+    "demo": {
+      "home": {
+        "as_of": "2026-09-30T17:46:31.363838+02:00",
+        "period": {
+          "to": "2026-09-30T17:46:31.363838+02:00",
+          "from": "2026-09-30T00:00:00+02:00",
+          "timezone": "Europe/Berlin",
+          "semantics": "[from,to)"
+        },
+        "series": {
+          "daily": {
+            "status": "empty",
+            "buckets": [
+              {
+                "start": "2026-09-30T00:00:00+02:00",
+                "visits": 0
+              }
+            ]
+          },
+          "weekly": {
+            "status": "empty",
+            "buckets": [
+              {
+                "start": "2026-09-28T00:00:00+02:00",
+                "visits": 0
+              }
+            ]
+          },
+          "monthly": {
+            "status": "empty",
+            "buckets": [
+              {
+                "start": "2026-09-01T00:00:00+02:00",
+                "visits": 0
+              }
+            ]
+          }
+        },
+        "metrics": {
+          "guests": {
+            "value": 0,
+            "status": "empty",
+            "sample_size": 0
+          },
+          "stamps": {
+            "value": 0,
+            "status": "empty",
+            "sample_size": 0
+          },
+          "visits": {
+            "value": 0,
+            "status": "empty",
+            "sample_size": 0
+          },
+          "feedback": {
+            "scope": {
+              "to": "2026-09-28T00:00:00+02:00",
+              "from": "2026-09-21T00:00:00+02:00",
+              "kind": "latest_completed_iso_week",
+              "timezone": "Europe/Berlin"
+            },
+            "issues": {
+              "none": 10
+            },
+            "status": "ok",
+            "clarity": {
+              "clear": 10
+            },
+            "sample_size": 10,
+            "average_rating": 4.0,
+            "response_count": 10,
+            "categories_status": "ok"
+          },
+          "open_cards": {
+            "scope": "current_stock",
+            "value": 1,
+            "status": "ok",
+            "sample_size": 1
+          },
+          "return_30d": {
+            "scope": "whole_matured_iso_cohort_weeks",
+            "status": "not_yet_evaluable",
+            "sample_size": 0
+          },
+          "redemptions": {
+            "value": 0,
+            "status": "empty",
+            "sample_size": 0
+          },
+          "offer_conversion": {
+            "reason": "denominator_not_instrumented",
+            "status": "unavailable"
+          },
+          "returning_guests": {
+            "value": 0,
+            "status": "empty",
+            "sample_size": 0
+          },
+          "first_time_guests": {
+            "value": 0,
+            "status": "empty",
+            "sample_size": 0
+          },
+          "reward_redemptions": {
+            "reason": "reward_claim_coverage_unverified",
+            "status": "unavailable"
+          },
+          "card_completion_rate": {
+            "reason": "card_cohort_not_instrumented",
+            "status": "unavailable"
+          },
+          "returning_guest_share": {
+            "status": "no_data",
+            "sample_size": 0
+          }
+        },
+        "breakdowns": {
+          "scope": "whole_completed_iso_weeks",
+          "weeks": [],
+          "status": "not_yet_evaluable"
+        },
+        "comparison": {
+          "guests": {
+            "status": "no_comparison",
+            "previous": 0,
+            "absolute_change": 0
+          },
+          "stamps": {
+            "status": "no_comparison",
+            "previous": 0,
+            "absolute_change": 0
+          },
+          "visits": {
+            "status": "no_comparison",
+            "previous": 0,
+            "absolute_change": 0
+          },
+          "redemptions": {
+            "status": "no_comparison",
+            "previous": 0,
+            "absolute_change": 0
+          },
+          "returning_guests": {
+            "status": "no_comparison",
+            "previous": 0,
+            "absolute_change": 0
+          },
+          "first_time_guests": {
+            "status": "no_comparison",
+            "previous": 0,
+            "absolute_change": 0
+          }
+        },
+        "partner_id": "98eca243-4116-472d-a4ee-01063a4a2e02",
+        "definitions": {
+          "retention": "return_on_local_days_1_through_30_after_first_visit",
+          "comparison": "equal_local_wall_clock_duration",
+          "population": "reportable_completed_visits",
+          "feedback_scope": "latest_completed_iso_week",
+          "fine_segment_scope": "whole_completed_iso_weeks",
+          "segment_min_guests": 10,
+          "feedback_min_guests": 5,
+          "first_and_returning_can_overlap": true
+        },
+        "source_status": {
+          "stamps": "available",
+          "visits": "available",
+          "feedback": "available",
+          "open_cards": "available",
+          "redemptions": "available",
+          "reward_redemptions": "unavailable"
+        },
+        "comparison_period": {
+          "to": "2026-09-30T00:00:00+02:00",
+          "from": "2026-09-29T06:13:28.636162+02:00",
+          "status": "ok",
+          "timezone": "Europe/Berlin"
+        },
+        "definition_version": "partner-dashboard-v1",
+        "suppression_reasons": [
+          {
+            "metric": "return_30d",
+            "reason": "not_yet_evaluable",
+            "status": "not_yet_evaluable"
+          },
+          {
+            "metric": "offer_conversion",
+            "reason": "denominator_not_instrumented",
+            "status": "unavailable"
+          },
+          {
+            "metric": "reward_redemptions",
+            "reason": "reward_claim_coverage_unverified",
+            "status": "unavailable"
+          },
+          {
+            "metric": "card_completion_rate",
+            "reason": "card_cohort_not_instrumented",
+            "status": "unavailable"
+          }
+        ]
+      },
+      "dashboard": {
+        "as_of": "2026-09-28T10:00:00+02:00",
+        "period": {
+          "from": "2026-09-21T00:00:00+02:00",
+          "to": "2026-09-28T00:00:00+02:00",
+          "timezone": "Europe/Berlin",
+          "semantics": "[from,to)"
+        },
+        "series": {
+          "daily": {
+            "status": "ok",
+            "buckets": [
+              {
+                "start": "2026-09-21T00:00:00+02:00",
+                "visits": 24
+              },
+              {
+                "start": "2026-09-22T00:00:00+02:00",
+                "visits": 36
+              },
+              {
+                "start": "2026-09-23T00:00:00+02:00",
+                "visits": 48
+              },
+              {
+                "start": "2026-09-24T00:00:00+02:00",
+                "visits": 32
+              },
+              {
+                "start": "2026-09-25T00:00:00+02:00",
+                "visits": 60
+              },
+              {
+                "start": "2026-09-26T00:00:00+02:00",
+                "visits": 44
+              },
+              {
+                "start": "2026-09-27T00:00:00+02:00",
+                "visits": 36
+              }
+            ]
+          },
+          "weekly": {
+            "status": "ok",
+            "buckets": [
+              {
+                "start": "2026-09-21T00:00:00+02:00",
+                "visits": 280
+              }
+            ]
+          },
+          "monthly": {
+            "status": "ok",
+            "buckets": [
+              {
+                "start": "2026-09-01T00:00:00+02:00",
+                "visits": 280
+              }
+            ]
+          }
+        },
+        "metrics": {
+          "guests": {
+            "status": "ok",
+            "value": 40,
+            "sample_size": 40
+          },
+          "stamps": {
+            "status": "ok",
+            "value": 280,
+            "sample_size": 40
+          },
+          "visits": {
+            "status": "ok",
+            "value": 280,
+            "sample_size": 40
+          },
+          "feedback": {
+            "scope": {
+              "to": "2026-09-28T00:00:00+02:00",
+              "from": "2026-09-21T00:00:00+02:00",
+              "kind": "latest_completed_iso_week",
+              "timezone": "Europe/Berlin"
+            },
+            "issues": {
+              "none": 24
+            },
+            "status": "ok",
+            "clarity": {
+              "clear": 14,
+              "mostly_clear": 10
+            },
+            "sample_size": 24,
+            "average_rating": 4.3,
+            "response_count": 24,
+            "categories_status": "ok"
+          },
+          "open_cards": {
+            "scope": "current_stock",
+            "value": 1,
+            "status": "ok",
+            "sample_size": 1
+          },
+          "return_30d": {
+            "scope": "whole_matured_iso_cohort_weeks",
+            "status": "not_yet_evaluable",
+            "sample_size": 0
+          },
+          "redemptions": {
+            "status": "ok",
+            "value": 14,
+            "sample_size": 40
+          },
+          "offer_conversion": {
+            "reason": "denominator_not_instrumented",
+            "status": "unavailable"
+          },
+          "returning_guests": {
+            "status": "ok",
+            "value": 12,
+            "sample_size": 40
+          },
+          "first_time_guests": {
+            "status": "ok",
+            "value": 34,
+            "sample_size": 40
+          },
+          "reward_redemptions": {
+            "reason": "reward_claim_coverage_unverified",
+            "status": "unavailable"
+          },
+          "card_completion_rate": {
+            "reason": "card_cohort_not_instrumented",
+            "status": "unavailable"
+          },
+          "returning_guest_share": {
+            "status": "ok",
+            "value": 0.3,
+            "sample_size": 40
+          }
+        },
+        "breakdowns": {
+          "status": "ok",
+          "weeks": [
+            {
+              "from": "2026-09-21T00:00:00+02:00",
+              "to": "2026-09-28T00:00:00+02:00",
+              "peak_times": {
+                "status": "ok",
+                "granularity": "weekday",
+                "buckets": [
+                  {
+                    "weekday": 1,
+                    "visits": 24,
+                    "sample_size": 10
+                  },
+                  {
+                    "weekday": 2,
+                    "visits": 36,
+                    "sample_size": 10
+                  },
+                  {
+                    "weekday": 3,
+                    "visits": 48,
+                    "sample_size": 10
+                  },
+                  {
+                    "weekday": 4,
+                    "visits": 32,
+                    "sample_size": 10
+                  },
+                  {
+                    "weekday": 5,
+                    "visits": 60,
+                    "sample_size": 10
+                  },
+                  {
+                    "weekday": 6,
+                    "visits": 44,
+                    "sample_size": 10
+                  },
+                  {
+                    "weekday": 7,
+                    "visits": 36,
+                    "sample_size": 10
+                  }
+                ]
+              },
+              "visit_frequency": {
+                "status": "suppressed"
+              },
+              "offers": {
+                "status": "suppressed"
+              }
+            }
+          ]
+        },
+        "comparison": {},
+        "partner_id": "98eca243-4116-472d-a4ee-01063a4a2e02",
+        "definitions": {
+          "retention": "return_on_local_days_1_through_30_after_first_visit",
+          "comparison": "equal_local_wall_clock_duration",
+          "population": "reportable_completed_visits",
+          "feedback_scope": "latest_completed_iso_week",
+          "fine_segment_scope": "whole_completed_iso_weeks",
+          "segment_min_guests": 10,
+          "feedback_min_guests": 5,
+          "first_and_returning_can_overlap": true
+        },
+        "source_status": {
+          "stamps": "available",
+          "visits": "available",
+          "feedback": "available",
+          "open_cards": "available",
+          "redemptions": "available",
+          "reward_redemptions": "unavailable"
+        },
+        "comparison_period": {},
+        "definition_version": "partner-dashboard-v1",
+        "suppression_reasons": []
+      },
+      "billing": {
+        "usage": [],
+        "addons": [],
+        "catalog": {
+          "plans": [
+            {
+              "limits": {
+                "team_members": 3,
+                "active_offers": 1,
+                "analytics_days": 30,
+                "menu_ai_imports_monthly": 0
+              },
+              "version": 1,
+              "features": {
+                "commerce": false,
+                "media.rich": false,
+                "seo.monitor": false,
+                "team.manage": true,
+                "menu.ai_import": false,
+                "analytics.basic": true,
+                "analytics.export": false,
+                "microsite.publish": false,
+                "analytics.advanced": false
+              },
+              "plan_code": "free"
+            },
+            {
+              "limits": {
+                "team_members": 10,
+                "active_offers": 10,
+                "analytics_days": 365,
+                "menu_ai_imports_monthly": 2
+              },
+              "version": 1,
+              "features": {
+                "commerce": false,
+                "media.rich": true,
+                "seo.monitor": false,
+                "team.manage": true,
+                "menu.ai_import": true,
+                "analytics.basic": true,
+                "analytics.export": true,
+                "microsite.publish": true,
+                "analytics.advanced": true
+              },
+              "plan_code": "pro"
+            }
+          ],
+          "offers": [
+            {
+              "status": "published",
+              "version": 1,
+              "currency": "eur",
+              "plan_code": null,
+              "addon_code": "commerce",
+              "offer_code": "commerce",
+              "valid_from": "2026-09-30T17:46:29.619952+02:00",
+              "unit_amount": 1490,
+              "valid_until": null,
+              "plan_version": null,
+              "setup_amount": 0,
+              "tax_behavior": "exclusive",
+              "billing_interval": "month"
+            },
+            {
+              "status": "published",
+              "version": 1,
+              "currency": "eur",
+              "plan_code": "pro",
+              "addon_code": null,
+              "offer_code": "founder",
+              "valid_from": "2026-09-30T17:46:29.619952+02:00",
+              "unit_amount": 1990,
+              "valid_until": null,
+              "plan_version": 1,
+              "setup_amount": 0,
+              "tax_behavior": "exclusive",
+              "billing_interval": "month"
+            },
+            {
+              "status": "published",
+              "version": 1,
+              "currency": "eur",
+              "plan_code": "pro",
+              "addon_code": null,
+              "offer_code": "founder_annual",
+              "valid_from": "2026-09-30T17:46:29.836236+02:00",
+              "unit_amount": 19900,
+              "valid_until": null,
+              "plan_version": 1,
+              "setup_amount": 0,
+              "tax_behavior": "exclusive",
+              "billing_interval": "year"
+            },
+            {
+              "status": "published",
+              "version": 1,
+              "currency": "eur",
+              "plan_code": null,
+              "addon_code": "seo.monitor",
+              "offer_code": "seo",
+              "valid_from": "2026-09-30T17:46:29.619952+02:00",
+              "unit_amount": 1990,
+              "valid_until": null,
+              "plan_version": null,
+              "setup_amount": 4900,
+              "tax_behavior": "exclusive",
+              "billing_interval": "month"
+            },
+            {
+              "status": "published",
+              "version": 1,
+              "currency": "eur",
+              "plan_code": "pro",
+              "addon_code": null,
+              "offer_code": "standard",
+              "valid_from": "2026-09-30T17:46:29.619952+02:00",
+              "unit_amount": 2990,
+              "valid_until": null,
+              "plan_version": 1,
+              "setup_amount": 0,
+              "tax_behavior": "exclusive",
+              "billing_interval": "month"
+            }
+          ],
+          "founder_terms": {
+            "trial_months": 6,
+            "campaign_city": "Annweiler",
+            "annual_renewal": "yearly",
+            "monthly_renewal": "monthly_after_minimum",
+            "trial_start_rule": "subscription_activation",
+            "campaign_capacity": 10,
+            "trial_cancellation": "monthly_activation_anchor",
+            "paid_minimum_anchor": "trial_end",
+            "paid_minimum_months": 12
+          },
+          "future_modules": [
+            {
+              "code": "extra_ai",
+              "label": "Zusatzimports",
+              "imports": 5,
+              "purchasable": false,
+              "unit_amount": 990
+            },
+            {
+              "code": "sponsored",
+              "days": 7,
+              "label": "Sponsored-Platzierung",
+              "purchasable": false,
+              "unit_amount": 990
+            },
+            {
+              "code": "lucky_scan",
+              "label": "Lucky Scan",
+              "purchasable": false,
+              "unit_amount": null
+            }
+          ],
+          "schema_version": 1,
+          "catalog_version": "2026-09-30.1"
+        },
+        "entitlements": {
+          "role": "owner",
+          "state": "subscription",
+          "limits": {
+            "team_members": 10,
+            "active_offers": 10,
+            "analytics_days": 365,
+            "menu_ai_imports_monthly": 2
+          },
+          "version": "da5b460ee5ec323bc66157518aedb8e4",
+          "features": {
+            "commerce": false,
+            "media.rich": true,
+            "seo.monitor": false,
+            "team.manage": true,
+            "menu.ai_import": false,
+            "analytics.basic": true,
+            "analytics.export": true,
+            "microsite.publish": true,
+            "analytics.advanced": true
+          },
+          "plan_code": "pro",
+          "offer_code": "standard",
+          "partner_id": "98eca243-4116-472d-a4ee-01063a4a2e02",
+          "environment": "live",
+          "valid_until": "2026-10-29T17:46:31.246+01:00",
+          "plan_version": 1,
+          "reason_codes": {
+            "_plan": "subscription",
+            "commerce": "release_blocked",
+            "media.rich": "subscription",
+            "seo.monitor": "release_blocked",
+            "team.manage": "subscription",
+            "menu.ai_import": "verified_cost_required",
+            "analytics.basic": "subscription",
+            "analytics.export": "subscription",
+            "microsite.publish": "subscription",
+            "analytics.advanced": "subscription"
+          },
+          "schema_version": 1
+        },
+        "subscription": {
+          "offer": {
+            "status": "published",
+            "version": 1,
+            "currency": "eur",
+            "plan_code": "pro",
+            "addon_code": null,
+            "offer_code": "standard",
+            "valid_from": "2026-09-30T17:46:29.619952+02:00",
+            "unit_amount": 2990,
+            "valid_until": null,
+            "plan_version": 1,
+            "setup_amount": 0,
+            "tax_behavior": "exclusive",
+            "billing_interval": "month"
+          },
+          "state": "active",
+          "source": "subscription",
+          "trial_end": null,
+          "period_end": "2026-10-29T17:46:31.246+01:00",
+          "grace_until": null,
+          "activated_at": null,
+          "paid_through": "2026-10-30T17:46:31.253713+01:00",
+          "period_start": "2026-09-29T17:46:31.238334+02:00",
+          "payment_status": "paid_through",
+          "cancellation_at": null,
+          "first_payment_at": null,
+          "paid_minimum_end": null,
+          "cancel_at_period_end": false
+        },
+        "schema_version": 1,
+        "pending_founder": null,
+        "billing_recovery": null,
+        "billing_readiness": {
+          "reason": "ready",
+          "enabled": true
+        },
+        "founder_readiness": true,
+        "feature_exceptions": [],
+        "founder_cancellation": null,
+        "founder_activation_review": null
+      },
+      "admin_panel": {
+        "audit": [
+          {
+            "reason": "Authoritative fenced provider snapshot",
+            "source": "billing",
+            "created_at": "2026-09-30T17:46:31.265239+02:00",
+            "object_type": "billing_transition"
+          },
+          {
+            "reason": "Explicit versioned owner agreement",
+            "source": "billing",
+            "created_at": "2026-09-30T17:46:31.208757+02:00",
+            "object_type": "billing_agreement"
+          }
+        ],
+        "plans": [
+          {
+            "limits": {
+              "team_members": 3,
+              "active_offers": 1,
+              "analytics_days": 30,
+              "menu_ai_imports_monthly": 0
+            },
+            "version": 1,
+            "features": {
+              "commerce": false,
+              "media.rich": false,
+              "seo.monitor": false,
+              "team.manage": true,
+              "menu.ai_import": false,
+              "analytics.basic": true,
+              "analytics.export": false,
+              "microsite.publish": false,
+              "analytics.advanced": false
+            },
+            "plan_code": "free"
+          },
+          {
+            "limits": {
+              "team_members": 10,
+              "active_offers": 10,
+              "analytics_days": 365,
+              "menu_ai_imports_monthly": 2
+            },
+            "version": 1,
+            "features": {
+              "commerce": false,
+              "media.rich": true,
+              "seo.monitor": false,
+              "team.manage": true,
+              "menu.ai_import": true,
+              "analytics.basic": true,
+              "analytics.export": true,
+              "microsite.publish": true,
+              "analytics.advanced": true
+            },
+            "plan_code": "pro"
+          }
+        ],
+        "usage": [],
+        "addons": [],
+        "drafts": [],
+        "catalog": {
+          "plans": [
+            {
+              "limits": {
+                "team_members": 3,
+                "active_offers": 1,
+                "analytics_days": 30,
+                "menu_ai_imports_monthly": 0
+              },
+              "version": 1,
+              "features": {
+                "commerce": false,
+                "media.rich": false,
+                "seo.monitor": false,
+                "team.manage": true,
+                "menu.ai_import": false,
+                "analytics.basic": true,
+                "analytics.export": false,
+                "microsite.publish": false,
+                "analytics.advanced": false
+              },
+              "plan_code": "free"
+            },
+            {
+              "limits": {
+                "team_members": 10,
+                "active_offers": 10,
+                "analytics_days": 365,
+                "menu_ai_imports_monthly": 2
+              },
+              "version": 1,
+              "features": {
+                "commerce": false,
+                "media.rich": true,
+                "seo.monitor": false,
+                "team.manage": true,
+                "menu.ai_import": true,
+                "analytics.basic": true,
+                "analytics.export": true,
+                "microsite.publish": true,
+                "analytics.advanced": true
+              },
+              "plan_code": "pro"
+            }
+          ],
+          "offers": [
+            {
+              "status": "published",
+              "version": 1,
+              "currency": "eur",
+              "plan_code": null,
+              "addon_code": "commerce",
+              "offer_code": "commerce",
+              "valid_from": "2026-09-30T17:46:29.619952+02:00",
+              "unit_amount": 1490,
+              "valid_until": null,
+              "plan_version": null,
+              "setup_amount": 0,
+              "tax_behavior": "exclusive",
+              "billing_interval": "month"
+            },
+            {
+              "status": "published",
+              "version": 1,
+              "currency": "eur",
+              "plan_code": "pro",
+              "addon_code": null,
+              "offer_code": "founder",
+              "valid_from": "2026-09-30T17:46:29.619952+02:00",
+              "unit_amount": 1990,
+              "valid_until": null,
+              "plan_version": 1,
+              "setup_amount": 0,
+              "tax_behavior": "exclusive",
+              "billing_interval": "month"
+            },
+            {
+              "status": "published",
+              "version": 1,
+              "currency": "eur",
+              "plan_code": "pro",
+              "addon_code": null,
+              "offer_code": "founder_annual",
+              "valid_from": "2026-09-30T17:46:29.836236+02:00",
+              "unit_amount": 19900,
+              "valid_until": null,
+              "plan_version": 1,
+              "setup_amount": 0,
+              "tax_behavior": "exclusive",
+              "billing_interval": "year"
+            },
+            {
+              "status": "published",
+              "version": 1,
+              "currency": "eur",
+              "plan_code": null,
+              "addon_code": "seo.monitor",
+              "offer_code": "seo",
+              "valid_from": "2026-09-30T17:46:29.619952+02:00",
+              "unit_amount": 1990,
+              "valid_until": null,
+              "plan_version": null,
+              "setup_amount": 4900,
+              "tax_behavior": "exclusive",
+              "billing_interval": "month"
+            },
+            {
+              "status": "published",
+              "version": 1,
+              "currency": "eur",
+              "plan_code": "pro",
+              "addon_code": null,
+              "offer_code": "standard",
+              "valid_from": "2026-09-30T17:46:29.619952+02:00",
+              "unit_amount": 2990,
+              "valid_until": null,
+              "plan_version": 1,
+              "setup_amount": 0,
+              "tax_behavior": "exclusive",
+              "billing_interval": "month"
+            }
+          ],
+          "founder_terms": {
+            "trial_months": 6,
+            "campaign_city": "Annweiler",
+            "annual_renewal": "yearly",
+            "monthly_renewal": "monthly_after_minimum",
+            "trial_start_rule": "subscription_activation",
+            "campaign_capacity": 10,
+            "trial_cancellation": "monthly_activation_anchor",
+            "paid_minimum_anchor": "trial_end",
+            "paid_minimum_months": 12
+          },
+          "future_modules": [
+            {
+              "code": "extra_ai",
+              "label": "Zusatzimports",
+              "imports": 5,
+              "purchasable": false,
+              "unit_amount": 990
+            },
+            {
+              "code": "sponsored",
+              "days": 7,
+              "label": "Sponsored-Platzierung",
+              "purchasable": false,
+              "unit_amount": 990
+            },
+            {
+              "code": "lucky_scan",
+              "label": "Lucky Scan",
+              "purchasable": false,
+              "unit_amount": null
+            }
+          ],
+          "schema_version": 1,
+          "catalog_version": "2026-09-30.1"
+        },
+        "founder": {
+          "admitted": false,
+          "eligible": false,
+          "evidence": null,
+          "decided_at": null,
+          "campaign_city_id": "ed7c9347-4ebd-4854-acde-255d317b1221",
+          "campaign_city_name": "Annweiler"
+        },
+        "archives": [],
+        "overrides": [],
+        "entitlements": {
+          "role": "owner",
+          "state": "subscription",
+          "limits": {
+            "team_members": 10,
+            "active_offers": 10,
+            "analytics_days": 365,
+            "menu_ai_imports_monthly": 2
+          },
+          "version": "da5b460ee5ec323bc66157518aedb8e4",
+          "features": {
+            "commerce": false,
+            "media.rich": true,
+            "seo.monitor": false,
+            "team.manage": true,
+            "menu.ai_import": false,
+            "analytics.basic": true,
+            "analytics.export": true,
+            "microsite.publish": true,
+            "analytics.advanced": true
+          },
+          "plan_code": "pro",
+          "offer_code": "standard",
+          "partner_id": "98eca243-4116-472d-a4ee-01063a4a2e02",
+          "environment": "live",
+          "valid_until": "2026-10-29T17:46:31.246+01:00",
+          "plan_version": 1,
+          "reason_codes": {
+            "_plan": "subscription",
+            "commerce": "release_blocked",
+            "media.rich": "subscription",
+            "seo.monitor": "release_blocked",
+            "team.manage": "subscription",
+            "menu.ai_import": "verified_cost_required",
+            "analytics.basic": "subscription",
+            "analytics.export": "subscription",
+            "microsite.publish": "subscription",
+            "analytics.advanced": "subscription"
+          },
+          "schema_version": 1
+        },
+        "subscription": {
+          "offer": {
+            "status": "published",
+            "version": 1,
+            "currency": "eur",
+            "plan_code": "pro",
+            "addon_code": null,
+            "offer_code": "standard",
+            "valid_from": "2026-09-30T17:46:29.619952+02:00",
+            "unit_amount": 2990,
+            "valid_until": null,
+            "plan_version": 1,
+            "setup_amount": 0,
+            "tax_behavior": "exclusive",
+            "billing_interval": "month"
+          },
+          "state": "active",
+          "source": "subscription",
+          "trial_end": null,
+          "period_end": "2026-10-29T17:46:31.246+01:00",
+          "grace_until": null,
+          "activated_at": null,
+          "paid_through": "2026-10-30T17:46:31.253713+01:00",
+          "period_start": "2026-09-29T17:46:31.238334+02:00",
+          "payment_status": "paid_through",
+          "cancellation_at": null,
+          "first_payment_at": null,
+          "paid_minimum_end": null,
+          "cancel_at_period_end": false
+        },
+        "billing_cases": [],
+        "schema_version": 1,
+        "pending_founder": null,
+        "billing_recovery": null,
+        "billing_readiness": {
+          "reason": "ready",
+          "enabled": true
+        },
+        "founder_readiness": true,
+        "feature_exceptions": [],
+        "founder_cancellation": null,
+        "founder_activation_review": null
+      }
+    }
+  }
+}

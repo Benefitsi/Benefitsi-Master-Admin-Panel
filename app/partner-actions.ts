@@ -68,6 +68,8 @@ import * as menuImport from "@/lib/menu-import.js"
 import * as menuZipImport from "@/lib/menu-zip-import.js"
 import { extractMenuFromFiles, validateReviewedMenuDraft } from "@/lib/menu-ai-import"
 import type { AiMenuDraft } from "@/lib/menu-ai-types"
+import { readEntitlements, setEntitlementOverride } from "@/lib/partners/entitlements"
+import { runMeteredImport } from "@/lib/partners/menu-quota"
 
 const {
   downloadRemoteImage,
@@ -418,7 +420,7 @@ async function authorizePartnerMutation(
   const portalSession = await getPartnerPortalSession(supabase)
 
   if (!portalSession) {
-    return { ok: false, message: "Your session has expired. Please sign in again." }
+    return { ok: false, message: "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an." }
   }
 
   if (!partnerId) {
@@ -426,7 +428,7 @@ async function authorizePartnerMutation(
   }
 
   if (!canManagePartner(portalSession, partnerId)) {
-    return { ok: false, message: "You can only change partner shops that you own." }
+    return { ok: false, message: "Du hast für diesen Betrieb keine Bearbeitungsberechtigung." }
   }
 
   return { ok: true, supabase, portalSession, partnerId }
@@ -442,7 +444,7 @@ async function authorizePartnerRowMutation(
   const portalSession = await getPartnerPortalSession(supabase)
 
   if (!portalSession) {
-    return { ok: false, message: "Your session has expired. Please sign in again." }
+    return { ok: false, message: "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an." }
   }
 
   let partnerId = suppliedPartnerId
@@ -470,7 +472,7 @@ async function authorizePartnerRowMutation(
   }
 
   if (!canManagePartner(portalSession, partnerId)) {
-    return { ok: false, message: "You can only change partner shops that you own." }
+    return { ok: false, message: "Du hast für diesen Betrieb keine Bearbeitungsberechtigung." }
   }
 
   return { ok: true, supabase, portalSession, partnerId }
@@ -486,7 +488,7 @@ async function authorizeMenuMutation(
   const portalSession = await getPartnerPortalSession(supabase)
 
   if (!portalSession) {
-    return { ok: false, message: "Your session has expired. Please sign in again." }
+    return { ok: false, message: "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an." }
   }
 
   let resolvedMenuId = menuId?.trim() || ""
@@ -601,7 +603,7 @@ export async function savePartner(
   const partnerId = isUpdate ? id : createUuidV4()
 
   if (!portalSession) {
-    return { ok: false, message: "Your session has expired. Please sign in again." }
+    return { ok: false, message: "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an." }
   }
 
   let existingPartner: { owner_id?: string | null; is_featured?: boolean | null } | null = null
@@ -1467,10 +1469,41 @@ export async function savePartnerStaff(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
+  const access = await authorizePartnerMutation(stringValue(formData,"partner_id"))
+  if (!access.ok) return {ok:false,message:access.message}
+  const {supabase}=access
+  try { const rights=await readEntitlements(supabase,access.partnerId); if(rights.features["team.manage"]!==true) return {ok:false,message:"Teamverwaltung ist derzeit gesperrt."} }
+  catch { return {ok:false,message:"Teamrechte konnten nicht geprüft werden."} }
+  const email = stringValue(formData,"email").trim().toLowerCase()
+  if (!id && email) {
+    const {error}=await supabase.rpc("add_partner_team_member_by_email",{p_partner_id:access.partnerId,p_email:email,p_role:stringValue(formData,"role")})
+    if(error) return {ok:false,message:error.message.includes("team_members_limit")?"Das Teamkontingent ist ausgeschöpft.":"Teamzugang nicht gespeichert. Bitte registrierte E-Mail, Rolle und Berechtigung prüfen."}
+    revalidatePath("/")
+    revalidatePath("/partner")
+    return {ok:true,message:"Teamzugang für das registrierte Konto gespeichert. Es wurde keine Einladung versendet."}
+  }
+  if (id) {
+    const { data, error } = await supabase.rpc("update_partner_team_member", {
+      p_partner_id: access.partnerId,
+      p_staff_id: id,
+      p_role: stringValue(formData, "role"),
+      p_active: true,
+    })
+    if (error || data !== id) return {
+      ok: false,
+      message: error?.message.includes("team_members_limit")
+        ? "Das Teamkontingent ist ausgeschöpft."
+        : "Teamzugang nicht gespeichert. Bitte Zugriff und Berechtigung prüfen.",
+    }
+    revalidatePath("/")
+    revalidatePath("/partner")
+    return {ok:true,message:"Teamzugang gespeichert."}
+  }
+  if (!access.portalSession.isAdmin) return {ok:false,message:"Bitte die registrierte E-Mail-Adresse angeben."}
   const now = new Date().toISOString()
   const payload = parsePartnerStaffPayload(formData)
+  payload.partner_id = access.partnerId
   const validationMessage = validatePartnerStaffPayload(payload)
 
   if (validationMessage) {
@@ -1480,11 +1513,9 @@ export async function savePartnerStaff(
   const mutationPayload = {
     ...payload,
     updated_at: now,
-    ...(id ? {} : { created_at: now }),
+    created_at: now,
   }
-  const result = id
-    ? await supabase.from("partner_staff").update(mutationPayload).eq("id", id)
-    : await supabase.from("partner_staff").insert(mutationPayload)
+  const result = await supabase.from("partner_staff").insert(mutationPayload)
 
   if (result.error) {
     return { ok: false, message: result.error.message }
@@ -1494,7 +1525,7 @@ export async function savePartnerStaff(
 
   return {
     ok: true,
-    message: id ? "Staff access updated." : "Staff access added.",
+    message: "Staff access added.",
   }
 }
 
@@ -1502,22 +1533,27 @@ export async function deletePartnerStaff(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
-  const { supabase } = await requireAdmin()
   const id = stringValue(formData, "id")
+  const access = await authorizePartnerMutation(stringValue(formData,"partner_id"))
+  if (!access.ok) return {ok:false,message:access.message}
+  const {supabase}=access
+  try { const rights=await readEntitlements(supabase,access.partnerId); if(rights.features["team.manage"]!==true) return {ok:false,message:"Teamverwaltung ist derzeit gesperrt."} }
+  catch { return {ok:false,message:"Teamrechte konnten nicht geprüft werden."} }
 
   if (!id) {
     return { ok: false, message: "Staff access id is required." }
   }
 
-  const result = await supabase.from("partner_staff").delete().eq("id", id)
-
-  if (result.error) {
-    return { ok: false, message: result.error.message }
+  const { data, error } = await supabase.rpc("delete_partner_team_member", {
+    p_partner_id: access.partnerId,
+    p_staff_id: id,
+  })
+  if (error || data !== id) {
+    return {ok:false,message:"Teamzugang nicht entfernt. Bitte Zugriff und Berechtigung prüfen."}
   }
-
   revalidatePath("/")
-
-  return { ok: true, message: "Staff access removed." }
+  revalidatePath("/partner")
+  return {ok:true,message:"Teamzugang entfernt."}
 }
 
 export async function saveOpeningHour(
@@ -2419,19 +2455,10 @@ async function authorizeAIMenuTarget(formData: FormData): Promise<PartnerActionA
   if (partnerId && partnerId !== access.partnerId) {
     return { ok: false, message: "Das Menü gehört nicht zum ausgewählten Partner." }
   }
-  if (!access.portalSession.isAdmin) {
-    const flag = await access.supabase.from("partner_feature_flags")
-      .select("enabled")
-      .eq("partner_id", access.partnerId)
-      .eq("feature_key", "menu_ai_import")
-      .maybeSingle()
-    if (flag.error) {
-      return { ok: false, message: "Die Freischaltung konnte nicht geprüft werden. Bitte später erneut versuchen." }
-    }
-    if (flag.data?.enabled !== true) {
-      return { ok: false, message: "Der Menüimport aus Foto / PDF ist für diesen Partner noch nicht freigeschaltet. Bitte wende dich an das Benefitsi-Team." }
-    }
-  }
+  try {
+    const rights = await readEntitlements(access.supabase, access.partnerId)
+    if (rights.features["menu.ai_import"] !== true) return {ok:false,message:"Der KI-Menüimport ist in deinem aktuellen Tarif nicht verfügbar. Manuelle Menüpflege bleibt möglich."}
+  } catch { return {ok:false,message:"Die Freischaltung konnte nicht geprüft werden. Bitte erneut versuchen."} }
   return { ...access, menuId }
 }
 
@@ -2451,16 +2478,9 @@ export async function setPartnerMenuImportEnabled(
   if (partner.error || !partner.data) return { ok: false, message: "Der Partner konnte nicht gefunden werden." }
 
   const enabled = value === "true"
-  const saved = await access.supabase.from("partner_feature_flags").upsert({
-    partner_id: access.partnerId,
-    feature_key: "menu_ai_import",
-    enabled,
-    updated_at: new Date().toISOString(),
-    updated_by: access.portalSession.user.id,
-  }, { onConflict: "partner_id,feature_key" }).select("enabled").single()
-  if (saved.error || saved.data?.enabled !== enabled) {
-    return { ok: false, message: "Die Freischaltung konnte nicht gespeichert werden. Bitte erneut versuchen." }
-  }
+  try {
+    await setEntitlementOverride(access.supabase,{partnerId:access.partnerId,feature:"menu.ai_import",mode:enabled?"allow":"deny",reason:stringValue(formData,"reason"),until:stringValue(formData,"valid_until")})
+  } catch { return {ok:false,message:"Bitte Grund und zukünftiges Ablaufdatum prüfen. Die Freischaltung wurde nicht gespeichert."} }
   revalidatePath("/")
   revalidatePath("/partner")
   return {
@@ -2481,14 +2501,33 @@ export async function previewAIMenuImport(
     if (!sources.length || !sources.every((source): source is File => source instanceof File && source.size > 0)) {
       return { ok: false, message: "Eine Seite fehlt oder ist leer. Bitte alle Speisekartenseiten erneut auswählen." }
     }
-    const draft = await extractMenuFromFiles(sources, {
+    const config = getSupabaseConfig()
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!config.isConfigured || !serviceKey) return {ok:false,message:"Der KI-Import ist vorübergehend nicht verfügbar."}
+    const worker = createSupabaseClient(config.url, serviceKey, {auth:{persistSession:false,autoRefreshToken:false}})
+    const draft = await runMeteredImport(access.supabase, access.partnerId, randomUUID(), (operationId) => extractMenuFromFiles(sources, {
+      operationId,
       bridgeUrl: process.env.M1_BRIDGE_URL?.trim() ?? "",
       bridgeSecret: process.env.M1_BRIDGE_SECRET?.trim() ?? "",
+    }), async (partnerId,reservationId,success) => {
+      const {error}=await worker.rpc("finish_partner_menu_ai_import",{p_partner_id:partnerId,p_reservation_id:reservationId,p_success:success})
+      if(error) throw new Error("Der Importstatus konnte nicht gespeichert werden. Bitte das Benefitsi-Team kontaktieren.")
     })
     return { ok: true, message: "Erkennung abgeschlossen. Bitte alle Angaben vor dem Übernehmen prüfen.", draft }
   } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : "Die Speisekarte konnte nicht erkannt werden." }
+    return { ok: false, message: error instanceof Error && error.message.includes("quota_exceeded") ? "Dein KI-Importkontingent ist ausgeschöpft. Bitte prüfe Tarif & Module." : error instanceof Error && error.message.includes("feature_denied") ? "Der KI-Import ist aktuell nicht freigeschaltet." : error instanceof Error ? error.message : "Die Speisekarte konnte nicht erkannt werden." }
   }
+}
+
+export async function recoverAIMenuImport(formData: FormData): Promise<{ok:boolean;message:string;draft?:AiMenuDraft}> {
+  const access=await authorizeAIMenuTarget(formData)
+  if(!access.ok) return {ok:false,message:access.message}
+  try {
+    const {data,error}=await access.supabase.rpc("get_partner_menu_ai_recovery",{p_partner_id:access.partnerId})
+    if(error || !data?.reservation_id) return {ok:false,message:"Kein wiederherstellbarer Import vorhanden."}
+    const draft=await extractMenuFromFiles([], {operationId:data.reservation_id,recover:true,bridgeUrl:process.env.M1_BRIDGE_URL?.trim()??"",bridgeSecret:process.env.M1_BRIDGE_SECRET?.trim()??""})
+    return {ok:true,message:"Gespeichertes Ergebnis wiederhergestellt. Bitte vor Veröffentlichung prüfen.",draft}
+  } catch {return {ok:false,message:"Das Ergebnis ist noch nicht bestätigt. Benefitsi muss den offenen Auftrag prüfen; es wird keine neue KI-Anfrage ausgelöst."}}
 }
 
 export async function confirmAIMenuImport(formData: FormData): Promise<PartnerActionState> {

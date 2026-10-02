@@ -1,3 +1,4 @@
+import { readPublicMicrositeSnapshot } from "./public-microsite-contract"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type {
   Deal,
@@ -35,14 +36,8 @@ export async function getPublishedMicrositePage(
   supabase: SupabaseClient,
   slug: string,
 ): Promise<PublishedMicrositePage | null> {
-  const micrositeResult = await supabase
-    .from("microsites")
-    .select(
-      "id,partner_id,slug,subdomain,canonical_url,published_version_id,created_at,updated_at",
-    )
-    .eq("slug", slug)
-    .not("published_version_id", "is", null)
-    .maybeSingle()
+  const result = await supabase.rpc("get_public_microsites_v1", {p_slug:slug,p_include_config:true})
+  const micrositeResult = {error:result.error,data:Array.isArray(result.data) ? result.data[0] : null}
 
   if (micrositeResult.error || !micrositeResult.data) {
     return null
@@ -68,13 +63,7 @@ export async function getPublishedMicrositePage(
         )
         .eq("id", microsite.partner_id)
         .maybeSingle(),
-      supabase
-        .from("microsite_versions")
-        .select("id,microsite_id,version_number,config,status,created_at")
-        .eq("id", microsite.published_version_id)
-        .eq("microsite_id", microsite.id)
-        .eq("status", "published")
-        .maybeSingle(),
+      Promise.resolve({error:null,data:{id:microsite.published_version_id,microsite_id:microsite.id,version_number:1,status:"published",config:micrositeResult.data.config,created_at:microsite.updated_at}}),
       supabase
         .from("deals")
         .select(PUBLIC_DEAL_COLUMNS)
@@ -133,6 +122,7 @@ export async function getPublishedMicrositePage(
     versionResult.error ||
     publicDealsError ||
     !partnerResult.data ||
+    !partnerResult.data.is_active ||
     !versionResult.data
   ) {
     return null
@@ -210,7 +200,7 @@ export async function getPublishedMicrositePage(
   }
 
   const config = sanitizeMicrositeConfig(
-    resolveMicrositeConfig(version.config, annotatedPartner),
+    resolveMicrositeConfig(readPublicMicrositeSnapshot(version.config) ?? version.config, annotatedPartner),
   )
 
   return {

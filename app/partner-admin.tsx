@@ -114,7 +114,7 @@ import { MicrositeReadOnlyNotice } from "@/components/microsite-read-only-notice
 import { useAdminLanguage } from "./admin-language"
 import { LoadingSpinner } from "@/components/loading-ui"
 import { MenuAiImportDialog } from "@/components/menu-ai-import-dialog"
-import { PartnerMenuImportAccess } from "@/components/partner-menu-import-access"
+import { PartnerPlanPanel } from "@/components/partner/partner-plan-panel"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
 
 const initialState: PartnerActionState = {
@@ -410,9 +410,10 @@ type PartnerSettingsTab =
   | "access"
   | "activity"
   | "danger"
+  | "plan"
 
 function isPartnerSettingsTab(value: string | undefined): value is PartnerSettingsTab {
-  return ["details", "deals", "menu", "access", "activity", "danger"].includes(
+  return ["details", "deals", "menu", "access", "activity", "danger", "plan"].includes(
     value ?? "",
   )
 }
@@ -485,6 +486,7 @@ const partnerSettingsTabCopy: Record<
   menu: { title: "Menu management", description: "Menu details, categories, items, pricing, images, and display order." },
   access: { title: "Staff access", description: "Manage the staff members who can administer or scan for this partner." },
   activity: { title: "Customer activity", description: "Review stamp-card progress, visits, applied benefits, and redemptions." },
+  plan: { title: "Tarif & Module", description: "Tarif, Preisangebot, Kontingente, befristete Freigaben und Änderungsverlauf." },
   danger: { title: "Delete partner", description: "Permanently remove this partner and its attached records." },
 }
 
@@ -615,7 +617,7 @@ export function PartnerWorkspace({
   return (
     <section id="partners" className="partner-management-brand space-y-3">
       <ToastViewport />
-      <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
+      {!portalMode &&       <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
         <LiveMetric label="Partners" value={partnerCount} />
         <LiveMetric
           label="Active partners"
@@ -628,7 +630,7 @@ export function PartnerWorkspace({
           }
         />
         <LiveMetric
-          label="Featured partners"
+          label={portalMode ? "Featured by Benefitsi" : "Featured partners"}
           value={featuredPartners}
           active={partnerFilter === "featured"}
           onClick={() =>
@@ -638,10 +640,10 @@ export function PartnerWorkspace({
           }
         />
         <LiveMetric label="Benefits" value={dealCount} />
-      </div>
+      </div>}
 
-      <div className="grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]">
-        <aside className="self-start overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]">
+      <div className={portalMode ? "min-w-0" : "grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]"}>
+        {!portalMode &&         <aside className="self-start overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]">
           <div className="border-b border-zinc-200 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -757,7 +759,7 @@ export function PartnerWorkspace({
               </div>
             )}
           </div>
-        </aside>
+        </aside>}
 
         <section className="min-w-0">
           {mode === "create" ? (
@@ -964,7 +966,7 @@ function PartnerDetail({
     requestedTab === "menu" && !partnerTypeSupportsMenu(partner.type)
       ? "details"
       : portalMode &&
-          (requestedTab === "access" ||
+          ((requestedTab === "access" && !partner.team_manage_enabled) || requestedTab === "plan" ||
             requestedTab === "activity" ||
             requestedTab === "danger")
         ? "details"
@@ -980,8 +982,9 @@ function PartnerDetail({
       ? [{ id: "menu" as const, label: "Menu Management", hasRequiredFields: true }]
       : []),
     ...(portalMode
-      ? []
+      ? (partner.team_manage_enabled ? [{id:"access" as const,label:"Team verwalten"}] : [])
       : [
+          {id:"plan" as const,label:"Tarif & Module"},
           { id: "access" as const, label: "Staff Access", hasRequiredFields: true },
           { id: "activity" as const, label: "Customer Activity" },
           { id: "danger" as const, label: "Delete Partner" },
@@ -1009,7 +1012,9 @@ function PartnerDetail({
         title={partner.name || "Untitled partner"}
         description={
           activeView === "settings"
-            ? "Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields."
+            ? portalMode
+              ? "Manage your business information, benefits, menu, opening hours, and media."
+              : "Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields."
             : "Edit the public microsite separately from the partner settings."
         }
         aside={
@@ -1106,6 +1111,7 @@ function PartnerDetail({
                 {activeTabCopy.description}
               </p>
             </header>
+            {settingsTab === "plan" && adminAccess && partner.id ? <PartnerPlanPanel key={partner.id} partnerId={partner.id}/> : null}
             {settingsTab === "details" ? (
               <div className="space-y-3">
                 <PartnerForm
@@ -1137,7 +1143,7 @@ function PartnerDetail({
                 ) : null}
               </div>
             ) : null}
-            {settingsTab === "menu" ? <MenuPanel partner={partner} adminAccess={adminAccess} embedded /> : null}
+            {settingsTab === "menu" ? <MenuPanel partner={partner} embedded /> : null}
             {settingsTab === "access" ? (
               <PartnerStaffPanel partner={partner} users={owners} embedded />
             ) : null}
@@ -2481,11 +2487,13 @@ function PartnerForm({
             name="active"
             defaultChecked={partner ? isPartnerActive(partner) : true}
           />
-          <CheckboxField
-            label="Featured"
-            name="is_featured"
-            defaultChecked={partner?.is_featured ?? false}
-          />
+          {!portalMode ? (
+            <CheckboxField
+              label="Featured"
+              name="is_featured"
+              defaultChecked={partner?.is_featured ?? false}
+            />
+          ) : null}
         </div>
         <TextAreaField
           label="Description"
@@ -7291,7 +7299,7 @@ function PartnerStaffCard({
           >
             {editing ? "Close" : "Edit access"}
           </button>
-          {staff.id ? <DeletePartnerStaffForm staffId={staff.id} /> : null}
+          {staff.id ? <DeletePartnerStaffForm staffId={staff.id} partnerId={partner.id ?? ""} /> : null}
         </div>
       </div>
       {editing ? (
@@ -7338,21 +7346,12 @@ function PartnerStaffForm({
       <input type="hidden" name="id" value={staff?.id ?? ""} />
       <input type="hidden" name="partner_id" value={partner.id ?? ""} />
       <FieldGrid>
-        {userOptions.length ? (
-          <SelectField
-            label="User"
-            name="user_id"
-            defaultValue={staff?.user_id}
-            options={withCurrentOption(userOptions, staff?.user_id)}
-            required
-          />
+        {staff ? (
+          <div><p className="text-sm font-medium">{staff.user_name || staff.user_email || "Teammitglied"}</p><input type="hidden" name="user_id" value={staff.user_id ?? ""}/></div>
+        ) : userOptions.length ? (
+          <SelectField label="User" name="user_id" options={userOptions} required />
         ) : (
-          <TextField
-            label="User ID"
-            name="user_id"
-            defaultValue={staff?.user_id}
-            required
-          />
+          <div><TextField label="Registrierte E-Mail-Adresse" name="email" type="email" required/><p className="mt-2 text-xs leading-5 text-zinc-500">Das Konto muss bereits bei Benefitsi registriert sein. Es wird keine Einladung versendet.</p></div>
         )}
         <SelectField
           label="Role"
@@ -8112,11 +8111,9 @@ function HolidayEditorDialog({
 function MenuPanel({
   partner,
   embedded = false,
-  adminAccess = false,
 }: {
   partner: PartnerWithDeals
   embedded?: boolean
-  adminAccess?: boolean
 }) {
   if (!partnerTypeSupportsMenu(partner.type)) {
     return null
@@ -8124,15 +8121,11 @@ function MenuPanel({
 
   const partnerId = partner.id ?? ""
   const menu = partner.menus[0]
-  const aiImportEnabled = adminAccess || partner.menu_ai_import_enabled === true
+  const aiImportEnabled = partner.menu_ai_import_enabled === true
 
   const content = (
     <div className="space-y-4">
-      {adminAccess && partnerId ? (
-        <PartnerMenuImportAccess key={partnerId} partnerId={partnerId} enabled={partner.menu_ai_import_enabled === null ? null : partner.menu_ai_import_enabled === true} />
-      ) : !aiImportEnabled ? (
-        <InfoNote>Der Menüimport aus Foto / PDF kann vom Benefitsi-Team für deinen Betrieb freigeschaltet werden.</InfoNote>
-      ) : null}
+      {!aiImportEnabled ? <InfoNote>KI-Menüimport ist tarifabhängig. Die manuelle Menüpflege bleibt verfügbar. Freigaben verwaltet das Benefitsi-Team unter Tarif & Module.</InfoNote> : null}
       {partner.menus.length > 1 ? (
         <InfoNote>
           This admin now supports one menu per partner. It is showing the
@@ -10683,7 +10676,7 @@ function DeleteMilestoneForm({
   )
 }
 
-function DeletePartnerStaffForm({ staffId }: { staffId: string }) {
+function DeletePartnerStaffForm({ staffId, partnerId }: { staffId: string; partnerId: string }) {
   const [state, formAction] = useActionState(deletePartnerStaff, initialState)
   const { language } = useAdminLanguage()
 
@@ -10703,6 +10696,7 @@ function DeletePartnerStaffForm({ staffId }: { staffId: string }) {
       }}
     >
       <input type="hidden" name="id" value={staffId} />
+      <input type="hidden" name="partner_id" value={partnerId} />
       <ActionMessage state={state} />
       <SubmitButton
         label="Remove"

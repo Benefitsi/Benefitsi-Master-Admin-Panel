@@ -1,5 +1,7 @@
 "use server"
 
+import {validateRichMedia} from '@/lib/microsite-rich-media'
+
 import { randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -179,9 +181,11 @@ async function persistMicrositeVersion(
 
   if (intent === "publish") {
     const capabilityBlockers = publicMicrositePublishBlockers(config)
+    if(stringValue(formData,"rich_media_url") && !config.richMedia) capabilityBlockers.push("Einblicke: ungültige Medienquelle oder Poster")
     if (!fitsPublicMicrositeDatabaseLimit({ ...config, publicSnapshot: createPublicMicrositeSnapshot(config) })) {
       capabilityBlockers.unshift(PUBLIC_CONFIG_SIZE_MESSAGE)
     }
+    if(stringValue(formData,"rich_tour_url") && !config.richMediaTour) capabilityBlockers.push("Einblicke: ungültige zusätzliche Tourquelle")
     const requestedConfig = parseJson(stringValue(formData, "existing_config")) as { template?: unknown } | null
     if (requestedConfig?.template && requestedConfig.template !== config.template) {
       capabilityBlockers.unshift(`Template „${String(requestedConfig.template)}“: unbekanntes öffentliches Template`)
@@ -263,6 +267,7 @@ async function persistMicrositeVersion(
       microsite_id: microsite.id,
       version_number: nextVersion.number,
       config: storedConfig,
+      created_by: access.actorId,
       status,
     })
 
@@ -472,7 +477,7 @@ async function getFullPartnerForReadiness(
 }
 
 async function authorizeMicrositeEditor(partnerId: string): Promise<
-  | { ok: true; supabase: SupabaseClient }
+  | { ok: true; supabase: SupabaseClient; actorId:string }
   | { ok: false; state: MicrositeActionState }
 > {
   const supabase = await createClient()
@@ -489,7 +494,7 @@ async function authorizeMicrositeEditor(partnerId: string): Promise<
   }
 
   if (canEditPartnerMicrosite(portalSession, partnerId)) {
-    return { ok: true, supabase }
+    return { ok: true, supabase, actorId:portalSession.user.id }
   }
 
   return {
@@ -583,6 +588,9 @@ function createConfigFromForm(formData: FormData, partner: Partner): MicrositeCo
   const base = resolveMicrositeConfig(previousConfig, partner)
   const candidate = {
     ...base,
+    richMedia: formData.has("rich_media_url") ? validateRichMedia({kind:stringValue(formData,"rich_media_kind"),url:stringValue(formData,"rich_media_url"),poster:stringValue(formData,"rich_media_poster"),title:stringValue(formData,"rich_media_title"),description:stringValue(formData,"rich_media_description"),rightsConfirmed:stringValue(formData,"rich_media_rights")==="true",approved:stringValue(formData,"rich_media_approved")==="true"}) : base.richMedia,
+    richMediaTour: formData.has("rich_tour_url") ? validateRichMedia({kind:stringValue(formData,"rich_tour_kind"),url:stringValue(formData,"rich_tour_url"),poster:stringValue(formData,"rich_tour_poster"),title:stringValue(formData,"rich_tour_title"),description:stringValue(formData,"rich_tour_description"),rightsConfirmed:stringValue(formData,"rich_tour_rights")==="true",approved:stringValue(formData,"rich_tour_approved")==="true"}) : base.richMediaTour,
+    mediaPermitted: false,
     branding: {
       ...base.branding,
       paletteMode:

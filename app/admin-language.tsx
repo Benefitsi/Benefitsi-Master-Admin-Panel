@@ -19,6 +19,7 @@ const translations = [
   ["Partners", "Partner"],
   ["Active partners", "Aktive Partner"],
   ["Featured partners", "Hervorgehobene Partner"],
+  ["Featured by Benefitsi", "Von Benefitsi hervorgehoben"],
   ["Select a partner to edit.", "Wähle einen Partner zur Bearbeitung aus."],
   ["Add", "Hinzufügen"],
   ["Generate with Content-Agent", "Mit dem Content-Agent generieren"],
@@ -243,6 +244,7 @@ const translations = [
   ["Partner profile", "Partnerprofil"],
   ["Hours and loyalty rewards", "Öffnungszeiten und Treuebelohnungen"],
   ["Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields.", "Bearbeite Partnerdaten, Social-Media-Profile, Medien, Belohnungsstufen, Vorteile, Menü, Öffnungszeiten und die Supabase-Zuordnung."],
+  ["Manage your business information, benefits, menu, opening hours, and media.", "Verwalte deine Unternehmensdaten, Vorteile, Speisekarte, Öffnungszeiten und Medien."],
   ["Deals and offers", "Vorteile"],
   ["Menu management", "Menüverwaltung"],
   ["Staff access", "Mitarbeiterzugriff"],
@@ -1528,8 +1530,8 @@ export function isTranslationVariant(value: string, original: string) {
   )
 }
 
-export function AdminLanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<AdminLanguage>("en")
+export function AdminLanguageProvider({ children, initialLanguage = "en", storageKey = STORAGE_KEY }: { children: ReactNode; initialLanguage?: AdminLanguage; storageKey?: string }) {
+  const [language, setLanguageState] = useState<AdminLanguage>(initialLanguage)
   const [preferenceLoaded, setPreferenceLoaded] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const languageRef = useRef(language)
@@ -1540,7 +1542,7 @@ export function AdminLanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      const saved = window.localStorage.getItem(STORAGE_KEY)
+      const saved = window.localStorage.getItem(storageKey)
       if (saved === "en" || saved === "de") {
         setLanguageState(saved)
       }
@@ -1548,13 +1550,13 @@ export function AdminLanguageProvider({ children }: { children: ReactNode }) {
     }, 0)
 
     return () => window.clearTimeout(timeout)
-  }, [])
+  }, [storageKey])
 
   useEffect(() => {
     if (!preferenceLoaded) return
 
     languageRef.current = language
-    window.localStorage.setItem(STORAGE_KEY, language)
+    window.localStorage.setItem(storageKey, language)
     document.documentElement.lang = language
 
     const root = rootRef.current
@@ -1629,7 +1631,7 @@ export function AdminLanguageProvider({ children }: { children: ReactNode }) {
     observer.observe(root, { childList: true, characterData: true, subtree: true })
 
     return () => observer.disconnect()
-  }, [language, preferenceLoaded])
+  }, [language, preferenceLoaded, storageKey])
 
   const setLanguage = (nextLanguage: AdminLanguage) => {
     setLanguageState(nextLanguage)

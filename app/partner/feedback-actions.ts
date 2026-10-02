@@ -22,8 +22,7 @@ export async function updateFeedbackReward(
     const session = await getPartnerPortalSession(client)
     if (!session || (!session.isAdmin && !session.partnerIds.includes(partnerId)))
       return { ok: false, message: 'Bitte mit einem berechtigten Partnerkonto anmelden.' }
-    // This session-scoped RPC authorizes owners, global admins and current Pro
-    // team admins. Its legacy owner/admin path also works before the plan rollout.
+    // Re-read capability and management rights in saveFeedbackSettings on every mutation.
     const settings = await saveFeedbackSettings(client, {
       partnerId,
       enabled: form.get('enabled') === 'on',
@@ -31,7 +30,7 @@ export async function updateFeedbackReward(
     })
     revalidatePath('/partner')
     return { ok: true, message: settings.enabled ? 'Feedback-Belohnung ist aktiviert.' : 'Feedback-Belohnung ist ausgeschaltet.', settings }
-  } catch {
-    return { ok: false, message: 'Die Einstellung konnte nicht gespeichert werden. Bitte Berechtigung und Gültigkeit des Vorteils prüfen und erneut versuchen.' }
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Die Einstellung konnte nicht gespeichert werden. Bitte Berechtigung und Gültigkeit des Vorteils prüfen und erneut versuchen.' }
   }
 }

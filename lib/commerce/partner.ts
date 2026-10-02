@@ -22,7 +22,9 @@ export async function commercePartner(providerId?:string) {
   if(!session.isAdmin) partnerQuery=partnerQuery.in('id',session.ownedPartnerIds)
   const partnerResult=await partnerQuery
   if(partnerResult.error) throw new Error('partners_failed')
-  return {session,admin,providers,provider,partners:partnerResult.data||[]}
+  const rightsResult=provider ? await (await createClient()).rpc('get_partner_entitlements',{p_partner_id:provider.partner_id}) : null
+  const intakeActive=!rightsResult?.error && rightsResult?.data?.features?.commerce===true
+  return {session,admin,providers,provider,partners:partnerResult.data||[],intakeActive}
 }
 export async function commerceDashboard(providerId?:string) {
   const context=await commercePartner(providerId)

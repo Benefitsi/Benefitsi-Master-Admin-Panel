@@ -37,7 +37,7 @@ async function fixture(t, read) {
     '@/lib/supabase/client': { createClient: () => ({ session: 'owner-cookie' }) },
     '@/lib/partners/feedback': { readFeedbackSettings: read },
     '@/components/partner/partner-feedback-settings': { PartnerFeedbackSettings: Card },
-  })
+  }, {window: dom.window})
   return { dom, render: (partnerId, dealRevision = 'initial') => act(async () => root.render(h(Loader, { partnerId, dealRevision }))) }
 }
 
@@ -121,4 +121,16 @@ test('creating the first eligible benefit unlocks the reward setting in the curr
   await ui.render(partnerA, 'first-deal-created')
   assert.equal(document.querySelector('[name="enabled"]').disabled, false)
   assert.match(document.querySelector('select').textContent, /Erster Kaffee/)
+})
+
+test('returning to a downgraded shop replaces controls with the known Pro lock',async t=>{
+ let allowed=true
+ const ui=await fixture(t,async()=>allowed?response(partnerA,'Kaffee'):{available:false,reason:'feedback_pro_required',settings:null})
+ await ui.render(partnerA)
+ assert.ok(document.querySelector('[name="enabled"]'))
+ allowed=false
+ await act(async()=>ui.dom.window.dispatchEvent(new ui.dom.window.Event('focus')))
+ assert.equal(document.querySelector('[name="enabled"]'),null)
+ assert.match(document.body.textContent,/nur mit Pro/)
+ assert.doesNotMatch(document.body.textContent,/erneut versuchen/)
 })

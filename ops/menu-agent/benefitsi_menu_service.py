@@ -153,9 +153,12 @@ def validate_draft(draft):
     return draft
 
 
-def extract_menu(data, *, ocr=None, agent=None):
+def extract_menu(data, *, ocr=None, agent=None, _admitted=False):
+    if isinstance(data, dict) and data.get("schemaVersion") == 2:
+        from bounded_menu_adapter import extract_v2
+        return extract_v2(data)
     files = _files(data)
-    if not _SLOT.acquire(blocking=False):
+    if not _admitted and not _SLOT.acquire(blocking=False):
         raise MenuAgentBusy("Der Menü-Agent ist ausgelastet.")
     try:
         pages, chars = [], 0
@@ -197,4 +200,5 @@ def extract_menu(data, *, ocr=None, agent=None):
         return {"profile": "benefitsi-menu", "task": "extract-menu", "schemaVersion": 1,
                 "requestId": data["requestId"], "draft": draft}
     finally:
-        _SLOT.release()
+        if not _admitted:
+            _SLOT.release()

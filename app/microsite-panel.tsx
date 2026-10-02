@@ -2324,7 +2324,26 @@ export function MicrositePanel({
               </span>
             </div>
           )}
-        </aside>
+        <fieldset className="m-4 space-y-3 rounded-xl border p-4"><legend className="font-semibold">Einblicke · Pro-Medien</legend>
+              <p className="text-xs">Separat produzierte Medien. Aufnahme, Schnitt und Tour-Erstellung sind nicht im Pro-Abo enthalten. Vor Veröffentlichung Quelle ohne Anmeldung, Rechte und Beschriftung prüfen.</p>
+              <label className="block text-sm">Medienart<select name="rich_media_kind" defaultValue={config.richMedia?.kind ?? 'video'}><option value="video">Video / Drohnenvideo (MP4)</option><option value="panorama">Einzelne 360°-Ansicht (Kuula)</option><option value="tour">Mehrteiliger Rundgang (Kuula)</option></select></label>
+              <label className="block text-sm">Titel<input name="rich_media_title" maxLength={120} defaultValue={config.richMedia?.title ?? ''}/></label>
+              <label className="block text-sm">Beschreibung<textarea name="rich_media_description" maxLength={1000} defaultValue={config.richMedia?.description ?? ''}/></label>
+              <label className="block text-sm"><input name="rich_media_rights" type="checkbox" value="true" defaultChecked={config.richMedia?.rightsConfirmed ?? false}/> Nutzungsrechte für öffentliche Wiedergabe bestätigt</label>
+              <label className="block text-sm">Öffentliche Medienquelle<input name="rich_media_url" type="url" defaultValue={config.richMedia?.url ?? ''}/></label>
+              <label className="block text-sm">Poster-URL<input name="rich_media_poster" type="url" defaultValue={config.richMedia?.poster ?? ''}/></label>
+              <label className="block text-sm"><input name="rich_media_approved" type="checkbox" value="true" defaultChecked={config.richMedia?.approved ?? false}/> Inhalt, Nutzungsrechte, Beschriftung und anmeldefreie Erreichbarkeit redaktionell geprüft</label>
+              <p className="text-xs">MP4/Poster: öffentliche benefitsi.de/media/-Quelle. Tour: geprüfter kuula.co/share/-Link. Kein iframe-HTML oder Kamerarohmaterial. Leere Quelle entfernt die Medien aus diesem Entwurf.</p>
+<h3 className="font-semibold">Zusätzliche 360°-Ansicht / Tour zum Video</h3>
+              <label className="block text-sm">Art<select name="rich_tour_kind" defaultValue={config.richMediaTour?.kind ?? 'tour'}><option value="panorama">Einzelne 360°-Ansicht</option><option value="tour">Mehrteiliger Rundgang</option></select></label>
+              <label className="block text-sm">Titel<input name="rich_tour_title" maxLength={120} defaultValue={config.richMediaTour?.title ?? ''}/></label>
+              <label className="block text-sm">Beschreibung<textarea name="rich_tour_description" maxLength={1000} defaultValue={config.richMediaTour?.description ?? ''}/></label>
+              <label className="block text-sm">Kuula-Quelle<input name="rich_tour_url" type="url" defaultValue={config.richMediaTour?.url ?? ''}/></label>
+              <label className="block text-sm">Poster<input name="rich_tour_poster" type="url" defaultValue={config.richMediaTour?.poster ?? ''}/></label>
+              <label className="block text-sm"><input name="rich_tour_rights" type="checkbox" value="true" defaultChecked={config.richMediaTour?.rightsConfirmed ?? false}/> Nutzungsrechte bestätigt</label>
+              <label className="block text-sm"><input name="rich_tour_approved" type="checkbox" value="true" defaultChecked={config.richMediaTour?.approved ?? false}/> Inhalt, Beschriftung und anmeldefreie Erreichbarkeit redaktionell geprüft</label>
+            </fieldset>
+</aside>
 
         <div
           className={`min-w-0 max-w-full overflow-x-hidden bg-zinc-50 ${
@@ -2404,7 +2423,7 @@ export function MicrositePanel({
               <MicrositeIntegrationProvider value={{ commerceActions }}>
         <MicrositeRenderer
                 partner={partner}
-                config={config}
+                config={{...config,mediaPermitted:partner.media_rich_enabled===true}}
                 showAppDownloadPopup={false}
                 showMockDeals={!isOriginalFoodTemplate && config.builder.mockDealsPreview}
               />

@@ -40,7 +40,7 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
   }
 
   const { partner: identifier } = await params
-  const dashboard = await getDashboardData(supabase)
+  const dashboard = await getDashboardData(supabase, {includeActivity: false})
   const visiblePartners = filterPartnersForPortal(dashboard.partners, portalSession)
   const partner = visiblePartners.find(
     (item) =>

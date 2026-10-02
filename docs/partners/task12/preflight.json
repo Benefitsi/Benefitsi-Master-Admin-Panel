@@ -1,0 +1,196 @@
+{
+  "status": "read_only_before_evidence",
+  "provider": {
+    "observed_at": "2026-10-01T18:41:15.023475+00:00",
+    "read_only": true,
+    "account_id": "acct_1T3ZuLH0Ev7iKGq0",
+    "balance_livemode": false,
+    "charges_enabled": false,
+    "inventory": {
+      "clocks": {
+        "count": 0,
+        "has_more": false,
+        "ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "existing_task12_marked": 0
+      },
+      "customers": {
+        "count": 5,
+        "has_more": false,
+        "ids_sha256": "e848d3fec60233a0674fba27b68b7d3de4ee2c81b1a54dd02624d0e5c7961f8d",
+        "existing_task12_marked": 0,
+        "ids_serialization": "SHA-256 of UTF-8 compact JSON.stringify(sorted string ID array), with no whitespace",
+        "legacy_ids_sha256": "96f56f0982c7cace23a014dcb58d97612d945eaf9e2d29ed86ad7e036fd6ebb3",
+        "legacy_ids_serialization": "Python json.dumps(sorted string ID array), default separators with spaces after commas"
+      },
+      "schedules": {
+        "count": 0,
+        "has_more": false,
+        "ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "existing_task12_marked": 0
+      },
+      "subscriptions": {
+        "count": 0,
+        "has_more": false,
+        "ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "existing_task12_marked": 0
+      }
+    }
+  },
+  "local_resource_gate": {
+    "direct_free_space_gib": 42.96,
+    "memory_pressure_level": 2,
+    "watchdog": false
+  },
+  "stage": {
+    "observed_at": "2026-10-01T18:39:00.353156+00:00",
+    "project_scope": "staging_only_read_only",
+    "unchanged_hashes": {
+      "offers": "fd086af356a56bcd0741e7bdf99a6815",
+      "modules": "f97609802853d7c803a232f52f33efff",
+      "runtime": "7474ee4d2a1eb27b96aa138ad9be7c60",
+      "configuration": "6e763f19a882e0dacc65beccfb5bd9ed"
+    },
+    "configuration_written": false,
+    "checkout_enabled": false,
+    "billing_enabled": false,
+    "terms_ready": false,
+    "unanswered_questions_remain_unapproved": true
+  },
+  "calendar": {
+    "read_only": true,
+    "observed_at": "2026-10-01T18:47:15.542197+00:00",
+    "trial_start": "2026-01-31T11:00:00Z",
+    "trial_end": "2026-07-31T10:00:00+00:00",
+    "paid_minimum_end": "2027-07-31T10:00:00+00:00",
+    "quota_windows": [
+      {
+        "at": "2026-01-31T11:00:00+00:00",
+        "window": {
+          "period_end": "2026-02-28T11:00:00+00:00",
+          "period_start": "2026-01-31T11:00:00+00:00"
+        }
+      },
+      {
+        "at": "2026-02-28T11:00:00+00:00",
+        "window": {
+          "period_end": "2026-03-31T10:00:00+00:00",
+          "period_start": "2026-02-28T11:00:00+00:00"
+        }
+      },
+      {
+        "at": "2026-03-31T10:00:00+00:00",
+        "window": {
+          "period_end": "2026-04-30T10:00:00+00:00",
+          "period_start": "2026-03-31T10:00:00+00:00"
+        }
+      },
+      {
+        "at": "2026-07-31T09:59:59+00:00",
+        "window": {
+          "period_end": "2026-07-31T10:00:00+00:00",
+          "period_start": "2026-06-30T10:00:00+00:00"
+        }
+      }
+    ],
+    "exclusive_end_probe": {
+      "input": "2026-07-31T10:00:00Z",
+      "result": "outside_trial",
+      "expected_half_open_range": true,
+      "source_unchanged": true
+    }
+  },
+  "implementation_execution": false,
+  "task11_immutable": true,
+  "repository_visibility": "public",
+  "missing_hosted_gates": [
+    "hosted Checkout",
+    "real contract acceptance",
+    "hosted SQL/RPC",
+    "signed webhook",
+    "real POST job",
+    "operational alarms",
+    "production authorization"
+  ],
+  "catalog_before": {
+    "observed_at": "2026-10-01T19:01:34.983308+00:00",
+    "read_only": true,
+    "task11_resources": {
+      "product": {
+        "id": "prod_benefitsi_pd_task11_20261001",
+        "full_object_sha256": "f0285167466eaad33fae5346aab4f472ba2b9f2c984e6d0612d1ca8c2f7b5d94",
+        "matches_task11": true
+      },
+      "standard": {
+        "id": "price_1ULmg3H0Ev7iKGq06C5o5OYb",
+        "full_object_sha256": "0394054cad055fe8b77c7616fb5fd41804680d6141dccc7ced70fd94c315c54e",
+        "matches_task11": true
+      },
+      "founder": {
+        "id": "price_1ULmg4H0Ev7iKGq0RLhEADeI",
+        "full_object_sha256": "f8af7bfece806ce0a1f70bd42143f7e6ce0f340bc826f3a8d9263bd252637b8e",
+        "matches_task11": true
+      },
+      "founder_annual": {
+        "id": "price_1ULmg6H0Ev7iKGq021h3wOpB",
+        "full_object_sha256": "01e913dcc0ecab26e394d4f4dd07c9e1b169140d6bf9620bb4208cbfbdf9b45e",
+        "matches_task11": true
+      },
+      "commerce": {
+        "id": "price_1ULmg7H0Ev7iKGq0In0AVjhk",
+        "full_object_sha256": "616ab09016a93fa5cb9a37d831a3bdbb4bf00d260be5c006cc849583192f1880",
+        "matches_task11": true
+      },
+      "seo": {
+        "id": "price_1ULmg9H0Ev7iKGq0J4bssZqq",
+        "full_object_sha256": "263db9abb15f9b1ac9cdda57d2a4621fe6b0cedc90d85ac1a039577fbe8c6d3c",
+        "matches_task11": true
+      },
+      "seo_setup": {
+        "id": "price_1ULmgAH0Ev7iKGq0btdKgWPA",
+        "full_object_sha256": "427a403fbbc84ea1d5e7cda815247878e6f09818e38e65527f4078524febed61",
+        "matches_task11": true
+      },
+      "portal": {
+        "id": "bpc_1ULmgBH0Ev7iKGq0D16z3a59",
+        "full_object_sha256": "15385509a9a968e9ed73a0cfef29b41fb73fe90bddd6a02598a7f3c9504a534f",
+        "matches_task11": true
+      },
+      "portal_dedicated": {
+        "id": "bpc_1ULn60H0Ev7iKGq0rIGVbCyK",
+        "full_object_sha256": "9089756c66f1f0592e1b46c9c3db5e077fa5d6f05f2981f6f1c1eeec70e7e37d",
+        "matches_task11": true
+      }
+    },
+    "task11_journal_hashes": {
+      "provision-journal.json": "b1c20c0415c4c6ef9b58938abe35111ee1720ff477a0fe6d4ee2e2e38e53b68e",
+      "portal-recovery-journal.json": "de0bc7efec519a740001793ff333894b603493c8baaad0dcaa4aa99962e7e746"
+    },
+    "all_nine_unchanged": true
+  },
+  "existing_customers_before": {
+    "observed_at": "2026-10-01T19:04:45.964144+00:00",
+    "read_only": true,
+    "existing_unclocked_customer_count": 5,
+    "ids_sha256": "96f56f0982c7cace23a014dcb58d97612d945eaf9e2d29ed86ad7e036fd6ebb3",
+    "full_objects_sha256": "a0a94dc284e7833855c650baf726879017683586fcb2d23647d316afd827c238",
+    "pii_persisted": false,
+    "ids_serialization": "legacy Python default JSON; original before hash preserved",
+    "full_objects_serialization": "legacy Python default sorted JSON; original before hash preserved"
+  },
+  "customer_inventory_serialization_correction": {
+    "observed_at": "2026-10-01T20:26:44.422082+00:00",
+    "read_only": true,
+    "provider_mutation": false,
+    "original_customer_count": 5,
+    "all_unclocked": true,
+    "legacy_ids_unchanged": true,
+    "legacy_full_objects_unchanged": true,
+    "legacy_full_objects_sha256": "a0a94dc284e7833855c650baf726879017683586fcb2d23647d316afd827c238",
+    "legacy_full_objects_serialization": "Python default sorted JSON",
+    "compact_ids_sha256": "e848d3fec60233a0674fba27b68b7d3de4ee2c81b1a54dd02624d0e5c7961f8d",
+    "compact_full_objects_sha256": "dc9e5812fa629e564f3dac87b92a7997163e70a7de0f6ce74fad255985b206eb",
+    "compact_full_objects_serialization": "compact sorted JSON",
+    "cause": "serialization whitespace mismatch only; original five customer IDs and full objects unchanged",
+    "pii_persisted": false
+  }
+}

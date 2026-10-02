@@ -16,6 +16,8 @@ const INCOMPLETE_MESSAGE = "Die Speisekarte konnte nicht vollständig eingelesen
 type ExtractOptions = {
   bridgeUrl: string
   bridgeSecret: string
+  operationId?: string
+  recover?: boolean
   fetch?: typeof globalThis.fetch
 }
 type MenuMime = "application/pdf" | "image/jpeg" | "image/png" | "image/webp"
@@ -35,15 +37,16 @@ export async function extractMenuFromFiles(files: File[], options: ExtractOption
   } catch {
     throw new Error("Die Hermes/M1-Bridge ist nicht korrekt konfiguriert. Bitte das Benefitsi-Team kontaktieren.")
   }
-  const filesToSend = await prepareFiles(files)
-  const requestId = randomUUID()
+  const filesToSend = options.recover ? [] : await prepareFiles(files)
+  const requestId = options.operationId ?? randomUUID()
+  const schemaVersion = options.operationId ? 2 : 1
   let response: Response
   try {
     response = await (options.fetch ?? globalThis.fetch)(endpoint.toString(), {
       method: "POST", redirect: "error", cache: "no-store",
       headers: { "content-type": "application/json", authorization: `Bearer ${options.bridgeSecret.trim()}` },
       signal: AbortSignal.timeout(145_000),
-      body: JSON.stringify({ action: "menu-extract", profile: "benefitsi-menu", task: "extract-menu", schemaVersion: 1, requestId, files: filesToSend }),
+      body: JSON.stringify({ action: options.recover ? "menu-recover" : "menu-extract", profile: "benefitsi-menu", task: "extract-menu", schemaVersion, requestId, ...(options.recover ? {} : {files:filesToSend}) }),
     })
   } catch {
     throw new Error("Die Verbindung zum Hermes-Menü-Agenten ist fehlgeschlagen oder hat zu lange gedauert. Bitte erneut versuchen.")
@@ -54,7 +57,7 @@ export async function extractMenuFromFiles(files: File[], options: ExtractOption
     throw new Error(await extractionErrorMessage(response))
   }
   const payload = await readProviderResponse(response)
-  if (payload.profile !== "benefitsi-menu" || payload.task !== "extract-menu" || payload.schemaVersion !== 1 || payload.requestId !== requestId) {
+  if (payload.profile !== "benefitsi-menu" || payload.task !== "extract-menu" || payload.schemaVersion !== schemaVersion || (schemaVersion === 2 && payload.adapter !== "minimax-m3-bounded-v2") || payload.requestId !== requestId) {
     throw new Error("Die Antwort des Hermes-Menü-Agenten passt nicht zu diesem Auftrag. Bitte erneut versuchen.")
   }
   return validateDraft(payload.draft, false)
