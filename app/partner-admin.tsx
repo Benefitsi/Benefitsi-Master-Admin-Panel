@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { PartnerFeedbackSettingsLoader } from "@/components/partner/partner-feedback-settings-loader"
 import { useRouter } from "next/navigation"
 import {
   useActionState,
@@ -1131,6 +1132,9 @@ function PartnerDetail({
               <div className="space-y-3">
                 <MilestonesPanel partner={partner} embedded />
                 <DealsPanel partner={partner} embedded />
+                {portalMode && partner.id ? (
+                  <PartnerFeedbackSettingsLoader key={partner.id} partnerId={partner.id} dealRevision={JSON.stringify(partner.deals)} />
+                ) : null}
               </div>
             ) : null}
             {settingsTab === "menu" ? <MenuPanel partner={partner} adminAccess={adminAccess} embedded /> : null}

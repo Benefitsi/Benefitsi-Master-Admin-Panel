@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import test from 'node:test'
+import test, { beforeEach } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
 import { createElement } from 'react'
@@ -8,6 +8,9 @@ import * as jsxRuntime from 'react/jsx-runtime'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { JSDOM } from 'jsdom'
 import { pendingNativeMeetups, isHistoricalMeetup, meetupApprovalBlockers } from '../lib/city-pages/community-moderation.ts'
+
+// Keep the October fixture meetups upcoming regardless of the day CI runs.
+beforeEach(t => t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-29T12:00:00Z') }))
 
 const cityId = 'cc576dac-2490-401c-8cc1-418d03795945'
 const actorId = 'e74c45e0-ca1b-42db-963f-54242cd2e0dd'
