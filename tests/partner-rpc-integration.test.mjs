@@ -79,19 +79,19 @@ for(const [name,scenario] of Object.entries(fixture.scenarios)){
   })
  }
 }
-for(const [name,scenario] of Object.entries(fixture.catalog_publications ?? {})){
+for(const [name,scenario] of Object.entries(fixture.catalog_publications)){
  test(`actual Admin published ${name} survives entitlement/quota/feedback consumers and rendering`,async()=>{
   assert.equal(scenario.draft_status,'published');assert.equal(scenario.publish_outcome.error,null)
   const client={rpc:async(rpc,args)=>{assert.equal(args.p_partner_id,scenario.partner_id);return structuredClone(scenario.owner[rpc])}}
   const rights=await ent.readEntitlements(client,scenario.partner_id)
   const usage=await ent.readDealDropUsage(client,scenario.partner_id)
-  assert.equal(usage.limit,{finite:2,unlimited:null,free_zero:0,free_high:1,free_null:1}[name])
+  assert.equal(usage.limit,{finite:2,unlimited:null,pro_zero:0,free_zero:0,free_high:1,free_null:1}[name])
   assert.equal(usage.provisional,false)
   assert.equal(ent.canManageFeedback(rights),name==='finite')
   const settings=await feedback.readFeedbackSettings(client,scenario.partner_id)
   assert.equal(settings.available,name==='finite')
   const html=renderToStaticMarkup(await PartnerDropUsage({client,partnerId:scenario.partner_id}))
-  if(name==='free_zero')assert.match(html,/Unter dem aktuellen Kontingent sind keine Veröffentlichungen möglich/)
+  if(name==='free_zero'||name==='pro_zero')assert.match(html,/Unter dem aktuellen Kontingent sind keine Veröffentlichungen möglich/)
   if(name==='unlimited'){assert.match(html,/ohne Monatslimit/);assert.doesNotMatch(html,/vorläufig/)}
   assert.doesNotMatch(html,/Nächste Veröffentlichung möglich ab/)
  })
