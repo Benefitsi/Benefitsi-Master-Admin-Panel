@@ -1,6 +1,7 @@
 "use server"
 
 import { headers } from "next/headers"
+import { isAuthRetryableFetchError } from "@supabase/supabase-js"
 import { isPartnerHost } from "@/lib/portal-routing"
 
 import { revalidatePath } from "next/cache"
@@ -12,6 +13,8 @@ import { createClient } from "@/lib/supabase/server"
 export type LoginActionState = {
   message: string
 }
+
+const AUTH_UNAVAILABLE_MESSAGE = "Sign-in is temporarily unavailable. Please try again."
 
 export async function login(
   _prevState: LoginActionState,
@@ -30,13 +33,15 @@ export async function login(
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
-
-  if (error) {
-    return { message: "Invalid email or password." }
+  try {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      const unavailable = isAuthRetryableFetchError(error) || (error.status ?? 0) >= 500
+        || error.name === "TimeoutError" || error.name === "AbortError" || error.code === "request_timeout"
+      return { message: unavailable ? AUTH_UNAVAILABLE_MESSAGE : "Invalid email or password." }
+    }
+  } catch {
+    return { message: AUTH_UNAVAILABLE_MESSAGE }
   }
 
   const adminSession = await getAdminSession(supabase)

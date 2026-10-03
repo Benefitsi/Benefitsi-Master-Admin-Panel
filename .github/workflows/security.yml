@@ -91,6 +91,16 @@ jobs:
           tests/microsite-publication-cache.test.mjs
           tests/partner-capability-policy.test.mjs
 
+      - name: Login and authorization regression tests
+        run: >-
+          node --import tsx --test --test-concurrency=2
+          tests/login-page-session.test.mjs
+          tests/login-service-failure.test.mjs
+          tests/portal-proxy.test.mjs
+          tests/portal-login-security.test.mjs
+          tests/commerce-session-boundary.test.mjs
+          tests/portal-routing.test.mjs
+
       - name: Type-check
         run: npm exec -- tsc --noEmit
 
