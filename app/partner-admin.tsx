@@ -11435,14 +11435,14 @@ function WeekdayChipField({
               <span
                 className={`flex h-10 cursor-pointer items-center justify-center gap-1 rounded-md border px-2 text-sm font-semibold transition peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-teal-700 ${
                   checked
-                    ? "border-teal-700 bg-teal-700 text-white"
+                    ? markExcluded ? "border-[#118cff] bg-[#118cff] text-white" : "border-teal-700 bg-teal-700 text-white"
                     : markExcluded
                       ? "border-rose-700 bg-rose-700 text-white hover:bg-rose-800"
                     : "border-zinc-300 bg-white text-zinc-700 hover:border-teal-400 hover:bg-teal-50"
                 }`}
               >
                 {option.label}
-                {markExcluded && !checked ? <span aria-hidden="true">×</span> : null}
+                {markExcluded ? <span aria-hidden="true">{checked ? "✓" : "×"}</span> : null}
               </span>
             </label>
           )
