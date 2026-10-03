@@ -67,8 +67,8 @@ export default async function DashboardPage({
 
   return (
     <AdminShell
-      title="Ecosystem Dashboard"
-      subtitle="Agents, Kennzahlen, Features und Seiten an einem Ort"
+      title="Ecosystem."
+      subtitle=""
       adminName={adminName}
       micrositeCount={dashboard.partners.length}
       canAccessPartnerPanel={Boolean(portalSession?.partnerIds.length)}
