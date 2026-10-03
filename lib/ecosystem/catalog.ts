@@ -1,6 +1,7 @@
 /**
  * Curated product inventory, checked against Admin, App, Web and Database
- * sources on 2026-10-02. These descriptions are not runtime health checks,
+ * sources on 2026-10-02, with partner CRM updated on 2026-10-03.
+ * These descriptions are not runtime health checks,
  * contractual price quotes, or evidence of a public/App Store release.
  * Paths in `source` are relative to the named repository.
  */
@@ -62,8 +63,8 @@ export const tierCatalog: TierCatalogEntry[] = [
     audience: 'Partner',
     name: 'Pro',
     description: 'Erweiterter Partnerumfang mit eigener Microsite und vertiefter Auswertung.',
-    features: ['Eigene Microsite und erweiterte Medien nach Freigabe', '10 Teammitglieder · 365 Tage Auswertung', 'Deal Drops vorläufig ohne Monatslimit', '2 KI-Menüimporte pro Abo-Monat, soweit freigegeben', 'Besuchsfeedback mit passendem Verwaltungsrecht'],
-    note: 'Standard und Founder sind Preisangebote für Pro. Zusatzmodule benötigen eigene Verträge und Freigaben. Partnerwerbung und erweitertes CRM sind noch nicht verfügbar.',
+    features: ['Eigene Microsite und erweiterte Medien nach Freigabe', '10 Teammitglieder · 365 Tage Auswertung', 'Deal Drops vorläufig ohne Monatslimit', '2 KI-Menüimporte pro Abo-Monat, soweit freigegeben', 'Besuchsfeedback mit passendem Verwaltungsrecht', 'CRM-Entwürfe und redaktionelle Anfragen nach Freigabe'],
+    note: 'Standard und Founder sind Preisangebote für Pro. Zusatzmodule benötigen eigene Verträge und Freigaben. Nachrichtenversand ist noch nicht verfügbar.',
     href: 'https://benefitsi.de/partner-werden#tarife',
   },
 ]
@@ -298,16 +299,16 @@ export const ecosystemCatalog: EcosystemEntry[] = [
     href: '/seo', source: 'Admin: app/partner/seo/page.tsx; components/partner/partner-plan-panel.tsx',
   },
   {
-    id: 'partner-marketing-planned', title: 'Partnerwerbung', group: 'partner',
-    description: 'Als Pro-Leistungsrecht vorbereitet. Das Werbemodul ist im aktuellen Produktkatalog noch nicht verfügbar.',
-    audience: 'Partner Pro', availability: 'Vorbereitet · noch nicht verfügbar',
-    href: 'https://benefitsi.de/partner-werden#tarife', source: 'Web: src/components/partner/PartnerPriceCatalog.tsx; Admin: lib/partners/entitlements.ts',
+    id: 'partner-marketing-planned', title: 'Marketing-Nachrichten', group: 'partner',
+    description: 'Push-, In-App- und Comeback-Nachrichten als Entwurf vorbereiten. Versand, Planung und automatische Aktivierung sind noch nicht verfügbar.',
+    audience: 'Partner Pro', availability: 'Entwürfe nach Freigabe · Versand noch nicht verfügbar',
+    href: '/partner/crm', source: 'Admin: lib/partners/benefits-v1.json; components/partner/partner-crm-workspace.tsx',
   },
   {
-    id: 'partner-crm-planned', title: 'Erweitertes CRM', group: 'partner',
-    description: 'Als Pro-Leistungsrecht vorbereitet. Der erweiterte CRM-Bereich ist noch nicht verfügbar; notwendige Systemmitteilungen bleiben davon unabhängig.',
-    audience: 'Partner Pro', availability: 'Vorbereitet · noch nicht verfügbar',
-    href: 'https://benefitsi.de/partner-werden#tarife', source: 'Web: src/components/partner/PartnerPriceCatalog.tsx; Admin: lib/partners/entitlements.ts',
+    id: 'partner-crm', title: 'Kundenbindung und Redaktion', group: 'partner',
+    description: 'Potenzielle Besuchsgruppen prüfen, Kampagnenentwürfe speichern sowie Blogartikel und Inhaberinterviews anfragen. Gruppen belegen keine erreichbaren Empfänger; Beiträge werden redaktionell freigegeben.',
+    audience: 'Partner Pro', availability: 'Tarifrecht und tatsächliche CRM-Freigabe erforderlich',
+    href: '/partner/crm', source: 'Admin: app/partner/crm/page.tsx; lib/partners/benefits-v1.json; components/partner/partner-crm-workspace.tsx',
   },
   {
     id: 'partner-extra-ai-planned', title: 'Geplantes Zusatzmodul: weitere KI-Importe', group: 'partner',

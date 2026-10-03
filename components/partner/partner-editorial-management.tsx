@@ -46,6 +46,7 @@ function EditorialAdminCard({
   initial: AdminEditorialRequest;
 }) {
   const [saved, setSaved] = useState(initial),
+    [savedSource, setSavedSource] = useState(initial),
     [message, setMessage] = useState(''),
     [error, setError] = useState(''),
     [pending, startTransition] = useTransition(),
@@ -56,9 +57,10 @@ function EditorialAdminCard({
       live.current = false;
     };
   }, []);
-  useEffect(() => {
+  if (savedSource !== initial) {
+    setSavedSource(initial);
     setSaved(initial);
-  }, [initial]);
+  }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget),
