@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useAdminLanguage } from "@/app/admin-language"
 import { useState } from "react"
 import {
   ArrowRight, ArrowUpRight, Bell, BookOpen, Buildings, CalendarBlank,
@@ -71,6 +72,7 @@ export function EcosystemExplorer() {
 }
 
 export function PageDirectory({ pages, incomplete }: { pages: EcosystemPage[]; incomplete: boolean }) {
+  const { language } = useAdminLanguage()
   const [query, setQuery] = useState("")
   const [kind, setKind] = useState("Alle Seiten")
   const term = query.trim().toLocaleLowerCase("de")
@@ -79,7 +81,7 @@ export function PageDirectory({ pages, incomplete }: { pages: EcosystemPage[]; i
   const cityCount = pages.filter(page => page.kind === "Stadtseite").length
   const micrositeCount = pages.filter(page => page.kind === "Microsite").length
   return <section id="seiten" aria-label="Städteseiten und Microsites"><details className={styles.directoryDisclosure}>
-    <summary><div className={styles.directoryArtwork} aria-hidden="true"><div><MapPin size={28} weight="duotone" /></div><div><GlobeHemisphereWest size={28} weight="duotone" /></div></div><div className={styles.directoryTitle}><h2>Deine Seiten<span>.</span></h2><p>{cityCount} {cityCount === 1 ? "Stadt" : "Städte"} · {micrositeCount} Partner{incomplete ? " · Unvollständig" : " · Geladener Bestand"}</p></div><span className={styles.directoryExpand}>Verzeichnis <span>+</span></span></summary>
+    <summary><div className={styles.directoryArtwork} aria-hidden="true"><div><MapPin size={28} weight="duotone" /></div><div><GlobeHemisphereWest size={28} weight="duotone" /></div></div><div className={styles.directoryTitle}><h2>Deine Seiten<span>.</span></h2><p data-admin-i18n-ignore="true">{`${cityCount} ${language === "de" ? (cityCount === 1 ? "Stadt" : "Städte") : (cityCount === 1 ? "City" : "Cities")} · ${micrositeCount} ${language === "de" ? "Partner" : (micrositeCount === 1 ? "Partner" : "Partners")} · ${language === "de" ? (incomplete ? "Unvollständig" : "Geladener Bestand") : (incomplete ? "Incomplete" : "Loaded inventory")}`}</p></div><span className={styles.directoryExpand}>Verzeichnis <span>+</span></span></summary>
     <div className={styles.directoryContent}>
       {incomplete ? <p className={styles.notice}>Seitendaten teilweise nicht verfügbar.</p> : null}
       <div className={styles.directoryControls}><div className={styles.searchBox}><label className={styles.srOnly} htmlFor="page-search">Seiten durchsuchen</label><MagnifyingGlass size={18} aria-hidden="true" /><input id="page-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Stadt oder Partner …" /></div><div><label className={styles.srOnly} htmlFor="page-type">Seitentyp</label><select id="page-type" value={kind} onChange={event => setKind(event.target.value)}><option>Alle Seiten</option><option>Stadtseite</option><option>Microsite</option></select></div></div>

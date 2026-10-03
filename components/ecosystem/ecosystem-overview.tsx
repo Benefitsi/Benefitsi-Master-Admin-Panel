@@ -215,7 +215,7 @@ function ActivityChart({ series }: { series: AnalyticsTimeSeries }) {
     <defs><linearGradient id="ecosystem-line" x1="0" y1="0" x2="1" y2="0"><stop stopColor="#118CFF" /><stop offset="1" stopColor="#17D4D7" /></linearGradient><linearGradient id="ecosystem-area" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#118CFF" stopOpacity=".25" /><stop offset="1" stopColor="#118CFF" stopOpacity="0" /></linearGradient></defs>
     {[28, 98, 170].map(level => <line key={level} x1="12" x2="748" y1={level} y2={level} stroke="#FFFFFF" strokeOpacity=".09" strokeDasharray="3 7" />)}
     {segments.map((part, index) => <g key={index}><path d={`${part.line} L${part.lastX},170 L${part.firstX},170 Z`} fill="url(#ecosystem-area)" /><path d={part.line} fill="none" stroke="url(#ecosystem-line)" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></g>)}
-    {series.points.map((point, index) => point.value !== null && Number.isFinite(point.value) ? <circle key={index} cx={x(index)} cy={y(point.value)} r="2.5" fill="#17D4D7"><title>{point.label ?? point.date}: {formatAnalyticsValue(point.value, series.unit)}</title></circle> : null)}
+    {series.points.map((point, index) => point.value !== null && Number.isFinite(point.value) ? <circle key={index} cx={x(index)} cy={y(point.value)} r="2.5" fill="#17D4D7"><title>{`${point.label ?? point.date}: ${formatAnalyticsValue(point.value, series.unit)}`}</title></circle> : null)}
     <text x="12" y="200" fill="#9AAFC3" fontSize="12">{series.points[0]?.label ?? series.points[0]?.date}</text><text x="748" y="200" textAnchor="end" fill="#9AAFC3" fontSize="12">{series.points.at(-1)?.label ?? series.points.at(-1)?.date}</text>
   </svg></figure>
 }

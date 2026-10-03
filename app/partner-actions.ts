@@ -3621,7 +3621,8 @@ async function uploadPartnerFile(
   path: string,
 ) {
   const preparedFile = await preparePartnerUploadFile(file, spec)
-  const uploadPath = `${path.replace(/\.[^./]+$/, "")}.webp`
+  const dimensions = preparedFile.name.match(/(\d+x\d+)\.webp$/)?.[1]
+  const uploadPath = `${path.replace(/\.[^./]+$/, "")}${dimensions ? `-${dimensions}` : ""}.webp`
   const { data, error } = await supabase.storage
     .from(PARTNER_MEDIA_BUCKET)
     .upload(uploadPath, preparedFile, {

@@ -120,7 +120,7 @@ import { LoadingSpinner } from "@/components/loading-ui"
 import { MenuAiImportDialog } from "@/components/menu-ai-import-dialog"
 import { PartnerPlanPanel } from "@/components/partner/partner-plan-panel"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
-import { inspectPartnerMediaQuality } from "@/lib/partner-media-quality"
+import { inspectMediaDimensions, inspectPartnerMediaQuality } from "@/lib/partner-media-quality"
 
 const initialState: PartnerActionState = {
   ok: false,
@@ -898,6 +898,17 @@ function LiveMetric({
   return <div className={className}>{content}</div>
 }
 
+function MediaQualityIcon({ description }: { description: string }) {
+  return (
+    <span role="img" aria-label={description} title={description} className="inline-flex size-5 shrink-0 items-center justify-center text-rose-500">
+      <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="size-4">
+        <path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+        <path d="M10 7v4.5M10 14h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    </span>
+  )
+}
+
 function PartnerListButton({
   partner,
   selected,
@@ -907,13 +918,11 @@ function PartnerListButton({
   selected: boolean
   onSelect: () => void
 }) {
-  const hasDeals = partner.deals.length > 0
   const mediaQuality = inspectPartnerMediaQuality(partner)
   const lowResolutionLabels = mediaQuality.lowResolution.map(
     (image) =>
       `${image.label} ${image.width}×${image.height} (recommended ${image.targetWidth}×${image.targetHeight})`,
   )
-  const unverifiedLabels = mediaQuality.unverified.map((image) => image.label)
 
   return (
     <button
@@ -947,37 +956,7 @@ function PartnerListButton({
               <FeaturedBadge compact />
             ) : null}
             {mediaQuality.lowResolution.length ? (
-              <span
-                role="img"
-                aria-label={`Low-resolution images: ${lowResolutionLabels.join(", ")}`}
-                title={`Low-resolution images: ${lowResolutionLabels.join(", ")}`}
-                className="inline-flex min-h-6 items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold leading-4 text-rose-800"
-              >
-                <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className="size-3.5 shrink-0">
-                  <path d="M8 1.8 14.1 13H1.9L8 1.8Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-                  <path d="M8 5.4v3.4M8 11.1h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-                <span>Low-res · {mediaQuality.lowResolution.length}</span>
-                <span className="hidden max-w-44 truncate font-medium sm:inline">
-                  {lowResolutionLabels.slice(0, 2).join(" · ")}
-                  {lowResolutionLabels.length > 2 ? ` +${lowResolutionLabels.length - 2}` : ""}
-                </span>
-              </span>
-            ) : null}
-            {unverifiedLabels.length ? (
-              <span
-                role="img"
-                aria-label={`${unverifiedLabels.length} image dimensions could not be verified`}
-                title={`Dimensions unavailable in image URLs: ${unverifiedLabels.join(", ")}`}
-                className="inline-flex min-h-6 items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold leading-4 text-amber-800"
-              >
-                Check sizes · {unverifiedLabels.length}
-              </span>
-            ) : null}
-            {!hasDeals ? (
-              <span className="whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                Benefit recommended
-              </span>
+              <MediaQualityIcon description={`Low-resolution images: ${lowResolutionLabels.join("; ")}`} />
             ) : null}
           </div>
         </div>
@@ -2602,16 +2581,8 @@ function PartnerForm({
         />
       </FormSection>
 
-      {mode === "edit" && partner?.id ? (
-        <OpeningHoursPanel
-          partner={partner}
-          embedded
-          withinPartnerForm
-        />
-      ) : null}
-
       <FormSection
-        title="Contact, Location and Socials"
+        title="Contact and location"
         defaultOpen={false}
         required={requiredSectionMarker}
       >
@@ -2646,7 +2617,10 @@ function PartnerForm({
           defaultValue={partner?.address}
           required
         />
-        <div className="border-t border-zinc-100 pt-3">
+      </FormSection>
+
+      <FormSection title="Socials" defaultOpen={false}>
+        <div>
           <div className="mb-3 space-y-0.5">
             <p className="text-sm font-semibold text-zinc-900">Social media</p>
             <p className="text-xs leading-5 text-zinc-500">
@@ -2682,6 +2656,14 @@ function PartnerForm({
           />
         </div>
       </FormSection>
+
+      {mode === "edit" && partner?.id ? (
+        <OpeningHoursPanel
+          partner={partner}
+          embedded
+          withinPartnerForm
+        />
+      ) : null}
 
       </div>
 
@@ -12262,6 +12244,11 @@ function ImagePreview({
   selected?: boolean
   maxWidth?: number
 }) {
+  const [measured, setMeasured] = useState<{ url: string; width: number; height: number } | null>(null)
+  const issue = src
+    ? inspectMediaDimensions(spec.label, src, measured?.url === src ? measured : undefined)
+    : null
+
   return (
     <div
       role={onActivate ? "button" : undefined}
@@ -12275,7 +12262,7 @@ function ImagePreview({
         }
       }}
       className={`relative overflow-hidden ${spec.label === "Logo" ? "rounded-full" : "rounded-md"} border ${
-        selected ? "border-teal-200 bg-white" : "border-zinc-200 bg-white"
+        issue ? "border-rose-300 bg-white ring-1 ring-rose-100" : selected ? "border-teal-200 bg-white" : "border-zinc-200 bg-white"
       } ${onActivate ? "cursor-pointer outline-none transition hover:border-teal-400 hover:ring-2 hover:ring-teal-100 focus-visible:ring-2 focus-visible:ring-teal-300" : ""}`}
       style={{
         aspectRatio: `${spec.previewAspectWidth ?? spec.width} / ${
@@ -12290,6 +12277,12 @@ function ImagePreview({
       <img
         alt={alt}
         src={src ?? uploadPlaceholderSrc}
+        onLoad={(event) => {
+          const image = event.currentTarget
+          if (src && !image.dataset.fallbackApplied) {
+            setMeasured({ url: src, width: image.naturalWidth, height: image.naturalHeight })
+          }
+        }}
         onError={(event) => {
           if (event.currentTarget.dataset.fallbackApplied) {
             return
@@ -12306,6 +12299,11 @@ function ImagePreview({
             : "object-contain p-3"
         }`}
       />
+      {issue ? (
+        <span className="absolute bottom-2 left-2 grid size-7 place-items-center rounded-full bg-white/95 shadow-sm">
+          <MediaQualityIcon description={`${alt}: low resolution (${issue.width}×${issue.height}). Recommended minimum: ${issue.targetWidth}×${issue.targetHeight}px. Replace with a larger original image.`} />
+        </span>
+      ) : null}
       {onRemove ? (
         <button
           type="button"

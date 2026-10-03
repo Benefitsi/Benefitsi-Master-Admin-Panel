@@ -151,7 +151,7 @@ function dimensionsFromUrl(value: string) {
     if (legacyDimensions) return legacyDimensions
 
     const matches = Array.from(
-      fileName.matchAll(/(?:^|[-_])(\d{2,5})x(\d{2,5})(?=$|[-_.])/gi),
+      fileName.matchAll(/(?:^|[-_.])(\d{2,5})x(\d{2,5})(?=$|[-_.])/gi),
     )
     const lastMatch = matches.at(-1)
     if (!lastMatch) return null
@@ -161,6 +161,25 @@ function dimensionsFromUrl(value: string) {
     return width > 0 && height > 0 ? { width, height } : null
   } catch {
     return null
+  }
+}
+
+export function inspectMediaDimensions(
+  label: string,
+  url: string,
+  dimensions: { width: number; height: number } | null = dimensionsFromUrl(url),
+): PartnerMediaQualityIssue | null {
+  // Vector artwork remains sharp regardless of its intrinsic pixel dimensions.
+  if (/\.svg(?:[?#]|$)/i.test(url)) return null
+  const target = Object.values(targets).find((target) => target.label === label)
+    ?? (label === "Feature" ? targets.feature
+      : label === "Discover" ? targets.discover
+      : label === "Deal Drop card" ? targets.dealDrop : null)
+  if (!target || !dimensions) return null
+  if (dimensions.width >= target.minWidth && dimensions.height >= target.minHeight) return null
+  return {
+    label, url, ...dimensions,
+    targetWidth: target.minWidth, targetHeight: target.minHeight,
   }
 }
 
