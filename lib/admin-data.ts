@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { MicrositeVersion, PartnerMicrosite } from "./microsites"
+import { readEntitlements } from "./partners/entitlements"
 
 export type Coordinates = {
   latitude: number | null
@@ -530,25 +531,24 @@ export async function getDashboardData(
   const visitsByPartner = groupByPartner(visits)
   const micrositeByPartner = annotateMicrosites(microsites, micrositeVersions)
 
-  // Only the open editor consumes these flags. Avoid hundreds of RPCs on every
-  // admin save/refresh; other callers can still request the complete dataset.
-  const entitlementPartners = options.entitlementPartnerId === undefined
-    ? partners
-    : [partners.find(partner => partner.id === options.entitlementPartnerId) ?? partners[0]].filter(Boolean)
-  const entitlementResults = await Promise.all(entitlementPartners.map(async partner => {
+  // Listings do not need per-partner capabilities. Only the visible editor
+  // opts in; null explicitly selects the first row for the default editor.
+  const entitlementPartner = options.entitlementPartnerId === null
+    ? partners[0]
+    : options.entitlementPartnerId
+      ? partners.find(partner => partner.id === options.entitlementPartnerId)
+      : undefined
+  let capabilityFlags: Pick<PartnerWithDeals, "media_rich_enabled" | "menu_ai_import_enabled"> | undefined
+  if (entitlementPartner?.id) {
     try {
-      const {data,error}=await supabase.rpc("get_partner_entitlements",{p_partner_id:partner.id})
-      return [partner.id,error || data?.partner_id !== partner.id ? null : data] as const
-    } catch { return [partner.id, null] as const }
-  }))
-  const entitlementsByPartner = new Map(entitlementResults.filter(([, data]) => data))
-  if (entitlementResults.some(([, data]) => !data)) errors.push("Tarifberechtigungen konnten nicht geladen werden. Bitte versuche es erneut.")
+      capabilityFlags = await getPartnerCapabilityFlags(supabase, entitlementPartner.id)
+    } catch {
+      errors.push("Tarifberechtigungen konnten nicht geladen werden. Bitte versuche es erneut.")
+    }
+  }
   const partnersWithDeals = partners.map((partner) => ({
     ...partner,
-    ...(entitlementsByPartner.has(partner.id) ? {
-      media_rich_enabled: entitlementsByPartner.get(partner.id)?.plan_code === "pro" && entitlementsByPartner.get(partner.id)?.features?.["media.rich"] === true,
-      menu_ai_import_enabled: entitlementsByPartner.get(partner.id)?.features?.["menu.ai_import"] === true,
-    } : {}),
+    ...(partner.id === entitlementPartner?.id ? capabilityFlags : {}),
     deals: partner.id ? dealsByPartner.get(partner.id) ?? [] : [],
     holidays: partner.id ? holidaysByPartner.get(partner.id) ?? [] : [],
     socials: partner.id ? socialsByPartner.get(partner.id) ?? [] : [],
@@ -575,6 +575,15 @@ export async function getDashboardData(
     partnerCount: partners.length,
     dealCount: deals.length,
     errors,
+  }
+}
+
+/** Resolve fresh rights only after a detail route has selected its partner. */
+export async function getPartnerCapabilityFlags(supabase: SupabaseClient, partnerId: string) {
+  const rights = await readEntitlements(supabase, partnerId)
+  return {
+    media_rich_enabled: rights.plan_code === "pro" && rights.features["media.rich"] === true,
+    menu_ai_import_enabled: rights.features["menu.ai_import"] === true,
   }
 }
 
