@@ -53,6 +53,7 @@ function fixture(t, { admin = true } = {}) {
     },
   })
   const page = loadTypescript("app/page.tsx", {
+    "@/components/admin-translation-boundary": { AdminTranslationBoundary: ({ children }) => h("div", { "data-admin-i18n-pending": "true" }, children) },
     "next/link": Link,
     "next/navigation": { redirect: destination => { throw new Error(`redirect:${destination}`) } },
     "@/lib/supabase/config": { getSupabaseConfig: () => ({ isConfigured: true }) },

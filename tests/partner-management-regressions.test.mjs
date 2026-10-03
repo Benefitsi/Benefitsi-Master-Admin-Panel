@@ -252,13 +252,14 @@ test("partner socials support YouTube and five profiles", async () => {
   )
 })
 
-test("partner settings embed hours and combine stamps with deals", async () => {
+test("partner settings separate contact and socials above embedded hours and combine stamps with deals", async () => {
   const code = await readFile(adminUrl, "utf8")
 
-  assert.match(
-    code,
-    /<OpeningHoursPanel[\s\S]*?partner=\{partner\}[\s\S]*?withinPartnerForm[\s\S]*?Contact, Location and Socials/,
+  assert.ok(
+    /<FormSection\s+title="Contact and location"[\s\S]*?<\/FormSection>\s*<FormSection title="Socials"[\s\S]*?<SocialHandlesSection[\s\S]*?<\/FormSection>\s*\{mode === "edit"[\s\S]*?<OpeningHoursPanel\s+partner=\{partner\}\s+embedded\s+withinPartnerForm/.test(code),
+    "Contact/location and socials must be separate sections above embedded operating hours",
   )
+  assert.ok(!code.includes('title="Contact, Location and Socials"'), "The combined contact/socials section must not return")
   assert.match(code, /<DealsPanel partner=\{partner\} embedded \/>/)
   assert.match(code, /<MilestonesPanel partner=\{partner\} embedded \/>/)
   assert.doesNotMatch(code, /\{ id: "rewards", label: "Operating Hours"/)

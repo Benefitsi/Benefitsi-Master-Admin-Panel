@@ -1563,8 +1563,12 @@ export function AdminLanguageProvider({ children, initialLanguage = "en", storag
     const root = rootRef.current
     if (!root) return
 
+    const skipTranslation = (element: Element | null) => Boolean(
+      element?.closest('[data-admin-i18n-ignore="true"], [data-admin-i18n-pending="true"]'),
+    )
+
     const translateTextNode = (node: Text) => {
-      if (node.parentElement?.closest('[data-admin-i18n-ignore="true"]')) return
+      if (skipTranslation(node.parentElement)) return
 
       const current = node.nodeValue ?? ""
       const originals = textOriginalsRef.current
@@ -1580,7 +1584,7 @@ export function AdminLanguageProvider({ children, initialLanguage = "en", storag
     }
 
     const translateElement = (element: Element) => {
-      if (element.closest('[data-admin-i18n-ignore="true"]')) return
+      if (skipTranslation(element)) return
 
       const names = ["alt", "aria-label", "placeholder", "title"]
       let originals = attributeOriginalsRef.current.get(element)
@@ -1625,11 +1629,15 @@ export function AdminLanguageProvider({ children, initialLanguage = "en", storag
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
+        if (mutation.type === "attributes") translateTree(mutation.target)
         if (mutation.type === "characterData") translateTree(mutation.target)
         mutation.addedNodes.forEach(translateTree)
       })
     })
-    observer.observe(root, { childList: true, characterData: true, subtree: true })
+    observer.observe(root, {
+      childList: true, characterData: true, subtree: true,
+      attributes: true, attributeFilter: ["data-admin-i18n-pending"],
+    })
 
     return () => observer.disconnect()
   }, [language, preferenceLoaded, storageKey])

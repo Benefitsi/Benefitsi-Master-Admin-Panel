@@ -1,4 +1,5 @@
 import { Suspense } from "react"
+import { AdminTranslationBoundary } from "@/components/admin-translation-boundary"
 import {
   EcosystemActivity, EcosystemAgents, EcosystemDirectory, EcosystemFleet,
   EcosystemFocus, EcosystemMetrics, EcosystemOverviewLayout,
@@ -99,11 +100,11 @@ type DashboardSources = {
 }
 
 async function DashboardPartnerCount({ data }: { data: DashboardSources["dashboard"] }) {
-  return `${(await data).partners.length} Partner`
+  return <AdminTranslationBoundary inline>{`${(await data).partners.length} Partner`}</AdminTranslationBoundary>
 }
 
 async function DashboardPartnerLink({ data }: { data: DashboardSources["portal"] }) {
-  return (await data)?.partnerIds.length ? <PartnerPanelLink /> : null
+  return (await data)?.partnerIds.length ? <AdminTranslationBoundary inline><PartnerPanelLink /></AdminTranslationBoundary> : null
 }
 
 async function DashboardRefreshWhenReady({ sources }: { sources: DashboardSources }) {
@@ -113,33 +114,33 @@ async function DashboardRefreshWhenReady({ sources }: { sources: DashboardSource
 }
 
 async function DashboardTimestamp({ data }: { data: DashboardSources["founder"] }) {
-  return <EcosystemTimestamp checkedAt={(await data).checkedAt} />
+  return <AdminTranslationBoundary inline><EcosystemTimestamp checkedAt={(await data).checkedAt} /></AdminTranslationBoundary>
 }
 
 async function DashboardMetrics({ sources }: { sources: DashboardSources }) {
   const [snapshot, agentData] = await Promise.all([sources.founder, sources.agents])
-  return <EcosystemMetrics snapshot={snapshot} agentData={agentData} />
+  return <AdminTranslationBoundary><EcosystemMetrics snapshot={snapshot} agentData={agentData} /></AdminTranslationBoundary>
 }
 
 async function DashboardActivity({ data }: { data: DashboardSources["analytics"] }) {
-  return <EcosystemActivity analytics={selectOverviewAnalytics(await data)} />
+  return <AdminTranslationBoundary><EcosystemActivity analytics={selectOverviewAnalytics(await data)} /></AdminTranslationBoundary>
 }
 
 async function DashboardFleet({ data }: { data: DashboardSources["agents"] }) {
-  return <EcosystemFleet agentData={await data} />
+  return <AdminTranslationBoundary><EcosystemFleet agentData={await data} /></AdminTranslationBoundary>
 }
 
 async function DashboardFocus({ data }: { data: DashboardSources["founder"] }) {
-  return <EcosystemFocus snapshot={await data} />
+  return <AdminTranslationBoundary><EcosystemFocus snapshot={await data} /></AdminTranslationBoundary>
 }
 
 async function DashboardAgents({ data }: { data: DashboardSources["agents"] }) {
-  return <EcosystemAgents agentData={await data} />
+  return <AdminTranslationBoundary><EcosystemAgents agentData={await data} /></AdminTranslationBoundary>
 }
 
 async function DashboardDirectory({ sources }: { sources: DashboardSources }) {
   const [dashboard, publicMicrosites] = await Promise.all([sources.dashboard, sources.publicMicrosites])
-  return <EcosystemDirectory pages={buildPageDirectory(dashboard, publicMicrosites)} incomplete={dashboard.errors.length > 0 || publicMicrosites.state === "unavailable"} />
+  return <AdminTranslationBoundary><EcosystemDirectory pages={buildPageDirectory(dashboard, publicMicrosites)} incomplete={dashboard.errors.length > 0 || publicMicrosites.state === "unavailable"} /></AdminTranslationBoundary>
 }
 
 async function DashboardPartners({ data, query }: {
@@ -150,7 +151,7 @@ async function DashboardPartners({ data, query }: {
   const requestedPartnerId = singleQueryValue(query.partner)
   const initialPartnerId = dashboard.partners.some(partner => partner.id === requestedPartnerId)
     ? requestedPartnerId : dashboard.partners[0]?.id ?? ""
-  return <>
+  return <AdminTranslationBoundary>
     {dashboard.errors.length > 0 ? (
       <section className="mb-5 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         <p className="font-semibold">Supabase returned warnings</p>
@@ -168,7 +169,7 @@ async function DashboardPartners({ data, query }: {
       initialSettingsTab={singleQueryValue(query.tab)}
       initialView={singleQueryValue(query.view) === "microsite" ? "microsite" : "settings"}
     />
-  </>
+  </AdminTranslationBoundary>
 }
 
 function singleQueryValue(value: string | string[] | undefined) {
