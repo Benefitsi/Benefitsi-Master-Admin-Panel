@@ -34,7 +34,7 @@ function partner(overrides = {}) {
 
 // Execute the actual server route with external session/data and client-component
 // boundaries isolated. Access predicates and config resolution stay real.
-function loadRoute(path, session, selectedPartner) {
+function loadRoute(path, session, selectedPartner, { capabilityError = false } = {}) {
   const calls = { resolvedConfigs: [], shellProps: [], workspaceProps: [], commercePartners: [], capabilityPartners: [] }
   const PreviewShell = props => {
     calls.shellProps.push(props)
@@ -59,10 +59,13 @@ function loadRoute(path, session, selectedPartner) {
       notFound: () => { throw Object.assign(new Error("not found"), { status: 404 }) },
     },
     "@/lib/partner-portal": { ...partnerPortal, getPartnerPortalSession: async () => session },
+    "@/lib/admin": { requireAdmin: async () => ({supabase: {}}), getAdminSession: async () => session },
+    "@/components/microsite-capabilities-notice": { MicrositeCapabilitiesNotice: () => createElement("p", {role: "status"}, "Tarifberechtigungen konnten nicht geladen werden. Erneut versuchen") },
     "@/lib/admin-data": {
       getDashboardData: async () => ({ partners: [selectedPartner], cities: [], errors: [] }),
       getPartnerCapabilityFlags: async (_client, id) => {
         calls.capabilityPartners.push(id)
+        if (capabilityError) throw new Error("synthetic upstream timeout")
         return {media_rich_enabled: true, menu_ai_import_enabled: true}
       },
     },
@@ -73,6 +76,11 @@ function loadRoute(path, session, selectedPartner) {
       return microsites.resolveMicrositeConfig(...args)
     } },
     "@/app/microsite-preview/[partner]/preview-shell": { MicrositePreviewShell: PreviewShell },
+    "./preview-shell": { MicrositePreviewShell: PreviewShell },
+    "@/app/microsite-panel": { MicrositePanel: props => { calls.workspaceProps.push(props); return createElement("article", null, props.partner.name) } },
+    "../../microsite-panel": { MicrositePanel: props => { calls.workspaceProps.push(props); return createElement("article", null, props.partner.name) } },
+    "@/components/microsite-read-only-notice": { MicrositeReadOnlyNotice: () => createElement("p", null, "Deine Microsite ansehen") },
+    "../../actions": { signOutPartner: async () => {} },
     "./actions": { signOutPartner: async () => {} },
     "@/app/partner-admin": { PartnerWorkspace: props => {
       calls.workspaceProps.push(props)
@@ -86,6 +94,7 @@ function loadRoute(path, session, selectedPartner) {
     },
     "@/app/dashboard-auto-refresh": { PanelDataAutoRefresh: () => null },
   }
+  imports["../../admin-language"] = imports["@/app/admin-language"]
   const source = readFileSync(new URL(path, import.meta.url), "utf8")
   const compiled = ts.transpileModule(source, {
     fileName: "page.tsx",
@@ -118,6 +127,33 @@ test("an unauthorized preview does not request partner capabilities", async () =
   const {page, calls} = loadRoute(previewPath, {...staffSession, partnerIds: ["other"]}, partner())
   await assert.rejects(page(previewProps({})), error => error.status === 404)
   assert.deepEqual(calls.capabilityPartners, [])
+})
+
+for (const route of [
+  "../app/microsite-preview/[partner]/page.tsx",
+  "../app/partner/microsite-preview/[partner]/page.tsx",
+  "../app/microsite-builder/[partner]/page.tsx",
+  "../app/partner/microsite-builder/[partner]/page.tsx",
+]) {
+  test(`failed capability reads retain the profile with unknown rights and a retry notice: ${route}`, async () => {
+    const {page, calls} = loadRoute(route, {...staffSession, isAdmin: true}, partner(), {capabilityError: true})
+    const html = renderToStaticMarkup(await page(previewProps({})))
+    assert.match(html, /Tarifberechtigungen konnten nicht geladen werden/)
+    assert.match(html, /Erneut versuchen/)
+    const displayed = calls.shellProps[0] ?? calls.workspaceProps[0]
+    assert.equal(displayed.partner.id, partnerId)
+    assert.equal(displayed.partner.media_rich_enabled, undefined)
+    assert.equal(displayed.partner.menu_ai_import_enabled, undefined)
+    assert.deepEqual(calls.capabilityPartners, [partnerId])
+  })
+}
+
+test("read-only partner builder needs no capabilities and survives an unavailable rights service", async () => {
+  const {page, calls} = loadRoute("../app/partner/microsite-builder/[partner]/page.tsx", staffSession, partner(), {capabilityError: true})
+  const html = renderToStaticMarkup(await page(previewProps({})))
+  assert.match(html, /Deine Microsite ansehen/)
+  assert.deepEqual(calls.capabilityPartners, [])
+  assert.equal(calls.workspaceProps.length, 0)
 })
 
 test("published preview selects the published version even when a builder draft exists", async () => {

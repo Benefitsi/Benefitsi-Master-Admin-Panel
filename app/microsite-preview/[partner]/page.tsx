@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/admin"
 import { getDashboardData, getPartnerCapabilityFlags, type PartnerWithDeals } from "@/lib/admin-data"
 import { resolveMicrositeConfig } from "@/lib/microsites"
 import { MicrositePreviewShell } from "./preview-shell"
+import { MicrositeCapabilitiesNotice } from "@/components/microsite-capabilities-notice"
 
 export const dynamic = "force-dynamic"
 
@@ -35,7 +36,8 @@ export default async function MicrositePreviewPage({
   if (!selectedPartner?.id) {
     notFound()
   }
-  const partner = { ...selectedPartner, ...await getPartnerCapabilityFlags(supabase, selectedPartner.id) }
+  const capabilities = await getPartnerCapabilityFlags(supabase, selectedPartner.id).catch(() => null)
+  const partner = { ...selectedPartner, ...capabilities }
 
   const previewSource = query.source === "published" ? "published" : query.source === "builder" ? "builder" : "saved"
   const version = previewSource === "published" ? partner.microsite?.publishedVersion : partner.microsite?.draftVersion ?? partner.microsite?.publishedVersion
@@ -43,6 +45,8 @@ export default async function MicrositePreviewPage({
   const config = resolveMicrositeConfig(version?.config, partner)
 
   return (
+    <>
+    {!capabilities && <MicrositeCapabilitiesNotice />}
     <MicrositePreviewShell
       commerceActions={await loadMicrositeCommerceActions(partner.id)}
       partner={partner}
@@ -53,6 +57,7 @@ export default async function MicrositePreviewPage({
       isMobile={query.viewport === "mobile"}
       previewMode={query.mode === "dark" ? "dark" : query.mode === "light" ? "light" : undefined}
     />
+    </>
   )
 }
 

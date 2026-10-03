@@ -5,6 +5,7 @@ import { signOutPartner } from "../../actions"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { MicrositePanel } from "@/app/microsite-panel"
 import { MicrositeReadOnlyNotice } from "@/components/microsite-read-only-notice"
+import { MicrositeCapabilitiesNotice } from "@/components/microsite-capabilities-notice"
 import { AdminLanguageControl, AdminLanguageProvider } from "@/app/admin-language"
 import { getDashboardData, getPartnerCapabilityFlags } from "@/lib/admin-data"
 import {
@@ -53,7 +54,11 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
   if (!selectedPartner?.id || !canAccessPartner(portalSession, selectedPartner.id)) {
     notFound()
   }
-  const partner = { ...selectedPartner, ...await getPartnerCapabilityFlags(supabase, selectedPartner.id) }
+  const canEdit = canEditPartnerMicrosite(portalSession, selectedPartner.id)
+  const capabilities = canEdit
+    ? await getPartnerCapabilityFlags(supabase, selectedPartner.id).catch(() => null)
+    : null
+  const partner = { ...selectedPartner, ...capabilities }
 
   const previewIdentifier =
     partner.microsite?.slug || partner.slug || partner.subdomain || partner.id || identifier
@@ -99,7 +104,8 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
       </header>
 
       <section className="mx-auto w-full max-w-[1800px] min-w-0 p-3 sm:p-5">
-        {canEditPartnerMicrosite(portalSession, partner.id) ? <MicrositePanel
+        {canEdit && !capabilities && <MicrositeCapabilitiesNotice />}
+        {canEdit ? <MicrositePanel
             commerceActions={await loadMicrositeCommerceActions(partner.id)}
           key={`${partner.id ?? partner.name ?? "microsite"}-${partner.microsite?.draftVersion?.id ?? partner.microsite?.publishedVersion?.id ?? "new"}`}
           partner={partner}

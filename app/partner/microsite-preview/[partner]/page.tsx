@@ -13,6 +13,7 @@ import { resolveMicrositeConfig } from "@/lib/microsites"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { MicrositePreviewShell } from "@/app/microsite-preview/[partner]/preview-shell"
+import { MicrositeCapabilitiesNotice } from "@/components/microsite-capabilities-notice"
 
 export const dynamic = "force-dynamic"
 
@@ -82,13 +83,16 @@ export default async function PartnerMicrositePreviewPage({
     )
   }
 
-  const partner = { ...selectedPartner, ...await getPartnerCapabilityFlags(supabase, selectedPartner.id) }
+  const capabilities = await getPartnerCapabilityFlags(supabase, selectedPartner.id).catch(() => null)
+  const partner = { ...selectedPartner, ...capabilities }
   const previewSource = query.source === "published" ? "published" : query.source === "builder" ? "builder" : "saved"
   const version = previewSource === "published" ? partner.microsite?.publishedVersion : partner.microsite?.draftVersion ?? partner.microsite?.publishedVersion
   if (previewSource === "published" && !version) notFound()
   const configValue = resolveMicrositeConfig(version?.config, partner)
 
   return (
+    <>
+    {!capabilities && <MicrositeCapabilitiesNotice />}
     <MicrositePreviewShell
       commerceActions={await loadMicrositeCommerceActions(partner.id)}
       partner={partner}
@@ -100,6 +104,7 @@ export default async function PartnerMicrositePreviewPage({
       isMobile={query.viewport === "mobile"}
       previewBasePath="/partner/microsite-preview"
     />
+    </>
   )
 }
 
