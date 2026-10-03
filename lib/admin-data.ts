@@ -352,7 +352,7 @@ export type MenuItemAddon = {
 
 export async function getDashboardData(
   supabase: SupabaseClient,
-  options: { includeActivity?: boolean } = {},
+  options: { includeActivity?: boolean; entitlementPartnerId?: string | null } = {},
 ): Promise<DashboardData> {
   const [
     partnersResult,
@@ -530,15 +530,25 @@ export async function getDashboardData(
   const visitsByPartner = groupByPartner(visits)
   const micrositeByPartner = annotateMicrosites(microsites, micrositeVersions)
 
-  const entitlementResults = await Promise.all(partners.map(async partner => {
-    const {data,error}=await supabase.rpc("get_partner_entitlements",{p_partner_id:partner.id})
-    return [partner.id,error ? null : data] as const
+  // Only the open editor consumes these flags. Avoid hundreds of RPCs on every
+  // admin save/refresh; other callers can still request the complete dataset.
+  const entitlementPartners = options.entitlementPartnerId === undefined
+    ? partners
+    : [partners.find(partner => partner.id === options.entitlementPartnerId) ?? partners[0]].filter(Boolean)
+  const entitlementResults = await Promise.all(entitlementPartners.map(async partner => {
+    try {
+      const {data,error}=await supabase.rpc("get_partner_entitlements",{p_partner_id:partner.id})
+      return [partner.id,error || data?.partner_id !== partner.id ? null : data] as const
+    } catch { return [partner.id, null] as const }
   }))
-  const entitlementsByPartner = new Map(entitlementResults)
+  const entitlementsByPartner = new Map(entitlementResults.filter(([, data]) => data))
+  if (entitlementResults.some(([, data]) => !data)) errors.push("Tarifberechtigungen konnten nicht geladen werden. Bitte versuche es erneut.")
   const partnersWithDeals = partners.map((partner) => ({
     ...partner,
-    media_rich_enabled: entitlementsByPartner.get(partner.id)?.plan_code === "pro" && entitlementsByPartner.get(partner.id)?.features?.["media.rich"] === true,
-    menu_ai_import_enabled: entitlementsByPartner.get(partner.id)?.features?.["menu.ai_import"] === true,
+    ...(entitlementsByPartner.has(partner.id) ? {
+      media_rich_enabled: entitlementsByPartner.get(partner.id)?.plan_code === "pro" && entitlementsByPartner.get(partner.id)?.features?.["media.rich"] === true,
+      menu_ai_import_enabled: entitlementsByPartner.get(partner.id)?.features?.["menu.ai_import"] === true,
+    } : {}),
     deals: partner.id ? dealsByPartner.get(partner.id) ?? [] : [],
     holidays: partner.id ? holidaysByPartner.get(partner.id) ?? [] : [],
     socials: partner.id ? socialsByPartner.get(partner.id) ?? [] : [],

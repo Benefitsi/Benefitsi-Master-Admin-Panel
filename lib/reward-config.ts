@@ -130,12 +130,12 @@ export function inferBenefitCategory(
     return "automatic_fallback"
   }
 
-  if (discountType === "bonus_stamp" || type === "bonus_stamp") {
-    return "automatic_background"
-  }
-
   if (type === "happy_hour" || type === "limited_drop") {
     return "direct_selectable"
+  }
+
+  if (discountType === "bonus_stamp" || type === "bonus_stamp") {
+    return "automatic_background"
   }
 
   if (

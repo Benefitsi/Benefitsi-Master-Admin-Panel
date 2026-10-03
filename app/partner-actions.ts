@@ -55,6 +55,7 @@ import {
   isAudience,
   isDealType,
   isDiscountType,
+  isBenefitCategory,
   isMilestoneAudience,
   isPartnerStaffRole,
   isRewardType,
@@ -70,6 +71,9 @@ import { extractMenuFromFiles, validateReviewedMenuDraft } from "@/lib/menu-ai-i
 import type { AiMenuDraft } from "@/lib/menu-ai-types"
 import { readEntitlements, setEntitlementOverride } from "@/lib/partners/entitlements"
 import { runMeteredImport } from "@/lib/partners/menu-quota"
+import { prepareDealCreate, recoverDealCreate } from "@/lib/deal-save-guard"
+import { buildStreakMetadata, describeCalendarStreak, streakFieldErrors } from "@/lib/streak-config"
+import { prepareMilestoneCreate, recoverMilestoneCreate } from "@/lib/milestone-save-guard"
 
 const {
   downloadRemoteImage,
@@ -155,6 +159,7 @@ async function requestContentDraft(
 export type PartnerActionState = {
   message: string
   ok: boolean
+  fieldErrors?: Record<string, string>
   description?: string
   dealDraft?: DealFormDraft
   partnerId?: string
@@ -1258,6 +1263,14 @@ export async function saveDeal(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
+  try {
+    return await saveDealRequest(formData)
+  } catch {
+    return dealSaveFailure(formData, "Der Speicherstatus konnte nicht bestätigt werden. Prüfe die Vorteilsliste oder sende dasselbe Formular erneut; die Anfrage wird nur einmal angelegt.")
+  }
+}
+
+async function saveDealRequest(formData: FormData): Promise<PartnerActionState> {
   const id = stringValue(formData, "id")
   const access = await authorizePartnerRowMutation(
     "deals",
@@ -1296,8 +1309,17 @@ export async function saveDeal(
   const validationMessage = validateDealPayload(payload)
 
   if (validationMessage) {
-    return dealSaveFailure(formData, validationMessage)
+    const fieldErrors = isStreakDeal(payload) ? streakFieldErrors(metadataRecord(payload.metadata)) : isHappyHourDeal(payload) && !payload.valid_weekdays.length ? { valid_weekdays: validationMessage } : undefined
+    return { ...dealSaveFailure(formData, validationMessage), fieldErrors }
   }
+
+  const create = id ? null : await prepareDealCreate(supabase, withDefaultDealCopy({ ...payload }), stringValue(formData, "create_request_id"), access.portalSession.user.id)
+  if (create?.error) return dealSaveFailure(formData, create.error)
+  if (create?.replayed) {
+    revalidatePath("/")
+    return { ok: true, message: "Dieser Vorteil wurde bereits gespeichert." }
+  }
+  if (create) payload.metadata = create.metadata
 
   const priorityMessage = await validateUniqueAutomaticDealPriority(
     supabase,
@@ -1353,13 +1375,22 @@ export async function saveDeal(
     ...payload,
     metadata: dealMetadata,
     updated_at: now,
-    ...(id ? {} : { created_at: now }),
+    ...(id ? {} : { id: create!.id, created_at: now }),
   }
   const mutationMessage = id
     ? await updateDeal(supabase, id, mutationPayload)
     : await insertDeals(supabase, [mutationPayload])
 
   if (mutationMessage) {
+    // INSERT uses the stable request UUID as its primary key. Two in-flight
+    // retries can race, but Postgres can create only one row for that request.
+    if (create && await recoverDealCreate(supabase, create.id, access.partnerId, create.fingerprint, access.portalSession.user.id)) {
+      revalidatePath("/")
+      return { ok: true, message: "Dieser Vorteil wurde bereits gespeichert." }
+    }
+    if (mutationMessage.includes("happy_hour_duplicate")) {
+      return dealSaveFailure(formData, "Eine identische aktive Happy Hour ist bereits vorhanden. Bearbeite den bestehenden Vorteil.")
+    }
     return dealSaveFailure(formData, mutationMessage)
   }
 
@@ -1389,6 +1420,17 @@ export async function saveRewardMilestone(
   _prevState: PartnerActionState,
   formData: FormData,
 ): Promise<PartnerActionState> {
+  try {
+    return await saveRewardMilestoneRequest(formData)
+  } catch {
+    return {
+      ok: false,
+      message: "Der Speicherstatus konnte nicht bestätigt werden. Deine Eingaben bleiben erhalten. Sende dasselbe Formular erneut; die Stempelbelohnung wird nur einmal angelegt.",
+    }
+  }
+}
+
+async function saveRewardMilestoneRequest(formData: FormData): Promise<PartnerActionState> {
   const id = stringValue(formData, "id")
   const access = await authorizePartnerRowMutation(
     "partner_reward_milestones",
@@ -1400,16 +1442,23 @@ export async function saveRewardMilestone(
   const now = new Date().toISOString()
   const payload = parseMilestonePayload(formData)
   payload.partner_id = access.partnerId
-  const validationMessage = validateMilestonePayload(payload)
+  const fieldErrors = milestoneFieldErrors(payload)
+  const validationMessage = Object.values(fieldErrors)[0]
 
   if (validationMessage) {
-    return { ok: false, message: validationMessage }
+    return { ok: false, message: validationMessage, fieldErrors }
+  }
+  const create = id ? null : await prepareMilestoneCreate(supabase, payload, stringValue(formData, "create_request_id"))
+  if (create?.error) return { ok: false, message: create.error }
+  if (create?.replayed) {
+    revalidatePath("/")
+    return { ok: true, message: "Diese Stempelbelohnung wurde bereits gespeichert." }
   }
 
   const mutationPayload = {
     ...payload,
     updated_at: now,
-    ...(id ? {} : { created_at: now }),
+    ...(id ? {} : { id: create!.id, created_at: now }),
   }
   const result = id
     ? await supabase
@@ -1419,7 +1468,11 @@ export async function saveRewardMilestone(
     : await supabase.from("partner_reward_milestones").insert(mutationPayload)
 
   if (result.error) {
-    return { ok: false, message: result.error.message }
+    if (create && await recoverMilestoneCreate(supabase, create.id, payload)) {
+      revalidatePath("/")
+      return { ok: true, message: "Diese Stempelbelohnung wurde bereits gespeichert." }
+    }
+    return { ok: false, message: "Die Stempelbelohnung konnte nicht gespeichert werden. Deine Eingaben bleiben erhalten. Bitte versuche es erneut." }
   }
 
   revalidatePath("/")
@@ -4210,8 +4263,14 @@ async function updateDeal(
   id: string,
   deal: ParsedDeal & { created_at?: string; updated_at?: string },
 ) {
+  const mutationPayload: Record<string, unknown> = withDefaultDealCopy({ ...deal })
+  if (isHappyHourDeal(deal)) {
+    // HH stock is consumed by scans and has no editable fields here. Omitting
+    // it also preserves a redemption committed after the edit loaded its row.
+    for (const field of ["stock_total", "stock_remaining", "selection_expires_minutes", "reserve_on_selection"]) delete mutationPayload[field]
+  }
   return await mutateDealPayloadWithSchemaRetry(
-    withDefaultDealCopy({ ...deal }),
+    mutationPayload,
     (payload) => supabase.from("deals").update(payload).eq("id", id),
   )
 }
@@ -4437,7 +4496,7 @@ function parseDealPayload(
       ? endsAt
       : nullableStringValue(formData, `${prefix}valid_until`),
     valid_weekdays:
-      isLimitedDrop
+      isLimitedDrop || usesHappyHour
         ? validWeekdays.length
           ? validWeekdays
           : hasWeekdaySelector
@@ -4509,7 +4568,7 @@ function buildDealMetadata(
   dealConcept: string,
   baseMetadata: unknown,
 ) {
-  const metadata = metadataRecord(baseMetadata)
+  const metadata = type === "streak" ? buildStreakMetadata(formData, prefix, metadataRecord(baseMetadata)) : metadataRecord(baseMetadata)
 
   for (const key of [
     "bonus_mode",
@@ -4650,7 +4709,7 @@ async function preserveExistingDealCopy(
 ) {
   const result = await supabase
     .from("deals")
-    .select("customer_description,staff_instructions,terms,reward_item")
+    .select("*")
     .eq("id", id)
     .single()
 
@@ -4658,11 +4717,46 @@ async function preserveExistingDealCopy(
     return result.error.message
   }
 
-  const current = result.data as {
+  const current = result.data as Partial<ParsedDeal> & {
     customer_description: string | null
     staff_instructions: string | null
     terms: string | null
     reward_item: string | null
+  }
+
+  // The editor represents the campaign as HH. Keep storage compatibility and
+  // lifecycle conditions from the authorized row, never from hidden inputs.
+  if (isHappyHourDeal(payload) && isHappyHourDeal(current)) {
+    if (current.type && current.type !== "happy_hour") {
+      payload.type = ["discount", "free_item", "two_for_one", "bonus_stamp"].includes(current.type)
+        ? canonicalRewardFormat("happy_hour", payload.discount_type) ?? current.type
+        : current.type
+    }
+    if (isBenefitCategory(current.benefit_category ?? "")) payload.benefit_category = current.benefit_category!
+    if (typeof current.activation_required === "boolean") payload.activation_required = current.activation_required
+    if (current.activation_mode !== undefined) payload.activation_mode = current.activation_mode
+    payload.trigger_key = current.trigger_key ?? null
+    payload.trigger_value = current.trigger_value ?? null
+    payload.expiry_days = current.expiry_days ?? null
+    for (const field of ["stock_total", "stock_remaining", "selection_expires_minutes", "reserve_on_selection"] as const) {
+      if (current[field] !== undefined) Object.assign(payload, { [field]: current[field] })
+    }
+    if (current.starts_at) payload.starts_at = formData.has(`${prefix}valid_from`) ? payload.valid_from : current.starts_at
+    if (current.ends_at) payload.ends_at = formData.has(`${prefix}valid_until`) ? payload.valid_until : current.ends_at
+  }
+  if (isStreakDeal(payload) && isStreakDeal(current)) {
+    if (current.type && current.type !== "streak") {
+      payload.type = ["discount", "free_item", "two_for_one", "bonus_stamp"].includes(current.type)
+        ? canonicalRewardFormat("streak", payload.discount_type) ?? current.type
+        : current.type
+    }
+    payload.trigger_key = current.trigger_key ?? payload.trigger_key
+    if (current.campaign_type !== undefined) payload.campaign_type = current.campaign_type
+    if (current.discount_type === payload.discount_type) {
+      if (isBenefitCategory(current.benefit_category ?? "")) payload.benefit_category = current.benefit_category!
+      if (typeof current.activation_required === "boolean") payload.activation_required = current.activation_required
+      if (current.activation_mode !== undefined) payload.activation_mode = current.activation_mode
+    }
   }
 
   if (
@@ -4744,7 +4838,7 @@ function normalizeDealDiscountType(type: string, discountType: string) {
   }
 
   if (type === "happy_hour") {
-    return ["fixed", "percent", "item", "2for1"].includes(discountType)
+    return ["fixed", "percent", "item", "2for1", "bonus_stamp"].includes(discountType)
       ? discountType
       : "percent"
   }
@@ -4754,13 +4848,27 @@ function normalizeDealDiscountType(type: string, discountType: string) {
     : discountType || "bonus_stamp"
 }
 
+function isHappyHourDeal(deal: { type?: string | null; campaign_type?: string | null }) {
+  return deal.type === "happy_hour" || deal.campaign_type === "happy_hour"
+}
+
+function isStreakDeal(deal: { type?: string | null; campaign_type?: string | null; trigger_key?: string | null }) {
+  return !isHappyHourDeal(deal) && (deal.type === "streak" || deal.campaign_type === "streak" || deal.trigger_key === "streak")
+}
+
 function validateDealPayload(payload: ParsedDeal) {
+  const isHappyHour = isHappyHourDeal(payload)
+  const isStreak = isStreakDeal(payload)
   if (!payload.partner_id) {
     return "A benefit must be attached to a partner."
   }
 
   if (!isDealType(payload.type)) {
     return "Reward format is required."
+  }
+  if (isStreak) {
+    const streakError = Object.values(streakFieldErrors(metadataRecord(payload.metadata)))[0]
+    if (streakError) return streakError
   }
 
   if (!isDiscountType(payload.discount_type)) {
@@ -4834,7 +4942,7 @@ function validateDealPayload(payload: ParsedDeal) {
   }
 
   if (
-    payload.type === "two_for_one" &&
+    !isHappyHour && payload.type === "two_for_one" &&
     payload.discount_type !== "2for1"
   ) {
     return "2-for-1 benefits must use the 2-for-1 reward type."
@@ -4857,7 +4965,7 @@ function validateDealPayload(payload: ParsedDeal) {
     }
   }
 
-  if (payload.type === "discount") {
+  if (!isHappyHour && payload.type === "discount") {
     if (payload.benefit_category !== "direct_selectable") {
       return "Selectable discounts must be selected before visit."
     }
@@ -4871,7 +4979,7 @@ function validateDealPayload(payload: ParsedDeal) {
   }
 
   if (
-    payload.type === "bonus_stamp" &&
+    !isHappyHour && !isStreak && payload.type === "bonus_stamp" &&
     (payload.discount_type !== "bonus_stamp" ||
       payload.benefit_category !== "automatic_background" ||
       payload.activation_required)
@@ -4879,18 +4987,15 @@ function validateDealPayload(payload: ParsedDeal) {
     return "Automatic bonus stamp benefits must use bonus stamp, apply automatically, and not require activation."
   }
 
-  if (payload.type === "free_item" && payload.discount_type !== "item") {
+  if (!isHappyHour && payload.type === "free_item" && payload.discount_type !== "item") {
     return "Free item benefits must use the free item reward type."
   }
 
-  if (payload.type === "happy_hour") {
-    if (payload.benefit_category !== "direct_selectable") {
-      return "Happy Hour benefits must be selected before visit."
+  if (isHappyHour) {
+    if (!isBenefitCategory(payload.benefit_category)) {
+      return "Die Happy-Hour-Konfiguration ist ungültig. Bitte öffne das Formular erneut."
     }
-
-    if (payload.discount_type === "bonus_stamp") {
-      return "Happy Hour benefits cannot use automatic bonus stamps."
-    }
+    if (!payload.valid_weekdays.length) return "Bitte mindestens einen gültigen Wochentag für die Happy Hour auswählen."
 
     if (
       payload.valid_weekdays.some((weekday) => weekday < 1 || weekday > 7)
@@ -4900,7 +5005,7 @@ function validateDealPayload(payload: ParsedDeal) {
   }
 
   if (
-    payload.activation_required !==
+    !isHappyHour && payload.activation_required !==
     activationRequiredForCategory(payload.benefit_category)
   ) {
     return "Activation must match the benefit category."
@@ -4936,14 +5041,14 @@ function validateDealPayload(payload: ParsedDeal) {
   }
 
   if (
-    payload.type === "happy_hour" &&
+    isHappyHour &&
     (!payload.happy_hour_start || !payload.happy_hour_end)
   ) {
     return "Happy Hour benefits require start and end times."
   }
 
   if (
-    payload.type === "streak" &&
+    isStreak &&
     (!payload.trigger_value || payload.trigger_value <= 0)
   ) {
     return "Streak benefits require a trigger value greater than 0."
@@ -5068,6 +5173,7 @@ function validateDealPayload(payload: ParsedDeal) {
 }
 
 function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
+  const copyType = isHappyHourDeal(payload) ? "happy_hour" : isStreakDeal(payload) ? "streak" : payload.type
   const reward = describeDealReward(
     payload.discount_type,
     payload.discount_value,
@@ -5084,7 +5190,7 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
     payload.trigger_key === "time_bonus"
 
   const customerDescription = (() => {
-    switch (payload.type) {
+    switch (copyType) {
       case "two_for_one":
         return `Aktiviere 2 für 1: Erhalte zwei ${payload.reward_item || "ausgewählte Produkte"} zum Preis von einem.`
       case "free_item":
@@ -5093,14 +5199,16 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
         return `Erhalte ${reward} nach einem qualifizierten Besuch automatisch.`
       case "happy_hour":
         return timeWindow
-          ? `Happy Hour: ${reward} von ${timeWindow}.`
-          : `Happy Hour: ${reward}.`
+          ? `Happy Hour: ${reward} von ${timeWindow}, automatisch wenn kein anderer direkter Vorteil ausgewählt ist.`
+          : `Happy Hour: ${reward}, automatisch wenn kein anderer direkter Vorteil ausgewählt ist.`
       case "welcome":
         return isAutomatic
           ? `Willkommensbonus: Erhalte ${reward} bei deinem ersten qualifizierten Besuch automatisch.`
           : `Willkommensdeal: Erhalte ${reward} bei deinem ersten qualifizierten Besuch.`
       case "streak":
-        return `Nach ${payload.trigger_value ?? 3} qualifizierten Besuchen erhältst du ${reward}.`
+        return describeCalendarStreak(metadataRecord(payload.metadata))
+          ? `${describeCalendarStreak(metadataRecord(payload.metadata))}. Nach Abschluss erhältst du ${reward} einmal pro Serienlauf.`
+          : `Nach ${payload.trigger_value ?? 3} qualifizierten Besuchstagen in einer Serie erhältst du ${reward}.`
       case "challenge":
         return `Schließe die Challenge ab und erhalte ${reward}.`
       case "comeback":
@@ -5117,7 +5225,7 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
   })()
 
   const staffInstructions = (() => {
-    switch (payload.type) {
+    switch (copyType) {
       case "two_for_one":
         return `1 ${payload.reward_item || "Produkt"} berechnen und ein gleichwertiges oder günstigeres zweites Produkt gratis ausgeben. Keine Stempel für diesen Vorteil.`
       case "free_item":
@@ -5126,8 +5234,8 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
         return "Keine manuelle Kassenaktion. Bonusstempel nach bestätigtem Scan automatisch gutschreiben."
       case "happy_hour":
         return timeWindow
-          ? `Aktivierten Vorteil im Rahmen der Happy Hour prüfen und ${reward} im Zeitraum ${timeWindow} anwenden.`
-          : `Aktivierten Vorteil im Rahmen der Happy Hour prüfen und ${reward} anwenden.`
+          ? `Automatisch angezeigte Happy Hour und Teilnahmebedingungen prüfen; ${reward} im Zeitraum ${timeWindow} genau einmal anwenden.`
+          : `Automatisch angezeigte Happy Hour und Teilnahmebedingungen prüfen; ${reward} genau einmal anwenden.`
       case "welcome":
         return `Berechtigung im Scan prüfen und ${reward} einmalig auf den aktuellen Bon anwenden.`
       case "streak":
@@ -5144,7 +5252,7 @@ function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
   })()
 
   const terms = (() => {
-    switch (payload.type) {
+    switch (copyType) {
       case "two_for_one":
         return "Gilt für zwei gleiche oder gleichwertige Produkte. Keine Stempel für diesen Vorteil. Nicht mit anderen Vorteilen kombinierbar."
       case "free_item":
@@ -5198,6 +5306,7 @@ function withDefaultMilestoneCopy(payload: ParsedMilestone): ParsedMilestone {
 
   return {
     ...payload,
+    title: nonEmptyCopy(payload.title, `${requiredStamps} Stempel: ${reward}`.slice(0, adminTextLimits.shortText)),
     customer_description: nonEmptyCopy(
       payload.customer_description,
       `Sammle ${requiredStamps} Stempel und erhalte ${reward}.`,
@@ -5293,6 +5402,7 @@ async function validateUniqueAutomaticDealPriority(
   id?: string,
 ) {
   if (
+    isHappyHourDeal(payload) ||
     !isAutomaticBenefitCategory(payload.benefit_category) ||
     payload.priority === null
   ) {
@@ -5335,7 +5445,7 @@ function parseInitialMilestones(formData: FormData, partnerId: string) {
     milestones.push(
       withDefaultMilestoneCopy({
         partner_id: partnerId,
-        required_stamps: integerValue(formData, `${prefix}required_stamps`),
+        required_stamps: wholeNumberValue(formData, `${prefix}required_stamps`),
         reward_type: rewardType,
         reward_item: nullableStringValue(formData, `${prefix}reward_item`),
         discount_type: rewardType,
@@ -5389,7 +5499,7 @@ function parseMilestonePayload(formData: FormData): ParsedMilestone {
 
   return withDefaultMilestoneCopy({
     partner_id: stringValue(formData, "partner_id"),
-    required_stamps: integerValue(formData, "required_stamps"),
+    required_stamps: wholeNumberValue(formData, "required_stamps"),
     reward_type: rewardType,
     reward_item: nullableStringValue(formData, "reward_item"),
     discount_type: stringValue(formData, "discount_type") || rewardType,
@@ -5415,58 +5525,32 @@ function parseMilestonePayload(formData: FormData): ParsedMilestone {
 }
 
 function validateMilestonePayload(payload: ParsedMilestone) {
-  if (!payload.partner_id) {
-    return "A milestone must be attached to a partner."
+  return Object.values(milestoneFieldErrors(payload))[0] ?? null
+}
+
+function milestoneFieldErrors(payload: ParsedMilestone): Record<string, string> {
+  const errors: Record<string, string> = {}
+  if (!payload.partner_id) errors.partner_id = "Bitte einen Partner auswählen."
+  if (!payload.required_stamps || !Number.isInteger(payload.required_stamps) || payload.required_stamps < 1 || payload.required_stamps > MAX_STAMP_CARD_STAMPS) {
+    errors.required_stamps = `Bitte eine Stempelzahl zwischen 1 und ${MAX_STAMP_CARD_STAMPS} eingeben.`
   }
-
-  if (!payload.required_stamps || payload.required_stamps < 1) {
-    return "Required stamps must be at least 1."
+  if (!isRewardType(payload.reward_type)) errors.reward_type = "Bitte einen Belohnungstyp auswählen."
+  if (!isMilestoneAudience(payload.audience)) errors.audience = "Bitte eine Zielgruppe auswählen."
+  if (payload.reward_type === "item" && !payload.reward_item) errors.reward_item = "Bitte den Namen des Gratisartikels eingeben."
+  if (["fixed", "percent", "bonus_stamp"].includes(payload.reward_type) && (payload.discount_value === null || payload.discount_value <= 0)) {
+    errors.discount_value = "Bitte einen Belohnungswert größer als 0 eingeben."
+  } else if (payload.reward_type === "percent" && payload.discount_value! > 100) {
+    errors.discount_value = "Bitte einen Prozentsatz zwischen 1 und 100 eingeben."
+  } else if (payload.reward_type === "bonus_stamp" && !Number.isInteger(payload.discount_value)) {
+    errors.discount_value = "Bitte eine ganze Anzahl Bonusstempel eingeben."
   }
-
-  if (!isRewardType(payload.reward_type)) {
-    return "Milestone reward type is required."
+  for (const [field, limit] of [
+    ["reward_item", adminTextLimits.shortText], ["title", adminTextLimits.shortText],
+    ["customer_description", adminTextLimits.longText], ["staff_instructions", adminTextLimits.longText], ["terms", adminTextLimits.longText],
+  ] as const) {
+    if ((payload[field]?.length ?? 0) > limit) errors[field] = `Bitte auf höchstens ${limit} Zeichen kürzen.`
   }
-
-  if (!isMilestoneAudience(payload.audience)) {
-    return "Milestone audience is required."
-  }
-
-  if (payload.reward_type === "item" && !payload.reward_item) {
-    return "Item milestones require a reward item."
-  }
-
-  if (
-    (payload.reward_type === "fixed" || payload.reward_type === "percent") &&
-    payload.discount_value === null
-  ) {
-    return "Fixed and percent milestones require a discount value."
-  }
-
-  if (payload.required_stamps > MAX_STAMP_CARD_STAMPS) {
-    return `Required stamps must be ${MAX_STAMP_CARD_STAMPS} or lower.`
-  }
-
-  const textValidation = validateTextLengthRules([
-    ["Reward item", payload.reward_item, adminTextLimits.shortText],
-    ["Title", payload.title, adminTextLimits.shortText],
-    [
-      "Customer description",
-      payload.customer_description,
-      adminTextLimits.longText,
-    ],
-    [
-      "Staff instructions",
-      payload.staff_instructions,
-      adminTextLimits.longText,
-    ],
-    ["Terms", payload.terms, adminTextLimits.longText],
-  ])
-
-  if (textValidation) {
-    return textValidation
-  }
-
-  return null
+  return errors
 }
 
 function parsePartnerSocials(formData: FormData): ParsedPartnerSocial[] {
@@ -6612,6 +6696,13 @@ function integerValue(formData: FormData, key: string) {
 
   const number = Number.parseInt(value, 10)
   return Number.isFinite(number) ? number : null
+}
+
+function wholeNumberValue(formData: FormData, key: string) {
+  const value = stringValue(formData, key)
+  if (!value) return null
+  const number = Number(value)
+  return Number.isSafeInteger(number) ? number : null
 }
 
 function positiveIntegerValue(formData: FormData, key: string) {

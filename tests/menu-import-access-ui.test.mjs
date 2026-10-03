@@ -33,6 +33,8 @@ function runtime(action = noop, refresh = () => {}) {
     "lucide-react": require("lucide-react"),
     "@/app/partner-actions": actions, "./partner-actions": actions,
     "./partner-enrichment-actions": { researchPartner: noop },
+    "./use-partner-capabilities": require("../app/use-partner-capabilities.ts"),
+    "./streak-rule-fields": require("../app/streak-rule-fields.tsx"),
     "./microsite-panel": { MicrositePanel: () => null },
     "@/components/microsite-read-only-notice": { MicrositeReadOnlyNotice: () => null },
     "./admin-language": { useAdminLanguage: () => ({ language: "de" }) },

@@ -1,6 +1,7 @@
 import "server-only"
 
 import { createClient } from "@supabase/supabase-js"
+import { createBoundedSupabaseFetch } from "./bounded-fetch"
 
 function requireAdminConfiguration() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
@@ -25,6 +26,7 @@ export function createAdminClient() {
   const { url, serviceRoleKey } = requireAdminConfiguration()
 
   return createClient(url, serviceRoleKey, {
+    global: { fetch: createBoundedSupabaseFetch() },
     auth: {
       persistSession: false,
       autoRefreshToken: false,

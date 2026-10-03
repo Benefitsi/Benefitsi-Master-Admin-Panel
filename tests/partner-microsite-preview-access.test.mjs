@@ -41,6 +41,7 @@ function loadRoute(path, session, selectedPartner) {
     return createElement("article", null, props.initialConfig.hero.headline)
   }
   const imports = {
+    "@/components/partner/partner-drop-usage": { PartnerDropUsage: () => null },
     "@/components/partner/partner-dashboard": {PartnerDashboard:({children,name})=>createElement('main',null,name,children),PartnerOverview:()=>null},
     "@/components/partner/partner-statistics": {PartnerStatistics:()=>null},
     "@/lib/partners/page-context": {partnerPageContext:async()=>{
