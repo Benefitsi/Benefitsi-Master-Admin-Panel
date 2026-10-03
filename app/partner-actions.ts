@@ -3689,18 +3689,19 @@ async function preparePartnerUploadFile(
 
   const input = Buffer.from(await file.arrayBuffer())
   try {
-    const resized = await sharp(input)
+    const { data: resized, info } = await sharp(input)
       .rotate()
       .resize(spec.width, spec.height, {
         fit: "cover",
         position: "center",
+        withoutEnlargement: true,
       })
       .webp({ quality: 90, effort: 4 })
-      .toBuffer()
+      .toBuffer({ resolveWithObject: true })
 
     return new File(
       [new Uint8Array(resized)],
-      replaceFileExtension(file.name, `${spec.width}x${spec.height}.webp`),
+      replaceFileExtension(file.name, `${info.width}x${info.height}.webp`),
       {
         type: "image/webp",
         lastModified: Date.now(),

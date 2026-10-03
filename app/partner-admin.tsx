@@ -120,6 +120,7 @@ import { LoadingSpinner } from "@/components/loading-ui"
 import { MenuAiImportDialog } from "@/components/menu-ai-import-dialog"
 import { PartnerPlanPanel } from "@/components/partner/partner-plan-panel"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
+import { inspectPartnerMediaQuality } from "@/lib/partner-media-quality"
 
 const initialState: PartnerActionState = {
   ok: false,
@@ -907,6 +908,12 @@ function PartnerListButton({
   onSelect: () => void
 }) {
   const hasDeals = partner.deals.length > 0
+  const mediaQuality = inspectPartnerMediaQuality(partner)
+  const lowResolutionLabels = mediaQuality.lowResolution.map(
+    (image) =>
+      `${image.label} ${image.width}×${image.height} (recommended ${image.targetWidth}×${image.targetHeight})`,
+  )
+  const unverifiedLabels = mediaQuality.unverified.map((image) => image.label)
 
   return (
     <button
@@ -938,6 +945,34 @@ function PartnerListButton({
             </p>
             {isPartnerActive(partner) && partner.is_featured ? (
               <FeaturedBadge compact />
+            ) : null}
+            {mediaQuality.lowResolution.length ? (
+              <span
+                role="img"
+                aria-label={`Low-resolution images: ${lowResolutionLabels.join(", ")}`}
+                title={`Low-resolution images: ${lowResolutionLabels.join(", ")}`}
+                className="inline-flex min-h-6 items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold leading-4 text-rose-800"
+              >
+                <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className="size-3.5 shrink-0">
+                  <path d="M8 1.8 14.1 13H1.9L8 1.8Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                  <path d="M8 5.4v3.4M8 11.1h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span>Low-res · {mediaQuality.lowResolution.length}</span>
+                <span className="hidden max-w-44 truncate font-medium sm:inline">
+                  {lowResolutionLabels.slice(0, 2).join(" · ")}
+                  {lowResolutionLabels.length > 2 ? ` +${lowResolutionLabels.length - 2}` : ""}
+                </span>
+              </span>
+            ) : null}
+            {unverifiedLabels.length ? (
+              <span
+                role="img"
+                aria-label={`${unverifiedLabels.length} image dimensions could not be verified`}
+                title={`Dimensions unavailable in image URLs: ${unverifiedLabels.join(", ")}`}
+                className="inline-flex min-h-6 items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold leading-4 text-amber-800"
+              >
+                Check sizes · {unverifiedLabels.length}
+              </span>
             ) : null}
             {!hasDeals ? (
               <span className="whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">

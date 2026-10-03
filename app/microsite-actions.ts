@@ -1109,8 +1109,10 @@ async function uploadMicrositeAssetFile(
   }
 
   let optimized: Buffer
+  let outputWidth = 0
+  let outputHeight = 0
   try {
-    optimized = await sharp(Buffer.from(await value.arrayBuffer()))
+    const result = await sharp(Buffer.from(await value.arrayBuffer()))
       .rotate()
       .resize({
         // Hero media can span the full desktop canvas. Keep enough source detail
@@ -1122,7 +1124,10 @@ async function uploadMicrositeAssetFile(
         withoutEnlargement: true,
       })
       .webp({ quality: 90, effort: 5 })
-      .toBuffer()
+      .toBuffer({ resolveWithObject: true })
+    optimized = result.data
+    outputWidth = result.info.width
+    outputHeight = result.info.height
   } catch (error) {
     return {
       ok: false,
@@ -1136,7 +1141,7 @@ async function uploadMicrositeAssetFile(
     }
   }
 
-  const path = `microsites/${partnerId}/${slot}-${randomUUID()}.webp`
+  const path = `microsites/${partnerId}/${slot}-${randomUUID()}-${outputWidth}x${outputHeight}.webp`
   const upload = await supabase.storage
     .from(MICROSITE_ASSET_BUCKET)
     .upload(path, optimized, { contentType: "image/webp", upsert: false })
