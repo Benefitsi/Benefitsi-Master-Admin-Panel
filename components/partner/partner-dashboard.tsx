@@ -12,6 +12,7 @@ import {
   ChartNoAxesColumnIncreasing,
   Store,
   Settings,
+  Users,
   ChevronDown,
 } from "lucide-react";
 import { PartnerStatistics } from "@/components/partner/partner-statistics";
@@ -44,6 +45,7 @@ export function PartnerDashboard({
     ["overview", "Übersicht", "/partner"],
     ["deals", "Vorteile", "/partner?section=deals"],
     ["statistics", "Statistiken", "/partner/statistics"],
+    ["crm", "Kundenbindung", "/partner/crm"],
     ["business", "Betrieb", "/partner?section=business"],
     ["billing", "Tarif & Module", "/partner/billing"],
   ].filter(
@@ -55,6 +57,7 @@ export function PartnerDashboard({
     statistics: ChartNoAxesColumnIncreasing,
     business: Store,
     billing: Settings,
+    crm: Users,
   };
   return (
     <AdminLanguageProvider
@@ -237,6 +240,7 @@ export function PartnerOverview({
           >
             Tarif & Module ansehen
           </a>
+          <a className="underline" href={`/partner/crm?partner=${partnerId}`}>Kundenbindung ansehen</a>
         </div>
       </section>
       <section className="mt-4 rounded-2xl bg-[#061829] p-5 text-white">

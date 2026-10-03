@@ -1,3 +1,5 @@
+import type {AdminEditorialRequest} from '@/lib/partners/crm'
+import type {BenefitPlan} from '@/lib/partners/benefits'
 import type { SupabaseClient } from '@supabase/supabase-js'
 export type Entitlements = {
   schema_version: number
@@ -66,9 +68,10 @@ export type BillingSummary = {
     used: number
     reserved: number
   }[]
-  catalog: { schema_version: number; offers: PriceOffer[] }
+  catalog: { schema_version: number; offers: PriceOffer[]; plans?: (BenefitPlan & {version:number})[] }
 }
 export type PlanPanel = BillingSummary & {
+  editorial_requests?: AdminEditorialRequest[]
   billing_cases?: {contract_id:string;state:string;checkout_id:string|null;schedule_id:string|null;subscription_id:string|null;provider_evidence:unknown[]}[]
   founder?: {campaign_city_id:string|null;campaign_city_name:string|null;eligible:boolean;evidence:string|null;decided_at:string|null;admitted:boolean}
   overrides: {
@@ -184,8 +187,8 @@ export const featureLabels: Record<string, string> = {
   'analytics.advanced': 'Erweiterte Statistik',
   'analytics.export': 'Statistikexport',
   'feedback.manage': 'Besuchsfeedback verwalten',
-  'marketing.manage': 'Partnerwerbung · noch nicht verfügbar',
-  'crm.manage': 'CRM · noch nicht verfügbar',
+  'marketing.manage': 'Marketingentwürfe · Versand noch nicht verfügbar',
+  'crm.manage': 'Kundenbindung · Zielgruppen & Entwürfe',
   'team.manage': 'Team verwalten',
   'menu.ai_import': 'Menüimport mit KI',
   commerce: 'Bestellungen & Termine',

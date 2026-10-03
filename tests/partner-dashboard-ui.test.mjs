@@ -109,3 +109,17 @@ test('Founder draft approval derives annual versus monthly interval from support
   assert.match(html,new RegExp((amount/100).toFixed(2).replace('.',',')+'[^<]* '+label+', zzgl. MwSt.'))
  }
 })
+test('existing partner navigation and overview expose Kundenbindung using the selected partner',()=>{
+ const rights=billing(true).entitlements
+ const html=render(h(PartnerDashboard,{partnerId,name:'Shop',partners:[],rights,active:'crm',children:null}))
+ assert.match(html,/href="\/partner\/crm\?partner=/)
+ assert.match(html,/Kundenbindung/)
+ const {PartnerOverview}=loadUi('components/partner/partner-dashboard.tsx')
+ assert.match(render(h(PartnerOverview,{partnerId,name:'Shop',rights})),/href="\/partner\/crm\?partner=/)
+})
+test('tariff summary renders complete grouped benefits and an unavailable legacy catalog without invented quotas',()=>{
+ const data=billing(true),html=render(h(PartnerPlanSummary,{data}))
+ for(const text of ['Auftritt &amp; Entdeckung','Kundenbindung &amp; Redaktion','Basisbelohnungen','Blogartikel','Inhaberinterview','Geschäftszeiten','360°','Versand noch nicht verfügbar'])assert.ok(html.includes(text),text)
+ const legacy=structuredClone(data);legacy.entitlements.features={};legacy.entitlements.limits={}
+ assert.match(render(h(PartnerPlanSummary,{data:legacy})),/Tarifumfang derzeit nicht verfügbar/)
+})

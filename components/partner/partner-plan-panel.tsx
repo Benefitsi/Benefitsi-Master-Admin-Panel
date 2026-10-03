@@ -12,6 +12,8 @@ import {
   type PlanPanel,
   type PriceOffer,
 } from "@/lib/partners/entitlements";
+import {PartnerBenefitGroups} from '@/components/partner/partner-benefit-groups';
+import {PartnerEditorialManagement} from '@/components/partner/partner-editorial-management';
 import { PartnerStatistics } from "@/components/partner/partner-statistics";
 import { formatBerlin, type Dashboard } from "@/lib/partners/analytics";
 const input =
@@ -279,6 +281,11 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
         ))}
       </section>
       <section className={box}>
+        <h3 className="mb-5 text-lg font-bold">Deine Leistungen im Überblick</h3>
+        <PartnerBenefitGroups plan={rights}/>
+        <a className="mt-5 inline-block text-sm font-semibold text-sky-700 underline" href={`/partner/crm?partner=${rights.partner_id}`}>Kundenbindung und aktuelle Verfügbarkeit prüfen</a>
+      </section>
+      <section className={box}>
         <h3 className="font-bold">Deine Funktionen</h3>
         <ul className="mt-3 divide-y divide-slate-100">
           {Object.entries(featureLabels).map(([key, label]) => (
@@ -293,9 +300,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                     rights.features[key] ? "text-emerald-700" : "text-slate-500"
                   }
                 >
-                  {rights.features[key]
-                    ? "Freigeschaltet"
-                    : "Nicht freigeschaltet"}
+                  {typeof rights.features[key] !== "boolean" ? "Tarifumfang derzeit nicht verfügbar" : rights.features[key] ? key === "crm.manage" ? "Berechtigung aktiv · Verfügbarkeit im Kundenbindungsbereich prüfen" : key === "marketing.manage" ? "Entwürfe erlaubt · Versand noch nicht verfügbar" : "Freigeschaltet" : "Nicht freigeschaltet"}
                 </strong>
                 <small className="block text-slate-500">
                   {reasons[rights.reason_codes[key]] ??
@@ -357,12 +362,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
             <h4 className="mt-2 text-xl font-bold">Free</h4>
             <p className="mt-4 text-3xl font-bold">0 €</p>
             <p className="mt-1 text-sm text-slate-500">kostenlos</p>
-            <ul className="mt-5 space-y-2 text-sm">
-              <li>Standardprofil auf der Stadtseite</li>
-              <li>30 Tage Auswertung</li>
-              <li>Normale Angebote und Happy Hour unbegrenzt · 1 Deal Drop je Kalendermonat · 3 Teammitglieder</li>
-              <li>Keine eigene Microsite</li>
-            </ul>
+            <div className="mt-5"><PartnerBenefitGroups compact plan={data.catalog.plans?.filter(p => p.plan_code === 'free').sort((a,b)=>b.version-a.version)[0] ?? {plan_code:'free',features:{},limits:{}}}/></div>
           </article>
           {data.catalog.offers
             .filter((o) =>
@@ -399,12 +399,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                     Einrichtung
                   </p>
                 )}
-                <ul className="mt-5 space-y-2 text-sm">
-                  <li>Eigene Microsite</li>
-                  <li>365 Tage Auswertung</li>
-                  <li>Normale Angebote und Happy Hour unbegrenzt · Deal Drops vorläufig ohne Monatslimit · 10 Teammitglieder</li>
-                  <li>2 KI-Importe / Monat, nur nach Freigabe</li>
-                </ul>
+                <div className="mt-5"><PartnerBenefitGroups compact plan={data.catalog.plans?.find(p => p.plan_code === o.plan_code && p.version === o.plan_version) ?? {plan_code:o.plan_code??'pro',features:{},limits:{}}}/></div>
                 {o.offer_code.startsWith("founder") && (
                   <p className="mt-5 border-t border-amber-200 pt-4 text-sm leading-6">
                     6 Monate gratis ab tatsächlicher Aktivierung, währenddessen
@@ -605,6 +600,7 @@ export function PartnerPlanPanel({
         Sichere Admin-Vorschau der wirksamen Partnerrechte. Du bleibst im
         Admin-Bereich; Partner-Sitzungen werden nicht übernommen.
       </div>
+      <PartnerEditorialManagement partnerId={partnerId} initial={data.editorial_requests}/>
       {!!data.billing_cases?.length && (
         <details className={box}>
           <summary>Referenzen für die Admin-Abrechnungsprüfung</summary>

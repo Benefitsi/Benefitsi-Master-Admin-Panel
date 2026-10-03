@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "partner_id": "00000000-0000-4000-8000-000000000013",
+  "as_of": "2026-10-02T12:00:00+00:00",
+  "timezone": "Europe/Berlin",
+  "window": {
+    "from": "2025-10-01T22:00:00+00:00",
+    "to": "2026-10-01T22:00:00+00:00",
+    "days": 365
+  },
+  "audiences": {
+    "second_visit": {
+      "kind": "second_visit",
+      "status": "ok",
+      "value": 128,
+      "definition": "exactly_one_completed_visit_in_window",
+      "config": {}
+    },
+    "comeback": {
+      "kind": "comeback",
+      "status": "suppressed",
+      "value": null,
+      "definition": "last_completed_visit_at_least_45_berlin_days_ago_in_window",
+      "config": {
+        "inactivity_days": 45
+      }
+    },
+    "reward_reminder": {
+      "kind": "reward_reminder",
+      "status": "unavailable",
+      "value": null,
+      "definition": "one_or_two_stamps_before_next_eligible_base_milestone",
+      "config": {
+        "remaining_stamps": 2
+      },
+      "reason": "reward_rules_not_established"
+    }
+  },
+  "campaigns": [
+    {
+      "id": "00000000-0000-4000-8000-000000000014",
+      "partner_id": "00000000-0000-4000-8000-000000000013",
+      "revision": 1,
+      "kind": "comeback",
+      "title": "Wir freuen uns auf deinen nächsten Besuch",
+      "body": "Entdecke unsere aktuellen Angebote.",
+      "deal_id": null,
+      "config": {
+        "inactivity_days": 45
+      },
+      "channel": "push_and_in_app",
+      "status": "draft",
+      "created_at": "2026-10-02T11:00:00+00:00",
+      "updated_at": "2026-10-02T11:00:00+00:00"
+    }
+  ],
+  "editorial_requests": [
+    {
+      "service_key": "blog_article",
+      "status": "planned",
+      "requested_at": "2026-10-02T10:00:00+00:00",
+      "updated_at": "2026-10-02T11:00:00+00:00",
+      "partner_note": "Bitte unsere regionalen Produkte vorstellen."
+    },
+    {
+      "service_key": "founder_interview",
+      "status": "not_requested",
+      "requested_at": null,
+      "updated_at": null,
+      "partner_note": null
+    }
+  ],
+  "delivery": {
+    "status": "draft_only",
+    "reason": "marketing_delivery_not_enabled"
+  },
+  "metrics": {
+    "status": "unavailable",
+    "reason": "marketing_delivery_not_enabled"
+  }
+}
