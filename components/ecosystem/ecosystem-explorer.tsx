@@ -4,10 +4,11 @@ import Link from "next/link"
 import { useState } from "react"
 import {
   ArrowRight, ArrowUpRight, Bell, BookOpen, Buildings, CalendarBlank,
-  CaretDown, ChartLineUp, Clock, CreditCard, Crown, FileText, Gift,
-  GlobeHemisphereWest, Heart, MagnifyingGlass, MapPin, Percent, Scan,
-  ShieldCheck, Sparkle, Stack, Storefront, Ticket, Users, X,
+  CaretDown, ChartLineUp, Clock, CreditCard, Crown, FileText,
+  GlobeHemisphereWest, Heart, MagnifyingGlass, MapPin, Scan,
+  ShieldCheck, Sparkle, Stack, Storefront, Users, X,
 } from "@phosphor-icons/react"
+import { BenefitIcon } from "@/components/benefit-icon"
 import { ecosystemCatalog, type EcosystemEntry } from "@/lib/ecosystem/catalog"
 import type { EcosystemPage } from "@/lib/ecosystem/directory"
 import styles from "./ecosystem.module.css"
@@ -15,17 +16,16 @@ import styles from "./ecosystem.module.css"
 const groups = [
   { id: "app", label: "App", detail: "Nutzer & Entdecken", Icon: Scan },
   { id: "partner", label: "Partner", detail: "Betrieb & Wachstum", Icon: Storefront },
-  { id: "deals", label: "Vorteile", detail: "Deals & Treue", Icon: Gift },
+  { id: "deals", label: "Vorteile", detail: "Deals & Treue", Icon: null },
   { id: "platform", label: "Plattform", detail: "Städte & Werkzeuge", Icon: GlobeHemisphereWest },
 ] as const
 
 function featureIcon(entry: EcosystemEntry) {
   const title = entry.title.toLowerCase()
-  if (/rabatt|2 für/.test(title)) return Percent
   if (/stempel|qr|scan/.test(title)) return Scan
   if (/premium|pro |founder/.test(title)) return Crown
   if (/karte|stadtpass|orte/.test(title)) return MapPin
-  if (/zeit|hour|comeback|streak/.test(title)) return Clock
+  if (/zeit/.test(title)) return Clock
   if (/feedback|favorit|merk/.test(title)) return Heart
   if (/team|konto|profil|registrier|community/.test(title)) return Users
   if (/benachrichtigung|newsletter/.test(title)) return Bell
@@ -37,7 +37,15 @@ function featureIcon(entry: EcosystemEntry) {
   if (/datenschutz|recht|freigabe/.test(title)) return ShieldCheck
   if (/buch|termin|veranstalt/.test(title)) return CalendarBlank
   if (/guide|wissen/.test(title)) return BookOpen
-  return entry.group === "deals" ? Ticket : entry.group === "platform" ? Buildings : Stack
+  return entry.group === "platform" ? Buildings : Stack
+}
+
+const featureIcons = Object.fromEntries(ecosystemCatalog.map(entry => [entry.id, featureIcon(entry)]))
+
+function FeatureGlyph({ entry }: { entry: EcosystemEntry }) {
+  if (entry.benefitIcon) return <BenefitIcon name={entry.benefitIcon} size={22} />
+  const Icon = featureIcons[entry.id]
+  return <Icon size={22} weight="duotone" aria-hidden="true" />
 }
 
 export function EcosystemExplorer() {
@@ -51,12 +59,12 @@ export function EcosystemExplorer() {
   return <section id="features" className={styles.catalogSection} aria-labelledby="features-heading">
     <div className={styles.sectionHead}><h2 id="features-heading">Dein Produkt<span>.</span></h2><span className={styles.smallCaption}>{ecosystemCatalog.length} Bausteine</span></div>
     <div className={styles.categoryGrid}>{groups.map(({ Icon, ...item }) => <button className={styles.categoryTile} key={item.id} type="button" aria-pressed={group === item.id} onClick={() => setGroup(group === item.id ? null : item.id)}>
-      <div className={styles.categoryVisual}><Icon size={39} weight="duotone" aria-hidden="true" /><strong>{ecosystemCatalog.filter(entry => entry.group === item.id).length}</strong></div><div className={styles.categoryLabel}><h3>{item.label}</h3><ArrowRight size={17} aria-hidden="true" /></div><span>{item.detail}</span>
+      <div className={styles.categoryVisual}>{Icon ? <Icon size={39} weight="duotone" aria-hidden="true" /> : <BenefitIcon name="reward" size={39} />}<strong>{ecosystemCatalog.filter(entry => entry.group === item.id).length}</strong></div><div className={styles.categoryLabel}><h3>{item.label}</h3><ArrowRight size={17} aria-hidden="true" /></div><span>{item.detail}</span>
     </button>)}</div>
     <div className={styles.catalogToolbar}><div className={styles.searchBox}><label htmlFor="ecosystem-search" className={styles.srOnly}>Features, Deals und Werkzeuge durchsuchen</label><MagnifyingGlass size={18} aria-hidden="true" /><input id="ecosystem-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Feature finden …" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Suche zurücksetzen"><X size={16} /></button> : null}</div><button className={styles.showAll} type="button" onClick={() => { setGroup(showResults ? null : "all"); setQuery("") }}>{showResults ? "Schließen" : "Alle Features"}{showResults ? <X size={15} aria-hidden="true" /> : <ArrowRight size={15} aria-hidden="true" />}</button></div>
     {showResults ? <div className={styles.catalogResults}>
       <div className={styles.filterHeader}><p className={styles.resultCount} role="status">{entries.length} {entries.length === 1 ? "Eintrag" : "Einträge"}{term ? ` für „${query}“` : ""}</p>{group && group !== "all" ? <button type="button" onClick={() => setGroup("all")}>Alle Kategorien <X size={13} aria-hidden="true" /></button> : null}</div>
-      <div className={styles.featureGrid}>{entries.map(entry => { const Icon = featureIcon(entry); const planned = /geplant|noch nicht verfügbar|noch nicht buchbar/i.test(entry.availability); return <details className={styles.featureCard} key={entry.id}><summary><span className={styles.featureGlyph}><Icon size={22} weight="duotone" aria-hidden="true" /></span><h3>{entry.title}</h3>{planned ? <span className={styles.planned}>Geplant</span> : null}<CaretDown size={14} aria-hidden="true" /></summary><div className={styles.featureExpanded}><p>{entry.description}</p><span>{entry.audience}</span><small>{entry.availability}</small><Link href={entry.href} prefetch={false}>Öffnen <ArrowUpRight size={14} aria-hidden="true" /></Link></div></details> })}</div>
+      <div className={styles.featureGrid}>{entries.map(entry => { const planned = /geplant|noch nicht verfügbar|noch nicht buchbar/i.test(entry.availability); return <details className={styles.featureCard} key={entry.id}><summary><span className={styles.featureGlyph}><FeatureGlyph entry={entry} /></span><h3>{entry.title}</h3>{planned ? <span className={styles.planned}>Geplant</span> : null}<CaretDown size={14} aria-hidden="true" /></summary><div className={styles.featureExpanded}><p>{entry.description}</p><span>{entry.audience}</span><small>{entry.availability}</small><Link href={entry.href} prefetch={false}>Öffnen <ArrowUpRight size={14} aria-hidden="true" /></Link></div></details> })}</div>
       {!entries.length ? <div className={styles.empty}><MagnifyingGlass size={28} aria-hidden="true" /><h3>Keine Treffer</h3><button type="button" onClick={() => { setGroup(null); setQuery("") }}>Filter zurücksetzen</button></div> : null}
     </div> : null}
   </section>

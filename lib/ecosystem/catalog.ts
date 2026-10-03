@@ -4,16 +4,20 @@
  * contractual price quotes, or evidence of a public/App Store release.
  * Paths in `source` are relative to the named repository.
  */
+import type { BenefitIconName } from '../benefit-icons'
+
 export type EcosystemEntry = {
   id: string
   title: string
   description: string
-  group: 'app' | 'partner' | 'deals' | 'platform'
   audience: string
   availability: string
   href: string
   source: string
-}
+} & (
+  | { group: 'deals'; benefitIcon: BenefitIconName }
+  | { group: 'app' | 'partner' | 'platform'; benefitIcon?: BenefitIconName }
+)
 
 export type TierCatalogEntry = {
   id: string
@@ -324,91 +328,91 @@ export const ecosystemCatalog: EcosystemEntry[] = [
     href: 'https://benefitsi.de/partner-werden#tarife', source: 'Database: supabase/migrations/20260930190000_partner_public_integration.sql (future_modules.lucky_scan)',
   },
   {
-    id: 'deal-two-for-one', title: '2 für 1', group: 'deals',
+    id: 'deal-two-for-one', title: '2 für 1', group: 'deals', benefitIcon: 'two_for_one',
     description: 'Zwei definierte Artikel zum Preis von einem. Der direkte Vorteil wird vor dem QR-Scan ausgewählt.',
     audience: 'Je Angebot: Free, Premium oder beide', availability: 'Aktives Angebot und Einlösebedingungen',
     href: '/#partners', source: 'Admin: lib/reward-config.ts; app/partner-admin.tsx (dealExplanations.two_for_one)',
   },
   {
-    id: 'deal-discount', title: 'Rabatt', group: 'deals',
+    id: 'deal-discount', title: 'Rabatt', group: 'deals', benefitIcon: 'discount',
     description: 'Einen festen Betrag oder prozentualen Rabatt gewähren; Mindestumsatz und Rabattobergrenze können konfiguriert werden.',
     audience: 'Zielgruppe des jeweiligen Angebots', availability: 'Direkt auswählbarer Vorteil',
     href: '/#partners', source: 'Admin: lib/reward-config.ts; app/partner-admin.tsx (dealFieldHelp)',
   },
   {
-    id: 'deal-free-item', title: 'Gratisartikel', group: 'deals',
+    id: 'deal-free-item', title: 'Gratisartikel', group: 'deals', benefitIcon: 'free_item',
     description: 'Einen konkret benannten Artikel nach Auswahl und bestätigter Einlösung ausgeben.',
     audience: 'Zielgruppe des jeweiligen Angebots', availability: 'Direkt auswählbarer Vorteil',
     href: '/#partners', source: 'Admin: lib/reward-config.ts; app/partner-admin.tsx (dealExplanations.free_item)',
   },
   {
-    id: 'deal-bonus-stamps', title: 'Bonusstempel', group: 'deals',
+    id: 'deal-bonus-stamps', title: 'Bonusstempel', group: 'deals', benefitIcon: 'bonus_stamp',
     description: 'Zusätzliche Stempel beim berechtigten Scan automatisch auf den festgelegten Stempelkartenpfad anrechnen.',
     audience: 'Zielgruppe und Stempelkartenpfad des Angebots', availability: 'Automatisch beim Scan',
     href: '/#partners', source: 'Admin: lib/reward-config.ts (inferBenefitCategory, rewardTrackTargetOptions)',
   },
   {
-    id: 'deal-welcome', title: 'Willkommensdeal und Willkommensbonus', group: 'deals',
+    id: 'deal-welcome', title: 'Willkommensdeal und Willkommensbonus', group: 'deals', benefitIcon: 'welcome',
     description: 'Den ersten qualifizierten Besuch belohnen. Artikel, Rabatt und 2 für 1 werden ausgewählt; Bonusstempel laufen automatisch.',
     audience: 'Erstmals berechtigte Nutzer', availability: 'Willkommens-Auslöser und Angebotszielgruppe',
     href: '/#partners', source: 'Admin: app/partner-admin.tsx (dealExplanations.welcome); lib/benefit-taxonomy.ts',
   },
   {
-    id: 'deal-time-bonus', title: 'Zeitbonus', group: 'deals',
+    id: 'deal-time-bonus', title: 'Zeitbonus', group: 'deals', benefitIcon: 'time_bonus',
     description: 'Eine Rückkehr innerhalb eines konfigurierten Zeitraums belohnen, etwa mit einem zusätzlichen Stempel.',
     audience: 'Nutzer mit qualifizierender Rückkehr', availability: 'Zeitfenster und Belohnungsformat',
     href: '/#partners', source: 'Admin: app/partner-admin.tsx (dealExplanations.comeback); lib/reward-config.ts (canonicalTriggerKey)',
   },
   {
-    id: 'deal-comeback', title: 'Comeback-Deal und Comeback-Bonus', group: 'deals',
+    id: 'deal-comeback', title: 'Comeback-Deal und Comeback-Bonus', group: 'deals', benefitIcon: 'comeback',
     description: 'Nutzer nach einer definierten Zeit ohne Besuch reaktivieren. Inaktivität und optionale Besuchsfilter bestimmen die Berechtigung.',
     audience: 'Inaktive, erneut berechtigte Nutzer', availability: 'Inaktivitätszeitraum und Angebotszielgruppe',
     href: '/#partners', source: 'Admin: app/partner-admin.tsx (dealExplanations.comeback_inactive)',
   },
   {
-    id: 'deal-happy-hour', title: 'Happy Hour', group: 'deals',
+    id: 'deal-happy-hour', title: 'Happy Hour', group: 'deals', benefitIcon: 'happy_hour',
     description: 'Einen Vorteil an bestimmten Wochentagen und innerhalb eines Zeitfensters anbieten. Das Fenster wird bei der Einlösung erneut geprüft.',
     audience: 'Je Angebot: Free, Premium oder beide', availability: 'Zeitgesteuerte, direkte Auswahl',
     href: '/#partners', source: 'Admin: app/partner-admin.tsx (dealExplanations.happy_hour); lib/reward-config.ts',
   },
   {
-    id: 'deal-permanent-discount', title: 'Dauerrabatt', group: 'deals',
+    id: 'deal-permanent-discount', title: 'Dauerrabatt', group: 'deals', benefitIcon: 'permanent_discount',
     description: 'Einen Rabatt automatisch anwenden, wenn kein anderer direkter Vorteil gewählt wurde. Er ist kein zusätzlich kombinierbarer Rabatt.',
     audience: 'Zielgruppe des jeweiligen Angebots', availability: 'Automatischer Fallback',
     href: '/#partners', source: 'Admin: app/partner-admin.tsx (dealExplanations.permanent_discount)',
   },
   {
-    id: 'deal-drop', title: 'Deal Drop', group: 'deals',
+    id: 'deal-drop', title: 'Deal Drop', group: 'deals', benefitIcon: 'deal_drop',
     description: 'Zeitlich oder mengenmäßig begrenzter Vorteil mit Gültigkeit, Bestand und optionaler Reservierung bei Auswahl.',
     audience: 'Zielgruppe des jeweiligen Angebots', availability: 'Bestand, Zeitfenster und Partnerkontingent',
     href: '/#partners', source: 'Admin: app/partner-admin.tsx (dealExplanations.limited_drop); lib/partners/entitlements.ts',
   },
   {
-    id: 'deal-birthday', title: 'Geburtstagsvorteil', group: 'deals',
+    id: 'deal-birthday', title: 'Geburtstagsvorteil', group: 'deals', benefitIcon: 'birthday',
     description: 'Einen Vorteil zum Geburtstag auslösen. Das Belohnungsformat bestimmt, ob er ausgewählt oder automatisch vergeben wird.',
     audience: 'Berechtigte Nutzer mit passendem Anlass', availability: 'Geburtstags-Auslöser und Angebotsbedingungen',
     href: '/#partners', source: 'Admin: app/partner-admin.tsx (dealExplanations.birthday)',
   },
   {
-    id: 'deal-streak', title: 'Streak und Streak-Bonus', group: 'deals',
+    id: 'deal-streak', title: 'Streak und Streak-Bonus', group: 'deals', benefitIcon: 'streak',
     description: 'Eine konfigurierte Besuchsserie belohnen; Schwellenwert, Zielgruppe und Ausgabeformat gehören zur Regel.',
     audience: 'Nutzer mit erfüllter Besuchsserie', availability: 'Regelbasierter Auslöser',
     href: '/#partners', source: 'Admin: lib/reward-config.ts; lib/benefit-taxonomy.ts; app/partner-admin.tsx',
   },
   {
-    id: 'deal-challenge', title: 'Challenge und Challenge-Bonus', group: 'deals',
+    id: 'deal-challenge', title: 'Challenge und Challenge-Bonus', group: 'deals', benefitIcon: 'challenge',
     description: 'Ein definiertes Besuchsziel mit einer Belohnung verbinden und den persönlichen Challenge-Fortschritt verfolgen.',
     audience: 'Berechtigte Challenge-Teilnehmer', availability: 'Konfiguriertes Ziel und Angebotsbedingungen',
     href: '/#partners', source: 'Admin: lib/reward-config.ts; App: lib/features/rewards/user_challenge_model.dart',
   },
   {
-    id: 'deal-milestones', title: 'Stempelkarten-Meilensteine', group: 'deals',
+    id: 'deal-milestones', title: 'Stempelkarten-Meilensteine', group: 'deals', benefitIcon: 'reward',
     description: 'Belohnungen an Stempelschwellen festlegen und einem Basis- oder Premium-Pfad zuordnen; die Karte unterstützt bis zu zehn Stempel.',
     audience: 'Free, Premium oder beide je Meilenstein', availability: 'Partnerprogramm und berechtigter Pfad',
     href: '/#partners', source: 'Admin: lib/reward-config.ts (MAX_STAMP_CARD_STAMPS, milestoneAudienceOptions)',
   },
   {
-    id: 'deal-activation-audience', title: 'Zielgruppen und Aktivierungsregeln', group: 'deals',
+    id: 'deal-activation-audience', title: 'Zielgruppen und Aktivierungsregeln', group: 'deals', benefitIcon: 'audience',
     description: 'Free, Premium, beide oder die Free-Testphase gezielt ansprechen. Direkte Auswahl, automatischer Scanbonus und Fallback sind getrennte Abläufe.',
     audience: 'Partner und Benefitsi-Team', availability: 'Pro Besuch höchstens ein direkter Vorteil',
     href: '/#partners', source: 'Admin: lib/reward-config.ts (audienceOptions, benefitCategoryOptions)',

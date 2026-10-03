@@ -8,6 +8,7 @@ The admin home page combines operational counts, observed/configured agents, a c
 - Four operational metrics lead into a large activity chart, an agent-status donut, and three independent workload bars. The donut describes configured/observed profiles, not running processes. Workload categories are not added together.
 - Agent roles use compact icon tiles. Native disclosures reveal purpose, schedule, last observation, and management links.
 - Four plan tiles and four product categories replace the long default inventory. All 72 features remain searchable, with explanations, availability, and links accessible on demand.
+- Benefit icons follow the App's shared rounded icon set and original gift artwork, with explicit assignments for all 15 entries. See [the icon reference](benefit-icons.md) for the Notion taxonomy and App sources.
 - The city/microsite directory is collapsible and retains its search, filters, and verified public links. Unknown values and chart gaps remain visibly unknown.
 - Responsive grids support compact screens. Focus indicators, non-color status labels, chart descriptions, a data table, and reduced-motion preferences are retained.
 
@@ -23,10 +24,11 @@ All new queries follow the existing admin authentication check. No schema, permi
 
 ## Verification
 
-- Next.js production build (`next build --webpack`): passed.
+- Next.js production build (`next build --webpack`, layout revision `80957e2`): passed.
 - TypeScript (`tsc --noEmit --incremental false`): passed.
 - ESLint on changed implementation and targeted tests: passed.
 - 37 tests: directory publication rules, agent evidence, analytics redaction/gaps, existing analytics normalization and founder overview.
 - Actual redesigned dashboard components bundle successfully into a standalone, clearly labeled synthetic-data preview. The fixture substitutes Next Link with an anchor.
+- Icon alignment on 2026-10-03: all 15 benefits have required typed assignments; all 13 Material SVGs were checked for retained paths and safe static elements, and the full icon sheet was rendered and visually inspected. TypeScript, ESLint, and the updated preview bundle passed. No new production build was needed for this isolated icon update.
 - The browser tool rejected access to the local HTML preview under its URL protocol policy. The revised layout has therefore not received a new browser visual/interaction check. Authenticated production data loading and Next navigation also require an authenticated preview session.
 - No production deployment performed by this change. Temporary preview/build outputs are removed after verification.
