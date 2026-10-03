@@ -22,13 +22,19 @@ The admin home page combines operational counts, observed/configured agents, a c
 
 All new queries follow the existing admin authentication check. No schema, permission, publication or agent execution changes are included.
 
-## Verification
+## Verification (2026-10-03)
 
-- Next.js production build (`next build --webpack`, layout revision `80957e2`): passed.
-- TypeScript (`tsc --noEmit --incremental false`): passed.
-- ESLint on changed implementation and targeted tests: passed.
-- 37 tests: directory publication rules, agent evidence, analytics redaction/gaps, existing analytics normalization and founder overview.
+- Integrated current `origin/main` (`95bbe61`) and installed its exact locked dependencies.
+- Next.js 16.3.6 production build (`npm run build -- --webpack`), including TypeScript: passed.
+- Full test suite with two workers: 1,076 passed, no failures or skips. Three existing test fixtures were aligned with the current entitlement response and partner route component boundaries; permission checks and assertions are unchanged.
+- Full ESLint: no errors; 15 existing warnings outside this dashboard. Changed implementation and targeted tests previously passed scoped ESLint.
+- The suite includes directory publication rules, agent evidence, analytics redaction/gaps, existing analytics normalization and founder overview.
 - Actual redesigned dashboard components bundle successfully into a standalone, clearly labeled synthetic-data preview. The fixture substitutes Next Link with an anchor.
-- Icon alignment on 2026-10-03: all 15 benefits have required typed assignments; all 13 Material SVGs were checked for retained paths and safe static elements, and the full icon sheet was rendered and visually inspected. TypeScript, ESLint, and the updated preview bundle passed. No new production build was needed for this isolated icon update.
+- Icon alignment: all 15 benefits have required typed assignments; all 13 Material SVGs were checked for retained paths and safe static elements, and the full icon sheet was rendered and visually inspected. The production build above includes these icons.
+- Production dependency audit (`npm audit --omit=dev --audit-level=high`): no findings. The full audit reports five high entries from one unpatched development-only `braces` advisory through `eslint-config-next` → `@next/eslint-plugin-next` → `fast-glob` → `micromatch`. [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) lists no patched version. This existing dependency also affects `origin/main`; no audit exception or security workflow change has been made, and the full audit gate remains failing.
 - The browser tool rejected access to the local HTML preview under its URL protocol policy. The revised layout has therefore not received a new browser visual/interaction check. Authenticated production data loading and Next navigation also require an authenticated preview session.
 - No production deployment performed by this change. Temporary preview/build outputs are removed after verification.
+
+## Deployment location
+
+The dashboard replaces the existing admin home route, available after admin sign-in at `https://admin.benefitsi.de/` via **Übersicht**. It belongs to the existing Vercel project `benefitsi-master-admin-panel`; no separate site, database migration, or new deployment project is required.

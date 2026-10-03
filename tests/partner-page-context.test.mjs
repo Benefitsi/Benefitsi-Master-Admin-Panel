@@ -3,7 +3,7 @@ import test from 'node:test'
 import {loadTypescript} from './helpers/load-typescript.mjs'
 import entitlementAdapter from '../lib/partners/entitlements.ts'
 function context(session,{revoked=false}={}) {
- const client={from:()=>{const q={select:()=>q,order:()=>q,in:()=>q,then:resolve=>resolve({data:[{id:'own',name:'Shop'}],error:null})};return q},rpc:async()=>revoked?{error:{message:'partner_access_denied'}}:{data:{partner_id:'own',schema_version:1,role:'owner',plan_code:'free'},error:null}}
+ const client={from:()=>{const q={select:()=>q,order:()=>q,in:()=>q,then:resolve=>resolve({data:[{id:'own',name:'Shop'}],error:null})};return q},rpc:async()=>revoked?{error:{message:'partner_access_denied'}}:{data:{partner_id:'own',schema_version:1,role:'owner',plan_code:'free',features:{}},error:null}}
  return loadTypescript('lib/partners/page-context.ts',{'next/navigation':{redirect:path=>{throw new Error('redirect:'+path)},notFound:()=>{throw new Error('not_found')}},'@/lib/supabase/server':{createClient:async()=>client},'@/lib/partner-portal':{getPartnerPortalSession:async()=>session},'./entitlements':entitlementAdapter}).partnerPageContext
 }
 test('expired/scanner sessions cannot enter dashboard, statistics or billing context',async()=>{

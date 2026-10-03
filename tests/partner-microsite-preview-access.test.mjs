@@ -43,6 +43,7 @@ function loadRoute(path, session, selectedPartner) {
   const imports = {
     "@/components/partner/partner-dashboard": {PartnerDashboard:({children,name})=>createElement('main',null,name,children),PartnerOverview:()=>null},
     "@/components/partner/partner-statistics": {PartnerStatistics:()=>null},
+    "@/components/partner/partner-drop-usage": {PartnerDropUsage:()=>null},
     "@/lib/partners/page-context": {partnerPageContext:async()=>{
       if(!session || (!session.isAdmin&&!session.ownedPartnerIds.length)) throw Object.assign(new Error('redirect'),{path:'/partner/login'})
       return {client:{},session,partners:[{id:partnerId,name:selectedPartner.name}],partnerId,name:selectedPartner.name,rights:{role:session.isAdmin?'benefitsi_admin':'owner',plan_code:'free',features:{}}}
