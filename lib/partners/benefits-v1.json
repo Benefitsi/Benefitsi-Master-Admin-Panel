@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "benefit_version": "2026-10-02.1",
+  "benefit_version": "2026-10-03.1",
   "groups": [
     {"id":"presence","title":"Auftritt & Entdeckung","items":[
       {"id":"directory","label":"Stadtseite und Verzeichnis mit Standardprofil, Kontakt und Öffnungszeiten; in der App entdecken","scope":"all"},
@@ -20,7 +20,7 @@
       {"id":"export","label":"Zusammengefasster CSV-Export","scope":"pro","feature":"analytics.export"}
     ]},
     {"id":"crm","title":"Kundenbindung & Redaktion","items":[
-      {"id":"drafts","label":"Drei potenzielle Besuchsgruppen und gespeicherte Kampagnenentwürfe","scope":"pro","feature":"crm.manage","note":"Kundenbindungsbereich benötigt das bereitgestellte Backend. Potenzielle Gruppen sind keine erreichbaren oder eingewilligten Empfänger."},
+      {"id":"drafts","label":"Drei potenzielle Besuchsgruppen und gespeicherte Kampagnenentwürfe","scope":"pro","feature":"crm.manage","note":"Die aktuelle Verfügbarkeit findest du im Bereich Kundenbindung. Potenzielle Gruppen sind keine erreichbaren oder eingewilligten Empfänger."},
       {"id":"delivery","label":"Marketing-Push, werbliche In-App-Mitteilungen und Comeback-Aktivierung","scope":"pro","feature":"marketing.manage","note":"Versand noch nicht verfügbar; ausschließlich Entwürfe. Keine Planung oder automatische Aktivierung."},
       {"id":"article","label":"Eigener Blogartikel: Anfrage und redaktionelle Terminierung","scope":"pro","feature":"crm.manage","note":"Keine automatische Veröffentlichung."},
       {"id":"interview","label":"Gründer-/Inhaberinterview als Podcast oder Video: Anfrage und redaktionelle Terminierung","scope":"pro","feature":"crm.manage","note":"Umfang und Termin gesondert abstimmen; keine automatische Aufnahme."}

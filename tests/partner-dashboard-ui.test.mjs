@@ -123,3 +123,11 @@ test('tariff summary renders complete grouped benefits and an unavailable legacy
  const legacy=structuredClone(data);legacy.entitlements.features={};legacy.entitlements.limits={}
  assert.match(render(h(PartnerPlanSummary,{data:legacy})),/Tarifumfang derzeit nicht verfügbar/)
 })
+test('current Pro benefits use matching catalog capabilities and quotas while effective readiness stays separate',()=>{
+ const data=billing(true);data.entitlements.features['menu.ai_import']=false;data.entitlements.reason_codes['menu.ai_import']='verified_cost_required';data.entitlements.limits.menu_ai_imports_monthly=0;data.entitlements.limits.team_members=2
+ data.catalog.plans=[{plan_code:'pro',version:1,features:{...data.entitlements.features,'menu.ai_import':true},limits:{menu_ai_imports_monthly:2,team_members:10,analytics_days:365,deal_drops_monthly:null},deal_drop_limit_provisional:true}]
+ const html=render(h(PartnerPlanSummary,{data})),from=html.indexOf('Deine Leistungen im Überblick'),to=html.indexOf('Deine Funktionen',from),benefits=html.slice(from,to)
+ assert.match(benefits,/2 KI-Menüimporte pro Abo-Monat/);assert.match(benefits,/Kosten- und Betriebsfreigabe/);assert.match(benefits,/10 Teammitglieder einschließlich Inhaber/);assert.doesNotMatch(benefits,/KI-Menüimports: nicht enthalten|KI-Menüimport nicht enthalten|2 Teammitglieder/);assert.match(html.slice(to),/Kosten- und Betriebsfreigabe ausstehend/)
+ data.catalog.plans[0].features['menu.ai_import']=false;const excluded=render(h(PartnerPlanSummary,{data}));assert.match(excluded,/KI-Menüimports: nicht enthalten/)
+ data.catalog.plans[0].version=2;const unknown=render(h(PartnerPlanSummary,{data}));const current=unknown.slice(unknown.indexOf('Deine Leistungen im Überblick'),unknown.indexOf('Deine Funktionen'));assert.match(current,/Tarifumfang derzeit nicht verfügbar/);assert.doesNotMatch(current,/2 KI-Menüimporte|10 Teammitglieder/)
+})

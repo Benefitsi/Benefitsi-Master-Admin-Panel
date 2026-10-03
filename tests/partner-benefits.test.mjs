@@ -1,8 +1,64 @@
-import test from 'node:test'
-import assert from 'node:assert/strict'
-import {readFileSync} from 'node:fs'
-import {createHash} from 'node:crypto'
-import {loadTypescript} from './helpers/load-typescript.mjs'
-const path=new URL('../lib/partners/benefits-v1.json',import.meta.url)
-test('versioned complete groups preserve product boundaries and canonical shared manifest bytes',()=>{const bytes=readFileSync(path),manifest=JSON.parse(bytes);assert.equal(manifest.schema_version,1);assert.equal(manifest.benefit_version,'2026-10-02.1');assert.equal(manifest.groups.length,6);assert.equal(createHash('sha256').update(bytes).digest('hex'),'b6fd9ad2f9eaadf969575fdac8f080eba5ad66924ddb2c06b1251319bfa0c2ce');const all=JSON.stringify(manifest);for(const word of ['Stempel','Happy Hour','Blogartikel','interview','360','CSV','Geschäftszeiten','Kosten','Versand'])assert.ok(all.includes(word),word);assert.doesNotMatch(all,/Mitarbeiterkarte|QR-Poster|WhatsApp|Content-Paket|Mitarbeiterschulung/)})
-test('benefit resolver uses current capability and quota values; missing legacy values stay unknown',()=>{const {benefitRows}=loadTypescript('lib/partners/benefits.ts',{'@/lib/partners/benefits-v1.json':JSON.parse(readFileSync(path))});const plan={plan_code:'pro',features:{'crm.manage':true,'marketing.manage':true},limits:{team_members:10,analytics_days:365,menu_ai_imports_monthly:2,deal_drops_monthly:null},deal_drop_limit_provisional:true};const rows=JSON.stringify(benefitRows(plan));assert.match(rows,/Entwürfe/);assert.match(rows,/Versand.*nicht verfügbar/);assert.match(rows,/10 Teammitglieder/);assert.match(rows,/365/);assert.match(rows,/vorläufig/);const legacy=JSON.stringify(benefitRows({plan_code:'pro',features:{},limits:{}}));assert.match(legacy,/Tarifumfang derzeit nicht verfügbar/);assert.doesNotMatch(legacy,/undefined|null Team|365 Tage|10 Team/);const free=JSON.stringify(benefitRows({plan_code:'free',features:{'crm.manage':false},limits:{team_members:3,deal_drops_monthly:1}}));assert.match(free,/1 Deal Drop/);assert.match(free,/3 Teammitglieder einschließlich Inhaber/);assert.match(free,/nicht enthalten/)})
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { loadTypescript } from './helpers/load-typescript.mjs';
+const path = new URL('../lib/partners/benefits-v1.json', import.meta.url);
+test('versioned complete groups preserve product boundaries and canonical shared manifest bytes', () => {
+  const bytes = readFileSync(path),
+    manifest = JSON.parse(bytes);
+  assert.equal(manifest.schema_version, 1);
+  assert.equal(manifest.benefit_version, '2026-10-03.1');
+  assert.equal(manifest.groups.length, 6);
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), 'df526852e143841ee88371461fe634a827ac0608f85d8d49d5a988ac4d1ff170');
+  const all = JSON.stringify(manifest);
+  for (const word of ['Stempel', 'Happy Hour', 'Blogartikel', 'interview', '360', 'CSV', 'Geschäftszeiten', 'Kosten', 'Versand']) assert.ok(all.includes(word), word);
+  assert.doesNotMatch(all, /Mitarbeiterkarte|QR-Poster|WhatsApp|Content-Paket|Mitarbeiterschulung/);
+});
+test('benefit resolver uses current capability and quota values; missing legacy values stay unknown', () => {
+  const {
+    benefitRows
+  } = loadTypescript('lib/partners/benefits.ts', {
+    '@/lib/partners/benefits-v1.json': JSON.parse(readFileSync(path))
+  });
+  const plan = {
+    plan_code: 'pro',
+    features: {
+      'crm.manage': true,
+      'marketing.manage': true
+    },
+    limits: {
+      team_members: 10,
+      analytics_days: 365,
+      menu_ai_imports_monthly: 2,
+      deal_drops_monthly: null
+    },
+    deal_drop_limit_provisional: true
+  };
+  const rows = JSON.stringify(benefitRows(plan));
+  assert.match(rows, /Entwürfe/);
+  assert.match(rows, /Versand.*nicht verfügbar/);
+  assert.match(rows, /10 Teammitglieder/);
+  assert.match(rows, /365/);
+  assert.match(rows, /vorläufig/);
+  const legacy = JSON.stringify(benefitRows({
+    plan_code: 'pro',
+    features: {},
+    limits: {}
+  }));
+  assert.match(legacy, /Tarifumfang derzeit nicht verfügbar/);
+  assert.doesNotMatch(legacy, /undefined|null Team|365 Tage|10 Team/);
+  const free = JSON.stringify(benefitRows({
+    plan_code: 'free',
+    features: {
+      'crm.manage': false
+    },
+    limits: {
+      team_members: 3,
+      deal_drops_monthly: 1
+    }
+  }));
+  assert.match(free, /1 Deal Drop/);
+  assert.match(free, /3 Teammitglieder einschließlich Inhaber/);
+  assert.match(free, /nicht enthalten/);
+});

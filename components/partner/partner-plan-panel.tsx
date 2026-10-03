@@ -59,6 +59,10 @@ const reasons: Record<string, string> = {
 export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
   const rights = data.entitlements,
     sub = data.subscription;
+  const catalogPlan = data.catalog.plans?.find(
+    (plan) =>
+      plan.plan_code === rights.plan_code && plan.version === rights.plan_version,
+  );
   const freeExit =
     !!sub?.trial_end &&
     !!data.founder_cancellation &&
@@ -282,7 +286,13 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
       </section>
       <section className={box}>
         <h3 className="mb-5 text-lg font-bold">Deine Leistungen im Überblick</h3>
-        <PartnerBenefitGroups plan={rights}/>
+        <p className="mb-5 text-sm leading-6 text-slate-500">
+          Leistungsumfang deiner Tarifversion. Aktuelle Nutzungsrechte und
+          ausstehende Freigaben stehen darunter bei deinen Funktionen.
+        </p>
+        <PartnerBenefitGroups
+          plan={catalogPlan ?? {plan_code: rights.plan_code, features: {}, limits: {}}}
+        />
         <a className="mt-5 inline-block text-sm font-semibold text-sky-700 underline" href={`/partner/crm?partner=${rights.partner_id}`}>Kundenbindung und aktuelle Verfügbarkeit prüfen</a>
       </section>
       <section className={box}>
