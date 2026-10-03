@@ -1,4 +1,9 @@
-import { EcosystemOverview } from "@/components/ecosystem/ecosystem-overview"
+import { Suspense } from "react"
+import {
+  EcosystemActivity, EcosystemAgents, EcosystemDirectory, EcosystemFleet,
+  EcosystemFocus, EcosystemMetrics, EcosystemOverviewLayout,
+  EcosystemSectionLoading, EcosystemTimestamp,
+} from "@/components/ecosystem/ecosystem-overview"
 import { loadAgentControl } from "@/lib/agent-control-data"
 import { loadBusinessAnalytics } from "@/lib/analytics/loader"
 import { parseBusinessAnalyticsFilters } from "@/lib/analytics/filters"
@@ -12,7 +17,7 @@ import { getPartnerPortalSession } from "@/lib/partner-portal"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { PartnerWorkspace } from "./partner-admin"
-import { AdminShell } from "./admin-shell"
+import { AdminShell, PartnerPanelLink } from "./admin-shell"
 import { DashboardAutoRefresh } from "./dashboard-auto-refresh"
 
 export const dynamic = "force-dynamic"
@@ -37,28 +42,20 @@ export default async function DashboardPage({
     redirect("/login")
   }
 
-  const portalSession = await getPartnerPortalSession(supabase, adminSession)
-
   const query = await searchParams
   const requestedPartnerId = singleQueryValue(query.partner)
-  const [dashboard, founder, agents, analytics, publicMicrosites] = await Promise.all([
-    getDashboardData(supabase, {entitlementPartnerId: requestedPartnerId || null}),
-    loadFounderOverview(supabase),
-    loadAgentControl(supabase),
-    loadBusinessAnalytics(supabase, parseBusinessAnalyticsFilters({})),
-    supabase.rpc("get_public_microsites_v1", {
+  // Authenticate first, then share one request per source across independent sections.
+  const sources = {
+    dashboard: getDashboardData(supabase, { entitlementPartnerId: requestedPartnerId || null }),
+    founder: loadFounderOverview(supabase),
+    agents: loadAgentControl(supabase),
+    analytics: loadBusinessAnalytics(supabase, parseBusinessAnalyticsFilters({})),
+    publicMicrosites: Promise.resolve(supabase.rpc("get_public_microsites_v1", {
       p_partner_ids: null, p_slug: null, p_include_config: false,
-    }).then(result => parsePublicMicrositeDirectory(result.data, result.error),
+    })).then(result => parsePublicMicrositeDirectory(result.data, result.error),
       () => parsePublicMicrositeDirectory(null, true)),
-  ])
-  const requestedMode = singleQueryValue(query.mode)
-  const requestedView = singleQueryValue(query.view)
-  const requestedTab = singleQueryValue(query.tab)
-  const initialPartnerId = dashboard.partners.some(
-    (partner) => partner.id === requestedPartnerId,
-  )
-    ? requestedPartnerId
-    : dashboard.partners[0]?.id ?? ""
+    portal: getPartnerPortalSession(supabase, adminSession).catch(() => null),
+  }
   const adminName =
     adminSession.profile?.display_name ||
     adminSession.profile?.email ||
@@ -70,41 +67,109 @@ export default async function DashboardPage({
       title="Ecosystem."
       subtitle=""
       adminName={adminName}
-      micrositeCount={dashboard.partners.length}
-      canAccessPartnerPanel={Boolean(portalSession?.partnerIds.length)}
+      micrositeCount={<Suspense fallback="…"><DashboardPartnerCount data={sources.dashboard} /></Suspense>}
+      headerActions={<Suspense fallback={null}><DashboardPartnerLink data={sources.portal} /></Suspense>}
     >
-      <DashboardAutoRefresh />
-      <EcosystemOverview
-        snapshot={founder}
-        agentData={agents}
-        analytics={selectOverviewAnalytics(analytics)}
-        pages={buildPageDirectory(dashboard, publicMicrosites)}
-        incomplete={dashboard.errors.length > 0 || publicMicrosites.state === "unavailable"}
+      <Suspense fallback={null}><DashboardRefreshWhenReady sources={sources} /></Suspense>
+      <EcosystemOverviewLayout
+        timestamp={<Suspense fallback={null}><DashboardTimestamp data={sources.founder} /></Suspense>}
+        metrics={<Suspense fallback={<EcosystemSectionLoading label="Kennzahlen werden geladen" variant="metrics" />}><DashboardMetrics sources={sources} /></Suspense>}
+        activity={<Suspense fallback={<EcosystemSectionLoading label="Analytics werden geladen" variant="activity" />}><DashboardActivity data={sources.analytics} /></Suspense>}
+        fleet={<Suspense fallback={<EcosystemSectionLoading label="Agent-Status wird geladen" />}><DashboardFleet data={sources.agents} /></Suspense>}
+        focus={<Suspense fallback={<EcosystemSectionLoading label="Aufträge werden geladen" />}><DashboardFocus data={sources.founder} /></Suspense>}
+        agents={<Suspense fallback={<EcosystemSectionLoading label="Agents werden geladen" variant="agents" />}><DashboardAgents data={sources.agents} /></Suspense>}
+        directory={<Suspense fallback={<EcosystemSectionLoading label="Seiten werden geladen" variant="directory" />}><DashboardDirectory sources={sources} /></Suspense>}
       />
-      {dashboard.errors.length > 0 ? (
-        <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-semibold">Supabase returned warnings</p>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            {dashboard.errors.map((error) => (
-              <li key={error}>{error}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
       <div id="partners" className="scroll-mt-24">
-        <PartnerWorkspace
-          partners={dashboard.partners}
-          cities={dashboard.cities}
-          owners={dashboard.owners}
-          initialMode={requestedMode === "create" ? "create" : "view"}
-          initialPartnerId={initialPartnerId}
-          initialSettingsTab={requestedTab}
-          initialView={requestedView === "microsite" ? "microsite" : "settings"}
-        />
+        <Suspense fallback={<EcosystemSectionLoading label="Partner werden geladen" />}>
+          <DashboardPartners data={sources.dashboard} query={query} />
+        </Suspense>
       </div>
     </AdminShell>
   )
+}
+
+
+type DashboardSources = {
+  dashboard: ReturnType<typeof getDashboardData>
+  founder: ReturnType<typeof loadFounderOverview>
+  agents: ReturnType<typeof loadAgentControl>
+  analytics: ReturnType<typeof loadBusinessAnalytics>
+  publicMicrosites: Promise<ReturnType<typeof parsePublicMicrositeDirectory>>
+  portal: ReturnType<typeof getPartnerPortalSession>
+}
+
+async function DashboardPartnerCount({ data }: { data: DashboardSources["dashboard"] }) {
+  return `${(await data).partners.length} Partner`
+}
+
+async function DashboardPartnerLink({ data }: { data: DashboardSources["portal"] }) {
+  return (await data)?.partnerIds.length ? <PartnerPanelLink /> : null
+}
+
+async function DashboardRefreshWhenReady({ sources }: { sources: DashboardSources }) {
+  // Do not start the refresh interval while the initial response is still streaming.
+  await Promise.allSettled(Object.values(sources))
+  return <DashboardAutoRefresh />
+}
+
+async function DashboardTimestamp({ data }: { data: DashboardSources["founder"] }) {
+  return <EcosystemTimestamp checkedAt={(await data).checkedAt} />
+}
+
+async function DashboardMetrics({ sources }: { sources: DashboardSources }) {
+  const [snapshot, agentData] = await Promise.all([sources.founder, sources.agents])
+  return <EcosystemMetrics snapshot={snapshot} agentData={agentData} />
+}
+
+async function DashboardActivity({ data }: { data: DashboardSources["analytics"] }) {
+  return <EcosystemActivity analytics={selectOverviewAnalytics(await data)} />
+}
+
+async function DashboardFleet({ data }: { data: DashboardSources["agents"] }) {
+  return <EcosystemFleet agentData={await data} />
+}
+
+async function DashboardFocus({ data }: { data: DashboardSources["founder"] }) {
+  return <EcosystemFocus snapshot={await data} />
+}
+
+async function DashboardAgents({ data }: { data: DashboardSources["agents"] }) {
+  return <EcosystemAgents agentData={await data} />
+}
+
+async function DashboardDirectory({ sources }: { sources: DashboardSources }) {
+  const [dashboard, publicMicrosites] = await Promise.all([sources.dashboard, sources.publicMicrosites])
+  return <EcosystemDirectory pages={buildPageDirectory(dashboard, publicMicrosites)} incomplete={dashboard.errors.length > 0 || publicMicrosites.state === "unavailable"} />
+}
+
+async function DashboardPartners({ data, query }: {
+  data: DashboardSources["dashboard"]
+  query: Record<string, string | string[] | undefined>
+}) {
+  const dashboard = await data
+  const requestedPartnerId = singleQueryValue(query.partner)
+  const initialPartnerId = dashboard.partners.some(partner => partner.id === requestedPartnerId)
+    ? requestedPartnerId : dashboard.partners[0]?.id ?? ""
+  return <>
+    {dashboard.errors.length > 0 ? (
+      <section className="mb-5 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <p className="font-semibold">Supabase returned warnings</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          {dashboard.errors.map(error => <li key={error}>{error}</li>)}
+        </ul>
+      </section>
+    ) : null}
+    <PartnerWorkspace
+      partners={dashboard.partners}
+      cities={dashboard.cities}
+      owners={dashboard.owners}
+      initialMode={singleQueryValue(query.mode) === "create" ? "create" : "view"}
+      initialPartnerId={initialPartnerId}
+      initialSettingsTab={singleQueryValue(query.tab)}
+      initialView={singleQueryValue(query.view) === "microsite" ? "microsite" : "settings"}
+    />
+  </>
 }
 
 function singleQueryValue(value: string | string[] | undefined) {
