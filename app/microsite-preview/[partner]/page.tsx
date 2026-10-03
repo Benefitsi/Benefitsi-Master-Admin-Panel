@@ -2,9 +2,10 @@ import { loadMicrositeCommerceActions } from "@/lib/commerce/microsite"
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { requireAdmin } from "@/lib/admin"
-import { getDashboardData, type PartnerWithDeals } from "@/lib/admin-data"
+import { getDashboardData, getPartnerCapabilityFlags, type PartnerWithDeals } from "@/lib/admin-data"
 import { resolveMicrositeConfig } from "@/lib/microsites"
 import { MicrositePreviewShell } from "./preview-shell"
+import { MicrositeCapabilitiesNotice } from "@/components/microsite-capabilities-notice"
 
 export const dynamic = "force-dynamic"
 
@@ -30,11 +31,13 @@ export default async function MicrositePreviewPage({
   const identifier = decodeURIComponent(rawIdentifier)
   const { supabase } = await requireAdmin()
   const dashboard = await getDashboardData(supabase)
-  const partner = findPreviewPartner(dashboard.partners, identifier)
+  const selectedPartner = findPreviewPartner(dashboard.partners, identifier)
 
-  if (!partner) {
+  if (!selectedPartner?.id) {
     notFound()
   }
+  const capabilities = await getPartnerCapabilityFlags(supabase, selectedPartner.id).catch(() => null)
+  const partner = { ...selectedPartner, ...capabilities }
 
   const previewSource = query.source === "published" ? "published" : query.source === "builder" ? "builder" : "saved"
   const version = previewSource === "published" ? partner.microsite?.publishedVersion : partner.microsite?.draftVersion ?? partner.microsite?.publishedVersion
@@ -42,6 +45,8 @@ export default async function MicrositePreviewPage({
   const config = resolveMicrositeConfig(version?.config, partner)
 
   return (
+    <>
+    {!capabilities && <MicrositeCapabilitiesNotice />}
     <MicrositePreviewShell
       commerceActions={await loadMicrositeCommerceActions(partner.id)}
       partner={partner}
@@ -52,6 +57,7 @@ export default async function MicrositePreviewPage({
       isMobile={query.viewport === "mobile"}
       previewMode={query.mode === "dark" ? "dark" : query.mode === "light" ? "light" : undefined}
     />
+    </>
   )
 }
 

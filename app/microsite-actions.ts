@@ -442,7 +442,7 @@ async function getFullPartnerForReadiness(
   | { ok: true; partner: PartnerWithDeals }
   | { ok: false; state: MicrositeActionState }
 > {
-  const dashboardData = await getDashboardData(supabase)
+  const dashboardData = await getDashboardData(supabase, { entitlementPartnerId: partnerId })
   const partner = dashboardData.partners.find((item) => item.id === partnerId)
 
   if (!partner) {
