@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { PartnerWithDeals } from "./admin-data"
-import { getAdminSession } from "./admin"
+import { getAdminSession, type AdminSession } from "./admin"
 import { createClient } from "./supabase/server"
 
 export type PartnerProfile = {
@@ -33,28 +33,21 @@ type PartnerIdentity = {
 
 export async function getPartnerPortalSession(
   supabase?: SupabaseServerClient,
+  existingAdminSession?: AdminSession,
 ): Promise<PartnerPortalSession | null> {
   const client = supabase ?? (await createClient())
-  const {
-    data: { user },
-    error,
-  } = await client.auth.getUser()
-
-  if (error || !user) {
+  const adminSession = existingAdminSession ?? await getAdminSession(client)
+  if (!adminSession) {
     return null
   }
-
-  const [adminSession, profile] = await Promise.all([
-    getAdminSession(client),
+  const user = adminSession.user
+  const [profile, { partnerIds, ownedPartnerIds, managedPartnerIds }] = await Promise.all([
     getPartnerProfileForIdentity(client, {
       id: user.id,
       email: user.email ?? null,
     }),
+    getAccessiblePartnerIds(client, user.id),
   ])
-  const { partnerIds, ownedPartnerIds, managedPartnerIds } = await getAccessiblePartnerIds(
-    client,
-    user.id,
-  )
 
   return {
     user: {

@@ -1,5 +1,9 @@
 "use client"
 
+import { usePartnerCapabilities } from "./use-partner-capabilities"
+import { StreakRuleFields } from "./streak-rule-fields"
+import { describeCalendarStreak } from "@/lib/streak-config"
+
 import Link from "next/link"
 import { PartnerFeedbackSettingsLoader } from "@/components/partner/partner-feedback-settings-loader"
 import { useRouter } from "next/navigation"
@@ -216,16 +220,44 @@ function useActionSuccess(
 ) {
   const onSuccessRef = useRef(onSuccess)
   const formRef = useRef<HTMLFormElement>(null)
+  const submittedDraft = useRef(false)
 
   useEffect(() => {
     onSuccessRef.current = onSuccess
   }, [onSuccess])
 
   useEffect(() => {
+    const form = formRef.current
+    if (!form) return
+    const rememberDraft = () => { submittedDraft.current = true }
+    // React resets uncontrolled fields after any resolved form action, including
+    // validation errors. Retain native values (and files) until success is known.
+    const preserveDraft = (event: Event) => {
+      if (submittedDraft.current) event.preventDefault()
+    }
+    form.addEventListener("submit", rememberDraft, true)
+    form.addEventListener("reset", preserveDraft)
+    return () => {
+      form.removeEventListener("submit", rememberDraft, true)
+      form.removeEventListener("reset", preserveDraft)
+    }
+  }, [])
+
+  useEffect(() => {
     if (state.ok) {
+      submittedDraft.current = false
+      formRef.current?.reset()
       onSuccessRef.current?.(state)
       const details = formRef.current?.closest("details")
       if (details?.open) details.open = false
+    } else if (state.fieldErrors) {
+      const named = formRef.current?.elements.namedItem(Object.keys(state.fieldErrors)[0])
+      const field = named && "item" in named ? named.item(0) : named
+      if (field && "focus" in field && typeof field.focus === "function") {
+        const details = (field as HTMLElement).closest("details")
+        if (details) details.open = true
+        field.focus()
+      }
     }
   }, [state])
 
@@ -609,6 +641,7 @@ export function PartnerWorkspace({
   const selectedPartner =
     filteredPartners.find((partner) => partner.id === selectedId) ??
     filteredPartners[0]
+  const capabilities = usePartnerCapabilities(selectedPartner, adminAccess && !portalMode)
   const hasActiveFilters =
     Boolean(query.trim()) ||
     statusFilter !== "all" ||
@@ -762,6 +795,12 @@ export function PartnerWorkspace({
         </aside>}
 
         <section className="min-w-0">
+          {capabilities.error ? (
+            <p role="status" className="mb-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              {capabilities.error}{" "}
+              <button type="button" onClick={capabilities.retry} className="font-semibold underline">Erneut laden</button>
+            </p>
+          ) : null}
           {mode === "create" ? (
             <EditorShell
               title="Add partner"
@@ -775,7 +814,7 @@ export function PartnerWorkspace({
                 cities={cities}
                 owners={owners}
                 onDeleted={startCreatePartner}
-                partner={selectedPartner}
+                partner={capabilities.partner ?? selectedPartner}
                 initialSettingsTab={workspaceLocation.tab}
                 initialView={workspaceLocation.view}
                 onLocationChange={setWorkspaceLocation}
@@ -4258,7 +4297,7 @@ function DealCardHeader({
             {audienceLabel}
           </DealBadge>
           <DealBadge>
-            {labelForValue(benefitCategoryOptions, benefitCategory) ||
+            {dealType === "happy_hour" ? "Automatisch, wenn kein anderer Vorteil ausgewählt ist" : labelForValue(benefitCategoryOptions, benefitCategory) ||
               "Benefit not set"}
           </DealBadge>
           <DealBadge tone={active ? "active" : "muted"}>
@@ -4499,6 +4538,9 @@ function DealCard({
           </WarningNote>
         </div>
       ) : null}
+      {deal.type === "streak" && describeCalendarStreak(metadataObject(deal.metadata)) ? (
+        <p className="mt-2 text-xs leading-5 text-zinc-600">{describeCalendarStreak(metadataObject(deal.metadata))}. Belohnung einmal nach Serienabschluss.</p>
+      ) : null}
 
     </div>
   )
@@ -4641,7 +4683,21 @@ function DealForm({
   mode: "create" | "edit"
   visits?: Visit[]
 }) {
-  const [state, formAction] = useActionState(saveDeal, initialState)
+  const submittingRef = useRef(false)
+  const createRequestId = useRef<string | null>(null)
+  const [state, formAction, pending] = useActionState(async (previous: PartnerActionState, data: FormData) => {
+    try {
+      if (mode === "create") {
+        createRequestId.current ??= crypto.randomUUID()
+        data.set("create_request_id", createRequestId.current)
+      }
+      return await saveDeal(previous, data)
+    } catch {
+      return { ok: false, message: "Der Vorteil konnte nicht gespeichert werden. Deine Eingaben bleiben erhalten. Bitte versuche es erneut." }
+    } finally {
+      submittingRef.current = false
+    }
+  }, initialState)
   const formRef = useActionSuccess(state, onSaved)
   const [confirmingSave, setConfirmingSave] = useState(false)
   const confirmedSubmitRef = useRef(false)
@@ -4650,10 +4706,16 @@ function DealForm({
     <form
       ref={formRef}
       action={formAction}
+      aria-busy={pending}
       className="space-y-4"
       onSubmit={(event) => {
+        if (submittingRef.current || pending) {
+          event.preventDefault()
+          return
+        }
         if (confirmedSubmitRef.current) {
           confirmedSubmitRef.current = false
+          submittingRef.current = true
           return
         }
 
@@ -4664,9 +4726,11 @@ function DealForm({
       <input type="hidden" name="id" value={deal?.id ?? ""} />
       <input type="hidden" name="partner_id" value={partnerId} />
 
+      <fieldset disabled={pending} className="min-w-0">
       <DealFields
         deal={deal}
         dealDraft={state.dealDraft}
+        fieldErrors={state.fieldErrors}
         partnerName={partnerName}
         defaultActive={defaultActive ?? deal?.active ?? true}
         onDraftActiveChange={onDraftActiveChange}
@@ -4675,6 +4739,7 @@ function DealForm({
         onDraftTitleChange={onDraftTitleChange}
         visits={visits}
       />
+      </fieldset>
 
       <ActionMessage state={state} />
       <div className="flex flex-wrap gap-2">
@@ -4685,6 +4750,7 @@ function DealForm({
         {mode === "edit" && onCancel ? (
           <button
             type="button"
+            disabled={pending}
             onClick={onCancel}
             className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-100"
           >
@@ -4700,9 +4766,12 @@ function DealForm({
         confirmLabel={mode === "create" ? "Add benefit" : "Save benefit"}
         onCancel={() => setConfirmingSave(false)}
         onConfirm={() => {
+          if (submittingRef.current || pending || confirmedSubmitRef.current) return
           confirmedSubmitRef.current = true
           setConfirmingSave(false)
           formRef.current?.requestSubmit()
+          // A native validation failure does not dispatch submit.
+          confirmedSubmitRef.current = false
         }}
       />
     </form>
@@ -4785,7 +4854,7 @@ const dealFieldHelp = {
   validWindow: "Zeitraum, in dem dieser Vorteil genutzt werden kann.",
   happyHour: "Tägliches Zeitfenster, in dem die Happy Hour verfügbar ist.",
   happyHourWeekdays:
-    "Wähle die Tage für diese Happy Hour. Ohne Auswahl gilt sie täglich.",
+    "Wähle die gültigen Tage für diese Happy Hour. Mindestens ein Wochentag ist erforderlich.",
   cooldownHours: "Mindestzeit, bevor derselbe Nutzer den Vorteil erneut nutzen kann.",
   maxRedemptionsGlobal: "Maximale Gesamtzahl aller Einlösungen.",
   maxRedemptionsPerUser: "Maximale Einlösungen pro Nutzer.",
@@ -4904,10 +4973,10 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   happy_hour: {
     shortDescription: "Nur im festgelegten Zeitfenster verfügbar.",
     description:
-      "Eine zeitlich begrenzte Kampagne. Nutzer wählen den Vorteil vor dem QR-Scan aus; bei der Einlösung wird das Zeitfenster erneut geprüft.",
+      "Eine zeitlich begrenzte Kampagne. Eine gültige Happy Hour wird beim QR-Scan automatisch angewendet, wenn kein anderer direkter Vorteil ausgewählt wurde. Zeitfenster und Teilnahmebedingungen werden bei der Einlösung erneut geprüft.",
     recommendedSetup: [
-      "Aktivierung: Vor dem Besuch auswählen",
-      "Aktivierung erforderlich: Ja",
+      "Automatisch anwenden, wenn kein anderer direkter Vorteil ausgewählt ist",
+      "Bei mehreren gültigen Happy Hours wird genau eine nach Priorität angewendet",
     ],
     requiredFields: [
       "Beginn der Happy Hour",
@@ -4920,8 +4989,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
     example: "10 % Rabatt zwischen 15:00 und 18:00 Uhr.",
     autoSet: [
       "type = happy_hour",
-      "benefit_category = direct_selectable",
-      "activation_required = true",
+      "Automatische Anwendung beim QR-Scan",
     ],
   },
   permanent_discount: {
@@ -5075,21 +5143,21 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   streak: {
     shortDescription: "Bonus auf Basis einer Besuchsserie bei diesem Partner.",
     description:
-      "Ein Streak auf Basis einer Besuchsserie. Die Belohnung kann Bonusstempel, Gratisartikel, festen oder prozentualen Rabatt oder 2 für 1 enthalten.",
+      "Belohnt eine Serie erfüllter Kalenderzeiträume. Mindestkäufe je Zeitraum, Zeitraum und Zahl aufeinanderfolgender Zeiträume werden getrennt festgelegt. Bestehende Besuchsrhythmus-Regeln behalten ihre Bedeutung.",
     recommendedSetup: [
-      "Auslöserwert ist erforderlich",
-      "Bonusstempel werden automatisch angewendet",
-      "Gratisartikel, Rabatt und 2 für 1 werden vor dem Besuch ausgewählt",
+      "Mindestkäufe je Tag, Woche, Monat oder Quartal festlegen",
+      "Serienlänge in aufeinanderfolgenden Zeiträumen festlegen",
+      "Bonus erst nach Abschluss der gesamten Serie; direkte Belohnungen danach vor der Einlösung auswählen",
     ],
     requiredFields: [
-      "Auslöserwert",
+      "Mindestkäufe, Kalenderzeitraum und Serienlänge",
       "Belohnungsformat",
       "Anzahl, Artikel oder Rabattwert – abhängig vom Belohnungsformat",
       "Gültigkeitstage bei Ablauf",
       "Kundenbeschreibung",
       "Mitarbeiterhinweise",
     ],
-    example: "3-Tage-Streak: Gratisgetränk oder 5-Tage-Streak: +1 Bonusstempel.",
+    example: "Mindestens 2 Käufe pro Woche über 4 Wochen am Stück: +1 Bonusstempel nach Serienabschluss.",
     autoSet: [
       "If discount_type = bonus_stamp: benefit_category = automatic_background; activation_required = false",
       "If discount_type = item/fixed/percent/2for1: benefit_category = direct_selectable; activation_required = true",
@@ -5125,10 +5193,6 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
 const generalRewardOptions: { value: string; label: string }[] =
   discountTypeOptions.filter(
     (option) => option.value !== "none",
-  )
-const directRewardOptions: { value: string; label: string }[] =
-  discountTypeOptions.filter((option) =>
-    ["fixed", "percent", "item", "2for1"].includes(option.value),
   )
 const discountOnlyOptions: { value: string; label: string }[] =
   discountTypeOptions.filter((option) =>
@@ -5175,7 +5239,7 @@ function getDealFormConfig({
       )
       break
     case "happy_hour":
-      discountOptions = directRewardOptions
+      discountOptions = discountTypeOptions.filter(option => ["fixed", "percent", "item", "2for1", "bonus_stamp"].includes(option.value))
       visibleFields.add("happyHour")
       visibleFields.add("happyHourWeekdays")
       requiredFields.add("happyHour")
@@ -5292,7 +5356,7 @@ function defaultDiscountTypeForDealType(type: string, currentDiscountType: strin
     case "discount":
       return current === "fixed" || current === "percent" ? current : "percent"
     case "happy_hour":
-      return ["fixed", "percent", "item", "2for1"].includes(current)
+      return ["fixed", "percent", "item", "2for1", "bonus_stamp"].includes(current)
         ? current
         : "percent"
     case "limited_drop":
@@ -5627,6 +5691,7 @@ function normalizeRewardItem(value: string | null | undefined) {
 function DealFields({
   deal,
   dealDraft,
+  fieldErrors,
   partnerName = "",
   prefix = "",
   defaultActive,
@@ -5639,6 +5704,7 @@ function DealFields({
 }: {
   deal?: Deal
   dealDraft?: DealFormDraft
+  fieldErrors?: Record<string, string>
   partnerName?: string
   prefix?: string
   defaultActive: boolean
@@ -5761,10 +5827,10 @@ function DealFields({
     formatDateTimeInput(deal?.ends_at ?? deal?.valid_until),
   )
   const [validFrom, setValidFrom] = useState(
-    formatDateTimeInput(deal?.valid_from),
+    formatDateTimeInput(deal?.valid_from ?? (initialDealType === "happy_hour" ? deal?.starts_at : null)),
   )
   const [validUntil, setValidUntil] = useState(
-    formatDateTimeInput(deal?.valid_until),
+    formatDateTimeInput(deal?.valid_until ?? (initialDealType === "happy_hour" ? deal?.ends_at : null)),
   )
   const [minSpend, setMinSpend] = useState(
     formatTextInputValue(deal?.min_spend),
@@ -5822,8 +5888,9 @@ function DealFields({
   const selectedBackendDealType = backendDealTypeForUi(selectedDealType)
   const selectedDealTypeLabel =
     labelForValue(dealUiTypeOptions, selectedDealType) || "Benefit"
-  const benefitCategory = config.autoValues.benefitCategory
-  const activationRequired = config.autoValues.activationRequired
+  const preservesStoredStreakReward = Boolean(deal && dealUiTypeForDeal(deal) === "streak" && selectedBackendDealType === "streak" && selectedDiscountType === normalizeDiscountTypeForUi("streak", deal.discount_type))
+  const benefitCategory = preservesStoredStreakReward && deal?.benefit_category ? deal.benefit_category : config.autoValues.benefitCategory
+  const activationRequired = preservesStoredStreakReward && typeof deal?.activation_required === "boolean" ? deal.activation_required : config.autoValues.activationRequired
   const isLimitedDrop = selectedBackendDealType === "limited_drop"
   const isWelcomeDeal = selectedBackendDealType === "welcome"
   const isHappyHour = selectedBackendDealType === "happy_hour"
@@ -6440,10 +6507,14 @@ function DealFields({
                   name={`${prefix}valid_weekdays`}
                   defaultValues={deal?.valid_weekdays}
                   hint={dealFieldHelp.happyHourWeekdays}
+                  warning={fieldErrors?.valid_weekdays}
+                  markExcluded
                 />
               </>
             ) : null}
-            {config.visibleFields.has("triggerValue") ? (
+            {selectedBackendDealType === "streak" ? (
+              <StreakRuleFields metadata={dealMetadata} prefix={prefix} legacy={Boolean(deal && dealUiTypeForDeal(deal) === "streak" && dealMetadata.streak_mode !== "calendar_frequency")} expiryDays={deal?.expiry_days} triggerValue={triggerValue} onTriggerChange={setTriggerValue} required={useBrowserValidation} errors={fieldErrors} />
+            ) : config.visibleFields.has("triggerValue") ? (
               <TextField
                 label="Auslöserwert"
                 name={`${prefix}trigger_value`}
@@ -6451,7 +6522,7 @@ function DealFields({
                 min={1}
                 value={triggerValue}
                 onChange={setTriggerValue}
-                hint="Zum Beispiel: 3 für einen 3-Tage-Streak."
+                hint="Erforderlicher Wert für diesen Auslöser."
                 required={
                   useBrowserValidation &&
                   config.requiredFields.has("triggerValue")
@@ -7029,7 +7100,21 @@ function MilestoneForm({
   partner: PartnerWithDeals
   mode: "create" | "edit"
 }) {
-  const [state, formAction] = useActionState(saveRewardMilestone, initialState)
+  const submittingRef = useRef(false)
+  const createRequestId = useRef<string | null>(null)
+  const [state, formAction, pending] = useActionState(async (previous: PartnerActionState, data: FormData) => {
+    try {
+      if (mode === "create") {
+        createRequestId.current ??= crypto.randomUUID()
+        data.set("create_request_id", createRequestId.current)
+      }
+      return await saveRewardMilestone(previous, data)
+    } catch {
+      return { ok: false, message: "Der Speicherstatus konnte nicht bestätigt werden. Deine Eingaben bleiben erhalten. Bitte versuche es mit demselben Formular erneut." }
+    } finally {
+      submittingRef.current = false
+    }
+  }, initialState)
   const formRef = useActionSuccess(state, onSaved)
   const [rewardType, setRewardType] = useState(
     milestone?.reward_type ?? "item",
@@ -7040,7 +7125,10 @@ function MilestoneForm({
   const requiredSectionsOpen = true
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-5">
+    <form ref={formRef} action={formAction} aria-busy={pending} className="space-y-5" onSubmit={(event) => {
+      if (submittingRef.current || pending) event.preventDefault()
+      else submittingRef.current = true
+    }}>
       <input type="hidden" name="id" value={milestone?.id ?? ""} />
       <input type="hidden" name="partner_id" value={partner.id ?? ""} />
       <input
@@ -7048,6 +7136,7 @@ function MilestoneForm({
         name="reward_track_target"
         value={milestone?.reward_track_target ?? DEFAULT_REWARD_TRACK_TARGET}
       />
+      <fieldset disabled={pending} className="min-w-0 space-y-5">
       <FormSection
         title="Milestone Details"
         defaultOpen={requiredSectionsOpen}
@@ -7063,6 +7152,7 @@ function MilestoneForm({
             max={MAX_STAMP_CARD_STAMPS}
             hint={`Must be between 1 and ${MAX_STAMP_CARD_STAMPS}.`}
             required
+            warning={state.fieldErrors?.required_stamps}
           />
           <SelectField
             label="Belohnungstyp"
@@ -7071,12 +7161,15 @@ function MilestoneForm({
             options={withCurrentOption(rewardTypeOptions, milestone?.reward_type)}
             onChange={setRewardType}
             required
+            warning={state.fieldErrors?.reward_type}
           />
           <input type="hidden" name="discount_type" value={rewardType} />
           <TextField
             label="Title"
             name="title"
             defaultValue={milestone?.title}
+            hint="Optional. Ohne Titel wird er aus Stempelziel und Belohnung erzeugt."
+            warning={state.fieldErrors?.title}
           />
           {showsRewardItem ? (
             <TextField
@@ -7084,6 +7177,7 @@ function MilestoneForm({
               name="reward_item"
               defaultValue={milestone?.reward_item}
               required
+              warning={state.fieldErrors?.reward_item}
             />
           ) : null}
           {showsDiscountValue ? (
@@ -7094,6 +7188,7 @@ function MilestoneForm({
               step="any"
               defaultValue={milestone?.discount_value}
               required
+              warning={state.fieldErrors?.discount_value}
             />
           ) : null}
           {showsBenefitCount ? (
@@ -7102,6 +7197,10 @@ function MilestoneForm({
               name="discount_value"
               type="number"
               defaultValue={milestone?.discount_value ?? 1}
+              min={1}
+              step="1"
+              required
+              warning={state.fieldErrors?.discount_value}
             />
           ) : null}
           <TextField
@@ -7120,6 +7219,7 @@ function MilestoneForm({
               milestone?.audience,
             )}
             required
+            warning={state.fieldErrors?.audience}
           />
         </FieldGrid>
         <CheckboxField
@@ -7141,20 +7241,24 @@ function MilestoneForm({
             label="Customer description"
             name="customer_description"
             defaultValue={milestone?.customer_description}
+            warning={state.fieldErrors?.customer_description}
           />
           <TextAreaField
             label="Staff instructions"
             name="staff_instructions"
             defaultValue={milestone?.staff_instructions}
             hint="Scanner/order staff need this to know what to give."
+            warning={state.fieldErrors?.staff_instructions}
           />
           <TextAreaField
             label="Terms"
             name="terms"
             defaultValue={milestone?.terms}
+            warning={state.fieldErrors?.terms}
           />
         </FieldGrid>
       </FormSection>
+      </fieldset>
       <ActionMessage state={state} toast={false} />
       <SubmitButton
         label={mode === "create" ? "Add milestone" : "Save milestone"}
@@ -11057,6 +11161,7 @@ function TextField({
           min={min}
           max={max}
           required={required}
+          aria-invalid={Boolean(warning) || undefined}
           placeholder={placeholder}
           value={value}
           defaultValue={value === undefined ? defaultValue ?? "" : undefined}
@@ -11093,6 +11198,7 @@ function SelectField({
   value,
   required,
   hint,
+  warning,
   onChange,
 }: {
   label: string
@@ -11102,6 +11208,7 @@ function SelectField({
   value?: string
   required?: boolean
   hint?: string
+  warning?: string
   onChange?: (value: string) => void
 }) {
   return (
@@ -11110,6 +11217,7 @@ function SelectField({
       <select
         name={name}
         required={required}
+        aria-invalid={Boolean(warning) || undefined}
         value={value}
         defaultValue={value === undefined ? defaultValue ?? "" : undefined}
         onChange={(event) => onChange?.(event.target.value)}
@@ -11125,6 +11233,7 @@ function SelectField({
           ))}
       </select>
       {hint ? <span className="block text-xs text-zinc-500">{hint}</span> : null}
+      {warning ? <span className="block text-xs font-medium text-rose-700">{warning}</span> : null}
     </label>
   )
 }
@@ -11260,18 +11369,22 @@ function WeekdayChipField({
   name,
   defaultValues,
   hint,
+  markExcluded = false,
+  warning,
 }: {
   label: string
   name: string
   defaultValues?: Array<number | string> | null
   hint?: string
+  markExcluded?: boolean
+  warning?: string
 }) {
   const [selectedValues, setSelectedValues] = useState(() =>
     normalizeWeekdayNumbers(defaultValues),
   )
 
   return (
-    <fieldset className="space-y-2 text-sm md:col-span-2 2xl:col-span-3">
+    <fieldset aria-invalid={Boolean(warning) || undefined} className="space-y-2 text-sm md:col-span-2 2xl:col-span-3">
       <legend>
         <FieldLabel label={label} />
       </legend>
@@ -11286,7 +11399,12 @@ function WeekdayChipField({
           <button
             key={action.label}
             type="button"
-            onClick={() => setSelectedValues(action.values)}
+            onClick={(event) => {
+              setSelectedValues(action.values)
+              const form = event.currentTarget.closest("form")
+              const EventConstructor = event.currentTarget.ownerDocument.defaultView?.Event
+              if (form && EventConstructor) form.dispatchEvent(new EventConstructor("input", { bubbles: true }))
+            }}
             className="h-7 rounded-md border border-zinc-300 bg-white px-2 text-xs font-semibold text-zinc-700 transition hover:border-teal-400 hover:bg-teal-50"
           >
             {action.label}
@@ -11315,19 +11433,23 @@ function WeekdayChipField({
                 className="peer sr-only"
               />
               <span
-                className={`flex h-10 cursor-pointer items-center justify-center rounded-md border px-2 text-sm font-semibold transition peer-focus-visible:ring-2 peer-focus-visible:ring-teal-100 ${
+                className={`flex h-10 cursor-pointer items-center justify-center gap-1 rounded-md border px-2 text-sm font-semibold transition peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-teal-700 ${
                   checked
                     ? "border-teal-700 bg-teal-700 text-white"
+                    : markExcluded
+                      ? "border-rose-700 bg-rose-700 text-white hover:bg-rose-800"
                     : "border-zinc-300 bg-white text-zinc-700 hover:border-teal-400 hover:bg-teal-50"
                 }`}
               >
                 {option.label}
+                {markExcluded && !checked ? <span aria-hidden="true">×</span> : null}
               </span>
             </label>
           )
         })}
       </div>
       {hint ? <span className="block text-xs text-zinc-500">{hint}</span> : null}
+      {warning ? <span role="alert" className="block text-xs font-medium text-rose-700">{warning}</span> : null}
     </fieldset>
   )
 }
@@ -12526,6 +12648,7 @@ function TextAreaField({
   value,
   required,
   hint,
+  warning,
   placeholder,
   maxLength,
   showCharacterCount = true,
@@ -12538,6 +12661,7 @@ function TextAreaField({
   value?: string
   required?: boolean
   hint?: string
+  warning?: string
   placeholder?: string
   maxLength?: number
   showCharacterCount?: boolean
@@ -12567,6 +12691,7 @@ function TextAreaField({
         name={name}
         rows={3}
         required={required}
+        aria-invalid={Boolean(warning) || undefined}
         placeholder={placeholder}
         value={value}
         defaultValue={value === undefined ? defaultValue ?? "" : undefined}
@@ -12581,6 +12706,7 @@ function TextAreaField({
       />
       <FieldSupportText
         hint={hint}
+        warning={warning}
         currentLength={currentLength}
         maxLength={showCharacterCount ? resolvedMaxLength : undefined}
       />
@@ -13165,7 +13291,9 @@ function backendDealTypeForUi(type: string) {
     : type
 }
 
-function dealUiTypeForDeal(deal?: Pick<Deal, "type" | "metadata"> | null) {
+function dealUiTypeForDeal(deal?: Pick<Deal, "type" | "metadata"> & Partial<Pick<Deal, "campaign_type" | "trigger_key">> | null) {
+  if (deal?.type === "happy_hour" || deal?.campaign_type === "happy_hour") return "happy_hour"
+  if (deal?.trigger_key === "streak" || deal?.campaign_type === "streak") return "streak"
   const type = deal?.type || "discount"
 
   if (type !== "comeback") {

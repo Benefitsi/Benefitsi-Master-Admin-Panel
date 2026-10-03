@@ -66,8 +66,17 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --ignore-scripts
 
-      - name: Audit dependencies
-        run: npm audit --audit-level=high
+      - name: Audit dependencies and verify source mitigation
+        run: npm run audit
+
+      - name: Preserve full unchanged dependency audit
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dependency-audit-${{ github.run_id }}
+          path: work/dependency-audit/npm-audit-raw.json
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Lint
         run: npm run lint

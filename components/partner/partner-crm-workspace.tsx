@@ -100,6 +100,7 @@ function ReadyCrmWorkspace({
   onAccessLost?: () => void;
 }) {
   const [campaigns, setCampaigns] = useState(initial.dashboard.campaigns),
+    [previousCampaigns, setPreviousCampaigns] = useState(initial.dashboard.campaigns),
     [editor, setEditor] = useState<CampaignInput>(() => newDraft('second_visit')),
     [message, setMessage] = useState(''),
     [error, setError] = useState(''),
@@ -113,9 +114,10 @@ function ReadyCrmWorkspace({
       live.current = false;
     };
   }, []);
-  useEffect(() => {
+  if (previousCampaigns !== initial.dashboard.campaigns) {
+    setPreviousCampaigns(initial.dashboard.campaigns);
     setCampaigns(initial.dashboard.campaigns);
-  }, [initial.dashboard.campaigns]);
+  }
   const dashboard = initial.dashboard;
   function choose(input: CampaignInput) {
     setEditor(input);
@@ -424,6 +426,7 @@ function EditorialCard({
   onAccessLost?: () => void;
 }) {
   const [saved, setSaved] = useState(initial),
+    [previousInitial, setPreviousInitial] = useState(initial),
     [error, setError] = useState(''),
     [message, setMessage] = useState(''),
     [pending, startTransition] = useTransition(),
@@ -434,9 +437,10 @@ function EditorialCard({
       live.current = false;
     };
   }, []);
-  useEffect(() => {
+  if (previousInitial !== initial) {
+    setPreviousInitial(initial);
     setSaved(initial);
-  }, [initial]);
+  }
   const Icon = saved.service_key === 'blog_article' ? BookOpen : Mic;
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

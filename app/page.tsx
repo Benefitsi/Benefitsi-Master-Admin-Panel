@@ -32,11 +32,14 @@ export default async function DashboardPage({
     redirect("/login")
   }
 
-  const portalSession = await getPartnerPortalSession(supabase)
+  const portalSession = await getPartnerPortalSession(supabase, adminSession)
 
-  const [dashboard, founder] = await Promise.all([getDashboardData(supabase), loadFounderOverview(supabase)])
   const query = await searchParams
   const requestedPartnerId = singleQueryValue(query.partner)
+  const [dashboard, founder] = await Promise.all([
+    getDashboardData(supabase, {entitlementPartnerId: requestedPartnerId || null}),
+    loadFounderOverview(supabase),
+  ])
   const requestedMode = singleQueryValue(query.mode)
   const requestedView = singleQueryValue(query.view)
   const requestedTab = singleQueryValue(query.tab)

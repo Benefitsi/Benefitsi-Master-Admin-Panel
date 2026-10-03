@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr"
 import { sessionCookieOptions } from "@/lib/portal-routing"
 import { cookies, headers } from "next/headers"
 import { requireSupabaseConfig } from "./config"
+import { createBoundedSupabaseFetch } from "./bounded-fetch"
 
 export async function createClient() {
   const cookieStore = await cookies()
@@ -9,6 +10,7 @@ export async function createClient() {
   const { url, publishableKey } = requireSupabaseConfig()
 
   return createServerClient(url, publishableKey, {
+    global: { fetch: createBoundedSupabaseFetch() },
     cookieOptions,
     cookies: {
       getAll() {
