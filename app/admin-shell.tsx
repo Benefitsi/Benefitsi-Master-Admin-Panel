@@ -22,8 +22,9 @@ type AdminShellProps = {
   adminName: string
   title?: string
   subtitle?: string
-  micrositeCount?: number
+  micrositeCount?: ReactNode
   canAccessPartnerPanel?: boolean
+  headerActions?: ReactNode
   children: ReactNode
 }
 
@@ -41,6 +42,7 @@ function AdminShellContent({
   subtitle = "All partners and their information",
   micrositeCount,
   canAccessPartnerPanel = false,
+  headerActions,
   children,
 }: AdminShellProps) {
   const [collapsed, setCollapsed] = useState(true)
@@ -212,14 +214,8 @@ function AdminShellContent({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <AdminLanguageControl className="self-start sm:self-auto" />
               <SystemSwitcher micrositeCount={micrositeCount} />
-              {canAccessPartnerPanel ? (
-                <Link
-                  href="/partner"
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-3 text-sm font-bold text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff]"
-                >
-                  Partner panel
-                </Link>
-              ) : null}
+              {canAccessPartnerPanel ? <PartnerPanelLink /> : null}
+              {headerActions}
               <p className="max-w-full truncate text-sm font-medium text-[#526170]">
                 {adminName}
               </p>
@@ -274,7 +270,13 @@ function AdminNavigationLink({
   )
 }
 
-function SystemSwitcher({ micrositeCount }: { micrositeCount?: number }) {
+export function PartnerPanelLink() {
+  return <Link href="/partner" className="inline-flex h-10 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-3 text-sm font-bold text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff]">
+    Partner panel
+  </Link>
+}
+
+function SystemSwitcher({ micrositeCount }: { micrositeCount?: ReactNode }) {
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const appUrl = process.env.NEXT_PUBLIC_BENEFITSI_APP_URL?.trim() || ""
@@ -385,7 +387,7 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: number }) {
               meta={
                 typeof micrositeCount === "number"
                   ? `${micrositeCount} Partner`
-                  : undefined
+                  : micrositeCount
               }
               highlighted
               onNavigate={() => setOpen(false)}
@@ -440,7 +442,7 @@ function SystemCard({
   icon: ReactNode
   title: string
   description: string
-  meta?: string
+  meta?: ReactNode
   onNavigate?: () => void
 }) {
   const content = (

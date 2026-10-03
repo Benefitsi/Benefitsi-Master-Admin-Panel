@@ -15,6 +15,14 @@
 .topline { display:flex; align-items:center; justify-content:space-between; gap:14px; }
 .overline { font-size:10px; font-weight:800; letter-spacing:.14em; color:#667085; }
 .timestamp { display:flex; gap:6px; align-items:center; color:#667085; font-size:11px; }
+.loadingPanel { min-height:180px; display:flex; flex-direction:column; gap:24px; color:#667085; font-size:12px; }
+.loadingPanel[data-variant=activity] { min-height:420px; color:#B3C7D8; }
+.loadingPanel[data-variant=agents] { min-height:230px; }
+.loadingPanel[data-variant=directory] { min-height:200px; }
+.loadingBars { display:grid; gap:16px; margin-block:auto; }
+.loadingBar { height:12px; width:75%; border-radius:6px; background:currentColor; opacity:.08; }
+.loadingBar:nth-child(2) { width:55%; }.loadingBar:nth-child(3) { width:90%; }
+.loadingMetric { min-height:175px; display:flex; flex-direction:column; justify-content:space-around; }
 .metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
 .metric { display:block; padding:20px 24px; background:#fff; border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 18px #06182903; min-width:0; }
 .metric:hover { transform:translateY(-3px); box-shadow:0 10px 26px #06182909; }
