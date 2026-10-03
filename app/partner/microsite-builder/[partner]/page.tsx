@@ -6,7 +6,7 @@ import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { MicrositePanel } from "@/app/microsite-panel"
 import { MicrositeReadOnlyNotice } from "@/components/microsite-read-only-notice"
 import { AdminLanguageControl, AdminLanguageProvider } from "@/app/admin-language"
-import { getDashboardData } from "@/lib/admin-data"
+import { getDashboardData, getPartnerCapabilityFlags } from "@/lib/admin-data"
 import {
   canAccessPartner,
   canEditPartnerMicrosite,
@@ -42,7 +42,7 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
   const { partner: identifier } = await params
   const dashboard = await getDashboardData(supabase, {includeActivity: false})
   const visiblePartners = filterPartnersForPortal(dashboard.partners, portalSession)
-  const partner = visiblePartners.find(
+  const selectedPartner = visiblePartners.find(
     (item) =>
       item.id === identifier ||
       item.slug === identifier ||
@@ -50,9 +50,10 @@ export default async function PartnerMicrositeBuilderPage({ params }: PageProps)
       item.microsite?.slug === identifier,
   )
 
-  if (!partner || !canAccessPartner(portalSession, partner.id)) {
+  if (!selectedPartner?.id || !canAccessPartner(portalSession, selectedPartner.id)) {
     notFound()
   }
+  const partner = { ...selectedPartner, ...await getPartnerCapabilityFlags(supabase, selectedPartner.id) }
 
   const previewIdentifier =
     partner.microsite?.slug || partner.slug || partner.subdomain || partner.id || identifier

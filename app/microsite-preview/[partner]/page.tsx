@@ -2,7 +2,7 @@ import { loadMicrositeCommerceActions } from "@/lib/commerce/microsite"
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { requireAdmin } from "@/lib/admin"
-import { getDashboardData, type PartnerWithDeals } from "@/lib/admin-data"
+import { getDashboardData, getPartnerCapabilityFlags, type PartnerWithDeals } from "@/lib/admin-data"
 import { resolveMicrositeConfig } from "@/lib/microsites"
 import { MicrositePreviewShell } from "./preview-shell"
 
@@ -30,11 +30,12 @@ export default async function MicrositePreviewPage({
   const identifier = decodeURIComponent(rawIdentifier)
   const { supabase } = await requireAdmin()
   const dashboard = await getDashboardData(supabase)
-  const partner = findPreviewPartner(dashboard.partners, identifier)
+  const selectedPartner = findPreviewPartner(dashboard.partners, identifier)
 
-  if (!partner) {
+  if (!selectedPartner?.id) {
     notFound()
   }
+  const partner = { ...selectedPartner, ...await getPartnerCapabilityFlags(supabase, selectedPartner.id) }
 
   const previewSource = query.source === "published" ? "published" : query.source === "builder" ? "builder" : "saved"
   const version = previewSource === "published" ? partner.microsite?.publishedVersion : partner.microsite?.draftVersion ?? partner.microsite?.publishedVersion

@@ -2,7 +2,7 @@ import { loadMicrositeCommerceActions } from "@/lib/commerce/microsite"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import type { Metadata } from "next"
-import { getDashboardData, type PartnerWithDeals } from "@/lib/admin-data"
+import { getDashboardData, getPartnerCapabilityFlags, type PartnerWithDeals } from "@/lib/admin-data"
 import {
   canAccessPartner,
   canManagePartner,
@@ -53,16 +53,16 @@ export default async function PartnerMicrositePreviewPage({
   }
 
   const dashboard = await getDashboardData(supabase, {includeActivity: false})
-  const partner = findPreviewPartner(
+  const selectedPartner = findPreviewPartner(
     filterPartnersForPortal(dashboard.partners, portalSession),
     identifier,
   )
 
-  if (!partner || !canAccessPartner(portalSession, partner.id)) {
+  if (!selectedPartner?.id || !canAccessPartner(portalSession, selectedPartner.id)) {
     notFound()
   }
 
-  if (!canManagePartner(portalSession, partner.id)) {
+  if (!canManagePartner(portalSession, selectedPartner.id)) {
     return (
       <main className="min-h-screen bg-[#f7f6f1] px-5 py-12 text-[#061829]">
         <section className="mx-auto max-w-xl rounded-2xl border border-[#061829]/10 bg-white p-6">
@@ -82,6 +82,7 @@ export default async function PartnerMicrositePreviewPage({
     )
   }
 
+  const partner = { ...selectedPartner, ...await getPartnerCapabilityFlags(supabase, selectedPartner.id) }
   const previewSource = query.source === "published" ? "published" : query.source === "builder" ? "builder" : "saved"
   const version = previewSource === "published" ? partner.microsite?.publishedVersion : partner.microsite?.draftVersion ?? partner.microsite?.publishedVersion
   if (previewSource === "published" && !version) notFound()

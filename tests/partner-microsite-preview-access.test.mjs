@@ -35,7 +35,7 @@ function partner(overrides = {}) {
 // Execute the actual server route with external session/data and client-component
 // boundaries isolated. Access predicates and config resolution stay real.
 function loadRoute(path, session, selectedPartner) {
-  const calls = { resolvedConfigs: [], shellProps: [], workspaceProps: [], commercePartners: [] }
+  const calls = { resolvedConfigs: [], shellProps: [], workspaceProps: [], commercePartners: [], capabilityPartners: [] }
   const PreviewShell = props => {
     calls.shellProps.push(props)
     return createElement("article", null, props.initialConfig.hero.headline)
@@ -59,7 +59,13 @@ function loadRoute(path, session, selectedPartner) {
       notFound: () => { throw Object.assign(new Error("not found"), { status: 404 }) },
     },
     "@/lib/partner-portal": { ...partnerPortal, getPartnerPortalSession: async () => session },
-    "@/lib/admin-data": { getDashboardData: async () => ({ partners: [selectedPartner], cities: [], errors: [] }) },
+    "@/lib/admin-data": {
+      getDashboardData: async () => ({ partners: [selectedPartner], cities: [], errors: [] }),
+      getPartnerCapabilityFlags: async (_client, id) => {
+        calls.capabilityPartners.push(id)
+        return {media_rich_enabled: true, menu_ai_import_enabled: true}
+      },
+    },
     "@/lib/supabase/config": { getSupabaseConfig: () => ({ isConfigured: true }) },
     "@/lib/supabase/server": { createClient: async () => ({}) },
     "@/lib/microsites": { resolveMicrositeConfig: (...args) => {
@@ -97,6 +103,21 @@ const previewPath = "../app/partner/microsite-preview/[partner]/page.tsx"
 const previewProps = query => ({
   params: Promise.resolve({ partner: "synthetic-shop" }),
   searchParams: Promise.resolve(query),
+})
+
+test("an authorized preview loads fresh capabilities only for its resolved partner", async () => {
+  const selectedPartner = partner()
+  selectedPartner.microsite.publishedVersion = {id: "published-id", config: savedPublished}
+  const {page, calls} = loadRoute(previewPath, {...staffSession, ownedPartnerIds: [partnerId]}, selectedPartner)
+  renderToStaticMarkup(await page(previewProps({source: "published"})))
+  assert.deepEqual(calls.capabilityPartners, [partnerId])
+  assert.equal(calls.shellProps[0].partner.media_rich_enabled, true)
+})
+
+test("an unauthorized preview does not request partner capabilities", async () => {
+  const {page, calls} = loadRoute(previewPath, {...staffSession, partnerIds: ["other"]}, partner())
+  await assert.rejects(page(previewProps({})), error => error.status === 404)
+  assert.deepEqual(calls.capabilityPartners, [])
 })
 
 test("published preview selects the published version even when a builder draft exists", async () => {

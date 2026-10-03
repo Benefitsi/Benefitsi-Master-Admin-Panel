@@ -2,7 +2,7 @@ import { loadMicrositeCommerceActions } from "@/lib/commerce/microsite"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { getAdminSession } from "@/lib/admin"
-import { getDashboardData } from "@/lib/admin-data"
+import { getDashboardData, getPartnerCapabilityFlags } from "@/lib/admin-data"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { MicrositePanel } from "../../microsite-panel"
@@ -30,7 +30,7 @@ export default async function MicrositeBuilderPage({ params }: PageProps) {
 
   const { partner: identifier } = await params
   const dashboard = await getDashboardData(supabase)
-  const partner = dashboard.partners.find(
+  const selectedPartner = dashboard.partners.find(
     (item) =>
       item.id === identifier ||
       item.slug === identifier ||
@@ -38,9 +38,10 @@ export default async function MicrositeBuilderPage({ params }: PageProps) {
       item.microsite?.slug === identifier,
   )
 
-  if (!partner) {
+  if (!selectedPartner?.id) {
     notFound()
   }
+  const partner = { ...selectedPartner, ...await getPartnerCapabilityFlags(supabase, selectedPartner.id) }
 
   const previewIdentifier =
     partner.microsite?.slug || partner.slug || partner.subdomain || partner.id || identifier
