@@ -19,9 +19,11 @@ export function PartnerCrmLoader({
   initialError?: string;
 }) {
   const [snapshot, setSnapshot] = useState<{
+    actorId: string;
     initial: CrmRead;
     deals: CrmDeals;
   } | null>(initial ? {
+    actorId,
     initial,
     deals
   } : null),
@@ -48,6 +50,7 @@ export function PartnerCrmLoader({
         return;
       }
       setSnapshot({
+        actorId: result.value.actorId,
         initial: result.value.initial,
         deals: result.value.deals
       });
@@ -95,5 +98,5 @@ export function PartnerCrmLoader({
     </p>
     <button type="button" className="mt-4 min-h-11 rounded-xl border border-slate-200 px-4 font-semibold text-[#0874d1]" onClick={() => void refresh()}>Zugriff und Daten erneut laden</button>
   </section>;
-  return <PartnerCrmWorkspace key={`${partnerId}:${actor.current}:${epoch}`} partnerId={partnerId} initial={snapshot.initial} deals={snapshot.deals} onAccessLost={accessLost} />;
+  return <PartnerCrmWorkspace key={`${partnerId}:${snapshot.actorId}:${epoch}`} partnerId={partnerId} actorId={snapshot.actorId} initial={snapshot.initial} deals={snapshot.deals} onAccessLost={accessLost} />;
 }

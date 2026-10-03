@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { getPartnerPortalSession } from '@/lib/partner-portal';
 import { requireAdmin } from '@/lib/admin';
-import { crmError, readCrmDashboard, readCrmDeals, saveCrmCampaign, requestEditorialService, updateEditorialService, validCrmUuid, type CrmRead, type CrmDeals, type CrmCampaign, type EditorialRequest, type AdminEditorialRequest, type EditorialKey, type EditorialStatus } from '@/lib/partners/crm';
+import { crmError, readCrmAudiencePreview, readCrmDashboard, readCrmDeals, saveCrmCampaign, requestEditorialService, updateEditorialService, validCrmUuid, type CrmAudiencePreview, type CrmKind, type CrmRead, type CrmDeals, type CrmCampaign, type EditorialRequest, type AdminEditorialRequest, type EditorialKey, type EditorialStatus } from '@/lib/partners/crm';
 export type CrmActionResult<T> = {
   ok: true;
   value: T;
@@ -58,6 +58,18 @@ export async function loadPartnerCrm(partnerId: string): Promise<CrmActionResult
         initial,
         deals
       },
+      message: ''
+    };
+  } catch (error) {
+    return failure(error);
+  }
+}
+export async function previewPartnerCrmAudience(partnerId: string, kind: CrmKind, config: unknown): Promise<CrmActionResult<{ actorId: string; preview: CrmAudiencePreview }>> {
+  try {
+    const { client, actorId } = await scopedClient(partnerId);
+    return {
+      ok: true,
+      value: { actorId, preview: await readCrmAudiencePreview(client, partnerId, kind, config) },
       message: ''
     };
   } catch (error) {

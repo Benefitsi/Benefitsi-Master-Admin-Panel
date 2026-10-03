@@ -63,6 +63,31 @@ export type CrmDashboard = {
     reason: 'marketing_delivery_not_enabled';
   };
 };
+type PreviewSelection = {
+  kind: 'second_visit';
+  definition: 'exactly_one_completed_visit_in_window';
+  config: Record<string, never>;
+} | {
+  kind: 'comeback';
+  definition: 'last_completed_visit_at_least_configured_berlin_days_ago_in_window';
+  config: { inactivity_days: number };
+} | {
+  kind: 'reward_reminder';
+  definition: 'up_to_configured_stamps_before_next_eligible_base_milestone';
+  config: { remaining_stamps: number };
+};
+export type CrmAudiencePreview = Pick<CrmDashboard, 'schema_version' | 'partner_id' | 'as_of' | 'timezone' | 'window' | 'delivery'> & {
+  audience: PreviewSelection & ({
+    status: 'ok'; value: number;
+  } | {
+    status: 'empty'; value: 0;
+  } | {
+    status: 'suppressed'; value: null;
+  } | {
+    status: 'unavailable'; value: null;
+    reason: 'visits_source_error' | 'reward_rules_not_established' | 'reward_source_error';
+  });
+};
 export type CrmRead = {
   status: 'ready';
   dashboard: CrmDashboard;
@@ -198,18 +223,42 @@ function berlinParts(value: string) {
     [p.type]: p.value
   }), {});
 }
+function parseCrmWindow(value: unknown, asOf: string): CrmDashboard['window'] {
+  const w = row(value);
+  keys(w, ['from', 'to', 'days']);
+  if (w.days !== 365 || !timestamp(w.from) || !timestamp(w.to) || Date.parse(w.to) > Date.parse(asOf)) throw invalid();
+  const from = berlinParts(w.from),
+    to = berlinParts(w.to),
+    asof = berlinParts(asOf);
+  const date = (p: Record<string, string>) => `${p.year}-${p.month}-${p.day}`;
+  if ([from, to].some(p => p.hour !== '00' || p.minute !== '00' || p.second !== '00') || date(to) !== date(asof) || Date.parse(date(to)) - Date.parse(date(from)) !== 365 * 86400000) throw invalid();
+  return w as CrmDashboard['window'];
+}
+export function parseCrmAudiencePreview(value: unknown, partnerId: string, kind: CrmKind, requestedConfig: unknown): CrmAudiencePreview {
+  const expected = validateCrmConfig(kind, requestedConfig), r = row(value);
+  keys(r, ['schema_version', 'partner_id', 'as_of', 'timezone', 'window', 'audience', 'delivery']);
+  if (!validCrmUuid(partnerId) || r.partner_id !== partnerId || r.schema_version !== 1 || r.timezone !== 'Europe/Berlin' || !timestamp(r.as_of)) throw invalid();
+  parseCrmWindow(r.window, r.as_of);
+  const audience = row(r.audience);
+  keys(audience, ['kind', 'definition', 'config', 'status', 'value'], audience.status === 'unavailable' ? ['reason'] : []);
+  const definitions = {
+    second_visit: 'exactly_one_completed_visit_in_window',
+    comeback: 'last_completed_visit_at_least_configured_berlin_days_ago_in_window',
+    reward_reminder: 'up_to_configured_stamps_before_next_eligible_base_milestone'
+  };
+  const config = validateCrmConfig(kind, audience.config);
+  if (audience.kind !== kind || audience.definition !== definitions[kind] || Object.entries(expected).some(([key, v]) => config[key] !== v) || !enumValue(audience.status, ['ok', 'empty', 'suppressed', 'unavailable'] as const) || (audience.status === 'ok' ? !count(audience.value, 10) : audience.status === 'empty' ? audience.value !== 0 : audience.value !== null)) throw invalid();
+  if (audience.status === 'unavailable' && !enumValue(audience.reason, kind === 'reward_reminder' ? ['reward_rules_not_established', 'reward_source_error'] : ['visits_source_error'])) throw invalid();
+  const delivery = row(r.delivery);
+  keys(delivery, ['status', 'reason']);
+  if (delivery.status !== 'draft_only' || delivery.reason !== 'marketing_delivery_not_enabled') throw invalid();
+  return r as CrmAudiencePreview;
+}
 export function parseCrmDashboard(value: unknown, partnerId: string): CrmDashboard {
   const r = row(value);
   keys(r, ['schema_version', 'partner_id', 'as_of', 'timezone', 'window', 'audiences', 'campaigns', 'editorial_requests', 'delivery', 'metrics']);
   if (!validCrmUuid(partnerId) || r.partner_id !== partnerId || r.schema_version !== 1 || r.timezone !== 'Europe/Berlin' || !timestamp(r.as_of)) throw invalid();
-  const w = row(r.window);
-  keys(w, ['from', 'to', 'days']);
-  if (w.days !== 365 || !timestamp(w.from) || !timestamp(w.to) || Date.parse(w.to) > Date.parse(r.as_of)) throw invalid();
-  const from = berlinParts(w.from),
-    to = berlinParts(w.to),
-    asof = berlinParts(r.as_of);
-  const date = (p: Record<string, string>) => `${p.year}-${p.month}-${p.day}`;
-  if ([from, to].some(p => p.hour !== '00' || p.minute !== '00' || p.second !== '00') || date(to) !== date(asof) || Date.parse(date(to)) - Date.parse(date(from)) !== 365 * 86400000) throw invalid();
+  parseCrmWindow(r.window, r.as_of);
   const a = row(r.audiences);
   keys(a, [...crmKinds]);
   const definitions = {
@@ -290,6 +339,18 @@ export async function readCrmDashboard(client: SupabaseClient, partnerId: string
     dashboard: parseCrmDashboard(data, partnerId),
     writable: canSaveCrm(rights)
   };
+}
+export async function readCrmAudiencePreview(client: SupabaseClient, partnerId: string, kind: CrmKind, value: unknown): Promise<CrmAudiencePreview> {
+  // Capture canonical selection before awaiting current entitlements; caller mutations cannot change the request.
+  const config = { ...validateCrmConfig(kind, value) };
+  if (!canReadCrm(await rightsFor(client, partnerId))) throw crmError({ code: '42501' });
+  const { data, error } = await client.rpc('get_partner_crm_audience_preview', {
+    p_partner_id: partnerId,
+    p_kind: kind,
+    p_config: config
+  });
+  if (error) throw crmError(error);
+  return parseCrmAudiencePreview(data, partnerId, kind, config);
 }
 export async function readCrmDeals(client: SupabaseClient, partnerId: string): Promise<CrmDeals> {
   if (!canReadCrm(await rightsFor(client, partnerId))) throw crmError({

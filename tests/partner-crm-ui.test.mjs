@@ -73,6 +73,7 @@ async function ui(t, actions = {}) {
     ...exported,
     render: (props = {}) => act(async () => root.render(h(exported.PartnerCrmWorkspace, {
       partnerId,
+      actorId: 'actor-a',
       initial,
       deals,
       ...props
@@ -156,7 +157,7 @@ test('incidental rights refresh preserves editing while revoked access removes p
   await f.render();
   assert.equal(document.querySelector('[name="title"]').value, '');
 });
-test('custom inactivity/reminder preview never relabels fixed dashboard audience as recipients', async t => {
+test('custom inactivity/reminder remains unchecked instead of relabelling fixed dashboard audience', async t => {
   const f = await ui(t);
   await f.render();
   await act(async () => document.querySelector('[data-audience="comeback"] button').click());
@@ -165,15 +166,16 @@ test('custom inactivity/reminder preview never relabels fixed dashboard audience
   await act(async () => select.dispatchEvent(new f.dom.window.Event('change', {
     bubbles: true
   })));
-  assert.match(document.querySelector('[data-recipient-preview]').textContent, /noch nicht berechnet/);
-  assert.match(document.querySelector('[data-recipient-preview]').textContent, /45 Tage/);
+  assert.match(document.querySelector('[data-recipient-preview]').textContent, /Zielgruppe noch nicht geprüft/);
+  assert.doesNotMatch(document.querySelector('[data-recipient-preview]').textContent, /Standardauswahl|45 Tage/);
+  assert.match(document.querySelector('[data-audience="comeback"]').textContent, /45 Berliner Tage/);
   await act(async () => document.querySelector('[data-audience="reward_reminder"] button').click());
   const reminder = document.querySelector('[name="remaining_stamps"]');
   reminder.value = '1';
   await act(async () => reminder.dispatchEvent(new f.dom.window.Event('change', {
     bubbles: true
   })));
-  assert.match(document.querySelector('[data-recipient-preview]').textContent, /noch nicht berechnet/);
+  assert.match(document.querySelector('[data-recipient-preview]').textContent, /Zielgruppe noch nicht geprüft/);
 });
 test('editing and archiving use current revision and allow restoration', async t => {
   let sent;

@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from 'react';
 import { Users, RotateCcw, Gift, BookOpen, Mic, ArrowUpRight, FilePenLine } from 'lucide-react';
-import { savePartnerCrm, requestPartnerEditorial, loadPartnerCrm } from '@/app/partner/crm-actions';
-import { defaultConfig, crmKinds, editorialKeys, type CrmRead, type CrmDeals, type CrmKind, type CrmAudience, type CrmCampaign, type CampaignInput, type EditorialRequest, type EditorialKey } from '@/lib/partners/crm';
+import { savePartnerCrm, requestPartnerEditorial, loadPartnerCrm, previewPartnerCrmAudience } from '@/app/partner/crm-actions';
+import { defaultConfig, crmError, parseCrmAudiencePreview, crmKinds, editorialKeys, type CrmAudiencePreview, type CrmRead, type CrmDeals, type CrmKind, type CrmAudience, type CrmCampaign, type CampaignInput, type EditorialRequest, type EditorialKey } from '@/lib/partners/crm';
 export const crmAudienceLabels: Record<CrmKind, string> = {
   second_visit: 'Zweiter Besuch',
   comeback: 'Comeback',
@@ -60,11 +60,13 @@ const date = (v: string) => new Intl.DateTimeFormat('de-DE', {
 }).format(new Date(v));
 export function PartnerCrmWorkspace({
   partnerId,
+  actorId,
   initial,
   deals,
   onAccessLost
 }: {
   partnerId: string;
+  actorId: string;
   initial: CrmRead;
   deals: CrmDeals;
   onAccessLost?: () => void;
@@ -80,15 +82,17 @@ export function PartnerCrmWorkspace({
     <a href={`/partner/billing?partner=${encodeURIComponent(partnerId)}`} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-[#061829]">Tarif & Leistungen ansehen <ArrowUpRight size={18} />
     </a>
   </section>;
-  return <ReadyCrmWorkspace key={partnerId} partnerId={partnerId} initial={initial} deals={deals} onAccessLost={onAccessLost} />;
+  return <ReadyCrmWorkspace key={`${partnerId}:${actorId}`} partnerId={partnerId} actorId={actorId} initial={initial} deals={deals} onAccessLost={onAccessLost} />;
 }
 function ReadyCrmWorkspace({
   partnerId,
+  actorId,
   initial,
   deals,
   onAccessLost
 }: {
   partnerId: string;
+  actorId: string;
   initial: Extract<CrmRead, {
     status: 'ready';
   }>;
@@ -126,6 +130,7 @@ function ReadyCrmWorkspace({
   }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!initial.writable) return;
     const form = new FormData(event.currentTarget),
       status = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('data-status') ?? editor.status;
     const input: CampaignInput = {
@@ -187,8 +192,6 @@ function ReadyCrmWorkspace({
       }
     });
   }
-  const custom = Object.entries(defaultConfig(editor.kind)).some(([key, value]) => editor.config[key] !== value);
-  const defaultAudience = dashboard.audiences[editor.kind];
   const missingDeal = editor.deal_id && deals.status === 'ready' && !deals.deals.some(d => d.id === editor.deal_id);
   return <div className="space-y-6">
     <section className="rounded-3xl bg-[#061829] p-6 text-white sm:p-8">
@@ -229,7 +232,8 @@ function ReadyCrmWorkspace({
           <h2 id="crm-editor" className="text-xl font-bold">Dein Kampagnenentwurf</h2>
         </div>
         <p className="mt-3 rounded-xl bg-sky-50 p-4 text-sm leading-6 text-sky-900">Ausschließlich Entwürfe: Speichern löst keinen Versand und keine Terminplanung aus. Es gibt noch keine Kampagnenergebnisse.</p>
-        {!initial.writable ? <p role="status" className="mt-4 text-sm text-slate-600">Du kannst die Übersicht lesen. Für das Speichern fehlen die Marketing-Verwaltungsrechte.</p> : <form key={`${editor.id}:${editor.expected_revision}`} data-campaign-form onSubmit={submit} className="mt-5 space-y-4">
+        {!initial.writable && <p role="status" className="mt-4 text-sm text-slate-600">Du kannst die Übersicht lesen und Zielgruppen prüfen. Für das Speichern fehlen die Marketing-Verwaltungsrechte.</p>}
+        <form key={`${editor.id}:${editor.expected_revision}`} data-campaign-form onSubmit={submit} className="mt-5 space-y-4">
           <fieldset disabled={pending} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold">Ziel<select name="kind" className={field} value={editor.kind} onChange={e => setEditor(previous => ({
@@ -242,11 +246,11 @@ function ReadyCrmWorkspace({
                 </option>)}
               </select>
               </label>
-              <label className="block text-sm font-semibold">Vorgesehener Kanal<select name="channel" className={field} defaultValue={editor.channel}>
+              {initial.writable && <label className="block text-sm font-semibold">Vorgesehener Kanal<select name="channel" className={field} defaultValue={editor.channel}>
                 <option value="in_app">In-App</option>
                 <option value="push_and_in_app">Push und In-App</option>
               </select>
-              </label>
+              </label>}
             </div>
             {editor.kind === 'comeback' && <label className="block text-sm font-semibold">Inaktivität in Tagen<select name="inactivity_days" className={field} value={editor.config.inactivity_days} onChange={e => setEditor(previous => ({
               ...previous,
@@ -268,31 +272,28 @@ function ReadyCrmWorkspace({
               <option value="1">Ein Stempel</option>
             </select>
             </label>}
-            <aside data-recipient-preview className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6">
-              <strong>Potenzielle Gruppe mit Standardauswahl{editor.kind === 'comeback' ? ' (45 Tage)' : editor.kind === 'reward_reminder' ? ' (bis zu zwei Stempel)' : ''}: {audienceValue(defaultAudience)}
-              </strong>
-              {custom && <p className="mt-1">Deine abweichende Auswahl: noch nicht berechnet. Die Zahl oben gilt weiter für die Standardauswahl.</p>}
-              <p className="mt-1 text-slate-500">Dies ist keine Empfängerliste oder Versandfreigabe. Erreichbarkeit und Einwilligung sind hier nicht ermittelt.</p>
-            </aside>
-            <label className="block text-sm font-semibold">Name des Entwurfs<input name="title" required maxLength={120} className={field} defaultValue={editor.title} placeholder="Zum Beispiel: Einladung zum Wiederbesuch" />
-            </label>
-            <label className="block text-sm font-semibold">Nachricht<textarea name="body" required maxLength={2000} rows={5} className={field} defaultValue={editor.body} placeholder="Welchen Anlass möchtest du deinen Gästen geben?" />
-            </label>
-            <label className="block text-sm font-semibold">Eigener aktiver Vorteil (optional)<select name="deal_id" disabled={deals.status === 'unavailable'} className={field} defaultValue={editor.deal_id ?? ''}>
-              <option value="">Ohne Vorteilsverknüpfung</option>
-              {deals.status === 'ready' && deals.deals.map(deal => <option key={deal.id} value={deal.id}>
-                {deal.title}
-              </option>)}
-              {(missingDeal || deals.status === 'unavailable' && editor.deal_id) && <option value={editor.deal_id!}>Gespeicherter Vorteil · Gültigkeit prüfen</option>}
-            </select>
-            </label>
-            {deals.status === 'unavailable' && <p role="status" className="text-sm text-amber-800">
-              {deals.message}
-              {editor.deal_id && <> Die bestehende Verknüpfung bleibt erhalten. <button type="button" className="underline" onClick={() => setEditor(previous => ({
-                ...previous,
-                deal_id: null
-              }))}>Verknüpfung entfernen</button>
-              </>}
+            <CrmAudienceCheck key={JSON.stringify([actorId, partnerId, editor.id, editor.kind, editor.config])} actorId={actorId} partnerId={partnerId} draftId={editor.id} kind={editor.kind} config={editor.config} onAccessLost={onAccessLost} />
+            {initial.writable && <>
+              <label className="block text-sm font-semibold">Name des Entwurfs<input name="title" required maxLength={120} className={field} defaultValue={editor.title} placeholder="Zum Beispiel: Einladung zum Wiederbesuch" />
+              </label>
+              <label className="block text-sm font-semibold">Nachricht<textarea name="body" required maxLength={2000} rows={5} className={field} defaultValue={editor.body} placeholder="Welchen Anlass möchtest du deinen Gästen geben?" />
+              </label>
+              <label className="block text-sm font-semibold">Eigener aktiver Vorteil (optional)<select name="deal_id" disabled={deals.status === 'unavailable'} className={field} defaultValue={editor.deal_id ?? ''}>
+                <option value="">Ohne Vorteilsverknüpfung</option>
+                {deals.status === 'ready' && deals.deals.map(deal => <option key={deal.id} value={deal.id}>
+                  {deal.title}
+                </option>)}
+                {(missingDeal || deals.status === 'unavailable' && editor.deal_id) && <option value={editor.deal_id!}>Gespeicherter Vorteil · Gültigkeit prüfen</option>}
+              </select>
+              </label>
+              {deals.status === 'unavailable' && <p role="status" className="text-sm text-amber-800">
+                {deals.message}
+                {editor.deal_id && <> Die bestehende Verknüpfung bleibt erhalten. <button type="button" className="underline" onClick={() => setEditor(previous => ({
+                  ...previous,
+                  deal_id: null
+                }))}>Verknüpfung entfernen</button>
+
+            </>}
             </p>}
             {deals.status === 'ready' && !deals.deals.length && !missingDeal && <p className="text-sm text-slate-500">Keine aktiven Vorteile vorhanden. Ein Entwurf ist auch ohne Vorteil möglich.</p>}
             {missingDeal && <p role="alert" className="text-sm text-amber-800">Der gespeicherte Vorteil ist nicht mehr aktiv oder gültig. Bitte die Verknüpfung entfernen oder einen aktuellen Vorteil auswählen, bevor du speicherst, archivierst oder wiederherstellst.</p>}
@@ -304,8 +305,9 @@ function ReadyCrmWorkspace({
                 {editor.status === 'archived' ? 'Wiederherstellen' : 'Archivieren'}
               </button>}
             </div>
+            </>}
           </fieldset>
-        </form>}
+        </form>
         {error && <div role="alert" className="mt-4 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
           {error}
           {conflict && <button type="button" disabled={pending} onClick={reloadSaved} className={`${secondary} mt-3 block`}>Gespeicherte Version laden</button>}
@@ -343,6 +345,74 @@ function ReadyCrmWorkspace({
       </div>
     </section>
   </div>;
+}
+function CrmAudienceCheck({ actorId, partnerId, draftId, kind, config, onAccessLost }: {
+  actorId: string;
+  partnerId: string;
+  draftId: string;
+  kind: CrmKind;
+  config: Record<string, number>;
+  onAccessLost?: () => void;
+}) {
+  // This instance is keyed by actor, partner, draft and canonical selection. A changed selection unmounts it immediately.
+  const [scope] = useState(() => Object.freeze({ actorId, partnerId, draftId, kind, config: Object.freeze({ ...config }) }));
+  const [state, setState] = useState<{ status: 'unchecked' | 'loading' | 'error'; message?: string } | { status: 'ready'; preview: CrmAudiencePreview }>({ status: 'unchecked' });
+  const lifecycle = useRef({ live: true, generation: 0, inFlight: false });
+  const [, startTransition] = useTransition();
+  useEffect(() => {
+    const current = lifecycle.current;
+    current.live = true;
+    return () => { current.live = false; ++current.generation; };
+  }, []);
+  function check() {
+    const active = lifecycle.current;
+    if (active.inFlight) return;
+    const request = ++active.generation;
+    active.inFlight = true;
+    setState({ status: 'loading' });
+    const current = () => active.live && active.generation === request;
+    function fail(error: unknown) {
+      if (!current()) return;
+      const e = crmError(error);
+      setState({ status: 'error', message: e.message });
+      if (e.code === 'denied') onAccessLost?.();
+    }
+    startTransition(async () => {
+      try {
+        const result = await previewPartnerCrmAudience(scope.partnerId, scope.kind, scope.config);
+        if (!current()) return;
+        if (!result.ok) {
+          setState({ status: 'error', message: result.message });
+          if (result.code === 'denied' || result.code === '42501') onAccessLost?.();
+          return;
+        }
+        if (result.value.actorId !== scope.actorId) {
+          fail({ code: '42501' });
+          return;
+        }
+        setState({ status: 'ready', preview: parseCrmAudiencePreview(result.value.preview, scope.partnerId, scope.kind, scope.config) });
+      } catch (error) {
+        fail(error);
+      } finally {
+        if (current()) active.inFlight = false;
+      }
+    });
+  }
+  const checkedAt = state.status === 'ready' ? new Intl.DateTimeFormat('de-DE', {
+    timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+  }).format(new Date(state.preview.as_of)) : '';
+  return <aside data-recipient-preview className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6">
+    <div role="status" aria-live="polite">
+      {state.status === 'ready' ? <>
+        <strong>Potenzielle Besuchsgruppe: {audienceValue(state.preview.audience)}</strong>
+        <p className="mt-1">{scope.kind === 'comeback' ? `Letzter bestätigter Besuch im Zeitfenster liegt mindestens ${scope.config.inactivity_days} Berliner Tage zurück.` : scope.kind === 'reward_reminder' ? scope.config.remaining_stamps === 1 ? 'Ein Stempel bis zur nächsten tatsächlich berechtigten Basisbelohnung; aktueller Kartenstand.' : 'Ein oder zwei Stempel bis zur nächsten tatsächlich berechtigten Basisbelohnung; aktueller Kartenstand.' : 'Genau ein bestätigter Besuch im Zeitfenster.'}</p>
+        <p className="mt-1 text-slate-500">Servergeprüft · Stand {checkedAt} (Europe/Berlin). 365 abgeschlossene Berliner Kalendertage: {date(state.preview.window.from)} bis {date(state.preview.window.to)} (Ende nicht eingeschlossen).</p>
+      </> : <strong>{state.status === 'loading' ? 'Zielgruppe wird geprüft …' : 'Zielgruppe noch nicht geprüft'}</strong>}
+    </div>
+    {state.status === 'error' && <p role="alert" className="mt-2 text-amber-900">{state.message}</p>}
+    <p className="mt-2 text-slate-500">Das ist keine Empfängerliste. Einwilligung und Erreichbarkeit sind noch nicht geprüft.</p>
+    <button type="button" className={`${secondary} mt-3`} disabled={state.status === 'loading'} onClick={check}>Zielgruppe prüfen</button>
+  </aside>;
 }
 function EditorialCard({
   partnerId,
