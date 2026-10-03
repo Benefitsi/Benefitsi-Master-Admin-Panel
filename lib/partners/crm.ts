@@ -227,6 +227,8 @@ function parseCrmWindow(value: unknown, asOf: string): CrmDashboard['window'] {
   const w = row(value);
   keys(w, ['from', 'to', 'days']);
   if (w.days !== 365 || !timestamp(w.from) || !timestamp(w.to) || Date.parse(w.to) > Date.parse(asOf)) throw invalid();
+  // Inspect original fractions: Date/Intl discard precision below a millisecond.
+  if ([w.from, w.to].some(boundary => /\.\d*[1-9]/.test(boundary))) throw invalid();
   const from = berlinParts(w.from),
     to = berlinParts(w.to),
     asof = berlinParts(asOf);
