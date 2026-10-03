@@ -110,6 +110,13 @@ jobs:
           tests/founder-overview-data.test.mjs
           tests/agent-control-data.test.mjs
 
+      - name: Benefit form and dialog regression tests
+        run: >-
+          node --import tsx --test --test-concurrency=2
+          tests/form-save-ui.test.mjs
+          tests/partner-management-regressions.test.mjs
+          tests/menu-ai-dialog.test.mjs
+
       - name: Type-check
         run: npm exec -- tsc --noEmit
 

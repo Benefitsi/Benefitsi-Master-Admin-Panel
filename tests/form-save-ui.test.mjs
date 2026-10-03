@@ -26,7 +26,7 @@ function loadUi(action) {
     "@/components/microsite-read-only-notice": {},
     "@/components/menu-ai-import-dialog": {}, "@/components/partner/partner-plan-panel": {},
   }
-  const source = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8") + "\nexport { DealForm, MilestoneForm, useActionSuccess };"
+  const source = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8") + "\nexport { DealForm, MilestoneForm, useActionSuccess, WeekdayChipField };"
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText
   const loaded = { exports: {} }
   new Function("require", "module", "exports", js)(id => {
@@ -165,6 +165,33 @@ test("an existing canonical Happy Hour opens the weekday and time editor", async
     assert.ok(form.elements.valid_from.value.startsWith("2026-10-01"))
     assert.ok(form.elements.valid_until.value.startsWith("2026-11-01"))
     assert.equal([...form.querySelectorAll('[name="valid_weekdays"]:checked')].length, 5)
+  })
+})
+test("Happy Hour weekdays show blue checks and red exclusions without changing other weekday fields", async () => {
+  const { WeekdayChipField } = loadUi(async () => ({ ok: true, message: "Gespeichert" }))
+  await withDom(async root => {
+    await act(async () => root.render(React.createElement("form", {},
+      React.createElement(WeekdayChipField, { label: "Happy Hour", name: "hh_days", defaultValues: [2, 3, 4, 5, 6, 7], markExcluded: true }),
+      React.createElement(WeekdayChipField, { label: "Other weekdays", name: "other_days", defaultValues: [2] }))))
+    const tuesday = document.querySelector('[name="hh_days"][value="2"]')
+    const monday = document.querySelector('[name="hh_days"][value="1"]')
+    assert.equal(tuesday.nextElementSibling.querySelector('[aria-hidden="true"]')?.textContent, "✓")
+    assert.match(tuesday.nextElementSibling.className, /border-\[#118cff\] bg-\[#118cff\]/)
+    assert.equal(monday.nextElementSibling.querySelector('[aria-hidden="true"]')?.textContent, "×")
+    assert.match(monday.nextElementSibling.className, /border-rose-700 bg-rose-700/)
+    assert.ok(tuesday.getAttribute("aria-label"))
+    assert.equal(tuesday.className, "peer sr-only")
+    assert.match(tuesday.nextElementSibling.className, /peer-focus-visible:outline-2/)
+    assert.deepEqual(new FormData(document.querySelector("form")).getAll("hh_days"), ["2", "3", "4", "5", "6", "7"])
+    await act(async () => tuesday.click())
+    assert.equal(tuesday.checked, false)
+    assert.equal(tuesday.nextElementSibling.querySelector('[aria-hidden="true"]')?.textContent, "×")
+    assert.match(tuesday.nextElementSibling.className, /border-rose-700 bg-rose-700/)
+    assert.deepEqual(new FormData(document.querySelector("form")).getAll("hh_days"), ["3", "4", "5", "6", "7"])
+    for (const other of document.querySelectorAll('[name="other_days"]')) {
+      assert.equal(other.nextElementSibling.querySelector('[aria-hidden="true"]'), null)
+      if (other.checked) assert.match(other.nextElementSibling.className, /border-teal-700 bg-teal-700/)
+    }
   })
 })
 test("canonical streak triggers open the calendar editor while a Happy Hour campaign keeps priority", async () => {
