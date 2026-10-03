@@ -22,7 +22,7 @@ function fixture({ signedIn = true, owner = true, admin = false, missingMenu = f
   const rpcCalls=[]
   const db = { async rpc(name,args) {
     rpcCalls.push({name,args})
-    if(name==='get_partner_entitlements') return {data:{schema_version:1,partner_id:args.p_partner_id,role:admin?'benefitsi_admin':'owner',features:{'menu.ai_import':feature.enabled,'team.manage':team}},error:feature.error?{message:'denied'}:null}
+    if(name==='get_partner_entitlements') return {data:{schema_version:1,partner_id:args.p_partner_id,role:admin?'benefitsi_admin':owner?'owner':'scanner',features:{'menu.ai_import':feature.enabled,'team.manage':team}},error:feature.error?{message:'denied'}:null}
     if(['update_partner_team_member','delete_partner_team_member'].includes(name)) return {data:teamResult,error:teamError}
     if(name==='reserve_partner_menu_ai_import') return {data:{reservation_id:'reservation',state:'reserved'},error:null}
     if(name==='admin_set_partner_entitlement_override') return {data:'override',error:feature.error?{message:'denied'}:null}

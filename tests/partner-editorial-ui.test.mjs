@@ -77,6 +77,18 @@ test('focused editorial admin shows context and updates current status only afte
   assert.equal(document.querySelector('[name="note"]').value, 'Freigabe geprüft');
   await act(async () => root.render(h(PartnerEditorialManagement, {
     partnerId: '00000000-0000-4000-8000-000000000013',
+    initial: requests.map(r => r.service_key === 'blog_article' ? {
+      ...r,
+      status: 'planned',
+      admin_note: 'Neuer redaktioneller Termin',
+      updated_at: '2026-10-03T18:00:00Z'
+    } : r)
+  })));
+  assert.match(document.querySelector('[data-admin-editorial="blog_article"]').textContent, /Geplant/);
+  assert.equal(document.querySelector('[name="status"]').value, 'planned');
+  assert.equal(document.querySelector('[name="note"]').value, 'Neuer redaktioneller Termin');
+  await act(async () => root.render(h(PartnerEditorialManagement, {
+    partnerId: '00000000-0000-4000-8000-000000000013',
     initial: undefined
   })));
   assert.match(document.body.textContent, /nicht verfügbar/);
