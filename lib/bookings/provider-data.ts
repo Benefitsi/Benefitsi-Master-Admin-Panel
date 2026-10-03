@@ -1,7 +1,7 @@
 import "server-only"
 
 import { redirect } from "next/navigation"
-import { getPartnerPortalSession } from "@/lib/partner-portal"
+import { canManagePartner, getPartnerPortalSession } from "@/lib/partner-portal"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 
@@ -108,6 +108,10 @@ export async function requireProviderBooking(bookingId: string) {
   const booking = context.bookings.find((candidate) => candidate.id === bookingId)
   if (!booking) {
     throw new Error("Buchung gehört nicht zu diesem Partnerzugang.")
+  }
+  const provider = context.providers.find((candidate) => candidate.id === booking.providerId)
+  if (!provider || (!context.session.isAdmin && !canManagePartner(context.session, provider.partnerId))) {
+    throw new Error("Du hast für diesen Betrieb keine Bearbeitungsberechtigung.")
   }
   return { ...context, booking }
 }

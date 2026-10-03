@@ -21,6 +21,7 @@ const machinePaths = new Set([
   '/api/internal/knowledge/sync/start', '/api/internal/knowledge/sync/batch',
   '/api/internal/knowledge/sync/complete', '/api/internal/knowledge/sync/fail',
   '/api/stripe/checkout', '/api/stripe/webhook', '/api/stripe/billing/webhook',
+  '/api/stripe/partner-billing/webhook', '/api/stripe/partner-billing/reconcile',
   '/api/commerce/bookings', '/api/commerce/catalog', '/api/commerce/account',
   '/api/commerce/notifications', '/api/commerce/status',
 ])
