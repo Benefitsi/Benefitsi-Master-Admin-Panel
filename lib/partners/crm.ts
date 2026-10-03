@@ -131,7 +131,7 @@ export function parseCampaignInput(value: unknown): CampaignInput {
     title: (r.title as string).trim(),
     body: (r.body as string).trim(),
     deal_id: r.deal_id as string | null ?? null,
-    config: validateCrmConfig(kind, r.config ?? defaultConfig(kind)),
+    config: validateCrmConfig(kind, Object.hasOwn(r, 'config') ? r.config : defaultConfig(kind)),
     channel: r.channel as CampaignInput['channel'],
     status: r.status as CampaignInput['status']
   };

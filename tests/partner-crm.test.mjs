@@ -374,3 +374,27 @@ test('campaign and editorial input enums reject arrays and objects before any RP
     assert.equal(c.calls.length, 0);
   }
 });
+
+for (const [kind, config] of [
+  ['second_visit', {}],
+  ['comeback', { inactivity_days: 45 }],
+  ['reward_reminder', { remaining_stamps: 2 }],
+]) test(`campaign config omission defaults but explicit null rejects: ${kind}`, async () => {
+  const api = crm();
+  const draft = { ...input(), kind };
+  delete draft.config;
+  assert.equal(JSON.stringify(api.parseCampaignInput(draft).config), JSON.stringify(config));
+  for (const malformed of [null, [], 45]) {
+    assert.throws(() => api.parseCampaignInput({ ...draft, config: malformed }));
+    const c = client();
+    await assert.rejects(() => api.saveCrmCampaign(c, id, { ...draft, config: malformed }));
+    assert.equal(c.calls.length, 0);
+  }
+  const canonical = copy();
+  canonical.campaigns[0].kind = kind;
+  canonical.campaigns[0].config = null;
+  assert.throws(() => api.parseCrmDashboard(canonical, id));
+  delete canonical.campaigns[0].config;
+  assert.throws(() => api.parseCrmDashboard(canonical, id));
+  await assert.rejects(() => api.saveCrmCampaign(client({ response: { kind, config: null } }), id, { ...draft, config }));
+});
