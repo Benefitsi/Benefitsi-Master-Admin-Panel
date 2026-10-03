@@ -36,12 +36,12 @@ export type OverviewAnalytics = {
 
 const agentDetails: Record<string, { name: string; href: string }> = {
   ben: { name: "Ben", href: "/automation" },
-  "benefitsi-content": { name: "Content-Agent", href: "/#partners" },
+  "benefitsi-content": { name: "Content-Agent", href: "/partners" },
   "benefitsi-seo": { name: "SEO-Agent", href: "/seo" },
   "city-annweiler": { name: "Stadt-Agent Annweiler", href: "/city-operations" },
   "stamp-curator": { name: "Stempel-Kurator", href: "/city-pages" },
   studio: { name: "Studio", href: "/agents" },
-  "benefitsi-menu": { name: "Menü-Agent", href: "/#partners" },
+  "benefitsi-menu": { name: "Menü-Agent", href: "/partners" },
 }
 
 function configuredAgent(id: string, purpose: string, mode = "Konfiguriert"): AgentSummary {

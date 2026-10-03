@@ -41,7 +41,7 @@ export function founderActions(snapshot: FounderSnapshot): FounderAction[] {
   if (health === "stale" || health === "unknown") {
     actions.push({ id: "city-freshness", title: "City-Laufnachweis aktualisieren", detail: health === "stale" ? "Der letzte erfolgreiche Lauf liegt über 48 Stunden zurück. Rhythmus und fachliches Ergebnis prüfen." : "Ein aktueller abgeschlossener City-Lauf ist nicht nachgewiesen.", href: "/automation", priority: 4 })
   }
-  actions.push({ id: "partner-preparation", title: "Nächsten Partner vorbereiten", detail: "Daten, Angebot, Medienrechte und Mitarbeiterablauf prüfen. Ein Profil ist noch keine bestätigte Partnerschaft.", href: "/#partners", priority: 5 })
+  actions.push({ id: "partner-preparation", title: "Nächsten Partner vorbereiten", detail: "Daten, Angebot, Medienrechte und Mitarbeiterablauf prüfen. Ein Profil ist noch keine bestätigte Partnerschaft.", href: "/partners", priority: 5 })
   return actions.sort((a, b) => a.priority - b.priority).slice(0, 3)
 }
 export function cityRunHealth(snapshot: FounderSnapshot): "ok" | "failed" | "stale" | "unknown" {

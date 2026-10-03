@@ -52,7 +52,7 @@ function fixture(t, { admin = true } = {}) {
       PageDirectory: ({ incomplete }) => h("section", null, incomplete ? "Seiten: Daten unvollständig" : "Seitenverzeichnis"),
     },
   })
-  const page = loadTypescript("app/page.tsx", {
+  const boundaries = {
     "@/components/admin-translation-boundary": { AdminTranslationBoundary: ({ children }) => h("div", { "data-admin-i18n-pending": "true" }, children) },
     "next/link": Link,
     "next/navigation": { redirect: destination => { throw new Error(`redirect:${destination}`) } },
@@ -75,10 +75,17 @@ function fixture(t, { admin = true } = {}) {
     },
     "./partner-admin": { PartnerWorkspace: props => { partnerProps.push(props); return h("section", null, `Partner bearbeiten: ${props.initialPartnerId}`) } },
     "./dashboard-auto-refresh": { DashboardAutoRefresh: () => { refreshStarted = true; return null } },
+  }
+  const page = loadTypescript("app/page.tsx", boundaries, { URLSearchParams }).default
+  const partnersPage = loadTypescript("app/partners/page.tsx", {
+    ...boundaries,
+    "../admin-shell": boundaries["./admin-shell"],
+    "../partner-admin": boundaries["./partner-admin"],
+    "../dashboard-auto-refresh": boundaries["./dashboard-auto-refresh"],
   }).default
   const release = (key, value = resolved[key]) => pending[key].resolve(value)
   t.after(() => Object.keys(pending).forEach(key => release(key)))
-  return { page, calls, partnerProps, release, refreshStarted: () => refreshStarted }
+  return { page, partnersPage, calls, partnerProps, release, refreshStarted: () => refreshStarted }
 }
 
 async function within(promise, message) {
@@ -130,16 +137,12 @@ test("authorized dashboard streams navigation and catalog before any optional da
   assert.equal(new Set(fixtureData.calls.map(call => call.key)).size, 6)
 })
 
-test("partner editing and operations stream independently while analytics and publication checks are pending", async t => {
+test("overview operations stream independently while analytics and publication checks are pending", async t => {
   const f = fixture(t)
-  const page = await within(f.page({ searchParams: Promise.resolve({ partner: ["selected"], mode: "create", view: "microsite", tab: "deals" }) }), "Dashboard waits for analytics")
+  const page = await within(f.page({ searchParams: Promise.resolve({}) }), "Dashboard waits for analytics")
   const stream = await streamPage(t, page)
   f.release("dashboard")
-  await stream.waitFor("Partner bearbeiten: selected")
-  assert.equal(f.partnerProps[0].initialMode, "create")
-  assert.equal(f.partnerProps[0].initialView, "microsite")
-  assert.equal(f.partnerProps[0].initialSettingsTab, "deals")
-  assert.equal(f.calls.find(call => call.key === "dashboard").args[1].entitlementPartnerId, "selected")
+  assert.equal(f.partnerProps.length, 0, "Partner management must not render on the overview")
   f.release("founder")
   f.release("agents")
   await stream.waitFor("Dein Team")
@@ -165,3 +168,47 @@ for (const admin of [false, null]) {
     assert.deepEqual(f.calls, [])
   })
 }
+
+
+test("partner management has its own page with preserved editor selection and no overview", async t => {
+  const f = fixture(t)
+  const page = await within(f.partnersPage({ searchParams: Promise.resolve({ partner: ["selected"], mode: "create", view: "microsite", tab: "deals" }) }), "Partner page waits for unrelated dashboard sources")
+  const stream = await streamPage(t, page)
+  f.release("dashboard")
+  await stream.waitFor("Partner bearbeiten: selected")
+  assert.equal(f.partnerProps[0].initialMode, "create")
+  assert.equal(f.partnerProps[0].initialView, "microsite")
+  assert.equal(f.partnerProps[0].initialSettingsTab, "deals")
+  assert.equal(f.calls[0].args[1].entitlementPartnerId, "selected")
+  assert.equal(f.calls.length, 1, "Partner management only loads its own data")
+  assert.doesNotMatch(stream.html(), /Vier Zugänge|Features und Vorteile|Dein Team/)
+  assert.deepEqual(stream.failures, [])
+})
+
+test("old editor query links redirect to the dedicated partner page before loading data", async t => {
+  const f = fixture(t)
+  await assert.rejects(f.page({ searchParams: Promise.resolve({ partner: "selected", view: "microsite" }) }), /redirect:\/partners\?partner=selected&view=microsite/)
+  assert.deepEqual(f.calls, [])
+})
+
+for (const admin of [false, null]) {
+  test(`unauthorized session (${admin}) cannot load partner management`, async t => {
+    const f = fixture(t, { admin })
+    await assert.rejects(f.partnersPage({ searchParams: Promise.resolve({}) }), /redirect:\/login/)
+    assert.deepEqual(f.calls, [])
+  })
+}
+
+
+test("development avoids Next gzip listener buildup while production retains compression", () => {
+  const original = process.env.NODE_ENV
+  try {
+    process.env.NODE_ENV = "development"
+    assert.equal(loadTypescript("next.config.ts").default.compress, false)
+    process.env.NODE_ENV = "production"
+    assert.equal(loadTypescript("next.config.ts").default.compress, true)
+  } finally {
+    if (original === undefined) delete process.env.NODE_ENV
+    else process.env.NODE_ENV = original
+  }
+})

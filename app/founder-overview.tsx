@@ -9,7 +9,7 @@ const statusText = { ok: "Aktuell", failed: "Prüfung nötig", stale: "Veraltet"
 export function FounderOverview({ snapshot }: { snapshot: FounderSnapshot }) {
   const actions = founderActions(snapshot)
   const metrics = [
-    { label: "Freigeschaltete Partnerprofile", count: snapshot.activePartners, href: "/#partners", detail: "Datenbankstatus aktiv · keine Aussage zu Verträgen oder Nutzung" },
+    { label: "Freigeschaltete Partnerprofile", count: snapshot.activePartners, href: "/partners", detail: "Datenbankstatus aktiv · keine Aussage zu Verträgen oder Nutzung" },
     { label: "Fehlgeschlagene Aufträge", count: snapshot.failedJobs, href: "/automation", detail: "Alle Aufträge mit Status fehlgeschlagen" },
     { label: "Warten auf Prüfung", count: snapshot.pendingReviews, href: "/automation", detail: "Aufträge mit Status needs_human" },
     { label: "Fällige Stadtquellen", count: snapshot.overdueSources, href: "/city-operations", detail: "Aktive Quellen mit überschrittenem Prüftermin" },

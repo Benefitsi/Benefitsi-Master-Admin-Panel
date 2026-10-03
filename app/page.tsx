@@ -17,7 +17,6 @@ import { getDashboardData } from "@/lib/admin-data"
 import { getPartnerPortalSession } from "@/lib/partner-portal"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
-import { PartnerWorkspace } from "./partner-admin"
 import { AdminShell, PartnerPanelLink } from "./admin-shell"
 import { DashboardAutoRefresh } from "./dashboard-auto-refresh"
 
@@ -44,10 +43,16 @@ export default async function DashboardPage({
   }
 
   const query = await searchParams
-  const requestedPartnerId = singleQueryValue(query.partner)
+  if (["partner", "mode", "tab", "view"].some(key => singleQueryValue(query[key]))) {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(query)) {
+      for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) params.append(key, item)
+    }
+    redirect(`/partners?${params}`)
+  }
   // Authenticate first, then share one request per source across independent sections.
   const sources = {
-    dashboard: getDashboardData(supabase, { entitlementPartnerId: requestedPartnerId || null }),
+    dashboard: getDashboardData(supabase),
     founder: loadFounderOverview(supabase),
     agents: loadAgentControl(supabase),
     analytics: loadBusinessAnalytics(supabase, parseBusinessAnalyticsFilters({})),
@@ -81,11 +86,7 @@ export default async function DashboardPage({
         agents={<Suspense fallback={<EcosystemSectionLoading label="Agents werden geladen" variant="agents" />}><DashboardAgents data={sources.agents} /></Suspense>}
         directory={<Suspense fallback={<EcosystemSectionLoading label="Seiten werden geladen" variant="directory" />}><DashboardDirectory sources={sources} /></Suspense>}
       />
-      <div id="partners" className="scroll-mt-24">
-        <Suspense fallback={<EcosystemSectionLoading label="Partner werden geladen" />}>
-          <DashboardPartners data={sources.dashboard} query={query} />
-        </Suspense>
-      </div>
+
     </AdminShell>
   )
 }
@@ -143,34 +144,6 @@ async function DashboardDirectory({ sources }: { sources: DashboardSources }) {
   return <AdminTranslationBoundary><EcosystemDirectory pages={buildPageDirectory(dashboard, publicMicrosites)} incomplete={dashboard.errors.length > 0 || publicMicrosites.state === "unavailable"} /></AdminTranslationBoundary>
 }
 
-async function DashboardPartners({ data, query }: {
-  data: DashboardSources["dashboard"]
-  query: Record<string, string | string[] | undefined>
-}) {
-  const dashboard = await data
-  const requestedPartnerId = singleQueryValue(query.partner)
-  const initialPartnerId = dashboard.partners.some(partner => partner.id === requestedPartnerId)
-    ? requestedPartnerId : dashboard.partners[0]?.id ?? ""
-  return <AdminTranslationBoundary>
-    {dashboard.errors.length > 0 ? (
-      <section className="mb-5 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        <p className="font-semibold">Supabase returned warnings</p>
-        <ul className="mt-2 list-disc space-y-1 pl-5">
-          {dashboard.errors.map(error => <li key={error}>{error}</li>)}
-        </ul>
-      </section>
-    ) : null}
-    <PartnerWorkspace
-      partners={dashboard.partners}
-      cities={dashboard.cities}
-      owners={dashboard.owners}
-      initialMode={singleQueryValue(query.mode) === "create" ? "create" : "view"}
-      initialPartnerId={initialPartnerId}
-      initialSettingsTab={singleQueryValue(query.tab)}
-      initialView={singleQueryValue(query.view) === "microsite" ? "microsite" : "settings"}
-    />
-  </AdminTranslationBoundary>
-}
 
 function singleQueryValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? ""

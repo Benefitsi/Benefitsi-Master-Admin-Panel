@@ -100,7 +100,7 @@ export function EcosystemMetrics({ snapshot, agentData }: { snapshot: FounderSna
   const agents = buildAgentSummaries(agentData)
   const observed = agentData.runtime.snapshot?.profiles.length ?? null
   const metrics = [
-    { label: "Partner", value: snapshot.activePartners.unavailable ? null : snapshot.activePartners.value, note: "Aktive Profile", href: "/#partners", Icon: Storefront },
+    { label: "Partner", value: snapshot.activePartners.unavailable ? null : snapshot.activePartners.value, note: "Aktive Profile", href: "/partners", Icon: Storefront },
     { label: "Agents", value: observed, note: observed === null ? `${agents.length} konfiguriert` : agentData.runtime.state === "stale" ? "Beobachtung veraltet" : "Beobachtete Profile", href: "#agenten", Icon: Robot },
     { label: "Prüfungen", value: snapshot.pendingReviews.unavailable ? null : snapshot.pendingReviews.value, note: "Offene Freigaben", href: "/automation", Icon: ShieldCheck },
     { label: "Fehler", value: snapshot.failedJobs.unavailable ? null : snapshot.failedJobs.value, note: "Fehlgeschlagene Aufträge", href: "/automation", Icon: WarningCircle },

@@ -116,9 +116,9 @@ function AdminShellContent({
               icon={<CityOperationsIcon className="size-5" />}
             />
             <AdminNavigationLink
-              href="/#partners"
+              href="/partners"
               label="Partner"
-              active={false}
+              active={pathname === "/partners"}
               collapsed={collapsed}
               icon={<PartnerIcon className="size-5" />}
             />

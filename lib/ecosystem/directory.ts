@@ -82,7 +82,7 @@ export function buildPageDirectory(
         partner.address?.trim() || "Standort nicht hinterlegt",
       status: statusWithWarning(eligible ? "Öffentlich freigegeben" : micrositeStatus(partner, publicDirectory.state, partial)),
       href: eligible && publication ? `https://benefitsi.de/partner/${encodeURIComponent(canonicalPartnerSlug(publication.slug))}` : null,
-      adminHref: partner.id ? `/?partner=${encodeURIComponent(partner.id)}&view=microsite#partners` : "/#partners",
+      adminHref: partner.id ? `/partners?partner=${encodeURIComponent(partner.id)}&view=microsite` : "/partners",
     }
   })
   return [...cities, ...microsites]

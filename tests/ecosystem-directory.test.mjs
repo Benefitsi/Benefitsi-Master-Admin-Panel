@@ -56,7 +56,7 @@ test("directory encodes database strings as path segments and query values", () 
   }))
   assert.equal(city.href, "https://benefitsi.de/stadt/bad%20d%C3%BCrkheim%2Falt%3Fx%3D1%23teil")
   assert.equal(city.adminHref, "/city-pages/bad%20d%C3%BCrkheim%2Falt%3Fx%3D1%23teil")
-  assert.equal(microsite.adminHref, "/?partner=partner%26view%3Dother%23fake&view=microsite#partners")
+  assert.equal(microsite.adminHref, "/partners?partner=partner%26view%3Dother%23fake&view=microsite")
 })
 
 test("city names cannot invent missing slugs", () => {
@@ -87,7 +87,7 @@ test("partial loading marks unknown absence instead of claiming no microsite", (
   assert.equal(page.href, null)
   assert.match(page.status, /unvollständig|unbekannt/i)
   assert.doesNotMatch(page.status, /nicht angelegt/i)
-  assert.equal(page.adminHref, "/?partner=partner-1&view=microsite#partners")
+  assert.equal(page.adminHref, "/partners?partner=partner-1&view=microsite")
 })
 
 test("empty and failed input does not create invented rows or totals", () => {
