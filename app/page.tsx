@@ -37,10 +37,12 @@ export default async function DashboardPage({
     redirect("/login")
   }
 
-  const portalSession = await getPartnerPortalSession(supabase)
+  const portalSession = await getPartnerPortalSession(supabase, adminSession)
 
+  const query = await searchParams
+  const requestedPartnerId = singleQueryValue(query.partner)
   const [dashboard, founder, agents, analytics, publicMicrosites] = await Promise.all([
-    getDashboardData(supabase),
+    getDashboardData(supabase, {entitlementPartnerId: requestedPartnerId || null}),
     loadFounderOverview(supabase),
     loadAgentControl(supabase),
     loadBusinessAnalytics(supabase, parseBusinessAnalyticsFilters({})),
@@ -49,8 +51,6 @@ export default async function DashboardPage({
     }).then(result => parsePublicMicrositeDirectory(result.data, result.error),
       () => parsePublicMicrositeDirectory(null, true)),
   ])
-  const query = await searchParams
-  const requestedPartnerId = singleQueryValue(query.partner)
   const requestedMode = singleQueryValue(query.mode)
   const requestedView = singleQueryValue(query.view)
   const requestedTab = singleQueryValue(query.tab)

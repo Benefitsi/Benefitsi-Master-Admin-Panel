@@ -24,16 +24,16 @@ All new queries follow the existing admin authentication check. No schema, permi
 
 ## Verification (2026-10-03)
 
-- Integrated `origin/main` (`4ab3aaa`, partner CRM release) and installed its exact locked dependencies.
+- Integrated `origin/main` (`9fd73a7`, partner CRM and save/loading fixes) and installed its exact locked dependencies, including the existing pinned Braces source mitigation.
 - Next.js 16.3.6 production build (`npm run build -- --webpack`), including TypeScript, passed before the CRM integration. The final deployment is built by Vercel; final local TypeScript passed separately.
 - Existing test fixtures were aligned with the current entitlement response and partner route component boundaries; permission checks and assertions are unchanged. The offline component loader now reads the CRM benefit JSON manifest.
-- Final full test suite with two workers: 1,151 passed, no failures or skips.
+- Final full test suite with two workers: 1,212 passed, no failures or skips.
 - CRM/editorial updates synchronize changed server snapshots during a guarded render, preserving local editing while avoiding redundant effect-driven renders. Targeted UI tests cover saved state, refreshed editorial status, unsaved changes and revoked access.
 - Full ESLint: no errors; 21 existing warnings. TypeScript (`tsc --noEmit --incremental false`): passed.
 - The suite includes directory publication rules, agent evidence, analytics redaction/gaps, existing analytics normalization and founder overview.
 - Actual redesigned dashboard components bundle successfully into a standalone, clearly labeled synthetic-data preview. The fixture substitutes Next Link with an anchor.
 - Icon alignment: all 15 benefits have required typed assignments; all 13 Material SVGs were checked for retained paths and safe static elements, and the full icon sheet was rendered and visually inspected. The production build above includes these icons.
-- Production dependency audit (`npm audit --omit=dev --audit-level=high`): no findings. The full audit reports five high entries from one unpatched development-only `braces` advisory through `eslint-config-next` → `@next/eslint-plugin-next` → `fast-glob` → `micromatch`. [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) lists no patched version. This existing dependency also affects `origin/main`; no audit exception or security workflow change has been made, and the full audit gate remains failing.
+- Dependency gate (`npm run audit`): passed, including all 11 security regressions and exact source/integrity checks. Raw npm audit still lists five high entries for the one development-only Braces advisory; the existing main-branch [source mitigation](security/braces-depth-mitigation-20261003.md) verifies the patched runtime files and preserves the unchanged audit report. The dashboard adds no audit exception or security workflow change. The earlier production-only audit found no issues.
 - The browser tool rejected access to the local HTML preview under its URL protocol policy. The revised layout has therefore not received a new browser visual/interaction check. Authenticated production data loading and Next navigation also require an authenticated preview session.
 - Deployment status is tracked by GitHub and the existing Vercel project. Temporary preview/build outputs are removed after verification.
 

@@ -46,7 +46,7 @@ function EditorialAdminCard({
   initial: AdminEditorialRequest;
 }) {
   const [saved, setSaved] = useState(initial),
-    [savedSource, setSavedSource] = useState(initial),
+    [previousInitial, setPreviousInitial] = useState(initial),
     [message, setMessage] = useState(''),
     [error, setError] = useState(''),
     [pending, startTransition] = useTransition(),
@@ -57,8 +57,8 @@ function EditorialAdminCard({
       live.current = false;
     };
   }, []);
-  if (savedSource !== initial) {
-    setSavedSource(initial);
+  if (previousInitial !== initial) {
+    setPreviousInitial(initial);
     setSaved(initial);
   }
   function submit(event: FormEvent<HTMLFormElement>) {

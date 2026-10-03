@@ -100,7 +100,7 @@ function ReadyCrmWorkspace({
   onAccessLost?: () => void;
 }) {
   const [campaigns, setCampaigns] = useState(initial.dashboard.campaigns),
-    [campaignSource, setCampaignSource] = useState(initial.dashboard.campaigns),
+    [previousCampaigns, setPreviousCampaigns] = useState(initial.dashboard.campaigns),
     [editor, setEditor] = useState<CampaignInput>(() => newDraft('second_visit')),
     [message, setMessage] = useState(''),
     [error, setError] = useState(''),
@@ -114,8 +114,8 @@ function ReadyCrmWorkspace({
       live.current = false;
     };
   }, []);
-  if (campaignSource !== initial.dashboard.campaigns) {
-    setCampaignSource(initial.dashboard.campaigns);
+  if (previousCampaigns !== initial.dashboard.campaigns) {
+    setPreviousCampaigns(initial.dashboard.campaigns);
     setCampaigns(initial.dashboard.campaigns);
   }
   const dashboard = initial.dashboard;
@@ -426,7 +426,7 @@ function EditorialCard({
   onAccessLost?: () => void;
 }) {
   const [saved, setSaved] = useState(initial),
-    [savedSource, setSavedSource] = useState(initial),
+    [previousInitial, setPreviousInitial] = useState(initial),
     [error, setError] = useState(''),
     [message, setMessage] = useState(''),
     [pending, startTransition] = useTransition(),
@@ -437,8 +437,8 @@ function EditorialCard({
       live.current = false;
     };
   }, []);
-  if (savedSource !== initial) {
-    setSavedSource(initial);
+  if (previousInitial !== initial) {
+    setPreviousInitial(initial);
     setSaved(initial);
   }
   const Icon = saved.service_key === 'blog_article' ? BookOpen : Mic;
