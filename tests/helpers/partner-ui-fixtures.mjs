@@ -4,6 +4,7 @@ import ts from 'typescript'
 const require=createRequire(import.meta.url),cache=new Map()
 export function loadUi(relative) {
  if(cache.has(relative))return cache.get(relative)
+ if(relative.endsWith('.json'))return JSON.parse(readFileSync(new URL('../../'+relative,import.meta.url),'utf8'))
  const source=readFileSync(new URL('../../'+relative,import.meta.url),'utf8')
  const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true},fileName:relative}).outputText
  const m={exports:{}}
@@ -12,6 +13,8 @@ export function loadUi(relative) {
   if(id==='@/app/partner/actions')return {signOutPartner:async()=>{}}
   if(id==='next/navigation')return {useRouter:()=>({refresh:()=>{}})}
   if(id==='@/app/partner/plan-actions')return {loadPartnerPlanPanel:async()=>{throw new Error('Synthetic preview has no server connection')},updatePartnerPlan:async()=>({ok:false,message:'Statische Vorschau – keine Änderung gespeichert.'})}
+  if(id==='@/app/partner/crm-actions')return {updatePartnerEditorial:async()=>({ok:false,message:'No test server mutation'})}
+  if(id.endsWith('.json'))return loadUi(id.slice(2))
   if(id.startsWith('@/')){const base=id.slice(2);return loadUi(base+(base.startsWith('components/')?'.tsx':'.ts'))}
   return require(id)
  },m,m.exports)

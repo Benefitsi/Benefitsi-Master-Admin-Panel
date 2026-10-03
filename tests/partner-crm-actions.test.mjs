@@ -1,0 +1,162 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { loadTypescript } from './helpers/load-typescript.mjs';
+const fixture = JSON.parse(readFileSync(new URL('./fixtures/partner-crm/dashboard-v1.json', import.meta.url)));
+const id = fixture.partner_id;
+const content = {
+  ...fixture.campaigns[0],
+  expected_revision: 1
+};
+for (const k of ['partner_id', 'revision', 'created_at', 'updated_at']) delete content[k];
+function harness({
+  session = {
+    isAdmin: false,
+    partnerIds: [id],
+    user: {
+      id: 'actor'
+    }
+  },
+  allowed = true,
+  admin = true,
+  error = null
+} = {}) {
+  const calls = [];
+  let checkedAdmin = false;
+  const client = {
+    rpc: async (name, args) => {
+      calls.push({
+        name,
+        args
+      });
+      if (name === 'get_partner_entitlements') return {
+        data: {
+          schema_version: 1,
+          partner_id: id,
+          role: 'owner',
+          plan_code: 'pro',
+          features: {
+            'crm.manage': allowed,
+            'marketing.manage': allowed
+          }
+        }
+      };
+      if (error) return {
+        error
+      };
+      return {
+        data: name === 'save_partner_crm_campaign' ? {
+          ...fixture.campaigns[0],
+          revision: 2
+        } : name === 'admin_update_partner_editorial_service' ? {
+          ...fixture.editorial_requests[0],
+          status: 'completed',
+          admin_note: 'Freigabe geprüft'
+        } : fixture
+      };
+    },
+    from() {
+      return {
+        select() {
+          return this;
+        },
+        eq() {
+          return this;
+        },
+        then(resolve) {
+          return Promise.resolve({
+            data: [],
+            error: null
+          }).then(resolve);
+        }
+      };
+    }
+  };
+  const actions = loadTypescript('app/partner/crm-actions.ts', {
+    '@/lib/supabase/server': {
+      createClient: async () => client
+    },
+    '@/lib/partner-portal': {
+      getPartnerPortalSession: async () => session
+    },
+    '@/lib/admin': {
+      requireAdmin: async () => {
+        checkedAdmin = true;
+        if (!admin) throw Error('denied');
+        return {
+          supabase: client
+        };
+      }
+    }
+  });
+  return {
+    actions,
+    calls,
+    checkedAdmin: () => checkedAdmin
+  };
+}
+test('direct missing and foreign sessions cannot read, save or request', async () => {
+  for (const session of [null, {
+    isAdmin: false,
+    partnerIds: []
+  }]) {
+    const h = harness({
+      session
+    });
+    for (const r of [await h.actions.loadPartnerCrm(id), await h.actions.savePartnerCrm(id, content), await h.actions.requestPartnerEditorial(id, 'blog_article', '')]) assert.equal(r.ok, false);
+    assert.equal(h.calls.length, 0);
+  }
+});
+test('actions check current rights on every repeated write and return safe confirmed state', async () => {
+  const h = harness();
+  for (let i = 0; i < 2; i++) {
+    const r = await h.actions.savePartnerCrm(id, content);
+    assert.equal(r.ok, true);
+    assert.equal(r.value.revision, 2);
+  }
+  assert.equal(h.calls.filter(c => c.name === 'get_partner_entitlements').length, 2);
+  const revoked = harness({
+    allowed: false
+  });
+  assert.equal((await revoked.actions.savePartnerCrm(id, content)).ok, false);
+  assert.equal(revoked.calls.length, 1);
+});
+test('conflict and raw failures return safe action messages', async () => {
+  const h = harness({
+    error: {
+      code: '40001',
+      message: 'crm_revision_conflict SQL secret'
+    }
+  });
+  const r = await h.actions.savePartnerCrm(id, content);
+  assert.equal(r.ok, false);
+  assert.equal(r.code, 'conflict');
+  assert.match(r.message, /gespeicherte Version.*laden/);
+  assert.doesNotMatch(r.message, /SQL secret/);
+});
+test('editorial admin action requires admin, validates reason, returns canonical current status', async () => {
+  const denied = harness({
+    admin: false
+  });
+  assert.equal((await denied.actions.updatePartnerEditorial(id, 'blog_article', 'completed', 'Freigabe geprüft')).ok, false);
+  assert.equal(denied.checkedAdmin(), true);
+  assert.equal(denied.calls.length, 0);
+  const h = harness();
+  const r = await h.actions.updatePartnerEditorial(id, 'blog_article', 'completed', 'Freigabe geprüft');
+  assert.equal(r.ok, true);
+  assert.equal(r.value.status, 'completed');
+  assert.equal(r.value.admin_note, 'Freigabe geprüft');
+  assert.equal(h.checkedAdmin(), true);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.calls.at(-1))), {
+    name: 'admin_update_partner_editorial_service',
+    args: {
+      p_partner_id: id,
+      p_service_key: 'blog_article',
+      p_status: 'completed',
+      p_note: 'Freigabe geprüft'
+    }
+  });
+  const bad = harness();
+  assert.equal((await bad.actions.updatePartnerEditorial(id, 'blog_article', 'completed', ' ')).ok, false);
+  assert.equal(bad.calls.length, 0);
+});

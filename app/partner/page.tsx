@@ -72,6 +72,7 @@ export default async function PartnerDashboardPage({
         </div>
       )}
       {section === "overview" && <PartnerOverview {...ctx} data={statistics} />}
+      {section === "business" && <a href={`/partner/crm?partner=${ctx.partnerId}`} className="mb-5 block rounded-2xl border border-slate-200 bg-white p-5 text-sm font-semibold text-[#0874d1]">Kundenbindung · Zielgruppen, Entwürfe & redaktionelle Leistungen ansehen →</a>}
       {workspace && (
         <>
           <p className="mb-4 text-sm text-slate-500">
