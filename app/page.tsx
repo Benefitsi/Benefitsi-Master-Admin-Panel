@@ -1,4 +1,9 @@
-import { FounderOverview } from "./founder-overview"
+import { EcosystemOverview } from "@/components/ecosystem/ecosystem-overview"
+import { loadAgentControl } from "@/lib/agent-control-data"
+import { loadBusinessAnalytics } from "@/lib/analytics/loader"
+import { parseBusinessAnalyticsFilters } from "@/lib/analytics/filters"
+import { selectOverviewAnalytics } from "@/lib/ecosystem/overview"
+import { buildPageDirectory, parsePublicMicrositeDirectory } from "@/lib/ecosystem/directory"
 import { loadFounderOverview } from "@/lib/founder-overview-data"
 import { redirect } from "next/navigation"
 import { getAdminSession } from "@/lib/admin"
@@ -36,9 +41,15 @@ export default async function DashboardPage({
 
   const query = await searchParams
   const requestedPartnerId = singleQueryValue(query.partner)
-  const [dashboard, founder] = await Promise.all([
+  const [dashboard, founder, agents, analytics, publicMicrosites] = await Promise.all([
     getDashboardData(supabase, {entitlementPartnerId: requestedPartnerId || null}),
     loadFounderOverview(supabase),
+    loadAgentControl(supabase),
+    loadBusinessAnalytics(supabase, parseBusinessAnalyticsFilters({})),
+    supabase.rpc("get_public_microsites_v1", {
+      p_partner_ids: null, p_slug: null, p_include_config: false,
+    }).then(result => parsePublicMicrositeDirectory(result.data, result.error),
+      () => parsePublicMicrositeDirectory(null, true)),
   ])
   const requestedMode = singleQueryValue(query.mode)
   const requestedView = singleQueryValue(query.view)
@@ -56,14 +67,20 @@ export default async function DashboardPage({
 
   return (
     <AdminShell
-      title="Benefitsi Übersicht"
-      subtitle="Betrieb, nächste Schritte und Partner an einem Ort"
+      title="Ecosystem."
+      subtitle=""
       adminName={adminName}
       micrositeCount={dashboard.partners.length}
       canAccessPartnerPanel={Boolean(portalSession?.partnerIds.length)}
     >
       <DashboardAutoRefresh />
-      <FounderOverview snapshot={founder} />
+      <EcosystemOverview
+        snapshot={founder}
+        agentData={agents}
+        analytics={selectOverviewAnalytics(analytics)}
+        pages={buildPageDirectory(dashboard, publicMicrosites)}
+        incomplete={dashboard.errors.length > 0 || publicMicrosites.state === "unavailable"}
+      />
       {dashboard.errors.length > 0 ? (
         <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-semibold">Supabase returned warnings</p>

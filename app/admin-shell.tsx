@@ -206,7 +206,7 @@ function AdminShellContent({
               <h1 className="truncate text-[1.7rem] font-black tracking-[-0.035em] text-[#061829]">
                 {title}
               </h1>
-              <p className="mt-1 truncate text-sm text-[#526170]">{subtitle}</p>
+              {subtitle ? <p className="mt-1 truncate text-sm text-[#526170]">{subtitle}</p> : null}
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

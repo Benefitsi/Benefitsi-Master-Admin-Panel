@@ -2,10 +2,11 @@ import { loadMicrositeCommerceActions } from "@/lib/commerce/microsite"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { getAdminSession } from "@/lib/admin"
-import { getDashboardData } from "@/lib/admin-data"
+import { getDashboardData, getPartnerCapabilityFlags } from "@/lib/admin-data"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { MicrositePanel } from "../../microsite-panel"
+import { MicrositeCapabilitiesNotice } from "@/components/microsite-capabilities-notice"
 import { AdminLanguageControl, AdminLanguageProvider } from "../../admin-language"
 
 export const dynamic = "force-dynamic"
@@ -30,7 +31,7 @@ export default async function MicrositeBuilderPage({ params }: PageProps) {
 
   const { partner: identifier } = await params
   const dashboard = await getDashboardData(supabase)
-  const partner = dashboard.partners.find(
+  const selectedPartner = dashboard.partners.find(
     (item) =>
       item.id === identifier ||
       item.slug === identifier ||
@@ -38,9 +39,11 @@ export default async function MicrositeBuilderPage({ params }: PageProps) {
       item.microsite?.slug === identifier,
   )
 
-  if (!partner) {
+  if (!selectedPartner?.id) {
     notFound()
   }
+  const capabilities = await getPartnerCapabilityFlags(supabase, selectedPartner.id).catch(() => null)
+  const partner = { ...selectedPartner, ...capabilities }
 
   const previewIdentifier =
     partner.microsite?.slug || partner.slug || partner.subdomain || partner.id || identifier
@@ -78,6 +81,7 @@ export default async function MicrositeBuilderPage({ params }: PageProps) {
       </header>
 
       <section className="mx-auto w-full max-w-[1800px] min-w-0 p-3 sm:p-5">
+        {!capabilities && <MicrositeCapabilitiesNotice />}
         <MicrositePanel
       commerceActions={await loadMicrositeCommerceActions(partner.id)}
           key={`${partner.id ?? partner.name ?? "microsite"}-${partner.microsite?.draftVersion?.id ?? partner.microsite?.publishedVersion?.id ?? "new"}`}
