@@ -12,6 +12,11 @@ const blocked = () => {
 export function loadPreview(relative) {
   const file = resolve(root, relative);
   if (cache.has(file)) return cache.get(file);
+  if (file.endsWith(".json")) {
+    const value = JSON.parse(readFileSync(file, "utf8"));
+    cache.set(file, value);
+    return value;
+  }
   const js = ts.transpileModule(readFileSync(file, "utf8"), {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,
