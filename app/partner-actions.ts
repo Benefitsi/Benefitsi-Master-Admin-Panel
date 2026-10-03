@@ -3695,7 +3695,7 @@ async function preparePartnerUploadFile(
         fit: "cover",
         position: "center",
       })
-      .webp({ quality: 82, effort: 4 })
+      .webp({ quality: 90, effort: 4 })
       .toBuffer()
 
     return new File(

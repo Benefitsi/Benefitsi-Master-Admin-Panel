@@ -331,6 +331,7 @@ const partnerSortOptions = [
   { value: "city", label: "City (A–Z)" },
   { value: "status", label: "Status" },
   { value: "benefits", label: "Most benefits" },
+  { value: "added", label: "Recently added" },
   { value: "recent", label: "Recently updated" },
 ] as const
 
@@ -630,6 +631,9 @@ export function PartnerWorkspace({
       }
       if (partnerSort === "benefits") {
         return right.deals.length - left.deals.length || compareText(left.name, right.name)
+      }
+      if (partnerSort === "added") {
+        return String(right.created_at ?? "").localeCompare(String(left.created_at ?? "")) || compareText(left.name, right.name)
       }
       if (partnerSort === "recent") {
         return String(right.updated_at ?? right.created_at ?? "").localeCompare(String(left.updated_at ?? left.created_at ?? "")) || compareText(left.name, right.name)
@@ -6697,11 +6701,11 @@ function DealFields({
       {isLimitedDrop ? (
         <FormSection title="Deal-Drop-Kartenbild" compact>
           <p className="text-xs leading-5 text-zinc-500">
-            Lade ein Highlight-Bild für die Vorteilskarte hoch (710×400 px).
+            Lade ein Highlight-Bild für die Vorteilskarte hoch (1420×800 px).
           </p>
           <MediaUploadField
             key={`deal-drop-image-${deal?.id ?? "new"}`}
-            label="Deal-Drop-Kartenbild (710×400)"
+            label="Deal-Drop-Kartenbild (1420×800)"
             fileName={`${prefix}deal_drop_image_file`}
             existingName={`${prefix}existing_deal_drop_image_url`}
             removeName={`${prefix}remove_deal_drop_image`}
@@ -12454,7 +12458,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, contentType: string) {
         }
       },
       contentType,
-      0.82,
+      0.9,
     )
   })
 }
