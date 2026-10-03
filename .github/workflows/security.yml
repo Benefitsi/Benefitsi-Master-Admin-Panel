@@ -101,6 +101,15 @@ jobs:
           tests/commerce-session-boundary.test.mjs
           tests/portal-routing.test.mjs
 
+      - name: Dashboard streaming and source boundaries
+        run: >-
+          node --import tsx --test --test-concurrency=2
+          tests/ecosystem-streaming.test.mjs
+          tests/ecosystem-overview.test.mjs
+          tests/ecosystem-directory.test.mjs
+          tests/founder-overview-data.test.mjs
+          tests/agent-control-data.test.mjs
+
       - name: Type-check
         run: npm exec -- tsc --noEmit
 

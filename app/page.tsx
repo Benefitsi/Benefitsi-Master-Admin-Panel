@@ -89,7 +89,6 @@ export default async function DashboardPage({
   )
 }
 
-
 type DashboardSources = {
   dashboard: ReturnType<typeof getDashboardData>
   founder: ReturnType<typeof loadFounderOverview>
