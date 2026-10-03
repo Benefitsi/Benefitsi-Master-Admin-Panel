@@ -1,0 +1,162 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { act, createElement as h } from 'react';
+import { JSDOM } from 'jsdom';
+import { loadTypescript } from './helpers/load-typescript.mjs';
+const dashboard = JSON.parse(readFileSync(new URL('./fixtures/partner-crm/dashboard-v1.json', import.meta.url))),
+  partnerId = dashboard.partner_id;
+const ready = {
+  actorId: 'actor-a',
+  initial: {
+    status: 'ready',
+    dashboard,
+    writable: true
+  },
+  deals: {
+    status: 'ready',
+    deals: []
+  }
+};
+async function fixture(t, load) {
+  const dom = new JSDOM('<div id="root"></div>', {
+    url: 'http://localhost',
+    pretendToBeVisual: true
+  }),
+    previous = new Map();
+  for (const [k, value] of Object.entries({
+    window: dom.window,
+    document: dom.window.document,
+    HTMLElement: dom.window.HTMLElement,
+    FormData: dom.window.FormData,
+    IS_REACT_ACT_ENVIRONMENT: true
+  })) {
+    previous.set(k, Object.getOwnPropertyDescriptor(globalThis, k));
+    Object.defineProperty(globalThis, k, {
+      configurable: true,
+      writable: true,
+      value
+    });
+  }
+  const {
+    createRoot
+  } = await import('react-dom/client');
+  const root = createRoot(document.getElementById('root'));
+  let auth;
+  const actions = {
+    loadPartnerCrm: load
+  };
+  const {
+    PartnerCrmWorkspace
+  } = loadTypescript('components/partner/partner-crm-workspace.tsx', {
+    '@/app/partner/crm-actions': actions
+  }, {
+    crypto: {
+      randomUUID
+    },
+    FormData: dom.window.FormData
+  });
+  const {
+    PartnerCrmLoader
+  } = loadTypescript('components/partner/partner-crm-loader.tsx', {
+    '@/app/partner/crm-actions': actions,
+    '@/components/partner/partner-crm-workspace': {
+      PartnerCrmWorkspace
+    },
+    '@/lib/supabase/client': {
+      createClient: () => ({
+        auth: {
+          onAuthStateChange: fn => {
+            auth = fn;
+            return {
+              data: {
+                subscription: {
+                  unsubscribe() { }
+                }
+              }
+            };
+          }
+        }
+      })
+    }
+  }, {
+    window: dom.window
+  });
+  t.after(async () => {
+    await act(async () => root.unmount());
+    for (const [k, d] of previous) {
+      if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k];
+    }
+    dom.window.close();
+  });
+  return {
+    dom,
+    render: (p = partnerId, a = 'actor-a') => act(async () => root.render(h(PartnerCrmLoader, {
+      key: p + a,
+      partnerId: p,
+      actorId: a,
+      initial: ready.initial,
+      deals: ready.deals
+    }))),
+    focus: () => act(async () => dom.window.dispatchEvent(new dom.window.Event('focus'))),
+    auth: id => act(async () => auth(id ? 'SIGNED_IN' : 'SIGNED_OUT', id ? {
+      user: {
+        id
+      }
+    } : null))
+  };
+}
+test('same-actor rights refresh preserves unsaved editing; revocation hides private state', async t => {
+  let state = {
+    ok: true,
+    value: ready
+  };
+  const f = await fixture(t, async () => state);
+  await f.render();
+  document.querySelector('[name="title"]').value = 'Ungespeichert';
+  await f.focus();
+  assert.equal(document.querySelector('[name="title"]').value, 'Ungespeichert');
+  state = {
+    ok: true,
+    value: {
+      ...ready,
+      initial: {
+        status: 'locked',
+        message: 'Pro erforderlich'
+      }
+    }
+  };
+  await f.focus();
+  assert.equal(document.querySelector('form'), null);
+  assert.doesNotMatch(document.body.textContent, /128|Ungespeichert/);
+});
+test('auth actor change clears editing and late response cannot republish old private data', async t => {
+  let resolve;
+  const f = await fixture(t, () => new Promise(r => resolve = r));
+  await f.render();
+  document.querySelector('[name="title"]').value = 'Privater Entwurf';
+  await f.focus();
+  await f.auth(null);
+  assert.equal(document.querySelector('form'), null);
+  await act(async () => resolve({
+    ok: true,
+    value: ready
+  }));
+  assert.equal(document.querySelector('form'), null);
+  assert.doesNotMatch(document.body.textContent, /128|Privater Entwurf/);
+});
+test('foreign actor returned by read cannot become a ready workspace', async t => {
+  const f = await fixture(t, async () => ({
+    ok: true,
+    value: {
+      ...ready,
+      actorId: 'foreign'
+    }
+  }));
+  await f.render();
+  await f.focus();
+  assert.equal(document.querySelector('form'), null);
+  assert.doesNotMatch(document.body.textContent, /128/);
+  assert.match(document.body.textContent, /Zugriff.*aktualisieren/);
+});
