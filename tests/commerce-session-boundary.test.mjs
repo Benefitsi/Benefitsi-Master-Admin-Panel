@@ -7,6 +7,7 @@ import {loadTypescript} from './helpers/load-typescript.mjs'
 const {NextRequest}=createRequire(import.meta.url)('next/server')
 const {updateSession}=loadTypescript('lib/supabase/proxy.ts',{
  '@/lib/portal-routing':{portalRoute,sessionCookieOptions},
+ '@/lib/supabase/bounded-fetch':{createBoundedSupabaseFetch:()=>()=>{throw new Error('No hosted transport in this test')}},
  '@supabase/ssr':{createServerClient:()=>({auth:{getUser:async()=>({data:{user:null},error:null})}})},
  './config':{getSupabaseConfig:()=>({isConfigured:true,url:'https://example.supabase.co',publishableKey:'test-key'})},
  '../auth-recovery':{loginPathForRequest:()=>'/login'},

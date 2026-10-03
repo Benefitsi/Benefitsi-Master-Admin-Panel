@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { signOut } from "@/app/actions"
-import { getAdminSession } from "@/lib/admin"
+import { getAdminSession, type AdminSession } from "@/lib/admin"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { LoginForm } from "./login-form"
@@ -12,15 +12,20 @@ export const dynamic = "force-dynamic"
 
 export default async function LoginPage() {
   const config = getSupabaseConfig()
+  let portalSession: AdminSession | null = null
+  let sessionUnavailable = false
 
   if (config.isConfigured) {
-    const supabase = await createClient()
-    const portalSession = await getAdminSession(supabase)
-
-    if (portalSession?.isAdmin) {
-      redirect("/")
+    try {
+      const supabase = await createClient()
+      portalSession = await getAdminSession(supabase)
+    } catch {
+      sessionUnavailable = true
     }
+  }
 
+  if (portalSession?.isAdmin) {
+    redirect("/")
   }
 
   return (
@@ -73,7 +78,12 @@ export default async function LoginPage() {
               </p>
             </div>
 
-            {config.isConfigured ? <NonAdminSessionNotice /> : null}
+            {sessionUnavailable ? (
+              <p role="alert" className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                Sign-in is temporarily unavailable. Please try again.
+              </p>
+            ) : null}
+            <NonAdminSessionNotice portalSession={portalSession} />
             <LoginForm isConfigured={config.isConfigured} />
           </div>
         </section>
@@ -83,10 +93,7 @@ export default async function LoginPage() {
   )
 }
 
-async function NonAdminSessionNotice() {
-  const supabase = await createClient()
-  const portalSession = await getAdminSession(supabase)
-
+function NonAdminSessionNotice({ portalSession }: { portalSession: AdminSession | null }) {
   if (
     !portalSession ||
     portalSession.isAdmin
