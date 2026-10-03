@@ -81,6 +81,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Tests
+        run: node --import tsx --test --test-concurrency=2 tests/*.test.mjs
+
       - name: Type-check
         run: npm exec -- tsc --noEmit
 
