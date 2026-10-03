@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "benefit_version": "2026-10-03.1",
+  "groups": [
+    {"id":"presence","title":"Auftritt & Entdeckung","items":[
+      {"id":"directory","label":"Stadtseite und Verzeichnis mit Standardprofil, Kontakt und Öffnungszeiten; in der App entdecken","scope":"all"},
+      {"id":"microsite","label":"Eigene Microsite nach Veröffentlichungsfreigabe","scope":"pro","feature":"microsite.publish","free_label":"Keine eigene Microsite"},
+      {"id":"media","label":"Ein freigegebenes Video und eine 360°-Ansicht oder virtuelle Tour einbinden","scope":"pro","feature":"media.rich"}
+    ]},
+    {"id":"loyalty","title":"Besuche & Vorteile","items":[
+      {"id":"stamps","label":"Digitale Stempelkarte, Scan und Basisbelohnungen","scope":"all"},
+      {"id":"offers","label":"Normale Angebote und Happy Hour unbegrenzt","scope":"all"},
+      {"id":"drops","label":"Deal Drops","scope":"all","limit":"deal_drops_monthly"},
+      {"id":"feedback","label":"Besuchsfeedback mit optionaler Belohnung und passendem Verwaltungsrecht","scope":"pro","feature":"feedback.manage"}
+    ]},
+    {"id":"analytics","title":"Statistik & Einblicke","items":[
+      {"id":"basic","label":"Basisdiagramme zu Besuchen und Wiederkehr","scope":"all","feature":"analytics.basic"},
+      {"id":"window","label":"Auswertungszeitraum","scope":"all","limit":"analytics_days"},
+      {"id":"advanced","label":"Vergleich, Wiederkehrkohorten, Besuchsfrequenz, Heatmap und Vorteilsleistung aus vorhandenen Messdaten","scope":"pro","feature":"analytics.advanced"},
+      {"id":"export","label":"Zusammengefasster CSV-Export","scope":"pro","feature":"analytics.export"}
+    ]},
+    {"id":"crm","title":"Kundenbindung & Redaktion","items":[
+      {"id":"drafts","label":"Drei potenzielle Besuchsgruppen und gespeicherte Kampagnenentwürfe","scope":"pro","feature":"crm.manage","note":"Die aktuelle Verfügbarkeit findest du im Bereich Kundenbindung. Potenzielle Gruppen sind keine erreichbaren oder eingewilligten Empfänger."},
+      {"id":"delivery","label":"Marketing-Push, werbliche In-App-Mitteilungen und Comeback-Aktivierung","scope":"pro","feature":"marketing.manage","note":"Versand noch nicht verfügbar; ausschließlich Entwürfe. Keine Planung oder automatische Aktivierung."},
+      {"id":"article","label":"Eigener Blogartikel: Anfrage und redaktionelle Terminierung","scope":"pro","feature":"crm.manage","note":"Keine automatische Veröffentlichung."},
+      {"id":"interview","label":"Gründer-/Inhaberinterview als Podcast oder Video: Anfrage und redaktionelle Terminierung","scope":"pro","feature":"crm.manage","note":"Umfang und Termin gesondert abstimmen; keine automatische Aufnahme."}
+    ]},
+    {"id":"operations","title":"Verwaltung & Team","items":[
+      {"id":"manual","label":"Profil, Menü und Öffnungszeiten manuell pflegen","scope":"all"},
+      {"id":"team","label":"Team","scope":"all","limit":"team_members"},
+      {"id":"ai","label":"KI-Menüimports","scope":"pro","feature":"menu.ai_import","limit":"menu_ai_imports_monthly","note":"Erst nach Kosten- und Betriebsfreigabe; je Abo-Monat ab Aktivierung, auch bei jährlicher Zahlung."}
+    ]},
+    {"id":"support","title":"Start & Betreuung","items":[
+      {"id":"setup","label":"Benefitsi bereitet das digitale Setup vor und bespricht es beim Onboarding","scope":"all"},
+      {"id":"priority","label":"Priorisierter Support innerhalb der Geschäftszeiten","scope":"pro"}
+    ]}
+  ],
+  "notes": [
+    "Pro Standard und Pro Founder haben denselben Leistungsumfang; Preis und Vertragsphase folgen dem vereinbarten Angebot.",
+    "Neue Foto-, Drohnen- oder 360°-Aufnahmen sowie Schnitt und Tourproduktion sind separate Anfragen. Kein Preis oder automatischer Produktionsbonus zugesagt.",
+    "Fehlende Messdaten und nicht bereitgestellte Funktionen bleiben kenntlich. Eine Tarifberechtigung allein bestätigt keine Betriebsbereitschaft.",
+    "Optionale Commerce- und SEO-Module benötigen ihren aktuellen Katalogpreis sowie gesonderte Freigabe; künftige Module bleiben nicht buchbar."
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "partner_id": "a1001001-0000-4000-8000-000000000002",
+  "as_of": "2026-10-03T10:00:00+00:00",
+  "timezone": "Europe/Berlin",
+  "window": {
+    "from": "2025-10-02T22:00:00+00:00",
+    "to": "2026-10-02T22:00:00+00:00",
+    "days": 365
+  },
+  "audience": {
+    "kind": "comeback",
+    "status": "ok",
+    "value": 12,
+    "definition": "last_completed_visit_at_least_configured_berlin_days_ago_in_window",
+    "config": {"inactivity_days": 30}
+  },
+  "delivery": {
+    "status": "draft_only",
+    "reason": "marketing_delivery_not_enabled"
+  }
+}
