@@ -49,6 +49,7 @@ export function parseMemoryStampInput(value: unknown): { ok: true; input: Memory
   for (const entry of v.zones) {
     const z = obj(entry)
     if (!z || typeof z.zone_key !== 'string' || z.zone_key.length > 80 || !slugPattern.test(z.zone_key) || typeof z.label !== 'string' || !z.label.trim() || z.label.length > 180 || typeof z.active !== 'boolean' || !number(z.unlock_radius_meters, 1, 10000) || !number(z.edge_tolerance_meters, 0, 50)) return fail('Bitte Bezeichnung, Radius und Toleranz der Sammelbereiche prüfen.')
+    if (z.verification_type !== 'POINT_RADIUS' && z.verification_type !== 'AREA') return fail('Bitte einen gültigen Sammelbereich wählen.')
     if (z.verification_type === 'AREA' ? z.safe_latitude !== null || z.safe_longitude !== null : z.verification_type !== 'POINT_RADIUS' || !number(z.safe_latitude, -90, 90) || !number(z.safe_longitude, -180, 180)) return fail('Für einen Sammelpunkt sind gültige Koordinaten erforderlich. Flächen verwenden die Geometrie des Ortes.')
     if (zones.some(zone => zone.zone_key === z.zone_key)) return fail('Jeder Sammelbereich braucht eine eindeutige Kennung.')
     zones.push({ zone_key: z.zone_key, label: z.label.trim(), verification_type: z.verification_type, safe_latitude: z.safe_latitude as number | null, safe_longitude: z.safe_longitude as number | null, unlock_radius_meters: z.unlock_radius_meters as number, edge_tolerance_meters: z.edge_tolerance_meters as number, active: z.active })
