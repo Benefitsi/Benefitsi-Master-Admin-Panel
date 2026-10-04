@@ -28,6 +28,20 @@ const control = (profiles = [profile()], changes = {}) => ({
 const summary = data => buildAgentSummaries(data).find(item => item.id === "ben")
 const documentFor = (data, selectedAgentId) => new JSDOM(renderToStaticMarkup(createElement(AgentOverview, { data, selectedAgentId }))).window.document
 
+test("a runtime-only finance profile retains its named workspace without inventing execution evidence", () => {
+  const runtime = normalizeRuntimeSnapshot({
+    ...control([profile({ id: "benefitsi-finance", schedules: [], automation: "manual" })]).runtime.snapshot,
+    observedAt: checkedAt,
+  }, new Date(checkedAt))
+  const result = buildAgentSummaries(control([], { runtime })).find(item => item.id === "benefitsi-finance")
+  assert.equal(result.name, "Buchhaltung & Steuern")
+  assert.equal(result.workspaceHref, "/analytics")
+  assert.equal(result.href, "/agents?agent=benefitsi-finance#agent-benefitsi-finance")
+  assert.equal(result.status, "unknown")
+  assert.equal(result.lastRunAt, null)
+  assert.equal(result.lastRunStatus, "unknown")
+})
+
 test("a stale observation retains its dated successful result without claiming current health", () => {
   const result = summary(control())
   assert.equal(result.status, "stale")

@@ -106,7 +106,7 @@ export function buildAgentSummaries(data: AgentControlData): AgentSummary[] {
         cadence: profileCadence(profile), evidence: "observed", observedAt: data.runtime.snapshot!.observedAt,
         freshness, freshnessLabel: freshnessLabel(freshness), ...lastRun,
         href: agentProfileHref(profile.id),
-        workspaceHref: configured?.workspaceHref ?? (profile.citySlug ? "/city-operations" : null),
+        workspaceHref: configured?.workspaceHref ?? details?.workspaceHref ?? (profile.citySlug ? "/city-operations" : null),
       })
     }
   }
