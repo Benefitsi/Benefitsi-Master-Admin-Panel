@@ -58,3 +58,20 @@ test('new capability draft preserves nullable Pro drop limit and independent rig
  assert.equal(p.features['feedback.manage'],true)
  assert.equal(p.features['marketing.manage'],false)
 })
+
+test('onboarding uses the authenticated bounded lifecycle RPC without accepting prices or plan versions',async()=>{
+ const f=fixture();f.form.set('operation','onboarding');f.form.set('onboarding_action','start');f.form.set('days','14');f.form.set('plan_version','99')
+ assert.equal((await f.code.updatePartnerPlan({},f.form)).ok,true)
+ assert.deepEqual(JSON.parse(JSON.stringify(f.calls[0])),{name:'admin_set_partner_onboarding',args:{p_partner_id:'own',p_action:'start',p_days:14,p_expected_until:null,p_reason:'Reviewed request'}})
+ const denied=fixture(false);denied.form.set('operation','onboarding');denied.form.set('onboarding_action','start');denied.form.set('days','14')
+ assert.equal((await denied.code.updatePartnerPlan({},denied.form)).ok,false);assert.equal(denied.calls.length,0)
+})
+test('onboarding rejects malformed actions and durations and preserves the concurrency boundary',async()=>{
+ for(const [action,days] of [['start','365'],['publish','14'],['extend',''],['start','14.5']]){
+  const f=fixture();f.form.set('operation','onboarding');f.form.set('onboarding_action',action);f.form.set('days',days)
+  assert.equal((await f.code.updatePartnerPlan({},f.form)).ok,false);assert.equal(f.calls.length,0)
+ }
+ const f=fixture();f.form.set('operation','onboarding');f.form.set('onboarding_action','stop');f.form.set('expected_until','2099-10-01T15:42:00.123456+00:00')
+ assert.equal((await f.code.updatePartnerPlan({},f.form)).ok,true)
+ assert.equal(f.calls[0].args.p_expected_until,'2099-10-01T15:42:00.123456+00:00')
+})

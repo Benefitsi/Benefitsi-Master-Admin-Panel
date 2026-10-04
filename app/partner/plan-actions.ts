@@ -16,7 +16,13 @@ export async function loadPartnerPlanPanel(
   partnerId: string,
 ): Promise<PlanPanel> {
   const { supabase } = await requireAdmin()
-  return (await readBilling(supabase, partnerId, true)) as PlanPanel
+  const [billing, microsite] = await Promise.all([
+    readBilling(supabase, partnerId, true),
+    supabase.from('microsites').select('slug,status,published_version_id')
+      .eq('partner_id', partnerId).eq('status', 'published')
+      .not('published_version_id', 'is', null).limit(1).maybeSingle(),
+  ])
+  return { ...billing, onboarding_microsite: microsite.error ? null : microsite.data } as PlanPanel
 }
 export async function updatePartnerPlan(
   _previous: { ok: boolean; message: string },
@@ -43,7 +49,15 @@ export async function updatePartnerPlan(
     else {
       let rpc = '',
         args: Record<string, unknown> = {}
-      if (operation === 'failed_founder_activation') {
+      if (operation === 'onboarding') {
+        const action = value('onboarding_action')
+        const days = action === 'stop' ? 14 : Number(value('days'))
+        if (!['start', 'extend', 'stop'].includes(action) || ![7, 14, 30].includes(days))
+          throw new Error('onboarding_duration_invalid')
+        rpc = 'admin_set_partner_onboarding'
+        args = { p_partner_id: partner, p_action: action, p_days: days,
+          p_expected_until: value('expected_until') || null, p_reason: reason }
+      } else if (operation === 'failed_founder_activation') {
         if (value('terminal_failure') !== 'confirmed') throw new Error('terminal_failure_required')
         await verifyFailedFounderActivation(partner)
         rpc='admin_close_failed_founder_activation'; args={p_partner_id:partner,p_request_id:value('request_id'),p_evidence:reason}
@@ -141,11 +155,21 @@ export async function updatePartnerPlan(
       ok: true,
       message: 'Gespeichert. Die aktuellen Tarif- und Abrechnungsdaten wurden neu geladen.',
     }
-  } catch {
+  } catch (error) {
+    const onboardingErrors: Record<string, string> = {
+      onboarding_changed: 'Die Freigabe wurde inzwischen geändert. Bitte die Tarifansicht neu laden und erneut prüfen.',
+      onboarding_billing_pending: 'Es gibt einen offenen Abrechnungsvorgang. Bitte diesen vor dem Onboarding klären.',
+      commercial_subscription_exists: 'Ein bestehendes kommerzielles Abo wird durch Onboarding nicht verändert.',
+      onboarding_publication_required: 'Bitte zuerst die Microsite veröffentlichen und die Partner- sowie Inhaltsfreigaben prüfen. Es wurde keine Testphase gestartet.',
+      onboarding_duration_invalid: 'Bitte 7, 14 oder 30 Tage für das Onboarding auswählen.',
+      onboarding_not_active: 'Die Testphase ist bereits beendet. Bitte die Tarifansicht neu laden.',
+      onboarding_already_active: 'Die Testphase läuft bereits. Verwende bei Bedarf „Onboarding verlängern“.',
+      onboarding_plan_unavailable: 'Aktuell ist kein veröffentlichter Pro-Tarif für Onboarding verfügbar.',
+    }
     return {
       ok: false,
       message:
-        'Änderung nicht gespeichert. Bitte Berechtigung, Grund, Ablaufdatum und Versionsnummer prüfen. Bestehende Abos dürfen nicht durch Testfreigaben ersetzt werden.',
+        (error instanceof Error && onboardingErrors[error.message]) || 'Änderung nicht gespeichert. Bitte Berechtigung, Grund, Ablaufdatum und Versionsnummer prüfen. Bestehende Abos dürfen nicht durch Testfreigaben ersetzt werden.',
     }
   }
 }
