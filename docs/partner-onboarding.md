@@ -1,7 +1,7 @@
 # Onboarding beim Partnerbesuch
 
 Im Admin: **Partner → Partner auswählen → Partnereinstellungen → Tarif & Module**.
-Der Bereich „Onboarding für den Partnerbesuch“ liegt direkt unter der Tarifübersicht.
+Der Bereich „Onboarding für den Partnerbesuch“ steht am Anfang der Tarifansicht.
 
 1. Partner und Microsite im Builder prüfen und die vorgesehene Version veröffentlichen.
 2. Im Tarifbereich Anlass eintragen, 7/14/30 Tage wählen und manuell starten.

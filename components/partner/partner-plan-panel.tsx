@@ -650,7 +650,8 @@ export function PartnerPlanPanel({
     if (data?.entitlements.state !== "manual_grant" || !data.subscription?.period_end) return;
     const remaining = Date.parse(data.subscription.period_end) - Date.now();
     if (!Number.isFinite(remaining)) return;
-    const timer = setTimeout(reload, Math.min(Math.max(remaining + 1000, 0), 2_147_483_647));
+    // A client clock ahead of the database must not create a zero-delay request loop.
+    const timer = setTimeout(reload, Math.min(Math.max(remaining + 1000, 60_000), 2_147_483_647));
     return () => clearTimeout(timer);
   }, [data, reload]);
   if (!data || data.entitlements.partner_id !== partnerId)
@@ -670,6 +671,9 @@ export function PartnerPlanPanel({
         Sichere Admin-Vorschau der wirksamen Partnerrechte. Du bleibst im
         Admin-Bereich; Partner-Sitzungen werden nicht übernommen.
       </div>
+      <section className={box}>
+        <PartnerOnboarding data={data} partnerId={partnerId} onSaved={reload} />
+      </section>
       <PartnerEditorialManagement partnerId={partnerId} initial={data.editorial_requests}/>
       {!!data.billing_cases?.length && (
         <details className={box}>
@@ -766,9 +770,6 @@ export function PartnerPlanPanel({
         </section>
       )}
       <PartnerPlanSummary data={data} />
-      <section className={box}>
-        <PartnerOnboarding data={data} partnerId={partnerId} onSaved={reload} />
-      </section>
       <section className={box}>
         <h3 className="mb-3 text-lg font-bold">
           Founder-Zulassung · Annweiler
