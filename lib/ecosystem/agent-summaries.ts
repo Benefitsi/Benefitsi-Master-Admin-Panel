@@ -35,6 +35,7 @@ const agentDetails: Record<string, { name: string; workspaceHref: string }> = {
   "stamp-curator": { name: "Stempel-Kurator", workspaceHref: "/city-pages" },
   studio: { name: "Studio", workspaceHref: "/agents" },
   "benefitsi-menu": { name: "Menü-Agent", workspaceHref: "/partners" },
+  "benefitsi-finance": { name: "Buchhaltung & Steuern", workspaceHref: "/analytics" },
 }
 
 export function agentProfileAnchor(id: string): string | null {
@@ -105,7 +106,7 @@ export function buildAgentSummaries(data: AgentControlData): AgentSummary[] {
         cadence: profileCadence(profile), evidence: "observed", observedAt: data.runtime.snapshot!.observedAt,
         freshness, freshnessLabel: freshnessLabel(freshness), ...lastRun,
         href: agentProfileHref(profile.id),
-        workspaceHref: configured?.workspaceHref ?? (profile.citySlug ? "/city-operations" : null),
+        workspaceHref: configured?.workspaceHref ?? details?.workspaceHref ?? (profile.citySlug ? "/city-operations" : null),
       })
     }
   }

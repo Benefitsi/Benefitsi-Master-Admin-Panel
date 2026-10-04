@@ -6,8 +6,8 @@
 .search :where(a,button):focus-visible { outline:2px solid #118cff; outline-offset:-2px; border-radius:8px; }
 .popover { position:absolute; right:0; top:calc(100% + 10px); width:min(480px,calc(100vw - 32px)); padding:8px; border:1px solid #dfe8f1; border-radius:16px; background:#fff; box-shadow:0 18px 55px #06182926; }
 .resultHeader { display:flex; justify-content:space-between; padding:7px 9px 10px; color:#65758a; font-size:11px; }.resultHeader>span:last-child { font-size:9px; letter-spacing:.04em; }
-.results { display:grid; gap:3px; max-height:min(420px,60dvh); overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; }
-.result { display:flex; gap:3px; align-items:center; border-radius:9px; }.result:hover { background:#f3f8fe; }
+.results { display:grid; grid-template-columns:minmax(0,1fr); gap:3px; max-height:min(420px,60dvh); overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+.result { display:flex; min-width:0; gap:3px; align-items:center; border-radius:9px; }.result:hover { background:#f3f8fe; }
 .result>a:first-child { display:flex; align-items:center; gap:10px; padding:10px 9px; min-width:0; flex:1; text-decoration:none; color:inherit; }
 .glyph { display:grid; place-items:center; background:#118cff0c; color:#118cff; width:32px; height:32px; flex-shrink:0; border-radius:9px; }
 .resultText { min-width:0; flex:1; }.resultText strong { display:block; font-size:12px; font-weight:700; }.resultText>span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#65758a; font-size:10px; margin-top:3px; }

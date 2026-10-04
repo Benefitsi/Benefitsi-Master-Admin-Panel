@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import Link from "next/link"
 import {
-  ArrowRight, ArrowUpRight, ArrowsClockwise, Brain, ChartLineUp,
+  ArrowRight, ArrowUpRight, ArrowsClockwise, Brain, Calculator, ChartLineUp,
   Check, CheckCircle, Clock, Crown, FileText, GlobeHemisphereWest, Info, Target,
   MapPin, Robot, Scan, ShieldCheck, Sparkle, Stack, Storefront,
   Users, Warning, WarningCircle,
@@ -24,12 +24,14 @@ const number = (value: number | null) => value === null ? "—" : value.toLocale
 const roleIcons: Record<string, typeof Robot> = {
   ben: Brain, "benefitsi-content": FileText, "benefitsi-seo": ChartLineUp,
   "city-annweiler": MapPin, "stamp-curator": Scan, studio: Sparkle, "benefitsi-menu": Storefront,
+  "benefitsi-finance": Calculator,
 }
 const shortRoles: Record<string, string> = {
   ben: "Koordination", "benefitsi-content": "Redaktion", "benefitsi-seo": "Sichtbarkeit",
   "city-annweiler": "Stadtinhalte", "stamp-curator": "Entdeckerstempel", studio: "Design", "benefitsi-menu": "Menüimport",
+  "benefitsi-finance": "Buchhaltung & Steuern",
 }
-const shortNames: Record<string, string> = { "benefitsi-content": "Content", "benefitsi-seo": "SEO", "city-annweiler": "Annweiler", "stamp-curator": "Stempel", "benefitsi-menu": "Menü" }
+const shortNames: Record<string, string> = { "benefitsi-content": "Content", "benefitsi-seo": "SEO", "city-annweiler": "Annweiler", "stamp-curator": "Stempel", "benefitsi-menu": "Menü", "benefitsi-finance": "Finanzen" }
 const statusLabels = { ok: "Letzter Stand: OK", attention: "Prüfen", stale: "Alter Datenstand", unknown: "Status unbestätigt" }
 
 export function EcosystemOverview({ snapshot, agentData, analytics, pages, incomplete }: {
