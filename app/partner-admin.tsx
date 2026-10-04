@@ -319,6 +319,7 @@ const menuCurrencyOptions = [{ value: "EUR", label: "EUR (€)" }] as const
 
 const partnerStatusOptions = [
   { value: "all", label: "All statuses" },
+  { value: "low_quality_images", label: "Low quality images" },
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
   { value: "paused", label: "Paused" },
@@ -331,7 +332,6 @@ const partnerSortOptions = [
   { value: "name", label: "Name (A–Z)" },
   { value: "city", label: "City (A–Z)" },
   { value: "status", label: "Status" },
-  { value: "benefits", label: "Most benefits" },
   { value: "added", label: "Recently added" },
   { value: "recent", label: "Recently updated" },
 ] as const
@@ -617,7 +617,9 @@ export function PartnerWorkspace({
           ? isPartnerActive(partner)
           : statusFilter === "inactive"
             ? !isPartnerActive(partner)
-            : partner.status === statusFilter)
+            : statusFilter === "low_quality_images"
+              ? inspectPartnerMediaQuality(partner).lowResolution.length > 0
+              : partner.status === statusFilter)
 
       return matchesQuery && matchesStatus
     }).sort((left, right) => {
@@ -629,9 +631,6 @@ export function PartnerWorkspace({
       }
       if (partnerSort === "status") {
         return compareText(left.status, right.status) || compareText(left.name, right.name)
-      }
-      if (partnerSort === "benefits") {
-        return right.deals.length - left.deals.length || compareText(left.name, right.name)
       }
       if (partnerSort === "added") {
         return String(right.created_at ?? "").localeCompare(String(left.created_at ?? "")) || compareText(left.name, right.name)
@@ -2030,7 +2029,7 @@ function PartnerForm({
 
     const keepOneSectionOpen = (event: Event) => {
       const section = event.target
-      if (!(section instanceof HTMLDetailsElement) || !section.open) return
+      if (!(section instanceof HTMLDetailsElement) || !section.open || !section.hasAttribute("data-partner-accordion-section")) return
       form
         .querySelectorAll<HTMLDetailsElement>("details[data-partner-accordion-section][open]")
         .forEach((other) => {
@@ -2479,7 +2478,7 @@ function PartnerForm({
         />
       ) : null}
 
-      <FormSection title="Profile" required={requiredSectionMarker}>
+      <FormSection title="Profile" collapsible={false} required={requiredSectionMarker}>
         <FieldGrid>
           <TextField
             label="Partner name"
@@ -2579,13 +2578,9 @@ function PartnerForm({
           )}
           required
         />
-      </FormSection>
-
-      <FormSection
-        title="Contact and location"
-        defaultOpen={false}
-        required={requiredSectionMarker}
-      >
+        <div className="border-t border-zinc-200 pt-3">
+          <p className="text-sm font-semibold text-zinc-800">Contact and location</p>
+        </div>
         <FieldGrid>
           <TextField
             label="Phone"
@@ -2616,6 +2611,51 @@ function PartnerForm({
           name="address"
           defaultValue={partner?.address}
           required
+        />
+      </FormSection>
+
+      <FormSection
+        title="Media"
+        defaultOpen={true}
+        accordion={false}
+        status={{ label: "Recommended", tone: "recommended" }}
+      >
+        <div className="grid gap-4 lg:auto-rows-fr lg:grid-cols-3">
+          <MediaUploadField
+            key={`logo-${partner?.logo_url ?? "new"}`}
+            label="Partner logo"
+            fileName="logo_file"
+            existingName="existing_logo_url"
+            removeName="remove_logo"
+            currentUrl={partner?.logo_url ?? researchedMedia.logoUrl}
+            spec={partnerMediaSpecs.logo}
+            compact
+          />
+          <MediaUploadField
+            key={`feature-${partner?.feature_card_url ?? "new"}`}
+            label="Feature card"
+            fileName="feature_card_file"
+            existingName="existing_feature_card_url"
+            removeName="remove_feature_card"
+            currentUrl={partner?.feature_card_url ?? researchedMedia.featureUrl}
+            spec={partnerMediaSpecs.feature}
+            compact
+          />
+          <MediaUploadField
+            key={`discover-${partner?.discover_card_image_url ?? "new"}`}
+            label="Discover page image"
+            fileName="discover_card_file"
+            existingName="existing_discover_card_image_url"
+            removeName="remove_discover_card_image"
+            currentUrl={partner?.discover_card_image_url ?? researchedMedia.discoverUrl}
+            spec={partnerMediaSpecs.discover}
+            compact
+          />
+        </div>
+        <CoverUploadField
+          key={`covers-${(partner?.cover_urls ?? researchedMedia.coverUrls).join("|") || "new"}`}
+          covers={partner?.cover_urls ?? researchedMedia.coverUrls}
+          partnerId={partner?.id}
         />
       </FormSection>
 
@@ -2680,50 +2720,6 @@ function PartnerForm({
           <WeeklyHoursFields />
         </FormSection>
       ) : null}
-
-      <FormSection
-        title="Media"
-        defaultOpen={false}
-        status={{ label: "Recommended", tone: "recommended" }}
-      >
-        <div className="grid gap-4 lg:auto-rows-fr lg:grid-cols-3">
-          <MediaUploadField
-            key={`logo-${partner?.logo_url ?? "new"}`}
-            label="Partner logo"
-            fileName="logo_file"
-            existingName="existing_logo_url"
-            removeName="remove_logo"
-            currentUrl={partner?.logo_url ?? researchedMedia.logoUrl}
-            spec={partnerMediaSpecs.logo}
-            compact
-          />
-          <MediaUploadField
-            key={`feature-${partner?.feature_card_url ?? "new"}`}
-            label="Feature card"
-            fileName="feature_card_file"
-            existingName="existing_feature_card_url"
-            removeName="remove_feature_card"
-            currentUrl={partner?.feature_card_url ?? researchedMedia.featureUrl}
-            spec={partnerMediaSpecs.feature}
-            compact
-          />
-          <MediaUploadField
-            key={`discover-${partner?.discover_card_image_url ?? "new"}`}
-            label="Discover page image"
-            fileName="discover_card_file"
-            existingName="existing_discover_card_image_url"
-            removeName="remove_discover_card_image"
-            currentUrl={partner?.discover_card_image_url ?? researchedMedia.discoverUrl}
-            spec={partnerMediaSpecs.discover}
-            compact
-          />
-        </div>
-        <CoverUploadField
-          key={`covers-${(partner?.cover_urls ?? researchedMedia.coverUrls).join("|") || "new"}`}
-          covers={partner?.cover_urls ?? researchedMedia.coverUrls}
-          partnerId={partner?.id}
-        />
-      </FormSection>
 
       </div>
 
@@ -10838,6 +10834,7 @@ function FormSection({
   children,
   compact = false,
   collapsible = true,
+  accordion = true,
   defaultOpen = true,
   required,
   status,
@@ -10846,6 +10843,7 @@ function FormSection({
   children: ReactNode
   compact?: boolean
   collapsible?: boolean
+  accordion?: boolean
   defaultOpen?: boolean
   required?: boolean | "subtle"
   status?: SectionStatusValue
@@ -10865,7 +10863,7 @@ function FormSection({
     >
       {collapsible ? (
         <details
-          data-partner-accordion-section
+          data-partner-accordion-section={accordion ? "" : undefined}
           open={open}
           onToggle={(event) => setOpen(event.currentTarget.open)}
         >

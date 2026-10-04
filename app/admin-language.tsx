@@ -17,6 +17,7 @@ const translations = [
   ["Partner management", "Partnerverwaltung"],
   ["All partners and their information", "Alle Partner und ihre Informationen"],
   ["Partners", "Partner"],
+  ["Low quality images", "Bilder mit niedriger Qualität"],
   ["Active partners", "Aktive Partner"],
   ["Featured partners", "Hervorgehobene Partner"],
   ["Featured by Benefitsi", "Von Benefitsi hervorgehoben"],

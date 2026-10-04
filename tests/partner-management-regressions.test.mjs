@@ -252,12 +252,12 @@ test("partner socials support YouTube and five profiles", async () => {
   )
 })
 
-test("partner settings separate contact and socials above embedded hours and combine stamps with deals", async () => {
+test("partner settings keep profile fixed with contact, then expanded media and separate socials above hours", async () => {
   const code = await readFile(adminUrl, "utf8")
 
   assert.ok(
-    /<FormSection\s+title="Contact and location"[\s\S]*?<\/FormSection>\s*<FormSection title="Socials"[\s\S]*?<SocialHandlesSection[\s\S]*?<\/FormSection>\s*\{mode === "edit"[\s\S]*?<OpeningHoursPanel\s+partner=\{partner\}\s+embedded\s+withinPartnerForm/.test(code),
-    "Contact/location and socials must be separate sections above embedded operating hours",
+    /<FormSection title="Profile" collapsible=\{false\}[\s\S]*?name="phone"[\s\S]*?name="coordinates"[\s\S]*?name="address"[\s\S]*?<\/FormSection>\s*<FormSection\s+title="Media"\s+defaultOpen=\{true\}[\s\S]*?<\/FormSection>\s*<FormSection title="Socials"[\s\S]*?<SocialHandlesSection[\s\S]*?<\/FormSection>\s*\{mode === "edit"[\s\S]*?<OpeningHoursPanel\s+partner=\{partner\}\s+embedded\s+withinPartnerForm/.test(code),
+    "Profile must stay visible with contact/location, followed by expanded media and separate socials above operating hours",
   )
   assert.ok(!code.includes('title="Contact, Location and Socials"'), "The combined contact/socials section must not return")
   assert.match(code, /<DealsPanel partner=\{partner\} embedded \/>/)
