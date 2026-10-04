@@ -35,6 +35,7 @@ const agentDetails: Record<string, { name: string; workspaceHref: string }> = {
   "stamp-curator": { name: "Stempel-Kurator", workspaceHref: "/city-pages" },
   studio: { name: "Studio", workspaceHref: "/agents" },
   "benefitsi-menu": { name: "Menü-Agent", workspaceHref: "/partners" },
+  "benefitsi-finance": { name: "Buchhaltung & Steuern", workspaceHref: "/analytics" },
 }
 
 export function agentProfileAnchor(id: string): string | null {
