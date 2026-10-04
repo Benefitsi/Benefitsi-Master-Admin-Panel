@@ -8,7 +8,7 @@ import { corporateStatuses, corporateStatusLabels, type CorporateRequest, type C
 const inputClass = "min-h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 py-2.5 text-sm text-[#061829] outline-none focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
 const initial: CorporateUpdateState = { status: "idle", message: "" }
 
-export function CorporateRequestEditor({ request }: { request: CorporateRequest }) {
+export function CorporateRequestEditor({ request, stale = false, onDraftChange }: { request: CorporateRequest; stale?: boolean; onDraftChange?: (dirty: boolean) => void }) {
   const [status, setStatus] = useState<CorporateStatus>(request.status)
   const [note, setNote] = useState(request.note)
   const [expectedUpdatedAt, setExpectedUpdatedAt] = useState(request.updated_at)
@@ -23,7 +23,7 @@ export function CorporateRequestEditor({ request }: { request: CorporateRequest 
     if (typeof submittedNote === "string") setNote(submittedNote)
     try {
       const result = await updateCorporateRequest(previous, data)
-      if (result.status === "updated" && result.updatedAt) setExpectedUpdatedAt(result.updatedAt)
+      if (result.status === "updated" && result.updatedAt) { setExpectedUpdatedAt(result.updatedAt); onDraftChange?.(false) }
       return result
     } catch {
       return { status: "error", message: "Speichern fehlgeschlagen. Bitte erneut versuchen; Ihre Eingaben bleiben erhalten." }
@@ -39,13 +39,13 @@ export function CorporateRequestEditor({ request }: { request: CorporateRequest 
     if (noteInput) noteInput.value = note
   }, [state, status, note])
   const changedExternally = request.updated_at !== loadedUpdatedAt && request.updated_at !== expectedUpdatedAt
-  const mustRefresh = state.status === "conflict" || state.status === "not_found" || changedExternally
+  const mustRefresh = state.status === "conflict" || state.status === "not_found" || changedExternally || stale
   const count = [...note].length
 
   return (
     <form ref={formRef} action={action} aria-label={`Anfrage von ${request.company_name} bearbeiten`} aria-busy={pending} onSubmit={event => {
       if (submitting.current || mustRefresh) event.preventDefault()
-      else submitting.current = true
+      else { submitting.current = true; onDraftChange?.(true) }
     }} className="space-y-4">
       <input type="hidden" name="requestId" value={request.request_id} />
       <input type="hidden" name="expectedUpdatedAt" value={expectedUpdatedAt} />
@@ -53,13 +53,13 @@ export function CorporateRequestEditor({ request }: { request: CorporateRequest 
         <legend className="mb-3 text-sm font-black">Interne Bearbeitung</legend>
         <label className="grid gap-1.5 text-xs font-bold text-[#526170]">
           Anfragestatus
-          <select name="status" value={status} onChange={event => setStatus(event.target.value as CorporateStatus)} className={inputClass}>
+          <select name="status" value={status} onChange={event => { setStatus(event.target.value as CorporateStatus); onDraftChange?.(event.target.value !== request.status || note !== request.note) }} className={inputClass}>
             {corporateStatuses.map(value => <option key={value} value={value}>{corporateStatusLabels[value]}</option>)}
           </select>
         </label>
         <label className="grid gap-1.5 text-xs font-bold text-[#526170]">
           Interne Notiz
-          <textarea name="note" value={note} onChange={event => setNote(event.target.value)} rows={4} maxLength={4000} className={`${inputClass} resize-y`} aria-describedby={`note-limit-${request.request_id}`} />
+          <textarea name="note" value={note} onChange={event => { setNote(event.target.value); onDraftChange?.(status !== request.status || event.target.value !== request.note) }} rows={4} maxLength={4000} className={`${inputClass} resize-y`} aria-describedby={`note-limit-${request.request_id}`} />
         </label>
         <p id={`note-limit-${request.request_id}`} className={`text-xs ${count > 2000 ? "text-red-700" : "text-[#617080]"}`}>{count} / 2000 Zeichen · Nur für Admins</p>
       </fieldset>

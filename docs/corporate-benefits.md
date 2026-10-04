@@ -147,7 +147,16 @@ seats, one calendar year and the SQL catalog snapshot. The database transitions
 the original request to `proposal`, advances its timestamp and audits creation;
 the action refreshes `/companies` and the new detail route. The list displays
 the updated source status/time. An unsaved inquiry editor retains its draft and
-blocks further writes until reload when its source timestamp changes. Transport failure retains the submitted payload
+blocks further writes until reload when its source timestamp changes. Dirty or
+failed inquiry/setup cards remain in the same client list even when automatic
+refresh removes their source from the selected status filter. A retained card
+explains that absence, keeps its original raw lock and blocks stale inquiry
+writes. Confirmed provisioning identifies the `proposal` transition at creation without
+asserting an unseen current status; an unconfirmed response shows the prior
+known source state and preserves the
+identical setup retry. Unedited cards follow the refreshed filter normally.
+Drafts exist only in the mounted workspace; deliberate full reload or a changed
+authenticated Admin identity discards them. No persistent browser storage is used. Transport failure retains the submitted payload
 and locks those fields for an identical replay. No catalog means no new setup
 or substitute price. Conflict/catalog change asks for deliberate reload.
 

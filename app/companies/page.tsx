@@ -26,7 +26,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
   const adminName = adminSession.profile?.display_name || adminSession.profile?.email || adminSession.user.email || "Admin"
   return (
     <AdminShell adminName={adminName} title="Firmenkonten & Anfragen" subtitle="Corporate Benefits · Jahreskontingente, Teamaufnahme und interne Bearbeitung">
-      <CorporateRequestWorkspace result={result} selectedStatus={status ?? null} companies={companies} catalog={catalog} today={today} latestStart={lastStart.toISOString().slice(0, 10)} />
+      <CorporateRequestWorkspace key={adminSession.user.id} result={result} selectedStatus={status ?? null} companies={companies} catalog={catalog} today={today} latestStart={lastStart.toISOString().slice(0, 10)} />
     </AdminShell>
   )
 }

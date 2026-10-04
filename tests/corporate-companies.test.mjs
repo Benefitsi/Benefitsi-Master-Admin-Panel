@@ -139,10 +139,11 @@ test('the detail page denies non-admins before loading a company even when its o
 test('deployed list uses live session catalog and bounded company pagination independently of inquiries', async () => {
   const db = database([fixture.catalog, { ...fixture.companies, offset: 50, companies: [] }, { requests: [] }])
   const code = loadTypescript('app/companies/page.tsx', {
-    '@/lib/admin': { requireAdmin: async () => ({ supabase: db.supabase, adminSession: { user: { email: 'admin@example.test' } } }) },
+    '@/lib/admin': { requireAdmin: async () => ({ supabase: db.supabase, adminSession: { user: { id: 'synthetic-admin-identity', email: 'admin@example.test' } } }) },
     '@/app/admin-shell': {}, '@/components/corporate/request-workspace': {},
   })
   const result = await code.default({ searchParams: Promise.resolve({ companyOffset: '50', status: 'proposal' }) })
+  assert.equal(result.props.children.key, 'synthetic-admin-identity', 'switching the authenticated Admin must discard the prior in-memory workspace')
   assert.equal(result.props.children.props.companies.offset, 50)
   assert.equal(result.props.children.props.catalog.version, '2026-10-04.2')
   assert.deepEqual(db.calls.map(c => c.name), ['get_corporate_benefits_catalog', 'admin_list_corporate_companies', 'admin_list_corporate_benefits_requests'])
@@ -151,7 +152,7 @@ test('deployed list uses live session catalog and bounded company pagination ind
 test('detail route transmits UUID and page token only through the guarded session client', async () => {
   const db = database([fixture.next_page])
   const code = loadTypescript('app/companies/[id]/page.tsx', {
-    '@/lib/admin': { requireAdmin: async () => ({ supabase: db.supabase, adminSession: { user: { email: 'admin@example.test' } } }) },
+    '@/lib/admin': { requireAdmin: async () => ({ supabase: db.supabase, adminSession: { user: { id: 'synthetic-admin-identity', email: 'admin@example.test' } } }) },
     '@/app/admin-shell': {}, '@/components/corporate/company-detail': {}, '@/components/corporate/company-invitation': {},
   })
   await code.default({ params: Promise.resolve({ id }), searchParams: Promise.resolve({ offset: '50' }) })

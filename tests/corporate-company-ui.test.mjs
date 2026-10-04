@@ -174,3 +174,66 @@ test('a source inquiry refreshed by company creation retains a failed note draft
     assert.match(current.textContent, /neu laden/)
   })
 })
+for (const filter of ['new', 'contacted', 'closed']) test(`failed note survives provisioning when the refreshed ${filter} filter omits the source`, async () => {
+  let finish, noteSaves = 0, creations = 0
+  const { CorporateRequestWorkspace: Workspace } = loadTypescript('components/corporate/request-workspace.tsx', {
+    '@/app/companies/actions': {
+      updateCorporateRequest: async () => { noteSaves++; return { status: 'error', message: 'Bitte erneut versuchen' } },
+      createCorporateCompany: async () => { creations++; return await new Promise(resolve => { finish = resolve }) },
+    },
+  }, { FormData })
+  const row = { ...request, contact_name: 'Example Contact', email: 'contact@example.test', city: 'Annweiler', interests: [], catalog_version: null, unit_amount_cents: null, total_amount_cents: null, status: filter, note: '', created_at: request.updated_at }
+  await withDom(async (root, window) => {
+    const props = { selectedStatus: filter, catalog: fixture.catalog, today: '2026-10-04', latestStart: '2027-10-04' }
+    await act(async () => root.render(React.createElement(Workspace, { ...props, result: { status: 'loaded', requests: [row] } })))
+    const editor = document.querySelector('form[aria-label$="bearbeiten"]')
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set.call(editor.elements.note, 'Nicht gespeicherter Rückruf')
+      editor.elements.note.dispatchEvent(new window.Event('input', { bubbles: true }))
+    })
+    await act(async () => editor.requestSubmit())
+    await act(async () => document.querySelector('form[aria-label^="Firmenkonto für"]').requestSubmit())
+    assert.equal(creations, 1)
+    // The action's RSC refresh arrives before its confirmed result; the source
+    // has transitioned to proposal and is genuinely absent from this filter.
+    await act(async () => root.render(React.createElement(Workspace, { ...props, result: { status: 'loaded', requests: [] } })))
+    const retained = document.querySelector('form[aria-label$="bearbeiten"]')
+    assert.ok(retained, 'automatic filter refresh must retain the failed source editor')
+    assert.equal(retained.elements.note.value, 'Nicht gespeicherter Rückruf')
+    assert.equal(retained.elements.expectedUpdatedAt.value, request.updated_at)
+    assert.equal(retained.querySelector('button[type="submit"]').disabled, true)
+    await act(async () => finish({ status: 'created', companyId: fixture.detail.company.company_id, message: 'Firmenkonto vorbereitet' }))
+    assert.match(document.body.textContent, /nicht mehr.*(?:Filter|Filterliste)/i)
+    assert.match(document.body.textContent, /Anfragestatus.*Angebot in Abstimmung/i)
+    assert.match(document.body.textContent, /Entwurf.*neu laden|neu laden.*Entwurf/i)
+    assert.ok(document.querySelector(`a[href="/companies/${fixture.detail.company.company_id}"]`))
+    await act(async () => retained.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })))
+    assert.equal(noteSaves, 1, 'stale retained draft must not write')
+    // A deliberate full reload starts a fresh workspace and drops the in-memory draft.
+    await act(async () => root.render(React.createElement(Workspace, { ...props, key: 'deliberate-reload', result: { status: 'loaded', requests: [] } })))
+    assert.equal(document.querySelector('form[aria-label$="bearbeiten"]'), null)
+  })
+})
+test('filtered refresh retains only edited or failed cards and a lost setup response remains retryable', async () => {
+  const calls = []
+  const { CorporateRequestWorkspace: Workspace } = loadTypescript('components/corporate/request-workspace.tsx', {
+    '@/app/companies/actions': { createCorporateCompany: async data => { calls.push(Object.fromEntries(data)); return calls.length === 1 ? { status: 'error', message: 'Antwort nicht bestätigt' } : { status: 'created', companyId: fixture.detail.company.company_id, message: 'Vorbereitet' } } },
+  }, { FormData })
+  const row = { ...request, contact_name: 'Example Contact', email: 'contact@example.test', city: 'Annweiler', interests: [], catalog_version: null, unit_amount_cents: null, total_amount_cents: null, status: 'new', note: '', created_at: request.updated_at }
+  const clean = { ...row, request_id: fixture.companies.companies[1].source_request_id, company_name: 'Unbearbeitete Firma' }
+  await withDom(async root => {
+    const props = { selectedStatus: 'new', catalog: fixture.catalog, today: '2026-10-04', latestStart: '2027-10-04' }
+    await act(async () => root.render(React.createElement(Workspace, { ...props, result: { status: 'loaded', requests: [row, clean] } })))
+    await act(async () => document.querySelector('form[aria-label^="Firmenkonto für"]').requestSubmit())
+    await act(async () => root.render(React.createElement(Workspace, { ...props, result: { status: 'loaded', requests: [] } })))
+    assert.equal(document.querySelectorAll('article').length, 1)
+    assert.doesNotMatch(document.body.textContent, /Unbearbeitete Firma/)
+    const retainedSetup = document.querySelector('form[aria-label^="Firmenkonto für"]')
+    assert.ok(retainedSetup); assert.equal(retainedSetup.querySelector('button[type="submit"]').disabled, false)
+    assert.equal(document.querySelector('form[aria-label$="bearbeiten"]').querySelector('button[type="submit"]').disabled, true)
+    await act(async () => retainedSetup.requestSubmit())
+    assert.deepEqual(calls[1], calls[0])
+    assert.equal(document.querySelectorAll('article').length, 0, 'confirmed setup with no unsaved inquiry draft follows the fresh filter')
+    assert.equal(window.localStorage.length, 0); assert.equal(window.sessionStorage.length, 0)
+  })
+})
