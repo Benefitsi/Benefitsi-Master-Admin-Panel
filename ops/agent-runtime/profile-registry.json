@@ -18,6 +18,14 @@
       ]
     },
     {
+      "id": "benefitsi-finance",
+      "scope": "benefitsi",
+      "purpose": "Bereitet Buchhaltung und Steuern aus freigegebenen Belegen vor, prüft Lücken und Abgleiche und dokumentiert offene Fachprüfungen.",
+      "citySlug": null,
+      "hermesJobIds": [],
+      "launchdSchedules": []
+    },
+    {
       "id": "benefitsi-content",
       "scope": "benefitsi",
       "purpose": "Entwirft quellengestützte Benefitsi-Inhalte ohne Veröffentlichungsrecht.",
