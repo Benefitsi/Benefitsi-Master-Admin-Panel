@@ -92,15 +92,6 @@ test("generic city publication maps only fixed tables and preserves the strict e
   assert.doesNotMatch(sql, /p_content_type|p_table/)
 })
 
-test("admin navigation exposes the global city review", async () => {
-  const shell = await readFile(
-    new URL("../app/admin-shell.tsx", import.meta.url),
-    "utf8",
-  )
-  assert.match(shell, /href="\/city-operations"/)
-  assert.match(shell, /label="Städte-Review"/)
-})
-
 test("central city editor keeps edits behind review and validates relations", async () => {
   const source = await readFile(
     new URL(

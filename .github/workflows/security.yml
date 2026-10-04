@@ -104,9 +104,11 @@ jobs:
           tests/commerce-session-boundary.test.mjs
           tests/portal-routing.test.mjs
 
-      - name: Dashboard streaming and source boundaries
+      - name: Admin navigation, dashboard streaming and source boundaries
         run: >-
           node --import tsx --test --test-concurrency=2
+          tests/admin-navigation.test.mjs
+          tests/admin-navigation-ui.test.mjs
           tests/ecosystem-streaming.test.mjs
           tests/admin-language-hydration.test.mjs
           tests/ecosystem-overview.test.mjs
