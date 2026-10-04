@@ -124,5 +124,8 @@ jobs:
       - name: Type-check
         run: npm exec -- tsc --noEmit
 
+      - name: City memory administration and publication regression tests
+        run: node --import tsx --test --test-concurrency=2 tests/city-memory-stamps.test.mjs tests/community-public-revalidation.test.mjs
+
       - name: Build
         run: npm run build
