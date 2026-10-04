@@ -21,7 +21,7 @@ type MediaTarget = {
 }
 
 const targets = {
-  logo: { label: "Logo", minWidth: 84, minHeight: 84 },
+  logo: { label: "Logo", minWidth: 190, minHeight: 190 },
   feature: { label: "Feature image", minWidth: 1440, minHeight: 940 },
   discover: { label: "Discovery image", minWidth: 768, minHeight: 840 },
   cover: { label: "Cover", minWidth: 1200, minHeight: 1200 },
@@ -47,15 +47,69 @@ type Candidate = {
   target: MediaTarget
 }
 
-export function inspectPartnerMediaQuality(
-  partner: PartnerWithDeals,
-): PartnerMediaQualityAudit {
+type Dimensions = { width: number; height: number }
+const measuredDimensions = new Map<string, Dimensions>()
+const pendingMeasurements = new Map<string, Promise<void>>()
+const measurementListeners = new Set<() => void>()
+let measurementRevision = 0
+export const getMediaMeasurementRevision = () => measurementRevision
+export const getServerMediaMeasurementRevision = () => 0
+
+export function subscribeMediaMeasurements(listener: () => void) {
+  measurementListeners.add(listener)
+  return () => { measurementListeners.delete(listener) }
+}
+
+export function recordMediaDimensions(url: string, dimensions: Dimensions) {
+  if (!dimensions.width || !dimensions.height) return
+  const previous = measuredDimensions.get(url)
+  if (previous?.width === dimensions.width && previous.height === dimensions.height) return
+  measuredDimensions.set(url, dimensions)
+  measurementRevision += 1
+  measurementListeners.forEach(listener => listener())
+}
+
+// Four workers prevent a large partner list from flooding storage with requests.
+export async function measurePartnerMedia(partners: PartnerWithDeals[], cancelled: () => boolean) {
+  const urls = [...new Set(partners.flatMap(partner => collectCandidates(partner).map(candidate => candidate.url)))]
+  let index = 0
+  await Promise.all(Array.from({ length: Math.min(4, urls.length) }, async () => {
+    while (index < urls.length && !cancelled()) {
+      const url = urls[index++]
+      if (measuredDimensions.has(url) || /\.svg(?:[?#]|$)/i.test(url)) continue
+      let pending = pendingMeasurements.get(url)
+      if (!pending) {
+        pending = new Promise<void>(resolve => {
+          const image = new Image()
+          const finish = () => {
+            clearTimeout(timeout)
+            image.onload = null
+            image.onerror = null
+            resolve()
+          }
+          const timeout = setTimeout(finish, 15000)
+          image.onload = () => {
+            recordMediaDimensions(url, { width: image.naturalWidth, height: image.naturalHeight })
+            finish()
+          }
+          image.onerror = finish
+          image.src = url
+        }).finally(() => { pendingMeasurements.delete(url) })
+        pendingMeasurements.set(url, pending)
+      }
+      await pending
+    }
+  }))
+}
+
+function collectCandidates(partner: PartnerWithDeals): Candidate[] {
   const candidates = new Map<string, Candidate>()
   const add = (url: unknown, target: MediaTarget) => {
     if (typeof url !== "string" || !url.trim()) return
     const normalized = url.trim()
-    if (!candidates.has(normalized)) {
-      candidates.set(normalized, { url: normalized, target })
+    const key = `${target.label}:${normalized}`
+    if (!candidates.has(key)) {
+      candidates.set(key, { url: normalized, target })
     }
   }
 
@@ -115,11 +169,16 @@ export function inspectPartnerMediaQuality(
     }
   }
 
+  return [...candidates.values()]
+}
+
+export function inspectPartnerMediaQuality(partner: PartnerWithDeals, useMeasured = false): PartnerMediaQualityAudit {
   const lowResolution: PartnerMediaQualityIssue[] = []
   const unverified: PartnerMediaQualityAudit["unverified"] = []
 
-  for (const candidate of candidates.values()) {
-    const dimensions = dimensionsFromUrl(candidate.url)
+  for (const candidate of collectCandidates(partner)) {
+    if (/\.svg(?:[?#]|$)/i.test(candidate.url)) continue
+    const dimensions = (useMeasured ? measuredDimensions.get(candidate.url) : null) ?? dimensionsFromUrl(candidate.url)
     if (!dimensions) {
       unverified.push({ label: candidate.target.label, url: candidate.url })
       continue
@@ -167,7 +226,7 @@ function dimensionsFromUrl(value: string) {
 export function inspectMediaDimensions(
   label: string,
   url: string,
-  dimensions: { width: number; height: number } | null = dimensionsFromUrl(url),
+  dimensions: Dimensions | null = dimensionsFromUrl(url),
 ): PartnerMediaQualityIssue | null {
   // Vector artwork remains sharp regardless of its intrinsic pixel dimensions.
   if (/\.svg(?:[?#]|$)/i.test(url)) return null

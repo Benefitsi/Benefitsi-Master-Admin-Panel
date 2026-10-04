@@ -85,3 +85,34 @@ textarea {
     animation: none !important;
   }
 }
+
+/* Shared partner settings: admin editing, partner portal and creation. */
+.partner-settings-form { container-type: inline-size; color: #172b3e; }
+.partner-settings-form .partner-settings-section { border-color: #dfe5eb; border-radius: 14px; box-shadow: none; }
+.partner-settings-form .partner-settings-section-heading { min-height: 48px; padding-inline: 18px; }
+.partner-settings-form .partner-settings-section-heading > span:first-child { color: #10263b; font-weight: 700; }
+.partner-settings-form .partner-settings-section-content { background: #fff; border-top-color: #edf0f3; padding: 18px; }
+.partner-settings-form :where(input, textarea, select) { caret-color: #118cff; }
+.partner-settings-form :where(input, textarea, select)::placeholder { color: #667085; }
+.partner-settings-form ::selection { background: #d9ecff; color: #061829; }
+.partner-settings-form :where(select, textarea, label > div:has(> input:not([type=checkbox]))) { border-color: #dfe5eb; border-radius: 10px; }
+.partner-settings-form select { padding-right: 30px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%23667085' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+.partner-settings-form :where(input, textarea, select):disabled { cursor: wait; opacity: .65; }
+.partner-profile-grid { display: grid; gap: 22px; }
+.partner-profile-contact { border-top: 1px solid #edf0f3; padding-top: 18px; }
+.partner-profile-core :where(label, .partner-category-field) { font-size: 13px; }
+.partner-profile-contact :where(label) { font-size: 13px; }
+.partner-profile-contact label:has(input[name=coordinates]) { grid-column: 1 / -1; }
+.partner-profile-grid [name=description] { min-height: 86px; }
+.partner-profile-grid [name=address] { min-height: 68px; }
+.partner-category-popover { box-shadow: 0 12px 30px rgb(6 24 41 / .12); }
+.partner-category-popover > div:nth-child(2) { scrollbar-width: thin; scrollbar-color: #c5d1dd transparent; }
+@container (min-width: 720px) {
+  .partner-profile-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 22px; }
+  .partner-profile-core > div:first-child, .partner-profile-contact > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .partner-profile-contact { border-top: 0; border-left: 1px solid #edf0f3; padding-top: 0; padding-left: 22px; }
+}
+@media (max-width: 600px) {
+  .partner-settings-form .partner-settings-section-heading { padding-inline: 14px; }
+  .partner-settings-form .partner-settings-section-content { padding: 14px; }
+}

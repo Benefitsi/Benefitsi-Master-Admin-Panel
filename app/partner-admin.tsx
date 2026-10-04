@@ -15,6 +15,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   useTransition,
   type RefObject,
   type ReactNode,
@@ -120,7 +121,7 @@ import { LoadingSpinner } from "@/components/loading-ui"
 import { MenuAiImportDialog } from "@/components/menu-ai-import-dialog"
 import { PartnerPlanPanel } from "@/components/partner/partner-plan-panel"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
-import { inspectMediaDimensions, inspectPartnerMediaQuality } from "@/lib/partner-media-quality"
+import { inspectMediaDimensions, inspectPartnerMediaQuality, measurePartnerMedia, recordMediaDimensions, subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision } from "@/lib/partner-media-quality"
 
 const initialState: PartnerActionState = {
   ok: false,
@@ -536,7 +537,7 @@ const createPartnerTabCopy: Record<
 }
 
 export function PartnerWorkspace({
-  partners,
+  partners: initialPartners,
   cities,
   owners,
   initialMode = "view",
@@ -547,6 +548,29 @@ export function PartnerWorkspace({
   micrositeEditingEnabled = !portalMode,
   adminAccess = !portalMode,
 }: PartnerWorkspaceProps) {
+  const [savedPartners, setSavedPartners] = useState<Record<string, Partial<PartnerWithDeals> & { id: string }>>({})
+  const mediaRevision = useSyncExternalStore(subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision)
+  const partners = useMemo(() => {
+    const records = new Map(initialPartners.map(partner => [partner.id, partner]))
+    for (const patch of Object.values(savedPartners)) {
+      const previous = records.get(patch.id)
+      if (previous?.updated_at && patch.updated_at && previous.updated_at > patch.updated_at) continue
+      records.set(patch.id, {
+        deals: [], holidays: [], socials: [], reward_milestones: [], staff: [], opening_hours: [],
+        menus: [], stamp_progress: [], visits: [], fraud_events: [], microsite: null,
+        ...previous, ...patch,
+        city_name: patch.city_id !== undefined ? cities.find(city => city.id === patch.city_id)?.name ?? null : previous?.city_name,
+        owner_email: owners.find(owner => (owner.id ?? owner.uid) === patch.owner_id)?.email ?? previous?.owner_email,
+      } as PartnerWithDeals)
+    }
+    return Array.from(records.values())
+  }, [initialPartners, savedPartners, cities, owners])
+  useEffect(() => {
+    let cancelled = false
+    void measurePartnerMedia(partners, () => cancelled)
+    return () => { cancelled = true }
+  }, [partners])
+
   const [query, setQuery] = useState("")
   const [partnerFilter, setPartnerFilter] = useState<
     "all" | "active" | "featured"
@@ -566,6 +590,21 @@ export function PartnerWorkspace({
     tab: isPartnerSettingsTab(initialSettingsTab) ? initialSettingsTab : "details",
     view: initialView,
   })
+  useEffect(() => {
+    const saved = (event: Event) => {
+      const { savedPartner, created } = (event as CustomEvent<PartnerActionState>).detail
+      if (!savedPartner?.id) return
+      setSavedPartners(current => ({ ...current, [savedPartner.id]: { ...current[savedPartner.id], ...savedPartner } }))
+      if (created) {
+        setSelectedId(savedPartner.id)
+        setMode("view")
+        rememberWorkspaceLocation({ mode: null, partner: savedPartner.id })
+      }
+    }
+    window.addEventListener("benefitsi:partner-saved", saved)
+    return () => window.removeEventListener("benefitsi:partner-saved", saved)
+  }, [])
+
   const startCreatePartner = useCallback(() => {
     if (portalMode) return
     setSelectedId("")
@@ -618,7 +657,7 @@ export function PartnerWorkspace({
           : statusFilter === "inactive"
             ? !isPartnerActive(partner)
             : statusFilter === "low_quality_images"
-              ? inspectPartnerMediaQuality(partner).lowResolution.length > 0
+              ? inspectPartnerMediaQuality(partner, mediaRevision > 0).lowResolution.length > 0
               : partner.status === statusFilter)
 
       return matchesQuery && matchesStatus
@@ -640,7 +679,7 @@ export function PartnerWorkspace({
       }
       return compareText(left.name, right.name)
     })
-  }, [partnerFilter, partnerSort, partners, query, statusFilter])
+  }, [partnerFilter, partnerSort, partners, query, statusFilter, mediaRevision])
 
   const selectedPartner =
     filteredPartners.find((partner) => partner.id === selectedId) ??
@@ -814,7 +853,7 @@ export function PartnerWorkspace({
             </EditorShell>
           ) : selectedPartner ? (
             <PartnerDetail
-                key={`${selectedPartner.id ?? selectedPartner.name ?? "partner"}-${selectedPartner.updated_at ?? ""}`}
+                key={selectedPartner.id ?? selectedPartner.name ?? "partner"}
                 cities={cities}
                 owners={owners}
                 onDeleted={startCreatePartner}
@@ -917,7 +956,8 @@ function PartnerListButton({
   selected: boolean
   onSelect: () => void
 }) {
-  const mediaQuality = inspectPartnerMediaQuality(partner)
+  const mediaRevision = useSyncExternalStore(subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision)
+  const mediaQuality = inspectPartnerMediaQuality(partner, mediaRevision > 0)
   const lowResolutionLabels = mediaQuality.lowResolution.map(
     (image) =>
       `${image.label} ${image.width}×${image.height} (recommended ${image.targetWidth}×${image.targetHeight})`,
@@ -1916,9 +1956,9 @@ function PartnerForm({
 }) {
   const [state, setState] = useState(initialState)
   const [isSaving, setIsSaving] = useState(false)
+  const saveInFlightRef = useRef(false)
   const [descriptionState, setDescriptionState] = useState(initialState)
   const [isGeneratingDescription, startGeneratingDescription] = useTransition()
-  const router = useRouter()
   const [descriptionDraft, setDescriptionDraft] = useState(
     () => partner?.description ?? "",
   )
@@ -2009,8 +2049,9 @@ function PartnerForm({
   const activeCreateTabCopy = createPartnerTabCopy[createTab]
   const requiredSectionMarker: boolean | "subtle" = "subtle"
 
-  useEffect(() => () => {
-    mountedRef.current = false
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
   }, [])
 
   const refreshDirtyState = useCallback(() => {
@@ -2061,7 +2102,8 @@ function PartnerForm({
   }, [mode, partner?.id, refreshDirtyState])
 
   const submitPartnerInBackground = useCallback((formData: FormData) => {
-    if (isSaving) return
+    if (saveInFlightRef.current) return
+    saveInFlightRef.current = true
 
     setState(initialState)
     setIsSaving(true)
@@ -2077,9 +2119,15 @@ function PartnerForm({
         dispatchActionToast(result)
         if (result.ok) {
           initialFormSignatureRef.current = formDataSignature(formData)
-          setIsDirty(false)
-          router.refresh()
+          window.dispatchEvent(new CustomEvent("benefitsi:partner-saved", { detail: result }))
+          window.requestAnimationFrame(() => {
+            if (mountedRef.current && formRef.current) {
+              initialFormSignatureRef.current = formDataSignature(new FormData(formRef.current))
+              setIsDirty(false)
+            }
+          })
         }
+        saveInFlightRef.current = false
         if (!mountedRef.current) return
         setState(result)
         setIsSaving(false)
@@ -2092,12 +2140,13 @@ function PartnerForm({
             : "Unable to save the partner.",
         } satisfies PartnerActionState
         dispatchActionToast(result)
+        saveInFlightRef.current = false
         if (!mountedRef.current) return
         setState(result)
         setIsSaving(false)
       },
     )
-  }, [isSaving, mode, router])
+  }, [mode])
   const handlePartnerTypeChange = (nextType: string) => {
     setSelectedPartnerType(nextType)
     setSelectedCategories((current) =>
@@ -2173,7 +2222,7 @@ function PartnerForm({
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [mode, router, state])
+  }, [mode, state])
 
   const requestDescription = () => {
     const form = formRef.current
@@ -2216,7 +2265,8 @@ function PartnerForm({
       id={formId}
       key={formVersion}
       ref={formRef}
-      className="space-y-3"
+      className="partner-settings-form space-y-4"
+      data-partner-save-form
       noValidate
       onInput={() => {
         if (validationMessage) setValidationMessage("")
@@ -2308,6 +2358,7 @@ function PartnerForm({
         submitPartnerInBackground(new FormData(form))
       }}
     >
+      <fieldset disabled={isSaving} className="min-w-0 space-y-4">
       <input type="hidden" name="id" value={partner?.id ?? ""} />
       <input type="hidden" name="existing_slug" value={partner?.slug ?? ""} />
   <input
@@ -2479,6 +2530,8 @@ function PartnerForm({
       ) : null}
 
       <FormSection title="Profile" collapsible={false} required={requiredSectionMarker}>
+        <div className="partner-profile-grid">
+        <div className="partner-profile-core space-y-4">
         <FieldGrid>
           <TextField
             label="Partner name"
@@ -2578,7 +2631,9 @@ function PartnerForm({
           )}
           required
         />
-        <div className="border-t border-zinc-200 pt-3">
+        </div>
+        <div className="partner-profile-contact space-y-4">
+        <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-zinc-800">Contact and location</p>
         </div>
         <FieldGrid>
@@ -2612,6 +2667,8 @@ function PartnerForm({
           defaultValue={partner?.address}
           required
         />
+        </div>
+        </div>
       </FormSection>
 
       <FormSection
@@ -2974,6 +3031,7 @@ function PartnerForm({
         </div>
       ) : null}
       </div>
+      </fieldset>
     </form>
   )
 }
@@ -10857,7 +10915,7 @@ function FormSection({
 
   return (
     <div
-      className={`${open ? "overflow-visible" : "overflow-hidden"} rounded-xl border bg-white text-sm transition-shadow ${
+      className={`partner-settings-section ${open ? "overflow-visible" : "overflow-hidden"} rounded-xl border bg-white text-sm transition-shadow ${
         open ? "border-zinc-300 shadow-sm" : "border-zinc-200"
       }`}
     >
@@ -10867,7 +10925,7 @@ function FormSection({
           open={open}
           onToggle={(event) => setOpen(event.currentTarget.open)}
         >
-          <summary className="cursor-pointer list-none px-3 outline-none transition hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-200 [&::-webkit-details-marker]:hidden sm:px-4">
+          <summary className="partner-settings-section-heading cursor-pointer list-none px-3 outline-none transition hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-200 [&::-webkit-details-marker]:hidden sm:px-4">
             <span className={`flex min-w-0 flex-wrap items-center gap-2 ${compact ? "min-h-10" : "min-h-11"}`}>
               <span className="min-w-0 break-words text-sm font-semibold tracking-normal text-zinc-900">
                 {title}
@@ -10890,7 +10948,7 @@ function FormSection({
             </span>
           </summary>
           <div
-            className={`border-t border-zinc-200 bg-zinc-50/70 ${
+            className={`partner-settings-section-content border-t border-zinc-200 bg-zinc-50/70 ${
               compact ? "space-y-2.5 p-3" : "space-y-3 p-3 sm:p-4"
             }`}
           >
@@ -10899,14 +10957,14 @@ function FormSection({
         </details>
       ) : (
         <>
-          <div className={`flex min-w-0 flex-wrap items-center gap-2 px-3 sm:px-4 ${compact ? "min-h-10" : "min-h-11"}`}>
+          <div className={`partner-settings-section-heading flex min-w-0 flex-wrap items-center gap-2 px-3 sm:px-4 ${compact ? "min-h-10" : "min-h-11"}`}>
             <span className="min-w-0 break-words text-sm font-semibold text-zinc-900">
               {title}
             </span>
             {sectionStatus ? <SectionStatusList status={sectionStatus} /> : null}
           </div>
           <div
-            className={`border-t border-zinc-200 bg-zinc-50/70 ${
+            className={`partner-settings-section-content border-t border-zinc-200 bg-zinc-50/70 ${
               compact ? "space-y-2.5 p-3" : "space-y-3 p-3 sm:p-4"
             }`}
           >
@@ -11281,6 +11339,15 @@ function MultiSelectField({
   )
   const selectedValues = values ?? uncontrolledSelectedValues
   const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState("")
+  const searchRef = useRef<HTMLInputElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const popupId = useId()
+  const filteredOptions = options.filter(option => option.label.toLocaleLowerCase().includes(search.toLocaleLowerCase()))
+  const updateSelection = (next: string[]) => {
+    if (values === undefined) setUncontrolledSelectedValues(next)
+    onChange?.(next)
+  }
   const dropdownRef = useRef<HTMLDivElement>(null)
   const labelsByValue = new Map(options.map((option) => [option.value, option.label]))
   const selectedLabels = selectedValues.length
@@ -11294,6 +11361,7 @@ function MultiSelectField({
       return
     }
 
+    searchRef.current?.focus()
     const closeOnOutsideClick = (event: PointerEvent) => {
       if (
         dropdownRef.current &&
@@ -11304,80 +11372,78 @@ function MultiSelectField({
     }
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        event.preventDefault()
         setOpen(false)
+        triggerRef.current?.focus()
       }
+    }
+    const closeOnFocusExit = (event: FocusEvent) => {
+      if (!dropdownRef.current?.contains(event.target as Node)) setOpen(false)
     }
 
     document.addEventListener("pointerdown", closeOnOutsideClick)
     document.addEventListener("keydown", closeOnEscape)
+    document.addEventListener("focusin", closeOnFocusExit)
 
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsideClick)
       document.removeEventListener("keydown", closeOnEscape)
+      document.removeEventListener("focusin", closeOnFocusExit)
     }
   }, [open])
 
   return (
-    <div className="min-w-0 space-y-1.5 text-sm">
+    <div className="partner-category-field min-w-0 space-y-2 text-sm">
       <FieldLabel label={label} required={required} />
       {selectedValues.map((value) => (
         <input key={value} type="hidden" name={name} value={value} />
       ))}
       <div ref={dropdownRef} className="relative">
         <button
+          ref={triggerRef}
           type="button"
+          aria-label={`${label}: ${selectedLabels}`}
           aria-expanded={open}
-          aria-haspopup="listbox"
-          className="flex min-h-9 cursor-pointer list-none items-center rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+          aria-controls={open ? popupId : undefined}
+          aria-haspopup="dialog"
+          className="partner-category-trigger flex min-h-10 w-full items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-3 text-left text-sm text-zinc-800 outline-none transition hover:border-zinc-400 focus-visible:border-teal-600 focus-visible:ring-2 focus-visible:ring-teal-100"
           onClick={(event) => {
             event.preventDefault()
             event.stopPropagation()
-            setOpen((value) => !value)
+            setSearch("")
+            setOpen(value => !value)
           }}
         >
-          <span className="line-clamp-2">{selectedLabels}</span>
+          <span className="truncate">{selectedValues.length ? `${selectedValues.length} selected` : "Choose categories"}</span>
+          <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className={`size-4 shrink-0 text-zinc-500 transition ${open ? "rotate-180" : ""}`}><path d="m5 7.5 5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
         {open ? (
-          <div
-            role="listbox"
-            aria-label={label}
-            className="absolute z-20 mt-2 grid max-h-72 w-full gap-1 overflow-y-auto rounded-md border border-zinc-200 bg-white p-2 shadow-lg"
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-          {options.map((option) => {
-            const checked = selectedValues.includes(option.value)
-
-            return (
-              <label
-                key={option.value}
-                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
-              >
-                <input
-                  type="checkbox"
-                  value={option.value}
-                  checked={checked}
-                  onChange={(event) => {
-                    const next = event.target.checked
-                      ? selectedValues.includes(option.value)
-                        ? selectedValues
-                        : [...selectedValues, option.value]
-                      : selectedValues.filter((value) => value !== option.value)
-
-                    if (values === undefined) {
-                      setUncontrolledSelectedValues(next)
-                    }
-
-                    onChange?.(next)
-                  }}
-                  className="size-4 rounded border-zinc-300 accent-teal-700"
-                />
-                {option.label}
-              </label>
-            )
-          })}
+          <div id={popupId} role="dialog" aria-label={label} className="partner-category-popover absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg" onPointerDown={event => event.stopPropagation()}>
+            <div className="border-b border-zinc-100 p-2.5">
+              <input ref={searchRef} type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search categories" aria-label="Search categories" className="h-9 w-full rounded-lg border-0 bg-zinc-100 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-teal-200" />
+            </div>
+            <div className="max-h-56 overflow-y-auto p-1.5">
+              {filteredOptions.map(option => {
+                const checked = selectedValues.includes(option.value)
+                return (
+                  <label key={option.value} className={`flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${checked ? "bg-teal-50 font-medium text-teal-900" : "text-zinc-700 hover:bg-zinc-50"}`}>
+                    <input type="checkbox" value={option.value} checked={checked} onChange={event => updateSelection(event.target.checked ? [...selectedValues, option.value] : selectedValues.filter(value => value !== option.value))} className="size-4 shrink-0 rounded border-zinc-300 accent-teal-700" />
+                    <span>{option.label}</span>
+                  </label>
+                )
+              })}
+              {!filteredOptions.length ? <p className="p-3 text-sm text-zinc-500">No matching categories.</p> : null}
+            </div>
+            <div className="flex items-center justify-end border-t border-zinc-100 px-3 py-2"><button type="button" className="rounded-md px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-teal-600" onClick={() => { setOpen(false); triggerRef.current?.focus() }}>Done</button></div>
           </div>
         ) : null}
       </div>
+      {selectedValues.length ? <div className="flex flex-wrap gap-1.5">
+        {selectedValues.map(value => <span key={value} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-teal-100 bg-teal-50 pl-2.5 pr-1 py-1 text-xs font-medium text-teal-900">
+          <span className="truncate">{labelsByValue.get(value) ?? value}</span>
+          <button type="button" aria-label={`Remove ${labelsByValue.get(value) ?? value}`} onClick={() => updateSelection(selectedValues.filter(item => item !== value))} className="grid size-6 shrink-0 place-items-center rounded-md hover:bg-teal-100 focus-visible:outline-2 focus-visible:outline-teal-600"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className="size-3"><path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></button>
+        </span>)}
+      </div> : null}
       {hint ? <span className="block text-xs text-zinc-500">{hint}</span> : null}
     </div>
   )
@@ -12243,6 +12309,15 @@ function ImagePreview({
   maxWidth?: number
 }) {
   const [measured, setMeasured] = useState<{ url: string; width: number; height: number } | null>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
+  useEffect(() => {
+    const image = imageRef.current
+    if (src && image?.complete && image.naturalWidth && !image.dataset.fallbackApplied) {
+      const dimensions = { width: image.naturalWidth, height: image.naturalHeight }
+      setMeasured({ url: src, ...dimensions })
+      recordMediaDimensions(src, dimensions)
+    }
+  }, [src])
   const issue = src
     ? inspectMediaDimensions(spec.label, src, measured?.url === src ? measured : undefined)
     : null
@@ -12259,7 +12334,7 @@ function ImagePreview({
           onActivate()
         }
       }}
-      className={`relative overflow-hidden ${spec.label === "Logo" ? "rounded-full" : "rounded-md"} border ${
+      className={`relative ${spec.label === "Logo" ? "rounded-full" : "rounded-md"} border ${
         issue ? "border-rose-300 bg-white ring-1 ring-rose-100" : selected ? "border-teal-200 bg-white" : "border-zinc-200 bg-white"
       } ${onActivate ? "cursor-pointer outline-none transition hover:border-teal-400 hover:ring-2 hover:ring-teal-100 focus-visible:ring-2 focus-visible:ring-teal-300" : ""}`}
       style={{
@@ -12273,12 +12348,15 @@ function ImagePreview({
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        key={src}
+        ref={imageRef}
         alt={alt}
         src={src ?? uploadPlaceholderSrc}
         onLoad={(event) => {
           const image = event.currentTarget
           if (src && !image.dataset.fallbackApplied) {
             setMeasured({ url: src, width: image.naturalWidth, height: image.naturalHeight })
+            recordMediaDimensions(src, { width: image.naturalWidth, height: image.naturalHeight })
           }
         }}
         onError={(event) => {
@@ -12289,7 +12367,7 @@ function ImagePreview({
           event.currentTarget.dataset.fallbackApplied = "true"
           event.currentTarget.src = uploadPlaceholderSrc
         }}
-        className={`size-full ${
+        className={`absolute inset-0 size-full ${spec.label === "Logo" ? "rounded-full" : "rounded-md"} ${
           src
             ? spec.previewFit === "cover"
               ? "object-cover"
@@ -12298,7 +12376,7 @@ function ImagePreview({
         }`}
       />
       {issue ? (
-        <span className="absolute bottom-2 left-2 grid size-7 place-items-center rounded-full bg-white/95 shadow-sm">
+        <span tabIndex={0} title={`${alt}: low resolution (${issue.width}×${issue.height}). Recommended minimum: ${issue.targetWidth}×${issue.targetHeight}px.`} className="absolute -bottom-1 -right-1 z-10 grid size-7 place-items-center rounded-full border border-rose-100 bg-white shadow-sm">
           <MediaQualityIcon description={`${alt}: low resolution (${issue.width}×${issue.height}). Recommended minimum: ${issue.targetWidth}×${issue.targetHeight}px. Replace with a larger original image.`} />
         </span>
       ) : null}
@@ -12409,13 +12487,6 @@ async function resizeImageFile(
     throw new Error("Image resizing is not supported in this browser.")
   }
 
-  canvas.width = spec.width
-  canvas.height = spec.height
-  if (backgroundColor) {
-    context.fillStyle = backgroundColor
-    context.fillRect(0, 0, spec.width, spec.height)
-  }
-
   const sourceRatio = sourceWidth / sourceHeight
   const targetRatio = spec.width / spec.height
   let drawWidth = sourceWidth
@@ -12433,6 +12504,14 @@ async function resizeImageFile(
 
   drawWidth /= crop.zoom
   drawHeight /= crop.zoom
+  // Preserve the real cropped resolution instead of hiding small originals by upscaling.
+  const outputScale = /\.svg$/i.test(file.name) ? 1 : Math.min(1, drawWidth / spec.width, drawHeight / spec.height)
+  canvas.width = Math.max(1, Math.round(spec.width * outputScale))
+  canvas.height = Math.max(1, Math.round(spec.height * outputScale))
+  if (backgroundColor) {
+    context.fillStyle = backgroundColor
+    context.fillRect(0, 0, canvas.width, canvas.height)
+  }
   drawX = ((sourceWidth - drawWidth) * (Math.max(-100, Math.min(100, crop.x)) + 100)) / 200
   drawY = ((sourceHeight - drawHeight) * (Math.max(-100, Math.min(100, crop.y)) + 100)) / 200
 
@@ -12444,15 +12523,15 @@ async function resizeImageFile(
     drawHeight,
     0,
     0,
-    spec.width,
-    spec.height,
+    canvas.width,
+    canvas.height,
   )
 
   const contentType = "image/webp"
   const blob = await canvasToBlob(canvas, contentType)
   const resizedName = replaceFileExtension(
     file.name,
-    `${spec.width}x${spec.height}.webp`,
+    `${canvas.width}x${canvas.height}.webp`,
   )
 
   return new File([blob], resizedName, {
@@ -12724,7 +12803,7 @@ function TextAreaField({
       <textarea
         id={inputId}
         name={name}
-        rows={3}
+        rows={name === "address" ? 2 : 3}
         required={required}
         aria-invalid={Boolean(warning) || undefined}
         placeholder={placeholder}

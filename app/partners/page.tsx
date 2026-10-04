@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/server"
 import { AdminTranslationBoundary } from "@/components/admin-translation-boundary"
 import { AdminShell } from "../admin-shell"
 import { PartnerWorkspace } from "../partner-admin"
-import { DashboardAutoRefresh } from "../dashboard-auto-refresh"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 180
@@ -40,7 +39,6 @@ async function DashboardPartners({ data, query }: {
   const initialPartnerId = dashboard.partners.some(partner => partner.id === requestedPartnerId)
     ? requestedPartnerId : dashboard.partners[0]?.id ?? ""
   return <AdminTranslationBoundary>
-    <DashboardAutoRefresh />
     {dashboard.errors.length > 0 ? (
       <section className="mb-5 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         <p className="font-semibold">Supabase returned warnings</p>

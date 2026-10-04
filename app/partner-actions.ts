@@ -1,5 +1,7 @@
 "use server"
 
+import type { PartnerWithDeals, PartnerSocial } from "@/lib/admin-data"
+import { readPartnerWorkspace } from "@/lib/partners/workspace-data"
 import { randomInt, randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
@@ -64,6 +66,7 @@ import {
 import {
   partnerUpdateMissingMessage,
   partnerUpdateWasApplied,
+  partnerSocialsEqual,
 } from "@/lib/partner-save"
 import * as menuImport from "@/lib/menu-import.js"
 import * as menuZipImport from "@/lib/menu-zip-import.js"
@@ -163,6 +166,7 @@ export type PartnerActionState = {
   description?: string
   dealDraft?: DealFormDraft
   partnerId?: string
+  savedPartner?: Partial<PartnerWithDeals> & { id: string }
   partnerPin?: number
   created?: boolean
   menuCategory?: {
@@ -611,14 +615,19 @@ export async function savePartner(
     return { ok: false, message: "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an." }
   }
 
+  let existingSocials: PartnerSocial[] = []
   let existingPartner: { owner_id?: string | null; is_featured?: boolean | null } | null = null
 
   if (isUpdate) {
-    const existingResult = await supabase
-      .from("partners")
-      .select("owner_id,is_featured")
-      .eq("id", id)
-      .maybeSingle()
+    if (!canManagePartner(portalSession, id)) {
+      return { ok: false, message: "You can only edit partner shops that you own." }
+    }
+    const [existingResult, socialResult] = await Promise.all([
+      supabase.from("partners").select("owner_id,is_featured").eq("id", id).maybeSingle(),
+      supabase.from("partner_socials").select("id,partner_id,platform,url,handle,sort_order").eq("partner_id", id),
+    ])
+    if (socialResult.error) return { ok: false, message: socialResult.error.message }
+    existingSocials = (socialResult.data ?? []) as PartnerSocial[]
 
     if (existingResult.error) {
       return { ok: false, message: existingResult.error.message }
@@ -643,6 +652,10 @@ export async function savePartner(
   if (validationError) {
     return { ok: false, message: validationError }
   }
+
+  const partnerSocials = parsePartnerSocials(formData)
+  const partnerSocialValidation = validatePartnerSocials(partnerSocials)
+  if (partnerSocialValidation) return { ok: false, message: partnerSocialValidation }
 
   const uploadedPaths: UploadedStoragePath[] = []
 
@@ -689,11 +702,11 @@ export async function savePartner(
     }
 
     const result = isUpdate
-      ? await supabase.from("partners").update(payload).eq("id", id).select("id")
+      ? await supabase.from("partners").update(payload).eq("id", id).select([...new Set(["id", ...Object.keys(payload)])].join(","))
       : await supabase
           .from("partners")
           .insert({ id: partnerId, ...payload })
-          .select("id")
+          .select([...new Set(["id", ...Object.keys(payload)])].join(","))
 
     if (result.error) {
       await cleanupUploadedFiles(supabase, uploadedPaths)
@@ -713,21 +726,11 @@ export async function savePartner(
       }
     }
 
-    const partnerSocials = parsePartnerSocials(formData)
-    const partnerSocialValidation = validatePartnerSocials(partnerSocials)
-
-    if (partnerSocialValidation) {
-      if (!isUpdate) {
-        await rollbackCreatedPartner(supabase, partnerId)
-        await cleanupUploadedFiles(supabase, uploadedPaths)
-      }
-
-      return { ok: false, message: partnerSocialValidation }
-    }
-
     const [socialSyncMessage, ownerWarning] = await Promise.all([
-      replacePartnerSocials(supabase, partnerId, partnerSocials),
-      portalSession.isAdmin
+      isUpdate && partnerSocialsEqual(existingSocials, partnerSocials)
+        ? Promise.resolve(null)
+        : replacePartnerSocials(supabase, partnerId, partnerSocials),
+      portalSession.isAdmin && (!isUpdate || existingPartner?.owner_id !== payload.owner_id)
         ? markOwnerAsPartner(supabase, payload.owner_id)
         : Promise.resolve(null),
     ])
@@ -879,11 +882,27 @@ export async function savePartner(
       }
     }
 
-    revalidatePath("/")
+    // Dynamic dashboards read fresh data on navigation. Return this partner to
+    // the current editor instead of revalidating and re-rendering the whole page.
+    let savedPartner = {
+      ...(result.data![0] as unknown as Partial<PartnerWithDeals>), id: partnerId,
+      socials: partnerSocialsEqual(existingSocials, partnerSocials) ? existingSocials
+        : partnerSocials.map(social => ({ ...social, partner_id: partnerId })),
+    } as Partial<PartnerWithDeals> & { id: string }
+    if (!isUpdate) {
+      try {
+        savedPartner = { ...(await readPartnerWorkspace(supabase, partnerId)).partner, id: partnerId }
+      } catch {
+        // Creation already succeeded. Do not report a failed save or encourage
+        // a duplicate submission if a follow-up read is temporarily unavailable.
+        warnings.push("Partner saved. Some related information will load on your next visit.")
+      }
+    }
 
     return {
       ok: true,
       partnerId,
+      savedPartner,
       created: !isUpdate,
       message: [
         isUpdate ? "Partner updated." : "Partner created.",
