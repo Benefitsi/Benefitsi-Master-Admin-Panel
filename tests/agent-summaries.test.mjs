@@ -35,7 +35,7 @@ test("a runtime-only finance profile retains its named workspace without inventi
   }, new Date(checkedAt))
   const result = buildAgentSummaries(control([], { runtime })).find(item => item.id === "benefitsi-finance")
   assert.equal(result.name, "Buchhaltung & Steuern")
-  assert.equal(result.workspaceHref, "/analytics")
+  assert.equal(result.workspaceHref, "/agents/finance")
   assert.equal(result.href, "/agents?agent=benefitsi-finance#agent-benefitsi-finance")
   assert.equal(result.status, "unknown")
   assert.equal(result.lastRunAt, null)

@@ -35,7 +35,7 @@ const agentDetails: Record<string, { name: string; workspaceHref: string }> = {
   "stamp-curator": { name: "Stempel-Kurator", workspaceHref: "/city-pages" },
   studio: { name: "Studio", workspaceHref: "/agents" },
   "benefitsi-menu": { name: "Menü-Agent", workspaceHref: "/partners" },
-  "benefitsi-finance": { name: "Buchhaltung & Steuern", workspaceHref: "/analytics" },
+  "benefitsi-finance": { name: "Buchhaltung & Steuern", workspaceHref: "/agents/finance" },
 }
 
 export function agentProfileAnchor(id: string): string | null {
@@ -65,7 +65,7 @@ export function buildAgentSummaries(data: AgentControlData): AgentSummary[] {
   const configuredFreshness = freshness === "fresh" || freshness === "stale" ? "unobserved" : freshness
   const summaries = new Map<string, AgentSummary>()
   for (const profile of registry.profiles.filter(item => item.scope === "benefitsi")) {
-    const mode = profile.id === "benefitsi-content" ? "Auf Abruf"
+    const mode = ["benefitsi-content", "benefitsi-finance"].includes(profile.id) ? "Auf Abruf"
       : profile.hermesJobIds.length || profile.launchdSchedules.length ? "Zeitplan konfiguriert" : "Konfiguriert"
     summaries.set(profile.id, configuredAgent(profile.id, profile.purpose, configuredFreshness, mode))
   }
