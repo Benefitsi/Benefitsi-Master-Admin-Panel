@@ -111,6 +111,10 @@ jobs:
           tests/admin-language-hydration.test.mjs
           tests/ecosystem-overview.test.mjs
           tests/ecosystem-directory.test.mjs
+          tests/ecosystem-analytics.test.mjs
+          tests/ecosystem-search.test.mjs
+          tests/ecosystem-search-ui.test.mjs
+          tests/agent-summaries.test.mjs
           tests/founder-overview-data.test.mjs
           tests/agent-control-data.test.mjs
 

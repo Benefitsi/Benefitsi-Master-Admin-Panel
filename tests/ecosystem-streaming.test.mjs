@@ -6,6 +6,8 @@ import React from "react"
 import { renderToPipeableStream } from "react-dom/server"
 import { loadTypescript } from "./helpers/load-typescript.mjs"
 import * as overviewData from "../lib/ecosystem/overview.ts"
+import * as analyticsData from "../lib/ecosystem/analytics.ts"
+import * as searchData from "../lib/ecosystem/search.ts"
 import * as catalog from "../lib/ecosystem/catalog.ts"
 import * as normalize from "../lib/analytics/normalize.ts"
 import * as directory from "../lib/ecosystem/directory.ts"
@@ -41,12 +43,20 @@ function fixture(t, { admin = true } = {}) {
   let refreshStarted = false
   const source = key => (...args) => { calls.push({ key, args }); return pending[key].promise }
   const Link = ({ href, children }) => h("a", { href }, children)
+  const css = { __esModule: true, default: new Proxy({}, { get: (_, name) => name }) }
+  const activity = loadTypescript("components/ecosystem/ecosystem-analytics.tsx", {
+    "next/link": Link,
+    "@/lib/analytics/normalize": normalize,
+    "./ecosystem.module.css": css,
+    "./ecosystem-analytics.module.css": css,
+  })
   const presentation = loadTypescript("components/ecosystem/ecosystem-overview.tsx", {
     "next/link": Link,
     "@/lib/ecosystem/overview": overviewData,
     "@/lib/ecosystem/catalog": catalog,
     "@/lib/analytics/normalize": normalize,
-    "./ecosystem.module.css": { __esModule: true, default: new Proxy({}, { get: (_, name) => name }) },
+    "./ecosystem.module.css": css,
+    "./ecosystem-analytics": activity,
     "./ecosystem-explorer": {
       EcosystemExplorer: () => h("section", null, "Features und Vorteile"),
       PageDirectory: ({ incomplete }) => h("section", null, incomplete ? "Seiten: Daten unvollständig" : "Seitenverzeichnis"),
@@ -66,11 +76,18 @@ function fixture(t, { admin = true } = {}) {
     "@/lib/analytics/loader": { loadBusinessAnalytics: source("analytics") },
     "@/lib/analytics/filters": { parseBusinessAnalyticsFilters: () => ({}) },
     "@/lib/ecosystem/overview": overviewData,
+    "@/lib/ecosystem/analytics": analyticsData,
+    "@/lib/ecosystem/search": searchData,
+    "@/components/ecosystem/ecosystem-search": {
+      EcosystemSearchProvider: ({ children }) => children,
+      EcosystemSearch: () => h("input", { type: "search", "aria-label": "Ecosystem durchsuchen" }),
+      EcosystemSearchRegistration: () => null,
+    },
     "@/lib/ecosystem/directory": directory,
     "@/components/ecosystem/ecosystem-overview": presentation,
     "./admin-shell": {
-      AdminShell: ({ children, headerActions, micrositeCount }) => h("main", null,
-        h("nav", null, "Admin-Navigation"), headerActions, h("aside", null, micrositeCount), children),
+      AdminShell: ({ children, headerSearch, headerActions, micrositeCount }) => h("main", null,
+        h("nav", null, "Admin-Navigation"), headerSearch, headerActions, h("aside", null, micrositeCount), children),
       PartnerPanelLink: () => h("a", { href: "/partner" }, "Partner panel"),
     },
     "./partner-admin": { PartnerWorkspace: props => { partnerProps.push(props); return h("section", null, `Partner bearbeiten: ${props.initialPartnerId}`) } },
@@ -131,7 +148,7 @@ test("authorized dashboard streams navigation and catalog before any optional da
   assert.match(stream.html(), /Vier Zugänge/)
   assert.match(stream.html(), /Analytics werden geladen/)
   assert.match(stream.html(), /Agent-Status wird geladen/)
-  assert.doesNotMatch(stream.html(), /Keine Daten|Noch kein Verlauf|Partner bearbeiten/)
+  assert.doesNotMatch(stream.html(), /Keine Daten|Kein Zeitverlauf|Partner bearbeiten/)
   assert.equal(fixtureData.refreshStarted(), false)
   assert.equal(fixtureData.calls.length, 6)
   assert.equal(new Set(fixtureData.calls.map(call => call.key)).size, 6)
@@ -147,12 +164,12 @@ test("overview operations stream independently while analytics and publication c
   f.release("agents")
   await stream.waitFor("Dein Team")
   await stream.waitFor("Aktive Profile")
-  assert.doesNotMatch(stream.html(), /Noch kein Verlauf|Seitenverzeichnis/)
+  assert.doesNotMatch(stream.html(), /Kein Zeitverlauf|Seitenverzeichnis/)
   f.release("publicPages", { data: null, error: true })
   await stream.waitFor("Seiten: Daten unvollständig")
   assert.equal(f.refreshStarted(), false, "Do not refresh while initial sources are pending")
   f.release("analytics")
-  await stream.waitFor("Noch kein Verlauf")
+  await stream.waitFor("Kein Zeitverlauf")
   f.release("portal")
   await stream.waitFor("Partner panel")
   await nextTurn()

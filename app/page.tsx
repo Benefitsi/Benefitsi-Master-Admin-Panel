@@ -2,13 +2,17 @@ import { Suspense } from "react"
 import { AdminTranslationBoundary } from "@/components/admin-translation-boundary"
 import {
   EcosystemActivity, EcosystemAgents, EcosystemDirectory, EcosystemFleet,
-  EcosystemFocus, EcosystemMetrics, EcosystemOverviewLayout,
+  EcosystemFocus, EcosystemGoals, EcosystemMetrics, EcosystemOverviewLayout,
   EcosystemSectionLoading, EcosystemTimestamp,
 } from "@/components/ecosystem/ecosystem-overview"
 import { loadAgentControl } from "@/lib/agent-control-data"
 import { loadBusinessAnalytics } from "@/lib/analytics/loader"
 import { parseBusinessAnalyticsFilters } from "@/lib/analytics/filters"
 import { selectOverviewAnalytics } from "@/lib/ecosystem/overview"
+import { buildAgentSummaries } from "@/lib/ecosystem/overview"
+import { selectOverviewGoals } from "@/lib/ecosystem/analytics"
+import { agentSearchEntries, pageSearchEntries } from "@/lib/ecosystem/search"
+import { EcosystemSearch, EcosystemSearchProvider, EcosystemSearchRegistration } from "@/components/ecosystem/ecosystem-search"
 import { buildPageDirectory, parsePublicMicrositeDirectory } from "@/lib/ecosystem/directory"
 import { loadFounderOverview } from "@/lib/founder-overview-data"
 import { redirect } from "next/navigation"
@@ -69,11 +73,13 @@ export default async function DashboardPage({
     "Admin"
 
   return (
+    <EcosystemSearchProvider>
     <AdminShell
-      title="Ecosystem."
+      title="Übersicht"
       subtitle=""
       adminName={adminName}
       micrositeCount={<Suspense fallback="…"><DashboardPartnerCount data={sources.dashboard} /></Suspense>}
+      headerSearch={<EcosystemSearch />}
       headerActions={<Suspense fallback={null}><DashboardPartnerLink data={sources.portal} /></Suspense>}
     >
       <Suspense fallback={null}><DashboardRefreshWhenReady sources={sources} /></Suspense>
@@ -83,11 +89,13 @@ export default async function DashboardPage({
         activity={<Suspense fallback={<EcosystemSectionLoading label="Analytics werden geladen" variant="activity" />}><DashboardActivity data={sources.analytics} /></Suspense>}
         fleet={<Suspense fallback={<EcosystemSectionLoading label="Agent-Status wird geladen" />}><DashboardFleet data={sources.agents} /></Suspense>}
         focus={<Suspense fallback={<EcosystemSectionLoading label="Aufträge werden geladen" />}><DashboardFocus data={sources.founder} /></Suspense>}
+        goals={<Suspense fallback={<EcosystemSectionLoading label="Ziele werden geladen" />}><DashboardGoals data={sources.analytics} /></Suspense>}
         agents={<Suspense fallback={<EcosystemSectionLoading label="Agents werden geladen" variant="agents" />}><DashboardAgents data={sources.agents} /></Suspense>}
         directory={<Suspense fallback={<EcosystemSectionLoading label="Seiten werden geladen" variant="directory" />}><DashboardDirectory sources={sources} /></Suspense>}
       />
 
     </AdminShell>
+    </EcosystemSearchProvider>
   )
 }
 
@@ -135,13 +143,26 @@ async function DashboardFocus({ data }: { data: DashboardSources["founder"] }) {
   return <AdminTranslationBoundary><EcosystemFocus snapshot={await data} /></AdminTranslationBoundary>
 }
 
+async function DashboardGoals({ data }: { data: DashboardSources["analytics"] }) {
+  return <AdminTranslationBoundary><EcosystemGoals goals={selectOverviewGoals(await data)} /></AdminTranslationBoundary>
+}
+
 async function DashboardAgents({ data }: { data: DashboardSources["agents"] }) {
-  return <AdminTranslationBoundary><EcosystemAgents agentData={await data} /></AdminTranslationBoundary>
+  const agentData = await data
+  return <AdminTranslationBoundary>
+    <EcosystemSearchRegistration source="agents" entries={agentSearchEntries(buildAgentSummaries(agentData))} state={agentData.runtime.state === "fresh" ? "ready" : "partial"} />
+    <EcosystemAgents agentData={agentData} />
+  </AdminTranslationBoundary>
 }
 
 async function DashboardDirectory({ sources }: { sources: DashboardSources }) {
   const [dashboard, publicMicrosites] = await Promise.all([sources.dashboard, sources.publicMicrosites])
-  return <AdminTranslationBoundary><EcosystemDirectory pages={buildPageDirectory(dashboard, publicMicrosites)} incomplete={dashboard.errors.length > 0 || publicMicrosites.state === "unavailable"} /></AdminTranslationBoundary>
+  const pages = buildPageDirectory(dashboard, publicMicrosites)
+  const incomplete = dashboard.errors.length > 0 || publicMicrosites.state === "unavailable"
+  return <AdminTranslationBoundary>
+    <EcosystemSearchRegistration source="pages" entries={pageSearchEntries(pages)} state={incomplete ? "partial" : "ready"} />
+    <EcosystemDirectory pages={pages} incomplete={incomplete} />
+  </AdminTranslationBoundary>
 }
 
 
