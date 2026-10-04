@@ -205,7 +205,7 @@ function AdminShellContent({
         </aside>
 
         <section className="flex min-w-0 flex-col">
-          <header className="flex flex-col gap-4 border-b border-[#061829]/10 bg-[#f7f6f1]/95 px-4 py-5 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:px-7 lg:py-6">
+          <header className="relative z-40 flex flex-col gap-4 border-b border-[#061829]/10 bg-[#f7f6f1]/95 px-4 py-5 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:px-7 lg:py-6">
             <div className="min-w-0">
               <h1 className="truncate text-[1.7rem] font-black tracking-[-0.035em] text-[#061829]">
                 {title}
