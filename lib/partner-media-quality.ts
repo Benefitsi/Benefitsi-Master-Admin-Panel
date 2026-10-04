@@ -77,6 +77,36 @@ export function recordMediaDimensions(url: string, dimensions: Dimensions) {
   measurementListeners.forEach(listener => listener())
 }
 
+// Recheck replaced media from its final public URL. Prepared-file dimensions
+// are useful for immediate feedback, but this confirms what storage serves.
+export async function remeasureMediaUrls(urls: string[]) {
+  const uniqueUrls = [...new Set(urls)].filter(url => url && !/\.svg(?:[?#]|$)/i.test(url))
+  let index = 0
+  await Promise.all(Array.from({ length: Math.min(4, uniqueUrls.length) }, async () => {
+    while (index < uniqueUrls.length) {
+      const url = uniqueUrls[index++]
+      const dimensions = await new Promise<Dimensions | null>(resolve => {
+        const image = new Image()
+        const finish = (result: Dimensions | null) => {
+          clearTimeout(timeout)
+          image.onload = null
+          image.onerror = null
+          resolve(result)
+        }
+        const timeout = setTimeout(() => finish(null), 15000)
+        image.onload = () => finish({ width: image.naturalWidth, height: image.naturalHeight })
+        image.onerror = () => finish(null)
+        image.src = url
+      })
+      if (dimensions) recordMediaDimensions(url, dimensions)
+      else if (measuredDimensions.delete(url)) {
+        measurementRevision += 1
+        measurementListeners.forEach(listener => listener())
+      }
+    }
+  }))
+}
+
 // Four workers prevent a large partner list from flooding storage with requests.
 export async function measurePartnerMedia(partners: PartnerWithDeals[], cancelled: () => boolean) {
   const urls = [...new Set(partners.flatMap(partner => collectCandidates(partner).map(candidate => candidate.url)))]
