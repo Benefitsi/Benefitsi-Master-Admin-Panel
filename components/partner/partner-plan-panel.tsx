@@ -31,7 +31,7 @@ const states: Record<string, string> = {
   free: "Free",
   subscription: "Aktives Abo",
   trial: "Testphase",
-  manual_grant: "Kostenlose Admin-Freigabe",
+  manual_grant: "Onboarding · kostenlos",
   past_due_grace: "Zahlung ausstehend · Übergangsfrist",
   cancel_at_period_end: "Zum Periodenende gekündigt",
 };
@@ -77,10 +77,12 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
           <div>
             <p className="text-sm font-semibold text-[#17d4d7]">Dein Tarif</p>
             <h2 className="mt-2 text-3xl font-bold">
-              Benefitsi {rights.plan_code === "pro" ? "Pro" : "Free"}
+              Benefitsi {rights.state === "manual_grant" ? "Onboarding" : rights.plan_code === "pro" ? "Pro" : "Free"}
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
-              {rights.plan_code === "pro"
+              {rights.state === "manual_grant"
+                ? "Pro-Funktionen kostenlos testen. Die Freigabe endet automatisch, ohne kostenpflichtiges Abo."
+                : rights.plan_code === "pro"
                 ? "Eigene Microsite und erweiterte Auswertungen."
                 : "Dein Standardprofil auf der Stadtseite. Keine eigene Microsite."}
             </p>
@@ -557,6 +559,57 @@ function ChangeForm({
     </form>
   );
 }
+export function PartnerOnboarding({data, partnerId, onSaved}: {
+  data: PlanPanel; partnerId: string; onSaved: () => void;
+}) {
+  const sub = data.subscription;
+  const active = data.entitlements.state === "manual_grant";
+  const commercial = !!sub && sub.source !== "admin_freegrant";
+  const billingPending = !!data.billing_cases?.length || !!data.pending_founder || !!data.founder_activation_review?.required;
+  const microsite = data.onboarding_microsite;
+  return <div className="space-y-4">
+    <div>
+      <h3 className="text-lg font-bold">Onboarding für den Partnerbesuch</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-600">
+        Pro-Funktionen kostenlos testen, inklusive veröffentlichter Microsite und Verlinkung auf der zugeordneten Städteseite.
+        Du startest die Testphase passend zum Besuch. Keine Rechnung und kein automatischer Wechsel in ein Bezahlabo.
+      </p>
+    </div>
+    {sub?.source === "admin_freegrant" && <p className="rounded-xl bg-sky-50 p-3 text-sm text-sky-950">
+      <strong>{active ? "Onboarding läuft" : "Onboarding beendet"}</strong>
+      {" · "}{formatBerlin(sub.period_start)} bis {formatBerlin(sub.period_end)} (Berlin)
+    </p>}
+    {active && microsite && data.entitlements.features["microsite.publish"] && <a
+      className="inline-flex min-h-11 items-center rounded-lg border border-sky-200 px-4 text-sm font-bold text-sky-700"
+      href={`https://benefitsi.de/partner/${encodeURIComponent(microsite.slug)}`} target="_blank" rel="noopener noreferrer">
+      Öffentliche Microsite ansehen
+    </a>}
+    <p className="text-sm text-slate-600">Nach Ablauf bleibt das kostenlose Stadtprofil bestehen. Die Microsite bleibt gespeichert und ist erst mit einer neuen Freigabe oder Pro wieder öffentlich.</p>
+    {commercial ? <p className="text-sm text-slate-600">Für diesen Partner besteht bereits ein kommerzieller Tarif. Onboarding verändert diesen Vertrag nicht.</p>
+      : billingPending ? <p className="text-sm text-amber-800">Bitte den offenen Abrechnungsvorgang zuerst klären, bevor du Onboarding startest oder verlängerst.</p>
+      : !microsite ? <p className="text-sm text-amber-800">Bitte zuerst die Microsite im Builder prüfen und veröffentlichen. Danach die Tarifansicht neu laden.</p>
+      : <ChangeForm operation="onboarding" partnerId={partnerId} onSaved={onSaved}
+          label={active ? "Onboarding verlängern" : "Onboarding jetzt starten"}
+          reasonLabel="Anlass, z. B. Partnerbesuch am 12. Oktober">
+          <input type="hidden" name="onboarding_action" value={active ? "extend" : "start"} />
+          <input type="hidden" name="expected_until" value={sub?.period_end ?? ""} />
+          <label className="block text-sm font-medium">{active ? "Zusätzliche Laufzeit ab bisherigem Ende" : "Laufzeit ab deinem Start"}
+            <select className={input} name="days" defaultValue="14">
+              <option value="7">7 Tage</option><option value="14">14 Tage (Standard)</option><option value="30">30 Tage</option>
+            </select>
+          </label>
+          <p className="text-sm text-slate-500">Partner- und Inhaltsfreigaben gelten weiter. Ein Tag entspricht 24 Stunden.</p>
+        </ChangeForm>}
+    {active && !commercial && <details className="border-t border-slate-200 pt-3">
+      <summary className="cursor-pointer text-sm font-semibold text-slate-700">Onboarding vorzeitig beenden</summary>
+      <div className="mt-4"><ChangeForm operation="onboarding" partnerId={partnerId} onSaved={onSaved} label="Onboarding jetzt beenden">
+        <input type="hidden" name="onboarding_action" value="stop" />
+        <input type="hidden" name="expected_until" value={sub?.period_end ?? ""} />
+        <p className="text-sm text-slate-600">Die kostenlose Pro-Freigabe endet sofort. Die gespeicherten Inhalte bleiben erhalten.</p>
+      </ChangeForm></div>
+    </details>}
+  </div>;
+}
 export function PartnerPlanPanel({
   partnerId,
   initialData,
@@ -573,7 +626,7 @@ export function PartnerPlanPanel({
     [previewPending, setPreviewPending] = useState(false);
   // Identity-bound loading prevents a previous partner's panel from flashing after selection changes.
   useEffect(() => {
-    if (initialData) return;
+    if (initialData && generation === 0) return;
     let alive = true;
     loadPartnerPlanPanel(partnerId)
       .then((value) => {
@@ -593,6 +646,13 @@ export function PartnerPlanPanel({
     };
   }, [partnerId, generation, initialData]);
   const reload = useCallback(() => setGeneration((n) => n + 1), []);
+  useEffect(() => {
+    if (data?.entitlements.state !== "manual_grant" || !data.subscription?.period_end) return;
+    const remaining = Date.parse(data.subscription.period_end) - Date.now();
+    if (!Number.isFinite(remaining)) return;
+    const timer = setTimeout(reload, Math.min(Math.max(remaining + 1000, 0), 2_147_483_647));
+    return () => clearTimeout(timer);
+  }, [data, reload]);
   if (!data || data.entitlements.partner_id !== partnerId)
     return (
       <div className={box}>
@@ -706,6 +766,9 @@ export function PartnerPlanPanel({
         </section>
       )}
       <PartnerPlanSummary data={data} />
+      <section className={box}>
+        <PartnerOnboarding data={data} partnerId={partnerId} onSaved={reload} />
+      </section>
       <section className={box}>
         <h3 className="mb-3 text-lg font-bold">
           Founder-Zulassung · Annweiler
@@ -870,27 +933,6 @@ export function PartnerPlanPanel({
             </li>
           ))}
         </ul>
-      </section>
-      <section className={box}>
-        <h3 className="mb-4 text-lg font-bold">Kostenlose Pro-Testfreigabe</h3>
-        <p className="mb-4 text-sm text-slate-500">
-          Erzeugt keine Rechnung. Ein bestehendes kommerzielles Abo wird nicht
-          überschrieben.
-        </p>
-        <ChangeForm operation="grant" partnerId={partnerId} onSaved={reload}>
-          <Field
-            label="Pro-Tarifversion"
-            name="plan_version"
-            type="number"
-            min={1}
-            value={1}
-          />
-          <Field
-            label="Ablaufdatum (00:00 Uhr Berlin)"
-            name="valid_until"
-            type="date"
-          />
-        </ChangeForm>
       </section>
       <section className={box}>
         <h3 className="mb-4 text-lg font-bold">Neues Preisangebot entwerfen</h3>

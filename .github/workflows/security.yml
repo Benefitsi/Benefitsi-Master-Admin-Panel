@@ -90,6 +90,8 @@ jobs:
           tests/partner-microsite-preview-access.test.mjs
           tests/microsite-publication-cache.test.mjs
           tests/partner-capability-policy.test.mjs
+          tests/partner-plan-actions.test.mjs
+          tests/partner-onboarding-ui.test.mjs
 
       - name: Login and authorization regression tests
         run: >-

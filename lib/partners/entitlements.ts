@@ -71,6 +71,7 @@ export type BillingSummary = {
   catalog: { schema_version: number; offers: PriceOffer[]; plans?: (BenefitPlan & {version:number})[] }
 }
 export type PlanPanel = BillingSummary & {
+  onboarding_microsite?: { slug: string; status: string; published_version_id: string } | null
   editorial_requests?: AdminEditorialRequest[]
   billing_cases?: {contract_id:string;state:string;checkout_id:string|null;schedule_id:string|null;subscription_id:string|null;provider_evidence:unknown[]}[]
   founder?: {campaign_city_id:string|null;campaign_city_name:string|null;eligible:boolean;evidence:string|null;decided_at:string|null;admitted:boolean}
