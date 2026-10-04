@@ -8,7 +8,7 @@ const timestamp = '2026-10-04T12:27:43.572243+02:00'
 const row = {
   request_id: id, company_name: 'Example Company', contact_name: 'Example Contact',
   email: 'example@example.test', city: 'Annweiler', seats: 100, interests: ['membership'],
-  catalog_version: '2026-10-04.1', unit_amount_cents: 1990, total_amount_cents: 199000,
+  catalog_version: '2026-10-04.2', unit_amount_cents: 1990, total_amount_cents: 199000,
   status: 'new', note: '', created_at: timestamp, updated_at: timestamp,
 }
 const model = () => loadTypescript('lib/corporate/requests.ts')

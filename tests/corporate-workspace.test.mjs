@@ -11,7 +11,7 @@ const timestamp = '2026-10-04T12:27:43.572243+02:00'
 const request = {
   request_id: 'c26632f0-b279-4bd6-9965-066a0b387738', company_name: 'Example Company', contact_name: 'Example Contact',
   email: 'contact@example.test', city: 'Annweiler', seats: 100, interests: ['membership', 'team_challenges'],
-  catalog_version: '2026-10-04.1', unit_amount_cents: 1990, total_amount_cents: 199000,
+  catalog_version: '2026-10-04.2', unit_amount_cents: 1990, total_amount_cents: 199000,
   status: 'new', note: '', created_at: timestamp, updated_at: timestamp,
 }
 function editor(action) {
@@ -24,9 +24,9 @@ function workspace(result) {
   }).CorporateRequestWorkspace
   return renderToStaticMarkup(React.createElement(Workspace, { result, selectedStatus: null }))
 }
-test('the queue renders contact details, stored annual gross estimate and interests with exact save token', () => {
+test('the queue renders contact details, stored annual net estimate and interests with exact save token', () => {
   const html = workspace({ status: 'loaded', requests: [request] })
-  for (const text of ['Example Company', 'Example Contact', 'contact@example.test', 'Annweiler', '100', '1.990,00', '19,90', 'inklusive Umsatzsteuer', 'Team-Challenges', '2026-10-04.1']) assert.ok(html.includes(text), text)
+  for (const text of ['Example Company', 'Example Contact', 'contact@example.test', 'Annweiler', '100', '1.990,00', '19,90', 'zzgl. MwSt.', 'Team-Challenges', '2026-10-04.2']) assert.ok(html.includes(text), text)
   assert.ok(html.includes(`value="${timestamp}"`))
   assert.match(html, /keine.*Premium|keinen.*Premium/i)
 })

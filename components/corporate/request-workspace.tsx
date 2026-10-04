@@ -58,7 +58,7 @@ function RequestCard({ request }: { request: CorporateRequest }) {
             <p className="text-xs font-bold text-[#617080]">Gespeicherte Preisorientierung</p>
             {request.total_amount_cents === null || request.unit_amount_cents === null ? <p className="mt-2 text-sm font-semibold">Keine Preisorientierung bei der Anfrage hinterlegt.</p> : <>
               <p className="mt-2 text-2xl font-black tracking-tight">{money(request.total_amount_cents)} <span className="text-sm font-semibold">pro Jahr</span></p>
-              <p className="mt-1 text-sm">{money(request.unit_amount_cents)} je Mitarbeiter und Jahr · inklusive Umsatzsteuer</p>
+              <p className="mt-1 text-sm">{money(request.unit_amount_cents)} je Mitarbeiter und Jahr · zzgl. MwSt.</p>
               <p className="mt-2 break-words text-xs text-[#617080]">Katalogversion {request.catalog_version}</p>
             </>}
             <p className="mt-3 text-xs leading-relaxed text-[#617080]">Unverbindliche Preisorientierung; finales Angebot nach Abstimmung. Geschenke, Essen und Events kosten zusätzlich. Gewünschte Ausbaustufen sind geplant.</p>

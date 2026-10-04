@@ -62,12 +62,12 @@ the timestamp and atomically audits the authenticated actor with before/after
 status, note and time. A service-role client cannot bypass these admin checks.
 
 The public `get_corporate_benefits_catalog()` RPC returns catalog version
-`2026-10-04.1`, EUR annual `gross_reference` values, planning status, max 10000
-seats and tiers 1–24:2990, 25–99:2490, 100–10000:1990 cents per seat per year.
+`2026-10-04.2`, EUR annual `net_reference` values, planning status, max 10000
+seats and tiers 1–24:2490, 25–10000:1990 cents per seat per year.
 It is available to anon/authenticated/service_role; SQL null means unavailable.
 Consumers do not copy a fallback price list. Stored quote values can all be null
 when no catalog version was presented. The admin displays stored cents and
-version, with nonbinding gross wording; gifts, meals and events cost extra.
+version, with nonbinding net wording; gifts, meals and events cost extra.
 
 The web server alone calls
 `submit_corporate_benefits_interest(p_request_id uuid,p_company_name text,
@@ -96,7 +96,7 @@ success and handles catalog unavailability without producing a fake estimate.
    submission secret out of browser bundles and the admin path.
 4. With synthetic data, submit a quoted and unquoted request on the web. Confirm
    `/companies` shows the company/contact/location/seats/interests, stored price
-   version and gross annual amount (100 × 1990 = 199000 cents = €1990), or an
+   version and net annual amount (100 × 1990 = 199000 cents = €1990), or an
    explicit missing-quote label. Exercise status filters and the empty state.
 5. Open two admin tabs. Save a status/note change in one; save from the stale
    second tab. Expect a visible refresh instruction and no overwrite. Check one
@@ -122,3 +122,11 @@ blocking. Hosted authorization/audit guarantees belong to the database suite and
 the reviewed rollout checks; these frontend tests do not impersonate production
 users or apply a migration. Browser review is coordinated separately; no local
 server is left running by this task.
+
+## Pricing revision approved 2026-10-04
+
+Catalog `2026-10-04.2` uses annual net reference prices: 2490 cents per seat for
+1–24 seats and 1990 cents per seat for 25–10000 seats, plus VAT. There is no
+additional tier at 100 seats. The unmerged initial migration is updated before
+first release; no previously stored quote is rewritten. The consent version
+remains `corporate-contact-2026-10-04.1`.
