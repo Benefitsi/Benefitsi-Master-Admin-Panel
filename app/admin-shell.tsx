@@ -25,6 +25,7 @@ type AdminShellProps = {
   micrositeCount?: ReactNode
   canAccessPartnerPanel?: boolean
   headerActions?: ReactNode
+  headerSearch?: ReactNode
   children: ReactNode
 }
 
@@ -43,6 +44,7 @@ function AdminShellContent({
   micrositeCount,
   canAccessPartnerPanel = false,
   headerActions,
+  headerSearch,
   children,
 }: AdminShellProps) {
   const [collapsed, setCollapsed] = useState(true)
@@ -203,7 +205,7 @@ function AdminShellContent({
         </aside>
 
         <section className="flex min-w-0 flex-col">
-          <header className="flex flex-col gap-4 border-b border-[#061829]/10 bg-[#f7f6f1]/95 px-4 py-5 backdrop-blur sm:flex-row sm:items-center sm:justify-between lg:px-7 lg:py-6">
+          <header className="flex flex-col gap-4 border-b border-[#061829]/10 bg-[#f7f6f1]/95 px-4 py-5 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:px-7 lg:py-6">
             <div className="min-w-0">
               <h1 className="truncate text-[1.7rem] font-black tracking-[-0.035em] text-[#061829]">
                 {title}
@@ -211,7 +213,8 @@ function AdminShellContent({
               {subtitle ? <p className="mt-1 truncate text-sm text-[#526170]">{subtitle}</p> : null}
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className={headerSearch ? "flex max-w-full flex-wrap items-center gap-3" : "flex flex-col gap-3 sm:flex-row sm:items-center"}>
+              {headerSearch}
               <AdminLanguageControl className="self-start sm:self-auto" />
               <SystemSwitcher micrositeCount={micrositeCount} />
               {canAccessPartnerPanel ? <PartnerPanelLink /> : null}

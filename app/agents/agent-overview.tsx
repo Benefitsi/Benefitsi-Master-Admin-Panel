@@ -1,6 +1,7 @@
 import Link from "next/link"
 import type { AgentControlData, CityControl } from "@/lib/agent-control-data"
 import type { AgentProfile } from "@/lib/agent-control"
+import { agentProfileAnchor, buildAgentSummaries, type AgentSummary } from "@/lib/ecosystem/agent-summaries"
 
 const dateTime = (value: string | null) => value && Number.isFinite(Date.parse(value))
   ? new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(value))
@@ -8,8 +9,10 @@ const dateTime = (value: string | null) => value && Number.isFinite(Date.parse(v
 
 const flow = ["Auftrag", "Recherche", "Prüfung", "Freigabe", "Veröffentlichung"]
 
-export function AgentOverview({ data }: { data: AgentControlData }) {
-  const profiles = data.runtime.snapshot?.profiles ?? []
+export function AgentOverview({ data, selectedAgentId }: { data: AgentControlData; selectedAgentId?: string }) {
+  const summaries = new Map(buildAgentSummaries(data).map(summary => [summary.id, summary]))
+  const selected = selectedAgentId ? summaries.get(selectedAgentId) : undefined
+  const profiles = (data.runtime.snapshot?.profiles ?? []).filter(profile => summaries.get(profile.id)?.evidence === "observed")
   const benefitsi = profiles.filter(profile => profile.scope === "benefitsi")
   const others = profiles.filter(profile => profile.scope !== "benefitsi")
   const scheduled = profiles.filter(profile => profile.automation === "scheduled").length
@@ -28,7 +31,9 @@ export function AgentOverview({ data }: { data: AgentControlData }) {
     </section>
 
     {data.runtime.state !== "fresh" ? <Notice state={data.runtime.state} /> : null}
-    {allUnavailable ? <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-950"><h2 className="font-bold">Keine belastbaren Agentendaten verfügbar</h2><p className="mt-2 text-sm leading-6">Die privaten Beobachtungsquellen sind derzeit nicht lesbar. Es werden deshalb keine Profile oder Gesundheitswerte angenommen.</p></section> : null}
+    {allUnavailable ? <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-950"><h2 className="font-bold">Keine belastbaren Agentendaten verfügbar</h2><p className="mt-2 text-sm leading-6">Die privaten Beobachtungsquellen sind derzeit nicht lesbar. Aktuelle Lauf- und Gesundheitswerte sind deshalb nicht nachgewiesen. Konfigurierte Aufgaben sind kein Laufnachweis.</p></section> : null}
+    {selectedAgentId && !selected ? <p role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">Kein passendes Profil nachgewiesen. Die verfügbaren Beobachtungen stehen unten.</p> : null}
+    {selected?.evidence === "configured" ? <ConfiguredProfile summary={selected} /> : null}
 
     <section aria-label="Zusammenfassung" className="grid gap-3 sm:grid-cols-3">
       <Metric value={data.runtime.snapshot ? profiles.length : null} label="beobachtete Profile" />
@@ -44,8 +49,8 @@ export function AgentOverview({ data }: { data: AgentControlData }) {
       <p className="mt-4 text-sm leading-6 text-slate-600">Recherche und technische Prüfung dürfen vorbereitet werden. Inhalte werden erst nach einer ausdrücklichen menschlichen Freigabe veröffentlicht.</p>
     </section>
 
-    {benefitsi.length > 0 ? <ProfileSection headingId="benefitsi-profiles-heading" title="Benefitsi-Profile" profiles={benefitsi} /> : null}
-    {others.length > 0 ? <ProfileSection headingId="other-profiles-heading" title="Weitere beobachtete Profile" profiles={others} /> : null}
+    {benefitsi.length > 0 ? <ProfileSection headingId="benefitsi-profiles-heading" title="Benefitsi-Profile" profiles={benefitsi} summaries={summaries} selectedAgentId={selectedAgentId} /> : null}
+    {others.length > 0 ? <ProfileSection headingId="other-profiles-heading" title="Weitere beobachtete Profile" profiles={others} summaries={summaries} selectedAgentId={selectedAgentId} /> : null}
 
     <CityOperations data={data} />
   </div>
@@ -60,19 +65,30 @@ function Metric({ value, label }: { value: number | null; label: string }) {
   return <div className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-3xl font-black tabular-nums text-[#061829]">{value ?? "—"}</p><p className="mt-1 text-sm text-slate-600">{value === null ? `${label} · Quelle unbekannt` : label}</p></div>
 }
 
-function ProfileSection({ headingId, title, profiles }: { headingId: string; title: string; profiles: AgentProfile[] }) {
+function ConfiguredProfile({ summary }: { summary: AgentSummary }) {
+  return <article id={agentProfileAnchor(summary.id) ?? undefined} data-selected="true" className="scroll-mt-24 rounded-2xl border border-teal-500 bg-white p-5 ring-2 ring-teal-500/20 sm:p-6">
+    <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Konfiguriert · ohne verfügbare Profilbeobachtung</p>
+    <h2 className="mt-2 text-xl font-bold">{summary.name}</h2>
+    <p className="mt-2 text-sm leading-6 text-slate-600">{summary.purpose}</p>
+    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><Info label="Ausführung" value={summary.mode} /><Info label="Takt" value={summary.cadence} /><Info label="Laufnachweis" value={summary.lastRunLabel} /><Info label="Beobachtung" value={summary.freshnessLabel} /></dl>
+    <p className="mt-4 text-sm leading-6 text-slate-600">Diese Aufgabe ist konfiguriert. Ein ausgeführter Auftrag und ein aktueller Betriebszustand sind dadurch nicht belegt.</p>
+    {summary.workspaceHref ? <Link href={summary.workspaceHref} className="mt-4 inline-block rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold hover:border-teal-500">{summary.id === "benefitsi-menu" ? "Menüimport in der Partnerverwaltung" : "Zugehörigen Arbeitsbereich öffnen"}</Link> : null}
+  </article>
+}
+
+function ProfileSection({ headingId, title, profiles, summaries, selectedAgentId }: { headingId: string; title: string; profiles: AgentProfile[]; summaries: Map<string, AgentSummary>; selectedAgentId?: string }) {
   return <section aria-labelledby={headingId} className="space-y-3">
     <h2 id={headingId} className="text-xl font-bold tracking-tight">{title}</h2>
-    <div className="grid gap-4 xl:grid-cols-2">{profiles.map(profile => <ProfileCard key={profile.id} profile={profile} />)}</div>
+    <div className="grid gap-4 xl:grid-cols-2">{profiles.map(profile => <ProfileCard key={profile.id} profile={profile} summary={summaries.get(profile.id)!} selected={profile.id === selectedAgentId} />)}</div>
   </section>
 }
 
-function ProfileCard({ profile }: { profile: AgentProfile }) {
+function ProfileCard({ profile, summary, selected }: { profile: AgentProfile; summary: AgentSummary; selected: boolean }) {
   const contextText = profile.contextHealth === "over_limit" ? "Kontextlimit überschritten" : profile.contextHealth === "missing" ? "Kontextdatei fehlt" : profile.contextHealth === "ok" ? "Kontext vollständig beobachtet" : "Kontext unbekannt"
-  return <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-lg font-bold">{profile.id}</p><p className="mt-1 text-sm leading-6 text-slate-600">{profile.purpose}</p></div><span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-800">{automationLabel(profile.automation)}</span></div>
-    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><Info label="Provider" value={profile.provider} /><Info label="Modell" value={profile.model} /><Info label="Laufnachweis" value={runtimeLabel(profile.runtimeHealth)} /><Info label="Kontext" value={contextText} /></dl>
-    <details className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4"><summary className="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-teal-600">Technische Einzelheiten zu {profile.id}</summary><div className="mt-4 space-y-4 text-sm">
+  return <article id={agentProfileAnchor(profile.id) ?? undefined} data-selected={selected ? "true" : undefined} className={`min-w-0 scroll-mt-24 rounded-2xl border bg-white p-5 ${selected ? "border-teal-500 ring-2 ring-teal-500/20" : "border-slate-200"}`}>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-lg font-bold">{profile.id}</p><p className="mt-1 text-sm leading-6 text-slate-600">{summary.purpose}</p></div><span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-800">{automationLabel(profile.automation)}</span></div>
+    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><Info label="Provider" value={profile.provider} /><Info label="Modell" value={profile.model} /><Info label="Laufnachweis" value={summary.lastRunLabel} /><Info label="Letzter Lauf" value={dateTime(summary.lastRunAt)} /><Info label="Beobachtung" value={`${summary.freshnessLabel} · ${dateTime(summary.observedAt)}`} /><Info label="Kontext" value={contextText} /></dl>
+    <details open={selected} className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4"><summary className="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-teal-600">Technische Einzelheiten zu {profile.id}</summary><div className="mt-4 space-y-4 text-sm">
       <div><h3 className="font-semibold">Zeitpläne</h3>{profile.schedules.length ? <ul className="mt-2 space-y-2">{profile.schedules.map(schedule => <li key={`${schedule.source}-${schedule.id}`} className="rounded-lg bg-white p-3"><span className="font-medium">{schedule.id}</span><span className="block text-slate-600">{schedule.cadence ?? "Takt unbekannt"} · {schedule.enabled === true ? "aktiviert" : schedule.enabled === false ? "deaktiviert" : "Aktivierung unbekannt"}</span><span className="block text-xs text-slate-500">Letzter Status: {schedule.lastStatus ?? "nicht nachgewiesen"} · {dateTime(schedule.lastRunAt)}</span></li>)}</ul> : <p className="mt-1 text-slate-500">Kein Zeitplan im Snapshot.</p>}</div>
       <div><h3 className="font-semibold">Kontextdateien</h3>{profile.contextFiles.length ? <ul className="mt-2 space-y-2">{profile.contextFiles.map(file => <li key={file.path} className="rounded-lg bg-white p-3"><span className="break-all font-medium">{file.path}</span><span className="block text-slate-600">{file.exists ? sizeLabel(file.chars, file.limit) : "Fehlt"} · geladen: {loadedByLabel(file.loadedBy)}</span><span className="block text-xs text-slate-500">Geändert: {dateTime(file.modifiedAt)}</span></li>)}</ul> : <p className="mt-1 text-slate-500">Keine Kontextmetadaten beobachtet.</p>}</div>
     </div></details>
@@ -96,7 +112,6 @@ function CityCard({ city, data }: { city: CityControl; data: AgentControlData })
 
 function Info({ label, value }: { label: string; value: string | null }) { return <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-1 break-words font-medium text-slate-800">{value ?? "Nicht nachgewiesen"}</dd></div> }
 function automationLabel(value: AgentProfile["automation"]) { return value === "scheduled" ? "Automatisch geplant" : value === "manual" ? "Manuell" : "Planung unbekannt" }
-function runtimeLabel(value: AgentProfile["runtimeHealth"]) { return value === "ok" ? "Letzter Lauf aktuell erfolgreich" : value === "failed" ? "Technische Prüfung nötig" : "Kein aktueller Laufnachweis" }
 function loadedByLabel(value: AgentProfile["contextFiles"][number]["loadedBy"]) { return value === "system" ? "automatisch" : value === "reference" ? "bei Bedarf" : "unbekannt" }
 function sizeLabel(chars: number | null, limit: number | null) { return chars === null ? "Größe unbekannt" : `${chars.toLocaleString("de-DE")} Zeichen${limit === null ? "" : ` / Limit ${limit.toLocaleString("de-DE")}`}` }
 function publicationConfiguration(value: boolean | null) { return value === true ? "Automatische Veröffentlichung aktiviert" : value === false ? "Automatische Veröffentlichung deaktiviert" : "Nicht nachgewiesen" }

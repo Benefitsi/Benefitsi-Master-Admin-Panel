@@ -10,9 +10,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default async function AgentsPage() {
+export default async function AgentsPage({ searchParams }: { searchParams: Promise<{ agent?: string | string[] }> }) {
   const { supabase, adminSession } = await requireAdmin()
   const data = await loadAgentControl(supabase)
+  const query = await searchParams
+  const selectedAgentId = typeof query.agent === "string" ? query.agent : undefined
   const adminName = adminSession.profile?.display_name || adminSession.profile?.email || adminSession.user.email || "Admin"
-  return <AdminShell adminName={adminName} title="Agenten" subtitle="Profile, Zeitpläne, Kontext und Freigaben"><AgentOverview data={data} /></AdminShell>
+  return <AdminShell adminName={adminName} title="Agenten" subtitle="Profile, Zeitpläne, Kontext und Freigaben"><AgentOverview data={data} selectedAgentId={selectedAgentId} /></AdminShell>
 }
