@@ -79,12 +79,15 @@ export function EcosystemSearch() {
         {results.slice(0, 16).map(entry => {
           const Icon = icons[entry.kind]
           const external = entry.href.startsWith("https://")
+          // Native fragment navigation also stays correct after revisiting a cached route.
+          const hasFragment = entry.href.includes("#")
+          const ResultLink = hasFragment ? "a" : Link
           return <div className={styles.result} key={entry.id}>
-            <Link href={entry.href} prefetch={false} {...(external ? { target: "_blank", rel: "noreferrer" } : {})} onClick={() => setOpen(false)}>
+            <ResultLink href={entry.href} {...(hasFragment ? {} : { prefetch: false })} {...(external ? { target: "_blank", rel: "noreferrer" } : {})} onClick={() => setOpen(false)}>
               <span className={styles.glyph}><Icon size={21} weight="duotone" aria-hidden="true" /></span>
               <span className={styles.resultText}><strong>{entry.title}</strong><span>{entry.description}</span></span>
               <small>{(english ? englishKinds : kindLabels)[entry.kind]}</small>
-            </Link>
+            </ResultLink>
             {entry.publicHref ? <a className={styles.publicLink} href={entry.publicHref} target="_blank" rel="noreferrer" aria-label={`${entry.title}: ${english ? "open public page" : "öffentliche Seite öffnen"}`}><ArrowUpRight size={16} aria-hidden="true" /></a> : null}
           </div>
         })}

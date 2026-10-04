@@ -198,7 +198,7 @@ function AgentTile({ agent }: { agent: AgentSummary }) {
         <div><dt>Letzter belegter Lauf</dt><dd>{agent.lastRunLabel}{agent.lastRunAt ? ` · ${dateTime(agent.lastRunAt)}` : ""}</dd></div>
         <div><dt>Arbeitsweise</dt><dd>{agent.mode} · {agent.cadence}</dd></div>
       </dl>
-      <Link href={agent.href} prefetch={false}>Agent öffnen <ArrowUpRight size={13} aria-hidden="true" /></Link>
+      <a href={agent.href}>Agent öffnen <ArrowUpRight size={13} aria-hidden="true" /></a>
     </div>
   </details>
 }
