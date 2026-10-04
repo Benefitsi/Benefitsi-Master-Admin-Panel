@@ -54,6 +54,14 @@ const measurementListeners = new Set<() => void>()
 let measurementRevision = 0
 export const getMediaMeasurementRevision = () => measurementRevision
 export const getServerMediaMeasurementRevision = () => 0
+export const getRecordedMediaDimensions = (url: string) => measuredDimensions.get(url)
+
+// Prepared uploads carry the real canvas dimensions in their generated names.
+// Publish those dimensions immediately; the preview load confirms them again.
+export function recordPreparedMediaDimensions(url: string, fileName: string) {
+  const dimensions = dimensionsFromUrl(fileName)
+  if (dimensions) recordMediaDimensions(url, dimensions)
+}
 
 export function subscribeMediaMeasurements(listener: () => void) {
   measurementListeners.add(listener)

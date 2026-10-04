@@ -99,6 +99,7 @@ textarea {
 .partner-settings-form select { padding-right: 30px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%23667085' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
 .partner-settings-form :where(input, textarea, select):disabled { cursor: wait; opacity: .65; }
 .partner-profile-grid { display: grid; gap: 22px; }
+.partner-profile-description { grid-column: 1 / -1; }
 .partner-profile-contact { border-top: 1px solid #edf0f3; padding-top: 18px; }
 .partner-profile-core :where(label, .partner-category-field) { font-size: 13px; }
 .partner-profile-contact :where(label) { font-size: 13px; }

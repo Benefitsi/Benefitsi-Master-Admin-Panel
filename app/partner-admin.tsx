@@ -121,7 +121,7 @@ import { LoadingSpinner } from "@/components/loading-ui"
 import { MenuAiImportDialog } from "@/components/menu-ai-import-dialog"
 import { PartnerPlanPanel } from "@/components/partner/partner-plan-panel"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
-import { inspectMediaDimensions, inspectPartnerMediaQuality, measurePartnerMedia, recordMediaDimensions, subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision } from "@/lib/partner-media-quality"
+import { inspectMediaDimensions, inspectPartnerMediaQuality, measurePartnerMedia, recordMediaDimensions, subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision, getRecordedMediaDimensions, recordPreparedMediaDimensions } from "@/lib/partner-media-quality"
 
 const initialState: PartnerActionState = {
   ok: false,
@@ -2604,22 +2604,6 @@ function PartnerForm({
             />
           ) : null}
         </div>
-        <TextAreaField
-          label="Description"
-          name="description"
-          value={descriptionDraft}
-          onChange={setDescriptionDraft}
-          required
-          labelAccessory={
-            <GenerateDescriptionButton
-              pending={isGeneratingDescription}
-              onClick={requestDescription}
-            />
-          }
-        />
-        {descriptionState.message ? (
-          <ActionMessage state={descriptionState} toast={false} />
-        ) : null}
         <MultiSelectField
           label="Categories"
           name="category"
@@ -2667,6 +2651,24 @@ function PartnerForm({
           defaultValue={partner?.address}
           required
         />
+        </div>
+        <div className="partner-profile-description space-y-3">
+        <TextAreaField
+          label="Description"
+          name="description"
+          value={descriptionDraft}
+          onChange={setDescriptionDraft}
+          required
+          labelAccessory={
+            <GenerateDescriptionButton
+              pending={isGeneratingDescription}
+              onClick={requestDescription}
+            />
+          }
+        />
+        {descriptionState.message ? (
+          <ActionMessage state={descriptionState} toast={false} />
+        ) : null}
         </div>
         </div>
       </FormSection>
@@ -11974,6 +11976,7 @@ function CoverUploadField({
 
     if (error) throw new Error(`Unable to upload "${file.name}": ${error.message}`)
 
+    recordPreparedMediaDimensions(target.publicUrl, file.name)
     return {
       id: crypto.randomUUID(),
       preview: { name: file.name, url: target.publicUrl },
@@ -12198,11 +12201,24 @@ function CoverUploadField({
 
           try {
             setIsProcessing(true)
-            const resizedFiles = await resizeImageFiles(files, spec)
             const additions: Awaited<ReturnType<typeof uploadCover>>[] = []
-
-            for (const file of resizedFiles) {
-              additions.push(await uploadCover(file))
+            // Pipeline resizing and direct uploads, keeping at most two images in flight.
+            // allSettled retains successful uploads if another photo fails.
+            for (let offset = 0; offset < files.length; offset += 2) {
+              const results = await Promise.allSettled(
+                files.slice(offset, offset + 2).map(async file => {
+                  const resizedFile = await resizeImageFile(file, spec, { zoom: 1, x: 0, y: 0 })
+                  return uploadCover(resizedFile)
+                }),
+              )
+              for (const result of results) {
+                if (result.status === "fulfilled") additions.push(result.value)
+              }
+              const failure = results.find(result => result.status === "rejected")
+              if (failure?.status === "rejected") {
+                setDiscardedUploadedUrls(current => [...current, ...additions.map(cover => cover.url)])
+                throw failure.reason
+              }
             }
             const replacement = additions[0]
             let nextCovers: typeof selectedCovers
@@ -12310,6 +12326,7 @@ function ImagePreview({
 }) {
   const [measured, setMeasured] = useState<{ url: string; width: number; height: number } | null>(null)
   const imageRef = useRef<HTMLImageElement>(null)
+  const mediaRevision = useSyncExternalStore(subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision)
   useEffect(() => {
     const image = imageRef.current
     if (src && image?.complete && image.naturalWidth && !image.dataset.fallbackApplied) {
@@ -12319,7 +12336,7 @@ function ImagePreview({
     }
   }, [src])
   const issue = src
-    ? inspectMediaDimensions(spec.label, src, measured?.url === src ? measured : undefined)
+    ? inspectMediaDimensions(spec.label, src, measured?.url === src ? measured : mediaRevision > 0 ? getRecordedMediaDimensions(src) : undefined)
     : null
 
   return (
@@ -12425,10 +12442,11 @@ function isUploadPlaceholderUrl(url: string) {
 }
 
 function createImagePreviews(files: File[]) {
-  return files.map((file) => ({
-    name: file.name,
-    url: URL.createObjectURL(file),
-  }))
+  return files.map((file) => {
+    const url = URL.createObjectURL(file)
+    recordPreparedMediaDimensions(url, file.name)
+    return { name: file.name, url }
+  })
 }
 
 function revokeImagePreviews(previews: ImagePreview[]) {
