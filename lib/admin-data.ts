@@ -351,6 +351,10 @@ export type MenuItemAddon = {
   cost: number
 }
 
+type MicrositeWithVersions = Omit<PartnerMicrosite, "draftVersion"> & {
+  draftVersions: MicrositeVersion[]
+}
+
 export async function getDashboardData(
   supabase: SupabaseClient,
   options: { includeActivity?: boolean; entitlementPartnerId?: string | null } = {},
@@ -374,7 +378,6 @@ export async function getDashboardData(
     benefitsResult,
     qrTokensResult,
     micrositesResult,
-    micrositeVersionsResult,
   ] = await Promise.all([
     supabase
       .from("partners")
@@ -425,11 +428,18 @@ export async function getDashboardData(
       .select("*")
       .order("created_at", { ascending: false, nullsFirst: false })
       .limit(300),
-    supabase.from("microsites").select("*"),
+    // The workspace uses only the latest draft and the explicit published
+    // version. Embed both so history is neither transferred nor parsed.
     supabase
-      .from("microsite_versions")
-      .select("*")
-      .order("version_number", { ascending: false, nullsFirst: false }),
+      .from("microsites")
+      .select(`
+        *,
+        draftVersions:microsite_versions!microsite_versions_microsite_id_fkey(*),
+        publishedVersion:microsite_versions!microsites_published_version_fk(*)
+      `)
+      .eq("draftVersions.status", "draft")
+      .order("version_number", { referencedTable: "draftVersions", ascending: false, nullsFirst: false })
+      .limit(1, { referencedTable: "draftVersions" }),
   ])
 
   const errors = [
@@ -451,7 +461,6 @@ export async function getDashboardData(
     benefitsResult.error?.message,
     qrTokensResult.error?.message,
     micrositesResult.error?.message,
-    micrositeVersionsResult.error?.message,
   ].filter(Boolean) as string[]
 
   const partners = ((partnersResult.data ?? []) as Partner[]).map((partner) => ({
@@ -492,12 +501,7 @@ export async function getDashboardData(
   const redemptions = (redemptionsResult.data ?? []) as DealRedemption[]
   const qrTokens = (qrTokensResult.data ?? []) as QrToken[]
   const visits = (visitsResult.data ?? []) as Visit[]
-  const microsites = (micrositesResult.data ?? []) as Omit<
-    PartnerMicrosite,
-    "draftVersion" | "publishedVersion"
-  >[]
-  const micrositeVersions =
-    (micrositeVersionsResult.data ?? []) as MicrositeVersion[]
+  const microsites = (micrositesResult.data ?? []) as MicrositeWithVersions[]
 
   const cityNames = new Map(cities.map((city) => [city.id, city.name]))
   const usersById = new Map(
@@ -529,7 +533,7 @@ export async function getDashboardData(
   const menusByPartner = groupByPartner(annotateMenus(menus, menuCategories, menuItems))
   const progressByPartner = groupByPartner(progress)
   const visitsByPartner = groupByPartner(visits)
-  const micrositeByPartner = annotateMicrosites(microsites, micrositeVersions)
+  const micrositeByPartner = annotateMicrosites(microsites)
 
   // Listings do not need per-partner capabilities. Only the visible editor
   // opts in; null explicitly selects the first row for the default editor.
@@ -719,32 +723,18 @@ function annotateMenus(
 }
 
 function annotateMicrosites(
-  microsites: Omit<PartnerMicrosite, "draftVersion" | "publishedVersion">[],
-  versions: MicrositeVersion[],
+  microsites: MicrositeWithVersions[],
 ) {
-  const versionsByMicrosite = new Map<string, MicrositeVersion[]>()
   const grouped = new Map<string, PartnerMicrosite>()
 
-  for (const version of versions) {
-    versionsByMicrosite.set(version.microsite_id, [
-      ...(versionsByMicrosite.get(version.microsite_id) ?? []),
-      version,
-    ])
-  }
-
-  for (const microsite of microsites) {
-    const micrositeVersions = versionsByMicrosite.get(microsite.id) ?? []
-    const publishedVersion =
-      micrositeVersions.find(
-        (version) => version.id === microsite.published_version_id,
-      ) ?? null
-    const draftVersion =
-      micrositeVersions.find((version) => version.status === "draft") ?? null
-
+  for (const { draftVersions, publishedVersion, ...microsite } of microsites) {
     grouped.set(microsite.partner_id, {
       ...microsite,
-      draftVersion,
-      publishedVersion,
+      draftVersion: draftVersions[0] ?? null,
+      // The published-version FK alone does not enforce microsite ownership.
+      publishedVersion: publishedVersion?.microsite_id === microsite.id
+        ? publishedVersion
+        : null,
     })
   }
 

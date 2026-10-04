@@ -14,7 +14,7 @@ function database({ reply, count = 300 } = {}) {
     from(table) {
       const result = { data: table === 'partners' ? partners : [], error: null }
       return {
-        select() { return this }, order() { return this }, limit() { return this },
+        select() { return this }, order() { return this }, limit() { return this }, eq() { return this },
         then(resolve, reject) { return Promise.resolve(result).then(resolve, reject) },
       }
     },

@@ -87,6 +87,7 @@ jobs:
         run: >-
           node --import tsx --test --test-concurrency=2
           tests/admin-dashboard-loading.test.mjs
+          tests/admin-microsite-loading.test.mjs
           tests/partner-microsite-preview-access.test.mjs
           tests/microsite-publication-cache.test.mjs
           tests/partner-capability-policy.test.mjs
