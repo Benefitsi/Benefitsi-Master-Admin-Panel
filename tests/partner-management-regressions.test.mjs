@@ -88,8 +88,9 @@ test("category selector does not nest a disclosure inside a collapsible section"
     code.indexOf("function WeekdayChipField"),
   )
 
-  assert.match(selector, /<button[\s\S]*?aria-haspopup="listbox"/)
-  assert.match(selector, /onPointerDown=\{\(event\) => event\.stopPropagation\(\)\}/)
+  assert.match(selector, /<button[\s\S]*?aria-haspopup="dialog"/)
+  assert.match(selector, /role="dialog"[\s\S]*?type="search"[\s\S]*?type="checkbox"/)
+  assert.match(selector, /onPointerDown=\{\(?event\)? => event\.stopPropagation\(\)\}/)
   assert.doesNotMatch(selector, /<details[\s\S]*?<summary/)
 })
 
