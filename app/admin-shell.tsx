@@ -123,6 +123,13 @@ function AdminShellContent({
               icon={<PartnerIcon className="size-5" />}
             />
             <AdminNavigationLink
+              href="/companies"
+              label="Firmenanfragen"
+              active={pathname.startsWith("/companies")}
+              collapsed={collapsed}
+              icon={<PartnerIcon className="size-5" />}
+            />
+            <AdminNavigationLink
               href="/city-pages"
               label="Städteseiten"
               active={pathname.startsWith("/city-pages")}
