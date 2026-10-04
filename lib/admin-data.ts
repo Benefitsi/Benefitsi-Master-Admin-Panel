@@ -592,7 +592,6 @@ async function fetchOwnerOptions(supabase: SupabaseClient): Promise<{
   error?: string
 }> {
   const attempts = [
-    "id,uid,email,display_name,is_partner",
     "id,email,display_name,is_partner",
     "id,email,display_name",
   ]
