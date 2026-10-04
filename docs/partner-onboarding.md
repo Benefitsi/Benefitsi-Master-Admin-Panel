@@ -17,6 +17,6 @@ Die vorhandene manuelle Pro-Testfreigabe wird als Onboarding angeboten. Es werde
 keine Partner automatisch gestartet. Kostenpflichtige Abos, offene Abrechnungen
 und Freigabesperren können durch diesen Bereich nicht umgangen werden.
 
-Deployment-Reihenfolge: Datenbankmigration `20261004084844_partner_onboarding_trial.sql`
+Deployment-Reihenfolge: Datenbankmigration `20261004090303_partner_onboarding_trial.sql`
 zuerst, dann Admin. Die Städteseite verwendet bereits den passenden dynamischen
 öffentlichen Microsite-Zugang. Tests: `node --test tests/partner-plan-actions.test.mjs tests/partner-onboarding-ui.test.mjs`.
