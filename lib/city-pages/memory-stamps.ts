@@ -30,12 +30,19 @@ const obj = (v: unknown): Record<string, unknown> | null => v !== null && typeof
 const number = (v: unknown, min: number, max: number) => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max
 const optionalId = (v: unknown) => v === null || (typeof v === 'string' && uuid.test(v))
 
-export function parseMemoryStampInput(value: unknown): { ok: true; input: MemoryStampInput } | { ok: false; message: string } {
+type MemoryWithdrawalInput = Pick<MemoryStampInput, 'citySlug' | 'id' | 'revision' | 'slug' | 'memory_code'> & { operation: 'withdraw' }
+
+export function parseMemoryStampInput(value: unknown): { ok: true; input: MemoryStampInput | MemoryWithdrawalInput } | { ok: false; message: string } {
   const fail = (message: string) => ({ ok: false as const, message })
   const v = obj(value)
   if (!v || typeof v.citySlug !== 'string' || v.citySlug.length > 120 || !slugPattern.test(v.citySlug)) return fail('Die Stadtzuordnung ist ungültig.')
-  if (!optionalId(v.id) || !optionalId(v.place_id) || !optionalId(v.artwork_asset_id) || (v.id === null ? v.revision !== null : typeof v.revision !== 'string' || !/^[a-f0-9]{32}$/.test(v.revision))) return fail('Bitte die Seite neu laden. Die Bearbeitungsversion oder Zuordnung fehlt.')
+  if (!optionalId(v.id) || (v.id === null ? v.revision !== null : typeof v.revision !== 'string' || !/^[a-f0-9]{32}$/.test(v.revision))) return fail('Bitte die Seite neu laden. Die Bearbeitungsversion oder Zuordnung fehlt.')
   if (!['save', 'approve', 'withdraw'].includes(String(v.operation))) return fail('Diese Aktion wird nicht unterstützt.')
+  if (v.operation === 'withdraw') {
+    if (!v.id || typeof v.slug !== 'string' || typeof v.memory_code !== 'string') return fail('Zum Zurückziehen fehlt die Stempelzuordnung.')
+    return { ok: true, input: { citySlug: v.citySlug, id: v.id as string, revision: v.revision as string, slug: v.slug, memory_code: v.memory_code, operation: 'withdraw' } }
+  }
+  if (!optionalId(v.place_id) || !optionalId(v.artwork_asset_id)) return fail('Bitte Ort und Stempelbild prüfen.')
   const strings: Record<string, string> = {}
   for (const [key, max] of Object.entries({ title: 180, short_title: 80, description: 4000, criteria: 2000, slug: 120, memory_code: 40, review_notes: 2000 })) {
     if (typeof v[key] !== 'string' || v[key].length > max) return fail('Bitte Textlängen und Pflichtfelder prüfen.')
@@ -56,7 +63,6 @@ export function parseMemoryStampInput(value: unknown): { ok: true; input: Memory
   }
   if (v.operation === 'approve' && v.edition_type !== 'standard') return fail('Die App unterstützt aktuell das Sammeln der Standard-Edition. Andere Editionen bitte als Entwurf belassen.')
   if (v.operation === 'approve' && (v.confirm_review !== true || !v.place_id || !v.artwork_asset_id || !zones.some(z => z.active))) return fail('Zur Freigabe sind ein Ort, ein veröffentlichtes Stempelbild, ein aktiver Sammelbereich und deine ausdrückliche Prüfung nötig.')
-  if (v.operation === 'withdraw' && !v.id) return fail('Ein neuer Entwurf kann noch nicht zurückgezogen werden.')
   return { ok: true, input: { citySlug: v.citySlug, id: v.id as string | null, revision: v.revision as string | null, operation: v.operation as MemoryStampInput['operation'], ...strings, place_id: v.place_id as string | null, edition_type: v.edition_type as string, sort_order: v.sort_order as number, artwork_asset_id: v.artwork_asset_id as string | null, minimum_accuracy_meters: v.minimum_accuracy_meters as number, minimum_sample_count: v.minimum_sample_count as number, maximum_sample_window_seconds: v.maximum_sample_window_seconds as number, zones, confirm_review: v.confirm_review === true } as MemoryStampInput }
 }
 

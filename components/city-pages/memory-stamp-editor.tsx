@@ -76,7 +76,7 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
   const [withdraw, setWithdraw] = useState(false)
   const selectedPlace = catalog.places.find(p => p.id === value.place_id)
   const selectedAsset = catalog.assets.find(a => a.id === value.artwork_asset_id)
-  const existingZoneKeys = new Set(record?.zones.map(z => z.zone_key))
+  const existingZoneCount = record?.zones.length ?? 0
   function change<K extends keyof MemoryStampInput>(key: K, next: MemoryStampInput[K]) { setValue(v => ({ ...v, [key]: next })) }
   function zoneChange(index: number, change: Partial<MemoryZone>) { setValue(v => ({ ...v, zones: v.zones.map((z, i) => i === index ? { ...z, ...change } : z) })) }
   function addZone() {
@@ -136,7 +136,7 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
           <legend className="px-1 text-sm font-bold">Sammelbereich {index + 1}</legend>
           <div className="grid gap-3 sm:grid-cols-2">
             <Label title="Bezeichnung"><input className={field} value={zone.label} maxLength={180} required onChange={e => zoneChange(index, { label: e.target.value })} /></Label>
-            <Label title="Kennung"><input className={field} value={zone.zone_key} maxLength={80} pattern="[a-z0-9]+(-[a-z0-9]+)*" required readOnly={existingZoneKeys.has(zone.zone_key)} onChange={e => zoneChange(index, { zone_key: e.target.value })} /></Label>
+            <Label title="Kennung"><input className={field} value={zone.zone_key} maxLength={80} pattern="[a-z0-9]+(-[a-z0-9]+)*" required readOnly={(index < existingZoneCount)} onChange={e => zoneChange(index, { zone_key: e.target.value })} /></Label>
             <Label title="Art des Sammelbereichs"><select className={field} value={zone.verification_type} onChange={e => zoneChange(index, { verification_type: e.target.value as MemoryZone['verification_type'], safe_latitude: null, safe_longitude: null })}><option value="POINT_RADIUS">Sammelpunkt mit Radius</option><option value="AREA" disabled={selectedPlace?.geometry_type !== 'POLYGON'}>Fläche des verknüpften Ortes</option></select></Label>
             {zone.verification_type === 'POINT_RADIUS' ? <Label title="Radius in Metern"><input className={field} type="number" min={1} max={10000} step="any" required value={zone.unlock_radius_meters} onChange={e => zoneChange(index, { unlock_radius_meters: e.target.valueAsNumber })} /></Label> : <Label title="Randtoleranz in Metern"><input className={field} type="number" min={0} max={50} step="any" required value={zone.edge_tolerance_meters} onChange={e => zoneChange(index, { edge_tolerance_meters: e.target.valueAsNumber })} /></Label>}
             {zone.verification_type === 'POINT_RADIUS' && <>
@@ -147,7 +147,7 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
           <div className="flex flex-wrap items-center justify-between gap-3">
             <label className="inline-flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={zone.active} onChange={e => zoneChange(index, { active: e.target.checked })} className="size-4" />Sammelbereich aktiv</label>
             {zone.verification_type === 'POINT_RADIUS' && selectedPlace?.latitude != null && selectedPlace.longitude != null && <button type="button" className={secondary} onClick={() => zoneChange(index, { safe_latitude: selectedPlace.latitude, safe_longitude: selectedPlace.longitude })}>Koordinaten des Ortes übernehmen</button>}
-            {!existingZoneKeys.has(zone.zone_key) && <button type="button" className="min-h-11 text-sm font-semibold text-red-700" onClick={() => change('zones', value.zones.filter((_, i) => i !== index))}>Neuen Bereich entfernen</button>}
+            {!(index < existingZoneCount) && <button type="button" className="min-h-11 text-sm font-semibold text-red-700" onClick={() => change('zones', value.zones.filter((_, i) => i !== index))}>Neuen Bereich entfernen</button>}
           </div>
         </fieldset>)}
         <button type="button" disabled={value.zones.length >= 20} className={secondary} onClick={addZone}><Plus size={16} aria-hidden />Sammelbereich hinzufügen</button>

@@ -84,3 +84,10 @@ test('database rejection never revalidates; cache warning does not hide a succes
   assert.ok(!a.calls.some(x=>x?.refresh))
   const b=await action({refresh:'failed'});const saved=await b.save(draft());assert.equal(saved.ok,true);assert.equal(saved.refresh,'failed')
 })
+
+ test('withdrawal works even when retired content no longer passes new editing rules', async () => {
+  const c=await load();
+  const result=c.parseMemoryStampInput(draft({operation:'withdraw',id,revision:'a'.repeat(32),title:'',description:'',minimum_sample_count:90,zones:[]}));
+  assert.equal(result.ok,true);
+  assert.deepEqual(Object.keys(result.input).sort(),['citySlug','id','memory_code','operation','revision','slug']);
+});
