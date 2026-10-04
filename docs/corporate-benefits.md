@@ -1,9 +1,10 @@
-# Corporate benefits inquiry workspace
+# Corporate benefits: inquiries and company setup
 
 Prepared locally on 2026-10-04. No migration, deployment or hosted mutation is
-performed by this branch. The first milestone stores an inquiry and lets a real
-Benefitsi admin document contact progress. It creates no employee accounts,
-invitations, subscriptions, premium grants, messages, payments or billing.
+performed by this branch. The inquiry milestone stores contact progress. The company milestone adds fixed
+annual seat agreements, personal invitation links and role assignments. Neither
+activates Premium, creates a real invoice, sends mail, charges money or renews
+an agreement. No production writes were performed during implementation.
 
 ## Admin route and boundaries
 
@@ -20,7 +21,7 @@ Unknown/repeated filters show a validation error without querying a misleading
 empty list. Database failure, zero requests and a null quote have separate UI
 states. Database details and contact data are never written to logs by this flow.
 
-Status and note are the only editable fields. Status values are `new`, `contacted`,
+Status and note are the only editable inquiry fields. Status values are `new`, `contacted`,
 `proposal`, `closed`; none implies a paid or active membership. Notes are non-null,
 up to 2000 Unicode characters, and may be empty. Names, quotes and employee counts
 remain the submitted snapshot. Empty/null RPC responses and malformed responses
@@ -102,15 +103,15 @@ success and handles catalog unavailability without producing a fake estimate.
    second tab. Expect a visible refresh instruction and no overwrite. Check one
    audit entry with the authenticated actor and unchanged contact/quote data.
 6. Verify keyboard/mobile layout, pending submit and preserved drafts on failure.
-   Confirm no email, invitation, payment or premium grant was produced.
+   When editing an inquiry, confirm no email, invitation, payment or premium grant was produced.
 
 ## Local verification
 
 Reuse installed Node/Next 16.3.6; no dependency install/upgrade or full build.
 
 ```sh
-node --import tsx --test --test-reporter=spec tests/corporate-requests.test.mjs tests/corporate-workspace.test.mjs
-node node_modules/eslint/bin/eslint.js app/companies/page.tsx app/companies/actions.ts app/admin-shell.tsx lib/corporate/requests.ts components/corporate/request-editor.tsx components/corporate/request-workspace.tsx tests/corporate-requests.test.mjs tests/corporate-workspace.test.mjs
+node --import tsx --test --test-concurrency=1 tests/corporate-requests.test.mjs tests/corporate-workspace.test.mjs tests/corporate-companies.test.mjs tests/corporate-company-ui.test.mjs
+node node_modules/eslint/bin/eslint.js app/companies components/corporate lib/corporate tests/corporate-*.test.mjs tests/helpers/load-typescript.mjs
 node node_modules/typescript/bin/tsc --noEmit --incremental false
 git diff --check
 ```
@@ -130,3 +131,63 @@ Catalog `2026-10-04.2` uses annual net reference prices: 2490 cents per seat for
 additional tier at 100 seats. The unmerged initial migration is updated before
 first release; no previously stored quote is rewritten. The consent version
 remains `corporate-contact-2026-10-04.1`.
+
+
+## Company setup and management
+
+`/companies` now also loads the current SQL catalog and a company page of 50.
+`companyOffset` is an integer from 0 to 1000000; the original inquiry `status`
+filter remains separate. Every page read and all five new Server Actions call
+`requireAdmin()` before using its session-scoped RPC client. A corporate owner
+role never grants access to these internal Admin routes.
+
+A request card previews the current annual net quote for agreed seats and a
+start date from today through today + 365 days. Creating the company freezes
+seats, one calendar year and the SQL catalog snapshot. The database transitions
+the original request to `proposal`, advances its timestamp and audits creation;
+the action refreshes `/companies` and the new detail route. The list displays
+the updated source status/time. An unsaved inquiry editor retains its draft and
+blocks further writes until reload when its source timestamp changes. Transport failure retains the submitted payload
+and locks those fields for an identical replay. No catalog means no new setup
+or substitute price. Conflict/catalog change asks for deliberate reload.
+
+`/companies/[id]` shows frozen quote, inclusive displayed end day, current
+employee/reservation/free counts and non-activated Premium status. The Admin
+can set `preparing`, `enrolling` or `paused`, and record an optional external
+invoice reference of at most 160 characters. This generates no invoice or
+payment assertion. Edits retain drafts and the complete microsecond token on
+failure; successful edits use the new token. Conflict disables blind save.
+
+The Admin may invite both owners and employees. A client event generates a
+WebCrypto UUID and 32 random bytes encoded as 64 lowercase hexadecimal digits.
+The pending identity and secret live only in a component ref. A transport error
+retains both for identical retry. Only confirmed `issued` with matching ID
+reveals `https://benefitsi.de/firmen/einladung#token=<secret>`, held in component
+memory and offered for copy; it is never a query/path parameter, persisted,
+logged, emailed or returned by the database. SQL stores only its hash. A new
+invitation action clears the previous link and identity. After reload, revoke
+an open invitation and create another if its link was lost.
+
+The roster displays active roles and valid open invitations, 50 per page.
+An explicit second confirmation is required for revoke/remove, including
+removal of an owner. Each mutation passes the original row's microsecond token
+and, for membership removal, its exact role. A stale operation shows reload
+guidance. Reloading refreshes counts and hides expired reservations, freeing
+capacity; released seats do not alter the fixed annual quote or dates. The
+previous-page link remains usable when a removal makes a page empty.
+
+Required company migration: `20261004182530_corporate_company_onboarding.sql`
+from the database draft PR, in addition to the inquiry migration. Verify the reviewed migration and grants before rollout. New contracts used here are `admin_create_corporate_company`,
+`admin_list_corporate_companies`, `admin_update_corporate_company`,
+`get_corporate_company`, `issue_corporate_invitation`,
+`revoke_corporate_invitation`, `remove_corporate_member` and the existing catalog.
+Expected domain statuses receive German guidance; malformed/unexpected results
+remain generic failures. Database authorization and lifecycle tests are the
+native SQL suite in the database repository.
+
+The frontend fixture `tests/fixtures/corporate/company-contract.json` is copied
+unaltered from the native PostgreSQL 16 CI artifact of database commit
+`e5a2e623a7abaea0296d7274c85f6729e23f431a` (52 tests passed). It contains only
+synthetic example.test contacts, catalog, company index and two roster pages.
+It contains no invitation secret or hash. Parsing does not reject historical
+fixture dates; current lifecycle validity is enforced by SQL.

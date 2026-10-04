@@ -1,9 +1,14 @@
+/* eslint-disable @next/next/no-html-link-for-pages -- Full reload deliberately clears stale optimistic drafts and reloads private lists. */
+import { CorporateCompanySetup } from "@/components/corporate/company-setup"
+import { CorporateCompanyIndex } from "@/components/corporate/company-index"
+import { type CompanyListResult, type CorporateCatalog } from "@/lib/corporate/companies"
 import { CorporateRequestEditor } from "@/components/corporate/request-editor"
 import { corporateInterestLabels, corporateStatuses, corporateStatusLabels, type CorporateListResult, type CorporateRequest, type CorporateStatus } from "@/lib/corporate/requests"
 
-export function CorporateRequestWorkspace({ result, selectedStatus }: { result: CorporateListResult; selectedStatus: CorporateStatus | null }) {
+export function CorporateRequestWorkspace({ result, selectedStatus, companies, catalog = null, today = "", latestStart = "" }: { result: CorporateListResult; selectedStatus: CorporateStatus | null; companies?: CompanyListResult; catalog?: CorporateCatalog | null; today?: string; latestStart?: string }) {
   return (
     <div className="space-y-5">
+      {companies && <CorporateCompanyIndex result={companies} selectedStatus={selectedStatus} />}
       <section className="rounded-3xl border border-[#061829]/10 bg-white p-5 sm:p-6">
         <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">Anfrageverwaltung</p>
         <h2 className="mt-1 text-xl font-black">Firmeninteresse koordinieren</h2>
@@ -28,14 +33,14 @@ export function CorporateRequestWorkspace({ result, selectedStatus }: { result: 
           <p className="px-1 text-sm text-[#617080]">{result.requests.length} angezeigt · Die neuesten maximal 50 Anfragen für diesen Filter.</p>
           {result.requests.length === 0 ? (
             <div className="rounded-3xl border border-[#061829]/10 bg-white px-5 py-10 text-center text-sm text-[#617080]">Keine Anfragen für diesen Filter vorhanden.</div>
-          ) : result.requests.map(request => <RequestCard key={request.request_id} request={request} />)}
+          ) : result.requests.map(request => <RequestCard key={request.request_id} request={request} catalog={catalog} today={today} latestStart={latestStart} />)}
         </section>
       )}
     </div>
   )
 }
 
-function RequestCard({ request }: { request: CorporateRequest }) {
+function RequestCard({ request, catalog, today, latestStart }: { request: CorporateRequest; catalog: CorporateCatalog | null; today: string; latestStart: string }) {
   return (
     <article className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white">
       <header className="flex flex-col gap-3 border-b border-[#061829]/10 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
@@ -70,6 +75,7 @@ function RequestCard({ request }: { request: CorporateRequest }) {
         </div>
         <div className="min-w-0 border-t border-[#061829]/10 pt-5 xl:border-t-0 xl:border-l xl:pl-6 xl:pt-0">
           <CorporateRequestEditor request={request} />
+          <CorporateCompanySetup request={request} catalog={catalog} today={today} latestStart={latestStart} />
         </div>
       </div>
     </article>

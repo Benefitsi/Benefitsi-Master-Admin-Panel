@@ -1,0 +1,892 @@
+{
+  "catalog": {
+    "tiers": [
+      {
+        "max_seats": 24,
+        "min_seats": 1,
+        "unit_amount_cents": 2490
+      },
+      {
+        "max_seats": 10000,
+        "min_seats": 25,
+        "unit_amount_cents": 1990
+      }
+    ],
+    "status": "planning",
+    "version": "2026-10-04.2",
+    "currency": "EUR",
+    "tax_mode": "net_reference",
+    "max_seats": 10000,
+    "billing_interval": "year"
+  },
+  "detail": {
+    "offset": 0,
+    "roster": [
+      {
+        "id": "95cc4d77-b9a9-4583-892a-2f97b022ad9c",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "00@example.test",
+        "expires_at": "2026-10-11T18:46:05.102408+00:00",
+        "updated_at": "2026-10-04T18:46:05.102408+00:00"
+      },
+      {
+        "id": "30bcb93d-5ee5-4af3-b818-a8e2b4c3c0cc",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "01@example.test",
+        "expires_at": "2026-10-11T18:46:05.115195+00:00",
+        "updated_at": "2026-10-04T18:46:05.115195+00:00"
+      },
+      {
+        "id": "37c0d3ec-672a-44e2-908d-4cc3fef5cdf0",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "02@example.test",
+        "expires_at": "2026-10-11T18:46:05.127792+00:00",
+        "updated_at": "2026-10-04T18:46:05.127792+00:00"
+      },
+      {
+        "id": "8ad88590-4c4c-4d13-8ecc-9f6569b2af1f",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "03@example.test",
+        "expires_at": "2026-10-11T18:46:05.141181+00:00",
+        "updated_at": "2026-10-04T18:46:05.141181+00:00"
+      },
+      {
+        "id": "ec980224-5f78-4b55-90ed-c9018c83ae1d",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "04@example.test",
+        "expires_at": "2026-10-11T18:46:05.153723+00:00",
+        "updated_at": "2026-10-04T18:46:05.153723+00:00"
+      },
+      {
+        "id": "142df311-5a63-43f5-af68-35278f3304d0",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "05@example.test",
+        "expires_at": "2026-10-11T18:46:05.166729+00:00",
+        "updated_at": "2026-10-04T18:46:05.166729+00:00"
+      },
+      {
+        "id": "92e771e8-c956-4bf9-b77a-15a4bbabd2a5",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "06@example.test",
+        "expires_at": "2026-10-11T18:46:05.179591+00:00",
+        "updated_at": "2026-10-04T18:46:05.179591+00:00"
+      },
+      {
+        "id": "aa33a572-e469-4edf-b1a6-3ef7f4efa468",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "07@example.test",
+        "expires_at": "2026-10-11T18:46:05.192269+00:00",
+        "updated_at": "2026-10-04T18:46:05.192269+00:00"
+      },
+      {
+        "id": "e58e5dbe-dffe-446c-b8f2-c48d7109b485",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "08@example.test",
+        "expires_at": "2026-10-11T18:46:05.205053+00:00",
+        "updated_at": "2026-10-04T18:46:05.205053+00:00"
+      },
+      {
+        "id": "0a92e061-8577-4efb-a6ca-c4c28768b281",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "09@example.test",
+        "expires_at": "2026-10-11T18:46:05.218314+00:00",
+        "updated_at": "2026-10-04T18:46:05.218314+00:00"
+      },
+      {
+        "id": "b4adac47-4ba0-473d-8e75-f85d1c63a26b",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "10@example.test",
+        "expires_at": "2026-10-11T18:46:05.232109+00:00",
+        "updated_at": "2026-10-04T18:46:05.232109+00:00"
+      },
+      {
+        "id": "97f2303f-780d-493d-a0d3-ca40c7026d48",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "11@example.test",
+        "expires_at": "2026-10-11T18:46:05.245397+00:00",
+        "updated_at": "2026-10-04T18:46:05.245397+00:00"
+      },
+      {
+        "id": "86a4e9f8-41a3-4795-8e63-bbcd6cc05452",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "12@example.test",
+        "expires_at": "2026-10-11T18:46:05.258385+00:00",
+        "updated_at": "2026-10-04T18:46:05.258385+00:00"
+      },
+      {
+        "id": "251acd7a-d663-404e-8354-d6aa05c5884d",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "13@example.test",
+        "expires_at": "2026-10-11T18:46:05.27128+00:00",
+        "updated_at": "2026-10-04T18:46:05.27128+00:00"
+      },
+      {
+        "id": "1e69fb3c-68b5-44de-952e-595fa0400bf4",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "14@example.test",
+        "expires_at": "2026-10-11T18:46:05.287366+00:00",
+        "updated_at": "2026-10-04T18:46:05.287366+00:00"
+      },
+      {
+        "id": "913abb84-41ae-4f6a-b28f-308a47d30f72",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "15@example.test",
+        "expires_at": "2026-10-11T18:46:05.300692+00:00",
+        "updated_at": "2026-10-04T18:46:05.300692+00:00"
+      },
+      {
+        "id": "abb3481a-fc0c-4754-ac36-67b7984ab33a",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "16@example.test",
+        "expires_at": "2026-10-11T18:46:05.313151+00:00",
+        "updated_at": "2026-10-04T18:46:05.313151+00:00"
+      },
+      {
+        "id": "cd2dc924-8d6d-415c-a218-cb0680c42f18",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "17@example.test",
+        "expires_at": "2026-10-11T18:46:05.325874+00:00",
+        "updated_at": "2026-10-04T18:46:05.325874+00:00"
+      },
+      {
+        "id": "c6f4b8e9-4922-48c1-8242-7d21fb5d57f6",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "18@example.test",
+        "expires_at": "2026-10-11T18:46:05.338676+00:00",
+        "updated_at": "2026-10-04T18:46:05.338676+00:00"
+      },
+      {
+        "id": "821aec29-ed1c-4838-8ce1-0097b55283d0",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "19@example.test",
+        "expires_at": "2026-10-11T18:46:05.351144+00:00",
+        "updated_at": "2026-10-04T18:46:05.351144+00:00"
+      },
+      {
+        "id": "7b8c9554-5ea7-49de-957c-ee32cc4868fb",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "20@example.test",
+        "expires_at": "2026-10-11T18:46:05.363923+00:00",
+        "updated_at": "2026-10-04T18:46:05.363923+00:00"
+      },
+      {
+        "id": "82019a21-0bda-41e7-a567-87a6361d712d",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "21@example.test",
+        "expires_at": "2026-10-11T18:46:05.377193+00:00",
+        "updated_at": "2026-10-04T18:46:05.377193+00:00"
+      },
+      {
+        "id": "d0889b44-fa16-4df2-831f-6539c4f86148",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "22@example.test",
+        "expires_at": "2026-10-11T18:46:05.390342+00:00",
+        "updated_at": "2026-10-04T18:46:05.390342+00:00"
+      },
+      {
+        "id": "a2eb06cf-060a-4948-8321-3d21e738ec8d",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "23@example.test",
+        "expires_at": "2026-10-11T18:46:05.403139+00:00",
+        "updated_at": "2026-10-04T18:46:05.403139+00:00"
+      },
+      {
+        "id": "0e8ed34e-f19a-4b5a-a595-894f04241435",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "24@example.test",
+        "expires_at": "2026-10-11T18:46:05.415736+00:00",
+        "updated_at": "2026-10-04T18:46:05.415736+00:00"
+      },
+      {
+        "id": "65b34e62-ec77-405d-80e0-e6bfb744dc3b",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "25@example.test",
+        "expires_at": "2026-10-11T18:46:05.428604+00:00",
+        "updated_at": "2026-10-04T18:46:05.428604+00:00"
+      },
+      {
+        "id": "52c14b5e-4453-4adb-95c3-79594dd98579",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "26@example.test",
+        "expires_at": "2026-10-11T18:46:05.441576+00:00",
+        "updated_at": "2026-10-04T18:46:05.441576+00:00"
+      },
+      {
+        "id": "0be4376b-99eb-49cb-825f-c993cd8ce16f",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "27@example.test",
+        "expires_at": "2026-10-11T18:46:05.454833+00:00",
+        "updated_at": "2026-10-04T18:46:05.454833+00:00"
+      },
+      {
+        "id": "d15887c7-83f0-4eb6-bbc9-6e222300d5bd",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "28@example.test",
+        "expires_at": "2026-10-11T18:46:05.468223+00:00",
+        "updated_at": "2026-10-04T18:46:05.468223+00:00"
+      },
+      {
+        "id": "7ea7dfdf-0991-43e1-8f41-daac3b96d5f1",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "29@example.test",
+        "expires_at": "2026-10-11T18:46:05.481622+00:00",
+        "updated_at": "2026-10-04T18:46:05.481622+00:00"
+      },
+      {
+        "id": "2c46e27d-1edf-4774-b3cf-8eba11b5f09f",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "30@example.test",
+        "expires_at": "2026-10-11T18:46:05.494457+00:00",
+        "updated_at": "2026-10-04T18:46:05.494457+00:00"
+      },
+      {
+        "id": "39471f1f-2e60-4981-ab39-db3051fb0097",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "31@example.test",
+        "expires_at": "2026-10-11T18:46:05.507669+00:00",
+        "updated_at": "2026-10-04T18:46:05.507669+00:00"
+      },
+      {
+        "id": "a907c555-4523-48dc-91e3-d737b1112f67",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "32@example.test",
+        "expires_at": "2026-10-11T18:46:05.520646+00:00",
+        "updated_at": "2026-10-04T18:46:05.520646+00:00"
+      },
+      {
+        "id": "044d7dda-56e0-4391-8bf1-b3db55c1d7a1",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "33@example.test",
+        "expires_at": "2026-10-11T18:46:05.533257+00:00",
+        "updated_at": "2026-10-04T18:46:05.533257+00:00"
+      },
+      {
+        "id": "d3dcfb52-3a24-4ef2-af6b-48200ea22907",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "34@example.test",
+        "expires_at": "2026-10-11T18:46:05.546115+00:00",
+        "updated_at": "2026-10-04T18:46:05.546115+00:00"
+      },
+      {
+        "id": "185c83f6-54fd-411f-8459-6395211e59e3",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "35@example.test",
+        "expires_at": "2026-10-11T18:46:05.55895+00:00",
+        "updated_at": "2026-10-04T18:46:05.55895+00:00"
+      },
+      {
+        "id": "c2adc502-0a54-4d96-adea-86dadddb785c",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "36@example.test",
+        "expires_at": "2026-10-11T18:46:05.571288+00:00",
+        "updated_at": "2026-10-04T18:46:05.571288+00:00"
+      },
+      {
+        "id": "747f1d48-78b5-4cf4-825f-f10a42e117a4",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "37@example.test",
+        "expires_at": "2026-10-11T18:46:05.584601+00:00",
+        "updated_at": "2026-10-04T18:46:05.584601+00:00"
+      },
+      {
+        "id": "96319fa6-2862-411a-b619-faf39d4cbd43",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "38@example.test",
+        "expires_at": "2026-10-11T18:46:05.596931+00:00",
+        "updated_at": "2026-10-04T18:46:05.596931+00:00"
+      },
+      {
+        "id": "daa6f70b-2751-404d-9dfb-d2496771caca",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "39@example.test",
+        "expires_at": "2026-10-11T18:46:05.609718+00:00",
+        "updated_at": "2026-10-04T18:46:05.609718+00:00"
+      },
+      {
+        "id": "6385a130-5d29-411f-9e40-99bcc884d591",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "40@example.test",
+        "expires_at": "2026-10-11T18:46:05.622416+00:00",
+        "updated_at": "2026-10-04T18:46:05.622416+00:00"
+      },
+      {
+        "id": "91ff1dd5-12da-4e96-88d1-8ef32de1245a",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "41@example.test",
+        "expires_at": "2026-10-11T18:46:05.635423+00:00",
+        "updated_at": "2026-10-04T18:46:05.635423+00:00"
+      },
+      {
+        "id": "084add8d-4a4e-49bc-a3b4-266a4cf37ca5",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "42@example.test",
+        "expires_at": "2026-10-11T18:46:05.648044+00:00",
+        "updated_at": "2026-10-04T18:46:05.648044+00:00"
+      },
+      {
+        "id": "5cd54b1d-dff1-4b20-92be-bdaf7e7134bd",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "43@example.test",
+        "expires_at": "2026-10-11T18:46:05.66087+00:00",
+        "updated_at": "2026-10-04T18:46:05.66087+00:00"
+      },
+      {
+        "id": "fa4135d6-f9df-4259-a5a2-4fd66e39e968",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "44@example.test",
+        "expires_at": "2026-10-11T18:46:05.67443+00:00",
+        "updated_at": "2026-10-04T18:46:05.67443+00:00"
+      },
+      {
+        "id": "90593d01-e194-41d3-a35c-d0dd7940ddbb",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "45@example.test",
+        "expires_at": "2026-10-11T18:46:05.686746+00:00",
+        "updated_at": "2026-10-04T18:46:05.686746+00:00"
+      },
+      {
+        "id": "71e69e4d-1c08-44b2-a506-aa59c4a48c28",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "46@example.test",
+        "expires_at": "2026-10-11T18:46:05.699622+00:00",
+        "updated_at": "2026-10-04T18:46:05.699622+00:00"
+      },
+      {
+        "id": "6908a506-9c6c-4a50-904d-e6faa31aa984",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "47@example.test",
+        "expires_at": "2026-10-11T18:46:05.71249+00:00",
+        "updated_at": "2026-10-04T18:46:05.71249+00:00"
+      },
+      {
+        "id": "07b2233e-cdfa-4583-aa88-3af03e47f4cd",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "48@example.test",
+        "expires_at": "2026-10-11T18:46:05.72524+00:00",
+        "updated_at": "2026-10-04T18:46:05.72524+00:00"
+      },
+      {
+        "id": "dd373950-5c8b-4beb-83b1-2ed530cd137a",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "49@example.test",
+        "expires_at": "2026-10-11T18:46:05.737568+00:00",
+        "updated_at": "2026-10-04T18:46:05.737568+00:00"
+      }
+    ],
+    "status": "ok",
+    "company": {
+      "city": "Annweiler",
+      "seats": 60,
+      "status": "enrolling",
+      "ends_on": "2027-10-04",
+      "currency": "EUR",
+      "tax_mode": "net_reference",
+      "starts_on": "2026-10-04",
+      "company_id": "235403ab-c687-4345-97cd-e69473778383",
+      "updated_at": "2026-10-04T18:46:05.026817+00:00",
+      "company_name": "Example Company",
+      "contact_name": "Example Contact",
+      "contact_email": "5861b17c-43dd-4833-bc3c-e8aa9f84a0c1@example.test",
+      "employee_count": 1,
+      "reserved_count": 51,
+      "available_seats": 8,
+      "catalog_version": "2026-10-04.2",
+      "invoice_reference": "Invoice 42",
+      "source_request_id": "5861b17c-43dd-4833-bc3c-e8aa9f84a0c1",
+      "unit_amount_cents": 1990,
+      "entitlement_status": "not_enabled",
+      "total_amount_cents": 119400
+    },
+    "page_size": 50,
+    "roster_total": 53
+  },
+  "next_page": {
+    "offset": 50,
+    "roster": [
+      {
+        "id": "38a74c0b-b79a-48a9-a4d2-c7d6c0974b20",
+        "kind": "invitation",
+        "role": "employee",
+        "email": "50@example.test",
+        "expires_at": "2026-10-11T18:46:05.750252+00:00",
+        "updated_at": "2026-10-04T18:46:05.750252+00:00"
+      },
+      {
+        "id": "e551622f-a8a3-4d0b-9a1d-723eabeaf1b6",
+        "kind": "member",
+        "role": "employee",
+        "email": "employee-09f6cf21-911f-49c5-ba17-5ea7a0a298be@example.test",
+        "expires_at": null,
+        "updated_at": "2026-10-04T18:46:05.089816+00:00"
+      },
+      {
+        "id": "fef8382e-e770-4715-834b-56e0e01a62f6",
+        "kind": "member",
+        "role": "owner",
+        "email": "owner-1e62c476-6956-43eb-8a7f-cfe8614bb87a@example.test",
+        "expires_at": null,
+        "updated_at": "2026-10-04T18:46:05.056739+00:00"
+      }
+    ],
+    "status": "ok",
+    "company": {
+      "city": "Annweiler",
+      "seats": 60,
+      "status": "enrolling",
+      "ends_on": "2027-10-04",
+      "currency": "EUR",
+      "tax_mode": "net_reference",
+      "starts_on": "2026-10-04",
+      "company_id": "235403ab-c687-4345-97cd-e69473778383",
+      "updated_at": "2026-10-04T18:46:05.026817+00:00",
+      "company_name": "Example Company",
+      "contact_name": "Example Contact",
+      "contact_email": "5861b17c-43dd-4833-bc3c-e8aa9f84a0c1@example.test",
+      "employee_count": 1,
+      "reserved_count": 51,
+      "available_seats": 8,
+      "catalog_version": "2026-10-04.2",
+      "invoice_reference": "Invoice 42",
+      "source_request_id": "5861b17c-43dd-4833-bc3c-e8aa9f84a0c1",
+      "unit_amount_cents": 1990,
+      "entitlement_status": "not_enabled",
+      "total_amount_cents": 119400
+    },
+    "page_size": 50,
+    "roster_total": 53
+  },
+  "membership": {
+    "companies": [
+      {
+        "roles": [
+          "employee"
+        ],
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "starts_on": "2026-10-04",
+        "company_id": "235403ab-c687-4345-97cd-e69473778383",
+        "company_name": "Example Company",
+        "entitlement_status": "not_enabled",
+        "employee_updated_at": "2026-10-04T18:46:05.089816+00:00"
+      }
+    ]
+  },
+  "owner_membership": {
+    "companies": [
+      {
+        "roles": [
+          "owner"
+        ],
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "starts_on": "2026-10-04",
+        "company_id": "235403ab-c687-4345-97cd-e69473778383",
+        "company_name": "Example Company",
+        "entitlement_status": "not_enabled",
+        "employee_updated_at": null
+      }
+    ]
+  },
+  "companies": {
+    "total": 15,
+    "offset": 0,
+    "companies": [
+      {
+        "city": "Annweiler",
+        "seats": 60,
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "235403ab-c687-4345-97cd-e69473778383",
+        "updated_at": "2026-10-04T18:46:05.026817+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "5861b17c-43dd-4833-bc3c-e8aa9f84a0c1@example.test",
+        "employee_count": 1,
+        "reserved_count": 51,
+        "available_seats": 8,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "Invoice 42",
+        "source_request_id": "5861b17c-43dd-4833-bc3c-e8aa9f84a0c1",
+        "unit_amount_cents": 1990,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 119400
+      },
+      {
+        "city": "Annweiler",
+        "seats": 2,
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "292c03fb-e83b-4a65-9af7-078f3107a452",
+        "updated_at": "2026-10-04T18:46:04.766783+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "f9ba1f78-73a4-4027-a8b8-9953ec7b7f10@example.test",
+        "employee_count": 1,
+        "reserved_count": 0,
+        "available_seats": 1,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "Invoice 42",
+        "source_request_id": "f9ba1f78-73a4-4027-a8b8-9953ec7b7f10",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 4980
+      },
+      {
+        "city": "Annweiler",
+        "seats": 1,
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "6d806af1-7d97-448c-aeb4-e4be718e70b0",
+        "updated_at": "2026-10-04T18:46:04.545888+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "9c208310-b00f-44f7-995e-5621ca179e60@example.test",
+        "employee_count": 0,
+        "reserved_count": 0,
+        "available_seats": 1,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "Invoice 42",
+        "source_request_id": "9c208310-b00f-44f7-995e-5621ca179e60",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 2490
+      },
+      {
+        "city": "Annweiler",
+        "seats": 2,
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "2e6ffd95-fb5a-480a-b5d6-abc8523b7284",
+        "updated_at": "2026-10-04T18:46:04.211845+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "23c2fb0e-557c-4951-9a74-cb368c66ab27@example.test",
+        "employee_count": 0,
+        "reserved_count": 0,
+        "available_seats": 2,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "Invoice 42",
+        "source_request_id": "23c2fb0e-557c-4951-9a74-cb368c66ab27",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 4980
+      },
+      {
+        "city": "Annweiler",
+        "seats": 2,
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "02c4cf03-17b7-4d72-aca0-fa74e196eda4",
+        "updated_at": "2026-10-04T18:46:04.07116+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "881e15a2-7055-4184-9671-a84ae13ebe48@example.test",
+        "employee_count": 1,
+        "reserved_count": 0,
+        "available_seats": 1,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "Invoice 42",
+        "source_request_id": "881e15a2-7055-4184-9671-a84ae13ebe48",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 4980
+      },
+      {
+        "city": "Annweiler",
+        "seats": 2,
+        "status": "enrolling",
+        "ends_on": "2026-10-05",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2025-10-05",
+        "company_id": "9a08b68b-da6c-403f-afbc-aff4c3ebf784",
+        "updated_at": "2026-10-04T18:46:03.766895+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "8c2cce60-cb78-4b18-b12d-26d765f1f4ed@example.test",
+        "employee_count": 1,
+        "reserved_count": 1,
+        "available_seats": 0,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "Invoice 42",
+        "source_request_id": "8c2cce60-cb78-4b18-b12d-26d765f1f4ed",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 4980
+      },
+      {
+        "city": "Annweiler",
+        "seats": 2,
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "9cd2fd64-a776-4b19-8e40-40c3c11ca2d5",
+        "updated_at": "2026-10-04T18:46:02.81251+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "12568737-bec7-4275-a31e-7faa586c8baf@example.test",
+        "employee_count": 0,
+        "reserved_count": 0,
+        "available_seats": 2,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "Invoice 42",
+        "source_request_id": "12568737-bec7-4275-a31e-7faa586c8baf",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 4980
+      },
+      {
+        "city": "Annweiler",
+        "seats": 25,
+        "status": "preparing",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "8106d715-750c-40cc-a5ec-909a56857b62",
+        "updated_at": "2026-10-04T18:46:02.670198+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "9319bc2c-67a5-449d-969b-926bf696b1fc@example.test",
+        "employee_count": 0,
+        "reserved_count": 0,
+        "available_seats": 25,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "",
+        "source_request_id": "9319bc2c-67a5-449d-969b-926bf696b1fc",
+        "unit_amount_cents": 1990,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 49750
+      },
+      {
+        "city": "Annweiler",
+        "seats": 24,
+        "status": "preparing",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "c522faab-c9bc-4a0f-8bd1-51a0261484f1",
+        "updated_at": "2026-10-04T18:46:02.553462+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "c745a248-307a-4714-a537-bbbe96665b74@example.test",
+        "employee_count": 0,
+        "reserved_count": 0,
+        "available_seats": 24,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "",
+        "source_request_id": "c745a248-307a-4714-a537-bbbe96665b74",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 59760
+      },
+      {
+        "city": "Annweiler",
+        "seats": 2,
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "51bafaed-cfe9-4a42-8287-02ae83e0492b",
+        "updated_at": "2026-10-04T18:46:02.108729+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "b4711099-cfc4-49de-b213-dedf17eb71f5@example.test",
+        "employee_count": 1,
+        "reserved_count": 0,
+        "available_seats": 1,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "Invoice 42",
+        "source_request_id": "b4711099-cfc4-49de-b213-dedf17eb71f5",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 4980
+      },
+      {
+        "city": "Annweiler",
+        "seats": 1,
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "cd196071-476e-4c6d-b7fd-49be1c6c668a",
+        "updated_at": "2026-10-04T18:46:01.943388+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "784ba20d-55ad-4cdb-9454-236125971d4e@example.test",
+        "employee_count": 1,
+        "reserved_count": 0,
+        "available_seats": 0,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "Invoice 42",
+        "source_request_id": "784ba20d-55ad-4cdb-9454-236125971d4e",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 2490
+      },
+      {
+        "city": "Annweiler",
+        "seats": 2,
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "10716343-084a-4913-a158-952d8be28a35",
+        "updated_at": "2026-10-04T18:46:01.763343+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "01bbc356-372e-485c-9ea1-980578344a90@example.test",
+        "employee_count": 0,
+        "reserved_count": 0,
+        "available_seats": 2,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "External invoice 42",
+        "source_request_id": "01bbc356-372e-485c-9ea1-980578344a90",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 4980
+      },
+      {
+        "city": "Annweiler",
+        "seats": 1,
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "8cf040f4-d40e-42f1-b7a6-1c46ecf4ea29",
+        "updated_at": "2026-10-04T18:46:01.462046+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "fd726663-3729-4fb4-b258-7d7b84826191@example.test",
+        "employee_count": 0,
+        "reserved_count": 1,
+        "available_seats": 0,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "Invoice 42",
+        "source_request_id": "fd726663-3729-4fb4-b258-7d7b84826191",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 2490
+      },
+      {
+        "city": "Annweiler",
+        "seats": 2,
+        "status": "preparing",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "d2560f67-865d-4699-b74b-2a78d869df02",
+        "updated_at": "2026-10-04T18:46:01.159607+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "daae0558-ca1e-4bcd-be75-83b613dea6d4@example.test",
+        "employee_count": 0,
+        "reserved_count": 0,
+        "available_seats": 2,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "",
+        "source_request_id": "daae0558-ca1e-4bcd-be75-83b613dea6d4",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 4980
+      },
+      {
+        "city": "Annweiler",
+        "seats": 2,
+        "status": "enrolling",
+        "ends_on": "2027-10-04",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-04",
+        "company_id": "0f7e3e7f-22a5-4973-a10c-74d73c276eec",
+        "updated_at": "2026-10-04T18:46:00.975859+00:00",
+        "company_name": "Example Company",
+        "contact_name": "Example Contact",
+        "contact_email": "6d8d7b53-0916-4efe-a807-e147a992e87a@example.test",
+        "employee_count": 0,
+        "reserved_count": 0,
+        "available_seats": 2,
+        "catalog_version": "2026-10-04.2",
+        "invoice_reference": "Invoice 42",
+        "source_request_id": "6d8d7b53-0916-4efe-a807-e147a992e87a",
+        "unit_amount_cents": 2490,
+        "entitlement_status": "not_enabled",
+        "total_amount_cents": 4980
+      }
+    ],
+    "page_size": 50
+  }
+}

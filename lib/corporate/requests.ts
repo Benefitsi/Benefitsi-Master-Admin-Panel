@@ -34,7 +34,7 @@ export type CorporateUpdateState = {
   updatedAt?: string
 }
 
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 function isStatus(value: unknown): value is CorporateStatus {
   return typeof value === "string" && corporateStatuses.some(status => status === value)
 }
@@ -44,7 +44,7 @@ export function parseCorporateStatusFilter(value: string | string[] | undefined)
 }
 
 // Validate the timestamp without converting or rounding the optimistic-lock token.
-function isTimestamp(value: unknown): value is string {
+export function isTimestamp(value: unknown): value is string {
   if (typeof value !== "string") return false
   const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/.exec(value)
   if (!parts) return false
@@ -58,7 +58,7 @@ function isTimestamp(value: unknown): value is string {
 function isNote(value: unknown): value is string {
   return typeof value === "string" && value.length <= 4000 && [...value].length <= 2000 && !value.includes("\0")
 }
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
 }
 function isCents(value: unknown): value is number {

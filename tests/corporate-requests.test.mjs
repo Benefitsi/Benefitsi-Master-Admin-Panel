@@ -145,6 +145,7 @@ test('unknown or repeated query statuses are rejected before requesting a mislea
 test('the deployed page authorizes before reading inquiry data', async () => {
   let reads = 0
   const code = loadTypescript('app/companies/page.tsx', {
+    '@/lib/corporate/companies': { loadCorporateCatalog: async () => null, loadCorporateCompanies: async () => ({ status: 'loaded', companies: [], total: 0, offset: 0, page_size: 50 }), parseOffset: () => 0 },
     '@/lib/admin': { requireAdmin: async () => { throw new Error('page denied') } },
     '@/lib/corporate/requests': { loadCorporateRequests: async () => { reads++; return { status: 'loaded', requests: [] } } },
     '@/app/admin-shell': {}, '@/components/corporate/request-workspace': {},
@@ -156,6 +157,7 @@ test('the deployed page authorizes before reading inquiry data', async () => {
 test('the page queries only the client returned by requireAdmin and rejects invalid filters without RPC', async () => {
   const db = database({ body: { requests: [] } })
   const code = loadTypescript('app/companies/page.tsx', {
+    '@/lib/corporate/companies': { loadCorporateCatalog: async () => null, loadCorporateCompanies: async () => ({ status: 'loaded', companies: [], total: 0, offset: 0, page_size: 50 }), parseOffset: () => 0 },
     '@/lib/admin': { requireAdmin: async () => ({ supabase: db.supabase, adminSession: { profile: null, user: { email: 'admin@example.test' } } }) },
     '@/app/admin-shell': {}, '@/components/corporate/request-workspace': {},
   })

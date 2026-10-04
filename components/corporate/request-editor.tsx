@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-html-link-for-pages -- Full reload deliberately clears stale optimistic drafts and reloads private lists. */
 "use client"
 
 import { useActionState, useEffect, useRef, useState } from "react"
@@ -11,6 +12,7 @@ export function CorporateRequestEditor({ request }: { request: CorporateRequest 
   const [status, setStatus] = useState<CorporateStatus>(request.status)
   const [note, setNote] = useState(request.note)
   const [expectedUpdatedAt, setExpectedUpdatedAt] = useState(request.updated_at)
+  const [loadedUpdatedAt] = useState(request.updated_at)
   const formRef = useRef<HTMLFormElement>(null)
   const submitting = useRef(false)
   const [state, action, pending] = useActionState(async (previous: CorporateUpdateState, data: FormData): Promise<CorporateUpdateState> => {
@@ -36,7 +38,8 @@ export function CorporateRequestEditor({ request }: { request: CorporateRequest 
     if (statusInput) statusInput.value = status
     if (noteInput) noteInput.value = note
   }, [state, status, note])
-  const mustRefresh = state.status === "conflict" || state.status === "not_found"
+  const changedExternally = request.updated_at !== loadedUpdatedAt && request.updated_at !== expectedUpdatedAt
+  const mustRefresh = state.status === "conflict" || state.status === "not_found" || changedExternally
   const count = [...note].length
 
   return (
@@ -60,6 +63,10 @@ export function CorporateRequestEditor({ request }: { request: CorporateRequest 
         </label>
         <p id={`note-limit-${request.request_id}`} className={`text-xs ${count > 2000 ? "text-red-700" : "text-[#617080]"}`}>{count} / 2000 Zeichen · Nur für Admins</p>
       </fieldset>
+      {changedExternally && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+        <p>Diese Anfrage wurde inzwischen geändert, zum Beispiel durch die Firmenvorbereitung. Ihr Entwurf bleibt erhalten. Bitte aktuelle Angaben vor dem Speichern neu laden.</p>
+        <a href="/companies" className="mt-2 inline-block font-bold underline">Seite neu laden</a>
+      </div>}
       {state.message && <div role={state.status === "updated" ? "status" : "alert"} className={`rounded-xl border p-3 text-sm ${state.status === "updated" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}>
         <p>{state.message}</p>
         {mustRefresh && <a href="/companies" className="mt-2 inline-block font-bold underline">Seite neu laden</a>}

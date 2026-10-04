@@ -103,6 +103,14 @@ jobs:
           tests/commerce-session-boundary.test.mjs
           tests/portal-routing.test.mjs
 
+      - name: Corporate inquiry and company behavior tests
+        run: >-
+          node --import tsx --test --test-concurrency=2
+          tests/corporate-requests.test.mjs
+          tests/corporate-workspace.test.mjs
+          tests/corporate-companies.test.mjs
+          tests/corporate-company-ui.test.mjs
+
       - name: Dashboard streaming and source boundaries
         run: >-
           node --import tsx --test --test-concurrency=2

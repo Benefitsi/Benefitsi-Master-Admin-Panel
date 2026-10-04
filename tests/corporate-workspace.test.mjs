@@ -21,6 +21,7 @@ function workspace(result) {
   const Editor = editor(async () => ({ status: 'updated', message: 'Gespeichert', updatedAt: timestamp }))
   const Workspace = loadTypescript('components/corporate/request-workspace.tsx', {
     '@/components/corporate/request-editor': { CorporateRequestEditor: Editor },
+    '@/app/companies/actions': { createCorporateCompany: async () => ({ status: 'error', message: 'Unavailable' }) },
   }).CorporateRequestWorkspace
   return renderToStaticMarkup(React.createElement(Workspace, { result, selectedStatus: null }))
 }
