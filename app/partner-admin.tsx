@@ -332,7 +332,7 @@ const partnerStatusOptions = [
 
 const partnerSortOptions = [
   { value: "name", label: "Name (A–Z)" },
-  { value: "city", label: "City (A–Z)" },
+  { value: "type", label: "Partner type (A–Z)" },
   { value: "status", label: "Status" },
   { value: "added", label: "Recently added" },
   { value: "recent", label: "Recently updated" },
@@ -738,8 +738,8 @@ export function PartnerWorkspace({
       const compareText = (a: string | null | undefined, b: string | null | undefined) =>
         (a ?? "").localeCompare(b ?? "", undefined, { sensitivity: "base" })
 
-      if (partnerSort === "city") {
-        return compareText(left.city_name ?? left.city_id, right.city_name ?? right.city_id) || compareText(left.name, right.name)
+      if (partnerSort === "type") {
+        return compareText(left.type, right.type) || compareText(left.name, right.name)
       }
       if (partnerSort === "status") {
         return compareText(left.status, right.status) || compareText(left.name, right.name)
