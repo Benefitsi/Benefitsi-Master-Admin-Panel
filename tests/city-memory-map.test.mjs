@@ -11,6 +11,19 @@ async function model() {
 const place = { id: 'trifels', name: 'Reichsburg Trifels', status: 'active', geometry_type: 'POINT', latitude: 49.1965846, longitude: 7.9784024 }
 const zone = { zone_key: 'primary', label: 'Schlossäcker', verification_type: 'POINT_RADIUS', safe_latitude: 49.194314771322, safe_longitude: 7.9801118798371, unlock_radius_meters: 400, edge_tolerance_meters: 0, active: true }
 
+test('custom zones keep their own boundary even at point places, and invalid custom data never falls back', async () => {
+  const build=await model()
+  const geometry_geojson={type:'Polygon',coordinates:[[[7.9,49.2],[7.91,49.2],[7.91,49.21],[7.9,49.21],[7.9,49.2]]]}
+  const area={...zone,verification_type:'AREA',safe_latitude:null,safe_longitude:null,geometry_geojson}
+  const custom=build([area],place)
+  assert.equal(custom.areas.length,1)
+  assert.equal(custom.areas[0].custom,true)
+  assert.deepEqual(custom.areas[0].rings[0][0],[49.2,7.9])
+  const invalid=build([{...area,geometry_geojson:{type:'Polygon',coordinates:[]}}],{...place,geometry_type:'POLYGON',geometry_geojson})
+  assert.equal(invalid.areas.length,0)
+  assert.equal(invalid.issues.length,1)
+})
+
 test('map uses the collection centre and metre radius, keeping the attraction separate', async () => {
   const preview = (await model())([zone], place)
   assert.deepEqual(preview.circles[0].center, [49.194314771322, 7.9801118798371])

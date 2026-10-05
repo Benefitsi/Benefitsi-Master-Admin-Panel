@@ -1,12 +1,13 @@
 import type { MemoryCatalog, MemoryZone } from './memory-stamps'
 import { memoryPlaceCenter } from './memory-place-centers'
+import { parseMemoryPolygon } from './memory-polygon'
 
 export type MemoryMapPlace = MemoryCatalog['places'][number]
 type Point = [number, number]
 type ZoneLabel = { key: string; number: number; label: string; active: boolean }
 export type MemoryMapPreview = {
   circles: (ZoneLabel & { center: Point; radius: number })[]
-  areas: (ZoneLabel & { rings: Point[][]; edgeTolerance: number })[]
+  areas: (ZoneLabel & { rings: Point[][]; edgeTolerance: number; custom: boolean })[]
   place: { name: string; center: Point } | null
   issues: string[]
 }
@@ -44,8 +45,9 @@ export function memoryMapPreview(zones: MemoryZone[], place?: MemoryMapPlace): M
   zones.forEach((zone, index) => {
     const label = { key: zone.zone_key, number: index + 1, label: zone.label || `Sammelbereich ${index + 1}`, active: zone.active }
     if (zone.verification_type === 'AREA') {
-      const rings = place?.geometry_type === 'POLYGON' ? polygon(place.geometry_geojson) : null
-      if (rings && valid(zone.edge_tolerance_meters, 0, 50)) preview.areas.push({ ...label, rings, edgeTolerance: zone.edge_tolerance_meters })
+      const custom = zone.geometry_geojson != null
+      const rings = custom ? polygon(parseMemoryPolygon(zone.geometry_geojson)) : place?.geometry_type === 'POLYGON' ? polygon(place.geometry_geojson) : null
+      if (rings && valid(zone.edge_tolerance_meters, 0, 50)) preview.areas.push({ ...label, rings, edgeTolerance: zone.edge_tolerance_meters, custom })
       else preview.issues.push(`${label.label}: Die Flächengrenze ist nicht verfügbar oder die Randtoleranz ist ungültig.`)
     } else {
       const point = position(zone.safe_latitude, zone.safe_longitude)

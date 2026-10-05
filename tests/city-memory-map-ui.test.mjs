@@ -8,6 +8,7 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { JSDOM } from 'jsdom'
 import * as preview from '../lib/city-pages/memory-stamp-map.ts'
+import * as polygon from '../lib/city-pages/memory-polygon.ts'
 
 test('real map layers follow edits, remove invalid circles and clean up on stamp changes', async () => {
   const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'https://admin.example.test' })
@@ -27,13 +28,14 @@ test('real map layers follow edits, remove invalid circles and clean up on stamp
   const compiled = {exports:{}}
   vm.runInNewContext(js, {module:compiled,exports:compiled.exports,document,ResizeObserver,console,require:name=>{
     if(name==='@/lib/city-pages/memory-stamp-map')return preview
+    if(name==='@/lib/city-pages/memory-polygon')return polygon
     if(name.endsWith('.module.css'))return {default:{map:'test-map',number:'test-number'}}
     return require(name)
   }})
   const Map = compiled.exports.MemoryStampMap
   const place = {id:'trifels',name:'Reichsburg Trifels',status:'active',geometry_type:'POINT',latitude:49.1965846,longitude:7.9784024}
   const zone = {zone_key:'primary',label:'Schlossäcker',verification_type:'POINT_RADIUS',safe_latitude:49.194314771322,safe_longitude:7.9801118798371,unlock_radius_meters:400,edge_tolerance_meters:0,active:true}
-  const render = async zones => { await act(async()=>{root.render(React.createElement(React.StrictMode,null,React.createElement(Map,{zones,place})));await new Promise(resolve=>setTimeout(resolve,15))}) }
+  const render = async (zones,props={}) => { await act(async()=>{root.render(React.createElement(React.StrictMode,null,React.createElement(Map,{zones,place,...props})));await new Promise(resolve=>setTimeout(resolve,15))}) }
   const circlePath = () => document.querySelector('path[fill-opacity="0.13"]')
     await render([zone])
     assert.equal(document.querySelectorAll('.leaflet-map-pane').length,1)
@@ -53,6 +55,33 @@ test('real map layers follow edits, remove invalid circles and clean up on stamp
     assert.match(document.body.textContent,/gültige Koordinaten/)
     await render([])
     assert.equal(document.querySelectorAll('path.leaflet-interactive').length,1,'Only the linked place remains')
+    const saved=[],drawing=[]
+    await render([zone],{onAreaChange:(key,geometry)=>saved.push({key,geometry}),onDrawingChange:active=>drawing.push(active)})
+    const button = label => [...document.querySelectorAll('button')].find(b=>b.textContent.includes(label))
+    const click = async element => {assert.ok(element,'Expected an interactive control');await act(async()=>element.dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true})))}
+    const point = async (x,y) => {await act(async()=>document.querySelector('.test-map').dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true,clientX:x,clientY:y})))}
+    await click(button('Freie Fläche zeichnen'))
+    await point(280,140); await point(480,140)
+    assert.equal(button('Fläche übernehmen').disabled,true,'Two corners cannot finish an area')
+    assert.ok(document.querySelector('path[stroke-dasharray="7 5"]'),'Second click connects the first two points')
+    await point(480,260); await point(280,260)
+    assert.match(document.body.textContent,/4 Eckpunkte/)
+    await click(button('Letzten Punkt zurück'))
+    assert.match(document.body.textContent,/3 Eckpunkte/)
+    await point(280,260)
+    await click(button('Fläche übernehmen'))
+    assert.equal(saved.length,1); assert.equal(saved[0].key,'primary')
+    const ring=saved[0].geometry.coordinates[0]
+    assert.equal(ring.length,5);assert.deepEqual(ring[0],ring[4])
+    assert.deepEqual(drawing,[true,false])
+    await click(button('Freie Fläche zeichnen'))
+    await point(280,140);await point(480,260);await point(480,140);await point(280,260)
+    await click(button('Fläche übernehmen'))
+    assert.match(document.querySelector('[role="alert"]').textContent,/kreuzen/)
+    assert.equal(saved.length,1,'Crossed areas must never reach form state')
+    await click(button('Abbrechen'))
+    assert.equal(saved.length,1,'Cancel keeps the existing area')
+    assert.equal(document.querySelector('path[stroke-dasharray="7 5"]'),null)
     await act(async()=>root.render(null))
     assert.equal(document.querySelectorAll('.leaflet-map-pane').length,0)
   } finally {
