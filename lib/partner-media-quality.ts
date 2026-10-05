@@ -22,7 +22,7 @@ type MediaTarget = {
 
 const targets = {
   logo: { label: "Logo", minWidth: 190, minHeight: 190 },
-  feature: { label: "Feature image", minWidth: 1440, minHeight: 940 },
+  feature: { label: "Feature image", minWidth: 1280, minHeight: 836 },
   discover: { label: "Discovery image", minWidth: 768, minHeight: 840 },
   cover: { label: "Cover", minWidth: 1200, minHeight: 1200 },
   menuItem: { label: "Menu item", minWidth: 192, minHeight: 192 },

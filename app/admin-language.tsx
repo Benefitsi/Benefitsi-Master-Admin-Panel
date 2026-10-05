@@ -488,7 +488,7 @@ const translations = [
   ["Admin password is required to delete a partner.", "Zum Löschen eines Partners ist das Admin-Passwort erforderlich."],
   ["Admin password verification failed.", "Die Prüfung des Admin-Passworts ist fehlgeschlagen."],
   ["Logo size: 380px × 380px · Max 10 MB", "Logogröße: 380 × 380 px · max. 10 MB"],
-  ["Feature size: 1440px × 940px · Max 10 MB", "Feature-Größe: 1440 × 940 px · max. 10 MB"],
+  ["Feature size: 1280px × 836px · Max 10 MB", "Feature-Größe: 1280 × 836 px · max. 10 MB"],
   ["Discover size: 880px × 960px · Max 10 MB", "Entdecken-Größe: 880 × 960 px · max. 10 MB"],
   ["Drag previews to rearrange", "Vorschauen ziehen, um die Reihenfolge zu ändern"],
   ["Cover size: 1800px × 1800px. Images are resized automatically before upload. Max 5 cover photos, 10 MB each.", "Titelbildgröße: 1800 × 1800 px. Bilder werden vor dem Upload automatisch skaliert. Maximal fünf Titelbilder mit je 10 MB."],
