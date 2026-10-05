@@ -3,6 +3,7 @@
 import { useState, useTransition, type FormEvent, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, MapPin, Stamp } from 'lucide-react'
+import { MemoryStampMap } from './memory-stamp-map'
 import { saveMemoryStamp } from '@/app/city-pages/[citySlug]/memory-stamps/actions'
 import { memoryEditions, type MemoryCatalog, type MemoryStampInput, type MemoryStampRecord, type MemoryZone } from '@/lib/city-pages/memory-stamps'
 
@@ -132,6 +133,7 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
         <Label title="Ort in dieser Stadt"><select className={field} value={value.place_id ?? ''} disabled={!!record?.claim_count} onChange={e => change('place_id', e.target.value || null)}><option value="">Ort auswählen</option>{catalog.places.map(p => <option key={p.id} value={p.id}>{p.name}{p.status !== 'active' ? ' (noch nicht veröffentlicht)' : ''}</option>)}</select></Label>
         {!!record?.claim_count && <p className="text-xs leading-5 text-slate-600">Dieser Stempel wurde bereits gesammelt. Für einen anderen Ort bitte einen neuen Stempel anlegen.</p>}
         <p className="text-sm leading-6 text-slate-600">Jeder Sammelbereich muss sicher zugänglich sein. Flächen verwenden die beim verknüpften Ort hinterlegte Polygongeometrie. Die App prüft den Standort weiterhin serverseitig.</p>
+        <MemoryStampMap zones={value.zones} place={selectedPlace} />
         {value.zones.map((zone, index) => <fieldset key={index} className="min-w-0 space-y-3 rounded-xl border border-slate-200 p-4">
           <legend className="px-1 text-sm font-bold">Sammelbereich {index + 1}</legend>
           <div className="grid gap-3 sm:grid-cols-2">

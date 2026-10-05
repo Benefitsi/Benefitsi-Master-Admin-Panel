@@ -1,0 +1,31 @@
+.map {
+  height: 340px;
+  width: 100%;
+  background: #edf2f7;
+  font-family: inherit;
+}
+.map :global(.leaflet-control-zoom a) {
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+}
+.map :global(.leaflet-popup-content) {
+  overflow-wrap: anywhere;
+}
+.map :global(.leaflet-tooltip) {
+  max-width: 260px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.map :global(.leaflet-tooltip).number {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0;
+}
+@media (min-width: 640px) {
+  .map { height: 390px; }
+}

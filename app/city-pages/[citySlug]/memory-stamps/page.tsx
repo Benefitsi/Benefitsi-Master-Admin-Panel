@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import 'leaflet/dist/leaflet.css'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { AdminShell } from '@/app/admin-shell'
