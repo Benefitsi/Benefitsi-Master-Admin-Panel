@@ -576,6 +576,8 @@ export function PartnerWorkspace({
     "all" | "active" | "featured"
   >("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [typeFilter, setTypeFilter] = useState("all")
+  const [locationFilter, setLocationFilter] = useState("all")
   const [partnerSort, setPartnerSort] = useState<PartnerSort>("name")
   const [mode, setMode] = useState<"view" | "create">(
     partners.length && (portalMode || initialMode === "view") ? "view" : "create",
@@ -620,6 +622,16 @@ export function PartnerWorkspace({
   }, [portalMode])
 
   const partnerCount = partners.length
+  const typeFilterOptions = useMemo(() => [...new Set(
+    partners.map(partner => partner.type?.trim()).filter((type): type is string => Boolean(type)),
+  )].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" })), [partners])
+  const locationFilterOptions = useMemo(() => {
+    const locations = new Map<string, string>()
+    for (const partner of partners) {
+      if (partner.city_id) locations.set(partner.city_id, partner.city_name?.trim() || partner.city_id)
+    }
+    return [...locations.entries()].sort((left, right) => left[1].localeCompare(right[1], undefined, { sensitivity: "base" }))
+  }, [partners])
   const activePartners = partners.filter(isPartnerActive).length
   const featuredPartners = partners.filter(
     (partner) => isPartnerActive(partner) && partner.is_featured,
@@ -633,6 +645,8 @@ export function PartnerWorkspace({
 
     return partners.filter((partner) => {
       if (partnerFilter === "active" && !isPartnerActive(partner)) return false
+      if (typeFilter !== "all" && partner.type?.trim() !== typeFilter) return false
+      if (locationFilter !== "all" && (locationFilter === "__none__" ? Boolean(partner.city_id) : partner.city_id !== locationFilter)) return false
       if (
         partnerFilter === "featured" &&
         !(isPartnerActive(partner) && partner.is_featured)
@@ -686,7 +700,7 @@ export function PartnerWorkspace({
       }
       return compareText(left.name, right.name)
     })
-  }, [partnerFilter, partnerSort, partners, query, statusFilter, mediaRevision])
+  }, [locationFilter, partnerFilter, partnerSort, partners, query, statusFilter, typeFilter, mediaRevision])
 
   const selectedPartner =
     filteredPartners.find((partner) => partner.id === selectedId) ??
@@ -695,6 +709,8 @@ export function PartnerWorkspace({
   const hasActiveFilters =
     Boolean(query.trim()) ||
     statusFilter !== "all" ||
+    typeFilter !== "all" ||
+    locationFilter !== "all" ||
     partnerFilter !== "all"
 
   return (
@@ -768,6 +784,31 @@ export function PartnerWorkspace({
                 </select>
               </label>
               <label className="block text-xs font-semibold text-zinc-600">
+                Partner type
+                <select
+                  aria-label="Partner type"
+                  value={typeFilter}
+                  onChange={(event) => setTypeFilter(event.target.value)}
+                  className="mt-1 h-9 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm font-normal text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                >
+                  <option value="all">All types</option>
+                  {typeFilterOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs font-semibold text-zinc-600">
+                Location
+                <select
+                  aria-label="Location"
+                  value={locationFilter}
+                  onChange={(event) => setLocationFilter(event.target.value)}
+                  className="mt-1 h-9 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm font-normal text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                >
+                  <option value="all">All locations</option>
+                  {locationFilterOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                  {partners.some(partner => !partner.city_id) ? <option value="__none__">No location assigned</option> : null}
+                </select>
+              </label>
+              <label className="block text-xs font-semibold text-zinc-600">
                 Sort by
                 <select
                   value={partnerSort}
@@ -792,6 +833,8 @@ export function PartnerWorkspace({
                 onClick={() => {
                   setQuery("")
                   setStatusFilter("all")
+                  setTypeFilter("all")
+                  setLocationFilter("all")
                   setPartnerFilter("all")
                 }}
                 className="mt-2 text-left text-xs font-semibold text-teal-700 underline decoration-teal-300 underline-offset-2 transition hover:text-teal-900"
@@ -832,6 +875,8 @@ export function PartnerWorkspace({
                     onClick={() => {
                       setQuery("")
                       setStatusFilter("all")
+                      setTypeFilter("all")
+                      setLocationFilter("all")
                       setPartnerFilter("all")
                     }}
                     className="mt-2 font-semibold text-teal-700 underline decoration-teal-300 underline-offset-2 transition hover:text-teal-900"
@@ -882,6 +927,8 @@ export function PartnerWorkspace({
                 onClick={() => {
                   setQuery("")
                   setStatusFilter("all")
+                  setTypeFilter("all")
+                  setLocationFilter("all")
                   setPartnerFilter("all")
                 }}
                 className="inline-flex min-h-10 items-center justify-center rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
