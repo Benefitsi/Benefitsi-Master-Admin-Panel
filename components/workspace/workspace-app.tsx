@@ -16,9 +16,9 @@ export function WorkspaceApp({initial,initialPageId,initialPartnerId,services=wo
   const [pages,setPages]=useState<PageMeta[]>([]),[total,setTotal]=useState(0),[selected,setSelected]=useState<WorkspacePage|null>(null),[epoch,setEpoch]=useState(0)
   const [partnerContextId,setPartnerContextId]=useState(initialPartnerId)
   const [filter,setFilter]=useState<PageFilter>({partnerId:initialPartnerId}),[favoriteOnly,setFavoriteOnly]=useState(false),[view,setView]=useState<'tree'|'table'|'board'>('tree')
-  const [query,setQuery]=useState(''),[error,setError]=useState(initial.ok?'':initial.error),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false)
+  const [query,setQuery]=useState(''),[error,setError]=useState(initial.ok?'':initial.error),[loading,setLoading]=useState(false),[busy,setBusy]=useState(Boolean(initialPageId))
   const [workspaceForm,setWorkspaceForm]=useState<'create'|'edit'|null>(null),[name,setName]=useState(''),[description,setDescription]=useState(''),[showArchivedWorkspaces,setShowArchivedWorkspaces]=useState(false),[createKind,setCreateKind]=useState<PageKind>('note')
-  const guard=useRef<()=>Promise<boolean>>(async()=>true),requestId=useRef(0),started=useRef(false),creating=useRef(false),workspaceRequestId=useRef<string|null>(null)
+  const guard=useRef<()=>Promise<boolean>>(async()=>true),requestId=useRef(0),creating=useRef(false),workspaceRequestId=useRef<string|null>(null)
   const [editingWorkspace,setEditingWorkspace]=useState<Workspace|null>(null)
   const pendingCreate=useRef<{key:string;page:WorkspacePage}|null>(null)
   const active=workspaces.find(w=>w.id===workspaceId)
@@ -33,7 +33,16 @@ export function WorkspaceApp({initial,initialPageId,initialPartnerId,services=wo
   },[services])
   useEffect(()=>{const timer=setTimeout(()=>setFilter(old=>({...old,query})),250);return()=>clearTimeout(timer)},[query])
   useEffect(()=>{const timer=setTimeout(()=>{if(workspaceId)void fetchPages(workspaceId,filter)},0);return()=>clearTimeout(timer)},[workspaceId,filter,fetchPages])
-  useEffect(()=>{if(started.current||!initialPageId)return;started.current=true;services.loadWorkspacePage(initialPageId).then(result=>{if(result.ok)replace(result.value);else setError(result.error)}).catch(()=>setError('Die verlinkte Seite konnte nicht geladen werden.'))},[initialPageId,replace,services])
+  useEffect(()=>{
+    if(!initialPageId)return
+    let active=true
+    services.loadWorkspacePage(initialPageId).then(result=>{
+      if(!active)return
+      if(result.ok)replace(result.value);else setError(result.error)
+    }).catch(()=>{if(active)setError('Die verlinkte Seite konnte nicht geladen werden.')})
+      .finally(()=>{if(active)setBusy(false)})
+    return()=>{active=false}
+  },[initialPageId,replace,services])
   const openPage=async(id:string)=>{if(!await guard.current())return;const result=await services.loadWorkspacePage(id);if(result.ok)replace(result.value);else setError(result.error)}
   const switchWorkspace=async(id:string)=>{if(!await guard.current())return;setSelected(null);setWorkspaceId(id);setPages([]);setFilter({});setQuery('');window.history.replaceState(null,'','/workspace')}
   const create=async(kind:PageKind,parent?:PageMeta,source?:WorkspacePage)=>{
@@ -62,8 +71,9 @@ export function WorkspaceApp({initial,initialPageId,initialPartnerId,services=wo
     if(result.ok){setWorkspaces(old=>[...old.filter(w=>w.id!==id),result.value]);setWorkspaceForm(null);workspaceRequestId.current=null;await switchWorkspace(id)}else setError(result.error)
   }
   const row=(p:PageMeta)=><button key={p.id} onClick={()=>void run(()=>openPage(p.id))} className="group flex w-full items-center gap-3 border-b border-[#061829]/[.07] px-4 py-4 text-left hover:bg-[#f3f8ff] sm:px-6" style={view==='tree'?{paddingLeft:24+depth(p)*18}:undefined}><FileText size={18} className="shrink-0 text-[#697680]"/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{p.title}</span><span className="mt-1 block truncate text-xs text-[#697680]">{pageKinds[p.kind]}{p.owner?` · ${p.owner}`:''}{p.tags.filter(Boolean).length?` · ${p.tags.filter(Boolean).join(', ')}`:''}</span></span>{favorites.includes(p.id)?<Star size={14} weight="fill" className="text-[#0671d1]"/>:null}<span className="hidden text-xs text-[#526170] sm:block">{pageStatuses[p.status]}</span><ArrowRight size={16} className="shrink-0 text-[#697680]"/></button>
-  return <div data-admin-i18n-ignore="true" className="mx-auto max-w-[1600px] text-[#061829]">
+  return <div aria-busy={busy} data-admin-i18n-ignore="true" className="mx-auto max-w-[1600px] text-[#061829]">
     {error?<div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"><p>{error}</p><Button className="mt-3" onClick={()=>void run(async()=>{const result=await services.loadWorkspaceIndex();if(result.ok){setWorkspaces(result.value.workspaces);setFavorites(result.value.favorites);setError('');if(workspaceId)await fetchPages(workspaceId,filter)}else setError(result.error)})}>Erneut laden</Button></div>:null}
+    {busy&&!selected?<p role="status" className="mb-4 text-sm text-[#526170]">Die Seite wird vorbereitet …</p>:null}
     <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[225px_minmax(0,1fr)]">
       <aside className="rounded-2xl border border-[#061829]/10 bg-white p-4 lg:sticky lg:top-5">
         <div className="mb-5 flex items-center gap-2"><FolderSimple size={20} weight="duotone" className="text-[#0671d1]"/><span className="font-bold">Arbeitsbereiche</span></div>

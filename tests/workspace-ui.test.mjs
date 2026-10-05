@@ -230,3 +230,19 @@ test('duplicate and template retries reuse their original creation ID after a lo
     })
   }
 })
+
+test('a deferred initial permalink cannot overtake a newly opened editor',async()=>{
+  const first={...makePage(workspace.id,'note'),revision:1,title:'Verlinkte Notiz'}
+  const second={...makePage(workspace.id,'note'),revision:1,title:'Andere Notiz'}
+  const fixture=workspaceFixture({workspaces:[workspace],pages:[first,second]})
+  const load=fixture.services.loadWorkspacePage,finishes=[]
+  fixture.services.loadWorkspacePage=async id=>id!==first.id?load(id):new Promise(resolve=>finishes.push(()=>load(id).then(resolve)))
+  await withApp(fixture,{initialPageId:first.id},async()=>{
+    await wait(()=>[...document.querySelectorAll('button')].some(b=>b.textContent.includes('Andere Notiz')))
+    await click([...document.querySelectorAll('button')].find(b=>b.textContent.includes('Andere Notiz')))
+    assert.equal(Boolean(field('Seitentitel')),false,'Navigation waits until the initial link resolves')
+    await act(async()=>Promise.all(finishes.map(finish=>finish())))
+    await wait(()=>field('Seitentitel')?.value==='Verlinkte Notiz')
+    assert.equal(field('Seitentitel').matches(':disabled'),false)
+  })
+})

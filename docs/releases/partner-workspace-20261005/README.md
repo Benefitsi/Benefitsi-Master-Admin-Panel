@@ -20,11 +20,11 @@ Die SQL-Migration schützt alle vier Tabellen durch Admin-RLS und widerrufene di
 
 ## Prüfung am 05.10.2026
 
-- 73 gezielte Tests bestanden: echte React-Komponenten mit Transportadapter, Model/Template/Export, Speicherwarteschlange, Pagination, Navigation und Zugangstrennung. Neue Tests decken langsame Antworten, Konflikte, Browser-Historie, Formziel, verlorene Create-Antworten und Kopier-Wiederholungen ab.
+- 74 gezielte Tests bestanden: echte React-Komponenten mit Transportadapter, Model/Template/Export, Speicherwarteschlange, Pagination, Navigation und Zugangstrennung. Neue Tests decken langsame Antworten, Konflikte, Browser-Historie, Formziel, verlorene Create-Antworten und Kopier-Wiederholungen ab.
 - Datenbank: 18 echte PostgreSQL-Verhaltenstests bestanden. Zusätzlich kompletter Anwendungs-Fragebogen → echte RPC → Anwendungsvalidator erfolgreich; Antwortupdate erzeugt Revision 2. Temporäre Datenbanken anschließend entfernt.
 - Alle 50 Fragetexte, Vorschläge und Kernflags exakt mit dem abgestimmten Leitfaden verglichen.
 - ESLint für neue Workspace-Dateien und Tests bestanden. TypeScript besteht für den gesamten Quellbaum mit Ausnahme des unveränderten Bild-Workers: in den wiederverwendeten lokalen Abhängigkeiten fehlt `onnxruntime-web/webgpu`. Der uneingeschränkte Typecheck meldet allein diese fehlende Alt-Abhängigkeit.
-- Gesamtsuite: 1.360 Tests, davon 1.337 bestanden und 23 bestehende Fehler. Alle 23 auf unverändertem Basiscommit `057c336` mit denselben Abhängigkeiten reproduziert: `deal-save-action`, `milestone-save`, `dependency-braces-security`, `partner-chart-data`, `partner-dashboard-ui`. Anschließender gezielter Lauf einschließlich zusätzlichem Kopier-Retry-Test: 73/73.
+- Gesamtsuite: 1.360 Tests, davon 1.337 bestanden und 23 bestehende Fehler. Alle 23 auf unverändertem Basiscommit `057c336` mit denselben Abhängigkeiten reproduziert: `deal-save-action`, `milestone-save`, `dependency-braces-security`, `partner-chart-data`, `partner-dashboard-ui`. Anschließender gezielter Lauf einschließlich zusätzlicher Kopier-Retry- und verzögerter Seitenladeprüfung: 74/74.
 - Browser: echte UI/CSS mit synthetischen Daten und Transportadapter; Desktop und Fokusmodus bei 390 px ohne horizontalen Seitenüberlauf, Speicherung/Antwortfortschritt kontrolliert; keine Browserfehler. Die lokale Vorschau ist kein Nachweis einer produktiven Bereitstellung.
 
 Bei ausstehenden Änderungen hält der Historienwächter den Entwurf bis zur Speicherung zurück; dabei kann sich der Browser-Verlauf durch das Zurücksetzen der Adresse verändern. Es gibt keine Offline-Synchronisierung oder gleichzeitige Textbearbeitung wie in Notion; parallele Änderungen werden als Konflikt behandelt.
