@@ -1,4 +1,5 @@
 import type { PartnerWithDeals } from "./admin-data"
+import { partnerMediaSpecs } from "./partner-config"
 
 export type PartnerMediaQualityIssue = {
   label: string
@@ -20,14 +21,20 @@ type MediaTarget = {
   minHeight: number
 }
 
+const mediaTarget = (label: string, spec: { width: number; height: number }): MediaTarget => ({
+  label,
+  minWidth: spec.width,
+  minHeight: spec.height,
+})
+
 const targets = {
-  logo: { label: "Logo", minWidth: 190, minHeight: 190 },
-  feature: { label: "Feature image", minWidth: 1280, minHeight: 836 },
-  discover: { label: "Discovery image", minWidth: 768, minHeight: 840 },
-  cover: { label: "Cover", minWidth: 1200, minHeight: 1200 },
-  menuItem: { label: "Menu item", minWidth: 192, minHeight: 192 },
-  menuCategory: { label: "Menu category", minWidth: 1200, minHeight: 504 },
-  dealDrop: { label: "Deal image", minWidth: 1420, minHeight: 800 },
+  logo: mediaTarget("Logo", partnerMediaSpecs.logo),
+  feature: mediaTarget("Feature image", partnerMediaSpecs.feature),
+  discover: mediaTarget("Discovery image", partnerMediaSpecs.discover),
+  cover: mediaTarget("Cover", partnerMediaSpecs.cover),
+  menuItem: mediaTarget("Menu item", partnerMediaSpecs.menuItem),
+  menuCategory: mediaTarget("Menu category", partnerMediaSpecs.menuCategory),
+  dealDrop: mediaTarget("Deal image", partnerMediaSpecs.dealDrop),
   micrositeHero: { label: "Microsite hero", minWidth: 1440, minHeight: 960 },
   micrositeOther: { label: "Microsite image", minWidth: 768, minHeight: 768 },
 } satisfies Record<string, MediaTarget>

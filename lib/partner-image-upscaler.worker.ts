@@ -133,7 +133,14 @@ async function upscale(request: UpscaleRequest) {
 }
 
 function getSession(requestId: number) {
-  if (!sessionPromise) sessionPromise = createSession(requestId)
+  if (!sessionPromise) {
+    sessionPromise = createSession(requestId).catch((error: unknown) => {
+      // A temporary WebGPU/WASM/runtime failure must not poison all future
+      // image uploads for the lifetime of this worker.
+      sessionPromise = null
+      throw error
+    })
+  }
   return sessionPromise
 }
 
