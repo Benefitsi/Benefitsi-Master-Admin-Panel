@@ -1,4 +1,7 @@
+import { parseMemoryPolygon, type MemoryPolygon } from './memory-polygon'
+
 export type MemoryZone = {
+  geometry_geojson?: MemoryPolygon | null
   source_place_id?: string | null
   zone_key: string; label: string; verification_type: 'POINT_RADIUS' | 'AREA'
   safe_latitude: number | null; safe_longitude: number | null
@@ -60,8 +63,10 @@ export function parseMemoryStampInput(value: unknown): { ok: true; input: Memory
     if (!z || typeof z.zone_key !== 'string' || z.zone_key.length > 80 || !slugPattern.test(z.zone_key) || typeof z.label !== 'string' || !z.label.trim() || z.label.length > 180 || typeof z.active !== 'boolean' || !number(z.unlock_radius_meters, 1, 10000) || !number(z.edge_tolerance_meters, 0, 50)) return fail('Bitte Bezeichnung, Radius und Toleranz der Sammelbereiche prüfen.')
     if (z.verification_type !== 'POINT_RADIUS' && z.verification_type !== 'AREA') return fail('Bitte einen gültigen Sammelbereich wählen.')
     if (z.verification_type === 'AREA' ? z.safe_latitude !== null || z.safe_longitude !== null : z.verification_type !== 'POINT_RADIUS' || !number(z.safe_latitude, -90, 90) || !number(z.safe_longitude, -180, 180)) return fail('Für einen Sammelpunkt sind gültige Koordinaten erforderlich. Flächen verwenden die Geometrie des Ortes.')
+    const geometry = z.geometry_geojson == null ? null : parseMemoryPolygon(z.geometry_geojson)
+    if (z.geometry_geojson != null && (!geometry || z.verification_type !== 'AREA')) return fail('Bitte eine geschlossene Fläche mit 3 bis 100 Eckpunkten zeichnen. Kanten dürfen sich nicht kreuzen oder berühren.')
     if (zones.some(zone => zone.zone_key === z.zone_key)) return fail('Jeder Sammelbereich braucht eine eindeutige Kennung.')
-    zones.push({ source_place_id: z.source_place_id as string | null | undefined, zone_key: z.zone_key, label: z.label.trim(), verification_type: z.verification_type, safe_latitude: z.safe_latitude as number | null, safe_longitude: z.safe_longitude as number | null, unlock_radius_meters: z.unlock_radius_meters as number, edge_tolerance_meters: z.edge_tolerance_meters as number, active: z.active })
+    zones.push({ source_place_id: z.source_place_id as string | null | undefined, geometry_geojson: geometry, zone_key: z.zone_key, label: z.label.trim(), verification_type: z.verification_type, safe_latitude: z.safe_latitude as number | null, safe_longitude: z.safe_longitude as number | null, unlock_radius_meters: z.unlock_radius_meters as number, edge_tolerance_meters: z.edge_tolerance_meters as number, active: z.active })
   }
   if (v.operation === 'approve' && v.edition_type !== 'standard') return fail('Die App unterstützt aktuell das Sammeln der Standard-Edition. Andere Editionen bitte als Entwurf belassen.')
   if (v.operation === 'approve' && (v.confirm_review !== true || !v.place_id || !v.artwork_asset_id || !zones.some(z => z.active))) return fail('Zur Freigabe sind ein Ort, ein veröffentlichtes Stempelbild, ein aktiver Sammelbereich und deine ausdrückliche Prüfung nötig.')

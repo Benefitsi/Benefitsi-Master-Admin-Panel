@@ -5,6 +5,19 @@
   background: #edf2f7;
   font-family: inherit;
 }
+.drawing { cursor: crosshair; }
+.vertex {
+  display: grid;
+  place-items: center;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: #157347;
+  box-shadow: 0 1px 6px #0004;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+.vertex:focus-visible { outline: 3px solid #157347; outline-offset: 3px; }
 .map :global(.leaflet-control-zoom a) {
   width: 40px;
   height: 40px;

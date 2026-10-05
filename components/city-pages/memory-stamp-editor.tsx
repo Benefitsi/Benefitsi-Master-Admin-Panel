@@ -76,6 +76,7 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState('')
   const [withdraw, setWithdraw] = useState(false)
+  const [drawing, setDrawing] = useState(false)
   const selectedPlace = catalog.places.find(p => p.id === value.place_id)
   const selectedAsset = catalog.assets.find(a => a.id === value.artwork_asset_id)
   const existingZoneCount = record?.zones.length ?? 0
@@ -89,6 +90,7 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
   }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (drawing) { setError('Bitte zuerst die gezeichnete Fläche übernehmen oder abbrechen.'); return }
     const operation = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value as MemoryStampInput['operation'] || 'save'
     const input = operation === 'withdraw' ? initialInput(catalog, record) : { ...value, zones: boundZones }
     setError('')
@@ -132,30 +134,34 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
       </section>
       <section className="space-y-4 border-t border-slate-200 pt-6" aria-labelledby="memory-place-heading">
         <h3 id="memory-place-heading" className="flex items-center gap-2 font-bold"><MapPin size={18} aria-hidden />Ort und Sammelbereiche</h3>
-        <Label title="Ort in dieser Stadt"><select className={field} value={value.place_id ?? ''} disabled={!!record?.claim_count} onChange={e => change('place_id', e.target.value || null)}><option value="">Ort auswählen</option>{catalog.places.map(p => <option key={p.id} value={p.id}>{p.name}{p.status !== 'active' ? ' (noch nicht veröffentlicht)' : ''}</option>)}</select></Label>
+        <Label title="Ort in dieser Stadt"><select className={field} value={value.place_id ?? ''} disabled={!!record?.claim_count || drawing} onChange={e => change('place_id', e.target.value || null)}><option value="">Ort auswählen</option>{catalog.places.map(p => <option key={p.id} value={p.id}>{p.name}{p.status !== 'active' ? ' (noch nicht veröffentlicht)' : ''}</option>)}</select></Label>
         {!!record?.claim_count && <p className="text-xs leading-5 text-slate-600">Dieser Stempel wurde bereits gesammelt. Für einen anderen Ort bitte einen neuen Stempel anlegen.</p>}
-        <p className="text-sm leading-6 text-slate-600">Der Radius beginnt immer am zugehörigen Ort. Die Koordinaten werden aus dessen Ortsdatensatz übernommen. Flächen verwenden die beim verknüpften Ort hinterlegte Polygongeometrie. Die App prüft den Standort weiterhin serverseitig.</p>
-        <MemoryStampMap zones={boundZones} place={selectedPlace} />
-        {boundZones.map((zone, index) => <fieldset key={index} className="min-w-0 space-y-3 rounded-xl border border-slate-200 p-4">
+        <p className="text-sm leading-6 text-slate-600">Kreisradius um den Ort oder freie Fläche: Setze dafür die Eckpunkte direkt auf der Karte.</p>
+        <MemoryStampMap zones={boundZones} place={selectedPlace} disabled={pending} onDrawingChange={setDrawing} onAreaChange={(key, geometry) => {
+          setValue(current => ({ ...current, confirm_review: false, zones: current.zones.map(zone => zone.zone_key === key ? { ...zone, verification_type: 'AREA', geometry_geojson: geometry, safe_latitude: null, safe_longitude: null } : zone) }))
+          setError('')
+        }} />
+        {boundZones.map((zone, index) => <fieldset key={index} disabled={drawing} className="min-w-0 space-y-3 rounded-xl border border-slate-200 p-4">
           <legend className="px-1 text-sm font-bold">Sammelbereich {index + 1}</legend>
           {zone.verification_type === 'POINT_RADIUS' && index > 0 && zone.zone_key !== 'primary' && <Label title="Zugehöriger Ort"><select className={field} value={zone.source_place_id ?? ''} onChange={e => zoneChange(index, { source_place_id: e.target.value || null })} required><option value="">Ort auswählen</option>{catalog.places.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Label>}
           <div className="grid gap-3 sm:grid-cols-2">
             <Label title="Bezeichnung"><input className={field} value={zone.label} maxLength={180} required onChange={e => zoneChange(index, { label: e.target.value })} /></Label>
             <Label title="Kennung"><input className={field} value={zone.zone_key} maxLength={80} pattern="[a-z0-9]+(-[a-z0-9]+)*" required readOnly={(index < existingZoneCount)} onChange={e => zoneChange(index, { zone_key: e.target.value })} /></Label>
-            <Label title="Art des Sammelbereichs"><select className={field} value={zone.verification_type} onChange={e => zoneChange(index, { verification_type: e.target.value as MemoryZone['verification_type'], safe_latitude: null, safe_longitude: null })}><option value="POINT_RADIUS">Sammelpunkt mit Radius</option><option value="AREA" disabled={selectedPlace?.geometry_type !== 'POLYGON'}>Fläche des verknüpften Ortes</option></select></Label>
+            <Label title="Art des Sammelbereichs"><select className={field} value={zone.verification_type} onChange={e => { zoneChange(index, { verification_type: e.target.value as MemoryZone['verification_type'], geometry_geojson: null, safe_latitude: null, safe_longitude: null }); change('confirm_review', false) }}><option value="POINT_RADIUS">Sammelpunkt mit Radius</option><option value="AREA">{zone.geometry_geojson ? 'Freie Fläche' : 'Fläche (frei zeichnen oder Ortsgrenze)'}</option></select></Label>
             {zone.verification_type === 'POINT_RADIUS' ? <Label title="Radius in Metern"><input className={field} type="number" min={1} max={10000} step="any" required value={zone.unlock_radius_meters} onChange={e => zoneChange(index, { unlock_radius_meters: e.target.valueAsNumber })} /></Label> : <Label title="Randtoleranz in Metern"><input className={field} type="number" min={0} max={50} step="any" required value={zone.edge_tolerance_meters} onChange={e => zoneChange(index, { edge_tolerance_meters: e.target.valueAsNumber })} /></Label>}
             {zone.verification_type === 'POINT_RADIUS' && <>
               <Label title="Breitengrad"><input className={field} type="number" step="any" min={-90} max={90} required readOnly value={zone.safe_latitude ?? ''} /></Label>
               <Label title="Längengrad"><input className={field} type="number" step="any" min={-180} max={180} required readOnly value={zone.safe_longitude ?? ''} /></Label>
             </>}
           </div>
+          {zone.verification_type === 'AREA' && <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600"><p>{zone.geometry_geojson ? `${zone.geometry_geojson.coordinates[0].length - 1} Eckpunkte · eigene Grenze für diesen Sammelbereich.` : selectedPlace?.geometry_type === 'POLYGON' ? 'Verwendet die bestehende Ortsgrenze. Du kannst oben eine eigene Fläche zeichnen.' : 'Zeichne oben eine freie Fläche für diesen Sammelbereich.'}</p>{zone.geometry_geojson && selectedPlace?.geometry_type === 'POLYGON' && <button type="button" className="min-h-11 font-semibold underline" onClick={() => { zoneChange(index, { geometry_geojson: null }); change('confirm_review', false) }}>Ortsfläche verwenden</button>}</div>}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <label className="inline-flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={zone.active} onChange={e => zoneChange(index, { active: e.target.checked })} className="size-4" />Sammelbereich aktiv</label>
             {zone.verification_type === 'POINT_RADIUS' && <p className="text-xs text-slate-600">Mittelpunkt: {catalog.places.find(p => p.id === zone.source_place_id)?.name ?? 'Bitte Ort wählen'}. Die Koordinaten stammen aus dem Ortsdatensatz.</p>}
             {!(index < existingZoneCount) && <button type="button" className="min-h-11 text-sm font-semibold text-red-700" onClick={() => change('zones', value.zones.filter((_, i) => i !== index))}>Neuen Bereich entfernen</button>}
           </div>
         </fieldset>)}
-        <button type="button" disabled={value.zones.length >= 20} className={secondary} onClick={addZone}><Plus size={16} aria-hidden />Sammelbereich hinzufügen</button>
+        <button type="button" disabled={drawing || value.zones.length >= 20} className={secondary} onClick={addZone}><Plus size={16} aria-hidden />Sammelbereich hinzufügen</button>
         <details className="rounded-xl bg-slate-50 p-4"><summary className="cursor-pointer text-sm font-bold">Standortnachweis einstellen</summary><p className="mt-3 text-xs leading-5 text-slate-600">Diese Grenzwerte gelten für alle Sammelbereiche. Änderungen heben die bisherige Freigabe auf.</p><div className="mt-3 grid gap-3 sm:grid-cols-3">
           <Label title="Max. GPS-Ungenauigkeit (m)"><input className={field} type="number" min={1} max={1000} step="any" required value={value.minimum_accuracy_meters} onChange={e => change('minimum_accuracy_meters', e.target.valueAsNumber)} /></Label>
           <Label title="Mind. Messpunkte"><input className={field} type="number" min={3} max={64} step={1} required value={value.minimum_sample_count} onChange={e => change('minimum_sample_count', e.target.valueAsNumber)} /></Label>
@@ -166,7 +172,8 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
         <h3 id="memory-review-heading" className="font-bold">Prüfung und Freigabe</h3>
         <Label title="Interne Prüfnotiz"><textarea className={field} rows={2} maxLength={2000} value={value.review_notes} onChange={e => change('review_notes', e.target.value)} placeholder="Zugänglichkeit, Quelle und Prüfung vor Ort dokumentieren" /></Label>
         <label className="flex items-start gap-3 rounded-xl bg-blue-50 p-4 text-sm leading-6"><input className="mt-1 size-4 shrink-0" type="checkbox" checked={value.confirm_review} onChange={e => change('confirm_review', e.target.checked)} />Ich habe Ort, Stempelbild, sichere Zugänglichkeit und alle aktiven Sammelbereiche geprüft und gebe diese Konfiguration frei.</label>
-        <div className="flex flex-wrap gap-3"><button className={secondary} type="submit" value="save">{pending ? 'Wird gespeichert …' : 'Speichern'}</button><button className={primary} disabled={!value.confirm_review || value.edition_type !== 'standard'} type="submit" value="approve">Freigeben und aktivieren</button></div>
+        {drawing && <p className="text-sm text-slate-600" role="status">Zum Speichern zuerst die Fläche übernehmen oder das Zeichnen abbrechen.</p>}
+        <div className="flex flex-wrap gap-3"><button className={secondary} type="submit" value="save" disabled={drawing}>{pending ? 'Wird gespeichert …' : 'Speichern'}</button><button className={primary} disabled={drawing || !value.confirm_review || value.edition_type !== 'standard'} type="submit" value="approve">Freigeben und aktivieren</button></div>
         {record && record.definition.configuration_status !== 'retired' && <div className="border-t border-slate-200 pt-4">{withdraw ? <div className="rounded-xl bg-amber-50 p-4 text-sm"><p>Der Stempel wird nicht mehr zum Sammeln angeboten. Bereits gesammelte Erinnerungen bleiben bestehen. Ungespeicherte Eingaben werden verworfen.</p><div className="mt-3 flex flex-wrap gap-3"><button type="submit" value="withdraw" formNoValidate className={secondary}>Jetzt zurückziehen</button><button type="button" className={secondary} onClick={() => setWithdraw(false)}>Abbrechen</button></div></div> : <button type="button" className="min-h-11 text-sm font-semibold text-red-700" onClick={() => setWithdraw(true)}>Stempel zurückziehen</button>}</div>}
       </section>
     </fieldset>

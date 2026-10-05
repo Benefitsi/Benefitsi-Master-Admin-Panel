@@ -70,6 +70,17 @@ async function action(options={}) {
   return {save:m.exports.saveMemoryStamp,calls}
 }
 
+test('custom collection polygons reach storage unchanged and invalid areas never reach the RPC', async () => {
+  const geometry_geojson={type:'Polygon',coordinates:[[[7.9,49.2],[7.91,49.2],[7.91,49.21],[7.9,49.21],[7.9,49.2]]]}
+  const zone={...draft().zones[0],verification_type:'AREA',safe_latitude:null,safe_longitude:null,geometry_geojson}
+  const a=await action(); assert.equal((await a.save(draft({zones:[zone]}))).ok,true)
+  assert.deepEqual(a.calls[1].args.p_input.zones[0].geometry_geojson,geometry_geojson)
+  const invalid=await action()
+  assert.equal((await invalid.save(draft({zones:[{...zone,geometry_geojson:{type:'Polygon',coordinates:[]}}]}))).ok,false)
+  assert.ok(!invalid.calls.some(call=>call?.name),'Invalid drawing must not be stored or revalidated')
+  assert.equal((await invalid.save(draft({zones:[{...draft().zones[0],geometry_geojson}]}))).ok,false,'Radius zones must not carry an ignored polygon')
+})
+
 test('unauthenticated callers never reach storage and saves use the caller session RPC',async()=>{
   const denied=await action({denied:true});await assert.rejects(denied.save(draft()),/denied/);assert.deepEqual(denied.calls,['auth'])
   const a=await action();assert.equal((await a.save(draft())).ok,true)
