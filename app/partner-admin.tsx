@@ -581,6 +581,8 @@ export function PartnerWorkspace({
   const [typeFilter, setTypeFilter] = useState("all")
   const [locationFilter, setLocationFilter] = useState("all")
   const [partnerSort, setPartnerSort] = useState<PartnerSort>("name")
+  const [filtersRestored, setFiltersRestored] = useState(false)
+  const filterStorageKey = `benefitsi:partner-list-filters:v1:${portalMode ? `portal:${initialPartnerId || "current"}` : "admin"}`
   const [mode, setMode] = useState<"view" | "create">(
     partners.length && (portalMode || initialMode === "view") ? "view" : "create",
   )
@@ -634,6 +636,47 @@ export function PartnerWorkspace({
     }
     return [...locations.entries()].sort((left, right) => left[1].localeCompare(right[1], undefined, { sensitivity: "base" }))
   }, [partners])
+  useEffect(() => {
+    if (filtersRestored) return
+
+    try {
+      const raw = window.localStorage.getItem(filterStorageKey)
+      const saved: unknown = raw ? JSON.parse(raw) : null
+      if (saved && typeof saved === "object") {
+        const filters = saved as Record<string, unknown>
+        setQuery(typeof filters.query === "string" ? filters.query : "")
+        setPartnerFilter(filters.partnerFilter === "active" || filters.partnerFilter === "featured" ? filters.partnerFilter : "all")
+        setStatusFilter(typeof filters.statusFilter === "string" && partnerStatusOptions.some((option) => option.value === filters.statusFilter) ? filters.statusFilter : "all")
+        setTypeFilter(typeof filters.typeFilter === "string" && typeFilterOptions.includes(filters.typeFilter) ? filters.typeFilter : "all")
+        setLocationFilter(
+          filters.locationFilter === "__none__" ||
+          typeof filters.locationFilter === "string" && locationFilterOptions.some(([id]) => id === filters.locationFilter)
+            ? filters.locationFilter
+            : "all",
+        )
+        setPartnerSort(partnerSortOptions.some((option) => option.value === filters.partnerSort) ? filters.partnerSort as PartnerSort : "name")
+      }
+    } catch {
+      // Filtering should remain available when browser storage is disabled.
+    }
+
+    setFiltersRestored(true)
+  }, [filterStorageKey, filtersRestored, locationFilterOptions, typeFilterOptions])
+  useEffect(() => {
+    if (!filtersRestored) return
+    try {
+      window.localStorage.setItem(filterStorageKey, JSON.stringify({
+        query,
+        partnerFilter,
+        statusFilter,
+        typeFilter,
+        locationFilter,
+        partnerSort,
+      }))
+    } catch {
+      // Filtering remains usable when browser storage is unavailable or full.
+    }
+  }, [filtersRestored, filterStorageKey, locationFilter, partnerFilter, partnerSort, query, statusFilter, typeFilter])
   const activePartners = partners.filter(isPartnerActive).length
   const featuredPartners = partners.filter(
     (partner) => isPartnerActive(partner) && partner.is_featured,
