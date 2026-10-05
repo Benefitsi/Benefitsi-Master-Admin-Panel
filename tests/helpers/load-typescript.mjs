@@ -10,7 +10,7 @@ export function loadTypescript(relative,stubs={},globals={}) {
   if(cache.has(url.href))return cache.get(url.href)
   const loadedModule={exports:{}};cache.set(url.href,loadedModule.exports)
   const js=ts.transpileModule(readFileSync(url,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true,jsx:ts.JsxEmit.ReactJSX}}).outputText
-  vm.runInNewContext(js,{...globals,module:loadedModule,exports:loadedModule.exports,Buffer,URL,process,console,require:id=>{
+  vm.runInNewContext(js,{module:loadedModule,exports:loadedModule.exports,Buffer,URL,process,console,...globals,require:id=>{
    if(Object.hasOwn(stubs,id))return stubs[id]
    if(id==='server-only')return {}
    if(id.startsWith('@/')) {

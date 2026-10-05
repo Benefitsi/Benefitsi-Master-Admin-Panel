@@ -4,6 +4,7 @@ import { AdminShell } from "@/app/admin-shell"
 import { requireAdmin } from "@/lib/admin"
 import { loadCorporateCompany, parseOffset, type CompanyDetailResult } from "@/lib/corporate/companies"
 import { CorporateCompanySummary, CorporateCompanyEditor, CorporateRoster } from "@/components/corporate/company-detail"
+import { CorporateCompanyBranding } from "@/components/corporate/company-branding"
 import { CorporateCompanyPremium } from "@/components/corporate/company-premium"
 import { CorporateCompanyInvitation } from "@/components/corporate/company-invitation"
 export const dynamic = "force-dynamic"
@@ -20,6 +21,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
       {result.status !== "ok" ? <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm">{result.message}</div> : <>
         <CorporateCompanySummary company={result.company} />
         <CorporateCompanyEditor key={`${adminSession.user.id}:${result.company.company_id}`} company={result.company} />
+        <CorporateCompanyBranding company={result.company} adminIdentity={adminSession.user.id} />
         <CorporateCompanyPremium company={result.company} adminIdentity={adminSession.user.id} />
         <CorporateCompanyInvitation key={`${adminSession.user.id}:${result.company.company_id}`} company={result.company} />
         <CorporateRoster key={`${adminSession.user.id}:${result.company.company_id}`} detail={result} />

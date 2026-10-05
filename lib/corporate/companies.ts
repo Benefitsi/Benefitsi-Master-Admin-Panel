@@ -1,3 +1,4 @@
+import { parseCorporateBranding, type CorporateBranding } from "@/lib/corporate/branding"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { isRecord, isTimestamp, uuidPattern } from "@/lib/corporate/requests"
 
@@ -16,7 +17,7 @@ export type CorporateCompany = {
   seats: number; starts_on: string; ends_on: string; catalog_version: string; unit_amount_cents: number; total_amount_cents: number
   currency: "EUR"; tax_mode: "net_reference"; status: CompanyStatus; invoice_reference: string; updated_at: string
   employee_count: number; reserved_count: number; available_seats: number; entitlement_status: keyof typeof entitlementStatusLabels
-  premium_enabled: boolean; premium_payment_reference: string
+  premium_enabled: boolean; premium_payment_reference: string; branding: CorporateBranding
 }
 export type RosterRow = { kind: "member" | "invitation"; id: string; role: CompanyRole; email: string; updated_at: string; expires_at: string | null }
 export type CompanyListResult = { status: "loaded"; companies: CorporateCompany[]; total: number; offset: number; page_size: 50 } | { status: "error"; message: string }
@@ -110,7 +111,7 @@ export async function loadCorporateCompanies(client: CorporateClient, offset: nu
     const { data, error } = await client.rpc("admin_list_corporate_companies", { p_offset: offset })
     if (error || !isRecord(data) || !Array.isArray(data.companies) || data.companies.length > 50 || !data.companies.every(isCompany)
       || !count(data.total) || data.total < data.companies.length || data.offset !== offset || data.page_size !== 50) return failure
-    return { status: "loaded", companies: data.companies, total: data.total, offset, page_size: 50 }
+    return { status: "loaded", companies: data.companies.map(company => ({ ...company, branding: parseCorporateBranding(company.branding, company.company_id) })), total: data.total, offset, page_size: 50 }
   } catch { return failure }
 }
 export async function loadCorporateCompany(client: CorporateClient, companyId: string, offset: number): Promise<CompanyDetailResult> {
@@ -123,6 +124,6 @@ export async function loadCorporateCompany(client: CorporateClient, companyId: s
     if (data.status !== "ok" || !isCompany(data.company) || data.company.company_id !== companyId
       || !Array.isArray(data.roster) || data.roster.length > 50 || !data.roster.every(isRosterRow)
       || !count(data.roster_total) || data.roster_total < data.roster.length || data.offset !== offset || data.page_size !== 50) return failure
-    return { status: "ok", company: data.company, roster: data.roster, roster_total: data.roster_total, offset, page_size: 50 }
+    return { status: "ok", company: { ...data.company, branding: parseCorporateBranding(data.company.branding, companyId) }, roster: data.roster, roster_total: data.roster_total, offset, page_size: 50 }
   } catch { return failure }
 }

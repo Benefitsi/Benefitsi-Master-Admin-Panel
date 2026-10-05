@@ -1,7 +1,8 @@
 "use server"
 
 import { createCompany, updateCompany, setCompanyPremium, issueInvitation, revokeInvitation, removeMember } from "@/lib/corporate/company-mutations"
-import { isUuid, type CompanyMutationState } from "@/lib/corporate/companies"
+import { saveCorporateBranding, readCorporateLogo, type BrandingMutation } from "@/lib/corporate/branding"
+import { loadCorporateCompany, isUuid, type CompanyMutationState } from "@/lib/corporate/companies"
 import { revalidatePath, refresh } from "next/cache"
 import { requireAdmin } from "@/lib/admin"
 import { saveCorporateRequest, type CorporateUpdateState } from "@/lib/corporate/requests"
@@ -58,4 +59,19 @@ function refreshCompany(data: FormData) {
     revalidatePath("/companies")
     revalidatePath(`/companies/${id}`)
   }
+}
+
+export async function saveCorporateCompanyBranding(formData: FormData): Promise<BrandingMutation> {
+  const { supabase } = await requireAdmin()
+  const result = await saveCorporateBranding(supabase, formData)
+  if (result.status === "updated") { refreshCompany(formData); refresh() }
+  return result
+}
+export async function readCorporateCompanyLogo(companyId: string, path: string) {
+  const { supabase } = await requireAdmin()
+  return readCorporateLogo(supabase, companyId, path)
+}
+export async function reloadCorporateCompanyBranding(companyId: string) {
+  const { supabase } = await requireAdmin()
+  return loadCorporateCompany(supabase, companyId, 0)
 }
