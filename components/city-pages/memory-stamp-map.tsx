@@ -22,6 +22,7 @@ export function MemoryStampMap({ zones, place }: { zones: MemoryZone[]; place?: 
   const [tileError, setTileError] = useState(false)
   const preview = useMemo(() => memoryMapPreview(zones, place), [zones, place])
   const hasLocation = !!preview.place || !!preview.circles.length || !!preview.areas.length
+  const hasSeparatePlace = !!preview.place && !preview.circles.some(zone => zone.center[0] === preview.place?.center[0] && zone.center[1] === preview.place?.center[1])
 
   useEffect(() => {
     let cancelled = false
@@ -67,14 +68,14 @@ export function MemoryStampMap({ zones, place }: { zones: MemoryZone[]; place?: 
       L.polygon(zone.rings, { color: zone.active ? '#0b75d9' : '#64748b', weight: 2, fillOpacity: zone.active ? 0.13 : 0.04, dashArray: zone.active ? undefined : '6 6' })
         .bindTooltip(textLabel(`${zone.number}. ${zone.label}: Fläche, ${metres(zone.edgeTolerance)} Randtoleranz${zone.active ? '' : ' (inaktiv)'}`)).addTo(layers)
     }
-    if (preview.place) {
+    if (preview.place && hasSeparatePlace) {
       L.circleMarker(preview.place.center, { radius: 7, color: '#fff', weight: 2, fillColor: '#c25c0a', fillOpacity: 1 })
         .bindTooltip(textLabel(preview.place.name))
         .bindPopup(textLabel(`${preview.place.name}. Koordinaten des Ortes: ${coordinates(preview.place.center)}`)).addTo(layers)
     }
     fit.current = () => { const bounds = layers.getBounds(); if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17, animate: false }) }
     fit.current()
-  }, [runtime, preview])
+  }, [runtime, preview, hasSeparatePlace])
 
   return <section className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white" aria-label="Karte der Sammelbereiche">
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
@@ -83,10 +84,10 @@ export function MemoryStampMap({ zones, place }: { zones: MemoryZone[]; place?: 
     </div>
     <div className="relative isolate">
       <div ref={container} className={styles.map} role="region" aria-label="Interaktive Karte mit Sammelpunkten und Radien" />
-      {(!runtime || !hasLocation || failed) && <p role="status" className="absolute inset-0 z-[500] flex items-center justify-center bg-slate-50 p-6 text-center text-sm text-slate-600">{failed ? 'Die Karte konnte nicht geladen werden. Koordinaten und Radius kannst du weiterhin unten bearbeiten.' : !hasLocation ? 'Wähle einen Ort oder gib gültige Koordinaten für einen Sammelbereich ein.' : 'Karte wird geladen …'}</p>}
+      {(!runtime || !hasLocation || failed) && <p role="status" className="absolute inset-0 z-[500] flex items-center justify-center bg-slate-50 p-6 text-center text-sm text-slate-600">{failed ? 'Die Karte konnte nicht geladen werden. Ort und Radius kannst du weiterhin unten bearbeiten.' : !hasLocation ? 'Wähle einen Ort mit gültigen Koordinaten für den Sammelbereich.' : 'Karte wird geladen …'}</p>}
     </div>
     <div className="space-y-3 border-t border-slate-200 p-4 text-xs leading-5">
-      <div className="flex flex-wrap gap-x-5 gap-y-1 text-slate-600"><span><span className="mr-1 inline-block size-2 rounded-full bg-[#0b75d9]" />Aktiver Sammelbereich</span><span><span className="mr-1 inline-block size-2 rounded-full bg-slate-500" />Inaktiv</span><span><span className="mr-1 inline-block size-2 rounded-full bg-[#c25c0a]" />Verknüpfter Ort</span></div>
+      <div className="flex flex-wrap gap-x-5 gap-y-1 text-slate-600"><span><span className="mr-1 inline-block size-2 rounded-full bg-[#0b75d9]" />Aktiver Sammelbereich</span><span><span className="mr-1 inline-block size-2 rounded-full bg-slate-500" />Inaktiv</span>{hasSeparatePlace && <span><span className="mr-1 inline-block size-2 rounded-full bg-[#c25c0a]" />Verknüpfter Ort</span>}</div>
       <ul className="grid gap-2 sm:grid-cols-2" aria-label="Koordinaten und Radien">
         {preview.circles.map(zone => <li key={zone.number} className="rounded-lg bg-slate-50 px-3 py-2"><p className="font-semibold text-slate-900">{zone.number}. {zone.label}{!zone.active && ' (inaktiv)'}</p><p>Radius: <strong>{metres(zone.radius)}</strong></p><p className="break-all font-mono text-[11px] text-slate-600">Breite, Länge: {coordinates(zone.center)}</p></li>)}
         {preview.areas.map(zone => <li key={zone.number} className="rounded-lg bg-slate-50 px-3 py-2"><p className="font-semibold text-slate-900">{zone.number}. {zone.label}{!zone.active && ' (inaktiv)'}</p><p>Flächengrenze des Ortes. Zusätzliche Randtoleranz: <strong>{metres(zone.edgeTolerance)}</strong> (nicht eingezeichnet).</p></li>)}

@@ -1,4 +1,5 @@
 import type { MemoryCatalog, MemoryZone } from './memory-stamps'
+import { memoryPlaceCenter } from './memory-place-centers'
 
 export type MemoryMapPlace = MemoryCatalog['places'][number]
 type Point = [number, number]
@@ -37,7 +38,8 @@ function polygon(value: unknown): Point[][] | null {
 }
 
 export function memoryMapPreview(zones: MemoryZone[], place?: MemoryMapPlace): MemoryMapPreview {
-  const center = position(place?.latitude, place?.longitude)
+  const sourceCenter = memoryPlaceCenter(place)
+  const center = sourceCenter && position(...sourceCenter)
   const preview: MemoryMapPreview = { circles: [], areas: [], place: place && center ? { name: place.name, center } : null, issues: [] }
   zones.forEach((zone, index) => {
     const label = { key: zone.zone_key, number: index + 1, label: zone.label || `Sammelbereich ${index + 1}`, active: zone.active }
