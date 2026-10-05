@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { JSDOM } from "jsdom"
+import { formDataSignature } from "../lib/partner-form-signature.ts"
 
 import {
   buildBenDescriptionPrompt,
@@ -11,6 +13,30 @@ import { partnerUpdateWasApplied } from "../lib/partner-save.ts"
 const actionsUrl = new URL("../app/partner-actions.ts", import.meta.url)
 const adminUrl = new URL("../app/partner-admin.tsx", import.meta.url)
 const configUrl = new URL("../lib/partner-config.ts", import.meta.url)
+
+test("an unchanged partner form stays clean across empty file placeholder timestamps", async (t) => {
+  const dom = new JSDOM('<form><input name="name" value="Cafe"><input type="file" name="logo_file"></form>')
+  t.after(() => dom.window.close())
+  const form = dom.window.document.querySelector("form")
+  const first = new dom.window.FormData(form)
+  await new Promise(resolve => setTimeout(resolve, 20))
+  const second = new dom.window.FormData(form)
+  assert.notEqual(first.get("logo_file").lastModified, second.get("logo_file").lastModified)
+  assert.equal(formDataSignature(first), formDataSignature(second))
+  form.elements.namedItem("name").value = "Edited Cafe"
+  assert.notEqual(formDataSignature(first), formDataSignature(new dom.window.FormData(form)))
+})
+
+test("selected files, including named empty files, still change the partner signature", () => {
+  const empty = new FormData()
+  empty.set("logo_file", new File([], "", { type: "application/octet-stream", lastModified: 1 }))
+  const selected = new FormData()
+  selected.set("logo_file", new File([], "logo.png", { type: "image/png", lastModified: 1 }))
+  assert.notEqual(formDataSignature(empty), formDataSignature(selected))
+  const previous = formDataSignature(selected)
+  selected.set("logo_file", new File([], "logo.png", { type: "image/png", lastModified: 2 }))
+  assert.notEqual(formDataSignature(selected), previous)
+})
 
 test("an update is only considered applied when Supabase returns the partner row", () => {
   assert.equal(partnerUpdateWasApplied([{ id: "partner-1" }]), true)
