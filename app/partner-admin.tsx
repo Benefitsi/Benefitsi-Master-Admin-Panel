@@ -594,16 +594,13 @@ export function PartnerWorkspace({
     const saved = (event: Event) => {
       const { savedPartner, created } = (event as CustomEvent<PartnerActionState>).detail
       if (!savedPartner?.id) return
-      const previous = partners.find(partner => partner.id === savedPartner.id)
-      const previousUrls = new Set([
-        previous?.logo_url, previous?.feature_card_url, previous?.discover_card_image_url,
-        ...(previous?.cover_urls ?? []),
-      ].filter((url): url is string => Boolean(url)))
       const savedUrls = [
         savedPartner.logo_url, savedPartner.feature_card_url, savedPartner.discover_card_image_url,
         ...(savedPartner.cover_urls ?? []),
       ].filter((url): url is string => Boolean(url))
-      void remeasureMediaUrls(savedUrls.filter(url => !previousUrls.has(url)))
+      // Refresh every saved media URL, including unchanged URLs whose cached
+      // dimensions may describe the previous image contents.
+      void remeasureMediaUrls(savedUrls, { refresh: true })
       setSavedPartners(current => ({ ...current, [savedPartner.id]: { ...current[savedPartner.id], ...savedPartner } }))
       if (created) {
         setSelectedId(savedPartner.id)
