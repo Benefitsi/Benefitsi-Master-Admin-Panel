@@ -87,6 +87,7 @@ jobs:
         run: >-
           node --import tsx --test --test-concurrency=2
           tests/admin-dashboard-loading.test.mjs
+          tests/admin-microsite-loading.test.mjs
           tests/partner-microsite-preview-access.test.mjs
           tests/microsite-publication-cache.test.mjs
           tests/partner-capability-policy.test.mjs
@@ -111,13 +112,19 @@ jobs:
           tests/corporate-companies.test.mjs
           tests/corporate-company-ui.test.mjs
 
-      - name: Dashboard streaming and source boundaries
+      - name: Admin navigation, dashboard streaming and source boundaries
         run: >-
           node --import tsx --test --test-concurrency=2
+          tests/admin-navigation.test.mjs
+          tests/admin-navigation-ui.test.mjs
           tests/ecosystem-streaming.test.mjs
           tests/admin-language-hydration.test.mjs
           tests/ecosystem-overview.test.mjs
           tests/ecosystem-directory.test.mjs
+          tests/ecosystem-analytics.test.mjs
+          tests/ecosystem-search.test.mjs
+          tests/ecosystem-search-ui.test.mjs
+          tests/agent-summaries.test.mjs
           tests/founder-overview-data.test.mjs
           tests/agent-control-data.test.mjs
 
@@ -130,6 +137,9 @@ jobs:
 
       - name: Type-check
         run: npm exec -- tsc --noEmit
+
+      - name: City memory administration and publication regression tests
+        run: node --import tsx --test --test-concurrency=2 tests/city-memory-stamps.test.mjs tests/community-public-revalidation.test.mjs
 
       - name: Build
         run: npm run build

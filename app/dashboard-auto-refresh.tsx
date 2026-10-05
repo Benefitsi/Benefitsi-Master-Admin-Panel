@@ -37,6 +37,7 @@ export function PanelDataAutoRefresh() {
     const canRefresh = () => {
       for (const form of dirtyForms) if (!form.isConnected) dirtyForms.delete(form)
       return document.visibilityState === "visible" && !refreshing.current &&
+        !document.querySelector("form[data-partner-save-form]") &&
         !document.querySelector('form[aria-busy="true"], form button[aria-busy="true"]') && !dirtyForms.size
     }
     const refresh = () => {

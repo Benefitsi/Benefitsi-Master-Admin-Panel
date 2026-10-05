@@ -50,23 +50,20 @@ function FeatureGlyph({ entry }: { entry: EcosystemEntry }) {
 }
 
 export function EcosystemExplorer() {
-  const [query, setQuery] = useState("")
   const [group, setGroup] = useState<EcosystemEntry["group"] | "all" | null>(null)
-  const term = query.trim().toLocaleLowerCase("de")
-  const entries = ecosystemCatalog.filter(entry => (!group || group === "all" || entry.group === group)
-    && `${entry.title} ${entry.description} ${entry.audience} ${entry.availability}`.toLocaleLowerCase("de").includes(term))
-  const showResults = Boolean(term || group)
+  const entries = ecosystemCatalog.filter(entry => !group || group === "all" || entry.group === group)
+  const showResults = Boolean(group)
 
   return <section id="features" className={styles.catalogSection} aria-labelledby="features-heading">
-    <div className={styles.sectionHead}><h2 id="features-heading">Dein Produkt<span>.</span></h2><span className={styles.smallCaption}>{ecosystemCatalog.length} Bausteine</span></div>
+    <div className={styles.sectionHead}><h2 id="features-heading">Dein Produkt<span>.</span></h2><button className={styles.showAll} type="button" onClick={() => setGroup(showResults ? null : "all")}>{showResults ? "Schließen" : `${ecosystemCatalog.length} Features`}{showResults ? <X size={15} aria-hidden="true" /> : <ArrowRight size={15} aria-hidden="true" />}</button></div>
     <div className={styles.categoryGrid}>{groups.map(({ Icon, ...item }) => <button className={styles.categoryTile} key={item.id} type="button" aria-pressed={group === item.id} onClick={() => setGroup(group === item.id ? null : item.id)}>
-      <div className={styles.categoryVisual}>{Icon ? <Icon size={39} weight="duotone" aria-hidden="true" /> : <BenefitIcon name="reward" size={39} />}<strong>{ecosystemCatalog.filter(entry => entry.group === item.id).length}</strong></div><div className={styles.categoryLabel}><h3>{item.label}</h3><ArrowRight size={17} aria-hidden="true" /></div><span>{item.detail}</span>
+      <div className={styles.categoryVisual}>{Icon ? <Icon size={27} weight="duotone" aria-hidden="true" /> : <BenefitIcon name="reward" size={27} />}<strong>{ecosystemCatalog.filter(entry => entry.group === item.id).length}</strong></div><div className={styles.categoryLabel}><h3>{item.label}</h3><ArrowRight size={17} aria-hidden="true" /></div><span>{item.detail}</span>
     </button>)}</div>
-    <div className={styles.catalogToolbar}><div className={styles.searchBox}><label htmlFor="ecosystem-search" className={styles.srOnly}>Features, Deals und Werkzeuge durchsuchen</label><MagnifyingGlass size={18} aria-hidden="true" /><input id="ecosystem-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Feature finden …" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Suche zurücksetzen"><X size={16} /></button> : null}</div><button className={styles.showAll} type="button" onClick={() => { setGroup(showResults ? null : "all"); setQuery("") }}>{showResults ? "Schließen" : "Alle Features"}{showResults ? <X size={15} aria-hidden="true" /> : <ArrowRight size={15} aria-hidden="true" />}</button></div>
+
     {showResults ? <div className={styles.catalogResults}>
-      <div className={styles.filterHeader}><p className={styles.resultCount} role="status">{entries.length} {entries.length === 1 ? "Eintrag" : "Einträge"}{term ? ` für „${query}“` : ""}</p>{group && group !== "all" ? <button type="button" onClick={() => setGroup("all")}>Alle Kategorien <X size={13} aria-hidden="true" /></button> : null}</div>
+      <div className={styles.filterHeader}><p className={styles.resultCount} role="status">{entries.length} {entries.length === 1 ? "Eintrag" : "Einträge"}</p>{group && group !== "all" ? <button type="button" onClick={() => setGroup("all")}>Alle Kategorien <X size={13} aria-hidden="true" /></button> : null}</div>
       <div className={styles.featureGrid}>{entries.map(entry => { const planned = /geplant|noch nicht verfügbar|noch nicht buchbar/i.test(entry.availability); return <details className={styles.featureCard} key={entry.id}><summary><span className={styles.featureGlyph}><FeatureGlyph entry={entry} /></span><h3>{entry.title}</h3>{planned ? <span className={styles.planned}>Geplant</span> : null}<CaretDown size={14} aria-hidden="true" /></summary><div className={styles.featureExpanded}><p>{entry.description}</p><span>{entry.audience}</span><small>{entry.availability}</small><Link href={entry.href} prefetch={false}>Öffnen <ArrowUpRight size={14} aria-hidden="true" /></Link></div></details> })}</div>
-      {!entries.length ? <div className={styles.empty}><MagnifyingGlass size={28} aria-hidden="true" /><h3>Keine Treffer</h3><button type="button" onClick={() => { setGroup(null); setQuery("") }}>Filter zurücksetzen</button></div> : null}
+      {!entries.length ? <div className={styles.empty}><MagnifyingGlass size={28} aria-hidden="true" /><h3>Keine Treffer</h3><button type="button" onClick={() => setGroup(null)}>Filter zurücksetzen</button></div> : null}
     </div> : null}
   </section>
 }

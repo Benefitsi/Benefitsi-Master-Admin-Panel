@@ -7,9 +7,16 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
   type SVGProps,
 } from "react"
+import {
+  adminNavigation,
+  isAdminNavigationActive,
+  type AdminNavigationGroup as NavigationGroup,
+  type AdminNavigationIcon as NavigationIcon,
+} from "@/lib/admin-navigation"
 import { signOut } from "./actions"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { BrandLogo } from "@/components/brand-logo"
@@ -18,6 +25,37 @@ import {
   AdminLanguageProvider,
 } from "./admin-language"
 
+const NAVIGATION_STORAGE_KEY = "benefitsi-admin-navigation-collapsed"
+const navigationListeners = new Set<() => void>()
+let navigationCollapsed: boolean | undefined
+
+// Each page mounts its own shell. Keep the preference across those mounts.
+function getNavigationCollapsed() {
+  if (navigationCollapsed === undefined) {
+    try {
+      navigationCollapsed = window.localStorage.getItem(NAVIGATION_STORAGE_KEY) !== "false"
+    } catch {
+      navigationCollapsed = true
+    }
+  }
+  return navigationCollapsed
+}
+
+function subscribeToNavigation(callback: () => void) {
+  navigationListeners.add(callback)
+  return () => { navigationListeners.delete(callback) }
+}
+
+function toggleNavigation() {
+  navigationCollapsed = !getNavigationCollapsed()
+  try {
+    window.localStorage.setItem(NAVIGATION_STORAGE_KEY, String(navigationCollapsed))
+  } catch {
+    // The in-memory preference still works when browser storage is unavailable.
+  }
+  navigationListeners.forEach(callback => callback())
+}
+
 type AdminShellProps = {
   adminName: string
   title?: string
@@ -25,6 +63,7 @@ type AdminShellProps = {
   micrositeCount?: ReactNode
   canAccessPartnerPanel?: boolean
   headerActions?: ReactNode
+  headerSearch?: ReactNode
   children: ReactNode
 }
 
@@ -43,9 +82,10 @@ function AdminShellContent({
   micrositeCount,
   canAccessPartnerPanel = false,
   headerActions,
+  headerSearch,
   children,
 }: AdminShellProps) {
-  const [collapsed, setCollapsed] = useState(true)
+  const collapsed = useSyncExternalStore(subscribeToNavigation, getNavigationCollapsed, () => true)
   const pathname = usePathname()
 
   return (
@@ -58,7 +98,7 @@ function AdminShellContent({
         }`}
       >
         <aside
-          className={`border-b border-white/10 bg-[#061829] py-4 text-white transition-[padding] duration-200 lg:sticky lg:top-0 lg:h-[100dvh] lg:border-b-0 lg:border-r ${
+          className={`border-b border-white/10 bg-[#061829] py-4 text-white transition-[padding] duration-200 lg:sticky lg:top-0 lg:h-[100dvh] lg:overflow-y-auto lg:border-b-0 lg:border-r ${
             collapsed ? "lg:px-3" : "lg:px-4"
           }`}
         >
@@ -84,10 +124,11 @@ function AdminShellContent({
             </div>
             <button
               type="button"
-              onClick={() => setCollapsed((current) => !current)}
-              aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+              onClick={toggleNavigation}
+              data-admin-i18n-ignore="true"
+              aria-label={collapsed ? "Navigation ausklappen" : "Navigation einklappen"}
               aria-expanded={!collapsed}
-              title={collapsed ? "Expand navigation" : "Collapse navigation"}
+              title={collapsed ? "Navigation ausklappen" : "Navigation einklappen"}
               className="hidden size-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/5 text-white/75 transition hover:border-[#17d4d7]/60 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17d4d7] lg:grid"
             >
               <svg
@@ -107,110 +148,29 @@ function AdminShellContent({
             </button>
           </div>
 
-          <nav aria-label="Admin navigation" className="mt-4 space-y-1 lg:mt-8">
-            <AdminNavigationLink
-              href="/"
-              label="Übersicht"
-              active={pathname === "/"}
-              collapsed={collapsed}
-              icon={<CityOperationsIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/partners"
-              label="Partner"
-              active={pathname === "/partners"}
-              collapsed={collapsed}
-              icon={<PartnerIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/companies"
-              label="Firmenanfragen"
-              active={pathname.startsWith("/companies")}
-              collapsed={collapsed}
-              icon={<PartnerIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/city-pages"
-              label="Städteseiten"
-              active={pathname.startsWith("/city-pages")}
-              collapsed={collapsed}
-              icon={<CityPagesIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/media"
-              label="Medien"
-              active={pathname.startsWith("/media")}
-              collapsed={collapsed}
-              icon={<CityPagesIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/city-operations"
-              label="Städte-Review"
-              active={pathname.startsWith("/city-operations")}
-              collapsed={collapsed}
-              icon={<CityOperationsIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/editorial"
-              label="Editorial & Magazin"
-              active={pathname.startsWith("/editorial")}
-              collapsed={collapsed}
-              icon={<EditorialIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/bookings"
-              label="Booking Control"
-              active={pathname.startsWith("/bookings")}
-              collapsed={collapsed}
-              icon={<BookingIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/commerce"
-              label="Online-Bestellungen"
-              active={pathname.startsWith("/commerce")}
-              collapsed={collapsed}
-              icon={<BookingIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/automation"
-              label="Automation Control"
-              active={pathname.startsWith("/automation")}
-              collapsed={collapsed}
-              icon={<AutomationIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/agents"
-              label="Agenten"
-              active={pathname.startsWith("/agents")}
-              collapsed={collapsed}
-              icon={<AutomationIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/analytics"
-              label="Business Control Center"
-              active={pathname.startsWith("/analytics")}
-              collapsed={collapsed}
-              icon={<AnalyticsIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/seo"
-              label="SEO & Sichtbarkeit"
-              active={pathname === "/seo" || pathname.startsWith("/seo/")}
-              collapsed={collapsed}
-              icon={<AnalyticsIcon className="size-5" />}
-            />
-            <AdminNavigationLink
-              href="/wissen"
-              label="Wissen"
-              active={pathname.startsWith("/wissen")}
-              collapsed={collapsed}
-              icon={<KnowledgeIcon className="size-5" />}
-            />
+          <nav aria-label="Admin-Navigation" data-admin-i18n-ignore="true" className="mt-4 lg:mt-8">
+            <ul className="space-y-1">
+              {adminNavigation.map(entry => (
+                <li key={"items" in entry ? `${entry.id}:${pathname}` : entry.href}>
+                  {"items" in entry ? (
+                    <AdminNavigationGroup group={entry} pathname={pathname} collapsed={collapsed} />
+                  ) : (
+                    <AdminNavigationLink
+                      href={entry.href}
+                      label={entry.label}
+                      active={isAdminNavigationActive(pathname, entry.href)}
+                      collapsed={collapsed}
+                      icon={<AdminNavigationIcon name={entry.icon} />}
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
           </nav>
         </aside>
 
         <section className="flex min-w-0 flex-col">
-          <header className="flex flex-col gap-4 border-b border-[#061829]/10 bg-[#f7f6f1]/95 px-4 py-5 backdrop-blur sm:flex-row sm:items-center sm:justify-between lg:px-7 lg:py-6">
+          <header className="relative z-40 flex flex-col gap-4 border-b border-[#061829]/10 bg-[#f7f6f1]/95 px-4 py-5 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:px-7 lg:py-6">
             <div className="min-w-0">
               <h1 className="truncate text-[1.7rem] font-black tracking-[-0.035em] text-[#061829]">
                 {title}
@@ -218,7 +178,8 @@ function AdminShellContent({
               {subtitle ? <p className="mt-1 truncate text-sm text-[#526170]">{subtitle}</p> : null}
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className={headerSearch ? "flex max-w-full flex-wrap items-center gap-3" : "flex flex-col gap-3 sm:flex-row sm:items-center"}>
+              {headerSearch}
               <AdminLanguageControl className="self-start sm:self-auto" />
               <SystemSwitcher micrositeCount={micrositeCount} />
               {canAccessPartnerPanel ? <PartnerPanelLink /> : null}
@@ -244,27 +205,96 @@ function AdminShellContent({
   )
 }
 
+function AdminNavigationGroup({ group, pathname, collapsed }: {
+  group: NavigationGroup
+  pathname: string
+  collapsed: boolean
+}) {
+  const active = group.items.some(item => isAdminNavigationActive(pathname, item.href))
+  // The parent keys groups by pathname, so the active group opens on navigation.
+  const [open, setOpen] = useState(active)
+  const listId = `admin-navigation-${group.id}`
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(current => !current)}
+        aria-label={group.label}
+        aria-expanded={open}
+        aria-controls={listId}
+        title={collapsed ? group.label : undefined}
+        className={`flex min-h-11 w-full items-center gap-3 rounded-xl border text-left text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17d4d7] motion-reduce:transition-none ${
+          collapsed ? "px-3 lg:justify-center lg:px-2" : "px-3"
+        } ${active ? "border-[#17d4d7]/20 bg-[#118cff]/22 text-white" : "border-transparent text-white/72 hover:border-white/10 hover:bg-white/8 hover:text-white"}`}
+      >
+        <span className="shrink-0" aria-hidden="true"><AdminNavigationIcon name={group.icon} /></span>
+        <span className={`min-w-0 flex-1 leading-5 ${collapsed ? "lg:sr-only" : ""}`}>{group.label}</span>
+        <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className={`size-4 shrink-0 ${collapsed ? "lg:hidden" : ""} transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}>
+          <path d="m5 7.5 5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <ul id={listId} hidden={!open} className={`mt-1 ml-5 space-y-1 border-l border-white/15 pl-2 ${collapsed ? "lg:ml-2 lg:pl-1" : ""}`}>
+        {group.items.map(item => (
+          <li key={item.href}>
+            <AdminNavigationLink
+              href={item.href}
+              label={item.label}
+              active={isAdminNavigationActive(pathname, item.href)}
+              collapsed={collapsed}
+              nested
+              icon={<AdminNavigationIcon name={item.icon} />}
+            />
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+function AdminNavigationIcon({ name }: { name: NavigationIcon }) {
+  const Icon = {
+    overview: CityOperationsIcon,
+    partner: PartnerIcon,
+    cities: CityPagesIcon,
+    review: CityOperationsIcon,
+    editorial: EditorialIcon,
+    media: MediaIcon,
+    knowledge: KnowledgeIcon,
+    bookings: BookingIcon,
+    commerce: CommerceIcon,
+    agents: AutomationIcon,
+    automation: GridIcon,
+    analytics: AnalyticsIcon,
+    seo: SearchIcon,
+  }[name]
+  return <Icon className="size-5" />
+}
+
 function AdminNavigationLink({
   href,
   label,
   active,
   collapsed,
   icon,
+  nested = false,
 }: {
   href: string
   label: string
   active: boolean
   collapsed: boolean
   icon: ReactNode
+  nested?: boolean
 }) {
   return (
     <Link
       href={href}
+      prefetch={false}
       aria-current={active ? "page" : undefined}
       aria-label={collapsed ? label : undefined}
       title={collapsed ? label : undefined}
-      className={`flex min-h-11 items-center gap-3 rounded-xl border text-sm font-bold text-white transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17d4d7] ${
-        collapsed ? "justify-center px-2" : "px-3"
+      className={`flex ${nested ? "min-h-9 py-1 text-xs" : "min-h-11 text-sm"} items-center gap-3 rounded-xl border font-bold text-white transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17d4d7] motion-reduce:transition-none ${
+        collapsed ? "px-3 lg:justify-center lg:px-2" : "px-3"
       } ${
         active
           ? "border-[#17d4d7]/20 bg-[#118cff]/22 shadow-[inset_3px_0_0_#17d4d7] hover:bg-[#118cff]/30"
@@ -272,7 +302,7 @@ function AdminNavigationLink({
       }`}
     >
       <span className="shrink-0" aria-hidden="true">{icon}</span>
-      <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
+      <span className={`min-w-0 leading-5 ${nested ? "whitespace-normal" : "truncate"} ${collapsed ? "lg:sr-only" : ""}`}>{label}</span>
     </Link>
   )
 }
@@ -675,6 +705,34 @@ function AutomationIcon(props: SVGProps<SVGSVGElement>) {
       />
       <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
       <path d="M12 2v2m0 16v2M2 12h2m16 0h2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function MediaIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="8" cy="8" r="1.5" fill="currentColor" />
+      <path d="m3 17 5-5 4 4 4-6 5 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function CommerceIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path d="M5 7h14l1 14H4L5 7Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M8 8V6a4 4 0 0 1 8 0v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function SearchIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.8" />
+      <path d="m16 16 5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
 }

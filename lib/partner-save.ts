@@ -9,3 +9,12 @@ export function partnerUpdateWasApplied(value: unknown): boolean {
 
 export const partnerUpdateMissingMessage =
   "Partner was not found while saving. Reload the partner and try again."
+
+type SocialValues = { platform: string | null; url: string | null; handle: string | null; sort_order: number | null }
+
+export function partnerSocialsEqual(left: SocialValues[], right: SocialValues[]): boolean {
+  const signature = (values: SocialValues[]) => JSON.stringify(values
+    .map(({ platform, url, handle, sort_order }) => [platform, url, handle, sort_order])
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))))
+  return signature(left) === signature(right)
+}
