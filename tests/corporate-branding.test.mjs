@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { webcrypto } from 'node:crypto'
 import { loadTypescript } from './helpers/load-typescript.mjs'
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/corporate-branding-contract.json', import.meta.url)))
@@ -89,4 +90,52 @@ test('every branding server action reauthorizes and uses the authenticated clien
  assert.equal(auth,3);assert.deepEqual(paths,['/companies',`/companies/${company.company_id}`])
  const denied=loadTypescript('app/companies/actions.ts',{'@/lib/admin':{requireAdmin:async()=>{throw Error('denied')}},'next/cache':{}},{crypto:webcrypto})
  for(const invoke of [()=>denied.saveCorporateCompanyBranding(form()),()=>denied.readCorporateCompanyLogo(company.company_id,company.branding.logo_path),()=>denied.reloadCorporateCompanyBranding(company.company_id)]) await assert.rejects(invoke,/denied/)
+})
+
+// Exercise the installed Server Action encoder and native multipart conversion.
+// The fields below reconstruct its nested FormData argument after transport.
+test('multiline Server Action multipart persists LF text with the original lock', async () => {
+ const require = createRequire(import.meta.url)
+ const previousWebpack = globalThis.__webpack_require__
+ let encodeReply
+ try {
+  globalThis.__webpack_require__ = { u: () => '' }
+  ;({ encodeReply } = require('next/dist/compiled/react-server-dom-webpack/client.browser'))
+ } finally {
+  if (previousWebpack === undefined) delete globalThis.__webpack_require__
+  else globalThis.__webpack_require__ = previousWebpack
+ }
+ const draft = form({ welcomeText: '  Hallo\nTeam\t👋  ' })
+ const encoded = await encodeReply([draft])
+ const wire = await new Request('https://synthetic.invalid/action', { method: 'POST', body: encoded }).formData()
+ const received = new FormData()
+ for (const key of draft.keys()) {
+  const entries = [...wire.entries()].filter(([field]) => field.endsWith('_' + key))
+  assert.equal(entries.length, 1)
+  received.set(key, entries[0][1])
+ }
+ assert.equal(received.get('welcomeText'), '  Hallo\r\nTeam\t👋  ')
+ const c = client({ ...fixture.update, previous_logo_path: null })
+ let auth = 0
+ const actions = loadTypescript('app/companies/actions.ts', {
+  '@/lib/admin': { requireAdmin: async () => { auth++; return { supabase: c } } },
+  'next/cache': { revalidatePath: () => {}, refresh: () => {} },
+ }, { crypto: webcrypto, Blob, Uint8Array })
+ const result = await actions.saveCorporateCompanyBranding(received)
+ assert.equal(result.status, 'updated')
+ assert.equal(auth, 1)
+ assert.equal(result.branding.welcome_text, 'Hallo\nTeam\t👋')
+ assert.equal(c.calls[0][2].p_welcome_text, 'Hallo\nTeam\t👋')
+ assert.equal(c.calls[0][2].p_expected_updated_at, fixture.default_detail.company.updated_at)
+})
+test('mutation rejects raw lone CR and controls while stored DTO remains strict', async () => {
+ const { saveCorporateBranding, parseCorporateBranding } = helper()
+ for (const welcomeText of ['bad\r', 'a\rb', 'a\r\nb\r', 'bad\u0001', 'bad\u0085', '😀'.repeat(501)]) {
+  const c = client(fixture.update)
+  assert.equal((await saveCorporateBranding(c, form({ welcomeText }))).status, 'invalid')
+  assert.equal(c.calls.length, 0)
+ }
+ for (const welcome_text of ['Hallo\r\nTeam', 'bad\r', 'bad\u0085']) {
+  assert.deepEqual(plain(parseCorporateBranding({ ...company.branding, welcome_text }, company.company_id)), { logo_path: null, welcome_text: '' })
+ }
 })

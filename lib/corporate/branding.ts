@@ -39,7 +39,9 @@ async function removeUnbound(client: BrandingClient, path: string): Promise<bool
 }
 export async function saveCorporateBranding(client: BrandingClient, data: FormData): Promise<BrandingMutation> {
   const companyId = data.get("companyId"), expected = data.get("expectedUpdatedAt")
-  const welcomeText = normalizeWelcomeText(data.get("welcomeText"))
+  const rawWelcomeText = data.get("welcomeText")
+  // Multipart transport canonicalizes textarea newlines to CRLF. Stored DTOs stay strict.
+  const welcomeText = normalizeWelcomeText(typeof rawWelcomeText === "string" ? rawWelcomeText.replace(/\r\n/g, "\n") : rawWelcomeText)
   const path = data.get("logoPath"), file = data.get("logo")
   if (typeof companyId !== "string" || !canonicalUuid.test(companyId) || !isTimestamp(expected) || welcomeText === null
     || (path !== "" && !validLogoPath(path, companyId)) || (file !== null && (typeof file === "string" || file.size < 1 || file.size > MAX_LOGO_BYTES))) return invalid
