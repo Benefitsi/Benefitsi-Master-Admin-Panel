@@ -5,7 +5,7 @@
   background: #edf2f7;
   font-family: inherit;
 }
-.drawing { cursor: crosshair; }
+.drawing .map { cursor: crosshair; }
 .vertex {
   display: grid;
   place-items: center;
