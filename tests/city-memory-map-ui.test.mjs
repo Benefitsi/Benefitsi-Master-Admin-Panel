@@ -20,6 +20,7 @@ test('real map layers follow edits, remove invalid circles and clean up on stamp
   class ResizeObserver { observe() {} disconnect() {} }
   for (const name of names) Object.defineProperty(globalThis, name, {configurable:true,writable:true,value:name==='IS_REACT_ACT_ENVIRONMENT'?true:name==='ResizeObserver'?ResizeObserver:dom.window[name]})
   const root = createRoot(document.getElementById('root'))
+  try {
   const require = createRequire(import.meta.url)
   const file = new URL('../components/city-pages/memory-stamp-map.tsx', import.meta.url)
   const js = ts.transpileModule(await readFile(file,'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText
@@ -34,7 +35,6 @@ test('real map layers follow edits, remove invalid circles and clean up on stamp
   const zone = {zone_key:'primary',label:'Schlossäcker',verification_type:'POINT_RADIUS',safe_latitude:49.194314771322,safe_longitude:7.9801118798371,unlock_radius_meters:400,edge_tolerance_meters:0,active:true}
   const render = async zones => { await act(async()=>{root.render(React.createElement(React.StrictMode,null,React.createElement(Map,{zones,place})));await new Promise(resolve=>setTimeout(resolve,15))}) }
   const circlePath = () => document.querySelector('path[fill-opacity="0.13"]')
-  try {
     await render([zone])
     assert.equal(document.querySelectorAll('.leaflet-map-pane').length,1)
     assert.ok(circlePath(),'The initial radius must be drawn')
@@ -45,6 +45,8 @@ test('real map layers follow edits, remove invalid circles and clean up on stamp
     assert.notEqual(circlePath().getAttribute('d'),before,'Changing the form radius must redraw the circle')
     await render([{...zone,label:'<img src=x onerror=alert(1)>',active:false}])
     assert.ok(document.querySelector('path[stroke-dasharray="6 6"]'),'Inactive areas need a distinct outline')
+    document.querySelector('path[fill="#64748b"][stroke="#fff"]').dispatchEvent(new dom.window.MouseEvent('click', {bubbles:true}))
+    assert.match(document.querySelector('.leaflet-popup-content').textContent, /<img src=x onerror=alert\(1\)>/)
     assert.equal(document.querySelector('img[src="x"]'),null,'Labels must remain text')
     await render([{...zone,safe_latitude:null}])
     assert.equal(circlePath(),null,'The old valid radius must not remain visible after invalid input')
