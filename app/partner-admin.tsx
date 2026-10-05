@@ -743,7 +743,7 @@ export function PartnerWorkspace({
         <LiveMetric label="Benefits" value={dealCount} />
       </div>}
 
-      <div className={portalMode ? "min-w-0" : "grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]"}>
+      <div className={portalMode ? "min-w-0" : `grid gap-4 ${compactMode && workspaceLocation.view === "settings" ? "partner-workspace-list-compact xl:grid-cols-[250px_minmax(0,1fr)] xl:gap-3" : "xl:grid-cols-[310px_minmax(0,1fr)]"}`}>
         {!portalMode &&         <aside className="self-start overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]">
           <div className="border-b border-zinc-200 p-3">
             <div className="flex items-center justify-between gap-3">
@@ -1182,7 +1182,7 @@ function PartnerDetail({
             : "Edit the public microsite separately from the partner settings."
         }
         aside={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {activeView === "settings" && onCompactModeChange ? (
               <CompactModeButton enabled={compactMode} onToggle={() => onCompactModeChange(!compactMode)} />
             ) : null}
@@ -1426,7 +1426,7 @@ function EditorShell({
           />
         )}
         {aside ? (
-          <div className="flex min-w-0 shrink-0 flex-wrap gap-2">
+          <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2">
             {aside}
           </div>
         ) : null}
@@ -1444,7 +1444,7 @@ function CompactModeButton({ enabled, onToggle }: { enabled: boolean; onToggle: 
       aria-label={enabled ? "Turn off compact mode" : "Turn on compact mode"}
       aria-pressed={enabled}
       title={enabled ? "Compact mode is on" : "Use compact mode"}
-      className={`inline-flex size-9 shrink-0 items-center justify-center rounded-lg border transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 ${
+      className={`inline-flex h-9 min-h-9 w-9 min-w-9 shrink-0 self-center items-center justify-center rounded-lg border transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 ${
         enabled
           ? "border-teal-700 bg-teal-700 text-white shadow-sm"
           : "border-zinc-300 bg-white text-zinc-600 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-800"
@@ -2371,6 +2371,7 @@ function PartnerForm({
       ref={formRef}
       className="partner-settings-form space-y-4"
       data-compact-mode={compactMode ? "true" : undefined}
+      data-partner-form-mode={mode}
       data-partner-save-form
       noValidate
       onInput={() => {

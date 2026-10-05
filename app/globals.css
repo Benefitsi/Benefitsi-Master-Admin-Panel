@@ -108,25 +108,45 @@ textarea {
 .partner-profile-grid [name=address] { min-height: 68px; }
 .partner-category-popover { box-shadow: 0 12px 30px rgb(6 24 41 / .12); }
 .partner-category-popover > div:nth-child(2) { scrollbar-width: thin; scrollbar-color: #c5d1dd transparent; }
-.partner-workspace-compact .partner-settings-form[data-compact-mode="true"] { row-gap: 8px; }
-.partner-workspace-compact .partner-settings-form[data-compact-mode="true"] > :not([hidden]) ~ :not([hidden]) { margin-block-start: 8px; }
+.partner-workspace-compact .partner-settings-form[data-compact-mode="true"] { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.partner-workspace-compact .partner-settings-form[data-compact-mode="true"] > :not([hidden]) { min-width: 0; }
+.partner-workspace-compact .partner-settings-form[data-compact-mode="true"] > :not([hidden]) ~ :not([hidden]) { margin-block-start: 0; }
 .partner-workspace-compact .partner-settings-form fieldset.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-block-start: 8px; }
-.partner-workspace-compact .partner-settings-section { border-radius: 10px; }
-.partner-workspace-compact .partner-settings-section-heading { min-height: 38px; padding-inline: 12px; }
-.partner-workspace-compact .partner-settings-section-content { padding: 10px; }
-.partner-workspace-compact .partner-settings-section-content.space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-block-start: 8px; }
-.partner-workspace-compact .partner-settings-form [class~="h-10"] { height: 2.25rem; min-height: 2.25rem; }
-.partner-workspace-compact .partner-settings-form [class~="min-h-12"] { min-height: 2.5rem; }
-.partner-workspace-compact .partner-profile-grid { gap: 12px; }
-.partner-workspace-compact .partner-profile-contact { padding-top: 10px; padding-left: 12px; }
-.partner-workspace-compact .partner-profile-grid [name=description] { min-height: 64px; }
-.partner-workspace-compact .partner-profile-grid [name=address] { min-height: 52px; }
+.partner-workspace-compact .partner-settings-section { min-width: 0; border-radius: 9px; }
+.partner-workspace-compact .partner-settings-section-heading { min-height: 36px; padding-inline: 10px; }
+.partner-workspace-compact .partner-settings-section-content { padding: 9px; }
+.partner-workspace-compact .partner-settings-section-content.space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-block-start: 7px; }
+.partner-workspace-compact .partner-settings-form [class~="h-10"] { height: 2.125rem; min-height: 2.125rem; }
+.partner-workspace-compact .partner-settings-form [class~="min-h-12"] { min-height: 2.25rem; }
+.partner-workspace-compact .partner-profile-grid { gap: 9px; }
+.partner-workspace-compact .partner-profile-contact { padding-top: 8px; padding-left: 10px; }
+.partner-workspace-compact .partner-profile-grid [name=description] { min-height: 56px; }
+.partner-workspace-compact .partner-profile-grid [name=address] { min-height: 48px; }
 .partner-workspace-compact .partner-settings-form .grid.gap-4,
-.partner-workspace-compact .partner-settings-form .grid.gap-3 { gap: 8px; }
+.partner-workspace-compact .partner-settings-form .grid.gap-3 { gap: 7px; }
 .partner-workspace-compact [class~="p-4"],
-.partner-workspace-compact [class~="sm:p-4"] { padding: 10px; }
-.partner-workspace-compact .partner-settings-section-content .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-block-start: 6px; }
-.partner-workspace-compact .partner-settings-form .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-block-start: 8px; }
+.partner-workspace-compact [class~="sm:p-4"] { padding: 9px; }
+.partner-workspace-compact .partner-settings-section-content .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-block-start: 5px; }
+.partner-workspace-compact .partner-settings-form .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-block-start: 7px; }
+.partner-workspace-compact .partner-settings-form [data-create-tab="profile"]:not(.hidden),
+.partner-workspace-compact .partner-settings-form [data-create-tab="operations"]:not(.hidden) { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: start; gap: 9px; }
+.partner-workspace-compact .partner-settings-form [data-create-tab="profile"]:not(.hidden) > *,
+.partner-workspace-compact .partner-settings-form [data-create-tab="operations"]:not(.hidden) > * { grid-column: span 6; min-width: 0; }
+.partner-workspace-compact .partner-settings-form[data-partner-form-mode="create"] [data-create-tab="profile"]:not(.hidden) > :nth-child(1),
+.partner-workspace-compact .partner-settings-form[data-partner-form-mode="create"] [data-create-tab="profile"]:not(.hidden) > :nth-child(2) { grid-column: 1 / -1; }
+.partner-workspace-compact .partner-settings-form[data-partner-form-mode="create"] [data-create-tab="profile"]:not(.hidden) > :nth-child(3) { grid-column: span 8; }
+.partner-workspace-compact .partner-settings-form[data-partner-form-mode="create"] [data-create-tab="profile"]:not(.hidden) > :nth-child(4) { grid-column: span 4; }
+.partner-workspace-compact .partner-settings-form[data-partner-form-mode="create"] [data-create-tab="profile"]:not(.hidden) > :nth-child(5) { grid-column: span 4; }
+.partner-workspace-compact .partner-settings-form[data-partner-form-mode="create"] [data-create-tab="profile"]:not(.hidden) > :nth-child(6) { grid-column: span 8; }
+.partner-workspace-compact .partner-settings-form[data-partner-form-mode="edit"] [data-create-tab="profile"]:not(.hidden) > :nth-child(1) { grid-column: span 8; }
+.partner-workspace-compact .partner-settings-form[data-partner-form-mode="edit"] [data-create-tab="profile"]:not(.hidden) > :nth-child(2) { grid-column: span 4; }
+.partner-workspace-compact .partner-settings-form[data-partner-form-mode="edit"] [data-create-tab="profile"]:not(.hidden) > :nth-child(3) { grid-column: span 4; }
+.partner-workspace-compact .partner-settings-form[data-partner-form-mode="edit"] [data-create-tab="profile"]:not(.hidden) > :nth-child(4) { grid-column: span 8; }
+.partner-workspace-compact .partner-settings-form [data-create-tab="operations"]:not(.hidden) > * { grid-column: 1 / -1; }
+.partner-workspace-list-compact > aside > div:first-child { padding: 10px; }
+.partner-workspace-list-compact > aside > div:first-child > input { margin-top: 8px; }
+.partner-workspace-list-compact > aside > div:first-child > .grid { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.partner-workspace-list-compact > aside > div:first-child > .grid label select { margin-top: 3px; height: 2.125rem; }
 @container (min-width: 720px) {
   .partner-profile-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 22px; }
   .partner-profile-core > div:first-child, .partner-profile-contact > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
