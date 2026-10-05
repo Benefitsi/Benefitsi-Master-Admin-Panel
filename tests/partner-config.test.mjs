@@ -6,9 +6,9 @@ test("new menus default to published", () => {
   assert.equal(DEFAULT_MENU_STATUS, "published")
 })
 
-test("discovery cards are prepared at 384 by 420 pixels", () => {
-  assert.equal(partnerMediaSpecs.discover.width, 384)
-  assert.equal(partnerMediaSpecs.discover.height, 420)
+test("discovery cards use the shared recommended dimensions", () => {
+  assert.equal(partnerMediaSpecs.discover.width, 880)
+  assert.equal(partnerMediaSpecs.discover.height, 960)
 })
 
 test("logo previews fill a square circular mask", () => {

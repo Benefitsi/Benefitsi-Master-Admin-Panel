@@ -2149,9 +2149,16 @@ function PartnerForm({
       childList: true,
       subtree: true,
     })
+    // Capture native input events as well as React's form handlers. This
+    // keeps the Save partner state current for nested editors and controls
+    // that stop bubbling change events.
+    form.addEventListener("input", refreshDirtyState, true)
+    form.addEventListener("change", refreshDirtyState, true)
     form.addEventListener("toggle", keepOneSectionOpen, true)
     return () => {
       observer.disconnect()
+      form.removeEventListener("input", refreshDirtyState, true)
+      form.removeEventListener("change", refreshDirtyState, true)
       form.removeEventListener("toggle", keepOneSectionOpen, true)
     }
   }, [mode, partner?.id, refreshDirtyState])
@@ -3080,7 +3087,7 @@ function PartnerForm({
         <div className="flex justify-end border-t border-zinc-200 pt-3">
           <SubmitButton
             pendingOverride={isSaving}
-            disabled={!isDirty}
+            disabled={!isDirty || isSaving}
             label="Save partner"
             pendingLabel="Saving partner..."
             size="compact"
