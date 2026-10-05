@@ -4,9 +4,9 @@ import { existsSync } from 'node:fs'
 
 const modelUrl = new URL('../lib/city-pages/memory-stamp-map.ts', import.meta.url)
 async function model() {
-  const module = existsSync(modelUrl) ? await import(modelUrl.href) : {}
-  assert.equal(typeof module.memoryMapPreview, 'function', 'map preview is not implemented')
-  return module.memoryMapPreview
+  const previewModule = existsSync(modelUrl) ? await import(modelUrl.href) : {}
+  assert.equal(typeof previewModule.memoryMapPreview, 'function', 'map preview is not implemented')
+  return previewModule.memoryMapPreview
 }
 const place = { id: 'trifels', name: 'Reichsburg Trifels', status: 'active', geometry_type: 'POINT', latitude: 49.1965846, longitude: 7.9784024 }
 const zone = { zone_key: 'primary', label: 'Schlossäcker', verification_type: 'POINT_RADIUS', safe_latitude: 49.194314771322, safe_longitude: 7.9801118798371, unlock_radius_meters: 400, edge_tolerance_meters: 0, active: true }
