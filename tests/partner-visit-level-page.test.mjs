@@ -59,7 +59,7 @@ test('direct category and frequency URLs render selected values and actual partn
   assert.match(html, /unterschiedliche Partnerkonfigurationen/)
   assert.match(html, /Keine Frequenz hinterlegt/)
   assert.match(html, /partners\?partner=low-partner/)
-  assert.match(html, /Auslieferung der dafür geänderten App ist noch nicht bestätigt/)
+  assert.match(html, /Ab App-Version 1\.4\.14 \(Build 173\) in TestFlight bereitgestellt/)
 })
 
 test('empty categories and data failures produce distinct honest states', async () => {
