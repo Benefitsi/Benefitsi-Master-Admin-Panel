@@ -15,6 +15,7 @@ function textLabel(text: string) { const label = document.createElement('span');
 
 export function MemoryStampMap({ zones, place }: { zones: MemoryZone[]; place?: MemoryMapPlace }) {
   const container = useRef<HTMLDivElement>(null)
+  const initializedMap = useRef<Leaflet.Map | null>(null)
   const fit = useRef<() => void>(() => {})
   const [runtime, setRuntime] = useState<Runtime | null>(null)
   const [failed, setFailed] = useState(false)
@@ -46,6 +47,14 @@ export function MemoryStampMap({ zones, place }: { zones: MemoryZone[]; place?: 
     if (!runtime) return
     const { L, map, layers } = runtime
     layers.clearLayers()
+    const firstPoint = preview.circles[0]?.center ?? preview.areas[0]?.rings[0][0] ?? preview.place?.center
+    if (!firstPoint) { fit.current = () => {}; return }
+    // Circle bounds need Leaflet's initial projection. No invented fallback
+    // coordinate: wait for an actual collection area or the linked place.
+    if (initializedMap.current !== map) {
+      map.setView(firstPoint, 14, { animate: false })
+      initializedMap.current = map
+    }
     for (const zone of preview.circles) {
       const color = zone.active ? '#0b75d9' : '#64748b'
       const description = `${zone.number}. ${zone.label}: ${metres(zone.radius)} Radius${zone.active ? '' : ' (inaktiv)'}`
