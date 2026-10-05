@@ -121,7 +121,7 @@ import { LoadingSpinner } from "@/components/loading-ui"
 import { MenuAiImportDialog } from "@/components/menu-ai-import-dialog"
 import { PartnerPlanPanel } from "@/components/partner/partner-plan-panel"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
-import { inspectMediaDimensions, inspectPartnerMediaQuality, measurePartnerMedia, recordMediaDimensions, subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision, getRecordedMediaDimensions, recordPreparedMediaDimensions } from "@/lib/partner-media-quality"
+import { inspectMediaDimensions, inspectPartnerMediaQuality, measurePartnerMedia, remeasureMediaUrls, recordMediaDimensions, subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision, getRecordedMediaDimensions, recordPreparedMediaDimensions } from "@/lib/partner-media-quality"
 
 const initialState: PartnerActionState = {
   ok: false,
@@ -594,6 +594,13 @@ export function PartnerWorkspace({
     const saved = (event: Event) => {
       const { savedPartner, created } = (event as CustomEvent<PartnerActionState>).detail
       if (!savedPartner?.id) return
+      const savedUrls = [
+        savedPartner.logo_url, savedPartner.feature_card_url, savedPartner.discover_card_image_url,
+        ...(savedPartner.cover_urls ?? []),
+      ].filter((url): url is string => Boolean(url))
+      // Refresh every saved media URL, including unchanged URLs whose cached
+      // dimensions may describe the previous image contents.
+      void remeasureMediaUrls(savedUrls, { refresh: true })
       setSavedPartners(current => ({ ...current, [savedPartner.id]: { ...current[savedPartner.id], ...savedPartner } }))
       if (created) {
         setSelectedId(savedPartner.id)
@@ -603,7 +610,7 @@ export function PartnerWorkspace({
     }
     window.addEventListener("benefitsi:partner-saved", saved)
     return () => window.removeEventListener("benefitsi:partner-saved", saved)
-  }, [])
+  }, [partners])
 
   const startCreatePartner = useCallback(() => {
     if (portalMode) return

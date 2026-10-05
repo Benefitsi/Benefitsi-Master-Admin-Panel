@@ -19,7 +19,7 @@ export type MemoryStampRecord = {
 export type MemoryCatalog = {
   city: { id: string; slug: string; name: string }
   stamps: MemoryStampRecord[]
-  places: { id: string; name: string; status: string; geometry_type: string; latitude: number | null; longitude: number | null }[]
+  places: { id: string; name: string; status: string; geometry_type: string; latitude: number | null; longitude: number | null; geometry_geojson?: unknown }[]
   assets: { id: string; title: string | null; alt_text: string | null; public_url: string }[]
 }
 export type MemorySaveResult = { ok: true; id: string; refresh: 'ok' | 'not_configured' | 'failed' } | { ok: false; message: string }

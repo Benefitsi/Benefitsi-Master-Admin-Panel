@@ -1,0 +1,36 @@
+.map {
+  height: 340px;
+  width: 100%;
+  container-type: inline-size;
+  background: #edf2f7;
+  font-family: inherit;
+}
+.map :global(.leaflet-control-zoom a) {
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+}
+.map :global(.leaflet-popup-content) {
+  max-width: calc(100cqw - 64px);
+  overflow-wrap: anywhere;
+}
+.map :global(.leaflet-tooltip) {
+  /* Leaflet panes have zero width; avoid shrinking to one character. */
+  width: max-content;
+  /* Automatic left/right placement always has at least half the map. */
+  max-width: min(260px, calc(50cqw - 16px));
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.map :global(.leaflet-tooltip).number {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0;
+}
+@media (min-width: 640px) {
+  .map { height: 390px; }
+}

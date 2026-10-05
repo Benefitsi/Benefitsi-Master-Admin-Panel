@@ -77,6 +77,43 @@ export function recordMediaDimensions(url: string, dimensions: Dimensions) {
   measurementListeners.forEach(listener => listener())
 }
 
+// Recheck replaced media from its final public URL. Prepared-file dimensions
+// are useful for immediate feedback, but this confirms what storage serves.
+export async function remeasureMediaUrls(urls: string[], options: { refresh?: boolean } = {}) {
+  const uniqueUrls = [...new Set(urls)].filter(url => url && !/\.svg(?:[?#]|$)/i.test(url))
+  let index = 0
+  await Promise.all(Array.from({ length: Math.min(4, uniqueUrls.length) }, async () => {
+    while (index < uniqueUrls.length) {
+      const url = uniqueUrls[index++]
+      const dimensions = await new Promise<Dimensions | null>(resolve => {
+        const image = new Image()
+        const finish = (result: Dimensions | null) => {
+          clearTimeout(timeout)
+          image.onload = null
+          image.onerror = null
+          resolve(result)
+        }
+        const timeout = setTimeout(() => finish(null), 15000)
+        image.onload = () => finish({ width: image.naturalWidth, height: image.naturalHeight })
+        image.onerror = () => finish(null)
+        if (options.refresh) {
+          // Re-read saved assets even when storage kept the same public URL.
+          const refreshedUrl = new URL(url, window.location.href)
+          refreshedUrl.searchParams.set("_media_quality_check", String(Date.now()))
+          image.src = refreshedUrl.toString()
+        } else {
+          image.src = url
+        }
+      })
+      if (dimensions) recordMediaDimensions(url, dimensions)
+      else if (measuredDimensions.delete(url)) {
+        measurementRevision += 1
+        measurementListeners.forEach(listener => listener())
+      }
+    }
+  }))
+}
+
 // Four workers prevent a large partner list from flooding storage with requests.
 export async function measurePartnerMedia(partners: PartnerWithDeals[], cancelled: () => boolean) {
   const urls = [...new Set(partners.flatMap(partner => collectCandidates(partner).map(candidate => candidate.url)))]
@@ -180,22 +217,29 @@ function collectCandidates(partner: PartnerWithDeals): Candidate[] {
   return [...candidates.values()]
 }
 
+// The partner list warning should describe the images visible in the partner
+// media editor. Deals, menus, and microsite libraries have their own editors
+// and must not make the partner's main media warning appear stale.
 export function inspectPartnerMediaQuality(partner: PartnerWithDeals, useMeasured = false): PartnerMediaQualityAudit {
+  const candidates: Candidate[] = []
+  const add = (url: string | null | undefined, target: MediaTarget) => {
+    if (url?.trim()) candidates.push({ url: url.trim(), target })
+  }
+  add(partner.logo_url, targets.logo)
+  add(partner.feature_card_url, targets.feature)
+  add(partner.discover_card_image_url, targets.discover)
+  for (const [index, url] of (partner.cover_urls ?? []).entries()) {
+    add(url, { ...targets.cover, label: `Cover ${index + 1}` })
+  }
+
   const lowResolution: PartnerMediaQualityIssue[] = []
   const unverified: PartnerMediaQualityAudit["unverified"] = []
-
-  for (const candidate of collectCandidates(partner)) {
+  for (const candidate of candidates) {
     if (/\.svg(?:[?#]|$)/i.test(candidate.url)) continue
     const dimensions = (useMeasured ? measuredDimensions.get(candidate.url) : null) ?? dimensionsFromUrl(candidate.url)
     if (!dimensions) {
       unverified.push({ label: candidate.target.label, url: candidate.url })
-      continue
-    }
-
-    if (
-      dimensions.width < candidate.target.minWidth ||
-      dimensions.height < candidate.target.minHeight
-    ) {
+    } else if (dimensions.width < candidate.target.minWidth || dimensions.height < candidate.target.minHeight) {
       lowResolution.push({
         label: candidate.target.label,
         width: dimensions.width,
@@ -206,7 +250,6 @@ export function inspectPartnerMediaQuality(partner: PartnerWithDeals, useMeasure
       })
     }
   }
-
   return { lowResolution, unverified }
 }
 
