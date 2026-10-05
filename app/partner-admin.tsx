@@ -11992,7 +11992,7 @@ function CoverUploadField({
   const savedCovers = normalizeMediaUrls(covers)
   const [removedUrls, setRemovedUrls] = useState<string[]>([])
   const [selectedCovers, setSelectedCovers] = useState<
-    Array<{ id: string; preview: ImagePreview; file: File; sourceFile: File; zoom: number; x: number; y: number }>
+    Array<{ id: string; preview: ImagePreview; file: File; sourceFile: File; aiUpscaled: boolean; zoom: number; x: number; y: number }>
   >([])
   const [coverOrder, setCoverOrder] = useState(() =>
     savedCovers.map((_, index) => `existing:${index}`),
@@ -12310,10 +12310,14 @@ function CoverUploadField({
           const previews = createImagePreviews(files)
           try {
             setIsProcessing(true)
-            const processed = await Promise.all(files.map(async (file, index) => {
+            let aiUnavailable = false
+            const processed = await Promise.all(files.map(async (file) => {
               const sourceFile = await upscalePartnerMediaFile(file, spec, {
                 backgroundColor: "#ffffff",
-                onStatus: setUploadMessage,
+                onStatus: (message) => {
+                  aiUnavailable ||= message.startsWith("AI upscaling is unavailable")
+                  setUploadMessage(message)
+                },
               })
               const preparedFile = await resizeImageFile(sourceFile, spec, { zoom: 1, x: 0, y: 0 })
               return {
@@ -12321,6 +12325,7 @@ function CoverUploadField({
                 sourceFile,
                 file: preparedFile,
                 preview: createImagePreviews([preparedFile])[0],
+                aiUpscaled: sourceFile !== file,
                 zoom: 1,
                 x: 0,
                 y: 0,
@@ -12348,7 +12353,12 @@ function CoverUploadField({
               return [...current, ...processed.map((cover) => `selected:${cover.id}`)]
             })
             revokeImagePreviews(previews)
-            setUploadMessage(`${processed.length} cover photo${processed.length === 1 ? "" : "s"} ready to save.`)
+            const aiUpscaledCount = processed.filter((cover) => cover.aiUpscaled).length
+            setUploadMessage(aiUnavailable
+              ? "AI upscaling was unavailable for one or more covers; those originals will keep their available resolution."
+              : aiUpscaledCount
+                ? `AI upscaled ${aiUpscaledCount} cover photo${aiUpscaledCount === 1 ? "" : "s"}; ready to save.`
+                : `${processed.length} cover photo${processed.length === 1 ? "" : "s"} already meet the recommended size and are ready to save.`)
           } catch (error) {
             revokeImagePreviews(previews)
             replaceFileInputFiles(input, selectedCovers.map((cover) => cover.file))
@@ -12567,8 +12577,11 @@ async function resizeImageFile(
     throw new Error(`"${file.name}" must be an AVIF, PNG, JPEG, WebP, or SVG image.`)
   }
 
-  const preparedFile = await upscalePartnerMediaFile(file, spec, { backgroundColor, onStatus })
-  const aiUpscaled = preparedFile !== file
+  const alreadyAiUpscaled = file.name.includes(".ai-upscaled-")
+  const preparedFile = alreadyAiUpscaled
+    ? file
+    : await upscalePartnerMediaFile(file, spec, { backgroundColor, onStatus })
+  const aiUpscaled = alreadyAiUpscaled || preparedFile !== file
   const image = await loadImage(preparedFile)
   const sourceWidth = image.naturalWidth || image.width
   const sourceHeight = image.naturalHeight || image.height
