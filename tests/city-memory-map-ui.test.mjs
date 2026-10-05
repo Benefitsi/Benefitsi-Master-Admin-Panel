@@ -61,6 +61,7 @@ test('real map layers follow edits, remove invalid circles and clean up on stamp
     const click = async element => {assert.ok(element,'Expected an interactive control');await act(async()=>element.dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true})))}
     const point = async (x,y) => {await act(async()=>document.querySelector('.test-map').dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true,clientX:x,clientY:y})))}
     await click(button('Freie Fläche zeichnen'))
+    assert.ok(document.querySelector('.test-map').classList.contains('leaflet-container'),'Drawing must preserve Leaflet classes, otherwise loaded tiles collapse under global image CSS')
     await point(280,140); await point(480,140)
     assert.equal(button('Fläche übernehmen').disabled,true,'Two corners cannot finish an area')
     assert.ok(document.querySelector('path[stroke-dasharray="7 5"]'),'Second click connects the first two points')

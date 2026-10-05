@@ -3,6 +3,7 @@
 import { usePartnerCapabilities } from "./use-partner-capabilities"
 import { StreakRuleFields } from "./streak-rule-fields"
 import { describeCalendarStreak } from "@/lib/streak-config"
+import { formDataSignature } from "@/lib/partner-form-signature"
 
 import Link from "next/link"
 import { visitLevelsHref } from "@/lib/partner-visit-levels"
@@ -639,28 +640,34 @@ export function PartnerWorkspace({
   useEffect(() => {
     if (filtersRestored) return
 
-    try {
-      const raw = window.localStorage.getItem(filterStorageKey)
-      const saved: unknown = raw ? JSON.parse(raw) : null
-      if (saved && typeof saved === "object") {
-        const filters = saved as Record<string, unknown>
-        setQuery(typeof filters.query === "string" ? filters.query : "")
-        setPartnerFilter(filters.partnerFilter === "active" || filters.partnerFilter === "featured" ? filters.partnerFilter : "all")
-        setStatusFilter(typeof filters.statusFilter === "string" && partnerStatusOptions.some((option) => option.value === filters.statusFilter) ? filters.statusFilter : "all")
-        setTypeFilter(typeof filters.typeFilter === "string" && typeFilterOptions.includes(filters.typeFilter) ? filters.typeFilter : "all")
-        setLocationFilter(
-          filters.locationFilter === "__none__" ||
-          typeof filters.locationFilter === "string" && locationFilterOptions.some(([id]) => id === filters.locationFilter)
-            ? filters.locationFilter
-            : "all",
-        )
-        setPartnerSort(partnerSortOptions.some((option) => option.value === filters.partnerSort) ? filters.partnerSort as PartnerSort : "name")
+    // Restore browser state after hydration, ignoring a superseded effect.
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      try {
+        const raw = window.localStorage.getItem(filterStorageKey)
+        const saved: unknown = raw ? JSON.parse(raw) : null
+        if (saved && typeof saved === "object") {
+          const filters = saved as Record<string, unknown>
+          setQuery(typeof filters.query === "string" ? filters.query : "")
+          setPartnerFilter(filters.partnerFilter === "active" || filters.partnerFilter === "featured" ? filters.partnerFilter : "all")
+          setStatusFilter(typeof filters.statusFilter === "string" && partnerStatusOptions.some((option) => option.value === filters.statusFilter) ? filters.statusFilter : "all")
+          setTypeFilter(typeof filters.typeFilter === "string" && typeFilterOptions.includes(filters.typeFilter) ? filters.typeFilter : "all")
+          setLocationFilter(
+            filters.locationFilter === "__none__" ||
+            typeof filters.locationFilter === "string" && locationFilterOptions.some(([id]) => id === filters.locationFilter)
+              ? filters.locationFilter
+              : "all",
+          )
+          setPartnerSort(partnerSortOptions.some((option) => option.value === filters.partnerSort) ? filters.partnerSort as PartnerSort : "name")
+        }
+      } catch {
+        // Filtering should remain available when browser storage is disabled.
       }
-    } catch {
-      // Filtering should remain available when browser storage is disabled.
-    }
 
-    setFiltersRestored(true)
+      setFiltersRestored(true)
+    })
+    return () => { cancelled = true }
   }, [filterStorageKey, filtersRestored, locationFilterOptions, typeFilterOptions])
   useEffect(() => {
     if (!filtersRestored) return
@@ -2223,7 +2230,7 @@ function PartnerForm({
     const form = formRef.current
     if (mode === "edit") {
       initialFormSignatureRef.current = formDataSignature(new FormData(form))
-      setIsDirty(false)
+      scheduleDirtyStateRefresh()
     }
 
     const keepOneSectionOpen = (event: Event) => {
@@ -12803,18 +12810,6 @@ function isSupportedImageFile(file: File) {
   return ["avif", "aviff", "png", "jpg", "jpeg", "webp", "svg"].includes(
     file.name.split(".").pop()?.toLowerCase() ?? "",
   )
-}
-
-function formDataSignature(formData: FormData) {
-  return Array.from(formData.entries())
-    .filter(([key]) => key !== "cover_processing")
-    .map(([key, value]) =>
-      value instanceof File
-        ? `${key}=file:${value.name}:${value.type}:${value.size}:${value.lastModified}`
-        : `${key}=${value}`,
-    )
-    .sort()
-    .join("\u001f")
 }
 
 async function isTransparentPng(file: File) {

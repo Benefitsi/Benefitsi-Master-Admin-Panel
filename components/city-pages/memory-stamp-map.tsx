@@ -160,8 +160,9 @@ export function MemoryStampMap({ zones, place, disabled = false, onAreaChange, o
         {drawingError && <p role="alert" className="text-sm text-red-800">{drawingError}</p>}
       </>}
     </div>}
-    <div className="relative isolate">
-      <div ref={container} className={`${styles.map} ${drawing ? styles.drawing : ''}`} role="region" aria-label="Interaktive Karte mit Sammelpunkten und Flächen" onKeyDown={event => { if (event.key === 'Escape' && drawing) { event.preventDefault(); cancelDrawing() } }} />
+    <div className={`relative isolate ${drawing ? styles.drawing : ''}`}>
+      {/* Leaflet owns extra classes on this node; keep React's className stable. */}
+      <div ref={container} className={styles.map} role="region" aria-label="Interaktive Karte mit Sammelpunkten und Flächen" onKeyDown={event => { if (event.key === 'Escape' && drawing) { event.preventDefault(); cancelDrawing() } }} />
       {(!runtime || !hasLocation || failed) && <p role="status" className="absolute inset-0 z-[500] flex items-center justify-center bg-slate-50 p-6 text-center text-sm text-slate-600">{failed ? 'Die Karte konnte nicht geladen werden. Ort und Radius kannst du weiterhin unten bearbeiten.' : !hasLocation ? 'Wähle einen Ort mit gültigen Koordinaten für den Sammelbereich.' : 'Karte wird geladen …'}</p>}
     </div>
     <div className="space-y-3 border-t border-slate-200 p-4 text-xs leading-5">
