@@ -1,6 +1,7 @@
 .map {
   height: 340px;
   width: 100%;
+  container-type: inline-size;
   background: #edf2f7;
   font-family: inherit;
 }
@@ -10,10 +11,13 @@
   line-height: 40px;
 }
 .map :global(.leaflet-popup-content) {
+  max-width: calc(100cqw - 64px);
   overflow-wrap: anywhere;
 }
 .map :global(.leaflet-tooltip) {
-  max-width: 260px;
+  /* Leaflet panes have zero width; avoid shrinking to one character. */
+  width: max-content;
+  max-width: min(260px, calc(100cqw - 32px));
   white-space: normal;
   overflow-wrap: anywhere;
 }
