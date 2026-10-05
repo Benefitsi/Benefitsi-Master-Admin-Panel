@@ -5,6 +5,7 @@ export type CorporateClient = Pick<SupabaseClient, "rpc">
 export const companyStatusLabels = { preparing: "In Vorbereitung", enrolling: "Teamaufnahme freigegeben", paused: "Teamaufnahme pausiert" } as const
 export type CompanyStatus = keyof typeof companyStatusLabels
 export type CompanyRole = "owner" | "employee"
+export const entitlementStatusLabels = { not_enabled: "Nicht freigegeben", scheduled: "Geplant", active: "Aktiv", suspended: "Gesperrt", expired: "Abgelaufen" } as const
 export const companyRoleLabels = { owner: "Ansprechpartner", employee: "Mitarbeiter" } as const
 export type CorporateCatalog = {
   version: string; status: "planning"; currency: "EUR"; billing_interval: "year"; tax_mode: "net_reference"; max_seats: number
@@ -14,7 +15,8 @@ export type CorporateCompany = {
   company_id: string; source_request_id: string; company_name: string; city: string; contact_name: string; contact_email: string
   seats: number; starts_on: string; ends_on: string; catalog_version: string; unit_amount_cents: number; total_amount_cents: number
   currency: "EUR"; tax_mode: "net_reference"; status: CompanyStatus; invoice_reference: string; updated_at: string
-  employee_count: number; reserved_count: number; available_seats: number; entitlement_status: "not_enabled"
+  employee_count: number; reserved_count: number; available_seats: number; entitlement_status: keyof typeof entitlementStatusLabels
+  premium_enabled: boolean; premium_payment_reference: string
 }
 export type RosterRow = { kind: "member" | "invitation"; id: string; role: CompanyRole; email: string; updated_at: string; expires_at: string | null }
 export type CompanyListResult = { status: "loaded"; companies: CorporateCompany[]; total: number; offset: number; page_size: 50 } | { status: "error"; message: string }
@@ -89,7 +91,10 @@ function isCompany(value: unknown): value is CorporateCompany {
     && count(value.unit_amount_cents) && value.unit_amount_cents > 0 && count(value.total_amount_cents) && value.total_amount_cents === value.seats * value.unit_amount_cents
     && count(value.employee_count) && count(value.reserved_count) && count(value.available_seats)
     && value.employee_count + value.reserved_count + value.available_seats === value.seats
-    && value.currency === "EUR" && value.tax_mode === "net_reference" && value.entitlement_status === "not_enabled"
+    && value.currency === "EUR" && value.tax_mode === "net_reference"
+    && typeof value.entitlement_status === "string" && Object.hasOwn(entitlementStatusLabels, value.entitlement_status)
+    && typeof value.premium_enabled === "boolean" && typeof value.premium_payment_reference === "string"
+    && [...value.premium_payment_reference].length <= 160 && !value.premium_payment_reference.includes("\0")
 }
 function isRosterRow(value: unknown): value is RosterRow {
   return isRecord(value) && isUuid(value.id) && isCompanyRole(value.role) && typeof value.email === "string" && isTimestamp(value.updated_at)

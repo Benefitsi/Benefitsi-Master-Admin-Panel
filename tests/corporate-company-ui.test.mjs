@@ -148,8 +148,8 @@ test('frozen company list and roster pagination render counts without implying p
   const html = renderToStaticMarkup(React.createElement(Index, { result: { status: 'loaded', ...fixture.companies, total: 65 }, selectedStatus: 'proposal' }))
   for (const text of ['1.194,00', '60', '51', '8']) assert.ok(html.includes(text), text)
   assert.match(html, /companyOffset=50&amp;status=proposal/)
-  assert.match(html, /Premium-Zugang ist noch nicht aktiviert/)
-  assert.match(html, /03\.10\.2027/)
+  assert.match(html, /Nicht freigegeben/)
+  assert.match(html, /04\.10\.2027/)
 })
 test('a roster page made empty by removal offers previous page without an inverted count', () => {
   const { CompanyPagination } = common()
@@ -235,5 +235,145 @@ test('filtered refresh retains only edited or failed cards and a lost setup resp
     assert.deepEqual(calls[1], calls[0])
     assert.equal(document.querySelectorAll('article').length, 0, 'confirmed setup with no unsaved inquiry draft follows the fresh filter')
     assert.equal(window.localStorage.length, 0); assert.equal(window.sessionStorage.length, 0)
+  })
+})
+
+const premiumFixture = JSON.parse(readFileSync(new URL('./fixtures/corporate-premium-contract.json', import.meta.url)))
+test('company summary renders the five executed premium states with invoice and retained payment evidence', () => {
+  const { CorporateCompanySummary: Summary } = component('company-detail')
+  for (const [key, label] of [['inactive', 'Nicht freigegeben'], ['scheduled', 'Geplant'], ['active', 'Aktiv'], ['suspended', 'Gesperrt'], ['expired', 'Abgelaufen']]) {
+    const markup = renderToStaticMarkup(React.createElement(Summary, { company: premiumFixture[key] }))
+    assert.match(markup, new RegExp(label), key)
+    assert.match(markup, /Invoice 42/)
+    if (key !== 'inactive') assert.match(markup, /PAY-EXAMPLE-42/)
+  }
+})
+test('premium form requires reference plus payment checkbox and submits the original precise company token', async () => {
+  const calls = []
+  const { CorporateCompanyPremium: Premium } = component('company-premium', { setCorporatePremium: async data => { calls.push(Object.fromEntries(data)); return { status: 'error', message: 'Antwort nicht bestätigt' } } })
+  await withDom(async (root, window) => {
+    await act(async () => root.render(React.createElement(Premium, { company: premiumFixture.inactive, adminIdentity: 'admin-a' })))
+    const button = () => document.querySelector('button[type="submit"]')
+    assert.equal(button().disabled, true)
+    await act(async () => edit(window, document.querySelector('[name="paymentReference"]'), ' PAY-42 '))
+    assert.equal(button().disabled, true)
+    await act(async () => document.querySelector('[name="paymentConfirmed"]').click())
+    assert.equal(button().disabled, false)
+    await act(async () => document.querySelector('form').requestSubmit())
+    assert.deepEqual(calls[0], { companyId: premiumFixture.inactive.company_id, expectedUpdatedAt: premiumFixture.inactive.updated_at, enabled: 'true', paymentReference: ' PAY-42 ', paymentConfirmed: 'true' })
+    assert.equal(document.querySelector('[name="paymentReference"]').value, ' PAY-42 ')
+    assert.equal(document.querySelector('[name="paymentConfirmed"]').checked, true)
+    assert.match(document.body.textContent, /497,50/); assert.match(document.body.textContent, /2027/)
+    assert.match(document.querySelector('[role="alert"]').textContent, /nicht bestätigt/)
+  })
+})
+test('premium conflict preserves draft through RSC refresh and prevents stale or repeated pending submissions', async () => {
+  let finish, calls = 0
+  const { CorporateCompanyPremium: Premium } = component('company-premium', { setCorporatePremium: async () => { calls++; return new Promise(resolve => { finish = resolve }) } })
+  await withDom(async (root, window) => {
+    const props = { company: premiumFixture.inactive, adminIdentity: 'admin-a' }
+    await act(async () => root.render(React.createElement(Premium, props)))
+    await act(async () => { edit(window, document.querySelector('[name="paymentReference"]'), 'PAY-42'); document.querySelector('[name="paymentConfirmed"]').click() })
+    const submit = () => document.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }))
+    await act(async () => { submit(); submit() })
+    assert.equal(calls, 1); assert.equal(document.querySelector('fieldset').disabled, true)
+    await act(async () => finish({ status: 'conflict', message: 'Bitte neu laden' }))
+    await act(async () => root.render(React.createElement(Premium, { ...props, company: { ...premiumFixture.inactive, updated_at: premiumFixture.active.updated_at } })))
+    assert.equal(document.querySelector('[name="paymentReference"]').value, 'PAY-42')
+    assert.equal(document.querySelector('[name="paymentConfirmed"]').checked, true)
+    assert.equal(document.querySelector('button[type="submit"]').disabled, true)
+    assert.ok(document.querySelector(`a[href="/companies/${premiumFixture.inactive.company_id}"]`))
+    await act(async () => submit()); assert.equal(calls, 1)
+  })
+})
+test('premium state clears when admin or company identity changes; stale completion cannot overwrite the new form', async () => {
+  let finish
+  const { CorporateCompanyPremium: Premium } = component('company-premium', { setCorporatePremium: async () => new Promise(resolve => { finish = resolve }) })
+  await withDom(async (root, window) => {
+    const render = props => root.render(React.createElement(Premium, props))
+    const props = { company: premiumFixture.inactive, adminIdentity: 'admin-a' }
+    await act(async () => render(props))
+    await act(async () => { edit(window, document.querySelector('[name="paymentReference"]'), 'Old private draft'); document.querySelector('[name="paymentConfirmed"]').click() })
+    await act(async () => document.querySelector('form').requestSubmit())
+    await act(async () => render({ ...props, adminIdentity: 'admin-b' }))
+    assert.equal(document.querySelector('[name="paymentReference"]').value, '')
+    await act(async () => finish({ status: 'conflict', message: 'Stale conflict' }))
+    assert.doesNotMatch(document.body.textContent, /Stale conflict/)
+    await act(async () => edit(window, document.querySelector('[name="paymentReference"]'), 'Another draft'))
+    await act(async () => render({ ...props, adminIdentity: 'admin-b', company: { ...props.company, company_id: '4c99bd37-aeee-4c36-aee6-012b4619a521' } }))
+    assert.equal(document.querySelector('[name="paymentReference"]').value, '')
+    assert.equal(document.querySelector('[name="paymentConfirmed"]').checked, false)
+    assert.equal(window.localStorage.length, 0); assert.equal(window.sessionStorage.length, 0)
+  })
+})
+test('premium suspension uses a separate confirmation and a successful refresh advances the full lock', async () => {
+  const calls = []
+  const { CorporateCompanyPremium: Premium } = component('company-premium', { setCorporatePremium: async data => { calls.push(Object.fromEntries(data)); return { status: 'updated', updatedAt: premiumFixture.suspended.updated_at, message: 'Gesperrt' } } })
+  await withDom(async (root, window) => {
+    const props = { company: premiumFixture.active, adminIdentity: 'admin-a' }
+    await act(async () => root.render(React.createElement(Premium, props)))
+    assert.equal(document.querySelector('[name="paymentConfirmed"]'), null)
+    assert.equal(document.querySelector('button[type="submit"]').disabled, true)
+    await act(async () => document.querySelector('[name="suspensionConfirmed"]').click())
+    await act(async () => document.querySelector('form').requestSubmit())
+    assert.deepEqual(calls[0], { companyId: premiumFixture.active.company_id, expectedUpdatedAt: premiumFixture.active.updated_at, enabled: 'false', paymentReference: '', suspensionConfirmed: 'true' })
+    assert.equal(document.querySelector('[name="suspensionConfirmed"]').checked, false)
+    await act(async () => root.render(React.createElement(Premium, { ...props, company: { ...premiumFixture.active, updated_at: premiumFixture.suspended.updated_at, premium_enabled: false, entitlement_status: 'not_enabled' } })))
+    assert.match(document.body.textContent, /Private Abos/)
+    await act(async () => { edit(window, document.querySelector('[name="paymentReference"]'), 'PAY-NEW'); document.querySelector('[name="paymentConfirmed"]').click() })
+    await act(async () => document.querySelector('form').requestSubmit())
+    assert.equal(calls[1].expectedUpdatedAt, premiumFixture.suspended.updated_at)
+  })
+})
+
+
+test('company index displays current five-state access instead of calling every company inactive', () => {
+  const { CorporateCompanyIndex: Index } = component('company-index')
+  const html = renderToStaticMarkup(React.createElement(Index, { result: { status: 'loaded', companies: Object.values(premiumFixture).filter(company => company.company_id), total: 5, offset: 0, page_size: 50 }, selectedStatus: null }))
+  for (const label of ['Nicht freigegeben', 'Geplant', 'Aktiv', 'Gesperrt', 'Abgelaufen']) assert.match(html, new RegExp(label))
+  assert.doesNotMatch(html, /Premium-Zugang ist noch nicht aktiviert/)
+})
+
+test('invitation issuance for an already active company confirms a link without making a payment or access claim', async () => {
+  const { CorporateCompanyInvitation: Invite } = component('company-invitation', { issueCorporateInvitation: async data => ({ status: 'issued', invitationId: data.get('invitationId'), expiresAt: '2026-10-11T18:46:05.102408+00:00', message: 'Einladung erstellt' }) })
+  await withDom(async (root, window) => {
+    await act(async () => root.render(React.createElement(Invite, { company: premiumFixture.active })))
+    await act(async () => { edit(window, document.querySelector('[name="email"]'), 'owner@example.test'); edit(window, document.querySelector('[name="role"]'), 'owner') })
+    await act(async () => document.querySelector('form').requestSubmit())
+    assert.ok(document.querySelector('[aria-label="Einladungslink"]'))
+    assert.doesNotMatch(document.body.textContent, /Premium-Zugang ist noch nicht aktiviert/)
+    assert.match(document.body.textContent, /Einladung.*allein.*keinen.*Premium/i)
+  })
+})
+
+test('conflicting external activation retains the draft until deliberate reload adopts a fresh agreement and consent', async () => {
+  const calls = []
+  const { CorporateCompanyPremium: Premium } = component('company-premium', { setCorporatePremium: async data => { calls.push(Object.fromEntries(data)); return { status: 'conflict', message: 'Bitte neu laden' } } })
+  await withDom(async (root, window) => {
+    const props = { company: premiumFixture.inactive, adminIdentity: 'admin-a' }
+    await act(async () => root.render(React.createElement(Premium, props)))
+    await act(async () => { edit(window, document.querySelector('[name="paymentReference"]'), 'My payment draft'); document.querySelector('[name="paymentConfirmed"]').click() })
+    await act(async () => document.querySelector('form').requestSubmit())
+    await act(async () => root.render(React.createElement(Premium, { ...props, company: premiumFixture.active })))
+    const reference = document.querySelector('[name="paymentReference"]')
+    assert.ok(reference, 'an external release must not hide the failed activation draft')
+    assert.equal(reference.value, 'My payment draft')
+    assert.equal(document.querySelector('[name="paymentConfirmed"]').checked, true)
+    assert.equal(document.querySelector('[name="suspensionConfirmed"]'), null)
+    assert.equal(document.querySelector('button[type="submit"]').disabled, true)
+    const reload = document.querySelector(`a[href="/companies/${premiumFixture.active.company_id}"]`)
+    assert.ok(reload); assert.match(reload.textContent, /neu laden/)
+    // The deliberate document reload replaces the mounted component; unlike an
+    // automatic RSC refresh it intentionally discards the prior local draft.
+    await act(async () => root.render(React.createElement(Premium, { ...props, key: 'deliberate-document-reload', company: premiumFixture.active })))
+    assert.equal(document.querySelector('[name="paymentReference"]'), null)
+    assert.equal(document.querySelector('[name="suspensionConfirmed"]').checked, false)
+    assert.equal(document.querySelector('button[type="submit"]').disabled, true)
+    await act(async () => document.querySelector('[name="suspensionConfirmed"]').click())
+    await act(async () => document.querySelector('form').requestSubmit())
+    assert.equal(calls.length, 2)
+    assert.equal(calls[1].expectedUpdatedAt, premiumFixture.active.updated_at)
+    assert.equal(calls[1].enabled, 'false'); assert.equal(calls[1].suspensionConfirmed, 'true')
+    assert.equal(calls[1].paymentReference, '')
   })
 })

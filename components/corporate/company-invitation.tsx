@@ -53,7 +53,7 @@ export function CorporateCompanyInvitation({ company }: { company: CorporateComp
       {link ? <div className="space-y-3 rounded-xl bg-[#f8fafb] p-4">
         <label className="grid gap-1.5 text-xs font-bold">Einladungslink<textarea aria-label="Einladungslink" readOnly value={link} rows={3} className={corporateInputClass} /></label>
         <p className="text-xs text-[#617080]">Dieser geheime Link wird nur in diesem geöffneten Formular angezeigt. Nur an die Zieladresse weitergeben. Nach Neuladen kann er nicht wieder ausgelesen werden; offene Einladung dann zurücknehmen und neu erstellen.</p>
-        <p className="text-xs">Gültig bis {state.expiresAt && new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(state.expiresAt))} · Premium-Zugang ist noch nicht aktiviert.</p>
+        <p className="text-xs">Gültig bis {state.expiresAt && new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(state.expiresAt))} · Eine Einladung allein gewährt keinen Premium-Zugang.</p>
         <button type="button" className={corporateButtonClass} onClick={async () => {
           try { await navigator.clipboard.writeText(link); setCopyMessage("Link kopiert.") } catch { setCopyMessage("Kopieren nicht möglich. Link oben auswählen und manuell kopieren.") }
         }}>Link kopieren</button>

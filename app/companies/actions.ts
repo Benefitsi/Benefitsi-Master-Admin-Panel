@@ -1,8 +1,8 @@
 "use server"
 
-import { createCompany, updateCompany, issueInvitation, revokeInvitation, removeMember } from "@/lib/corporate/company-mutations"
+import { createCompany, updateCompany, setCompanyPremium, issueInvitation, revokeInvitation, removeMember } from "@/lib/corporate/company-mutations"
 import { isUuid, type CompanyMutationState } from "@/lib/corporate/companies"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, refresh } from "next/cache"
 import { requireAdmin } from "@/lib/admin"
 import { saveCorporateRequest, type CorporateUpdateState } from "@/lib/corporate/requests"
 
@@ -26,6 +26,12 @@ export async function updateCorporateCompany(formData: FormData): Promise<Compan
   const { supabase } = await requireAdmin()
   const result = await updateCompany(supabase, formData)
   if (result.status === "updated") refreshCompany(formData)
+  return result
+}
+export async function setCorporatePremium(formData: FormData): Promise<CompanyMutationState> {
+  const { supabase } = await requireAdmin()
+  const result = await setCompanyPremium(supabase, formData)
+  if (result.status === "updated") { refreshCompany(formData); refresh() }
   return result
 }
 export async function issueCorporateInvitation(formData: FormData): Promise<CompanyMutationState> {

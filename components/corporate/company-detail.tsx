@@ -1,7 +1,7 @@
 "use client"
 import { useRef, useState, useTransition } from "react"
 import { updateCorporateCompany, revokeCorporateInvitation, removeCorporateMember } from "@/app/companies/actions"
-import { companyStatusLabels, companyRoleLabels, euro, period, mutationInitial, mutationFailure, type CorporateCompany, type CompanyStatus, type CompanyMutationState, type CompanyDetailResult, type RosterRow } from "@/lib/corporate/companies"
+import { companyStatusLabels, companyRoleLabels, entitlementStatusLabels, euro, period, mutationInitial, mutationFailure, type CorporateCompany, type CompanyStatus, type CompanyMutationState, type CompanyDetailResult, type RosterRow } from "@/lib/corporate/companies"
 import { CompanyFeedback, CompanyPagination, corporateInputClass, corporateButtonClass, corporatePanelClass, mustReload } from "@/components/corporate/company-ui"
 
 export function CorporateCompanySummary({ company }: { company: CorporateCompany }) {
@@ -15,8 +15,11 @@ export function CorporateCompanySummary({ company }: { company: CorporateCompany
       <div><dt className="text-xs font-bold text-[#617080]">Feste Jahresnettosumme</dt><dd className="mt-1 font-bold">{euro(company.total_amount_cents)} netto pro Jahr</dd><dd className="mt-1">{euro(company.unit_amount_cents)} je Mitarbeiter/Jahr · zzgl. MwSt.</dd></div>
       <div><dt className="text-xs font-bold text-[#617080]">Preisversion bei Vereinbarung</dt><dd className="mt-1">{company.catalog_version}</dd></div>
       <div><dt className="text-xs font-bold text-[#617080]">Kontakt aus Anfrage</dt><dd className="mt-1 break-words">{company.contact_name}<br />{company.contact_email}</dd></div>
+      <div><dt className="text-xs font-bold text-[#617080]">Firmen-Premium</dt><dd className="mt-1 font-bold">{entitlementStatusLabels[company.entitlement_status]}</dd></div>
+      <div><dt className="text-xs font-bold text-[#617080]">Externe Rechnungsreferenz</dt><dd className="mt-1 break-words">{company.invoice_reference || "Noch nicht hinterlegt"}</dd></div>
+      <div><dt className="text-xs font-bold text-[#617080]">Letzte Zahlungsreferenz</dt><dd className="mt-1 break-words">{company.premium_payment_reference || "Noch nicht hinterlegt"}</dd></div>
     </dl>
-    <p className="mt-4 text-sm text-[#617080]">Premium-Zugang ist noch nicht aktiviert. Diese Verwaltung erzeugt keine Rechnung und löst keine Zahlung oder automatische Verlängerung aus. Plätze, Jahresbetrag und Zeitraum bleiben bei Austritt, Entfernung oder Ablauf einer Einladung unverändert.</p>
+    <p className="mt-4 text-sm text-[#617080]">Diese Verwaltung erfasst die manuelle Bestätigung einer extern geprüften Zahlung. Sie erzeugt keine Rechnung und löst keine Zahlung oder automatische Verlängerung aus. Plätze, Jahresbetrag und Zeitraum bleiben bei Austritt, Entfernung oder Ablauf einer Einladung unverändert.</p>
   </section>
 }
 export function CorporateCompanyEditor({ company }: { company: CorporateCompany }) {

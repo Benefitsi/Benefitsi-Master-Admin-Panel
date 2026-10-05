@@ -3,7 +3,7 @@ import { domainFailure, isCompanyRole, isCompanyStatus, isDate, isUuid, mutation
 
 function field(data: FormData, key: string): string | null { const value = data.get(key); return data.getAll(key).length === 1 && typeof value === "string" ? value : null }
 function invalid(): CompanyMutationState { return domainFailure("invalid") }
-async function mutate(client: CorporateClient, name: string, params: Record<string, string | number>, success: "created" | "updated" | "issued" | "revoked" | "removed", expectedId?: string): Promise<CompanyMutationState> {
+async function mutate(client: CorporateClient, name: string, params: Record<string, string | number | boolean>, success: "created" | "updated" | "issued" | "revoked" | "removed", expectedId?: string): Promise<CompanyMutationState> {
   try {
     const { data, error } = await client.rpc(name, params)
     if (error || !data || typeof data !== "object" || Array.isArray(data)) return mutationFailure
@@ -29,6 +29,15 @@ export async function updateCompany(client: CorporateClient, data: FormData): Pr
   const id = field(data, "companyId"), expected = field(data, "expectedUpdatedAt"), status = field(data, "status"), reference = field(data, "invoiceReference")
   if (!isUuid(id) || !isTimestamp(expected) || !isCompanyStatus(status) || reference === null || [...reference.trim()].length > 160 || reference.length > 640 || reference.includes("\0")) return invalid()
   return mutate(client, "admin_update_corporate_company", { p_company_id: id, p_expected_updated_at: expected, p_status: status, p_invoice_reference: reference.trim() }, "updated")
+}
+export async function setCompanyPremium(client: CorporateClient, data: FormData): Promise<CompanyMutationState> {
+  const id = field(data, "companyId"), expected = field(data, "expectedUpdatedAt"), enabled = field(data, "enabled"), reference = field(data, "paymentReference")
+  if (!isUuid(id) || !isTimestamp(expected) || (enabled !== "true" && enabled !== "false") || reference === null
+    || reference.length > 640 || [...reference.trim()].length > 160 || reference.includes("\0")) return invalid()
+  if (enabled === "true" ? field(data, "paymentConfirmed") !== "true" || !reference.trim()
+    : field(data, "suspensionConfirmed") !== "true" || reference !== "") return invalid()
+  const result = await mutate(client, "admin_set_corporate_premium", { p_company_id: id, p_expected_updated_at: expected, p_enabled: enabled === "true", p_payment_reference: reference.trim() }, "updated")
+  return result.status === "updated" ? { ...result, message: enabled === "true" ? "Extern geprüfte Zahlung erfasst. Firmen-Premium freigegeben; der aktuelle Zugang richtet sich nach Firmenstatus und Zeitraum." : "Firmen-Premium gesperrt. Private Abos bleiben unverändert." } : result
 }
 export async function issueInvitation(client: CorporateClient, data: FormData): Promise<CompanyMutationState> {
   const id = field(data, "companyId"), invitationId = field(data, "invitationId"), email = field(data, "email")?.trim().toLowerCase(), role = field(data, "role"), token = field(data, "token")

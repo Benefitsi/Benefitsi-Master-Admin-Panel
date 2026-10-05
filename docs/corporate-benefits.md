@@ -1,10 +1,8 @@
-# Corporate benefits: inquiries and company setup
+# Corporate benefits: inquiries, company setup and payment confirmation
 
-Prepared locally on 2026-10-04. No migration, deployment or hosted mutation is
+Prepared on feature branches through 2026-10-05. No migration, deployment or hosted mutation is
 performed by this branch. The inquiry milestone stores contact progress. The company milestone adds fixed
-annual seat agreements, personal invitation links and role assignments. Neither
-activates Premium, creates a real invoice, sends mail, charges money or renews
-an agreement. No production writes were performed during implementation.
+annual seat agreements, personal invitation links and role assignments. The new Premium action records an Admin’s explicit confirmation of externally paid annual access. These flows create no real invoice, send no mail, charge no money and renew no agreement. No production writes were performed during implementation.
 
 ## Admin route and boundaries
 
@@ -110,7 +108,7 @@ success and handles catalog unavailability without producing a fake estimate.
 Reuse installed Node/Next 16.3.6; no dependency install/upgrade or full build.
 
 ```sh
-node --import tsx --test --test-concurrency=1 tests/corporate-requests.test.mjs tests/corporate-workspace.test.mjs tests/corporate-companies.test.mjs tests/corporate-company-ui.test.mjs
+node --import tsx --test --test-concurrency=1 tests/corporate-requests.test.mjs tests/corporate-workspace.test.mjs tests/corporate-companies.test.mjs tests/corporate-company-ui.test.mjs tests/corporate-premium.test.mjs tests/admin-navigation.test.mjs tests/admin-navigation-ui.test.mjs
 node node_modules/eslint/bin/eslint.js app/companies components/corporate lib/corporate tests/corporate-*.test.mjs tests/helpers/load-typescript.mjs
 node node_modules/typescript/bin/tsc --noEmit --incremental false
 git diff --check
@@ -161,7 +159,7 @@ and locks those fields for an identical replay. No catalog means no new setup
 or substitute price. Conflict/catalog change asks for deliberate reload.
 
 `/companies/[id]` shows frozen quote, inclusive displayed end day, current
-employee/reservation/free counts and non-activated Premium status. The Admin
+employee/reservation/free counts and the current five-state Premium status. The Admin
 can set `preparing`, `enrolling` or `paused`, and record an optional external
 invoice reference of at most 160 characters. This generates no invoice or
 payment assertion. Edits retain drafts and the complete microsecond token on
@@ -194,9 +192,63 @@ Expected domain statuses receive German guidance; malformed/unexpected results
 remain generic failures. Database authorization and lifecycle tests are the
 native SQL suite in the database repository.
 
-The frontend fixture `tests/fixtures/corporate/company-contract.json` is copied
-unaltered from the native PostgreSQL 16 CI artifact of database commit
-`e5a2e623a7abaea0296d7274c85f6729e23f431a` (52 tests passed). It contains only
-synthetic example.test contacts, catalog, company index and two roster pages.
-It contains no invitation secret or hash. Parsing does not reject historical
-fixture dates; current lifecycle validity is enforced by SQL.
+## Externally paid Corporate Premium
+
+The detail route shows the invoice reference, last retained payment reference and
+`not_enabled`, `scheduled`, `active`, `suspended` or `expired` using the same labels
+as the company index. `premium_enabled` records the Admin's release; the database
+computes effective access from that flag, current status and the Berlin period.
+A company owner role alone never gives personal Premium or Admin permission.
+An issued invitation confirms a link only; it does not itself prove paid access.
+
+`setCorporatePremium` independently calls the current `requireAdmin()` guard,
+then uses only that authenticated client for
+`admin_set_corporate_premium(p_company_id, p_expected_updated_at, p_enabled,
+p_payment_reference)`. The full raw microsecond timestamp is preserved.
+The server never accepts an actor, quote, seat count or period from this form.
+Activation requires one explicit `paymentConfirmed=true` field and a nonempty,
+trimmed payment reference (at most 160 Unicode characters). Suspension requires
+its own `suspensionConfirmed=true` and sends the empty reference. SQL preserves
+the last payment evidence and independently verifies status, expiry, invoice,
+actor and current lock. Only a valid `updated` result refreshes list/detail and
+the current server view. Malformed replies fail closed.
+
+The form displays the stored fixed annual amount, seats, period and invoice
+beside the confirmation. It describes manual external review, never a software
+bank check. Pending requests suppress duplicate submissions. Errors preserve
+reference/confirmation and the original token. Conflicts block blind retry and
+offer a deliberate reload. After success the confirmation clears and writes wait
+for the refreshed company token. Admin or company identity changes remount the
+form, clearing the prior in-memory draft and preventing stale completions from
+changing the new form. No payment draft is persisted in browser storage. Existing
+private subscriptions remain untouched and this is explained beside suspension.
+
+The exact executed fixtures are copied without changes from GitHub Actions run
+`37274954460` of database head
+`d72d88f3a3a6adf67206b49c8166a509d31eaa1d` (118 native SQL tests passed), executed
+merge `3ba657b00d133c9d86de16f2e9bc5b467c9daa1e` against main
+`9294004efd54d76522b73e2507678419990ede02`:
+
+- `tests/fixtures/corporate-premium-contract.json`: SHA256
+  `28e0614bb1d4af87656ae65600d73f900d8e30ba7b2096f714b9927d939b0642`.
+- Expanded `tests/fixtures/corporate/company-contract.json`: SHA256
+  `527fd51363199114cc5349839f3a301a784a1b7d5d10fd4b43413b28d11d2dd6`.
+
+They contain synthetic example.test records, five real SQL states, company index
+and roster pages. Parser tests accept historical synthetic dates; effective
+lifecycle decisions belong to SQL. The accepted fixture period ends on
+2027-10-05 exclusively, so its displayed final day is 04.10.2027.
+
+Required reviewed Premium migrations, in addition to the inquiry/company ones:
+`20261005061145_corporate_premium_access.sql`,
+`20261005061413_corporate_premium_gates.sql`, and
+`20261005064059_corporate_premium_booking_history.sql`.
+No migration is applied or payment confirmed in a real environment by this branch.
+
+The feature preserves main's grouped navigation (all original thirteen links
+plus Unternehmen as a separate fourteenth destination) and the current map/image
+quality changes. CI retains every navigation, streaming and map regression group
+and adds the Premium behavior suite to the Corporate group. Local validation uses
+the existing shared Next 16.3.6 / React 19.2.4 dependency overlay without installs,
+copying caches or starting a server. Full production builds run only in PR CI and
+Vercel while SSD reserve remains below the requested 40–50 GiB target.
