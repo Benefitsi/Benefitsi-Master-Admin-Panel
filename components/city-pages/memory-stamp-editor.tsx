@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useTransition, type FormEvent, type ReactNode } from 'react'
+import { useMemo, useState, useTransition, type FormEvent, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, MapPin, Stamp } from 'lucide-react'
 import { MemoryStampMap } from './memory-stamp-map'
+import { bindMemoryZones } from '@/lib/city-pages/memory-place-centers'
 import { saveMemoryStamp } from '@/app/city-pages/[citySlug]/memory-stamps/actions'
 import { memoryEditions, type MemoryCatalog, type MemoryStampInput, type MemoryStampRecord, type MemoryZone } from '@/lib/city-pages/memory-stamps'
 
@@ -78,6 +79,7 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
   const selectedPlace = catalog.places.find(p => p.id === value.place_id)
   const selectedAsset = catalog.assets.find(a => a.id === value.artwork_asset_id)
   const existingZoneCount = record?.zones.length ?? 0
+  const boundZones = useMemo(() => bindMemoryZones(value.zones, value.place_id, catalog.places), [value.zones, value.place_id, catalog.places])
   function change<K extends keyof MemoryStampInput>(key: K, next: MemoryStampInput[K]) { setValue(v => ({ ...v, [key]: next })) }
   function zoneChange(index: number, change: Partial<MemoryZone>) { setValue(v => ({ ...v, zones: v.zones.map((z, i) => i === index ? { ...z, ...change } : z) })) }
   function addZone() {
@@ -88,7 +90,7 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const operation = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value as MemoryStampInput['operation'] || 'save'
-    const input = operation === 'withdraw' ? initialInput(catalog, record) : value
+    const input = operation === 'withdraw' ? initialInput(catalog, record) : { ...value, zones: boundZones }
     setError('')
     startTransition(async () => {
       try {
@@ -132,23 +134,24 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
         <h3 id="memory-place-heading" className="flex items-center gap-2 font-bold"><MapPin size={18} aria-hidden />Ort und Sammelbereiche</h3>
         <Label title="Ort in dieser Stadt"><select className={field} value={value.place_id ?? ''} disabled={!!record?.claim_count} onChange={e => change('place_id', e.target.value || null)}><option value="">Ort auswählen</option>{catalog.places.map(p => <option key={p.id} value={p.id}>{p.name}{p.status !== 'active' ? ' (noch nicht veröffentlicht)' : ''}</option>)}</select></Label>
         {!!record?.claim_count && <p className="text-xs leading-5 text-slate-600">Dieser Stempel wurde bereits gesammelt. Für einen anderen Ort bitte einen neuen Stempel anlegen.</p>}
-        <p className="text-sm leading-6 text-slate-600">Jeder Sammelbereich muss sicher zugänglich sein. Flächen verwenden die beim verknüpften Ort hinterlegte Polygongeometrie. Die App prüft den Standort weiterhin serverseitig.</p>
-        <MemoryStampMap zones={value.zones} place={selectedPlace} />
-        {value.zones.map((zone, index) => <fieldset key={index} className="min-w-0 space-y-3 rounded-xl border border-slate-200 p-4">
+        <p className="text-sm leading-6 text-slate-600">Der Radius beginnt immer am zugehörigen Ort. Die Koordinaten werden aus dessen Ortsdatensatz übernommen. Flächen verwenden die beim verknüpften Ort hinterlegte Polygongeometrie. Die App prüft den Standort weiterhin serverseitig.</p>
+        <MemoryStampMap zones={boundZones} place={selectedPlace} />
+        {boundZones.map((zone, index) => <fieldset key={index} className="min-w-0 space-y-3 rounded-xl border border-slate-200 p-4">
           <legend className="px-1 text-sm font-bold">Sammelbereich {index + 1}</legend>
+          {zone.verification_type === 'POINT_RADIUS' && index > 0 && zone.zone_key !== 'primary' && <Label title="Zugehöriger Ort"><select className={field} value={zone.source_place_id ?? ''} onChange={e => zoneChange(index, { source_place_id: e.target.value || null })} required><option value="">Ort auswählen</option>{catalog.places.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Label>}
           <div className="grid gap-3 sm:grid-cols-2">
             <Label title="Bezeichnung"><input className={field} value={zone.label} maxLength={180} required onChange={e => zoneChange(index, { label: e.target.value })} /></Label>
             <Label title="Kennung"><input className={field} value={zone.zone_key} maxLength={80} pattern="[a-z0-9]+(-[a-z0-9]+)*" required readOnly={(index < existingZoneCount)} onChange={e => zoneChange(index, { zone_key: e.target.value })} /></Label>
             <Label title="Art des Sammelbereichs"><select className={field} value={zone.verification_type} onChange={e => zoneChange(index, { verification_type: e.target.value as MemoryZone['verification_type'], safe_latitude: null, safe_longitude: null })}><option value="POINT_RADIUS">Sammelpunkt mit Radius</option><option value="AREA" disabled={selectedPlace?.geometry_type !== 'POLYGON'}>Fläche des verknüpften Ortes</option></select></Label>
             {zone.verification_type === 'POINT_RADIUS' ? <Label title="Radius in Metern"><input className={field} type="number" min={1} max={10000} step="any" required value={zone.unlock_radius_meters} onChange={e => zoneChange(index, { unlock_radius_meters: e.target.valueAsNumber })} /></Label> : <Label title="Randtoleranz in Metern"><input className={field} type="number" min={0} max={50} step="any" required value={zone.edge_tolerance_meters} onChange={e => zoneChange(index, { edge_tolerance_meters: e.target.valueAsNumber })} /></Label>}
             {zone.verification_type === 'POINT_RADIUS' && <>
-              <Label title="Breitengrad"><input className={field} type="number" step="any" min={-90} max={90} required value={zone.safe_latitude ?? ''} onChange={e => zoneChange(index, { safe_latitude: e.target.value === '' ? null : e.target.valueAsNumber })} /></Label>
-              <Label title="Längengrad"><input className={field} type="number" step="any" min={-180} max={180} required value={zone.safe_longitude ?? ''} onChange={e => zoneChange(index, { safe_longitude: e.target.value === '' ? null : e.target.valueAsNumber })} /></Label>
+              <Label title="Breitengrad"><input className={field} type="number" step="any" min={-90} max={90} required readOnly value={zone.safe_latitude ?? ''} /></Label>
+              <Label title="Längengrad"><input className={field} type="number" step="any" min={-180} max={180} required readOnly value={zone.safe_longitude ?? ''} /></Label>
             </>}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <label className="inline-flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={zone.active} onChange={e => zoneChange(index, { active: e.target.checked })} className="size-4" />Sammelbereich aktiv</label>
-            {zone.verification_type === 'POINT_RADIUS' && selectedPlace?.latitude != null && selectedPlace.longitude != null && <button type="button" className={secondary} onClick={() => zoneChange(index, { safe_latitude: selectedPlace.latitude, safe_longitude: selectedPlace.longitude })}>Koordinaten des Ortes übernehmen</button>}
+            {zone.verification_type === 'POINT_RADIUS' && <p className="text-xs text-slate-600">Mittelpunkt: {catalog.places.find(p => p.id === zone.source_place_id)?.name ?? 'Bitte Ort wählen'}. Die Koordinaten stammen aus dem Ortsdatensatz.</p>}
             {!(index < existingZoneCount) && <button type="button" className="min-h-11 text-sm font-semibold text-red-700" onClick={() => change('zones', value.zones.filter((_, i) => i !== index))}>Neuen Bereich entfernen</button>}
           </div>
         </fieldset>)}

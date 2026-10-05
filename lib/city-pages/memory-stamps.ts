@@ -1,4 +1,5 @@
 export type MemoryZone = {
+  source_place_id?: string | null
   zone_key: string; label: string; verification_type: 'POINT_RADIUS' | 'AREA'
   safe_latitude: number | null; safe_longitude: number | null
   unlock_radius_meters: number; edge_tolerance_meters: number; active: boolean
@@ -19,7 +20,7 @@ export type MemoryStampRecord = {
 export type MemoryCatalog = {
   city: { id: string; slug: string; name: string }
   stamps: MemoryStampRecord[]
-  places: { id: string; name: string; status: string; geometry_type: string; latitude: number | null; longitude: number | null; geometry_geojson?: unknown }[]
+  places: { id: string; name: string; status: string; geometry_type: string; latitude: number | null; longitude: number | null; map_center_latitude?: number | null; map_center_longitude?: number | null; geometry_geojson?: unknown }[]
   assets: { id: string; title: string | null; alt_text: string | null; public_url: string }[]
 }
 export type MemorySaveResult = { ok: true; id: string; refresh: 'ok' | 'not_configured' | 'failed' } | { ok: false; message: string }
@@ -55,11 +56,12 @@ export function parseMemoryStampInput(value: unknown): { ok: true; input: Memory
   const zones: MemoryZone[] = []
   for (const entry of v.zones) {
     const z = obj(entry)
+    if (z?.source_place_id !== undefined && !optionalId(z.source_place_id)) return fail('Bitte einen gültigen Ort für den Sammelbereich wählen.')
     if (!z || typeof z.zone_key !== 'string' || z.zone_key.length > 80 || !slugPattern.test(z.zone_key) || typeof z.label !== 'string' || !z.label.trim() || z.label.length > 180 || typeof z.active !== 'boolean' || !number(z.unlock_radius_meters, 1, 10000) || !number(z.edge_tolerance_meters, 0, 50)) return fail('Bitte Bezeichnung, Radius und Toleranz der Sammelbereiche prüfen.')
     if (z.verification_type !== 'POINT_RADIUS' && z.verification_type !== 'AREA') return fail('Bitte einen gültigen Sammelbereich wählen.')
     if (z.verification_type === 'AREA' ? z.safe_latitude !== null || z.safe_longitude !== null : z.verification_type !== 'POINT_RADIUS' || !number(z.safe_latitude, -90, 90) || !number(z.safe_longitude, -180, 180)) return fail('Für einen Sammelpunkt sind gültige Koordinaten erforderlich. Flächen verwenden die Geometrie des Ortes.')
     if (zones.some(zone => zone.zone_key === z.zone_key)) return fail('Jeder Sammelbereich braucht eine eindeutige Kennung.')
-    zones.push({ zone_key: z.zone_key, label: z.label.trim(), verification_type: z.verification_type, safe_latitude: z.safe_latitude as number | null, safe_longitude: z.safe_longitude as number | null, unlock_radius_meters: z.unlock_radius_meters as number, edge_tolerance_meters: z.edge_tolerance_meters as number, active: z.active })
+    zones.push({ source_place_id: z.source_place_id as string | null | undefined, zone_key: z.zone_key, label: z.label.trim(), verification_type: z.verification_type, safe_latitude: z.safe_latitude as number | null, safe_longitude: z.safe_longitude as number | null, unlock_radius_meters: z.unlock_radius_meters as number, edge_tolerance_meters: z.edge_tolerance_meters as number, active: z.active })
   }
   if (v.operation === 'approve' && v.edition_type !== 'standard') return fail('Die App unterstützt aktuell das Sammeln der Standard-Edition. Andere Editionen bitte als Entwurf belassen.')
   if (v.operation === 'approve' && (v.confirm_review !== true || !v.place_id || !v.artwork_asset_id || !zones.some(z => z.active))) return fail('Zur Freigabe sind ein Ort, ein veröffentlichtes Stempelbild, ein aktiver Sammelbereich und deine ausdrückliche Prüfung nötig.')
@@ -80,6 +82,8 @@ export function memoryErrorMessage(message = '') {
     memory_place_claimed: 'Für diesen Stempel gibt es bereits Erinnerungen. Ein anderer Ort braucht einen neuen Stempel.',
     memory_area_geometry: 'Der gewählte Ort hat keine gültige Polygonfläche. Pflege diese zuerst beim Ort oder wähle einen Sammelpunkt.',
     memory_zones: 'Zur Freigabe wird mindestens ein aktiver Sammelbereich benötigt.',
+    memory_center_mismatch: 'Die Koordinaten stimmen nicht mit dem zugehörigen Ort überein. Bitte neu laden und den Sammelbereich prüfen.',
+    memory_place_coordinates: 'Beim zugehörigen Ort fehlen gültige Koordinaten. Bitte zuerst den Ortsdatensatz vervollständigen.',
     memory_zone_shape: 'Bitte die Koordinaten und den Typ aller Sammelbereiche prüfen.',
     memory_thresholds: 'Bitte Genauigkeit, Messpunktzahl und Zeitfenster des Standortnachweises prüfen.',
     memory_zone_missing: 'Bestehende Sammelbereiche bitte deaktivieren, statt sie aus dem Formular zu entfernen.',
