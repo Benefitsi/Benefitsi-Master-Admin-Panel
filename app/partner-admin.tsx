@@ -1238,6 +1238,11 @@ function PartnerDetail({
         }
         aside={
           <div className="flex flex-wrap items-center gap-2">
+            {!portalMode && partner.id ? (
+              <Link href={`/workspace?partner=${encodeURIComponent(partner.id)}`} className="inline-flex min-h-9 items-center rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50">
+                Workspace öffnen
+              </Link>
+            ) : null}
             {activeView === "settings" && onCompactModeChange ? (
               <CompactModeButton enabled={compactMode} onToggle={() => onCompactModeChange(!compactMode)} />
             ) : null}

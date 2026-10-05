@@ -126,7 +126,7 @@ test("the active nested page stays visible and opens its group even in the compa
   await withDom(async ({ render }) => {
     const shell = () => React.createElement(Shell, { adminName: "Test" }, "Page")
     await render(shell())
-    assert.equal(document.querySelectorAll("nav > ul > li").length, 7)
+    assert.equal(document.querySelectorAll("nav > ul > li").length, 8)
     for (const [path, label] of [["/city-operations/events/123", "Prüfung & Freigaben"], ["/wissen/123", "Wissen"]]) {
       setPath(path); await render(shell())
       const link = document.querySelector('nav a[aria-current="page"]')
