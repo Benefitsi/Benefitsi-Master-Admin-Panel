@@ -29,12 +29,13 @@ export function PartnerCrmLoader({
   } : null),
     [error, setError] = useState(initialError),
     [epoch, setEpoch] = useState(0);
-  const sequence = useRef(0),
+  const sequence = useRef(Symbol()),
     actor = useRef<string | null>(actorId),
     mounted = useRef(true);
   const refresh = useCallback(async () => {
-    const request = ++sequence.current,
+    const request = Symbol(),
       requestedActor = actor.current;
+    sequence.current = request;
     if (!requestedActor) return;
     try {
       const result = await loadPartnerCrm(partnerId);
@@ -63,7 +64,7 @@ export function PartnerCrmLoader({
     }
   }, [partnerId]);
   const accessLost = useCallback(() => {
-    ++sequence.current;
+    sequence.current = Symbol();
     setSnapshot(null);
     setEpoch(v => v + 1);
     setError('Bitte deinen Zugriff aktualisieren.');
@@ -78,7 +79,7 @@ export function PartnerCrmLoader({
       const next = session?.user.id ?? null;
       if (next !== actor.current) {
         actor.current = next;
-        ++sequence.current;
+        sequence.current = Symbol();
         setSnapshot(null);
         setEpoch(v => v + 1);
         setError('Bitte deinen Zugriff aktualisieren.');
@@ -87,7 +88,7 @@ export function PartnerCrmLoader({
     });
     return () => {
       mounted.current = false;
-      ++sequence.current;
+      sequence.current = Symbol();
       window.removeEventListener('focus', refresh);
       data.subscription.unsubscribe();
     };

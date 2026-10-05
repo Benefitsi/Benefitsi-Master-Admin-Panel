@@ -40,16 +40,16 @@ function newDraft(kind: CrmKind): CampaignInput {
   };
 }
 function editDraft(c: CrmCampaign): CampaignInput {
-  const {
-    revision,
-    partner_id: _,
-    created_at: __,
-    updated_at: ___,
-    ...input
-  } = c;
   return {
-    ...input,
-    expected_revision: revision
+    id: c.id,
+    expected_revision: c.revision,
+    kind: c.kind,
+    title: c.title,
+    body: c.body,
+    deal_id: c.deal_id,
+    config: c.config,
+    channel: c.channel,
+    status: c.status
   };
 }
 const date = (v: string) => new Intl.DateTimeFormat('de-DE', {

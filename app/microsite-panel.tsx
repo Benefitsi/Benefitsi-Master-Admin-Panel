@@ -18,6 +18,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react"
+import { useRouter } from "next/navigation"
 import type { PartnerWithDeals } from "@/lib/admin-data"
 import {
   createDefaultMicrositeConfig,
@@ -1032,6 +1033,7 @@ export function MicrositePanel({
   fullscreen?: boolean
   previewBasePath?: string
 }) {
+  const router = useRouter()
   const initialConfig = resolveMicrositeConfig(
     partner.microsite?.draftVersion?.config ??
       partner.microsite?.publishedVersion?.config,
@@ -1258,7 +1260,7 @@ export function MicrositePanel({
         tab: target.partnerTab,
       })
 
-      window.location.assign(`${dashboardPath}?${query.toString()}#partners`)
+      router.push(`${dashboardPath}?${query.toString()}#partners`)
       return
     }
 

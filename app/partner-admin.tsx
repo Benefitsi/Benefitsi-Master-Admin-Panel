@@ -121,7 +121,6 @@ import { useAdminLanguage } from "./admin-language"
 import { LoadingSpinner } from "@/components/loading-ui"
 import { MenuAiImportDialog } from "@/components/menu-ai-import-dialog"
 import { PartnerPlanPanel } from "@/components/partner/partner-plan-panel"
-import { createClient as createBrowserClient } from "@/lib/supabase/client"
 import { inspectMediaDimensions, inspectPartnerMediaQuality, measurePartnerMedia, remeasureMediaUrls, recordMediaDimensions, subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision, getRecordedMediaDimensions, recordPreparedMediaDimensions } from "@/lib/partner-media-quality"
 import { upscalePartnerMediaFile } from "@/lib/partner-image-upscaler"
 
@@ -4627,98 +4626,6 @@ function draftDealBenefitCategory(
   const rewardType = discountType || defaultDiscountTypeForDealType(type, "")
 
   return inferBenefitCategory(type, rewardType)
-}
-
-function NewDealCard({
-  deal,
-  index,
-  onAddAnother,
-  onRemove,
-  onSaved,
-  onUpdate,
-  partnerId,
-  visits,
-}: {
-  deal: InitialDealDraft
-  index: number
-  onAddAnother: () => void
-  onRemove: () => void
-  onSaved: () => void
-  onUpdate: (values: Partial<InitialDealDraft>) => void
-  partnerId: string
-  visits: Visit[]
-}) {
-  const [expanded, setExpanded] = useState(true)
-
-  return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs">
-      <DealCardHeader
-        active={deal.active}
-        audienceLabel={dealAudienceValueLabel(deal.audience)}
-        benefitCategory={
-          deal.benefitCategory ??
-          draftDealBenefitCategory(deal.dealType, deal.discountType)
-        }
-        dealType={deal.dealType || "discount"}
-        typeLabel={
-          deal.dealType === "challenge" && deal.title ? deal.title : undefined
-        }
-        expanded={expanded}
-        onToggle={() => setExpanded((value) => !value)}
-        title={`Vorteil ${index + 1}`}
-        rewardSummary={deal.rewardSummary || deal.title || "Vorteil nicht eingerichtet"}
-        actions={
-          <>
-          <button
-            type="button"
-            onClick={() => setExpanded((value) => !value)}
-            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
-          >
-            {expanded ? "Einklappen" : "Bearbeiten"}
-          </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
-          >
-            Entfernen
-          </button>
-          </>
-        }
-      />
-      <div
-        className={
-          expanded
-            ? "mt-3 space-y-3 border-t border-zinc-200 pt-3"
-            : "hidden"
-        }
-      >
-        <DealForm
-          defaultActive={deal.active}
-          footerAction={
-            <button
-              type="button"
-              onClick={() => {
-                setExpanded(false)
-                onAddAnother()
-              }}
-              className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
-            >
-              Add another
-            </button>
-          }
-          mode="create"
-          onDraftActiveChange={(active) => onUpdate({ active })}
-          onDraftMetaChange={onUpdate}
-          onDraftTypeChange={(dealType) => onUpdate({ dealType })}
-          onDraftTitleChange={(title) => onUpdate({ title })}
-          onSaved={onSaved}
-          partnerId={partnerId}
-          visits={visits}
-        />
-      </div>
-    </div>
-  )
 }
 
 function DealCard({
@@ -12731,31 +12638,6 @@ async function resizeImageFile(
     type: contentType,
     lastModified: Date.now(),
   })
-}
-
-function coverCropPreviewStyle(
-  crop: { width: number; height: number; zoom: number; x: number; y: number },
-  spec: PartnerMediaSpec,
-) {
-  const targetRatio = spec.width / spec.height
-  const sourceRatio = crop.width / crop.height
-  let drawWidth = crop.width
-  let drawHeight = crop.height
-
-  if (sourceRatio > targetRatio) drawWidth = crop.height * targetRatio
-  else drawHeight = crop.width / targetRatio
-
-  drawWidth /= crop.zoom
-  drawHeight /= crop.zoom
-  const drawX = ((crop.width - drawWidth) * (Math.max(-100, Math.min(100, crop.x)) + 100)) / 200
-  const drawY = ((crop.height - drawHeight) * (Math.max(-100, Math.min(100, crop.y)) + 100)) / 200
-
-  return {
-    left: `${-drawX / drawWidth * 100}%`,
-    top: `${-drawY / drawHeight * 100}%`,
-    width: `${crop.width / drawWidth * 100}%`,
-    height: `${crop.height / drawHeight * 100}%`,
-  }
 }
 
 function loadImage(file: File) {

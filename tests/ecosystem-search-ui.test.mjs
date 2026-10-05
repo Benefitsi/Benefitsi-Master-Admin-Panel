@@ -15,7 +15,11 @@ async function mount(t) {
   const { createRoot } = await import("react-dom/client")
   const root = createRoot(dom.window.document.getElementById("root"))
   const components = loadTypescript("components/ecosystem/ecosystem-search.tsx", {
-    "next/link": ({ children, prefetch: _prefetch, ...props }) => React.createElement("a", props, children),
+    "next/link": ({ children, ...props }) => {
+      const linkProps = { ...props }
+      delete linkProps.prefetch
+      return React.createElement("a", linkProps, children)
+    },
     "@/lib/ecosystem/search": search,
     "@/app/admin-language": { useAdminLanguage: () => ({ language: "de" }) },
     "./ecosystem-search.module.css": { __esModule: true, default: new Proxy({}, { get: (_, name) => name }) },

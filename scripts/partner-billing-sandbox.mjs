@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir, open, rename } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
-import { boundary, cliBudget, marker, requestHash, buildRequest, twoMonthClockLimit, assertOwned, SandboxTransport, waitReady } from './partner-billing-sandbox-transport.mjs';
+import { boundary, cliBudget, requestHash, buildRequest, twoMonthClockLimit, assertOwned, SandboxTransport, waitReady } from './partner-billing-sandbox-transport.mjs';
 import { createEngine, providerAdapter, assertProjection } from './partner-billing-sandbox-engine.mjs';
 const directory = fileURLToPath(new URL('../docs/partners/task12/', import.meta.url));
 const iso = n => new Date(n * 1000).toISOString();
 const seconds = v => Date.parse(v) / 1000;
+const withoutKeys = (value, keys) => Object.fromEntries(Object.entries(value).filter(([key]) => !keys.includes(key)));
 export const invoiceSettlementSeconds = 7200;
 export function invoiceCheckpointPlans(interval) {
     const entries = [['first-paid', boundary.seconds.trialEnd], ...(interval === 'month' ? [['failed', seconds('2026-08-31T10:00:00Z')], ...['2026-10-31', '2026-12-31', '2027-02-28', '2027-04-30', '2027-06-30'].map((day, index) => [`paid-month-${[9, 11, 13, 15, 17][index]}`, seconds(`${day}T10:00:00Z`)])] : []), ['minimum-complete', boundary.seconds.paidMinimumEnd]];
@@ -123,7 +124,7 @@ function validateBridgePlan(t, owner, plan, pending) {
     if (plan.original) {
         assert.equal(requestHash(plan.original), plan.originalHash, 'bridge_original_archive_changed');
         assert.ok(pending, 'bridge_original_order_missing');
-        const stable = ({ status, attempts, dispatched, failed, id, confirmed, clockAcknowledgement, ...rest }) => rest;
+        const stable = value => withoutKeys(value, ['status', 'attempts', 'dispatched', 'failed', 'id', 'confirmed', 'clockAcknowledgement']);
         assert.equal(requestHash(stable(pending)), requestHash(stable(plan.original)), 'bridge_original_order_changed');
         assert.ok(pending.attempts >= plan.original.attempts && pending.attempts <= plan.original.attempts + 1, 'bridge_original_attempt_changed');
         if (pending.clockAcknowledgement) assert.ok(pending.clockAcknowledgement.id === owner.clock && pending.clockAcknowledgement.target === plan.final && pending.clockAcknowledgement.previous_time === plan.target && pending.clockAcknowledgement.frozen_time >= plan.target && pending.clockAcknowledgement.frozen_time <= plan.final, 'bridge_original_ack_changed');
@@ -400,7 +401,7 @@ function lateCancellationEvidence(state, owner, now) {
         assert.ok(['intentional_fixture_after_confirmed_cancellation', 'genuine_unknown_cancellation_resolved'].includes(signal.lineage), 'late_loss_lineage_missing');
         if (signal.lineage === 'genuine_unknown_cancellation_resolved') {
             assert.ok(signal.failedAt === record.failed && requestHash(signal.originalOutcome) === signal.originalOutcomeHash, 'late_loss_failure_history_changed');
-            const stable = ({ status, id, confirmed, ...rest }) => rest;
+            const stable = value => withoutKeys(value, ['status', 'id', 'confirmed']);
             assert.equal(requestHash(stable(signal.originalOutcome)), requestHash(stable(record)), 'late_loss_original_order_changed');
         }
     }
