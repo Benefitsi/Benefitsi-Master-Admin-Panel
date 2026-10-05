@@ -34,6 +34,7 @@ type PartnerIdentity = {
 export async function getPartnerPortalSession(
   supabase?: SupabaseServerClient,
   existingAdminSession?: AdminSession,
+  options: { adminSaveFastPath?: boolean } = {},
 ): Promise<PartnerPortalSession | null> {
   const client = supabase ?? (await createClient())
   const adminSession = existingAdminSession ?? await getAdminSession(client)
@@ -41,6 +42,20 @@ export async function getPartnerPortalSession(
     return null
   }
   const user = adminSession.user
+  // Partner saves only need an authenticated admin decision. Admins already
+  // pass canManagePartner without per-partner membership checks, so avoid
+  // loading every membership and entitlement for this hot path.
+  if (options.adminSaveFastPath && adminSession.isAdmin) {
+    return {
+      user,
+      profile: adminSession.profile,
+      isAdmin: true,
+      isPartner: false,
+      partnerIds: [],
+      ownedPartnerIds: [],
+      managedPartnerIds: [],
+    }
+  }
   const [profile, { partnerIds, ownedPartnerIds, managedPartnerIds }] = await Promise.all([
     getPartnerProfileForIdentity(client, {
       id: user.id,
