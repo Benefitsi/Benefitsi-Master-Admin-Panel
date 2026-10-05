@@ -1,8 +1,8 @@
 'use client'
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Archive, ArrowLeft, ArrowSquareOut, Check, Copy, DownloadSimple, FloppyDisk, Plus, Star } from '@phosphor-icons/react'
 import { DocumentSession } from '@/lib/workspace/save-queue'
-import { newId, pageKinds, pageStatuses, pageFromTemplate, type WorkspacePage, type PageMeta, type PageVersion, type Content, type PageKind } from '@/lib/workspace/model'
+import { newId, pageFingerprint, pageKinds, pageStatuses, pageFromTemplate, type WorkspacePage, type PageMeta, type PageVersion, type Content, type PageKind } from '@/lib/workspace/model'
 import { onboardingContent } from '@/lib/workspace/templates'
 import { exportMarkdown } from '@/lib/workspace/export'
 import type { WorkspaceServices } from './services'
@@ -14,6 +14,7 @@ import { Button, Field, inputClass } from './ui'
 
 type Props={page:WorkspacePage;pages:PageMeta[];favorite:boolean;externalBusy:boolean;services:WorkspaceServices;onStored:(page:WorkspacePage)=>void;onReplace:(page:WorkspacePage)=>void;onFavorite:()=>void;onCreate:(kind:PageKind,parent?:PageMeta,source?:WorkspacePage)=>Promise<void>;onBack:()=>void;setGuard:(guard:()=>Promise<boolean>)=>void}
 export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,services,onStored,onReplace,onFavorite,onCreate,onBack,setGuard}:Props){
+  const pendingCopy=useRef<{key:string;page:WorkspacePage}|null>(null)
   const [navigating,setNavigating]=useState(false)
   const [session]=useState(()=>new DocumentSession(initial,services.saveWorkspacePage,onStored))
   const snapshot=useSyncExternalStore(session.subscribe,session.snapshot,session.snapshot),page=snapshot.page
@@ -48,6 +49,13 @@ export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,servic
   const patch=(values:Partial<WorkspacePage>)=>session.edit({...session.snapshot().page,...values})
   const content=(values:Partial<Content>)=>patch({content:{...session.snapshot().page.content,...values}})
   const operation=async(fn:()=>Promise<void>)=>{if(busy)return;setBusy(true);setError('');try{await fn()}catch{setError('Die Aktion ist fehlgeschlagen. Dein Entwurf bleibt erhalten.')}finally{setBusy(false)}}
+  const saveCopy=async(action:string,draft:WorkspacePage)=>{
+    const key=action+pageFingerprint(session.snapshot().page)
+    const copy=pendingCopy.current?.key===key?pendingCopy.current.page:draft
+    pendingCopy.current={key,page:copy}
+    const result=await services.saveWorkspacePage(copy)
+    if(result.ok){pendingCopy.current=null;onReplace(result.value)}else setError(result.error)
+  }
   const exportPage=(format:'md'|'json',value=page)=>{const blob=new Blob([format==='md'?exportMarkdown(value):JSON.stringify(value,null,2)],{type:format==='md'?'text/markdown;charset=utf-8':'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`${value.title.replace(/[^a-z0-9äöüß_-]+/gi,'-').slice(0,70)||'workspace'}.${format}`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
   const loadVersions=async(offset=0)=>{const result=await services.loadWorkspaceVersions(page.id,offset);if(result.ok){setVersions(old=>offset?[...old,...result.value]:result.value);setMoreVersions(result.value.length===10)}else setError(result.error)}
   const loadTab=(value:string)=>{setTab(value);if(value==='history')void operation(()=>loadVersions())}
@@ -63,7 +71,7 @@ export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,servic
         <Button onClick={()=>setFocus(v=>!v)}>{focus?'Fokus beenden':'Fokus'}</Button>
       </header>
       {(snapshot.message||error)?<div role="alert" className="mx-4 mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"><p>{error||snapshot.message}</p>{snapshot.state==='error'?<Button className="mt-3" onClick={()=>void session.flush()}>Erneut speichern</Button>:null}
-        {snapshot.server?<div className="mt-3 grid gap-3"><details><summary className="cursor-pointer font-semibold">Gespeicherte Fassung vergleichen (Version {snapshot.server.revision})</summary><pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap text-xs">{exportMarkdown(snapshot.server)}</pre></details><div className="flex flex-wrap gap-2"><Button onClick={()=>{if(window.confirm('Serverfassung laden? Exportiere bei Bedarf zuerst deinen lokalen Entwurf.'))session.acceptServer()}}>Serverfassung laden</Button><Button onClick={()=>void operation(async()=>{const copy={...page,id:newId(),revision:0,title:`${page.title.slice(0,170)} (lokaler Entwurf)`,parent_id:null};const result=await services.saveWorkspacePage(copy);if(result.ok)onReplace(result.value);else setError(result.error)})}>Lokalen Entwurf als Kopie sichern</Button><Button onClick={()=>exportPage('json')}>Entwurf exportieren</Button></div></div>:null}
+        {snapshot.server?<div className="mt-3 grid gap-3"><details><summary className="cursor-pointer font-semibold">Gespeicherte Fassung vergleichen (Version {snapshot.server.revision})</summary><pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap text-xs">{exportMarkdown(snapshot.server)}</pre></details><div className="flex flex-wrap gap-2"><Button onClick={()=>{if(window.confirm('Serverfassung laden? Exportiere bei Bedarf zuerst deinen lokalen Entwurf.'))session.acceptServer()}}>Serverfassung laden</Button><Button onClick={()=>void operation(async()=>{const copy={...page,id:newId(),revision:0,title:`${page.title.slice(0,170)} (lokaler Entwurf)`,parent_id:null};await saveCopy('conflict',copy)})}>Lokalen Entwurf als Kopie sichern</Button><Button onClick={()=>exportPage('json')}>Entwurf exportieren</Button></div></div>:null}
       </div>:null}
       <div className="p-4 sm:p-6 lg:p-8">
         <label className="block"><span className="sr-only">Seitentitel</span><input value={page.title} onChange={e=>patch({title:e.target.value})} maxLength={200} className="mb-5 w-full min-w-0 border-0 bg-transparent !text-2xl !font-bold tracking-tight outline-none placeholder:text-zinc-300 sm:!text-3xl" placeholder="Seitentitel"/></label>
@@ -78,8 +86,8 @@ export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,servic
         <div className="mb-6 flex flex-wrap gap-2"><Button disabled={busy} onClick={()=>void operation(async()=>{if(await session.flush())await onCreate('note',session.snapshot().page)})}><Plus size={14}/>Unterseite</Button>
           {(page.kind==='partner'||page.partner_id)?<Button disabled={busy} onClick={()=>void operation(async()=>{if(await session.flush())await onCreate('conversation',session.snapshot().page)})}>Gespräch starten</Button>:null}
           <details className="relative"><summary className="cursor-pointer rounded-lg border border-[#061829]/15 px-3 py-2.5 text-sm font-semibold">Weitere Aktionen</summary><div className="absolute left-0 top-full z-20 mt-1 grid w-64 gap-1 rounded-xl border border-[#061829]/15 bg-white p-2 shadow-lg">
-            <Button onClick={()=>void operation(async()=>{if(await session.flush()){const result=await services.saveWorkspacePage({...session.snapshot().page,id:newId(),revision:0,title:`${page.title.slice(0,180)} (Kopie)`});if(result.ok)onReplace(result.value);else setError(result.error)}})}><Copy size={14}/>Seite duplizieren</Button>
-            <Button onClick={()=>void operation(async()=>{if(await session.flush()){const template=pageFromTemplate(session.snapshot().page,page.workspace_id,'template');template.title=`Vorlage: ${page.title.slice(0,190)}`;const result=await services.saveWorkspacePage(template);if(result.ok)onReplace(result.value);else setError(result.error)}})}>Als Vorlage speichern</Button>
+            <Button onClick={()=>void operation(async()=>{if(await session.flush()){await saveCopy('duplicate',{...session.snapshot().page,id:newId(),revision:0,title:`${page.title.slice(0,180)} (Kopie)`})}})}><Copy size={14}/>Seite duplizieren</Button>
+            <Button onClick={()=>void operation(async()=>{if(await session.flush()){const template=pageFromTemplate(session.snapshot().page,page.workspace_id,'template');template.title=`Vorlage: ${page.title.slice(0,190)}`;await saveCopy('template',template)}})}>Als Vorlage speichern</Button>
             {page.kind==='template'?<Button onClick={()=>void operation(async()=>{if(await session.flush())await onCreate(page.content.questions.length?'conversation':'note',undefined,session.snapshot().page)})}>Vorlage verwenden</Button>:null}
             <Button onClick={()=>exportPage('md')}><DownloadSimple size={14}/>Markdown exportieren</Button><Button onClick={()=>exportPage('json')}><DownloadSimple size={14}/>JSON exportieren</Button>
             <Button onClick={()=>{patch({archived:!page.archived});void session.flush()}}><Archive size={14}/>{page.archived?'Wiederherstellen':'Archivieren'}</Button>

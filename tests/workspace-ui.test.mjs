@@ -213,3 +213,20 @@ test('browser history traversal cannot discard a conflicting draft',async()=>{
     }finally{window.removeEventListener('popstate',router)}
   })
 })
+
+test('duplicate and template retries reuse their original creation ID after a lost response',async()=>{
+  for(const action of ['Seite duplizieren','Als Vorlage speichern']){
+    const page={...makePage(workspace.id,'note'),revision:1,title:'Idee'}
+    const fixture=workspaceFixture({workspaces:[workspace],pages:[page]})
+    const original=fixture.services.saveWorkspacePage
+    let lost=false
+    fixture.services.saveWorkspacePage=async p=>{const result=await original(p);if(p.id!==page.id&&!lost){lost=true;throw new Error('Response lost')}return result}
+    await withApp(fixture,{initialPageId:page.id},async()=>{
+      await wait(()=>field('Seitentitel'))
+      await click(button(action))
+      assert.equal(fixture.pages.size,2)
+      await click(button(action))
+      assert.equal(fixture.pages.size,2,action)
+    })
+  }
+})
