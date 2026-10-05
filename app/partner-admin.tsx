@@ -664,7 +664,6 @@ export function PartnerWorkspace({
       } catch {
         // Filtering should remain available when browser storage is disabled.
       }
-
       setFiltersRestored(true)
     })
     return () => { cancelled = true }
@@ -799,8 +798,8 @@ export function PartnerWorkspace({
       </div>}
 
       <div className={portalMode ? "min-w-0" : `grid gap-4 ${compactMode && workspaceLocation.view === "settings" ? "partner-workspace-list-compact xl:grid-cols-[280px_minmax(0,1fr)] xl:gap-3" : "xl:grid-cols-[310px_minmax(0,1fr)]"}`}>
-        {!portalMode &&         <aside className="self-start overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]">
-          <div className="border-b border-zinc-200 p-3">
+        {!portalMode &&         <aside className="self-start overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-4 xl:flex xl:h-[calc(100dvh-2rem)] xl:max-h-[calc(100dvh-2rem)] xl:flex-col">
+          <div className="shrink-0 border-b border-zinc-200 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold tracking-normal">
@@ -901,7 +900,7 @@ export function PartnerWorkspace({
             ) : null}
           </div>
 
-          <div className="max-h-[calc(100vh-220px)] space-y-1.5 overflow-y-auto p-2 xl:max-h-[calc(100vh-12rem)]">
+          <div className="max-h-[calc(100dvh-22rem)] space-y-1.5 overflow-y-auto overscroll-contain p-2 pb-3 xl:min-h-0 xl:max-h-none xl:flex-1">
             {filteredPartners.length ? (
               filteredPartners.map((partner) => (
                 <PartnerListButton
