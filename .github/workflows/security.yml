@@ -94,6 +94,13 @@ jobs:
           tests/partner-plan-actions.test.mjs
           tests/partner-onboarding-ui.test.mjs
 
+      - name: Partner visit-level reference, data boundaries and App contract
+        run: >-
+          node --import tsx --test --test-concurrency=2
+          tests/partner-visit-levels.test.mjs
+          tests/partner-visit-level-data.test.mjs
+          tests/partner-visit-level-page.test.mjs
+
       - name: Login and authorization regression tests
         run: >-
           node --import tsx --test --test-concurrency=2
