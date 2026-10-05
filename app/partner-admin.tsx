@@ -766,11 +766,6 @@ export function PartnerWorkspace({
   return (
     <section id="partners" className="partner-management-brand space-y-3">
       <ToastViewport />
-      {!portalMode ? <div className="flex justify-end">
-        <Link href={visitLevelsHref(normalizePartnerCategories(selectedPartner?.category)[0])} className="inline-flex min-h-9 items-center rounded-md border border-zinc-200 bg-white px-3 text-sm font-semibold text-teal-700 hover:bg-teal-50">
-          Besuchslevel
-        </Link>
-      </div> : null}
       {!portalMode &&       <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
         <LiveMetric label="Partners" value={partnerCount} />
         <LiveMetric
@@ -805,6 +800,12 @@ export function PartnerWorkspace({
                   Partners
                 </h2>
                 <p className="mt-0.5 text-xs text-zinc-500">Select a partner to edit.</p>
+                <Link
+                  href={visitLevelsHref(normalizePartnerCategories(selectedPartner?.category)[0])}
+                  className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-teal-700 underline decoration-teal-300 underline-offset-2 hover:text-teal-900"
+                >
+                  Besuchslevel öffnen <span aria-hidden="true">→</span>
+                </Link>
               </div>
               {!portalMode ? <button
                 type="button"
