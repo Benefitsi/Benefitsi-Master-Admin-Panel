@@ -69,7 +69,7 @@ export function MemoryStampMap({ zones, place }: { zones: MemoryZone[]; place?: 
     }
     if (preview.place) {
       L.circleMarker(preview.place.center, { radius: 7, color: '#fff', weight: 2, fillColor: '#c25c0a', fillOpacity: 1 })
-        .bindTooltip(textLabel(preview.place.name), { direction: 'top' })
+        .bindTooltip(textLabel(preview.place.name))
         .bindPopup(textLabel(`${preview.place.name}. Koordinaten des Ortes: ${coordinates(preview.place.center)}`)).addTo(layers)
     }
     fit.current = () => { const bounds = layers.getBounds(); if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17, animate: false }) }

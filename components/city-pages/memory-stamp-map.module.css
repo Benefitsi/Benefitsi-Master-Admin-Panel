@@ -17,7 +17,8 @@
 .map :global(.leaflet-tooltip) {
   /* Leaflet panes have zero width; avoid shrinking to one character. */
   width: max-content;
-  max-width: min(260px, calc(100cqw - 32px));
+  /* Automatic left/right placement always has at least half the map. */
+  max-width: min(260px, calc(50cqw - 16px));
   white-space: normal;
   overflow-wrap: anywhere;
 }
