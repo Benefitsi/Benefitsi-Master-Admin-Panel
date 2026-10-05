@@ -2099,6 +2099,7 @@ function PartnerForm({
   const [formVersion, setFormVersion] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
   const initialFormSignatureRef = useRef("")
+  const dirtyCheckFrameRef = useRef<number | null>(null)
   const mountedRef = useRef(true)
   const partnerTypeDefault = normalizePartnerTypeValue(partner?.type)
   const [selectedPartnerType, setSelectedPartnerType] =
@@ -2162,12 +2163,24 @@ function PartnerForm({
     setIsDirty(formDataSignature(new FormData(form)) !== initialFormSignatureRef.current)
   }, [mode])
 
+  const scheduleDirtyStateRefresh = useCallback(() => {
+    if (mode !== "edit") return
+    if (dirtyCheckFrameRef.current !== null) {
+      window.cancelAnimationFrame(dirtyCheckFrameRef.current)
+    }
+    dirtyCheckFrameRef.current = window.requestAnimationFrame(() => {
+      dirtyCheckFrameRef.current = null
+      refreshDirtyState()
+    })
+  }, [mode, refreshDirtyState])
+
   useEffect(() => {
     if (!formRef.current) return
 
     const form = formRef.current
     if (mode === "edit") {
       initialFormSignatureRef.current = formDataSignature(new FormData(form))
+      setIsDirty(false)
     }
 
     const keepOneSectionOpen = (event: Event) => {
@@ -2187,28 +2200,24 @@ function PartnerForm({
       section.open = false
     })
 
-    const observer = new MutationObserver(() => {
-      if (mode === "edit") refreshDirtyState()
-    })
-    observer.observe(form, {
-      attributes: true,
-      attributeFilter: ["checked", "value"],
-      childList: true,
-      subtree: true,
-    })
-    // Capture native input events as well as React's form handlers. This
-    // keeps the Save partner state current for nested editors and controls
-    // that stop bubbling change events.
-    form.addEventListener("input", refreshDirtyState, true)
-    form.addEventListener("change", refreshDirtyState, true)
+    // Recheck after the browser and React have applied the interaction. This
+    // handles custom controls that update hidden form values without treating
+    // unrelated DOM updates as edits.
+    form.addEventListener("input", scheduleDirtyStateRefresh, true)
+    form.addEventListener("change", scheduleDirtyStateRefresh, true)
+    form.addEventListener("click", scheduleDirtyStateRefresh, true)
     form.addEventListener("toggle", keepOneSectionOpen, true)
     return () => {
-      observer.disconnect()
-      form.removeEventListener("input", refreshDirtyState, true)
-      form.removeEventListener("change", refreshDirtyState, true)
+      if (dirtyCheckFrameRef.current !== null) {
+        window.cancelAnimationFrame(dirtyCheckFrameRef.current)
+        dirtyCheckFrameRef.current = null
+      }
+      form.removeEventListener("input", scheduleDirtyStateRefresh, true)
+      form.removeEventListener("change", scheduleDirtyStateRefresh, true)
+      form.removeEventListener("click", scheduleDirtyStateRefresh, true)
       form.removeEventListener("toggle", keepOneSectionOpen, true)
     }
-  }, [mode, partner?.id, refreshDirtyState])
+  }, [mode, partner?.id, partner?.updated_at, formVersion, scheduleDirtyStateRefresh])
 
   const submitPartnerInBackground = useCallback((formData: FormData) => {
     if (saveInFlightRef.current) return
@@ -2229,12 +2238,12 @@ function PartnerForm({
         if (result.ok) {
           initialFormSignatureRef.current = formDataSignature(formData)
           window.dispatchEvent(new CustomEvent("benefitsi:partner-saved", { detail: result }))
-          window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
             if (mountedRef.current && formRef.current) {
               initialFormSignatureRef.current = formDataSignature(new FormData(formRef.current))
               setIsDirty(false)
             }
-          })
+          }))
         }
         saveInFlightRef.current = false
         if (!mountedRef.current) return
@@ -2382,9 +2391,9 @@ function PartnerForm({
       onInput={() => {
         if (validationMessage) setValidationMessage("")
         if (state.message) setDismissedActionState(state)
-        refreshDirtyState()
+        scheduleDirtyStateRefresh()
       }}
-      onChange={refreshDirtyState}
+      onChange={scheduleDirtyStateRefresh}
       onSubmit={(event) => {
         const form = event.currentTarget
         if (new FormData(form).get("cover_processing") === "true") {
@@ -12154,7 +12163,7 @@ function CoverUploadField({
         return <input key={`order-${id}`} type="hidden" name="cover_order" value={token} />
       })}
       {orderedCoverIds.length ? (
-        <div className={`grid grid-cols-2 gap-2 ${compactMode ? "sm:grid-cols-4 xl:grid-cols-5" : "sm:grid-cols-3 lg:grid-cols-4"}`}>
+        <div className={`grid grid-cols-2 gap-2 ${compactMode ? "sm:grid-cols-3 xl:grid-cols-3" : "sm:grid-cols-3 lg:grid-cols-4"}`}>
           {orderedCoverIds.map((id, index) => {
             const [kind, value] = id.split(":")
             const coverUrl = kind === "existing" ? savedCovers[Number(value)] : ""
@@ -12755,6 +12764,7 @@ function isSupportedImageFile(file: File) {
 
 function formDataSignature(formData: FormData) {
   return Array.from(formData.entries())
+    .filter(([key]) => key !== "cover_processing")
     .map(([key, value]) =>
       value instanceof File
         ? `${key}=file:${value.name}:${value.type}:${value.size}:${value.lastModified}`
