@@ -122,6 +122,7 @@ import { MenuAiImportDialog } from "@/components/menu-ai-import-dialog"
 import { PartnerPlanPanel } from "@/components/partner/partner-plan-panel"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
 import { inspectMediaDimensions, inspectPartnerMediaQuality, measurePartnerMedia, remeasureMediaUrls, recordMediaDimensions, subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision, getRecordedMediaDimensions, recordPreparedMediaDimensions } from "@/lib/partner-media-quality"
+import { upscalePartnerMediaFile } from "@/lib/partner-image-upscaler"
 
 const initialState: PartnerActionState = {
   ok: false,
@@ -576,6 +577,8 @@ export function PartnerWorkspace({
     "all" | "active" | "featured"
   >("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [typeFilter, setTypeFilter] = useState("all")
+  const [locationFilter, setLocationFilter] = useState("all")
   const [partnerSort, setPartnerSort] = useState<PartnerSort>("name")
   const [mode, setMode] = useState<"view" | "create">(
     partners.length && (portalMode || initialMode === "view") ? "view" : "create",
@@ -620,6 +623,16 @@ export function PartnerWorkspace({
   }, [portalMode])
 
   const partnerCount = partners.length
+  const typeFilterOptions = useMemo(() => [...new Set(
+    partners.map(partner => partner.type?.trim()).filter((type): type is string => Boolean(type)),
+  )].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" })), [partners])
+  const locationFilterOptions = useMemo(() => {
+    const locations = new Map<string, string>()
+    for (const partner of partners) {
+      if (partner.city_id) locations.set(partner.city_id, partner.city_name?.trim() || partner.city_id)
+    }
+    return [...locations.entries()].sort((left, right) => left[1].localeCompare(right[1], undefined, { sensitivity: "base" }))
+  }, [partners])
   const activePartners = partners.filter(isPartnerActive).length
   const featuredPartners = partners.filter(
     (partner) => isPartnerActive(partner) && partner.is_featured,
@@ -633,6 +646,8 @@ export function PartnerWorkspace({
 
     return partners.filter((partner) => {
       if (partnerFilter === "active" && !isPartnerActive(partner)) return false
+      if (typeFilter !== "all" && partner.type?.trim() !== typeFilter) return false
+      if (locationFilter !== "all" && (locationFilter === "__none__" ? Boolean(partner.city_id) : partner.city_id !== locationFilter)) return false
       if (
         partnerFilter === "featured" &&
         !(isPartnerActive(partner) && partner.is_featured)
@@ -686,7 +701,7 @@ export function PartnerWorkspace({
       }
       return compareText(left.name, right.name)
     })
-  }, [partnerFilter, partnerSort, partners, query, statusFilter, mediaRevision])
+  }, [locationFilter, partnerFilter, partnerSort, partners, query, statusFilter, typeFilter, mediaRevision])
 
   const selectedPartner =
     filteredPartners.find((partner) => partner.id === selectedId) ??
@@ -695,6 +710,8 @@ export function PartnerWorkspace({
   const hasActiveFilters =
     Boolean(query.trim()) ||
     statusFilter !== "all" ||
+    typeFilter !== "all" ||
+    locationFilter !== "all" ||
     partnerFilter !== "all"
 
   return (
@@ -768,6 +785,31 @@ export function PartnerWorkspace({
                 </select>
               </label>
               <label className="block text-xs font-semibold text-zinc-600">
+                Partner type
+                <select
+                  aria-label="Partner type"
+                  value={typeFilter}
+                  onChange={(event) => setTypeFilter(event.target.value)}
+                  className="mt-1 h-9 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm font-normal text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                >
+                  <option value="all">All types</option>
+                  {typeFilterOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs font-semibold text-zinc-600">
+                Location
+                <select
+                  aria-label="Location"
+                  value={locationFilter}
+                  onChange={(event) => setLocationFilter(event.target.value)}
+                  className="mt-1 h-9 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm font-normal text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                >
+                  <option value="all">All locations</option>
+                  {locationFilterOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                  {partners.some(partner => !partner.city_id) ? <option value="__none__">No location assigned</option> : null}
+                </select>
+              </label>
+              <label className="block text-xs font-semibold text-zinc-600">
                 Sort by
                 <select
                   value={partnerSort}
@@ -792,6 +834,8 @@ export function PartnerWorkspace({
                 onClick={() => {
                   setQuery("")
                   setStatusFilter("all")
+                  setTypeFilter("all")
+                  setLocationFilter("all")
                   setPartnerFilter("all")
                 }}
                 className="mt-2 text-left text-xs font-semibold text-teal-700 underline decoration-teal-300 underline-offset-2 transition hover:text-teal-900"
@@ -832,6 +876,8 @@ export function PartnerWorkspace({
                     onClick={() => {
                       setQuery("")
                       setStatusFilter("all")
+                      setTypeFilter("all")
+                      setLocationFilter("all")
                       setPartnerFilter("all")
                     }}
                     className="mt-2 font-semibold text-teal-700 underline decoration-teal-300 underline-offset-2 transition hover:text-teal-900"
@@ -882,6 +928,8 @@ export function PartnerWorkspace({
                 onClick={() => {
                   setQuery("")
                   setStatusFilter("all")
+                  setTypeFilter("all")
+                  setLocationFilter("all")
                   setPartnerFilter("all")
                 }}
                 className="inline-flex min-h-10 items-center justify-center rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
@@ -11647,6 +11695,7 @@ function MediaUploadField({
         spec,
         { zoom, x, y },
         spec.label === "Logo" && hasTransparentLogo ? backgroundColor : undefined,
+        setUploadMessage,
       )
       const previews = createImagePreviews(resizedFiles)
       replaceFileInputFiles(fileInputRef.current, resizedFiles)
@@ -11806,11 +11855,12 @@ function MediaUploadField({
             }
 
             setUploadError("")
-            setUploadMessage("Resizing image...")
+            setUploadMessage("Preparing image...")
             setIsProcessing(true)
 
             try {
               setSourceFiles(files)
+              let aiUnavailable = false
               const transparentLogo =
                 spec.label === "Logo" && Boolean(files[0])
                   ? await isTransparentPng(files[0])
@@ -11819,8 +11869,18 @@ function MediaUploadField({
               setCropZoom(1)
               setCropX(0)
               setCropY(0)
+              const preparedSourceFiles = await Promise.all(files.map(file =>
+                upscalePartnerMediaFile(file, spec, {
+                  backgroundColor: transparentLogo ? logoBackgroundColor : "#ffffff",
+                  onStatus: (message) => {
+                    aiUnavailable ||= message.startsWith("AI upscaling is unavailable")
+                    setUploadMessage(message)
+                  },
+                }),
+              ))
+              setSourceFiles(preparedSourceFiles)
               const resizedFiles = await resizeImageFiles(
-                files,
+                preparedSourceFiles,
                 spec,
                 { zoom: 1, x: 0, y: 0 },
                 transparentLogo ? logoBackgroundColor : undefined,
@@ -11829,9 +11889,10 @@ function MediaUploadField({
               replaceFileInputFiles(input, resizedFiles)
               replaceSelectedMedia(resizedFiles, previews)
               onPreviewChange?.(previews[0]?.url ?? "")
-              setUploadMessage(
-                `Ready to upload at ${spec.width}px x ${spec.height}px.`,
-              )
+              const actualSize = resizedFiles[0]?.name.match(/(\d+)x(\d+)\.webp$/i)
+              setUploadMessage(aiUnavailable
+                ? `AI upscaling was unavailable; ready at ${actualSize?.[1] ?? "original"} × ${actualSize?.[2] ?? ""} px.`
+                : `Ready to upload at ${spec.width}px x ${spec.height}px.`)
             } catch (error) {
               input.value = ""
               setSelectedFiles([])
@@ -12188,7 +12249,7 @@ function CoverUploadField({
           }
 
           setUploadError("")
-          setUploadMessage("Resizing cover photos...")
+          setUploadMessage("Preparing cover photos...")
 
           if (replacementTarget && files.length !== 1) {
             syncFileInput()
@@ -12209,12 +12270,16 @@ function CoverUploadField({
           try {
             setIsProcessing(true)
             const additions: Awaited<ReturnType<typeof uploadCover>>[] = []
+            let aiUnavailable = false
             // Pipeline resizing and direct uploads, keeping at most two images in flight.
             // allSettled retains successful uploads if another photo fails.
             for (let offset = 0; offset < files.length; offset += 2) {
               const results = await Promise.allSettled(
                 files.slice(offset, offset + 2).map(async file => {
-                  const resizedFile = await resizeImageFile(file, spec, { zoom: 1, x: 0, y: 0 })
+                  const resizedFile = await resizeImageFile(file, spec, { zoom: 1, x: 0, y: 0 }, undefined, message => {
+                    aiUnavailable ||= message.startsWith("AI upscaling is unavailable")
+                    setUploadMessage(message)
+                  })
                   return uploadCover(resizedFile)
                 }),
               )
@@ -12274,7 +12339,9 @@ function CoverUploadField({
             }
             input.value = ""
             setUploadMessage(
-              replacementTarget
+              aiUnavailable
+                ? "Cover photo uploaded; AI upscaling was unavailable, so original resolution was retained."
+                : replacementTarget
                 ? "Cover photo replaced and ready."
                 : `${nextCovers.length} new cover photo${nextCovers.length === 1 ? "" : "s"} uploaded and ready.`,
             )
@@ -12477,11 +12544,12 @@ async function resizeImageFiles(
   spec: PartnerMediaSpec,
   crop: ImageCrop = { zoom: 1, x: 0, y: 0 },
   backgroundColor?: string,
+  onStatus?: (message: string) => void,
 ) {
   const resizedFiles: File[] = []
 
   for (const file of files) {
-    resizedFiles.push(await resizeImageFile(file, spec, crop, backgroundColor))
+    resizedFiles.push(await resizeImageFile(file, spec, crop, backgroundColor, onStatus))
   }
 
   return resizedFiles
@@ -12492,12 +12560,15 @@ async function resizeImageFile(
   spec: PartnerMediaSpec,
   crop: ImageCrop,
   backgroundColor = "#ffffff",
+  onStatus?: (message: string) => void,
 ) {
   if (!isSupportedImageFile(file)) {
     throw new Error(`"${file.name}" must be an AVIF, PNG, JPEG, WebP, or SVG image.`)
   }
 
-  const image = await loadImage(file)
+  const preparedFile = await upscalePartnerMediaFile(file, spec, { backgroundColor, onStatus })
+  const aiUpscaled = preparedFile !== file
+  const image = await loadImage(preparedFile)
   const sourceWidth = image.naturalWidth || image.width
   const sourceHeight = image.naturalHeight || image.height
 
@@ -12530,7 +12601,9 @@ async function resizeImageFile(
   drawWidth /= crop.zoom
   drawHeight /= crop.zoom
   // Preserve the real cropped resolution instead of hiding small originals by upscaling.
-  const outputScale = /\.svg$/i.test(file.name) ? 1 : Math.min(1, drawWidth / spec.width, drawHeight / spec.height)
+  const outputScale = /\.svg$/i.test(preparedFile.name) || aiUpscaled
+    ? 1
+    : Math.min(1, drawWidth / spec.width, drawHeight / spec.height)
   canvas.width = Math.max(1, Math.round(spec.width * outputScale))
   canvas.height = Math.max(1, Math.round(spec.height * outputScale))
   if (backgroundColor) {
@@ -12555,7 +12628,7 @@ async function resizeImageFile(
   const contentType = "image/webp"
   const blob = await canvasToBlob(canvas, contentType)
   const resizedName = replaceFileExtension(
-    file.name,
+    preparedFile.name,
     `${canvas.width}x${canvas.height}.webp`,
   )
 

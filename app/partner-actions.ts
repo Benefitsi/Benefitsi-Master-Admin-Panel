@@ -606,7 +606,7 @@ export async function savePartner(
   formData: FormData,
 ): Promise<PartnerActionState> {
   const supabase = await createServerClient()
-  const portalSession = await getPartnerPortalSession(supabase)
+  const portalSession = await getPartnerPortalSession(supabase, undefined, { adminSaveFastPath: true })
   const id = stringValue(formData, "id")
   const isUpdate = Boolean(id)
   const partnerId = isUpdate ? id : createUuidV4()
@@ -3716,7 +3716,7 @@ async function preparePartnerUploadFile(
         position: "center",
         withoutEnlargement: true,
       })
-      .webp({ quality: 90, effort: 4 })
+      .webp({ quality: 90, effort: 3 })
       .toBuffer({ resolveWithObject: true })
 
     return new File(

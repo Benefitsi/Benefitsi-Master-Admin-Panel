@@ -22,8 +22,8 @@ export const partnerMediaSpecs = {
   },
   feature: {
     label: "Feature",
-    width: 1440,
-    height: 940,
+    width: 1280,
+    height: 836,
     previewAspectWidth: 720,
     previewAspectHeight: 470,
     previewMaxWidth: 260,
