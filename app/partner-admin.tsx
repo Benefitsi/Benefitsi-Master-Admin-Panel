@@ -576,6 +576,7 @@ export function PartnerWorkspace({
   const [partnerFilter, setPartnerFilter] = useState<
     "all" | "active" | "featured"
   >("all")
+  const [compactMode, setCompactMode] = useState(false)
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
   const [locationFilter, setLocationFilter] = useState("all")
@@ -901,8 +902,11 @@ export function PartnerWorkspace({
             <EditorShell
               title="Add partner"
               description="Create the partner profile, assign its owner, upload media, and add any deals in one save."
+              aside={<CompactModeButton enabled={compactMode} onToggle={() => setCompactMode((current) => !current)} />}
             >
-              <PartnerForm cities={cities} owners={owners} mode="create" partners={partners} />
+              <div className={compactMode ? "partner-workspace-compact" : undefined}>
+                <PartnerForm cities={cities} owners={owners} mode="create" partners={partners} compactMode={compactMode} />
+              </div>
             </EditorShell>
           ) : selectedPartner ? (
             <PartnerDetail
@@ -917,6 +921,8 @@ export function PartnerWorkspace({
                 portalMode={portalMode}
                 micrositeEditingEnabled={micrositeEditingEnabled}
                 adminAccess={adminAccess}
+                compactMode={compactMode}
+                onCompactModeChange={setCompactMode}
               />
           ) : partners.length && hasActiveFilters ? (
             <EditorShell
@@ -941,8 +947,11 @@ export function PartnerWorkspace({
             <EditorShell
               title="No partners yet"
               description="Add a partner to start managing deals."
+              aside={<CompactModeButton enabled={compactMode} onToggle={() => setCompactMode((current) => !current)} />}
             >
-              <PartnerForm cities={cities} owners={owners} mode="create" partners={partners} />
+              <div className={compactMode ? "partner-workspace-compact" : undefined}>
+                <PartnerForm cities={cities} owners={owners} mode="create" partners={partners} compactMode={compactMode} />
+              </div>
             </EditorShell>
           )}
         </section>
@@ -1070,6 +1079,8 @@ function PartnerDetail({
   portalMode = false,
   micrositeEditingEnabled = !portalMode,
   adminAccess = !portalMode,
+  compactMode = false,
+  onCompactModeChange,
 }: {
   partner: PartnerWithDeals
   cities: City[]
@@ -1084,6 +1095,8 @@ function PartnerDetail({
   portalMode?: boolean
   micrositeEditingEnabled?: boolean
   adminAccess?: boolean
+  compactMode?: boolean
+  onCompactModeChange?: (enabled: boolean) => void
 }) {
   const partnerFormId = `partner-form-${partner.id ?? "partner"}`
   const partnerIdentity = partner.id ?? "partner"
@@ -1157,7 +1170,7 @@ function PartnerDetail({
   }
 
   return (
-    <div key={partner.id ?? "partner-detail"} className="space-y-5">
+    <div key={partner.id ?? "partner-detail"} className={`space-y-5 ${compactMode && activeView === "settings" ? "partner-workspace-compact" : ""}`}>
       <EditorShell
         compact={activeView === "settings"}
         title={partner.name || "Untitled partner"}
@@ -1170,6 +1183,9 @@ function PartnerDetail({
         }
         aside={
           <div className="flex flex-wrap gap-2">
+            {activeView === "settings" && onCompactModeChange ? (
+              <CompactModeButton enabled={compactMode} onToggle={() => onCompactModeChange(!compactMode)} />
+            ) : null}
             <div className="inline-flex overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm divide-x divide-zinc-200">
               <button
                 type="button"
@@ -1273,6 +1289,7 @@ function PartnerDetail({
                   partner={partner}
                   mode="edit"
                   portalMode={portalMode}
+                  compactMode={compactMode}
                 />
                 <div className="flex flex-wrap items-end justify-between gap-3 border-t border-zinc-200 pt-3">
                   <div className="max-w-xs flex-1">
@@ -1416,6 +1433,29 @@ function EditorShell({
       </div>
       <div className={contentOpen ? (flat ? "" : compact ? "p-3.5" : "p-5") : "hidden"}>{children}</div>
     </div>
+  )
+}
+
+function CompactModeButton({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={enabled ? "Turn off compact mode" : "Turn on compact mode"}
+      aria-pressed={enabled}
+      title={enabled ? "Compact mode is on" : "Use compact mode"}
+      className={`inline-flex size-9 shrink-0 items-center justify-center rounded-lg border transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 ${
+        enabled
+          ? "border-teal-700 bg-teal-700 text-white shadow-sm"
+          : "border-zinc-300 bg-white text-zinc-600 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-800"
+      }`}
+    >
+      <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="size-5">
+        <rect x="2.5" y="3" width="6" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="11.5" y="3" width="6" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M3 12h14M3 15h14M3 18h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    </button>
   )
 }
 
@@ -2000,6 +2040,7 @@ function PartnerForm({
   mode,
   partners = [],
   portalMode = false,
+  compactMode = false,
 }: {
   partner?: PartnerWithDeals
   cities: City[]
@@ -2008,6 +2049,7 @@ function PartnerForm({
   mode: "create" | "edit"
   partners?: PartnerWithDeals[]
   portalMode?: boolean
+  compactMode?: boolean
 }) {
   const [state, setState] = useState(initialState)
   const [isSaving, setIsSaving] = useState(false)
@@ -2328,6 +2370,7 @@ function PartnerForm({
       key={formVersion}
       ref={formRef}
       className="partner-settings-form space-y-4"
+      data-compact-mode={compactMode ? "true" : undefined}
       data-partner-save-form
       noValidate
       onInput={() => {
@@ -2338,6 +2381,17 @@ function PartnerForm({
       onChange={refreshDirtyState}
       onSubmit={(event) => {
         const form = event.currentTarget
+        const pendingCoverCrops = Number(new FormData(form).get("pending_cover_crop_count") ?? 0)
+        if (pendingCoverCrops > 0) {
+          event.preventDefault()
+          if (mode === "create") setCreateTab("operations")
+          setValidationMessage("Apply the cover crop and upload each selected cover photo before saving.")
+          window.requestAnimationFrame(() => {
+            const cropEditor = form.querySelector<HTMLElement>("[data-pending-cover-crops]")
+            cropEditor?.scrollIntoView({ behavior: "smooth", block: "center" })
+          })
+          return
+        }
         const invalidField = Array.from(form.elements).find(
           (element): element is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement =>
             element instanceof HTMLInputElement ||
@@ -2777,6 +2831,7 @@ function PartnerForm({
           key={`covers-${(partner?.cover_urls ?? researchedMedia.coverUrls).join("|") || "new"}`}
           covers={partner?.cover_urls ?? researchedMedia.coverUrls}
           partnerId={partner?.id}
+          compactMode={compactMode}
         />
       </FormSection>
 
@@ -11797,7 +11852,7 @@ function MediaUploadField({
       {selectedPreview ? (
         <div className="grid gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2 sm:grid-cols-3">
           {[
-            { label: "Zoom", value: cropZoom, min: 0.5, max: 3, step: 0.05, key: "zoom" },
+            { label: "Zoom", value: cropZoom, min: 0.25, max: 3, step: 0.05, key: "zoom" },
             { label: "Horizontal crop", value: cropX, min: -100, max: 100, step: 1, key: "x" },
             { label: "Vertical crop", value: cropY, min: -100, max: 100, step: 1, key: "y" },
           ].map((control) => (
@@ -11937,15 +11992,28 @@ function MediaUploadField({
 function CoverUploadField({
   covers,
   partnerId,
+  compactMode = false,
 }: {
   covers?: string[] | null
   partnerId?: string
+  compactMode?: boolean
 }) {
   const savedCovers = normalizeMediaUrls(covers)
   const [removedUrls, setRemovedUrls] = useState<string[]>([])
   const [selectedCovers, setSelectedCovers] = useState<
     Array<{ id: string; preview: ImagePreview; url: string }>
   >([])
+  const [pendingCoverCrops, setPendingCoverCrops] = useState<Array<{
+    id: string
+    file: File
+    preview: ImagePreview
+    width: number
+    height: number
+    zoom: number
+    x: number
+    y: number
+    replacementTarget: string
+  }>>([])
   const [discardedUploadedUrls, setDiscardedUploadedUrls] = useState<string[]>([])
   const [coverOrder, setCoverOrder] = useState(() =>
     savedCovers.map((_, index) => `existing:${index}`),
@@ -11957,6 +12025,7 @@ function CoverUploadField({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const replacementTargetRef = useRef("")
   const selectedPreviewsRef = useRef<ImagePreview[]>([])
+  const pendingPreviewsRef = useRef<ImagePreview[]>([])
   const visibleCovers = savedCovers.filter(
     (coverUrl) => !removedUrls.includes(coverUrl),
   )
@@ -11965,7 +12034,8 @@ function CoverUploadField({
   )
   const spec = partnerMediaSpecs.cover
   const sizeHint = mediaSizeHint(spec)
-  const remainingCoverSlots = Math.max(maxCoverPhotos - visibleCovers.length - selectedCovers.length, 0)
+  const pendingNewCovers = pendingCoverCrops.filter((cover) => !cover.replacementTarget).length
+  const remainingCoverSlots = Math.max(maxCoverPhotos - visibleCovers.length - selectedCovers.length - pendingNewCovers, 0)
   const existingFormIndex = new Map(
     savedCovers
       .map((url, originalIndex) => ({ originalIndex, url }))
@@ -11983,7 +12053,14 @@ function CoverUploadField({
     selectedPreviewsRef.current = selectedCovers.map((cover) => cover.preview)
   }, [selectedCovers])
 
-  useEffect(() => () => revokeImagePreviews(selectedPreviewsRef.current), [])
+  useEffect(() => {
+    pendingPreviewsRef.current = pendingCoverCrops.map((cover) => cover.preview)
+  }, [pendingCoverCrops])
+
+  useEffect(() => () => {
+    revokeImagePreviews(selectedPreviewsRef.current)
+    revokeImagePreviews(pendingPreviewsRef.current)
+  }, [])
 
   const syncFileInput = () => {
     if (fileInputRef.current) {
@@ -12059,6 +12136,70 @@ function CoverUploadField({
     }
   }
 
+  const updateCoverCrop = (id: string, key: "zoom" | "x" | "y", value: number) => {
+    setPendingCoverCrops((current) => current.map((cover) =>
+      cover.id === id ? { ...cover, [key]: value } : cover,
+    ))
+  }
+
+  const discardPendingCover = (id: string) => {
+    const discarded = pendingCoverCrops.find((cover) => cover.id === id)
+    if (discarded) revokeImagePreviews([discarded.preview])
+    setPendingCoverCrops((current) => current.filter((cover) => cover.id !== id))
+    syncFileInput()
+    setUploadError("")
+    if (pendingCoverCrops.length <= 1) setUploadMessage("")
+  }
+
+  const uploadPendingCover = async (cover: (typeof pendingCoverCrops)[number]) => {
+    setIsProcessing(true)
+    setUploadError("")
+    setUploadMessage("Preparing cropped cover photo…")
+    let aiUnavailable = false
+    try {
+      const resizedFile = await resizeImageFile(
+        cover.file,
+        spec,
+        { zoom: cover.zoom, x: cover.x, y: cover.y },
+        undefined,
+        (message) => {
+          aiUnavailable ||= message.startsWith("AI upscaling is unavailable")
+          setUploadMessage(message)
+        },
+      )
+      const uploaded = await uploadCover(resizedFile)
+      const [targetKind, targetValue] = cover.replacementTarget.split(":")
+      if (cover.replacementTarget && targetKind === "existing") {
+        const replacedUrl = savedCovers[Number(targetValue)]
+        if (replacedUrl) setRemovedUrls((current) => current.includes(replacedUrl) ? current : [...current, replacedUrl])
+        setSelectedCovers((current) => [...current, uploaded])
+        setCoverOrder((current) => current.map((id) => id === cover.replacementTarget ? `selected:${uploaded.id}` : id))
+      } else if (cover.replacementTarget && targetKind === "selected") {
+        const replacedCover = selectedCovers.find((item) => item.id === targetValue)
+        if (replacedCover) {
+          revokeImagePreviews([replacedCover.preview])
+          setDiscardedUploadedUrls((current) => [...current, replacedCover.url])
+        }
+        setSelectedCovers((current) => [...current.filter((item) => item.id !== targetValue), uploaded])
+        setCoverOrder((current) => current.map((id) => id === cover.replacementTarget ? `selected:${uploaded.id}` : id))
+      } else {
+        setSelectedCovers((current) => [...current, uploaded])
+        setCoverOrder((current) => [...current, `selected:${uploaded.id}`])
+      }
+      revokeImagePreviews([cover.preview])
+      setPendingCoverCrops((current) => current.filter((item) => item.id !== cover.id))
+      syncFileInput()
+      setUploadMessage(aiUnavailable
+        ? "Cropped cover uploaded; AI upscaling was unavailable, so the source resolution was retained."
+        : "Cropped cover photo uploaded and ready.")
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Unable to prepare this cover photo.")
+      setUploadMessage("")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   return (
     <div aria-busy={isProcessing} className="space-y-3 border-t border-zinc-200 pt-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -12087,6 +12228,7 @@ function CoverUploadField({
           value={coverUrl}
         />
       ))}
+      <input type="hidden" name="pending_cover_crop_count" value={pendingCoverCrops.length} />
       {orderedCoverIds.map((id) => {
         const [kind, value] = id.split(":")
         const token = kind === "existing"
@@ -12095,7 +12237,7 @@ function CoverUploadField({
         return <input key={`order-${id}`} type="hidden" name="cover_order" value={token} />
       })}
       {orderedCoverIds.length ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <div className={`grid grid-cols-2 gap-2 ${compactMode ? "sm:grid-cols-4 xl:grid-cols-5" : "sm:grid-cols-3 lg:grid-cols-4"}`}>
           {orderedCoverIds.map((id, index) => {
             const [kind, value] = id.split(":")
             const coverUrl = kind === "existing" ? savedCovers[Number(value)] : ""
@@ -12196,6 +12338,34 @@ function CoverUploadField({
           onActivate={() => chooseReplacement("")}
         />
       )}
+      {pendingCoverCrops.length ? (
+        <div data-pending-cover-crops className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {pendingCoverCrops.map((cover) => (
+            <section key={cover.id} className="rounded-xl border border-teal-200 bg-teal-50/60 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="min-w-0 truncate text-xs font-semibold text-zinc-800">Crop: {cover.file.name}</p>
+                <button type="button" disabled={isProcessing} onClick={() => discardPendingCover(cover.id)} aria-label={`Discard ${cover.file.name}`} className="grid size-7 shrink-0 place-items-center rounded-md text-zinc-500 hover:bg-white hover:text-rose-700">×</button>
+              </div>
+              <div className="relative mb-3 aspect-square w-full max-w-52 overflow-hidden rounded-lg border border-zinc-200 bg-white">
+                <img src={cover.preview.url} alt={`Crop preview for ${cover.file.name}`} draggable={false} style={coverCropPreviewStyle(cover, spec)} className="absolute max-w-none select-none" />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { key: "zoom" as const, label: "Zoom", min: 0.25, max: 3, step: 0.05, value: cover.zoom },
+                  { key: "x" as const, label: "Horizontal", min: -100, max: 100, step: 1, value: cover.x },
+                  { key: "y" as const, label: "Vertical", min: -100, max: 100, step: 1, value: cover.y },
+                ]).map((control) => (
+                  <label key={control.key} className="min-w-0 space-y-1 text-[10px] font-semibold text-zinc-600">
+                    <span className="block truncate">{control.label}</span>
+                    <input type="range" aria-label={`${control.label} crop for ${cover.file.name}`} min={control.min} max={control.max} step={control.step} value={control.value} disabled={isProcessing} onChange={(event) => updateCoverCrop(cover.id, control.key, Number(event.target.value))} className="block w-full accent-teal-700" />
+                  </label>
+                ))}
+              </div>
+              <button type="button" disabled={isProcessing} onClick={() => void uploadPendingCover(cover)} className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-teal-700 px-3 text-xs font-semibold text-white transition hover:bg-teal-800 disabled:cursor-wait disabled:opacity-60">Apply crop and upload</button>
+            </section>
+          ))}
+        </div>
+      ) : null}
       {removedCovers.length ? (
         <div className="flex flex-wrap gap-2">
           {removedCovers.map((coverUrl) => (
@@ -12274,92 +12444,31 @@ function CoverUploadField({
             return
           }
 
+          const previews = createImagePreviews(files)
           try {
             setIsProcessing(true)
-            const additions: Awaited<ReturnType<typeof uploadCover>>[] = []
-            let aiUnavailable = false
-            // Pipeline resizing and direct uploads, keeping at most two images in flight.
-            // allSettled retains successful uploads if another photo fails.
-            for (let offset = 0; offset < files.length; offset += 2) {
-              const results = await Promise.allSettled(
-                files.slice(offset, offset + 2).map(async file => {
-                  const resizedFile = await resizeImageFile(file, spec, { zoom: 1, x: 0, y: 0 }, undefined, message => {
-                    aiUnavailable ||= message.startsWith("AI upscaling is unavailable")
-                    setUploadMessage(message)
-                  })
-                  return uploadCover(resizedFile)
-                }),
-              )
-              for (const result of results) {
-                if (result.status === "fulfilled") additions.push(result.value)
-              }
-              const failure = results.find(result => result.status === "rejected")
-              if (failure?.status === "rejected") {
-                setDiscardedUploadedUrls(current => [...current, ...additions.map(cover => cover.url)])
-                throw failure.reason
-              }
-            }
-            const replacement = additions[0]
-            let nextCovers: typeof selectedCovers
-
-            if (replacementTarget && replacement) {
-              const [targetKind, targetValue] = replacementTarget.split(":")
-
-              if (targetKind === "existing") {
-                const replacedUrl = savedCovers[Number(targetValue)]
-                if (replacedUrl) {
-                  setRemovedUrls((current) =>
-                    current.includes(replacedUrl) ? current : [...current, replacedUrl],
-                  )
-                }
-                nextCovers = [...selectedCovers, replacement]
-              } else {
-                const replacedCover = selectedCovers.find(
-                  (cover) => cover.id === targetValue,
-                )
-                if (replacedCover) {
-                  revokeImagePreviews([replacedCover.preview])
-                  setDiscardedUploadedUrls((current) => [
-                    ...current,
-                    replacedCover.url,
-                  ])
-                }
-                nextCovers = [
-                  ...selectedCovers.filter((cover) => cover.id !== targetValue),
-                  replacement,
-                ]
-              }
-
-              setSelectedCovers(nextCovers)
-              setCoverOrder((current) =>
-                current.map((id) =>
-                  id === replacementTarget ? `selected:${replacement.id}` : id,
-                ),
-              )
-            } else {
-              nextCovers = [...selectedCovers, ...additions]
-              setSelectedCovers(nextCovers)
-              setCoverOrder((current) => [
-                ...current,
-                ...additions.map((cover) => `selected:${cover.id}`),
-              ])
-            }
+            const dimensions = await Promise.all(files.map(async (file) => {
+              const image = await loadImage(file)
+              return { width: image.naturalWidth, height: image.naturalHeight }
+            }))
+            const drafts = files.map((file, index) => ({
+              id: crypto.randomUUID(),
+              file,
+              preview: previews[index],
+              width: dimensions[index].width,
+              height: dimensions[index].height,
+              zoom: 1,
+              x: 0,
+              y: 0,
+              replacementTarget,
+            }))
+            setPendingCoverCrops((current) => [...current, ...drafts])
+            setUploadMessage("Adjust the crop for each cover photo, then apply and upload it.")
             input.value = ""
-            setUploadMessage(
-              aiUnavailable
-                ? "Cover photo uploaded; AI upscaling was unavailable, so original resolution was retained."
-                : replacementTarget
-                ? "Cover photo replaced and ready."
-                : `${nextCovers.length} new cover photo${nextCovers.length === 1 ? "" : "s"} uploaded and ready.`,
-            )
           } catch (error) {
-            syncFileInput()
+            revokeImagePreviews(previews)
             setUploadMessage("")
-            setUploadError(
-              error instanceof Error
-                ? error.message
-                : "Unable to prepare these cover photos.",
-            )
+            setUploadError(error instanceof Error ? error.message : "Unable to read the selected cover photo.")
           } finally {
             setIsProcessing(false)
           }
@@ -12643,6 +12752,31 @@ async function resizeImageFile(
     type: contentType,
     lastModified: Date.now(),
   })
+}
+
+function coverCropPreviewStyle(
+  crop: { width: number; height: number; zoom: number; x: number; y: number },
+  spec: PartnerMediaSpec,
+) {
+  const targetRatio = spec.width / spec.height
+  const sourceRatio = crop.width / crop.height
+  let drawWidth = crop.width
+  let drawHeight = crop.height
+
+  if (sourceRatio > targetRatio) drawWidth = crop.height * targetRatio
+  else drawHeight = crop.width / targetRatio
+
+  drawWidth /= crop.zoom
+  drawHeight /= crop.zoom
+  const drawX = ((crop.width - drawWidth) * (Math.max(-100, Math.min(100, crop.x)) + 100)) / 200
+  const drawY = ((crop.height - drawHeight) * (Math.max(-100, Math.min(100, crop.y)) + 100)) / 200
+
+  return {
+    left: `${-drawX / drawWidth * 100}%`,
+    top: `${-drawY / drawHeight * 100}%`,
+    width: `${crop.width / drawWidth * 100}%`,
+    height: `${crop.height / drawHeight * 100}%`,
+  }
 }
 
 function loadImage(file: File) {

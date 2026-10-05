@@ -108,6 +108,25 @@ textarea {
 .partner-profile-grid [name=address] { min-height: 68px; }
 .partner-category-popover { box-shadow: 0 12px 30px rgb(6 24 41 / .12); }
 .partner-category-popover > div:nth-child(2) { scrollbar-width: thin; scrollbar-color: #c5d1dd transparent; }
+.partner-workspace-compact .partner-settings-form[data-compact-mode="true"] { row-gap: 8px; }
+.partner-workspace-compact .partner-settings-form[data-compact-mode="true"] > :not([hidden]) ~ :not([hidden]) { margin-block-start: 8px; }
+.partner-workspace-compact .partner-settings-form fieldset.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-block-start: 8px; }
+.partner-workspace-compact .partner-settings-section { border-radius: 10px; }
+.partner-workspace-compact .partner-settings-section-heading { min-height: 38px; padding-inline: 12px; }
+.partner-workspace-compact .partner-settings-section-content { padding: 10px; }
+.partner-workspace-compact .partner-settings-section-content.space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-block-start: 8px; }
+.partner-workspace-compact .partner-settings-form [class~="h-10"] { height: 2.25rem; min-height: 2.25rem; }
+.partner-workspace-compact .partner-settings-form [class~="min-h-12"] { min-height: 2.5rem; }
+.partner-workspace-compact .partner-profile-grid { gap: 12px; }
+.partner-workspace-compact .partner-profile-contact { padding-top: 10px; padding-left: 12px; }
+.partner-workspace-compact .partner-profile-grid [name=description] { min-height: 64px; }
+.partner-workspace-compact .partner-profile-grid [name=address] { min-height: 52px; }
+.partner-workspace-compact .partner-settings-form .grid.gap-4,
+.partner-workspace-compact .partner-settings-form .grid.gap-3 { gap: 8px; }
+.partner-workspace-compact [class~="p-4"],
+.partner-workspace-compact [class~="sm:p-4"] { padding: 10px; }
+.partner-workspace-compact .partner-settings-section-content .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-block-start: 6px; }
+.partner-workspace-compact .partner-settings-form .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-block-start: 8px; }
 @container (min-width: 720px) {
   .partner-profile-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 22px; }
   .partner-profile-core > div:first-child, .partner-profile-contact > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
