@@ -12004,6 +12004,8 @@ function CoverUploadField({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const replacementTargetRef = useRef("")
   const selectedPreviewsRef = useRef<ImagePreview[]>([])
+  const cropTimerRef = useRef<number | null>(null)
+  const cropRequestRef = useRef(0)
   const visibleCovers = savedCovers.filter(
     (coverUrl) => !removedUrls.includes(coverUrl),
   )
@@ -12032,6 +12034,8 @@ function CoverUploadField({
 
   useEffect(() => () => {
     revokeImagePreviews(selectedPreviewsRef.current)
+    if (cropTimerRef.current !== null) window.clearTimeout(cropTimerRef.current)
+    cropRequestRef.current += 1
   }, [])
 
   const syncFileInput = () => {
@@ -12079,7 +12083,7 @@ function CoverUploadField({
     fileInputRef.current?.click()
   }
 
-  const updateCoverCrop = async (id: string, key: "zoom" | "x" | "y", value: number) => {
+  const updateCoverCrop = (id: string, key: "zoom" | "x" | "y", value: number) => {
     const cover = selectedCovers.find((item) => item.id === id)
     if (!cover || !fileInputRef.current) return
     const crop = {
@@ -12087,22 +12091,35 @@ function CoverUploadField({
       x: key === "x" ? value : cover.x,
       y: key === "y" ? value : cover.y,
     }
+    const requestId = ++cropRequestRef.current
+    if (cropTimerRef.current !== null) window.clearTimeout(cropTimerRef.current)
+    setSelectedCovers((current) => current.map((item) => item.id === id ? { ...item, ...crop } : item))
     setIsProcessing(true)
     setUploadError("")
-    setUploadMessage("Updating cover crop…")
-    try {
-      const file = await resizeImageFile(cover.sourceFile, spec, crop)
-      const preview = createImagePreviews([file])[0]
-      const nextCovers = selectedCovers.map((item) => item.id === id ? { ...item, ...crop, file, preview } : item)
-      replaceFileInputFiles(fileInputRef.current, nextCovers.map((item) => item.file))
-      setSelectedCovers(nextCovers)
-      revokeImagePreviews([cover.preview])
-      setUploadMessage(`Cover photo ready at ${spec.width}px × ${spec.height}px.`)
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Unable to update the cover crop.")
-    } finally {
-      setIsProcessing(false)
-    }
+    setUploadMessage("Updating crop…")
+    cropTimerRef.current = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const file = await resizeImageFile(cover.sourceFile, spec, crop)
+          if (requestId !== cropRequestRef.current) return
+          const preview = createImagePreviews([file])[0]
+          const nextCovers = selectedCovers.map((item) => item.id === id ? { ...item, ...crop, file, preview } : item)
+          replaceFileInputFiles(fileInputRef.current!, nextCovers.map((item) => item.file))
+          setSelectedCovers(nextCovers)
+          revokeImagePreviews([cover.preview])
+          setUploadMessage(`Cover photo ready at ${spec.width}px × ${spec.height}px.`)
+        } catch (error) {
+          if (requestId === cropRequestRef.current) {
+            setUploadError(error instanceof Error ? error.message : "Unable to update the cover crop.")
+          }
+        } finally {
+          if (requestId === cropRequestRef.current) {
+            cropTimerRef.current = null
+            setIsProcessing(false)
+          }
+        }
+      })()
+    }, 140)
   }
 
   return (
@@ -12208,14 +12225,14 @@ function CoverUploadField({
                   }}
                   removeLabel="Remove cover photo"
                 />
-                {selected ? <div className="grid grid-cols-3 gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 p-2">
+                {selected ? <div className="grid gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 p-2">
                   {([
                     { key: "zoom" as const, label: "Zoom", min: 0.25, max: 3, step: 0.05, value: selected.zoom },
                     { key: "x" as const, label: "Horizontal", min: -100, max: 100, step: 1, value: selected.x },
                     { key: "y" as const, label: "Vertical", min: -100, max: 100, step: 1, value: selected.y },
-                  ]).map((control) => <label key={control.key} className="min-w-0 text-[10px] font-semibold text-zinc-600">
-                    <span className="mb-1 block truncate">{control.label}</span>
-                    <input type="range" aria-label={`${control.label} crop for ${selected.preview.name}`} min={control.min} max={control.max} step={control.step} value={control.value} disabled={isProcessing} onChange={(event) => void updateCoverCrop(selected.id, control.key, Number(event.target.value))} className="block w-full accent-teal-700" />
+                  ]).map((control) => <label key={control.key} className="grid min-w-0 grid-cols-[5rem_minmax(0,1fr)] items-center gap-2 text-[10px] font-semibold text-zinc-600">
+                    <span>{control.label}</span>
+                    <input type="range" aria-label={`${control.label} crop for ${selected.preview.name}`} min={control.min} max={control.max} step={control.step} value={control.value} onChange={(event) => updateCoverCrop(selected.id, control.key, Number(event.target.value))} className="block w-full min-w-0 accent-teal-700" />
                   </label>)}
                 </div> : null}
               </div>
