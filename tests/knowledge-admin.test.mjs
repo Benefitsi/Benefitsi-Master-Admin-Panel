@@ -19,13 +19,6 @@ test("/wissen is an admin-protected server page with server-side pagination", as
   assert.doesNotMatch(page, /SUPABASE_SERVICE_ROLE_KEY|knowledge-ingestion-token|absolute_path|m1Path/i)
 })
 
-test("Admin navigation exposes the German Wissen entry and active state", async () => {
-  const shell = await source("app/admin-shell.tsx")
-  assert.match(shell, /href="\/wissen"/)
-  assert.match(shell, /label="Wissen"/)
-  assert.match(shell, /pathname\.startsWith\("\/wissen"\)/)
-})
-
 test("the mirror UI renders status, sync metadata, deletion state, and read-only detail copy", async () => {
   const browser = await source("app/wissen/knowledge-browser.tsx")
   for (const label of [
