@@ -59,7 +59,8 @@ test('direct category and frequency URLs render selected values and actual partn
   assert.match(html, /unterschiedliche Partnerkonfigurationen/)
   assert.match(html, /Keine Frequenz hinterlegt/)
   assert.match(html, /partners\?partner=low-partner/)
-  assert.match(html, /Ab App-Version 1\.4\.14 \(Build 173\) in TestFlight bereitgestellt/)
+  assert.match(html, /App-Version 1\.4\.14 \(Build 173\) wurde zu TestFlight übermittelt/)
+  assert.match(html, /Für externe Tester ist die Freigabe durch Apple erforderlich/)
 })
 
 test('empty categories and data failures produce distinct honest states', async () => {
