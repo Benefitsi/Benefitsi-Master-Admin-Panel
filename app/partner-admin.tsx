@@ -5,6 +5,7 @@ import { StreakRuleFields } from "./streak-rule-fields"
 import { describeCalendarStreak } from "@/lib/streak-config"
 
 import Link from "next/link"
+import { visitLevelsHref } from "@/lib/partner-visit-levels"
 import { PartnerFeedbackSettingsLoader } from "@/components/partner/partner-feedback-settings-loader"
 import { useRouter } from "next/navigation"
 import {
@@ -717,6 +718,11 @@ export function PartnerWorkspace({
   return (
     <section id="partners" className="partner-management-brand space-y-3">
       <ToastViewport />
+      {!portalMode ? <div className="flex justify-end">
+        <Link href={visitLevelsHref(normalizePartnerCategories(selectedPartner?.category)[0])} className="inline-flex min-h-9 items-center rounded-md border border-zinc-200 bg-white px-3 text-sm font-semibold text-teal-700 hover:bg-teal-50">
+          Besuchslevel
+        </Link>
+      </div> : null}
       {!portalMode &&       <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
         <LiveMetric label="Partners" value={partnerCount} />
         <LiveMetric

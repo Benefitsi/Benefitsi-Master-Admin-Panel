@@ -1,0 +1,275 @@
+{
+  "schemaVersion": 1,
+  "defaultFrequency": "high",
+  "aliases": {
+    "high": "high",
+    "high_frequency": "high",
+    "hoch": "high",
+    "medium": "medium",
+    "medium_frequency": "medium",
+    "mittel": "medium",
+    "low": "low",
+    "low_frequency": "low",
+    "niedrig": "low"
+  },
+  "scales": {
+    "high": [
+      {
+        "code": "B4",
+        "germanName": "Bronze IV",
+        "englishName": "Bronze IV",
+        "minimumVisits": 0
+      },
+      {
+        "code": "B3",
+        "germanName": "Bronze III",
+        "englishName": "Bronze III",
+        "minimumVisits": 1
+      },
+      {
+        "code": "B2",
+        "germanName": "Bronze II",
+        "englishName": "Bronze II",
+        "minimumVisits": 3
+      },
+      {
+        "code": "B1",
+        "germanName": "Bronze I",
+        "englishName": "Bronze I",
+        "minimumVisits": 5
+      },
+      {
+        "code": "S3",
+        "germanName": "Silber III",
+        "englishName": "Silver III",
+        "minimumVisits": 10
+      },
+      {
+        "code": "S2",
+        "germanName": "Silber II",
+        "englishName": "Silver II",
+        "minimumVisits": 15
+      },
+      {
+        "code": "S1",
+        "germanName": "Silber I",
+        "englishName": "Silver I",
+        "minimumVisits": 20
+      },
+      {
+        "code": "G3",
+        "germanName": "Gold III",
+        "englishName": "Gold III",
+        "minimumVisits": 30
+      },
+      {
+        "code": "G2",
+        "germanName": "Gold II",
+        "englishName": "Gold II",
+        "minimumVisits": 40
+      },
+      {
+        "code": "G1",
+        "germanName": "Gold I",
+        "englishName": "Gold I",
+        "minimumVisits": 50
+      },
+      {
+        "code": "P3",
+        "germanName": "Platin III",
+        "englishName": "Platinum III",
+        "minimumVisits": 75
+      },
+      {
+        "code": "P2",
+        "germanName": "Platin II",
+        "englishName": "Platinum II",
+        "minimumVisits": 100
+      },
+      {
+        "code": "P1",
+        "germanName": "Platin I",
+        "englishName": "Platinum I",
+        "minimumVisits": 150
+      },
+      {
+        "code": "D",
+        "germanName": "Diamant",
+        "englishName": "Diamond",
+        "minimumVisits": 250
+      }
+    ],
+    "medium": [
+      {
+        "code": "B4",
+        "germanName": "Bronze IV",
+        "englishName": "Bronze IV",
+        "minimumVisits": 0
+      },
+      {
+        "code": "B3",
+        "germanName": "Bronze III",
+        "englishName": "Bronze III",
+        "minimumVisits": 1
+      },
+      {
+        "code": "B2",
+        "germanName": "Bronze II",
+        "englishName": "Bronze II",
+        "minimumVisits": 2
+      },
+      {
+        "code": "B1",
+        "germanName": "Bronze I",
+        "englishName": "Bronze I",
+        "minimumVisits": 3
+      },
+      {
+        "code": "S3",
+        "germanName": "Silber III",
+        "englishName": "Silver III",
+        "minimumVisits": 5
+      },
+      {
+        "code": "S2",
+        "germanName": "Silber II",
+        "englishName": "Silver II",
+        "minimumVisits": 7
+      },
+      {
+        "code": "S1",
+        "germanName": "Silber I",
+        "englishName": "Silver I",
+        "minimumVisits": 10
+      },
+      {
+        "code": "G3",
+        "germanName": "Gold III",
+        "englishName": "Gold III",
+        "minimumVisits": 15
+      },
+      {
+        "code": "G2",
+        "germanName": "Gold II",
+        "englishName": "Gold II",
+        "minimumVisits": 20
+      },
+      {
+        "code": "G1",
+        "germanName": "Gold I",
+        "englishName": "Gold I",
+        "minimumVisits": 30
+      },
+      {
+        "code": "P3",
+        "germanName": "Platin III",
+        "englishName": "Platinum III",
+        "minimumVisits": 45
+      },
+      {
+        "code": "P2",
+        "germanName": "Platin II",
+        "englishName": "Platinum II",
+        "minimumVisits": 60
+      },
+      {
+        "code": "P1",
+        "germanName": "Platin I",
+        "englishName": "Platinum I",
+        "minimumVisits": 90
+      },
+      {
+        "code": "D",
+        "germanName": "Diamant",
+        "englishName": "Diamond",
+        "minimumVisits": 150
+      }
+    ],
+    "low": [
+      {
+        "code": "B4",
+        "germanName": "Bronze IV",
+        "englishName": "Bronze IV",
+        "minimumVisits": 0
+      },
+      {
+        "code": "B3",
+        "germanName": "Bronze III",
+        "englishName": "Bronze III",
+        "minimumVisits": 1
+      },
+      {
+        "code": "B2",
+        "germanName": "Bronze II",
+        "englishName": "Bronze II",
+        "minimumVisits": 2
+      },
+      {
+        "code": "B1",
+        "germanName": "Bronze I",
+        "englishName": "Bronze I",
+        "minimumVisits": 3
+      },
+      {
+        "code": "S3",
+        "germanName": "Silber III",
+        "englishName": "Silver III",
+        "minimumVisits": 4
+      },
+      {
+        "code": "S2",
+        "germanName": "Silber II",
+        "englishName": "Silver II",
+        "minimumVisits": 5
+      },
+      {
+        "code": "S1",
+        "germanName": "Silber I",
+        "englishName": "Silver I",
+        "minimumVisits": 6
+      },
+      {
+        "code": "G3",
+        "germanName": "Gold III",
+        "englishName": "Gold III",
+        "minimumVisits": 8
+      },
+      {
+        "code": "G2",
+        "germanName": "Gold II",
+        "englishName": "Gold II",
+        "minimumVisits": 10
+      },
+      {
+        "code": "G1",
+        "germanName": "Gold I",
+        "englishName": "Gold I",
+        "minimumVisits": 12
+      },
+      {
+        "code": "P3",
+        "germanName": "Platin III",
+        "englishName": "Platinum III",
+        "minimumVisits": 16
+      },
+      {
+        "code": "P2",
+        "germanName": "Platin II",
+        "englishName": "Platinum II",
+        "minimumVisits": 20
+      },
+      {
+        "code": "P1",
+        "germanName": "Platin I",
+        "englishName": "Platinum I",
+        "minimumVisits": 25
+      },
+      {
+        "code": "D",
+        "germanName": "Diamant",
+        "englishName": "Diamond",
+        "minimumVisits": 40
+      }
+    ]
+  }
+}
