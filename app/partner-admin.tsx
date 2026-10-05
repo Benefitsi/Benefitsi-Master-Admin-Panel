@@ -742,7 +742,7 @@ export function PartnerWorkspace({
         <LiveMetric label="Benefits" value={dealCount} />
       </div>}
 
-      <div className={portalMode ? "min-w-0" : `grid gap-4 ${compactMode && workspaceLocation.view === "settings" ? "partner-workspace-list-compact xl:grid-cols-[250px_minmax(0,1fr)] xl:gap-3" : "xl:grid-cols-[310px_minmax(0,1fr)]"}`}>
+      <div className={portalMode ? "min-w-0" : `grid gap-4 ${compactMode && workspaceLocation.view === "settings" ? "partner-workspace-list-compact xl:grid-cols-[280px_minmax(0,1fr)] xl:gap-3" : "xl:grid-cols-[310px_minmax(0,1fr)]"}`}>
         {!portalMode &&         <aside className="self-start overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]">
           <div className="border-b border-zinc-200 p-3">
             <div className="flex items-center justify-between gap-3">
@@ -12142,48 +12142,35 @@ function CoverUploadField({
               <div
                 key={id}
                 data-cover-id={id}
-                draggable
-                onDragStart={() => setDraggedCoverId(id)}
-                onDragEnd={() => setDraggedCoverId("")}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => moveCover(id)}
-                onPointerDown={(event) => {
-                  if ((event.target as HTMLElement).closest("button, [role='button']")) return
-                  event.currentTarget.setPointerCapture(event.pointerId)
-                  setDraggedCoverId(id)
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  event.dataTransfer.dropEffect = "move"
                 }}
-                onPointerMove={(event) => {
-                  if (!draggedCoverId) return
-                  const targetId = document
-                    .elementFromPoint(event.clientX, event.clientY)
-                    ?.closest<HTMLElement>("[data-cover-id]")
-                    ?.dataset.coverId
-
-                  if (targetId && targetId !== draggedCoverId) {
-                    setCoverOrder((current) => {
-                      const fromIndex = current.indexOf(draggedCoverId)
-                      const targetIndex = current.indexOf(targetId)
-
-                      if (fromIndex < 0 || targetIndex < 0) return current
-
-                      const next = [...current]
-                      next.splice(fromIndex, 1)
-                      next.splice(targetIndex, 0, draggedCoverId)
-                      return next
-                    })
-                  }
+                onDrop={(event) => {
+                  event.preventDefault()
+                  moveCover(id)
                 }}
-                onPointerUp={(event) => {
-                  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                    event.currentTarget.releasePointerCapture(event.pointerId)
-                  }
-                  setDraggedCoverId("")
-                }}
-                onPointerCancel={() => setDraggedCoverId("")}
-                className={`space-y-2 rounded-md p-1 transition touch-none ${draggedCoverId === id ? "opacity-50" : "cursor-grab"}`}
+                className={`space-y-2 rounded-md p-1 transition ${draggedCoverId === id ? "opacity-50" : ""}`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-zinc-500">{index + 1}</span>
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500">
+                    <span>{index + 1}</span>
+                    <button
+                      type="button"
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "move"
+                        event.dataTransfer.setData("text/plain", id)
+                        setDraggedCoverId(id)
+                      }}
+                      onDragEnd={() => setDraggedCoverId("")}
+                      aria-label={`Drag to reorder cover photo ${index + 1}`}
+                      title="Drag to reorder"
+                      className="cursor-grab touch-none rounded px-1 text-base leading-none text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 active:cursor-grabbing"
+                    >
+                      ⠿
+                    </button>
+                  </span>
                   <span className="flex gap-1">
                     <button
                       type="button"
