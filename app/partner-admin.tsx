@@ -550,10 +550,12 @@ export function PartnerWorkspace({
   adminAccess = !portalMode,
 }: PartnerWorkspaceProps) {
   const [savedPartners, setSavedPartners] = useState<Record<string, Partial<PartnerWithDeals> & { id: string }>>({})
+  const [deletedPartnerIds, setDeletedPartnerIds] = useState<Set<string>>(() => new Set())
   const mediaRevision = useSyncExternalStore(subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision)
   const partners = useMemo(() => {
-    const records = new Map(initialPartners.map(partner => [partner.id, partner]))
+    const records = new Map(initialPartners.filter(partner => partner.id && !deletedPartnerIds.has(partner.id)).map(partner => [partner.id, partner]))
     for (const patch of Object.values(savedPartners)) {
+      if (deletedPartnerIds.has(patch.id)) continue
       const previous = records.get(patch.id)
       if (previous?.updated_at && patch.updated_at && previous.updated_at > patch.updated_at) continue
       records.set(patch.id, {
@@ -565,7 +567,7 @@ export function PartnerWorkspace({
       } as PartnerWithDeals)
     }
     return Array.from(records.values())
-  }, [initialPartners, savedPartners, cities, owners])
+  }, [initialPartners, savedPartners, deletedPartnerIds, cities, owners])
   useEffect(() => {
     let cancelled = false
     void measurePartnerMedia(partners, () => cancelled)
@@ -755,6 +757,25 @@ export function PartnerWorkspace({
   const selectedPartner =
     filteredPartners.find((partner) => partner.id === selectedId) ??
     filteredPartners[0]
+  const handlePartnerDeleted = useCallback((deletedId: string | undefined) => {
+    if (!deletedId) return
+    setDeletedPartnerIds(current => new Set(current).add(deletedId))
+    setSavedPartners(current => {
+      if (!(deletedId in current)) return current
+      const next = { ...current }
+      delete next[deletedId]
+      return next
+    })
+    const nextPartner = filteredPartners.find(partner => partner.id && partner.id !== deletedId)
+    const nextPartnerId = nextPartner?.id
+    if (nextPartnerId) {
+      setSelectedId(nextPartnerId)
+      setMode("view")
+      rememberWorkspaceLocation({ mode: null, partner: nextPartnerId })
+      return
+    }
+    startCreatePartner()
+  }, [filteredPartners, startCreatePartner])
   const capabilities = usePartnerCapabilities(selectedPartner, adminAccess && !portalMode)
   const hasActiveFilters =
     Boolean(query.trim()) ||
@@ -967,7 +988,7 @@ export function PartnerWorkspace({
                 key={selectedPartner.id ?? selectedPartner.name ?? "partner"}
                 cities={cities}
                 owners={owners}
-                onDeleted={startCreatePartner}
+                onDeleted={() => handlePartnerDeleted(selectedPartner.id)}
                 partner={capabilities.partner ?? selectedPartner}
                 initialSettingsTab={workspaceLocation.tab}
                 initialView={workspaceLocation.view}
