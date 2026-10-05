@@ -1,6 +1,6 @@
 {
   "repository": "Benefitsi/Benefitsi-App",
-  "revision": "90c4ccaf3d82504546856997294160e332b87223",
+  "revision": "3504b2cfcf704497ccea9ddcd5f52ca24d75f880",
   "contractPath": "contracts/partner-visit-levels.json",
   "sourcePath": "lib/features/partners/partner_level_service.dart",
   "contractSha256": "089a673dee1b043500cc0fbed5fa30d270a70e0b12cc1fd6944064978b43f643",

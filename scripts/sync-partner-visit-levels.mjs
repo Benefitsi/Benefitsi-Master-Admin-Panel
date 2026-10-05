@@ -14,6 +14,10 @@ const root = fileURLToPath(new URL('../', import.meta.url))
 const path = 'contracts/partner-visit-levels.json'
 const source = 'lib/features/partners/partner_level_service.dart'
 const bytes = readFileSync(resolve(app, path))
+const sourceBytes = readFileSync(resolve(app, source))
+const committedFile = path => execFileSync('git', ['-C', resolve(app), 'show', `HEAD:${path}`])
+assert.equal(bytes.toString(), committedFile(path).toString(), 'Commit the tested App export before syncing')
+assert.equal(sourceBytes.toString(), committedFile(source).toString(), 'Commit the App source before syncing')
 const contract = JSON.parse(bytes)
 assert.equal(contract.schemaVersion, 1)
 assert.deepEqual(Object.keys(contract.scales), ['high', 'medium', 'low'])
@@ -24,7 +28,7 @@ const provenance = {
   contractPath: path,
   sourcePath: source,
   contractSha256: digest(bytes),
-  sourceSha256: digest(readFileSync(resolve(app, source))),
+  sourceSha256: digest(sourceBytes),
 }
 const output = resolve(root, 'lib/generated/partner-visit-levels.json')
 const metadata = resolve(root, 'lib/generated/partner-visit-levels-source.json')
