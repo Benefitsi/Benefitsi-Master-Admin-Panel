@@ -74,7 +74,6 @@ import {
   weekdayOptions,
 } from "@/lib/reward-config"
 import {
-  createPartnerCoverUpload,
   deleteDeal,
   deleteMenu,
   deleteMenuCategory,
@@ -2382,15 +2381,9 @@ function PartnerForm({
       onChange={refreshDirtyState}
       onSubmit={(event) => {
         const form = event.currentTarget
-        const pendingCoverCrops = Number(new FormData(form).get("pending_cover_crop_count") ?? 0)
-        if (pendingCoverCrops > 0) {
+        if (new FormData(form).get("cover_processing") === "true") {
           event.preventDefault()
-          if (mode === "create") setCreateTab("operations")
-          setValidationMessage("Apply the cover crop and upload each selected cover photo before saving.")
-          window.requestAnimationFrame(() => {
-            const cropEditor = form.querySelector<HTMLElement>("[data-pending-cover-crops]")
-            cropEditor?.scrollIntoView({ behavior: "smooth", block: "center" })
-          })
+          setValidationMessage("Wait for the cover photo preparation to finish before saving.")
           return
         }
         const invalidField = Array.from(form.elements).find(
@@ -2831,7 +2824,6 @@ function PartnerForm({
         <CoverUploadField
           key={`covers-${(partner?.cover_urls ?? researchedMedia.coverUrls).join("|") || "new"}`}
           covers={partner?.cover_urls ?? researchedMedia.coverUrls}
-          partnerId={partner?.id}
           compactMode={compactMode}
         />
       </FormSection>
@@ -11992,30 +11984,16 @@ function MediaUploadField({
 
 function CoverUploadField({
   covers,
-  partnerId,
   compactMode = false,
 }: {
   covers?: string[] | null
-  partnerId?: string
   compactMode?: boolean
 }) {
   const savedCovers = normalizeMediaUrls(covers)
   const [removedUrls, setRemovedUrls] = useState<string[]>([])
   const [selectedCovers, setSelectedCovers] = useState<
-    Array<{ id: string; preview: ImagePreview; url: string }>
+    Array<{ id: string; preview: ImagePreview; file: File; sourceFile: File; zoom: number; x: number; y: number }>
   >([])
-  const [pendingCoverCrops, setPendingCoverCrops] = useState<Array<{
-    id: string
-    file: File
-    preview: ImagePreview
-    width: number
-    height: number
-    zoom: number
-    x: number
-    y: number
-    replacementTarget: string
-  }>>([])
-  const [discardedUploadedUrls, setDiscardedUploadedUrls] = useState<string[]>([])
   const [coverOrder, setCoverOrder] = useState(() =>
     savedCovers.map((_, index) => `existing:${index}`),
   )
@@ -12026,7 +12004,6 @@ function CoverUploadField({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const replacementTargetRef = useRef("")
   const selectedPreviewsRef = useRef<ImagePreview[]>([])
-  const pendingPreviewsRef = useRef<ImagePreview[]>([])
   const visibleCovers = savedCovers.filter(
     (coverUrl) => !removedUrls.includes(coverUrl),
   )
@@ -12035,8 +12012,7 @@ function CoverUploadField({
   )
   const spec = partnerMediaSpecs.cover
   const sizeHint = mediaSizeHint(spec)
-  const pendingNewCovers = pendingCoverCrops.filter((cover) => !cover.replacementTarget).length
-  const remainingCoverSlots = Math.max(maxCoverPhotos - visibleCovers.length - selectedCovers.length - pendingNewCovers, 0)
+  const remainingCoverSlots = Math.max(maxCoverPhotos - visibleCovers.length - selectedCovers.length, 0)
   const existingFormIndex = new Map(
     savedCovers
       .map((url, originalIndex) => ({ originalIndex, url }))
@@ -12054,13 +12030,8 @@ function CoverUploadField({
     selectedPreviewsRef.current = selectedCovers.map((cover) => cover.preview)
   }, [selectedCovers])
 
-  useEffect(() => {
-    pendingPreviewsRef.current = pendingCoverCrops.map((cover) => cover.preview)
-  }, [pendingCoverCrops])
-
   useEffect(() => () => {
     revokeImagePreviews(selectedPreviewsRef.current)
-    revokeImagePreviews(pendingPreviewsRef.current)
   }, [])
 
   const syncFileInput = () => {
@@ -12074,11 +12045,10 @@ function CoverUploadField({
     const nextCovers = selectedCovers.filter((cover) => cover.id !== id)
     if (removed) {
       revokeImagePreviews([removed.preview])
-      setDiscardedUploadedUrls((current) => [...current, removed.url])
     }
     setSelectedCovers(nextCovers)
     setCoverOrder((current) => current.filter((coverId) => coverId !== `selected:${id}`))
-    syncFileInput()
+    if (fileInputRef.current) replaceFileInputFiles(fileInputRef.current, nextCovers.map((cover) => cover.file))
     if (nextCovers.length === 0) {
       setUploadMessage("")
     }
@@ -12109,93 +12079,27 @@ function CoverUploadField({
     fileInputRef.current?.click()
   }
 
-  const uploadCover = async (file: File) => {
-    const target = await createPartnerCoverUpload(
-      file.name,
-      file.type,
-      file.size,
-      partnerId,
-    )
-
-    if (!target.ok) throw new Error(target.message)
-
-    const supabase = createBrowserClient()
-    const { error } = await supabase.storage
-      .from(target.bucket)
-      .uploadToSignedUrl(target.path, target.token, file, {
-        cacheControl: "31536000",
-        contentType: file.type,
-      })
-
-    if (error) throw new Error(`Unable to upload "${file.name}": ${error.message}`)
-
-    recordPreparedMediaDimensions(target.publicUrl, file.name)
-    return {
-      id: crypto.randomUUID(),
-      preview: { name: file.name, url: target.publicUrl },
-      url: target.publicUrl,
+  const updateCoverCrop = async (id: string, key: "zoom" | "x" | "y", value: number) => {
+    const cover = selectedCovers.find((item) => item.id === id)
+    if (!cover || !fileInputRef.current) return
+    const crop = {
+      zoom: key === "zoom" ? value : cover.zoom,
+      x: key === "x" ? value : cover.x,
+      y: key === "y" ? value : cover.y,
     }
-  }
-
-  const updateCoverCrop = (id: string, key: "zoom" | "x" | "y", value: number) => {
-    setPendingCoverCrops((current) => current.map((cover) =>
-      cover.id === id ? { ...cover, [key]: value } : cover,
-    ))
-  }
-
-  const discardPendingCover = (id: string) => {
-    const discarded = pendingCoverCrops.find((cover) => cover.id === id)
-    if (discarded) revokeImagePreviews([discarded.preview])
-    setPendingCoverCrops((current) => current.filter((cover) => cover.id !== id))
-    syncFileInput()
-    setUploadError("")
-    if (pendingCoverCrops.length <= 1) setUploadMessage("")
-  }
-
-  const uploadPendingCover = async (cover: (typeof pendingCoverCrops)[number]) => {
     setIsProcessing(true)
     setUploadError("")
-    setUploadMessage("Preparing cropped cover photo…")
-    let aiUnavailable = false
+    setUploadMessage("Updating cover crop…")
     try {
-      const resizedFile = await resizeImageFile(
-        cover.file,
-        spec,
-        { zoom: cover.zoom, x: cover.x, y: cover.y },
-        undefined,
-        (message) => {
-          aiUnavailable ||= message.startsWith("AI upscaling is unavailable")
-          setUploadMessage(message)
-        },
-      )
-      const uploaded = await uploadCover(resizedFile)
-      const [targetKind, targetValue] = cover.replacementTarget.split(":")
-      if (cover.replacementTarget && targetKind === "existing") {
-        const replacedUrl = savedCovers[Number(targetValue)]
-        if (replacedUrl) setRemovedUrls((current) => current.includes(replacedUrl) ? current : [...current, replacedUrl])
-        setSelectedCovers((current) => [...current, uploaded])
-        setCoverOrder((current) => current.map((id) => id === cover.replacementTarget ? `selected:${uploaded.id}` : id))
-      } else if (cover.replacementTarget && targetKind === "selected") {
-        const replacedCover = selectedCovers.find((item) => item.id === targetValue)
-        if (replacedCover) {
-          revokeImagePreviews([replacedCover.preview])
-          setDiscardedUploadedUrls((current) => [...current, replacedCover.url])
-        }
-        setSelectedCovers((current) => [...current.filter((item) => item.id !== targetValue), uploaded])
-        setCoverOrder((current) => current.map((id) => id === cover.replacementTarget ? `selected:${uploaded.id}` : id))
-      } else {
-        setSelectedCovers((current) => [...current, uploaded])
-        setCoverOrder((current) => [...current, `selected:${uploaded.id}`])
-      }
+      const file = await resizeImageFile(cover.sourceFile, spec, crop)
+      const preview = createImagePreviews([file])[0]
+      const nextCovers = selectedCovers.map((item) => item.id === id ? { ...item, ...crop, file, preview } : item)
+      replaceFileInputFiles(fileInputRef.current, nextCovers.map((item) => item.file))
+      setSelectedCovers(nextCovers)
       revokeImagePreviews([cover.preview])
-      setPendingCoverCrops((current) => current.filter((item) => item.id !== cover.id))
-      syncFileInput()
-      setUploadMessage(aiUnavailable
-        ? "Cropped cover uploaded; AI upscaling was unavailable, so the source resolution was retained."
-        : "Cropped cover photo uploaded and ready.")
+      setUploadMessage(`Cover photo ready at ${spec.width}px × ${spec.height}px.`)
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Unable to prepare this cover photo.")
-      setUploadMessage("")
+      setUploadError(error instanceof Error ? error.message : "Unable to update the cover crop.")
     } finally {
       setIsProcessing(false)
     }
@@ -12215,26 +12119,15 @@ function CoverUploadField({
         {visibleCovers.length} of {maxCoverPhotos} cover photos saved
         {remainingCoverSlots ? `; ${remainingCoverSlots} slot${remainingCoverSlots === 1 ? "" : "s"} available.` : "."}
       </p>
+      <input type="hidden" name="cover_processing" value={isProcessing ? "true" : "false"} />
       {visibleCovers.map((coverUrl) => (
         <input key={coverUrl} type="hidden" name="existing_cover_urls" value={coverUrl} />
       ))}
-      {selectedCovers.map((cover) => (
-        <input key={cover.id} type="hidden" name="existing_cover_urls" value={cover.url} />
-      ))}
-      {discardedUploadedUrls.map((coverUrl) => (
-        <input
-          key={`discarded-${coverUrl}`}
-          type="hidden"
-          name="removed_media_urls"
-          value={coverUrl}
-        />
-      ))}
-      <input type="hidden" name="pending_cover_crop_count" value={pendingCoverCrops.length} />
       {orderedCoverIds.map((id) => {
         const [kind, value] = id.split(":")
         const token = kind === "existing"
           ? `existing:${existingFormIndex.get(Number(value))}`
-          : `existing:${visibleCovers.length + selectedCovers.findIndex((cover) => cover.id === value)}`
+          : `upload:${selectedCovers.findIndex((cover) => cover.id === value)}`
         return <input key={`order-${id}`} type="hidden" name="cover_order" value={token} />
       })}
       {orderedCoverIds.length ? (
@@ -12328,6 +12221,16 @@ function CoverUploadField({
                   }}
                   removeLabel="Remove cover photo"
                 />
+                {selected ? <div className="grid grid-cols-3 gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 p-2">
+                  {([
+                    { key: "zoom" as const, label: "Zoom", min: 0.25, max: 3, step: 0.05, value: selected.zoom },
+                    { key: "x" as const, label: "Horizontal", min: -100, max: 100, step: 1, value: selected.x },
+                    { key: "y" as const, label: "Vertical", min: -100, max: 100, step: 1, value: selected.y },
+                  ]).map((control) => <label key={control.key} className="min-w-0 text-[10px] font-semibold text-zinc-600">
+                    <span className="mb-1 block truncate">{control.label}</span>
+                    <input type="range" aria-label={`${control.label} crop for ${selected.preview.name}`} min={control.min} max={control.max} step={control.step} value={control.value} disabled={isProcessing} onChange={(event) => void updateCoverCrop(selected.id, control.key, Number(event.target.value))} className="block w-full accent-teal-700" />
+                  </label>)}
+                </div> : null}
               </div>
             )
           })}
@@ -12339,34 +12242,6 @@ function CoverUploadField({
           onActivate={() => chooseReplacement("")}
         />
       )}
-      {pendingCoverCrops.length ? (
-        <div data-pending-cover-crops className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {pendingCoverCrops.map((cover) => (
-            <section key={cover.id} className="rounded-xl border border-teal-200 bg-teal-50/60 p-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="min-w-0 truncate text-xs font-semibold text-zinc-800">Crop: {cover.file.name}</p>
-                <button type="button" disabled={isProcessing} onClick={() => discardPendingCover(cover.id)} aria-label={`Discard ${cover.file.name}`} className="grid size-7 shrink-0 place-items-center rounded-md text-zinc-500 hover:bg-white hover:text-rose-700">×</button>
-              </div>
-              <div className="relative mb-3 aspect-square w-full max-w-52 overflow-hidden rounded-lg border border-zinc-200 bg-white">
-                <img src={cover.preview.url} alt={`Crop preview for ${cover.file.name}`} draggable={false} style={coverCropPreviewStyle(cover, spec)} className="absolute max-w-none select-none" />
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {([
-                  { key: "zoom" as const, label: "Zoom", min: 0.25, max: 3, step: 0.05, value: cover.zoom },
-                  { key: "x" as const, label: "Horizontal", min: -100, max: 100, step: 1, value: cover.x },
-                  { key: "y" as const, label: "Vertical", min: -100, max: 100, step: 1, value: cover.y },
-                ]).map((control) => (
-                  <label key={control.key} className="min-w-0 space-y-1 text-[10px] font-semibold text-zinc-600">
-                    <span className="block truncate">{control.label}</span>
-                    <input type="range" aria-label={`${control.label} crop for ${cover.file.name}`} min={control.min} max={control.max} step={control.step} value={control.value} disabled={isProcessing} onChange={(event) => updateCoverCrop(cover.id, control.key, Number(event.target.value))} className="block w-full accent-teal-700" />
-                  </label>
-                ))}
-              </div>
-              <button type="button" disabled={isProcessing} onClick={() => void uploadPendingCover(cover)} className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-teal-700 px-3 text-xs font-semibold text-white transition hover:bg-teal-800 disabled:cursor-wait disabled:opacity-60">Apply crop and upload</button>
-            </section>
-          ))}
-        </div>
-      ) : null}
       {removedCovers.length ? (
         <div className="flex flex-wrap gap-2">
           {removedCovers.map((coverUrl) => (
@@ -12448,26 +12323,48 @@ function CoverUploadField({
           const previews = createImagePreviews(files)
           try {
             setIsProcessing(true)
-            const dimensions = await Promise.all(files.map(async (file) => {
-              const image = await loadImage(file)
-              return { width: image.naturalWidth, height: image.naturalHeight }
+            const processed = await Promise.all(files.map(async (file, index) => {
+              const sourceFile = await upscalePartnerMediaFile(file, spec, {
+                backgroundColor: "#ffffff",
+                onStatus: setUploadMessage,
+              })
+              const preparedFile = await resizeImageFile(sourceFile, spec, { zoom: 1, x: 0, y: 0 })
+              return {
+                id: replacementTarget.startsWith("selected:") ? replacementTarget.slice("selected:".length) : crypto.randomUUID(),
+                sourceFile,
+                file: preparedFile,
+                preview: createImagePreviews([preparedFile])[0],
+                zoom: 1,
+                x: 0,
+                y: 0,
+              }
             }))
-            const drafts = files.map((file, index) => ({
-              id: crypto.randomUUID(),
-              file,
-              preview: previews[index],
-              width: dimensions[index].width,
-              height: dimensions[index].height,
-              zoom: 1,
-              x: 0,
-              y: 0,
-              replacementTarget,
-            }))
-            setPendingCoverCrops((current) => [...current, ...drafts])
-            setUploadMessage("Adjust the crop for each cover photo, then apply and upload it.")
-            input.value = ""
+            const replacingExisting = replacementTarget.startsWith("existing:")
+            if (replacingExisting) {
+              const replacedUrl = savedCovers[Number(replacementTarget.slice("existing:".length))]
+              if (replacedUrl) setRemovedUrls((current) => current.includes(replacedUrl) ? current : [...current, replacedUrl])
+            }
+            const nextCovers = replacementTarget.startsWith("selected:")
+              ? selectedCovers.map((cover) => cover.id === processed[0].id ? processed[0] : cover)
+              : [...selectedCovers, ...processed]
+            if (replacementTarget.startsWith("selected:")) {
+              const replaced = selectedCovers.find((cover) => cover.id === processed[0].id)
+              if (replaced) revokeImagePreviews([replaced.preview])
+            }
+            setSelectedCovers(nextCovers)
+            replaceFileInputFiles(input, nextCovers.map((cover) => cover.file))
+            setCoverOrder((current) => {
+              if (replacementTarget.startsWith("existing:")) {
+                return current.map((id) => id === replacementTarget ? `selected:${processed[0].id}` : id)
+              }
+              if (replacementTarget.startsWith("selected:")) return current
+              return [...current, ...processed.map((cover) => `selected:${cover.id}`)]
+            })
+            revokeImagePreviews(previews)
+            setUploadMessage(`${processed.length} cover photo${processed.length === 1 ? "" : "s"} ready to save.`)
           } catch (error) {
             revokeImagePreviews(previews)
+            replaceFileInputFiles(input, selectedCovers.map((cover) => cover.file))
             setUploadMessage("")
             setUploadError(error instanceof Error ? error.message : "Unable to read the selected cover photo.")
           } finally {
