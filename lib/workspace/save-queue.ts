@@ -25,7 +25,7 @@ export class DocumentSession {
     clearTimeout(this.timer)
     if(this.value.state==='conflict')return false
     if(this.flight){const success=await this.flight;if(!success)return false;return this.dirty()?this.flush():true}
-    if(!this.dirty())return true
+    if(!this.dirty()){this.publish({page:this.stored,state:'saved',message:''});return true}
     const sent=this.value.page
     this.publish({...this.value,state:'saving',message:''})
     const run=async()=>{

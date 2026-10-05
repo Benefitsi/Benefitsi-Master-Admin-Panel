@@ -49,7 +49,7 @@ const server=createServer(async(request,response)=>{
     if(pathname==='/style.css'){response.setHeader('Content-Type','text/css');response.end(style);return}
     if(pathname==='/app.js'){response.setHeader('Content-Type','application/javascript');response.end(script.outputFiles[0].contents);return}
     if(/^\/[a-zA-Z0-9_-]+\.(svg|png)$/.test(pathname)){response.setHeader('Content-Type',pathname.endsWith('.svg')?'image/svg+xml':'image/png');response.end(await readFile(repo+'/public'+pathname));return}
-    response.setHeader('Content-Type','text/html');response.end('<!doctype html><html lang="de"><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Workspace – lokale Prüfdaten</title><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script src="/app.js"></script></body></html>')
+    response.setHeader('Content-Type','text/html');response.end('<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Workspace – lokale Prüfdaten</title><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script src="/app.js"></script></body></html>')
   }catch{response.statusCode=404;response.end('Not found')}
 })
 try{

@@ -16,6 +16,11 @@ test('validation refuses malformed documents and excessive question counts witho
   assert.throws(() => validatePage({...page, content: {...emptyContent(), questions: Array(201).fill({})}}), /Fragen/)
   assert.throws(() => validatePage({...page, workspace_id: 'bad'}), /Arbeitsbereich/)
 })
+test('comma-separated tags normalize whitespace and ignore empty values for exact matching',()=>{
+  const page=makePage(workspace,'note')
+  page.tags=['Kaffee',' Sommer','', 'Sommer']
+  assert.deepEqual(validatePage(page).tags,['Kaffee','Sommer'])
+})
 test('international file URLs are normalized for the database and backslashes are rejected', () => {
   const page = makePage(workspace, 'note')
   page.content.links = [{id:'menu',title:'Speisekarte',url:'https://münchen.example/menü.pdf',category:'Datei',note:''}]

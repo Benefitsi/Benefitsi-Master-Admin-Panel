@@ -1,6 +1,7 @@
 'use server'
 
 import { requireAdmin } from '@/lib/admin'
+import { readAllRows } from '@/lib/workspace/pagination'
 import { pagePayload, validatePage, validId, pageKinds, pageStatuses, type ActionResult, type Workspace, type WorkspacePage, type PageMeta, type PageVersion, type PartnerReference } from '@/lib/workspace/model'
 
 const metaColumns='id,workspace_id,parent_id,partner_id,kind,title,status,tags,owner,due_date,revision,archived,created_at,updated_at'
@@ -17,8 +18,8 @@ function queryText(value:string) {return value.trim().slice(0,200).replace(/[\\%
 export async function loadWorkspaceIndex():Promise<ActionResult<{workspaces:Workspace[];favorites:string[]}>> {
   const {supabase}=await requireAdmin()
   const [ws,favorites]=await Promise.all([
-    supabase.from('admin_workspaces').select(workspaceColumns).order('created_at').limit(200),
-    supabase.from('admin_workspace_favorites').select('page_id').limit(1000),
+    readAllRows<Workspace>((from,to)=>supabase.from('admin_workspaces').select(workspaceColumns).order('created_at').order('id').range(from,to)),
+    readAllRows<{page_id:string}>((from,to)=>supabase.from('admin_workspace_favorites').select('page_id').order('page_id').range(from,to)),
   ])
   if(ws.error||favorites.error)return {ok:false,error:message(ws.error??favorites.error)}
   return {ok:true,value:{workspaces:(ws.data??[]) as Workspace[],favorites:(favorites.data??[]).map(v=>v.page_id)}}

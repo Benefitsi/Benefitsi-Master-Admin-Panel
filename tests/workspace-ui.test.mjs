@@ -147,14 +147,69 @@ test('concurrent update blocks navigation, preserves draft as copy, and history 
 test('unknown create response can be retried with the same ID without duplicating a page',async()=>{
   const fixture=workspaceFixture({workspaces:[workspace]})
   const original=fixture.services.saveWorkspacePage
+  const loadPages=fixture.services.loadWorkspacePages
+  let finishLoading
+  fixture.services.loadWorkspacePages=async(...args)=>{const result=await loadPages(...args);return new Promise(resolve=>{finishLoading=()=>resolve(result)})}
   let first=true
   fixture.services.saveWorkspacePage=async page=>{const result=await original(page);if(first){first=false;throw new Error('Response lost')}return result}
   await withApp(fixture,{},async()=>{
+    await wait(()=>finishLoading)
     await click(button('Neue Seite'))
     assert.equal(fixture.pages.size,1)
+    await act(async()=>finishLoading())
     assert.ok(document.body.textContent.includes('Die Aktion ist fehlgeschlagen'))
     await click(button('Neue Seite'))
     await wait(()=>field('Seitentitel'))
     assert.equal(fixture.pages.size,1)
+  })
+})
+
+test('workspace rename stays bound to its original workspace when the sidebar selection changes',async()=>{
+  const other={...workspace,id:'00000000-0000-4000-8000-000000000002',title:'Produktideen'}
+  const fixture=workspaceFixture({workspaces:[workspace,other]})
+  await withApp(fixture,{},async()=>{
+    await click(button('Umbenennen & Beschreibung'))
+    await fill(field('Name'),'Onboarding-Team')
+    await click(button('Produktideen'))
+    await click(button('Speichern'))
+    assert.equal(fixture.workspaces.get(workspace.id).title,'Onboarding-Team')
+    assert.equal(fixture.workspaces.get(other.id).title,'Produktideen')
+  })
+})
+
+test('replacement requests lock input until the new document is ready',async()=>{
+  const page={...makePage(workspace.id,'note'),revision:1,title:'Notiz'}
+  const fixture=workspaceFixture({workspaces:[workspace],pages:[page]})
+  const original=fixture.services.saveWorkspacePage
+  let finish
+  fixture.services.saveWorkspacePage=async p=>p.id===page.id?original(p):new Promise(resolve=>{finish=()=>original(p).then(resolve)})
+  await withApp(fixture,{initialPageId:page.id},async()=>{
+    await wait(()=>field('Seitentitel'))
+    await click(button('Seite duplizieren'))
+    await wait(()=>finish)
+    assert.ok(field('Seitentitel').matches(':disabled'),'Late edits must be prevented while replacement is pending')
+    await act(async()=>finish())
+    await wait(()=>field('Seitentitel')?.value==='Notiz (Kopie)')
+    assert.equal(field('Seitentitel').matches(':disabled'),false)
+  })
+})
+
+test('browser history traversal cannot discard a conflicting draft',async()=>{
+  const page={...makePage(workspace.id,'note'),revision:1,title:'Gesprächsnotiz'}
+  const fixture=workspaceFixture({workspaces:[workspace],pages:[page]})
+  await withApp(fixture,{initialPageId:page.id},async()=>{
+    await wait(()=>field('Seitentitel'))
+    await fill(field('Seitentitel'),'Noch nicht gespeichert')
+    await fixture.services.saveWorkspacePage({...page,title:'Andere Fassung'})
+    let routerEvents=0
+    const router=()=>routerEvents++
+    window.addEventListener('popstate',router)
+    try{
+      await act(async()=>{window.history.replaceState(null,'','/partners');window.dispatchEvent(new window.PopStateEvent('popstate'))})
+      assert.equal(routerEvents,0,'Next must not unmount the document before its save guard runs')
+      assert.equal(new URL(window.location.href).pathname,'/workspace')
+      assert.equal(field('Seitentitel').value,'Noch nicht gespeichert')
+      assert.ok(document.body.textContent.includes('Versionskonflikt'))
+    }finally{window.removeEventListener('popstate',router)}
   })
 })

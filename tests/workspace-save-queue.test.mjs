@@ -3,6 +3,12 @@ import assert from 'node:assert/strict'
 import { DocumentSession } from '../lib/workspace/save-queue.ts'
 import { makePage } from '../lib/workspace/model.ts'
 const id='00000000-0000-4000-8000-000000000001'
+test('reverting every change returns to the saved state without another request',async()=>{
+  const page={...makePage(id,'note'),revision:1}
+  let saves=0
+  const session=new DocumentSession(page,async p=>{saves++;return {ok:true,value:p}},()=>{},60000)
+  try{session.edit({...page,title:'Changed'});session.edit(page);await session.flush();assert.equal(saves,0);assert.equal(session.snapshot().state,'saved')}finally{session.dispose()}
+})
 test('an acknowledgment never overwrites typing made while the request is running',async()=>{
   const requests=[]
   const page={...makePage(id,'note'),revision:1}
