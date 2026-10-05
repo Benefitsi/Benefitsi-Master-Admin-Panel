@@ -3,6 +3,6 @@
   "revision": "3504b2cfcf704497ccea9ddcd5f52ca24d75f880",
   "contractPath": "contracts/partner-visit-levels.json",
   "sourcePath": "lib/features/partners/partner_level_service.dart",
-  "contractSha256": "e6ffdd704abd4b7907b01ff27213ca8ea3b302ca6b595b15e76cfe34115a11a2",
+  "contractSha256": "089a673dee1b043500cc0fbed5fa30d270a70e0b12cc1fd6944064978b43f643",
   "sourceSha256": "0b7ccad5c62a8cc336a6db893cb91e9459f95d359377c4e7cacf4c7d81938482"
 }

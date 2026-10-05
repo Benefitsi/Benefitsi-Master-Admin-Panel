@@ -74,9 +74,10 @@ test('empty categories and data failures produce distinct honest states', async 
 })
 
 test('the generated reference retains a checked App export fingerprint', () => {
-  const bytes = readFileSync(new URL('../lib/generated/partner-visit-levels.json', import.meta.url))
+  const contract = readFileSync(new URL('../lib/generated/partner-visit-levels.json', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n')
   const source = JSON.parse(readFileSync(new URL('../lib/generated/partner-visit-levels-source.json', import.meta.url)))
-  assert.equal(source.contractSha256, createHash('sha256').update(bytes).digest('hex'))
+  assert.equal(source.contractSha256, createHash('sha256').update(contract).digest('hex'))
   assert.equal(source.repository, 'Benefitsi/Benefitsi-App')
   assert.match(source.revision, /^[a-f0-9]{40}$/)
   assert.match(source.sourceSha256, /^[a-f0-9]{64}$/)
