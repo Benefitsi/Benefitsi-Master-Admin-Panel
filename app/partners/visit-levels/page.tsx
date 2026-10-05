@@ -40,7 +40,7 @@ export default async function VisitLevelsPage({ searchParams }: { searchParams: 
           Eine automatische Zuordnung nach Kategorie ist derzeit nicht hinterlegt. Eine niedrige Frequenz benötigt weniger Besuche für höhere Level.
         </p>
         <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-900">
-          Neuer Regelstand: Bronze IV bei 0 Besuchen. Die Auslieferung der dafür geänderten App ist noch nicht bestätigt.
+          Neuer Regelstand: Bronze IV bei 0 Besuchen. Ab App-Version 1.4.14 (Build 173) in TestFlight bereitgestellt.
           Ältere installierte App-Versionen können bei 0 Besuchen weiterhin „Noch kein Level“ anzeigen. Alle höheren Grenzen bleiben unverändert.
         </p>
         <form action="/partners/visit-levels" method="get" className="mt-5 flex flex-wrap items-end gap-3">
