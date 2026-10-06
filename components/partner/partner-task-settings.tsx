@@ -33,12 +33,12 @@ function Message({ result }: { result: TaskActionResult | null }) {
   return <p role={result.ok ? 'status' : 'alert'} className={`rounded-xl p-3 text-sm leading-6 ${result.ok ? 'bg-emerald-50 text-emerald-900' : 'bg-amber-50 text-amber-900'}`}>{result.message}</p>
 }
 
-export function PartnerTaskSettings(props: { partnerId: string; initial: PartnerTaskSettingsRead; confirmationOnly?: boolean }) {
+export function PartnerTaskSettings(props: { partnerId: string; initial: PartnerTaskSettingsRead; confirmationOnly?: boolean; eligibilityKey?: string; eligibilityReady?: boolean }) {
   const { partnerId, initial } = props
   // Actor/partner/rights changes discard drafts and confirmation state; deal reloads do not.
   return <TaskSettingsContent key={`${partnerId}:${initial.actorId}:${initial.available}:${initial.canConfirm}`} {...props} />
 }
-function TaskSettingsContent({ partnerId, initial, confirmationOnly = false }: { partnerId: string; initial: PartnerTaskSettingsRead; confirmationOnly?: boolean }) {
+function TaskSettingsContent({ partnerId, initial, confirmationOnly = false, eligibilityKey = '', eligibilityReady = true }: { partnerId: string; initial: PartnerTaskSettingsRead; confirmationOnly?: boolean; eligibilityKey?: string; eligibilityReady?: boolean }) {
   const [selection, setSelection] = useState<{ id: string | null; status?: TaskStatus } | null>(null)
   const [saved, setSaved] = useState<PartnerTask[]>([])
   const [result, setResult] = useState<TaskActionResult | null>(null)
@@ -59,7 +59,7 @@ function TaskSettingsContent({ partnerId, initial, confirmationOnly = false }: {
             <div className="mt-4 flex flex-wrap gap-2"><button type="button" className={secondary} onClick={() => { setSelection({ id: task.id }); setResult(null) }}>Bearbeiten</button>{task.status === 'active' && <button type="button" className={secondary} onClick={() => setSelection({ id: task.id, status: 'paused' })}>Pausieren</button>}{task.status !== 'ended' && <button type="button" className={secondary} onClick={() => setSelection({ id: task.id, status: 'ended' })}>Beenden</button>}</div>
           </li>)}
         </ul>}
-        {selection && <TaskEditor key={`${selection.id ?? 'new'}:${selection.status ?? 'edit'}`} partnerId={partnerId} actorId={initial.actorId} task={selected} initialStatus={selection.status} deals={initial.settings.available_deals} onCancel={() => setSelection(null)} onSaved={(task, response) => {
+        {selection && <TaskEditor key={`${selection.id ?? 'new'}:${selection.status ?? 'edit'}`} partnerId={partnerId} actorId={initial.actorId} task={selected} initialStatus={selection.status} deals={initial.settings.available_deals} eligibilityKey={eligibilityKey} eligibilityReady={eligibilityReady} onCancel={() => setSelection(null)} onSaved={(task, response) => {
           setSaved(previous => [...previous.filter(item => item.id !== task.id), task])
           setResult(response)
           setSelection(null)
@@ -70,7 +70,7 @@ function TaskSettingsContent({ partnerId, initial, confirmationOnly = false }: {
   </section>
 }
 
-function TaskEditor({ partnerId, actorId, task, initialStatus, deals, onCancel, onSaved }: { partnerId: string; actorId: string; task?: PartnerTask; initialStatus?: TaskStatus; deals: EligibleTaskDeal[]; onCancel: () => void; onSaved: (task: PartnerTask, result: TaskActionResult) => void }) {
+function TaskEditor({ partnerId, actorId, task, initialStatus, deals, eligibilityKey, eligibilityReady, onCancel, onSaved }: { partnerId: string; actorId: string; task?: PartnerTask; initialStatus?: TaskStatus; deals: EligibleTaskDeal[]; eligibilityKey: string; eligibilityReady: boolean; onCancel: () => void; onSaved: (task: PartnerTask, result: TaskActionResult) => void }) {
   const id = useId()
   const [base, setBase] = useState(task)
   const [sourceTimes] = useState(() => task ? { starts_at: { display: localDate(task.starts_at), instant: task.starts_at }, ends_at: { display: localDate(task.ends_at), instant: task.ends_at } } : null)
@@ -94,8 +94,8 @@ function TaskEditor({ partnerId, actorId, task, initialStatus, deals, onCancel, 
   const utcStart = toUTC('starts_at'), utcEnd = toUTC('ends_at')
   const stoppingExisting = !!base && ['paused', 'ended'].includes(draft.status) && draft.reward_deal_id === base.reward_deal_id
   const valid = draft.title.trim().length > 0 && draft.title.trim().length <= 120 && draft.description.trim().length > 0 && draft.description.trim().length <= 1000 && !!utcStart && !!utcEnd && Date.parse(utcEnd) > Date.parse(utcStart) && (draft.max_participants === '' || /^[1-9]\d*$/.test(draft.max_participants) && Number.isSafeInteger(Number(draft.max_participants))) && (!!selected || stoppingExisting)
-  const signature = JSON.stringify({ draft, utcStart, utcEnd, revision: base?.revision, selected: selected ?? null })
-  const previewCurrent = valid && reviewed === signature && !conflict
+  const signature = JSON.stringify({ draft, utcStart, utcEnd, revision: base?.revision, eligibilityKey, selected: selected ?? null })
+  const previewCurrent = eligibilityReady && valid && reviewed === signature && !conflict
   const change = <K extends keyof Draft>(key: K, value: Draft[K]) => { setDraft(previous => ({ ...previous, [key]: value })); setReviewed(null); setResult(null) }
   const submit = () => {
     if (!previewCurrent || pending) return
@@ -133,7 +133,7 @@ function TaskEditor({ partnerId, actorId, task, initialStatus, deals, onCancel, 
         if (response.ok && current) { setServerTask(current); setServerDeals(response.initial?.settings?.available_deals ?? []) }
         else setResult({ ok: false, message: response.message ?? 'Der aktuelle Serverstand konnte nicht geladen werden.' })
       })}>Aktuellen Serverstand laden</button>{serverTask && <><div className="text-sm leading-6"><p className="font-semibold">Aktueller Serverstand: {serverTask.title}</p><p className="whitespace-pre-line break-words">{serverTask.description}</p><p>{statuses[serverTask.status]} · Belohnung: {serverTask.reward_offer?.title ?? 'Vorteil derzeit nicht geeignet'} · {displayDate(serverTask.starts_at)} bis {displayDate(serverTask.ends_at)} · Teilnehmerzahl: {serverTask.max_participants ?? 'unbegrenzt'}</p><p>Deine eingegebenen Felder bleiben erhalten. Nach dem Abgleich musst du die Gästevorschau erneut prüfen.</p></div><button type="button" className={secondary} disabled={pending} onClick={() => { setBase(serverTask); setReconciledDeals({ previous: deals, current: serverDeals }); setServerTask(null); setConflict(false); setReviewed(null); setResult(null) }}>Serverstand abgleichen, Entwurf behalten</button></>}</div>}
-      <div className="flex flex-wrap gap-3"><button type="button" disabled={!valid || conflict || pending} className={secondary} onClick={() => { setReviewed(signature); setResult(null) }}>Gästevorschau prüfen</button><button type="submit" className={primary} disabled={!previewCurrent || pending}>{pending ? 'Wird gespeichert …' : 'Aufgabe speichern'}</button><button type="button" className={secondary} onClick={onCancel} disabled={pending}>Abbrechen</button></div>
+      <div className="flex flex-wrap gap-3"><button type="button" disabled={!eligibilityReady || !valid || conflict || pending} className={secondary} onClick={() => { setReviewed(signature); setResult(null) }}>Gästevorschau prüfen</button><button type="submit" className={primary} disabled={!previewCurrent || pending}>{pending ? 'Wird gespeichert …' : 'Aufgabe speichern'}</button><button type="button" className={secondary} onClick={onCancel} disabled={pending}>Abbrechen</button></div>
     </form>
       {previewCurrent ? <aside aria-label="Vorschau für deine Gäste" className="self-start rounded-2xl border border-sky-100 bg-white p-5"><p className="text-xs font-semibold text-slate-500">Vorschau für deine Gäste · {statuses[draft.status]}</p><h4 className="mt-3 break-words text-xl font-bold">{draft.title.trim()}</h4><p className="mt-3 whitespace-pre-line break-words text-sm leading-6">{draft.description.trim()}</p>{selected ? <><p className="mt-4 font-bold">Belohnung: {selected.title}</p><p className="mt-2 whitespace-pre-line break-words text-sm">{selected.description}</p><p className="mt-3 whitespace-pre-line break-words text-sm">{selected.terms}</p><p className="mt-4 text-xs leading-5 text-slate-600">Einmal pro Person und Aufgabe. Der persönliche Vorteil ist ab Start bis zu 30 Tage gültig{selected.expires_at ? `, spätestens bis ${displayDate(selected.expires_at)}` : ''}. Die konkrete Frist wird Gästen vor ihrem Start angezeigt.</p></> : <p className="mt-4 text-sm leading-6">Keine neuen Starts. Bereits gespeicherte persönliche Zusagen und Einlösebedingungen bleiben erhalten.</p>}<p className="mt-4 text-sm leading-6">Zeitraum: {displayDate(utcStart)} bis {displayDate(utcEnd)}. Die Erfüllung muss spätestens bis zum Aufgabenende oder früheren Ablauf des persönlichen Vorteils bestätigt werden.</p><p className="mt-3 flex gap-2 text-xs leading-5 text-slate-600"><ShieldCheck aria-hidden="true" className="size-5 shrink-0" />Das Team bestätigt die tatsächliche Erfüllung. Die Bestätigung erzeugt keinen Besuch und keine Stempel. Den erhaltenen Vorteil löst du separat per QR in der App ein.</p></aside> : <p className="self-start text-sm leading-6 text-slate-600">Prüfe die Gästevorschau vor dem Speichern. Jede Änderung an Aufgabe, Vorteil oder Serverstand erfordert eine neue Prüfung.</p>}
     </div>

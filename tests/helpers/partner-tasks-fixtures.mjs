@@ -50,7 +50,7 @@ export function actionHarness({ session = { user: { id: actorId }, isAdmin: fals
   })
   return { actions, calls, revalidated, client }
 }
-export async function uiFixture(t, actions = {}, read = async () => initial) {
+export async function uiFixture(t, actions = {}, read = async () => initial, client = { session: 'same-user' }) {
   const dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost', pretendToBeVisual: true })
   const previous = new Map()
   for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, FormData: dom.window.FormData, IS_REACT_ACT_ENVIRONMENT: true })) {
@@ -70,7 +70,7 @@ export async function uiFixture(t, actions = {}, read = async () => initial) {
     '@/app/partner/task-actions': { savePartnerTaskAction: async () => ({ ok: false, code: 'failed', message: 'Speichern fehlgeschlagen.' }), reloadPartnerTaskSettings: async () => ({ ok: true, initial }), previewPartnerTaskAction: async () => ({ ok: true, preview, actorId }), confirmPartnerTaskAction: async () => ({ ok: true, summary, actorId }), ...actions },
   }, { FormData: dom.window.FormData })
   const { PartnerTaskSettingsLoader: Loader } = feature('components/partner/partner-task-settings-loader.tsx', {
-    '@/lib/supabase/client': { createClient: () => ({ session: 'same-user' }) },
+    '@/lib/supabase/client': { createClient: () => client },
     '@/lib/partners/tasks': { readPartnerTaskSettings: read },
     '@/components/partner/partner-task-settings': cards,
   }, { window: dom.window })

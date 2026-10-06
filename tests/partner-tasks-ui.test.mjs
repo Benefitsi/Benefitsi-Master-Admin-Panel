@@ -217,3 +217,79 @@ test('a late confirmation preview after actor switch cannot render or enable a g
   assert.equal(document.querySelector('[data-task-confirm]'), null)
   assert.equal(document.querySelector('[name="token"]').value, '')
 })
+
+
+for (const refresh of ['focus', 'deal']) test(`${refresh} refresh failure retains reconciled draft and requires fresh eligibility plus preview after retry`, async t => {
+  let reads = 0
+  const newer = { ...task, revision: 2, title: 'Serverrevision zwei' }
+  const ui = await uiFixture(t, {
+    savePartnerTaskAction: async () => ({ ok: false, code: 'revision_conflict', message: 'Zwischenzeitlich geändert.' }),
+    reloadPartnerTaskSettings: async () => ({ ok: true, initial: { ...initial, settings: { ...settings, tasks: [newer] } } }),
+  }, async () => {
+    if (++reads === 2) throw new Error('transient refresh failure')
+    return initial
+  })
+  await ui.renderLoader({ dealRevision: 'before' })
+  await ui.click('Bearbeiten')
+  await ui.input('title', 'Entwurf bleibt erhalten')
+  await ui.input('description', 'Auch die eigene Anleitung bleibt erhalten.')
+  await ui.click('Gästevorschau prüfen')
+  await ui.click('Aufgabe speichern')
+  await ui.click('Aktuellen Serverstand laden')
+  await ui.click('Serverstand abgleichen, Entwurf behalten')
+  await ui.click('Gästevorschau prüfen')
+  if (refresh === 'focus') await act(async () => ui.dom.window.dispatchEvent(new ui.dom.window.Event('focus')))
+  else await ui.renderLoader({ dealRevision: 'after' })
+  assert.match(document.querySelector('[role="alert"]').textContent, /erneut/i)
+  assert.equal(document.querySelector('[name="title"]')?.value, 'Entwurf bleibt erhalten')
+  assert.equal(document.querySelector('[name="description"]').value, 'Auch die eigene Anleitung bleibt erhalten.')
+  assert.equal(document.querySelector('[name="revision"]').value, '2')
+  assert.equal(document.querySelector('button[type="submit"]').disabled, true)
+  assert.equal(document.querySelector('[aria-label="Vorschau für deine Gäste"]'), null)
+  assert.equal([...document.querySelectorAll('button')].find(b => b.textContent === 'Gästevorschau prüfen').disabled, true)
+  await ui.click('Erneut laden')
+  assert.equal(reads, 3)
+  assert.equal(document.querySelector('[role="alert"]'), null)
+  assert.equal(document.querySelector('[name="title"]').value, 'Entwurf bleibt erhalten')
+  assert.equal(document.querySelector('[name="revision"]').value, '2')
+  assert.equal(document.querySelector('button[type="submit"]').disabled, true)
+  assert.equal(document.querySelector('[aria-label="Vorschau für deine Gäste"]'), null)
+  await ui.click('Gästevorschau prüfen')
+  assert.equal(document.querySelector('button[type="submit"]').disabled, false)
+})
+
+for (const event of ['SIGNED_IN', 'SIGNED_OUT']) test(`auth subscription ${event} clears draft and token and rejects a pending old actor response`, async t => {
+  let listener, unsubscribe = 0, reads = 0, pending
+  const denied = { available: false, reason: 'access_denied', actorId: null, canConfirm: false, settings: null }
+  const changed = { ...initial, actorId: otherPartnerId }
+  const client = { auth: { onAuthStateChange(callback) {
+    listener = callback
+    return { data: { subscription: { unsubscribe() { unsubscribe++ } } } }
+  } } }
+  const ui = await uiFixture(t, {}, async () => {
+    reads++
+    if (reads === 1) return initial
+    if (reads === 2) return new Promise(resolve => { pending = resolve })
+    return event === 'SIGNED_OUT' ? denied : changed
+  }, client)
+  await ui.renderLoader()
+  await ui.click('Bearbeiten')
+  await ui.input('title', 'Alter Accountentwurf')
+  await ui.input('token', token)
+  await ui.click('Bestätigung prüfen')
+  await act(async () => ui.dom.window.dispatchEvent(new ui.dom.window.Event('focus')))
+  assert.equal(reads, 2)
+  // Emit and resolve in the same turn, before effect cleanup could cancel the old request.
+  await act(async () => {
+    listener(event, event === 'SIGNED_OUT' ? null : { user: { id: otherPartnerId } })
+    pending(initial)
+    await Promise.resolve()
+  })
+  assert.equal(reads, 3)
+  assert.ok(unsubscribe >= 2)
+  assert.equal(document.querySelector('[name="title"]'), null)
+  assert.equal(document.querySelector('[data-task-confirm]'), null)
+  if (event === 'SIGNED_OUT') assert.equal(document.querySelector('[name="token"]'), null)
+  else assert.equal(document.querySelector('[name="token"]').value, '')
+  assert.doesNotMatch(document.body.textContent, /Alter Accountentwurf/)
+})
