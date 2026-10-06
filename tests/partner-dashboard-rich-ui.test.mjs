@@ -354,7 +354,8 @@ test('all canonical offer types show meaningful labels with their distinct value
     offerTypeCases.forEach(([code, label], i) => {
       assert.ok(
         rows.some(
-          (r) => r.cells[0]?.textContent === `${label} · Einlösungen` &&
+          (r) =>
+            r.cells[0]?.textContent === `${label} · Einlösungen` &&
             r.cells[1]?.textContent === String(200 + i),
         ),
         String(code),
@@ -377,5 +378,83 @@ test('known type names do not reveal restricted type buckets in the actual table
     types.buckets[12].redemptions = 918273
     const html = render(h(PartnerStatistics, { data: d }))
     assert.doesNotMatch(html, /Premium-Prämie|918273/)
+  }
+})
+
+function sectionCaption(data, headingText) {
+  const dom = new JSDOM(render(h(PartnerStatistics, { data })))
+  try {
+    const heading = [...dom.window.document.querySelectorAll('h3')].find(
+      (node) => node.textContent === headingText,
+    )
+    assert.ok(heading, headingText)
+    return heading.nextElementSibling.textContent
+  } finally {
+    dom.window.close()
+  }
+}
+test('canonical weekly offer and Premium captions distinguish historical weeks from current and recorded stock', () => {
+  const d = rich()
+  for (const heading of ['Angebote im Vergleich', 'Consumer-Premium']) {
+    const caption = sectionCaption(d, heading)
+    assert.equal(caption, 'Abgeschlossene Wochen · Stand 06.10.2026')
+    assert.doesNotMatch(caption, /Bestand/)
+  }
+  assert.equal(
+    sectionCaption(d, 'Deine Gäste nach Treuestufe'),
+    'Bestand am 06.10.2026',
+  )
+  assert.equal(
+    sectionCaption(d, 'Gespeicherte Besuchsserien'),
+    'Gespeicherter Bestand · Stand 06.10.2026',
+  )
+  assert.equal(
+    sectionCaption(d, 'Besuche im Zeitraum'),
+    '07.09.2026 – 06.10.2026, 17:21',
+  )
+})
+test('scope captions validate dates and never infer stock from an unknown or selected-period scope', () => {
+  for (const [scope, period, asOf, expected] of [
+    [
+      'selected_period',
+      { from: 'not-a-date', to: '2026-10-06' },
+      '2026-10-06',
+      'Bezugszeitraum nicht verfügbar',
+    ],
+    [
+      'selected_period',
+      { from: '2026-10-06', to: 'not-a-date' },
+      '2026-10-06',
+      'Bezugszeitraum nicht verfügbar',
+    ],
+    [
+      'selected_period',
+      { from: '2026-10-07', to: '2026-10-06' },
+      '2026-10-06',
+      'Bezugszeitraum nicht verfügbar',
+    ],
+    ['future_scope', null, '2026-10-06', 'Bezugszeitraum nicht verfügbar'],
+    [
+      'whole_completed_iso_weeks',
+      null,
+      'invalid',
+      'Abgeschlossene Wochen · Stand nicht verfügbar',
+    ],
+    [
+      'current_stock',
+      null,
+      'invalid',
+      'Aktueller Bestand · Stichtag nicht verfügbar',
+    ],
+    [
+      'recorded_current_stock',
+      null,
+      'invalid',
+      'Gespeicherter Bestand · Stand nicht verfügbar',
+    ],
+  ]) {
+    const d = rich()
+    Object.assign(d.insights.sections.offers, { scope, period, as_of: asOf })
+    assert.equal(sectionCaption(d, 'Angebote im Vergleich'), expected)
   }
 })
