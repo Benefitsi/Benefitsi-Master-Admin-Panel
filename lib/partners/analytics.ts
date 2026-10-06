@@ -16,6 +16,8 @@ export type Metric = {
 }
 export type Dashboard = {
   definition_version: string
+  insights?: unknown
+  comparison_period?: { from: string; to: string }
   partner_id: string
   as_of: string
   period: { from: string; to: string }

@@ -1,5 +1,7 @@
 "use client"
 
+import { normalizePartnerTypeValue, partnerTypeSupportsMenu } from "@/lib/partners/management"
+
 import { usePartnerCapabilities } from "./use-partner-capabilities"
 import { StreakRuleFields } from "./streak-rule-fields"
 import { describeCalendarStreak } from "@/lib/streak-config"
@@ -121,7 +123,6 @@ import { useAdminLanguage } from "./admin-language"
 import { LoadingSpinner } from "@/components/loading-ui"
 import { MenuAiImportDialog } from "@/components/menu-ai-import-dialog"
 import { PartnerPlanPanel } from "@/components/partner/partner-plan-panel"
-import { createClient as createBrowserClient } from "@/lib/supabase/client"
 import { inspectMediaDimensions, inspectPartnerMediaQuality, measurePartnerMedia, remeasureMediaUrls, recordMediaDimensions, subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision, getRecordedMediaDimensions, recordPreparedMediaDimensions } from "@/lib/partner-media-quality"
 import { upscalePartnerMediaFile } from "@/lib/partner-image-upscaler"
 
@@ -333,7 +334,7 @@ const partnerStatusOptions = [
 
 const partnerSortOptions = [
   { value: "name", label: "Name (A–Z)" },
-  { value: "city", label: "City (A–Z)" },
+  { value: "type", label: "Partner type (A–Z)" },
   { value: "status", label: "Status" },
   { value: "added", label: "Recently added" },
   { value: "recent", label: "Recently updated" },
@@ -348,6 +349,8 @@ type PartnerWorkspaceProps = {
   initialMode?: "view" | "create"
   initialPartnerId?: string
   initialSettingsTab?: string
+  initialDealAction?: string
+  initialDealType?: string
   initialView?: "settings" | "microsite"
   portalMode?: boolean
   micrositeEditingEnabled?: boolean
@@ -442,6 +445,7 @@ type SectionStatusValue = SectionStatus | SectionStatus[]
 
 type PartnerSettingsTab =
   | "details"
+  | "hours"
   | "deals"
   | "menu"
   | "access"
@@ -450,7 +454,7 @@ type PartnerSettingsTab =
   | "plan"
 
 function isPartnerSettingsTab(value: string | undefined): value is PartnerSettingsTab {
-  return ["details", "deals", "menu", "access", "activity", "danger", "plan"].includes(
+  return ["details", "hours", "deals", "menu", "access", "activity", "danger", "plan"].includes(
     value ?? "",
   )
 }
@@ -518,6 +522,7 @@ const partnerSettingsTabCopy: Record<
   PartnerSettingsTab,
   { title: string; description: string }
 > = {
+  hours: { title: "Öffnungszeiten", description: "Wochenplan, mehrere Zeitfenster und abweichende Öffnungszeiten pflegen." },
   details: { title: "Partner profile", description: "Business information, contact details, location, branding, and media." },
   deals: { title: "Stamps and Deals", description: "Manage stamp-card rewards alongside customer deals, eligibility rules, availability, and redemption settings." },
   menu: { title: "Menu management", description: "Menu details, categories, items, pricing, images, and display order." },
@@ -545,16 +550,20 @@ export function PartnerWorkspace({
   initialMode = "view",
   initialPartnerId = "",
   initialSettingsTab,
+  initialDealAction,
+  initialDealType,
   initialView = "settings",
   portalMode = false,
   micrositeEditingEnabled = !portalMode,
   adminAccess = !portalMode,
 }: PartnerWorkspaceProps) {
   const [savedPartners, setSavedPartners] = useState<Record<string, Partial<PartnerWithDeals> & { id: string }>>({})
+  const [deletedPartnerIds, setDeletedPartnerIds] = useState<Set<string>>(() => new Set())
   const mediaRevision = useSyncExternalStore(subscribeMediaMeasurements, getMediaMeasurementRevision, getServerMediaMeasurementRevision)
   const partners = useMemo(() => {
-    const records = new Map(initialPartners.map(partner => [partner.id, partner]))
+    const records = new Map(initialPartners.filter(partner => partner.id && !deletedPartnerIds.has(partner.id)).map(partner => [partner.id, partner]))
     for (const patch of Object.values(savedPartners)) {
+      if (deletedPartnerIds.has(patch.id)) continue
       const previous = records.get(patch.id)
       if (previous?.updated_at && patch.updated_at && previous.updated_at > patch.updated_at) continue
       records.set(patch.id, {
@@ -566,7 +575,7 @@ export function PartnerWorkspace({
       } as PartnerWithDeals)
     }
     return Array.from(records.values())
-  }, [initialPartners, savedPartners, cities, owners])
+  }, [initialPartners, savedPartners, deletedPartnerIds, cities, owners])
   useEffect(() => {
     let cancelled = false
     void measurePartnerMedia(partners, () => cancelled)
@@ -664,7 +673,6 @@ export function PartnerWorkspace({
       } catch {
         // Filtering should remain available when browser storage is disabled.
       }
-
       setFiltersRestored(true)
     })
     return () => { cancelled = true }
@@ -738,8 +746,8 @@ export function PartnerWorkspace({
       const compareText = (a: string | null | undefined, b: string | null | undefined) =>
         (a ?? "").localeCompare(b ?? "", undefined, { sensitivity: "base" })
 
-      if (partnerSort === "city") {
-        return compareText(left.city_name ?? left.city_id, right.city_name ?? right.city_id) || compareText(left.name, right.name)
+      if (partnerSort === "type") {
+        return compareText(left.type, right.type) || compareText(left.name, right.name)
       }
       if (partnerSort === "status") {
         return compareText(left.status, right.status) || compareText(left.name, right.name)
@@ -757,6 +765,25 @@ export function PartnerWorkspace({
   const selectedPartner =
     filteredPartners.find((partner) => partner.id === selectedId) ??
     filteredPartners[0]
+  const handlePartnerDeleted = useCallback((deletedId: string | undefined) => {
+    if (!deletedId) return
+    setDeletedPartnerIds(current => new Set(current).add(deletedId))
+    setSavedPartners(current => {
+      if (!(deletedId in current)) return current
+      const next = { ...current }
+      delete next[deletedId]
+      return next
+    })
+    const nextPartner = filteredPartners.find(partner => partner.id && partner.id !== deletedId)
+    const nextPartnerId = nextPartner?.id
+    if (nextPartnerId) {
+      setSelectedId(nextPartnerId)
+      setMode("view")
+      rememberWorkspaceLocation({ mode: null, partner: nextPartnerId })
+      return
+    }
+    startCreatePartner()
+  }, [filteredPartners, startCreatePartner])
   const capabilities = usePartnerCapabilities(selectedPartner, adminAccess && !portalMode)
   const hasActiveFilters =
     Boolean(query.trim()) ||
@@ -768,11 +795,6 @@ export function PartnerWorkspace({
   return (
     <section id="partners" className="partner-management-brand space-y-3">
       <ToastViewport />
-      {!portalMode ? <div className="flex justify-end">
-        <Link href={visitLevelsHref(normalizePartnerCategories(selectedPartner?.category)[0])} className="inline-flex min-h-9 items-center rounded-md border border-zinc-200 bg-white px-3 text-sm font-semibold text-teal-700 hover:bg-teal-50">
-          Besuchslevel
-        </Link>
-      </div> : null}
       {!portalMode &&       <div className="grid overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
         <LiveMetric label="Partners" value={partnerCount} />
         <LiveMetric
@@ -799,14 +821,20 @@ export function PartnerWorkspace({
       </div>}
 
       <div className={portalMode ? "min-w-0" : `grid gap-4 ${compactMode && workspaceLocation.view === "settings" ? "partner-workspace-list-compact xl:grid-cols-[280px_minmax(0,1fr)] xl:gap-3" : "xl:grid-cols-[310px_minmax(0,1fr)]"}`}>
-        {!portalMode &&         <aside className="self-start overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]">
-          <div className="border-b border-zinc-200 p-3">
+        {!portalMode &&         <aside className="self-start overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-4 xl:flex xl:h-[calc(100dvh-2rem)] xl:max-h-[calc(100dvh-2rem)] xl:flex-col">
+          <div className="shrink-0 border-b border-zinc-200 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold tracking-normal">
                   Partners
                 </h2>
                 <p className="mt-0.5 text-xs text-zinc-500">Select a partner to edit.</p>
+                <Link
+                  href={visitLevelsHref(normalizePartnerCategories(selectedPartner?.category)[0])}
+                  className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-teal-700 underline decoration-teal-300 underline-offset-2 hover:text-teal-900"
+                >
+                  Besuchslevel öffnen <span aria-hidden="true">→</span>
+                </Link>
               </div>
               {!portalMode ? <button
                 type="button"
@@ -901,7 +929,7 @@ export function PartnerWorkspace({
             ) : null}
           </div>
 
-          <div className="max-h-[calc(100vh-220px)] space-y-1.5 overflow-y-auto p-2 xl:max-h-[calc(100vh-12rem)]">
+          <div className="max-h-[calc(100dvh-22rem)] space-y-1.5 overflow-y-auto overscroll-contain p-2 pb-3 xl:min-h-0 xl:max-h-none xl:flex-1">
             {filteredPartners.length ? (
               filteredPartners.map((partner) => (
                 <PartnerListButton
@@ -968,9 +996,11 @@ export function PartnerWorkspace({
                 key={selectedPartner.id ?? selectedPartner.name ?? "partner"}
                 cities={cities}
                 owners={owners}
-                onDeleted={startCreatePartner}
+                onDeleted={() => handlePartnerDeleted(selectedPartner.id)}
                 partner={capabilities.partner ?? selectedPartner}
                 initialSettingsTab={workspaceLocation.tab}
+                initialDealAction={initialDealAction}
+                initialDealType={initialDealType}
                 initialView={workspaceLocation.view}
                 onLocationChange={setWorkspaceLocation}
                 portalMode={portalMode}
@@ -1129,6 +1159,8 @@ function PartnerDetail({
   owners,
   onDeleted,
   initialSettingsTab,
+  initialDealAction,
+  initialDealType,
   initialView = "settings",
   onLocationChange,
   portalMode = false,
@@ -1142,6 +1174,8 @@ function PartnerDetail({
   owners: OwnerOption[]
   onDeleted: () => void
   initialSettingsTab?: string
+  initialDealAction?: string
+  initialDealType?: string
   initialView?: "settings" | "microsite"
   onLocationChange?: (location: {
     tab: PartnerSettingsTab
@@ -1182,7 +1216,7 @@ function PartnerDetail({
   const requestedTab =
     tabState.partnerIdentity === partnerIdentity ? tabState.tab : "details"
   const settingsTab =
-    requestedTab === "menu" && !partnerTypeSupportsMenu(partner.type)
+    (requestedTab === "hours" && !portalMode) || requestedTab === "menu" && !partnerTypeSupportsMenu(partner.type)
       ? "details"
       : portalMode &&
           ((requestedTab === "access" && !partner.team_manage_enabled) || requestedTab === "plan" ||
@@ -1195,8 +1229,9 @@ function PartnerDetail({
     label: string
     hasRequiredFields?: boolean
   }> = [
-    { id: "details", label: "Partner Profile", hasRequiredFields: true },
-    { id: "deals", label: "Stamps & Deals", hasRequiredFields: true },
+    { id: "details", label: portalMode ? "Profil & Kontakt" : "Partner Profile", hasRequiredFields: true },
+    ...(portalMode ? [{ id: "hours" as const, label: "Öffnungszeiten" }] : []),
+    { id: "deals", label: portalMode ? "Vorteile & Stempelprogramm" : "Stamps & Deals", hasRequiredFields: true },
     ...(partnerTypeSupportsMenu(partner.type)
       ? [{ id: "menu" as const, label: "Menu Management", hasRequiredFields: true }]
       : []),
@@ -1232,7 +1267,7 @@ function PartnerDetail({
         description={
           activeView === "settings"
             ? portalMode
-              ? "Manage your business information, benefits, menu, opening hours, and media."
+              ? ""
               : "Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields."
             : "Edit the public microsite separately from the partner settings."
         }
@@ -1256,7 +1291,7 @@ function PartnerDetail({
                     : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
                 }`}
               >
-                Partner settings
+                {portalMode ? "Betrieb bearbeiten" : "Partner settings"}
               </button>
               <button
                 type="button"
@@ -1339,6 +1374,7 @@ function PartnerDetail({
               </p>
             </header>
             {settingsTab === "plan" && adminAccess && partner.id ? <PartnerPlanPanel key={partner.id} partnerId={partner.id}/> : null}
+            {settingsTab === "hours" && portalMode ? <OpeningHoursPanel partner={partner} /> : null}
             {settingsTab === "details" ? (
               <div className="space-y-3">
                 <PartnerForm
@@ -1364,8 +1400,8 @@ function PartnerDetail({
             ) : null}
             {settingsTab === "deals" ? (
               <div className="space-y-3">
-                <MilestonesPanel partner={partner} embedded />
-                <DealsPanel partner={partner} embedded />
+                {portalMode ? <DealsPanel partner={partner} embedded portalMode initialCreate={initialDealAction === "create"} initialType={initialDealType} /> : <MilestonesPanel partner={partner} embedded />}
+                {portalMode ? <section className="rounded-2xl border border-slate-200 bg-white p-5"><h3 className="text-lg font-bold">Stempelprogramm</h3><p className="mt-2 text-sm text-slate-600">Stempelziel: {partner.stamp_target ?? "Noch nicht hinterlegt"} · Prämien und Meilensteine für deine Gäste</p><MilestonesPanel partner={partner} embedded /></section> : <DealsPanel partner={partner} embedded />}
                 {portalMode && partner.id ? (
                   <PartnerFeedbackSettingsLoader key={partner.id} partnerId={partner.id} dealRevision={JSON.stringify(partner.deals)} />
                 ) : null}
@@ -2796,7 +2832,7 @@ function PartnerForm({
           required
         />
         </div>
-        <div className="partner-profile-contact space-y-4">
+        <div id={portalMode ? "partner-contact" : undefined} className="partner-profile-contact scroll-mt-6 space-y-4">
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-zinc-800">Contact and location</p>
         </div>
@@ -2856,6 +2892,7 @@ function PartnerForm({
       <FormSection
         title="Media"
         defaultOpen={true}
+        id={portalMode ? "partner-media" : undefined}
         accordion={false}
         status={{ label: "Recommended", tone: "recommended" }}
       >
@@ -4426,11 +4463,19 @@ function InitialMenuEditor({
 function DealsPanel({
   partner,
   embedded = false,
+  portalMode = false,
+  initialCreate = false,
+  initialType,
 }: {
   partner: PartnerWithDeals
   embedded?: boolean
+  portalMode?: boolean
+  initialCreate?: boolean
+  initialType?: string
 }) {
-  const [dealEditor, setDealEditor] = useState<DealEditorState | null>(null)
+  const [dealEditor, setDealEditor] = useState<DealEditorState | null>(
+    initialCreate ? { mode: "create" } : null,
+  )
   const partnerId = partner.id ?? ""
   const hasDealRows = partner.deals.length > 0
   const dealCount = partner.deals.length
@@ -4443,6 +4488,175 @@ function DealsPanel({
         },
       ]
     : { label: "Recommended", tone: "recommended" }
+
+  const [statusFilter, setStatusFilter] = useState("Alle")
+  const [typeFilter, setTypeFilter] = useState(
+    initialType === "happy_hour" ? "happy_hour" : "all",
+  )
+  const [asOf] = useState(() => Date.now())
+  const offerStatus = (deal: Deal) => {
+    if (
+      deal.type === "limited_drop" &&
+      isSoldOutDealDrop(deal.stock_total, deal.stock_remaining)
+    )
+      return "Ausverkauft"
+    const end = Date.parse(deal.ends_at || deal.valid_until || "")
+    const start = Date.parse(deal.starts_at || deal.valid_from || "")
+    if (Number.isFinite(end) && end <= asOf) return "Beendet"
+    if (deal.active !== true) return "Pausiert"
+    if (Number.isFinite(start) && start > asOf) return "Geplant"
+    return "Aktiv"
+  }
+  const filteredDeals = partner.deals.filter(
+    (deal) =>
+      (statusFilter === "Alle" || offerStatus(deal) === statusFilter) &&
+      (typeFilter === "all" || dealUiTypeForDeal(deal) === typeFilter),
+  )
+  const portalContent = (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-bold">Vorteile</h2>
+        <button
+          type="button"
+          onClick={() => setDealEditor({ mode: "create" })}
+          className="rounded-xl bg-[#118cff] px-4 py-3 text-sm font-semibold text-white"
+        >
+          Erstellen
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-2" aria-label="Angebotsstatus">
+        {["Alle", "Aktiv", "Geplant", "Pausiert", "Beendet", "Ausverkauft"].map(
+          (state) => (
+            <button
+              key={state}
+              type="button"
+              aria-pressed={statusFilter === state}
+              onClick={() => setStatusFilter(state)}
+              className={`rounded-xl border px-4 py-2.5 text-sm ${statusFilter === state ? "border-[#118cff] bg-sky-50 text-[#0874d1]" : "border-slate-200 bg-white"}`}
+            >
+              {state}
+            </button>
+          ),
+        )}
+      </div>
+      <label className="block text-sm font-medium">
+        Angebotstyp
+        <select
+          className="ml-3 rounded-lg border border-slate-200 p-2"
+          value={typeFilter}
+          onChange={(event) => setTypeFilter(event.target.value)}
+        >
+          <option value="all">Alle Angebote</option>
+          <option value="happy_hour">Happy Hour</option>
+          <option value="limited_drop">Deal Drop</option>
+        </select>
+      </label>
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        {filteredDeals.map((deal, index) => (
+          <article
+            data-partner-offer
+            key={deal.id ?? index}
+            className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex min-h-20 w-24 shrink-0 items-center justify-center rounded-2xl bg-sky-50 p-3 text-center text-lg font-bold text-[#0874d1]">
+                {formatDealRewardSummary(deal)}
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-semibold text-slate-500">
+                  {offerStatus(deal)} · {dealCardTypeLabel(deal)}
+                </span>
+                <h3 className="mt-1 text-lg font-bold break-words">
+                  {deal.display_title ||
+                    deal.public_title ||
+                    dealCardTypeLabel(deal)}
+                </h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  {deal.customer_description ||
+                    deal.display_subtitle ||
+                    deal.public_subtitle}
+                </p>
+                <p className="mt-2 text-xs text-slate-500">
+                  {dealAudienceLabel(deal)} Gäste
+                  {deal.happy_hour_start && deal.happy_hour_end
+                    ? ` · ${deal.happy_hour_start.slice(0, 5)}–${deal.happy_hour_end.slice(0, 5)} Uhr`
+                    : ""}
+                </p>
+                {deal.valid_weekdays?.length ? (
+                  <p className="mt-1 text-xs text-slate-500">
+                    {deal.valid_weekdays
+                      .map(
+                        (day) =>
+                          ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][day % 7],
+                      )
+                      .join(" · ")}
+                  </p>
+                ) : null}
+                {deal.terms ? (
+                  <p className="mt-2 text-xs leading-5 text-slate-600">
+                    {deal.terms}
+                  </p>
+                ) : null}
+                {deal.starts_at ||
+                deal.valid_from ||
+                deal.ends_at ||
+                deal.valid_until ? (
+                  <p className="mt-2 text-xs text-slate-500">
+                    {[
+                      deal.starts_at || deal.valid_from,
+                      deal.ends_at || deal.valid_until,
+                    ]
+                      .filter(
+                        (value) => value && Number.isFinite(Date.parse(value)),
+                      )
+                      .map((value) =>
+                        new Intl.DateTimeFormat("de-DE", {
+                          timeZone: "Europe/Berlin",
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        }).format(new Date(value!)),
+                      )
+                      .join(" – ")}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            <div className="mt-4 flex gap-4">
+              <button
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold"
+                type="button"
+                onClick={() => setDealEditor({ mode: "edit", deal })}
+              >
+                Bearbeiten
+              </button>
+              <a
+                className="self-center text-sm font-semibold text-[#0874d1]"
+                href={`/partner/statistics?partner=${encodeURIComponent(partnerId)}#offers`}
+              >
+                Auswertung
+              </a>
+            </div>
+          </article>
+        ))}
+      </div>
+      {!filteredDeals.length ? (
+        <p className="rounded-2xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
+          Keine Angebote in dieser Auswahl.
+        </p>
+      ) : null}
+      <p className="text-sm text-slate-500">
+        Normale Angebote und Happy Hour sind unbegrenzt. Pausierte Angebote sind
+        nicht automatisch Entwürfe.
+      </p>
+      <DealEditorDialog
+        editor={dealEditor}
+        onClose={() => setDealEditor(null)}
+        partnerId={partnerId}
+        partnerName={partner.name ?? ""}
+        visits={partner.visits}
+      />
+    </div>
+  )
 
   const content = (
     <div className="space-y-4">
@@ -4488,7 +4702,7 @@ function DealsPanel({
   )
 
   if (embedded) {
-    return content
+    return portalMode ? portalContent : content
   }
 
   return (
@@ -4633,98 +4847,6 @@ function draftDealBenefitCategory(
   const rewardType = discountType || defaultDiscountTypeForDealType(type, "")
 
   return inferBenefitCategory(type, rewardType)
-}
-
-function NewDealCard({
-  deal,
-  index,
-  onAddAnother,
-  onRemove,
-  onSaved,
-  onUpdate,
-  partnerId,
-  visits,
-}: {
-  deal: InitialDealDraft
-  index: number
-  onAddAnother: () => void
-  onRemove: () => void
-  onSaved: () => void
-  onUpdate: (values: Partial<InitialDealDraft>) => void
-  partnerId: string
-  visits: Visit[]
-}) {
-  const [expanded, setExpanded] = useState(true)
-
-  return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs">
-      <DealCardHeader
-        active={deal.active}
-        audienceLabel={dealAudienceValueLabel(deal.audience)}
-        benefitCategory={
-          deal.benefitCategory ??
-          draftDealBenefitCategory(deal.dealType, deal.discountType)
-        }
-        dealType={deal.dealType || "discount"}
-        typeLabel={
-          deal.dealType === "challenge" && deal.title ? deal.title : undefined
-        }
-        expanded={expanded}
-        onToggle={() => setExpanded((value) => !value)}
-        title={`Vorteil ${index + 1}`}
-        rewardSummary={deal.rewardSummary || deal.title || "Vorteil nicht eingerichtet"}
-        actions={
-          <>
-          <button
-            type="button"
-            onClick={() => setExpanded((value) => !value)}
-            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-100"
-          >
-            {expanded ? "Einklappen" : "Bearbeiten"}
-          </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
-          >
-            Entfernen
-          </button>
-          </>
-        }
-      />
-      <div
-        className={
-          expanded
-            ? "mt-3 space-y-3 border-t border-zinc-200 pt-3"
-            : "hidden"
-        }
-      >
-        <DealForm
-          defaultActive={deal.active}
-          footerAction={
-            <button
-              type="button"
-              onClick={() => {
-                setExpanded(false)
-                onAddAnother()
-              }}
-              className="h-10 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
-            >
-              Add another
-            </button>
-          }
-          mode="create"
-          onDraftActiveChange={(active) => onUpdate({ active })}
-          onDraftMetaChange={onUpdate}
-          onDraftTypeChange={(dealType) => onUpdate({ dealType })}
-          onDraftTitleChange={(title) => onUpdate({ title })}
-          onSaved={onSaved}
-          partnerId={partnerId}
-          visits={visits}
-        />
-      </div>
-    </div>
-  )
 }
 
 function DealCard({
@@ -11071,6 +11193,7 @@ function DeletePartnerStaffForm({ staffId, partnerId }: { staffId: string; partn
 
 function FormSection({
   title,
+  id,
   children,
   compact = false,
   collapsible = true,
@@ -11080,6 +11203,7 @@ function FormSection({
   status,
 }: {
   title: string
+  id?: string
   children: ReactNode
   compact?: boolean
   collapsible?: boolean
@@ -11097,6 +11221,7 @@ function FormSection({
 
   return (
     <div
+      id={id}
       className={`partner-settings-section ${open ? "overflow-visible" : "overflow-hidden"} rounded-xl border bg-white text-sm transition-shadow ${
         open ? "border-zinc-300 shadow-sm" : "border-zinc-200"
       }`}
@@ -12739,31 +12864,6 @@ async function resizeImageFile(
   })
 }
 
-function coverCropPreviewStyle(
-  crop: { width: number; height: number; zoom: number; x: number; y: number },
-  spec: PartnerMediaSpec,
-) {
-  const targetRatio = spec.width / spec.height
-  const sourceRatio = crop.width / crop.height
-  let drawWidth = crop.width
-  let drawHeight = crop.height
-
-  if (sourceRatio > targetRatio) drawWidth = crop.height * targetRatio
-  else drawHeight = crop.width / targetRatio
-
-  drawWidth /= crop.zoom
-  drawHeight /= crop.zoom
-  const drawX = ((crop.width - drawWidth) * (Math.max(-100, Math.min(100, crop.x)) + 100)) / 200
-  const drawY = ((crop.height - drawHeight) * (Math.max(-100, Math.min(100, crop.y)) + 100)) / 200
-
-  return {
-    left: `${-drawX / drawWidth * 100}%`,
-    top: `${-drawY / drawHeight * 100}%`,
-    width: `${crop.width / drawWidth * 100}%`,
-    height: `${crop.height / drawHeight * 100}%`,
-  }
-}
-
 function loadImage(file: File) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image()
@@ -14187,24 +14287,6 @@ function normalizeDealDropDiscountType(dealType: string, discountType: string) {
   }
 
   return discountType === "twoforone" ? "2for1" : discountType
-}
-
-function normalizePartnerTypeValue(value?: string | null) {
-  const trimmed = value?.trim()
-
-  if (!trimmed) {
-    return "Food & Drink"
-  }
-
-  const normalized = trimmed.toLowerCase()
-
-  return normalized === "restaurant" || normalized === "restuarant"
-    ? "Food & Drink"
-    : trimmed
-}
-
-function partnerTypeSupportsMenu(value?: string | null) {
-  return normalizePartnerTypeValue(value) === "Food & Drink"
 }
 
 function normalizeHolidayDateInput(value?: string | null) {

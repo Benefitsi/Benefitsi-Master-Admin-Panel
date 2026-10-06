@@ -595,7 +595,7 @@ export class SandboxTransport {
         const spec = mappings[op];
         if (!spec)
             return;
-        const [type, target, max] = spec;
+        const [, target, max] = spec;
         const requests = Object.values(this.state.requests).filter(r => r.op === op);
         if (requests.some(r => r.target === target && r !== record))
             fail('duplicate_resource_target');

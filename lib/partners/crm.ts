@@ -179,15 +179,19 @@ export function parseCrmCampaign(value: unknown, partnerId: string): CrmCampaign
     updated_at,
     ...content
   } = r;
-  const {
-    expected_revision: _,
-    ...draft
-  } = parseCampaignInput({
+  const draft = parseCampaignInput({
     ...content,
     expected_revision: revision
   });
   return {
-    ...draft,
+    id: draft.id,
+    kind: draft.kind,
+    title: draft.title,
+    body: draft.body,
+    deal_id: draft.deal_id,
+    config: draft.config,
+    channel: draft.channel,
+    status: draft.status,
     partner_id: partner_id as string,
     revision: revision as number,
     created_at,

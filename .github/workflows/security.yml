@@ -93,6 +93,12 @@ jobs:
           tests/partner-capability-policy.test.mjs
           tests/partner-plan-actions.test.mjs
           tests/partner-onboarding-ui.test.mjs
+          tests/partner-dashboard-contract.test.mjs
+          tests/partner-dashboard-ui.test.mjs
+          tests/partner-chart-data.test.mjs
+          tests/partner-dashboard-csv.test.mjs
+          tests/partner-dashboard-insights.test.mjs
+          tests/partner-dashboard-rich-ui.test.mjs
 
       - name: Partner visit-level reference, data boundaries and App contract
         run: >-

@@ -41,8 +41,11 @@ this explicit sync and a paired review; Admin deployments use the recorded pin.
 
 ## Release status
 
-Bronze IV at zero is the new requested rule. The reference clearly marks its App
-delivery as unconfirmed; an older installed App can still show no level at zero.
-Keep that notice until the normal App release process supplies a verified build
-containing this change. Admin deployment alone is not evidence of an installed
-App update. No partner configurations or existing visit counts are changed.
+Bronze IV at zero is supplied in App version 1.4.14, TestFlight build 173, from
+App commit a6ebd1a65d830f25fb7c34526e9be3d16854154d. Codemagic confirmed upload,
+completed Apple processing and submitted this build to beta review. At submission,
+the beta review state was WAITING_FOR_REVIEW. The notice identifies TestFlight
+submission and the Apple approval requirement for external testers. An older
+installed App can still show no level at zero. It does not establish installation
+on a user's device or public App Store availability. No partner configurations
+or existing visit counts are changed.

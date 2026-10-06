@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import {ensureFounderSubscription,founderScheduleParams,founderTrialCancellation,validateFounderSchedule} from '../lib/stripe/partner-founder.ts'
+import {ensureFounderSubscription,founderTrialCancellation,validateFounderSchedule} from '../lib/stripe/partner-founder.ts'
 const iterable=rows=>({async *[Symbol.asyncIterator](){yield*rows}})
 function fixture({future=false,annual=false}={}) {
  const start=Math.floor(Date.now()/1000)+(future?600:-1),end=start+180*86400

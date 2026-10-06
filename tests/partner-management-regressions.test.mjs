@@ -165,6 +165,13 @@ test("partner list filters by status and keeps the detail pane within the filter
   assert.match(code, /aria-live="polite"/)
 })
 
+test("partner picker gives the list its own bounded scroll region so its final row stays reachable", async () => {
+  const code = await readFile(adminUrl, "utf8")
+
+  assert.match(code, /xl:h-\[calc\(100dvh-2rem\)\][\s\S]*xl:flex-col/)
+  assert.match(code, /overflow-y-auto overscroll-contain[\s\S]*xl:min-h-0 xl:max-h-none xl:flex-1/)
+})
+
 test("2-for-1 deal drafts retain the entered item and basics", async () => {
   const { discountTypeUsesRewardItem, readDealFormDraft } = await import(
     "../lib/deal-form.ts"

@@ -1,7 +1,14 @@
-import { metricLabels, type Dashboard } from './analytics'
-// Rendering only: every value and privacy status comes from the export RPC.
+import type { Dashboard } from './analytics'
+import {
+  dashboardDetailRows,
+  object,
+  released,
+  safeNumber,
+  safeRating,
+  safeStatus,
+} from './insights'
+// Exactly the native aggregate projection. Export authorization is checked by the RPC.
 export function dashboardCsv(data: Dashboard) {
-  const cell = (v: unknown) => `"${String(v ?? '').replaceAll('"', '""')}"`
   const rows: unknown[][] = [
     [
       'Kennzahl',
@@ -14,45 +21,74 @@ export function dashboardCsv(data: Dashboard) {
       'Zeitzone',
     ],
   ]
-  for (const [key, label] of Object.entries(metricLabels)) {
-    const m = data.metrics[key]
+  const names = {
+    visits: 'Besuche',
+    guests: 'Gäste',
+    first_time_guests: 'Erstmalige Gäste',
+    returning_guests: 'Wiederkehrende Gäste',
+    returning_guest_share: 'Wiederkehranteil (0–1)',
+    stamps: 'Stempel',
+    redemptions: 'Einlösungen',
+    open_cards: 'Offene Karten',
+    return_30d: 'Rückkehr innerhalb von 30 Tagen (0–1)',
+    reward_redemptions: 'Reward-Einlösungen',
+    offer_conversion: 'Angebotskonversion',
+    card_completion_rate: 'Kartenabschlussquote',
+  }
+  for (const [key, label] of Object.entries(names)) {
+    const m = data.metrics[key],
+      allowed = released(m?.status),
+      stock = key === 'open_cards',
+      cohort = key === 'return_30d'
     rows.push([
       label,
-      m?.status,
-      ['ok', 'empty'].includes(m?.status) ? m?.value : null,
-      m?.sample_size,
-      key === 'open_cards'
-        ? 'Aktueller Bestand'
-        : key === 'return_30d'
-          ? 'Vollständig gereifte Erstbesuchswochen'
-          : key === 'returning_guest_share'
-            ? 'Gewählter Zeitraum; Anteil 0–1'
-            : 'Gewählter Zeitraum',
-      key === 'open_cards'
-        ? data.as_of
-        : key === 'return_30d'
-          ? m?.coverage_from
-          : data.period.from,
-      key === 'open_cards'
-        ? data.as_of
-        : key === 'return_30d'
-          ? m?.coverage_to
-          : data.period.to,
+      safeStatus(m?.status),
+      allowed ? safeNumber(m?.value) : null,
+      allowed ? safeNumber(m?.sample_size) : null,
+      stock
+        ? 'current_stock'
+        : cohort
+          ? 'whole_matured_iso_cohort_weeks'
+          : 'selected_period',
+      stock ? data.as_of : cohort ? m?.coverage_from : data.period.from,
+      stock ? data.as_of : cohort ? m?.coverage_to : data.period.to,
       'Europe/Berlin',
     ])
   }
   const feedback = data.metrics.feedback,
-    scope = feedback?.scope as { from?: string; to?: string } | undefined
-  if (feedback)
-    rows.push([
-      'Gästefeedback (Bewertung 1–5)',
-      feedback.status,
-      feedback.status === 'ok' ? feedback.average_rating : null,
-      feedback.sample_size,
-      'Letzte abgeschlossene Kalenderwoche',
-      scope?.from,
-      scope?.to,
+    scope = object(feedback?.scope)
+  rows.push([
+    'Feedback (Bewertung 1–5)',
+    safeStatus(feedback?.status),
+    feedback?.status === 'ok' ? safeRating(feedback.average_rating) : null,
+    released(feedback?.status) ? safeNumber(feedback?.sample_size) : null,
+    'latest_completed_iso_week',
+    scope.from,
+    scope.to,
+    'Europe/Berlin',
+  ])
+  rows.push(
+    ...dashboardDetailRows(data).map((r) => [
+      r.label,
+      r.status,
+      r.value,
+      r.sample,
+      r.scope,
+      r.from,
+      r.to,
       'Europe/Berlin',
-    ])
-  return '\uFEFF' + rows.map((r) => r.map(cell).join(';')).join('\r\n')
+    ]),
+  )
+  const cell = (value: unknown) => {
+    let text =
+      typeof value === 'number' &&
+      Number.isFinite(value) &&
+      Number.isInteger(value)
+        ? BigInt(value).toString()
+        : String(value ?? '')
+    if (typeof value !== 'number' && /^\s*[=+@\-\t\r]/.test(text))
+      text = "'" + text
+    return `"${text.replaceAll('"', '""')}"`
+  }
+  return '\uFEFF' + rows.map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n'
 }
