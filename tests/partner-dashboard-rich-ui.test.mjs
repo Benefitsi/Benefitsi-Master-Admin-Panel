@@ -254,12 +254,18 @@ const legacyOffers = () =>
     ),
   )
 test('released legacy v1 offer counts stay visible without supported additive insights and without identities', () => {
-  for (const version of [null, 'future']) {
+  for (const versions of [
+    null,
+    ['future', 'future'],
+    ['partner-dashboard-insights-v1', 'future'],
+    ['future', 'partner-dashboard-insights-v1'],
+    ['partner-dashboard-insights-v1', undefined],
+  ]) {
     const d = legacyOffers()
-    if (version)
+    if (versions)
       d.insights = {
-        definition_version: version,
-        sections: { offers: { status: 'ok', definition_version: version } },
+        definition_version: versions[0],
+        sections: { offers: { status: 'ok', definition_version: versions[1] } },
       }
     const html = render(h(PartnerStatistics, { data: d }))
     assert.match(html, /7654321/)
@@ -305,7 +311,18 @@ test('legacy offer fallback respects every ancestor and bucket restriction and m
   }
   const d = legacyOffers()
   d.breakdowns.weeks[0].offers.buckets[0].redemptions = 0
-  assert.match(render(h(PartnerStatistics, { data: d })), /<dd[^>]*>0<\/dd>/)
+  const dom = new JSDOM(render(h(PartnerStatistics, { data: d })))
+  try {
+    const heading = [
+      ...dom.window.document.querySelectorAll('#offers h3'),
+    ].find((node) => node.textContent === 'Einlösungen je Angebot')
+    assert.ok(heading, 'legacy offers panel is present')
+    const panel = heading.parentElement
+    assert.equal(panel.querySelector('dt')?.textContent, 'Name nicht verfügbar')
+    assert.equal(panel.querySelector('dd')?.textContent, '0')
+  } finally {
+    dom.window.close()
+  }
 })
 test('supported locked or unavailable rich offers never bypass their state through legacy rows', () => {
   for (const state of ['locked', 'suppressed', 'unavailable']) {
@@ -316,6 +333,7 @@ test('supported locked or unavailable rich offers never bypass their state throu
         offers: {
           definition_version: 'partner-dashboard-insights-v1',
           status: state,
+          reason: 'unsupported_or_missing_insights',
         },
       },
     }

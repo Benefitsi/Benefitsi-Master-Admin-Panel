@@ -16,6 +16,7 @@ import {
 } from '@/lib/partners/analytics'
 import {
   dashboardDetailRows,
+  insightVersion,
   insight,
   safeBuckets,
   object,
@@ -466,6 +467,11 @@ export function PartnerStatistics({
   const keys = ['visits', 'guests', 'returning_guest_share', 'redemptions'],
     icons = [Users, UserRound, History, Ticket],
     rows = compact ? [] : dashboardDetailRows(data)
+  const insightsRoot = object(data.insights)
+  const offersVersionSupported =
+    insightsRoot.definition_version === insightVersion &&
+    object(object(insightsRoot.sections).offers).definition_version ===
+      insightVersion
   const levels = insight(data, 'customer_levels'),
     badges = insight(data, 'guest_badges'),
     feedback = data.metrics.feedback,
@@ -672,8 +678,7 @@ export function PartnerStatistics({
                 abgeleitet.
               </p>
             </div>
-            {insight(data, 'offers').reason ===
-            'unsupported_or_missing_insights' ? (
+            {!offersVersionSupported ? (
               <LegacyOffers data={data} />
             ) : (
               <>
