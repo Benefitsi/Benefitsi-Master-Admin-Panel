@@ -23,18 +23,24 @@ of unused uploads. Older action callers that omit `video_url` preserve that fiel
 
 ## Rollout
 
-1. Review and apply the Database repository's `menu_item_videos` migration in
-   Benefitsi App Staging, then run `tests/security/menu_item_video.sql` and verify
-   a real Storage upload. The bucket is public so guests can view menu videos.
-2. Deploy this editor against the migrated environment.
-3. Release the companion App change through the existing Codemagic workflow.
-   The App retains an explicit missing-column fallback during an additive rollout.
-4. Follow the Database repository's separate Production release approval process.
+1. Verify the reviewed Database `menu_item_videos` migration on Benefitsi App
+   Staging, including the rollback SQL security fixture and real Storage upload.
+   The bucket is public so guests can view menu videos.
+2. After authorized Production release, install and verify the same reviewed
+   migration on the Production database before deploying this editor there.
+3. Deploy this editor against the migrated environment and verify its live form.
+4. Verify native video playback and release the companion App through the
+   existing Codemagic workflow. The App retains an explicit missing-column
+   fallback during an additive rollout.
 
-The shared Staging migration currently awaits explicit approval because automatic
-approval review rejected the persistent database/public-bucket change. Local tests
-cover the editor, real Supabase SDK request boundaries and PostgreSQL access rules;
-they do not establish live Storage service limits or actual device MP4 decoding.
+Staging was explicitly approved and migrated on 6 October 2026. All 13 real
+Auth/Storage/menu API checks passed, including signed direct upload, actual MIME
+and size, public byte-range delivery, menu save/read, authorization, immutable
+overwrite rejection and reference-aware cleanup. The synthetic H.264/AAC MP4
+decoded locally. Native playback is checked separately before App publication.
+The user subsequently authorized completion and publication of all remaining
+menu-video work. See Database PR 50's versioned Staging report and release record
+for exact source, hosted migration-version mapping and final publication receipts.
 
 ## Focused checks
 
