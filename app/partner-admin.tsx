@@ -6,6 +6,8 @@ import { usePartnerCapabilities } from "./use-partner-capabilities"
 import { StreakRuleFields } from "./streak-rule-fields"
 import { describeCalendarStreak } from "@/lib/streak-config"
 import { formDataSignature } from "@/lib/partner-form-signature"
+import { MenuItemVideoField } from "@/components/menu-item-video-field"
+import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client"
 
 import Link from "next/link"
 import { visitLevelsHref } from "@/lib/partner-visit-levels"
@@ -97,6 +99,8 @@ import {
   saveMenuCategoryImage,
   saveMenuItem,
   saveMenuItemImage,
+  createMenuItemVideoUpload,
+  discardMenuItemVideoUpload,
   savePartnerStaff,
   savePartner,
   saveRewardMilestone,
@@ -10060,6 +10064,9 @@ function MenuItemCard({
           <LoadingSpinner className="size-3" /> Uploading image…
         </span>
       ) : null}
+      {item.video_url ? (
+        <span className="absolute bottom-16 left-2 rounded-full bg-black/70 px-2 py-1 text-[11px] font-semibold text-white">▶ Video</span>
+      ) : null}
       <button
         type="button"
         onClick={onDuplicate}
@@ -10101,6 +10108,7 @@ function MenuItemEditorDialog({
   onSaved: (state: PartnerActionState, imageFile?: File | null) => void
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!editor) return
@@ -10114,7 +10122,7 @@ function MenuItemEditorDialog({
     }, 0)
 
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose()
+      if (event.key === "Escape" && !saving) onClose()
     }
     document.addEventListener("keydown", closeOnEscape)
 
@@ -10123,7 +10131,7 @@ function MenuItemEditorDialog({
       document.body.style.overflow = previousOverflow
       document.removeEventListener("keydown", closeOnEscape)
     }
-  }, [editor, onClose])
+  }, [editor, onClose, saving])
 
   if (!editor || !menuId) return null
 
@@ -10144,7 +10152,7 @@ function MenuItemEditorDialog({
       className="fixed inset-0 z-[70] flex items-end justify-center bg-[#061829]/65 p-0 backdrop-blur-sm sm:items-center sm:p-5"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
+        if (event.target === event.currentTarget && !saving) onClose()
       }}
     >
       <section
@@ -10165,7 +10173,7 @@ function MenuItemEditorDialog({
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {editor.mode === "edit" && item?.id ? (
+            {editor.mode === "edit" && item?.id && !saving ? (
               <DeleteMenuItemForm
                 itemId={item.id}
                 itemName={item.name}
@@ -10175,6 +10183,7 @@ function MenuItemEditorDialog({
             <button
               type="button"
               onClick={onClose}
+              disabled={saving}
               aria-label="Close"
               className="grid size-9 place-items-center rounded-full border border-zinc-300 bg-white text-lg font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950"
             >
@@ -10192,6 +10201,7 @@ function MenuItemEditorDialog({
             item={item}
             menuId={menuId}
             onSaved={onSaved}
+            onBusyChange={setSaving}
           />
         </div>
       </section>
@@ -10208,6 +10218,7 @@ function MenuItemForm({
   intent = item ? "edit" : "create",
   menuId,
   onSaved,
+  onBusyChange,
 }: {
   categoryOptions: { value: string; label: string }[]
   defaultCategoryId?: string
@@ -10217,9 +10228,20 @@ function MenuItemForm({
   intent?: "create" | "edit" | "duplicate"
   menuId: string
   onSaved?: (state: PartnerActionState, imageFile?: File | null) => void
+  onBusyChange?: (pending: boolean) => void
 }) {
   const [state, setState] = useState(initialState)
   const [isPending, startTransition] = useTransition()
+  const [videoFile, setVideoFile] = useState<File | null>(null)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
+  const active = useRef(true)
+  const submitting = useRef(false)
+  const { language } = useAdminLanguage()
+  useEffect(() => {
+    active.current = true
+    return () => { active.current = false }
+  }, [])
+  useEffect(() => { onBusyChange?.(isPending) }, [isPending, onBusyChange])
   const isEditing = intent === "edit"
   const defaultName =
     intent === "duplicate" && item?.name ? `${item.name} (copy)` : item?.name
@@ -10229,6 +10251,7 @@ function MenuItemForm({
       className="space-y-3"
       onSubmit={(event) => {
         event.preventDefault()
+        if (submitting.current) return
         const formData = new FormData(event.currentTarget)
         const imageValue = formData.get("image_file")
         const imageFile = imageValue instanceof File && imageValue.size > 0
@@ -10236,18 +10259,42 @@ function MenuItemForm({
           : null
         if (imageFile) formData.delete("image_file")
 
+        submitting.current = true
         startTransition(async () => {
+          let uploadedVideoUrl = ""
           try {
+            if (videoFile) {
+              setUploadingVideo(true)
+              const target = await createMenuItemVideoUpload(menuId, videoFile.name, videoFile.type, videoFile.size)
+              if (!target.ok) throw new Error(target.message)
+              if (!active.current) return
+              uploadedVideoUrl = target.publicUrl
+              const { error } = await createBrowserSupabaseClient().storage.from(target.bucket)
+                .uploadToSignedUrl(target.path, target.token, videoFile, {
+                  contentType: "video/mp4", cacheControl: "31536000", upsert: false,
+                })
+              if (error) throw new Error(error.message)
+              if (!active.current) { await discardMenuItemVideoUpload(menuId, uploadedVideoUrl); return }
+              formData.set("video_url", uploadedVideoUrl)
+              setUploadingVideo(false)
+            }
             const result = await saveMenuItem(initialState, formData)
+            if (!result.ok && uploadedVideoUrl) await discardMenuItemVideoUpload(menuId, uploadedVideoUrl)
+            if (!active.current) return
             setState(result)
             dispatchActionToast(result)
             if (result.ok) {
               onSaved?.(result, imageFile)
             }
-          } catch {
-            const result = { ok: false, message: "Unable to save the menu item." }
+          } catch (error) {
+            if (uploadedVideoUrl) await discardMenuItemVideoUpload(menuId, uploadedVideoUrl).catch(() => undefined)
+            if (!active.current) return
+            const result = { ok: false, message: error instanceof Error ? error.message : "Unable to save the menu item." }
             setState(result)
             dispatchActionToast(result)
+          } finally {
+            submitting.current = false
+            if (active.current) setUploadingVideo(false)
           }
         })
       }}
@@ -10269,6 +10316,8 @@ function MenuItemForm({
         dense
         inputId={imageInputId}
       />
+      <MenuItemVideoField currentUrl={item?.video_url} disabled={isPending}
+        language={language} onChange={setVideoFile} />
       <FieldGrid>
         <TextField
           label="Item name"
@@ -10338,7 +10387,7 @@ function MenuItemForm({
       <ActionMessage state={state} />
       <SubmitButton
         label={isEditing ? "Save item" : intent === "duplicate" ? "Duplicate item" : "Add item"}
-        pendingLabel={isEditing ? "Saving item..." : "Adding item..."}
+        pendingLabel={uploadingVideo ? (language === "de" ? "Video wird hochgeladen…" : "Uploading video…") : isEditing ? "Saving item..." : "Adding item..."}
         pendingOverride={isPending}
       />
     </form>

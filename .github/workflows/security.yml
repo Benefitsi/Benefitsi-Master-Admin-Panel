@@ -140,6 +140,15 @@ jobs:
           tests/partner-management-regressions.test.mjs
           tests/menu-ai-dialog.test.mjs
 
+      - name: Menu video upload, ownership and retry regression tests
+        run: >-
+          node --import tsx --test --test-concurrency=2
+          tests/menu-video.test.mjs
+          tests/menu-video-storage.test.mjs
+          tests/menu-video-actions.test.mjs
+          tests/menu-item-video-field.test.mjs
+          tests/menu-item-video-form.test.mjs
+
       - name: Type-check
         run: npm exec -- tsc --noEmit
 
