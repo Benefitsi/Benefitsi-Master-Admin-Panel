@@ -122,3 +122,67 @@ test('unknown group codes cannot resolve inherited JavaScript property names', (
   assert.match(text, /Gastabzeichen · Unbekannte Gruppe/)
   assert.doesNotMatch(text, /function Object|native code/)
 })
+
+import insights from '../lib/partners/insights.ts'
+import {
+  allOfferTypesFixture,
+  offerTypeCases,
+} from './helpers/offer-type-fixture.mjs'
+const { dashboardDetailRows } = insights
+
+test('all canonical offer types retain distinct labels and metrics in projection and CSV', () => {
+  const d = allOfferTypesFixture(),
+    rows = dashboardDetailRows(d),
+    text = dashboardCsv(d)
+  offerTypeCases.forEach(([code, label], i) => {
+    assert.equal(
+      rows.filter(
+        (r) => r.section === 'offers' &&
+          r.label === `${label} · Einlösungen` && r.value === 200 + i,
+      ).length,
+      1,
+      String(code),
+    )
+    assert.ok(
+      text.includes(`"${label} · Einlösungen","ok","${200 + i}","130"`),
+      String(code),
+    )
+    for (const [metric, value] of [
+      ['Einlösende Gäste', 130],
+      ['Erstmalig einlösende Gäste', 10],
+      ['Wiederkehrend einlösende Gäste', 120],
+      ['Erstmalig einlösende Gäste · Anteil (0–1)', 0.07692307692307693],
+      ['Wiederkehrend einlösende Gäste · Anteil (0–1)', 0.9230769230769231],
+      ['Durchschnittliche Lifetime-Besuche', 57.61538461538461],
+    ]) {
+      assert.ok(
+        rows.some(
+          (r) => r.section === 'offers' &&
+            r.label === `${label} · ${metric}` &&
+            r.value === value && r.sample === 130,
+        ),
+        `${code}: ${metric}`,
+      )
+    }
+  })
+})
+test('offer type label correction preserves restricted ancestors and malformed counts', () => {
+  for (const change of [
+    (d) => d.insights.definition_version = 'future',
+    (d) => d.insights.sections.offers.definition_version = 'future',
+    (d) => d.insights.sections.offers.status = 'suppressed',
+    (d) => d.insights.sections.offers.weeks[0].status = 'locked',
+    (d) => d.insights.sections.offers.weeks[0].types.status = 'suppressed',
+    (d) => d.insights.sections.offers.weeks[0].types.buckets[11].status = 'suppressed',
+  ]) {
+    const d = allOfferTypesFixture()
+    d.insights.sections.offers.weeks[0].types.buckets[11].redemptions = 918273
+    change(d)
+    assert.doesNotMatch(dashboardCsv(d), /918273/)
+  }
+  for (const value of [null, '918273', -918273, NaN, Infinity]) {
+    const d = allOfferTypesFixture()
+    d.insights.sections.offers.weeks[0].types.buckets[11].redemptions = value
+    assert.ok(dashboardCsv(d).includes('"2 für 1 · Einlösungen","ok","","130"'))
+  }
+})

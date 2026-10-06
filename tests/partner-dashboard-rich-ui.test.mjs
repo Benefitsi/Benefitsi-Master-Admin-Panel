@@ -340,3 +340,42 @@ test('supported locked or unavailable rich offers never bypass their state throu
     assert.doesNotMatch(render(h(PartnerStatistics, { data: d })), /7654321/)
   }
 })
+
+import {
+  allOfferTypesFixture,
+  offerTypeCases,
+} from './helpers/offer-type-fixture.mjs'
+test('all canonical offer types show meaningful labels with their distinct values in the actual table', () => {
+  const dom = new JSDOM(
+    render(h(PartnerStatistics, { data: allOfferTypesFixture() })),
+  )
+  try {
+    const rows = [...dom.window.document.querySelectorAll('tr')]
+    offerTypeCases.forEach(([code, label], i) => {
+      assert.ok(
+        rows.some(
+          (r) => r.cells[0]?.textContent === `${label} · Einlösungen` &&
+            r.cells[1]?.textContent === String(200 + i),
+        ),
+        String(code),
+      )
+    })
+    assert.doesNotMatch(
+      dom.window.document.body.textContent,
+      /future_offer|constructor/,
+    )
+  } finally {
+    dom.window.close()
+  }
+})
+test('known type names do not reveal restricted type buckets in the actual table', () => {
+  for (const restricted of ['dimension', 'bucket']) {
+    const d = allOfferTypesFixture(),
+      types = d.insights.sections.offers.weeks[0].types
+    if (restricted === 'dimension') types.status = 'suppressed'
+    else types.buckets[12].status = 'suppressed'
+    types.buckets[12].redemptions = 918273
+    const html = render(h(PartnerStatistics, { data: d }))
+    assert.doesNotMatch(html, /Premium-Prämie|918273/)
+  }
+})
