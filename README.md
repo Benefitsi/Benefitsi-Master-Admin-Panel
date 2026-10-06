@@ -2,6 +2,10 @@
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Partner-Dashboard
+
+Vor Änderungen am Partnerbereich den [Dashboard- und UX-Leitfaden](docs/partners/dashboard-insights.md) lesen: Datenvertrag, sieben Statistikthemen, Rechte, Betriebswege und gemeinsame Native-/Web-Semantik.
+
 ## Getting Started
 
 First, run the development server:

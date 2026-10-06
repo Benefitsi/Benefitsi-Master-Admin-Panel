@@ -1,0 +1,625 @@
+{
+  "as_of": "2026-10-06T17:21:07.672162+02:00",
+  "period": {
+    "to": "2026-10-06T17:21:07.672162+02:00",
+    "from": "2026-09-07T00:00:00+02:00",
+    "timezone": "Europe/Berlin",
+    "semantics": "[from,to)"
+  },
+  "series": {
+    "daily": {
+      "status": "ok",
+      "buckets": [
+        {
+          "start": "2026-09-07T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-08T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-09T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-10T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-11T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-12T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-13T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-14T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-15T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-16T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-17T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-18T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-19T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-20T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-21T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-22T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-23T00:00:00+02:00",
+          "visits": 1970
+        },
+        {
+          "start": "2026-09-24T00:00:00+02:00",
+          "visits": 1420
+        },
+        {
+          "start": "2026-09-25T00:00:00+02:00",
+          "visits": 980
+        },
+        {
+          "start": "2026-09-26T00:00:00+02:00",
+          "visits": 750
+        },
+        {
+          "start": "2026-09-27T00:00:00+02:00",
+          "visits": 520
+        },
+        {
+          "start": "2026-09-28T00:00:00+02:00",
+          "visits": 480
+        },
+        {
+          "start": "2026-09-29T00:00:00+02:00",
+          "visits": 300
+        },
+        {
+          "start": "2026-09-30T00:00:00+02:00",
+          "visits": 240
+        },
+        {
+          "start": "2026-10-01T00:00:00+02:00",
+          "visits": 240
+        },
+        {
+          "start": "2026-10-02T00:00:00+02:00",
+          "visits": 370
+        },
+        {
+          "start": "2026-10-03T00:00:00+02:00",
+          "visits": 100
+        },
+        {
+          "start": "2026-10-04T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-10-05T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-10-06T00:00:00+02:00",
+          "visits": 0
+        }
+      ]
+    }
+  },
+  "metrics": {
+    "guests": {
+      "value": 130,
+      "status": "ok",
+      "sample_size": 130
+    },
+    "stamps": {
+      "value": 7370,
+      "status": "ok",
+      "sample_size": 7370
+    },
+    "visits": {
+      "value": 7370,
+      "status": "ok",
+      "sample_size": 7370
+    },
+    "feedback": {
+      "issues": {},
+      "reason": "feedback_pro_required",
+      "status": "unavailable",
+      "clarity": {},
+      "average_rating": null,
+      "response_count": null
+    },
+    "open_cards": {
+      "scope": "current_stock",
+      "value": 90,
+      "status": "ok",
+      "sample_size": 90
+    },
+    "return_30d": {
+      "reason": "analytics.advanced",
+      "status": "locked"
+    },
+    "redemptions": {
+      "value": 130,
+      "status": "ok",
+      "sample_size": 130
+    },
+    "offer_conversion": {
+      "reason": "denominator_not_instrumented",
+      "status": "unavailable"
+    },
+    "returning_guests": {
+      "value": 120,
+      "status": "ok",
+      "sample_size": 130
+    },
+    "first_time_guests": {
+      "value": 10,
+      "status": "ok",
+      "sample_size": 130
+    },
+    "reward_redemptions": {
+      "reason": "reward_claim_coverage_unverified",
+      "status": "unavailable"
+    },
+    "card_completion_rate": {
+      "reason": "card_cohort_not_instrumented",
+      "status": "unavailable"
+    },
+    "returning_guest_share": {
+      "value": 0.9230769230769231,
+      "status": "ok",
+      "sample_size": 130
+    }
+  },
+  "insights": {
+    "sections": {
+      "offers": {
+        "as_of": "2026-10-06T17:21:07.672162+02:00",
+        "scope": "whole_completed_iso_weeks",
+        "period": null,
+        "reason": "analytics.advanced",
+        "status": "locked",
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "offers",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "loyalty": {
+        "as_of": "2026-10-06T17:21:07.672162+02:00",
+        "scope": "current_stock",
+        "period": null,
+        "reason": "analytics.advanced",
+        "status": "locked",
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "loyalty",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "guest_badges": {
+        "as_of": "2026-10-06T17:21:07.672162+02:00",
+        "scope": "recorded_current_stock",
+        "period": null,
+        "status": "ok",
+        "buckets": [
+          {
+            "code": "first_visit",
+            "count": 130,
+            "share": 1.0,
+            "status": "ok",
+            "definition": "lifetime_visits_gt_0",
+            "sample_size": 130
+          },
+          {
+            "code": "regular_guest",
+            "count": 100,
+            "share": 0.7692307692307693,
+            "status": "ok",
+            "definition": "lifetime_visits_gte_10",
+            "sample_size": 130
+          },
+          {
+            "code": "series",
+            "count": 60,
+            "share": 0.46153846153846156,
+            "status": "ok",
+            "definition": "recorded_current_streak_gt_0",
+            "sample_size": 130
+          }
+        ],
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "freshness": "legacy_snapshot_no_verified_expiry",
+        "definition": "separate_consumer_partner_badges",
+        "overlapping": true,
+        "sample_size": 130,
+        "visit_count_basis": "reconciled_snapshot_or_completed_events",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "stamp_program": {
+        "as_of": "2026-10-06T17:21:07.672162+02:00",
+        "scope": "current_stock",
+        "period": null,
+        "reason": "analytics.advanced",
+        "status": "locked",
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "stamp_program",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "legacy_streaks": {
+        "as_of": "2026-10-06T17:21:07.672162+02:00",
+        "scope": "current_stock",
+        "period": null,
+        "reason": "analytics.advanced",
+        "status": "locked",
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "legacy_streaks",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "customer_levels": {
+        "as_of": "2026-10-06T17:21:07.672162+02:00",
+        "scope": "current_stock",
+        "period": null,
+        "status": "ok",
+        "buckets": [
+          {
+            "code": "B4",
+            "reason": "confirmed_zero_relationship_population_not_enumerated",
+            "status": "unavailable"
+          },
+          {
+            "code": "B3",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 1
+          },
+          {
+            "code": "B2",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 3
+          },
+          {
+            "code": "B1",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 5
+          },
+          {
+            "code": "S3",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 10
+          },
+          {
+            "code": "S2",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 15
+          },
+          {
+            "code": "S1",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 20
+          },
+          {
+            "code": "G3",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 30
+          },
+          {
+            "code": "G2",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 40
+          },
+          {
+            "code": "G1",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 50
+          },
+          {
+            "code": "P3",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 75
+          },
+          {
+            "code": "P2",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 100
+          },
+          {
+            "code": "P1",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 150
+          },
+          {
+            "code": "D",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 250
+          }
+        ],
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "snapshot_reconciliation": "matched",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "lifetime_completed_partner_visits_under_current_rules",
+        "population": "reportable_guests_with_completed_visit",
+        "sample_size": 130,
+        "group_buckets": [
+          {
+            "code": "B",
+            "count": 30,
+            "share": 0.23076923076923078
+          },
+          {
+            "code": "S",
+            "count": 30,
+            "share": 0.23076923076923078
+          },
+          {
+            "code": "G",
+            "count": 30,
+            "share": 0.23076923076923078
+          },
+          {
+            "code": "P",
+            "count": 30,
+            "share": 0.23076923076923078
+          },
+          {
+            "code": "D",
+            "count": 10,
+            "share": 0.07692307692307693
+          }
+        ],
+        "level_frequency": "high",
+        "visit_count_basis": "reconciled_snapshot_or_completed_events",
+        "definition_version": "partner-dashboard-insights-v1",
+        "level_contract_hash": "089a673dee1b043500cc0fbed5fa30d270a70e0b12cc1fd6944064978b43f643",
+        "level_contract_version": 1,
+        "zero_visit_relationships": {
+          "code": "B4",
+          "reason": "confirmed_zero_relationship_population_not_enumerated",
+          "status": "unavailable"
+        }
+      },
+      "visit_frequency": {
+        "as_of": "2026-10-06T17:21:07.672162+02:00",
+        "scope": "current_stock",
+        "period": null,
+        "reason": "analytics.advanced",
+        "status": "locked",
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "visit_frequency",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "calendar_streaks": {
+        "as_of": "2026-10-06T17:21:07.672162+02:00",
+        "scope": "current_stock",
+        "period": null,
+        "reason": "analytics.advanced",
+        "status": "locked",
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "calendar_streaks",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "consumer_premium": {
+        "as_of": "2026-10-06T17:21:07.672162+02:00",
+        "scope": "whole_completed_iso_weeks",
+        "period": null,
+        "reason": "analytics.advanced",
+        "status": "locked",
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "consumer_premium",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "measurement_gaps": {
+        "as_of": "2026-10-06T17:21:07.672162+02:00",
+        "scope": "not_instrumented",
+        "period": null,
+        "reason": "required_sources_not_instrumented",
+        "status": "unavailable",
+        "metrics": {
+          "roi": {
+            "reason": "validated_revenue_and_cost_sources_missing",
+            "status": "unavailable"
+          },
+          "offer_conversion": {
+            "reason": "denominator_not_instrumented",
+            "status": "unavailable"
+          },
+          "reward_redemptions": {
+            "reason": "reward_claim_coverage_unverified",
+            "status": "unavailable"
+          },
+          "card_completion_rate": {
+            "reason": "card_cohort_not_instrumented",
+            "status": "unavailable"
+          },
+          "crm_campaign_success": {
+            "reason": "campaign_delivery_and_attribution_not_instrumented",
+            "status": "unavailable"
+          },
+          "binding_duration_by_offer": {
+            "reason": "causal_retention_duration_not_established",
+            "status": "unavailable"
+          },
+          "weak_demand_recommendation": {
+            "reason": "opening_hours_and_exposure_not_validated",
+            "status": "unavailable"
+          }
+        },
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "explicit_unsupported_measurements",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "period_aggregates": {
+        "as_of": "2026-10-06T17:21:07.672162+02:00",
+        "scope": "selected_period",
+        "period": {
+          "to": "2026-10-06T17:21:07.672162+02:00",
+          "from": "2026-09-07T00:00:00+02:00",
+          "timezone": "Europe/Berlin",
+          "semantics": "[from,to)"
+        },
+        "status": "ok",
+        "metrics": {
+          "visits_with_offer": {
+            "value": 130,
+            "status": "ok",
+            "sample_size": 7370
+          },
+          "mean_visit_gap_days": {
+            "reason": "analytics.advanced",
+            "status": "locked"
+          },
+          "redemptions_per_visit": {
+            "value": 0.017639077340569877,
+            "status": "ok",
+            "sample_size": 7370
+          },
+          "mean_visits_per_calendar_day": {
+            "unit": "visits_per_Berlin_calendar_day",
+            "value": 245.66666666666666,
+            "status": "ok",
+            "sample_size": 7370,
+            "calendar_days": 30,
+            "includes_zero_days": true
+          }
+        },
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "calendar_day_mean_distinct_offer_visit_and_redemptions_per_visit",
+        "definition_version": "partner-dashboard-insights-v1"
+      }
+    },
+    "definition_version": "partner-dashboard-insights-v1"
+  },
+  "breakdowns": {
+    "reason": "analytics.advanced",
+    "status": "locked"
+  },
+  "comparison": {},
+  "partner_id": "cf1067a0-ceaa-40f6-bb97-0a20c15a163d",
+  "definitions": {
+    "retention": "return_on_local_days_1_through_30_after_first_visit",
+    "comparison": "equal_local_wall_clock_duration",
+    "population": "reportable_completed_visits",
+    "feedback_scope": "latest_completed_iso_week",
+    "fine_segment_scope": "whole_completed_iso_weeks",
+    "segment_min_guests": 10,
+    "feedback_min_guests": 5,
+    "first_and_returning_can_overlap": true
+  },
+  "source_status": {
+    "stamps": "available",
+    "visits": "available",
+    "feedback": "unavailable",
+    "open_cards": "available",
+    "redemptions": "available",
+    "reward_redemptions": "unavailable"
+  },
+  "comparison_period": null,
+  "definition_version": "partner-dashboard-v1",
+  "suppression_reasons": [
+    {
+      "metric": "feedback",
+      "reason": "feedback_pro_required",
+      "status": "unavailable"
+    },
+    {
+      "metric": "return_30d",
+      "reason": "analytics.advanced",
+      "status": "locked"
+    },
+    {
+      "metric": "offer_conversion",
+      "reason": "denominator_not_instrumented",
+      "status": "unavailable"
+    },
+    {
+      "metric": "reward_redemptions",
+      "reason": "reward_claim_coverage_unverified",
+      "status": "unavailable"
+    },
+    {
+      "metric": "card_completion_rate",
+      "reason": "card_cohort_not_instrumented",
+      "status": "unavailable"
+    }
+  ]
+}

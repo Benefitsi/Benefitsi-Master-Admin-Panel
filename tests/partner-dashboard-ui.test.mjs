@@ -28,7 +28,7 @@ test('Free UI keeps manual business navigation and visibly locks paid analytics'
 })
 test('admin review shows labeled controls and a human-readable price draft',()=>{
  const html=render(h(PartnerPlanPanel,{partnerId,initialData:billing(true)}))
- for(const text of ['Tarifstandard wiederherstellen','Grund der Änderung','Ablaufdatum','Entwurf zur Prüfung speichern','Geprüfte Version freigeben','34,90','Archiviert','Sichere Admin-Vorschau'])assert.ok(html.includes(text),text)
+ for(const text of ['Tarifstandard wiederherstellen','Grund der Änderung','Befristet erlauben','Entwurf zur Prüfung speichern','Geprüfte Version freigeben','34,90','Archiviert','Sichere Admin-Vorschau'])assert.ok(html.includes(text),text)
  assert.doesNotMatch(html,/<textarea|stripe_customer|provider_secret/)
 })
 test('billing reads authoritative pinned amounts and distinguishes freegrant from paid subscription',()=>{

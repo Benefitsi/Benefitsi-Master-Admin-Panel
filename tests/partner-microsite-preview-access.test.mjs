@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import ts from "typescript"
 import partnerPortal from "../lib/partner-portal.ts"
 import microsites from "../lib/microsites.ts"
+import {loadUi} from "./helpers/partner-ui-fixtures.mjs"
 
 const partnerId = "11111111-1111-4111-8111-111111111111"
 const staffSession = {
@@ -34,19 +35,20 @@ function partner(overrides = {}) {
 
 // Execute the actual server route with external session/data and client-component
 // boundaries isolated. Access predicates and config resolution stay real.
-function loadRoute(path, session, selectedPartner, { capabilityError = false } = {}) {
+function loadRoute(path, session, selectedPartner, { capabilityError = false, planCode = "free" } = {}) {
   const calls = { resolvedConfigs: [], shellProps: [], workspaceProps: [], commercePartners: [], capabilityPartners: [] }
   const PreviewShell = props => {
     calls.shellProps.push(props)
     return createElement("article", null, props.initialConfig.hero.headline)
   }
   const imports = {
+    "@/components/partner/partner-business-links": loadUi("components/partner/partner-business-links.tsx"),
     "@/components/partner/partner-drop-usage": { PartnerDropUsage: () => null },
     "@/components/partner/partner-dashboard": {PartnerDashboard:({children,name})=>createElement('main',null,name,children),PartnerOverview:()=>null},
     "@/components/partner/partner-statistics": {PartnerStatistics:()=>null},
     "@/lib/partners/page-context": {partnerPageContext:async()=>{
       if(!session || (!session.isAdmin&&!session.ownedPartnerIds.length)) throw Object.assign(new Error('redirect'),{path:'/partner/login'})
-      return {client:{},session,partners:[{id:partnerId,name:selectedPartner.name}],partnerId,name:selectedPartner.name,rights:{role:session.isAdmin?'benefitsi_admin':'owner',plan_code:'free',features:{}}}
+      return {client:{},session,partners:[{id:partnerId,name:selectedPartner.name}],partnerId,name:selectedPartner.name,rights:{role:session.isAdmin?'benefitsi_admin':'owner',plan_code:planCode,features:{}}}
     }},
     "@/lib/partners/analytics": {dashboardWindow:()=>({}),readDashboard:async()=>({})},
     "@/lib/partners/workspace-data": {readPartnerWorkspace:async()=>({partner:selectedPartner,cities:[]})},
@@ -238,8 +240,15 @@ test("owner dashboard keeps its partner workspace", async () => {
 for(const [status,label] of [['draft','Entwurf'],['review','In Prüfung'],['approved','Freigegeben'],['published','Veröffentlicht'],['archived','Archiviert'],[null,'Status nicht verfügbar'],['unexpected','Status nicht verfügbar']]) {
  test(`owner dashboard renders actual microsite status ${status}`,async()=>{
   const selected=partner();selected.microsite.status=status
-  const {page}=loadRoute('../app/partner/page.tsx',{...staffSession,ownedPartnerIds:[partnerId]},selected)
+  const {page}=loadRoute('../app/partner/page.tsx',{...staffSession,ownedPartnerIds:[partnerId]},selected,{planCode:'pro'})
   const html=renderToStaticMarkup(await page({searchParams:Promise.resolve({section:'business'})}))
-  assert.match(html,new RegExp(`Microsite: ${label}`))
+  assert.match(html,new RegExp(`Eigene Microsite: ${label}`))
  })
 }
+
+// Free keeps its city entry even when a previously saved microsite exists.
+test("Free dashboard does not present a saved microsite as an included Pro presence",async()=>{
+ const {page}=loadRoute('../app/partner/page.tsx',{...staffSession,ownedPartnerIds:[partnerId]},partner())
+ const html=renderToStaticMarkup(await page({searchParams:Promise.resolve({section:'business'})}))
+ assert.match(html,/Städteseite &amp; App-Profil/);assert.match(html,/Eigene Microsite nicht enthalten/);assert.doesNotMatch(html,/Eigene Microsite: Veröffentlicht/)
+})

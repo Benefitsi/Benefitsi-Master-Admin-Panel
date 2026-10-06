@@ -1,5 +1,7 @@
 "use client"
 
+import { normalizePartnerTypeValue, partnerTypeSupportsMenu } from "@/lib/partners/management"
+
 import { usePartnerCapabilities } from "./use-partner-capabilities"
 import { StreakRuleFields } from "./streak-rule-fields"
 import { describeCalendarStreak } from "@/lib/streak-config"
@@ -347,6 +349,8 @@ type PartnerWorkspaceProps = {
   initialMode?: "view" | "create"
   initialPartnerId?: string
   initialSettingsTab?: string
+  initialDealAction?: string
+  initialDealType?: string
   initialView?: "settings" | "microsite"
   portalMode?: boolean
   micrositeEditingEnabled?: boolean
@@ -441,6 +445,7 @@ type SectionStatusValue = SectionStatus | SectionStatus[]
 
 type PartnerSettingsTab =
   | "details"
+  | "hours"
   | "deals"
   | "menu"
   | "access"
@@ -449,7 +454,7 @@ type PartnerSettingsTab =
   | "plan"
 
 function isPartnerSettingsTab(value: string | undefined): value is PartnerSettingsTab {
-  return ["details", "deals", "menu", "access", "activity", "danger", "plan"].includes(
+  return ["details", "hours", "deals", "menu", "access", "activity", "danger", "plan"].includes(
     value ?? "",
   )
 }
@@ -517,6 +522,7 @@ const partnerSettingsTabCopy: Record<
   PartnerSettingsTab,
   { title: string; description: string }
 > = {
+  hours: { title: "Öffnungszeiten", description: "Wochenplan, mehrere Zeitfenster und abweichende Öffnungszeiten pflegen." },
   details: { title: "Partner profile", description: "Business information, contact details, location, branding, and media." },
   deals: { title: "Stamps and Deals", description: "Manage stamp-card rewards alongside customer deals, eligibility rules, availability, and redemption settings." },
   menu: { title: "Menu management", description: "Menu details, categories, items, pricing, images, and display order." },
@@ -544,6 +550,8 @@ export function PartnerWorkspace({
   initialMode = "view",
   initialPartnerId = "",
   initialSettingsTab,
+  initialDealAction,
+  initialDealType,
   initialView = "settings",
   portalMode = false,
   micrositeEditingEnabled = !portalMode,
@@ -991,6 +999,8 @@ export function PartnerWorkspace({
                 onDeleted={() => handlePartnerDeleted(selectedPartner.id)}
                 partner={capabilities.partner ?? selectedPartner}
                 initialSettingsTab={workspaceLocation.tab}
+                initialDealAction={initialDealAction}
+                initialDealType={initialDealType}
                 initialView={workspaceLocation.view}
                 onLocationChange={setWorkspaceLocation}
                 portalMode={portalMode}
@@ -1149,6 +1159,8 @@ function PartnerDetail({
   owners,
   onDeleted,
   initialSettingsTab,
+  initialDealAction,
+  initialDealType,
   initialView = "settings",
   onLocationChange,
   portalMode = false,
@@ -1162,6 +1174,8 @@ function PartnerDetail({
   owners: OwnerOption[]
   onDeleted: () => void
   initialSettingsTab?: string
+  initialDealAction?: string
+  initialDealType?: string
   initialView?: "settings" | "microsite"
   onLocationChange?: (location: {
     tab: PartnerSettingsTab
@@ -1202,7 +1216,7 @@ function PartnerDetail({
   const requestedTab =
     tabState.partnerIdentity === partnerIdentity ? tabState.tab : "details"
   const settingsTab =
-    requestedTab === "menu" && !partnerTypeSupportsMenu(partner.type)
+    (requestedTab === "hours" && !portalMode) || requestedTab === "menu" && !partnerTypeSupportsMenu(partner.type)
       ? "details"
       : portalMode &&
           ((requestedTab === "access" && !partner.team_manage_enabled) || requestedTab === "plan" ||
@@ -1215,8 +1229,9 @@ function PartnerDetail({
     label: string
     hasRequiredFields?: boolean
   }> = [
-    { id: "details", label: "Partner Profile", hasRequiredFields: true },
-    { id: "deals", label: "Stamps & Deals", hasRequiredFields: true },
+    { id: "details", label: portalMode ? "Profil & Kontakt" : "Partner Profile", hasRequiredFields: true },
+    ...(portalMode ? [{ id: "hours" as const, label: "Öffnungszeiten" }] : []),
+    { id: "deals", label: portalMode ? "Vorteile & Stempelprogramm" : "Stamps & Deals", hasRequiredFields: true },
     ...(partnerTypeSupportsMenu(partner.type)
       ? [{ id: "menu" as const, label: "Menu Management", hasRequiredFields: true }]
       : []),
@@ -1252,7 +1267,7 @@ function PartnerDetail({
         description={
           activeView === "settings"
             ? portalMode
-              ? "Manage your business information, benefits, menu, opening hours, and media."
+              ? ""
               : "Edit partner details, social handles, media, milestones, deals, menu, hours, and Supabase routing fields."
             : "Edit the public microsite separately from the partner settings."
         }
@@ -1271,7 +1286,7 @@ function PartnerDetail({
                     : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
                 }`}
               >
-                Partner settings
+                {portalMode ? "Betrieb bearbeiten" : "Partner settings"}
               </button>
               <button
                 type="button"
@@ -1354,6 +1369,7 @@ function PartnerDetail({
               </p>
             </header>
             {settingsTab === "plan" && adminAccess && partner.id ? <PartnerPlanPanel key={partner.id} partnerId={partner.id}/> : null}
+            {settingsTab === "hours" && portalMode ? <OpeningHoursPanel partner={partner} /> : null}
             {settingsTab === "details" ? (
               <div className="space-y-3">
                 <PartnerForm
@@ -1379,8 +1395,8 @@ function PartnerDetail({
             ) : null}
             {settingsTab === "deals" ? (
               <div className="space-y-3">
-                <MilestonesPanel partner={partner} embedded />
-                <DealsPanel partner={partner} embedded />
+                {portalMode ? <DealsPanel partner={partner} embedded portalMode initialCreate={initialDealAction === "create"} initialType={initialDealType} /> : <MilestonesPanel partner={partner} embedded />}
+                {portalMode ? <section className="rounded-2xl border border-slate-200 bg-white p-5"><h3 className="text-lg font-bold">Stempelprogramm</h3><p className="mt-2 text-sm text-slate-600">Stempelziel: {partner.stamp_target ?? "Noch nicht hinterlegt"} · Prämien und Meilensteine für deine Gäste</p><MilestonesPanel partner={partner} embedded /></section> : <DealsPanel partner={partner} embedded />}
                 {portalMode && partner.id ? (
                   <PartnerFeedbackSettingsLoader key={partner.id} partnerId={partner.id} dealRevision={JSON.stringify(partner.deals)} />
                 ) : null}
@@ -2811,7 +2827,7 @@ function PartnerForm({
           required
         />
         </div>
-        <div className="partner-profile-contact space-y-4">
+        <div id={portalMode ? "partner-contact" : undefined} className="partner-profile-contact scroll-mt-6 space-y-4">
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-zinc-800">Contact and location</p>
         </div>
@@ -2871,6 +2887,7 @@ function PartnerForm({
       <FormSection
         title="Media"
         defaultOpen={true}
+        id={portalMode ? "partner-media" : undefined}
         accordion={false}
         status={{ label: "Recommended", tone: "recommended" }}
       >
@@ -4441,11 +4458,19 @@ function InitialMenuEditor({
 function DealsPanel({
   partner,
   embedded = false,
+  portalMode = false,
+  initialCreate = false,
+  initialType,
 }: {
   partner: PartnerWithDeals
   embedded?: boolean
+  portalMode?: boolean
+  initialCreate?: boolean
+  initialType?: string
 }) {
-  const [dealEditor, setDealEditor] = useState<DealEditorState | null>(null)
+  const [dealEditor, setDealEditor] = useState<DealEditorState | null>(
+    initialCreate ? { mode: "create" } : null,
+  )
   const partnerId = partner.id ?? ""
   const hasDealRows = partner.deals.length > 0
   const dealCount = partner.deals.length
@@ -4458,6 +4483,175 @@ function DealsPanel({
         },
       ]
     : { label: "Recommended", tone: "recommended" }
+
+  const [statusFilter, setStatusFilter] = useState("Alle")
+  const [typeFilter, setTypeFilter] = useState(
+    initialType === "happy_hour" ? "happy_hour" : "all",
+  )
+  const [asOf] = useState(() => Date.now())
+  const offerStatus = (deal: Deal) => {
+    if (
+      deal.type === "limited_drop" &&
+      isSoldOutDealDrop(deal.stock_total, deal.stock_remaining)
+    )
+      return "Ausverkauft"
+    const end = Date.parse(deal.ends_at || deal.valid_until || "")
+    const start = Date.parse(deal.starts_at || deal.valid_from || "")
+    if (Number.isFinite(end) && end <= asOf) return "Beendet"
+    if (deal.active !== true) return "Pausiert"
+    if (Number.isFinite(start) && start > asOf) return "Geplant"
+    return "Aktiv"
+  }
+  const filteredDeals = partner.deals.filter(
+    (deal) =>
+      (statusFilter === "Alle" || offerStatus(deal) === statusFilter) &&
+      (typeFilter === "all" || dealUiTypeForDeal(deal) === typeFilter),
+  )
+  const portalContent = (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-bold">Vorteile</h2>
+        <button
+          type="button"
+          onClick={() => setDealEditor({ mode: "create" })}
+          className="rounded-xl bg-[#118cff] px-4 py-3 text-sm font-semibold text-white"
+        >
+          Erstellen
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-2" aria-label="Angebotsstatus">
+        {["Alle", "Aktiv", "Geplant", "Pausiert", "Beendet", "Ausverkauft"].map(
+          (state) => (
+            <button
+              key={state}
+              type="button"
+              aria-pressed={statusFilter === state}
+              onClick={() => setStatusFilter(state)}
+              className={`rounded-xl border px-4 py-2.5 text-sm ${statusFilter === state ? "border-[#118cff] bg-sky-50 text-[#0874d1]" : "border-slate-200 bg-white"}`}
+            >
+              {state}
+            </button>
+          ),
+        )}
+      </div>
+      <label className="block text-sm font-medium">
+        Angebotstyp
+        <select
+          className="ml-3 rounded-lg border border-slate-200 p-2"
+          value={typeFilter}
+          onChange={(event) => setTypeFilter(event.target.value)}
+        >
+          <option value="all">Alle Angebote</option>
+          <option value="happy_hour">Happy Hour</option>
+          <option value="limited_drop">Deal Drop</option>
+        </select>
+      </label>
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        {filteredDeals.map((deal, index) => (
+          <article
+            data-partner-offer
+            key={deal.id ?? index}
+            className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex min-h-20 w-24 shrink-0 items-center justify-center rounded-2xl bg-sky-50 p-3 text-center text-lg font-bold text-[#0874d1]">
+                {formatDealRewardSummary(deal)}
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-semibold text-slate-500">
+                  {offerStatus(deal)} · {dealCardTypeLabel(deal)}
+                </span>
+                <h3 className="mt-1 text-lg font-bold break-words">
+                  {deal.display_title ||
+                    deal.public_title ||
+                    dealCardTypeLabel(deal)}
+                </h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  {deal.customer_description ||
+                    deal.display_subtitle ||
+                    deal.public_subtitle}
+                </p>
+                <p className="mt-2 text-xs text-slate-500">
+                  {dealAudienceLabel(deal)} Gäste
+                  {deal.happy_hour_start && deal.happy_hour_end
+                    ? ` · ${deal.happy_hour_start.slice(0, 5)}–${deal.happy_hour_end.slice(0, 5)} Uhr`
+                    : ""}
+                </p>
+                {deal.valid_weekdays?.length ? (
+                  <p className="mt-1 text-xs text-slate-500">
+                    {deal.valid_weekdays
+                      .map(
+                        (day) =>
+                          ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][day % 7],
+                      )
+                      .join(" · ")}
+                  </p>
+                ) : null}
+                {deal.terms ? (
+                  <p className="mt-2 text-xs leading-5 text-slate-600">
+                    {deal.terms}
+                  </p>
+                ) : null}
+                {deal.starts_at ||
+                deal.valid_from ||
+                deal.ends_at ||
+                deal.valid_until ? (
+                  <p className="mt-2 text-xs text-slate-500">
+                    {[
+                      deal.starts_at || deal.valid_from,
+                      deal.ends_at || deal.valid_until,
+                    ]
+                      .filter(
+                        (value) => value && Number.isFinite(Date.parse(value)),
+                      )
+                      .map((value) =>
+                        new Intl.DateTimeFormat("de-DE", {
+                          timeZone: "Europe/Berlin",
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        }).format(new Date(value!)),
+                      )
+                      .join(" – ")}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            <div className="mt-4 flex gap-4">
+              <button
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold"
+                type="button"
+                onClick={() => setDealEditor({ mode: "edit", deal })}
+              >
+                Bearbeiten
+              </button>
+              <a
+                className="self-center text-sm font-semibold text-[#0874d1]"
+                href={`/partner/statistics?partner=${encodeURIComponent(partnerId)}#offers`}
+              >
+                Auswertung
+              </a>
+            </div>
+          </article>
+        ))}
+      </div>
+      {!filteredDeals.length ? (
+        <p className="rounded-2xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
+          Keine Angebote in dieser Auswahl.
+        </p>
+      ) : null}
+      <p className="text-sm text-slate-500">
+        Normale Angebote und Happy Hour sind unbegrenzt. Pausierte Angebote sind
+        nicht automatisch Entwürfe.
+      </p>
+      <DealEditorDialog
+        editor={dealEditor}
+        onClose={() => setDealEditor(null)}
+        partnerId={partnerId}
+        partnerName={partner.name ?? ""}
+        visits={partner.visits}
+      />
+    </div>
+  )
 
   const content = (
     <div className="space-y-4">
@@ -4503,7 +4697,7 @@ function DealsPanel({
   )
 
   if (embedded) {
-    return content
+    return portalMode ? portalContent : content
   }
 
   return (
@@ -10994,6 +11188,7 @@ function DeletePartnerStaffForm({ staffId, partnerId }: { staffId: string; partn
 
 function FormSection({
   title,
+  id,
   children,
   compact = false,
   collapsible = true,
@@ -11003,6 +11198,7 @@ function FormSection({
   status,
 }: {
   title: string
+  id?: string
   children: ReactNode
   compact?: boolean
   collapsible?: boolean
@@ -11020,6 +11216,7 @@ function FormSection({
 
   return (
     <div
+      id={id}
       className={`partner-settings-section ${open ? "overflow-visible" : "overflow-hidden"} rounded-xl border bg-white text-sm transition-shadow ${
         open ? "border-zinc-300 shadow-sm" : "border-zinc-200"
       }`}
@@ -14085,24 +14282,6 @@ function normalizeDealDropDiscountType(dealType: string, discountType: string) {
   }
 
   return discountType === "twoforone" ? "2for1" : discountType
-}
-
-function normalizePartnerTypeValue(value?: string | null) {
-  const trimmed = value?.trim()
-
-  if (!trimmed) {
-    return "Food & Drink"
-  }
-
-  const normalized = trimmed.toLowerCase()
-
-  return normalized === "restaurant" || normalized === "restuarant"
-    ? "Food & Drink"
-    : trimmed
-}
-
-function partnerTypeSupportsMenu(value?: string | null) {
-  return normalizePartnerTypeValue(value) === "Food & Drink"
 }
 
 function normalizeHolidayDateInput(value?: string | null) {

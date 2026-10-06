@@ -1,0 +1,2777 @@
+{
+  "as_of": "2026-10-06T17:21:08.23252+02:00",
+  "period": {
+    "to": "2026-10-06T17:21:08.23252+02:00",
+    "from": "2026-09-07T00:00:00+02:00",
+    "timezone": "Europe/Berlin",
+    "semantics": "[from,to)"
+  },
+  "series": {
+    "daily": {
+      "status": "ok",
+      "buckets": [
+        {
+          "start": "2026-09-07T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-08T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-09T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-10T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-11T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-12T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-13T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-14T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-15T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-16T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-17T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-18T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-19T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-20T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-21T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-22T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-23T00:00:00+02:00",
+          "visits": 1970
+        },
+        {
+          "start": "2026-09-24T00:00:00+02:00",
+          "visits": 1420
+        },
+        {
+          "start": "2026-09-25T00:00:00+02:00",
+          "visits": 980
+        },
+        {
+          "start": "2026-09-26T00:00:00+02:00",
+          "visits": 750
+        },
+        {
+          "start": "2026-09-27T00:00:00+02:00",
+          "visits": 520
+        },
+        {
+          "start": "2026-09-28T00:00:00+02:00",
+          "visits": 480
+        },
+        {
+          "start": "2026-09-29T00:00:00+02:00",
+          "visits": 300
+        },
+        {
+          "start": "2026-09-30T00:00:00+02:00",
+          "visits": 240
+        },
+        {
+          "start": "2026-10-01T00:00:00+02:00",
+          "visits": 240
+        },
+        {
+          "start": "2026-10-02T00:00:00+02:00",
+          "visits": 370
+        },
+        {
+          "start": "2026-10-03T00:00:00+02:00",
+          "visits": 100
+        },
+        {
+          "start": "2026-10-04T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-10-05T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-10-06T00:00:00+02:00",
+          "visits": 0
+        }
+      ]
+    },
+    "weekly": {
+      "status": "ok",
+      "buckets": [
+        {
+          "start": "2026-09-07T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-14T00:00:00+02:00",
+          "visits": 0
+        },
+        {
+          "start": "2026-09-21T00:00:00+02:00",
+          "visits": 5640
+        },
+        {
+          "start": "2026-09-28T00:00:00+02:00",
+          "visits": 1730
+        },
+        {
+          "start": "2026-10-05T00:00:00+02:00",
+          "visits": 0
+        }
+      ]
+    },
+    "monthly": {
+      "status": "ok",
+      "buckets": [
+        {
+          "start": "2026-09-01T00:00:00+02:00",
+          "visits": 6660
+        },
+        {
+          "start": "2026-10-01T00:00:00+02:00",
+          "visits": 710
+        }
+      ]
+    }
+  },
+  "metrics": {
+    "guests": {
+      "value": 130,
+      "status": "ok",
+      "sample_size": 130
+    },
+    "stamps": {
+      "value": 7370,
+      "status": "ok",
+      "sample_size": 7370
+    },
+    "visits": {
+      "value": 7370,
+      "status": "ok",
+      "sample_size": 7370
+    },
+    "feedback": {
+      "scope": {
+        "to": "2026-10-05T00:00:00+02:00",
+        "from": "2026-09-28T00:00:00+02:00",
+        "kind": "latest_completed_iso_week",
+        "timezone": "Europe/Berlin"
+      },
+      "issues": {},
+      "status": "empty",
+      "clarity": {},
+      "sample_size": 0,
+      "average_rating": null,
+      "response_count": 0,
+      "categories_status": "suppressed"
+    },
+    "open_cards": {
+      "scope": "current_stock",
+      "value": 90,
+      "status": "ok",
+      "sample_size": 90
+    },
+    "return_30d": {
+      "scope": "whole_matured_iso_cohort_weeks",
+      "status": "not_yet_evaluable",
+      "sample_size": 0
+    },
+    "redemptions": {
+      "value": 130,
+      "status": "ok",
+      "sample_size": 130
+    },
+    "offer_conversion": {
+      "reason": "denominator_not_instrumented",
+      "status": "unavailable"
+    },
+    "returning_guests": {
+      "value": 120,
+      "status": "ok",
+      "sample_size": 130
+    },
+    "first_time_guests": {
+      "value": 10,
+      "status": "ok",
+      "sample_size": 130
+    },
+    "reward_redemptions": {
+      "reason": "reward_claim_coverage_unverified",
+      "status": "unavailable"
+    },
+    "card_completion_rate": {
+      "reason": "card_cohort_not_instrumented",
+      "status": "unavailable"
+    },
+    "returning_guest_share": {
+      "value": 0.9230769230769231,
+      "status": "ok",
+      "sample_size": 130
+    }
+  },
+  "insights": {
+    "sections": {
+      "offers": {
+        "as_of": "2026-10-06T17:21:08.23252+02:00",
+        "scope": "whole_completed_iso_weeks",
+        "weeks": [
+          {
+            "to": "2026-09-14T00:00:00+02:00",
+            "from": "2026-09-07T00:00:00+02:00",
+            "types": {
+              "status": "empty",
+              "buckets": []
+            },
+            "status": "empty",
+            "buckets": []
+          },
+          {
+            "to": "2026-09-21T00:00:00+02:00",
+            "from": "2026-09-14T00:00:00+02:00",
+            "types": {
+              "status": "empty",
+              "buckets": []
+            },
+            "status": "empty",
+            "buckets": []
+          },
+          {
+            "to": "2026-09-28T00:00:00+02:00",
+            "from": "2026-09-21T00:00:00+02:00",
+            "types": {
+              "status": "empty",
+              "buckets": []
+            },
+            "status": "empty",
+            "buckets": []
+          },
+          {
+            "to": "2026-10-05T00:00:00+02:00",
+            "from": "2026-09-28T00:00:00+02:00",
+            "types": {
+              "status": "ok",
+              "buckets": [
+                {
+                  "code": "welcome",
+                  "type_basis": "event_snapshot_then_current_catalogue",
+                  "redemptions": 130,
+                  "sample_size": 130,
+                  "distinct_redeemers": 130,
+                  "returning_redeemers": {
+                    "share": 0.9230769230769231,
+                    "value": 120,
+                    "status": "ok",
+                    "sample_size": 130
+                  },
+                  "first_time_redeemers": {
+                    "share": 0.07692307692307693,
+                    "value": 10,
+                    "status": "ok",
+                    "sample_size": 130
+                  },
+                  "mean_lifetime_visits": {
+                    "value": 57.61538461538461,
+                    "status": "ok",
+                    "sample_size": 130
+                  }
+                }
+              ]
+            },
+            "status": "ok",
+            "buckets": [
+              {
+                "name": "Willkommenskaffee",
+                "type": "welcome",
+                "deal_id": "cd919814-1eef-41f6-9a36-d70e52f064bb",
+                "name_basis": "current_public_catalogue",
+                "type_basis": "event_snapshot_then_current_catalogue",
+                "name_status": "ok",
+                "redemptions": 130,
+                "sample_size": 130,
+                "catalogue_active": true,
+                "distinct_redeemers": 130,
+                "returning_redeemers": {
+                  "share": 0.9230769230769231,
+                  "value": 120,
+                  "status": "ok",
+                  "sample_size": 130
+                },
+                "first_time_redeemers": {
+                  "share": 0.07692307692307693,
+                  "value": 10,
+                  "status": "ok",
+                  "sample_size": 130
+                },
+                "mean_lifetime_visits": {
+                  "value": 57.61538461538461,
+                  "status": "ok",
+                  "sample_size": 130
+                }
+              }
+            ]
+          }
+        ],
+        "period": null,
+        "reason": null,
+        "status": "ok",
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "rankings": "no_causal_effect_ranking",
+        "definition": "protected_confirmed_offer_events_and_consumer_premium_snapshots",
+        "definition_version": "partner-dashboard-insights-v1",
+        "first_and_returning_can_overlap": true
+      },
+      "loyalty": {
+        "unit": "guests",
+        "as_of": "2026-10-06T17:21:08.23252+02:00",
+        "scope": "current_stock",
+        "period": null,
+        "status": "ok",
+        "window": {
+          "to": "2026-10-06T17:21:08.23252+02:00",
+          "from": "2026-09-06T17:21:08.23252+02:00",
+          "semantics": "[from,to)"
+        },
+        "metrics": {
+          "active_regular_guests": {
+            "value": 110,
+            "status": "ok",
+            "definition": "lifetime_visits_gte_4_and_last_visit_in_30_days",
+            "sample_size": 130
+          },
+          "four_visits_in_30_days": {
+            "value": 110,
+            "status": "ok",
+            "definition": "completed_visits_gte_4_in_30_days",
+            "sample_size": 130
+          }
+        },
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "completed_visit_lifetime_and_rolling_30_day_stock",
+        "sample_size": 130,
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "guest_badges": {
+        "as_of": "2026-10-06T17:21:08.23252+02:00",
+        "scope": "recorded_current_stock",
+        "period": null,
+        "status": "ok",
+        "buckets": [
+          {
+            "code": "first_visit",
+            "count": 130,
+            "share": 1.0,
+            "status": "ok",
+            "definition": "lifetime_visits_gt_0",
+            "sample_size": 130
+          },
+          {
+            "code": "regular_guest",
+            "count": 100,
+            "share": 0.7692307692307693,
+            "status": "ok",
+            "definition": "lifetime_visits_gte_10",
+            "sample_size": 130
+          },
+          {
+            "code": "series",
+            "count": 60,
+            "share": 0.46153846153846156,
+            "status": "ok",
+            "definition": "recorded_current_streak_gt_0",
+            "sample_size": 130
+          }
+        ],
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "freshness": "legacy_snapshot_no_verified_expiry",
+        "definition": "separate_consumer_partner_badges",
+        "overlapping": true,
+        "sample_size": 130,
+        "visit_count_basis": "reconciled_snapshot_or_completed_events",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "stamp_program": {
+        "unit": "cards",
+        "as_of": "2026-10-06T17:21:08.23252+02:00",
+        "scope": "current_stock",
+        "period": null,
+        "status": "ok",
+        "buckets": [
+          {
+            "code": "zero",
+            "count": 40,
+            "share": 0.3076923076923077
+          },
+          {
+            "code": "below_40_percent",
+            "count": 30,
+            "share": 0.23076923076923078
+          },
+          {
+            "code": "40_to_below_80_percent",
+            "count": 30,
+            "share": 0.23076923076923078
+          },
+          {
+            "code": "80_to_below_100_percent",
+            "count": 30,
+            "share": 0.23076923076923078
+          }
+        ],
+        "metrics": {
+          "card_stock": {
+            "value": 130,
+            "status": "ok",
+            "sample_size": 130
+          },
+          "open_cards": {
+            "value": 90,
+            "status": "ok",
+            "sample_size": 130
+          },
+          "near_goal_cards": {
+            "value": 30,
+            "status": "ok",
+            "sample_size": 130,
+            "excludes_completed": true,
+            "minimum_progress_share": 0.8
+          },
+          "average_remaining_stamps": {
+            "value": 4.666666666666667,
+            "status": "ok",
+            "sample_size": 90
+          },
+          "completed_lifetime_cycles": {
+            "unit": "completed_cycles",
+            "value": 260,
+            "status": "ok",
+            "sample_size": 130
+          }
+        },
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "goal_normalized_modulo_card_stock_and_recorded_lifetime_cycles",
+        "population": "reportable_partner_card_rows",
+        "sample_size": 130,
+        "stamp_target": 10,
+        "reward_claims": {
+          "reason": "reward_claim_coverage_unverified",
+          "status": "unavailable"
+        },
+        "completion_rate": {
+          "reason": "card_cohort_not_instrumented",
+          "status": "unavailable"
+        },
+        "definition_version": "partner-dashboard-insights-v1",
+        "reward_configuration": [
+          {
+            "id": "d4b142f9-cc47-444c-b9eb-b7d2d5dd5bd5",
+            "title": "Synthetic milestone",
+            "active": true,
+            "audience": "both",
+            "reward_item": "Synthetic reward",
+            "required_stamps": 10
+          }
+        ],
+        "target_change_history": "unavailable",
+        "completed_cycles_basis": "recorded_completed_cards"
+      },
+      "legacy_streaks": {
+        "unit": "legacy_partner_steps",
+        "as_of": "2026-10-06T17:21:08.23252+02:00",
+        "scope": "recorded_current_stock",
+        "period": null,
+        "status": "ok",
+        "metrics": {
+          "recorded_active_guests": {
+            "value": 60,
+            "status": "ok",
+            "sample_size": 130
+          },
+          "longest_recorded_streak": {
+            "value": 3,
+            "status": "ok",
+            "sample_size": 130
+          },
+          "recorded_consecutive_guests": {
+            "value": 60,
+            "status": "ok",
+            "sample_size": 130
+          },
+          "mean_recorded_current_streak": {
+            "value": 0.9230769230769231,
+            "status": "ok",
+            "sample_size": 130
+          }
+        },
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "freshness": "snapshot_last_streak_visit_no_universal_expiry",
+        "definition": "legacy_partner_snapshot_steps_not_calendar_deal_periods",
+        "near_target": {
+          "reason": "legacy_snapshot_not_bound_to_deal_configuration",
+          "status": "unavailable"
+        },
+        "sample_size": 130,
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "customer_levels": {
+        "as_of": "2026-10-06T17:21:08.23252+02:00",
+        "scope": "current_stock",
+        "period": null,
+        "status": "ok",
+        "buckets": [
+          {
+            "code": "B4",
+            "reason": "confirmed_zero_relationship_population_not_enumerated",
+            "status": "unavailable"
+          },
+          {
+            "code": "B3",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 1
+          },
+          {
+            "code": "B2",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 3
+          },
+          {
+            "code": "B1",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 5
+          },
+          {
+            "code": "S3",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 10
+          },
+          {
+            "code": "S2",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 15
+          },
+          {
+            "code": "S1",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 20
+          },
+          {
+            "code": "G3",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 30
+          },
+          {
+            "code": "G2",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 40
+          },
+          {
+            "code": "G1",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 50
+          },
+          {
+            "code": "P3",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 75
+          },
+          {
+            "code": "P2",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 100
+          },
+          {
+            "code": "P1",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 150
+          },
+          {
+            "code": "D",
+            "count": 10,
+            "share": 0.07692307692307693,
+            "minimum_visits": 250
+          }
+        ],
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "snapshot_reconciliation": "matched",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "lifetime_completed_partner_visits_under_current_rules",
+        "population": "reportable_guests_with_completed_visit",
+        "sample_size": 130,
+        "group_buckets": [
+          {
+            "code": "B",
+            "count": 30,
+            "share": 0.23076923076923078
+          },
+          {
+            "code": "S",
+            "count": 30,
+            "share": 0.23076923076923078
+          },
+          {
+            "code": "G",
+            "count": 30,
+            "share": 0.23076923076923078
+          },
+          {
+            "code": "P",
+            "count": 30,
+            "share": 0.23076923076923078
+          },
+          {
+            "code": "D",
+            "count": 10,
+            "share": 0.07692307692307693
+          }
+        ],
+        "level_frequency": "high",
+        "visit_count_basis": "reconciled_snapshot_or_completed_events",
+        "definition_version": "partner-dashboard-insights-v1",
+        "level_contract_hash": "089a673dee1b043500cc0fbed5fa30d270a70e0b12cc1fd6944064978b43f643",
+        "level_contract_version": 1,
+        "zero_visit_relationships": {
+          "code": "B4",
+          "reason": "confirmed_zero_relationship_population_not_enumerated",
+          "status": "unavailable"
+        }
+      },
+      "visit_frequency": {
+        "as_of": "2026-10-06T17:21:08.23252+02:00",
+        "scope": "current_stock",
+        "period": null,
+        "status": "ok",
+        "buckets": [
+          {
+            "code": "1",
+            "count": 10,
+            "share": 0.07692307692307693
+          },
+          {
+            "code": "2-3",
+            "count": 10,
+            "share": 0.07692307692307693
+          },
+          {
+            "code": "4-6",
+            "count": 10,
+            "share": 0.07692307692307693
+          },
+          {
+            "code": "7-10",
+            "count": 10,
+            "share": 0.07692307692307693
+          },
+          {
+            "code": "11-20",
+            "count": 20,
+            "share": 0.15384615384615385
+          },
+          {
+            "code": ">20",
+            "count": 70,
+            "share": 0.5384615384615384
+          }
+        ],
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "fine_lifetime_visits_among_reportable_ever_visited_guests",
+        "sample_size": 130,
+        "visit_count_basis": "completed_events",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "calendar_streaks": {
+        "as_of": "2026-10-06T17:21:08.23252+02:00",
+        "deals": [
+          {
+            "unit": "months",
+            "config": {
+              "timezone": "Europe/Berlin",
+              "period_unit": "months",
+              "required_visits_per_period": 1,
+              "required_consecutive_periods": 5
+            },
+            "status": "ok",
+            "target": 5,
+            "deal_id": "4c97d556-148d-4c36-925c-ede6eb986114",
+            "metrics": {
+              "active_guests": {
+                "value": 20,
+                "status": "ok",
+                "sample_size": 20
+              },
+              "near_target_guests": {
+                "value": 10,
+                "status": "ok",
+                "sample_size": 20
+              },
+              "mean_current_streak": {
+                "value": 4.5,
+                "status": "ok",
+                "sample_size": 20
+              },
+              "completed_current_runs": {
+                "value": 10,
+                "status": "ok",
+                "sample_size": 20
+              },
+              "longest_recorded_streak": {
+                "value": 5,
+                "status": "ok",
+                "sample_size": 20
+              }
+            },
+            "freshness": "calendar_state_recomputed_without_mutation",
+            "population": "reportable_recorded_deal_progress",
+            "sample_size": 20,
+            "catalogue_active": true,
+            "near_target_excludes_completed": true
+          },
+          {
+            "unit": "weeks",
+            "config": {
+              "timezone": "Europe/Berlin",
+              "period_unit": "weeks",
+              "required_visits_per_period": 1,
+              "required_consecutive_periods": 5
+            },
+            "status": "ok",
+            "target": 5,
+            "deal_id": "6a0ed011-d436-40af-8885-0aca441a601c",
+            "metrics": {
+              "active_guests": {
+                "value": 20,
+                "status": "ok",
+                "sample_size": 20
+              },
+              "near_target_guests": {
+                "value": 10,
+                "status": "ok",
+                "sample_size": 20
+              },
+              "mean_current_streak": {
+                "value": 4.5,
+                "status": "ok",
+                "sample_size": 20
+              },
+              "completed_current_runs": {
+                "value": 10,
+                "status": "ok",
+                "sample_size": 20
+              },
+              "longest_recorded_streak": {
+                "value": 5,
+                "status": "ok",
+                "sample_size": 20
+              }
+            },
+            "freshness": "calendar_state_recomputed_without_mutation",
+            "population": "reportable_recorded_deal_progress",
+            "sample_size": 20,
+            "catalogue_active": true,
+            "near_target_excludes_completed": true
+          }
+        ],
+        "scope": "current_stock",
+        "period": null,
+        "status": "ok",
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "calendar_deal_progress_recomputed_at_as_of",
+        "definition_version": "partner-dashboard-insights-v1",
+        "units_are_not_combined": true
+      },
+      "consumer_premium": {
+        "as_of": "2026-10-06T17:21:08.23252+02:00",
+        "scope": "whole_completed_iso_weeks",
+        "weeks": [
+          {
+            "to": "2026-09-14T00:00:00+02:00",
+            "from": "2026-09-07T00:00:00+02:00",
+            "status": "empty",
+            "metrics": {
+              "premium_visits": {
+                "value": 0,
+                "status": "empty",
+                "sample_size": 0
+              },
+              "premium_redemptions": {
+                "value": 0,
+                "status": "empty",
+                "sample_size": 0
+              },
+              "premium_visit_share": {
+                "status": "no_data",
+                "sample_size": 0
+              },
+              "premium_redemptions_per_visit": {
+                "status": "no_data",
+                "sample_size": 0
+              }
+            },
+            "coverage": {
+              "premium_basis": "explicit_event_status_then_recorded_boolean",
+              "event_snapshot": "complete_within_week",
+              "consumer_trial_included": true,
+              "current_user_status_used": false
+            }
+          },
+          {
+            "to": "2026-09-21T00:00:00+02:00",
+            "from": "2026-09-14T00:00:00+02:00",
+            "status": "empty",
+            "metrics": {
+              "premium_visits": {
+                "value": 0,
+                "status": "empty",
+                "sample_size": 0
+              },
+              "premium_redemptions": {
+                "value": 0,
+                "status": "empty",
+                "sample_size": 0
+              },
+              "premium_visit_share": {
+                "status": "no_data",
+                "sample_size": 0
+              },
+              "premium_redemptions_per_visit": {
+                "status": "no_data",
+                "sample_size": 0
+              }
+            },
+            "coverage": {
+              "premium_basis": "explicit_event_status_then_recorded_boolean",
+              "event_snapshot": "complete_within_week",
+              "consumer_trial_included": true,
+              "current_user_status_used": false
+            }
+          },
+          {
+            "to": "2026-09-28T00:00:00+02:00",
+            "from": "2026-09-21T00:00:00+02:00",
+            "status": "ok",
+            "metrics": {
+              "premium_visits": {
+                "value": 430,
+                "status": "ok",
+                "sample_size": 120
+              },
+              "premium_redemptions": {
+                "value": 0,
+                "status": "empty",
+                "sample_size": 0
+              },
+              "premium_visit_share": {
+                "value": 0.07624113475177305,
+                "status": "ok",
+                "sample_size": 120
+              },
+              "premium_redemptions_per_visit": {
+                "value": 0.0,
+                "status": "ok",
+                "sample_size": 120
+              }
+            },
+            "coverage": {
+              "premium_basis": "explicit_event_status_then_recorded_boolean",
+              "event_snapshot": "complete_within_week",
+              "consumer_trial_included": true,
+              "current_user_status_used": false
+            }
+          },
+          {
+            "to": "2026-10-05T00:00:00+02:00",
+            "from": "2026-09-28T00:00:00+02:00",
+            "status": "ok",
+            "metrics": {
+              "premium_visits": {
+                "value": 60,
+                "status": "ok",
+                "sample_size": 130
+              },
+              "premium_redemptions": {
+                "value": 60,
+                "status": "ok",
+                "sample_size": 130
+              },
+              "premium_visit_share": {
+                "value": 0.03468208092485549,
+                "status": "ok",
+                "sample_size": 130
+              },
+              "premium_redemptions_per_visit": {
+                "value": 0.03468208092485549,
+                "status": "ok",
+                "sample_size": 130
+              }
+            },
+            "coverage": {
+              "premium_basis": "explicit_event_status_then_recorded_boolean",
+              "event_snapshot": "complete_within_week",
+              "consumer_trial_included": true,
+              "current_user_status_used": false
+            }
+          }
+        ],
+        "period": null,
+        "reason": null,
+        "status": "ok",
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "protected_confirmed_offer_events_and_consumer_premium_snapshots",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "measurement_gaps": {
+        "as_of": "2026-10-06T17:21:08.23252+02:00",
+        "scope": "not_instrumented",
+        "period": null,
+        "reason": "required_sources_not_instrumented",
+        "status": "unavailable",
+        "metrics": {
+          "roi": {
+            "reason": "validated_revenue_and_cost_sources_missing",
+            "status": "unavailable"
+          },
+          "offer_conversion": {
+            "reason": "denominator_not_instrumented",
+            "status": "unavailable"
+          },
+          "reward_redemptions": {
+            "reason": "reward_claim_coverage_unverified",
+            "status": "unavailable"
+          },
+          "card_completion_rate": {
+            "reason": "card_cohort_not_instrumented",
+            "status": "unavailable"
+          },
+          "crm_campaign_success": {
+            "reason": "campaign_delivery_and_attribution_not_instrumented",
+            "status": "unavailable"
+          },
+          "binding_duration_by_offer": {
+            "reason": "causal_retention_duration_not_established",
+            "status": "unavailable"
+          },
+          "weak_demand_recommendation": {
+            "reason": "opening_hours_and_exposure_not_validated",
+            "status": "unavailable"
+          }
+        },
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "explicit_unsupported_measurements",
+        "definition_version": "partner-dashboard-insights-v1"
+      },
+      "period_aggregates": {
+        "as_of": "2026-10-06T17:21:08.23252+02:00",
+        "scope": "selected_period",
+        "period": {
+          "to": "2026-10-06T17:21:08.23252+02:00",
+          "from": "2026-09-07T00:00:00+02:00",
+          "timezone": "Europe/Berlin",
+          "semantics": "[from,to)"
+        },
+        "status": "ok",
+        "metrics": {
+          "visits_with_offer": {
+            "value": 130,
+            "status": "ok",
+            "sample_size": 7370
+          },
+          "mean_visit_gap_days": {
+            "unit": "elapsed_24_hour_days",
+            "scope": "whole_completed_iso_weeks",
+            "value": 0.6866508152173914,
+            "status": "ok",
+            "gap_count": 7360,
+            "weighting": "each_consecutive_visit_gap",
+            "coverage_to": "2026-10-05T00:00:00+02:00",
+            "sample_size": 120,
+            "coverage_from": "2026-09-07T00:00:00+02:00",
+            "predecessor_before_scope_allowed": true
+          },
+          "redemptions_per_visit": {
+            "value": 0.017639077340569877,
+            "status": "ok",
+            "sample_size": 7370
+          },
+          "mean_visits_per_calendar_day": {
+            "unit": "visits_per_Berlin_calendar_day",
+            "value": 245.66666666666666,
+            "status": "ok",
+            "sample_size": 7370,
+            "calendar_days": 30,
+            "includes_zero_days": true
+          }
+        },
+        "coverage": {
+          "exclusions": "admin_partner_active_reporting_exclusions",
+          "population": "reportable_guests",
+          "minimum_dimension_guests": 10
+        },
+        "definition": "calendar_day_mean_distinct_offer_visit_and_redemptions_per_visit",
+        "definition_version": "partner-dashboard-insights-v1"
+      }
+    },
+    "definition_version": "partner-dashboard-insights-v1"
+  },
+  "breakdowns": {
+    "scope": "whole_completed_iso_weeks",
+    "weeks": [
+      {
+        "to": "2026-09-14T00:00:00+02:00",
+        "from": "2026-09-07T00:00:00+02:00",
+        "offers": {
+          "status": "empty",
+          "buckets": []
+        },
+        "peak_times": {
+          "status": "empty",
+          "buckets": [],
+          "granularity": "weekday_hour"
+        },
+        "visit_frequency": {
+          "status": "empty",
+          "buckets": []
+        }
+      },
+      {
+        "to": "2026-09-21T00:00:00+02:00",
+        "from": "2026-09-14T00:00:00+02:00",
+        "offers": {
+          "status": "empty",
+          "buckets": []
+        },
+        "peak_times": {
+          "status": "empty",
+          "buckets": [],
+          "granularity": "weekday_hour"
+        },
+        "visit_frequency": {
+          "status": "empty",
+          "buckets": []
+        }
+      },
+      {
+        "to": "2026-09-28T00:00:00+02:00",
+        "from": "2026-09-21T00:00:00+02:00",
+        "offers": {
+          "status": "empty",
+          "buckets": []
+        },
+        "peak_times": {
+          "status": "ok",
+          "buckets": [
+            {
+              "hour": 2,
+              "visits": 120,
+              "weekday": 3,
+              "sample_size": 120
+            },
+            {
+              "hour": 3,
+              "visits": 110,
+              "weekday": 3,
+              "sample_size": 110
+            },
+            {
+              "hour": 4,
+              "visits": 110,
+              "weekday": 3,
+              "sample_size": 110
+            },
+            {
+              "hour": 5,
+              "visits": 100,
+              "weekday": 3,
+              "sample_size": 100
+            },
+            {
+              "hour": 6,
+              "visits": 100,
+              "weekday": 3,
+              "sample_size": 100
+            },
+            {
+              "hour": 7,
+              "visits": 100,
+              "weekday": 3,
+              "sample_size": 100
+            },
+            {
+              "hour": 8,
+              "visits": 100,
+              "weekday": 3,
+              "sample_size": 100
+            },
+            {
+              "hour": 9,
+              "visits": 100,
+              "weekday": 3,
+              "sample_size": 100
+            },
+            {
+              "hour": 10,
+              "visits": 90,
+              "weekday": 3,
+              "sample_size": 90
+            },
+            {
+              "hour": 11,
+              "visits": 90,
+              "weekday": 3,
+              "sample_size": 90
+            },
+            {
+              "hour": 12,
+              "visits": 90,
+              "weekday": 3,
+              "sample_size": 90
+            },
+            {
+              "hour": 13,
+              "visits": 90,
+              "weekday": 3,
+              "sample_size": 90
+            },
+            {
+              "hour": 14,
+              "visits": 90,
+              "weekday": 3,
+              "sample_size": 90
+            },
+            {
+              "hour": 15,
+              "visits": 80,
+              "weekday": 3,
+              "sample_size": 80
+            },
+            {
+              "hour": 16,
+              "visits": 80,
+              "weekday": 3,
+              "sample_size": 80
+            },
+            {
+              "hour": 17,
+              "visits": 80,
+              "weekday": 3,
+              "sample_size": 80
+            },
+            {
+              "hour": 18,
+              "visits": 80,
+              "weekday": 3,
+              "sample_size": 80
+            },
+            {
+              "hour": 19,
+              "visits": 80,
+              "weekday": 3,
+              "sample_size": 80
+            },
+            {
+              "hour": 20,
+              "visits": 70,
+              "weekday": 3,
+              "sample_size": 70
+            },
+            {
+              "hour": 21,
+              "visits": 70,
+              "weekday": 3,
+              "sample_size": 70
+            },
+            {
+              "hour": 22,
+              "visits": 70,
+              "weekday": 3,
+              "sample_size": 70
+            },
+            {
+              "hour": 23,
+              "visits": 70,
+              "weekday": 3,
+              "sample_size": 70
+            },
+            {
+              "hour": 0,
+              "visits": 70,
+              "weekday": 4,
+              "sample_size": 70
+            },
+            {
+              "hour": 1,
+              "visits": 70,
+              "weekday": 4,
+              "sample_size": 70
+            },
+            {
+              "hour": 2,
+              "visits": 70,
+              "weekday": 4,
+              "sample_size": 70
+            },
+            {
+              "hour": 3,
+              "visits": 70,
+              "weekday": 4,
+              "sample_size": 70
+            },
+            {
+              "hour": 4,
+              "visits": 70,
+              "weekday": 4,
+              "sample_size": 70
+            },
+            {
+              "hour": 5,
+              "visits": 70,
+              "weekday": 4,
+              "sample_size": 70
+            },
+            {
+              "hour": 6,
+              "visits": 60,
+              "weekday": 4,
+              "sample_size": 60
+            },
+            {
+              "hour": 7,
+              "visits": 60,
+              "weekday": 4,
+              "sample_size": 60
+            },
+            {
+              "hour": 8,
+              "visits": 60,
+              "weekday": 4,
+              "sample_size": 60
+            },
+            {
+              "hour": 9,
+              "visits": 60,
+              "weekday": 4,
+              "sample_size": 60
+            },
+            {
+              "hour": 10,
+              "visits": 60,
+              "weekday": 4,
+              "sample_size": 60
+            },
+            {
+              "hour": 11,
+              "visits": 60,
+              "weekday": 4,
+              "sample_size": 60
+            },
+            {
+              "hour": 12,
+              "visits": 60,
+              "weekday": 4,
+              "sample_size": 60
+            },
+            {
+              "hour": 13,
+              "visits": 60,
+              "weekday": 4,
+              "sample_size": 60
+            },
+            {
+              "hour": 14,
+              "visits": 60,
+              "weekday": 4,
+              "sample_size": 60
+            },
+            {
+              "hour": 15,
+              "visits": 60,
+              "weekday": 4,
+              "sample_size": 60
+            },
+            {
+              "hour": 16,
+              "visits": 50,
+              "weekday": 4,
+              "sample_size": 50
+            },
+            {
+              "hour": 17,
+              "visits": 50,
+              "weekday": 4,
+              "sample_size": 50
+            },
+            {
+              "hour": 18,
+              "visits": 50,
+              "weekday": 4,
+              "sample_size": 50
+            },
+            {
+              "hour": 19,
+              "visits": 50,
+              "weekday": 4,
+              "sample_size": 50
+            },
+            {
+              "hour": 20,
+              "visits": 50,
+              "weekday": 4,
+              "sample_size": 50
+            },
+            {
+              "hour": 21,
+              "visits": 50,
+              "weekday": 4,
+              "sample_size": 50
+            },
+            {
+              "hour": 22,
+              "visits": 50,
+              "weekday": 4,
+              "sample_size": 50
+            },
+            {
+              "hour": 23,
+              "visits": 50,
+              "weekday": 4,
+              "sample_size": 50
+            },
+            {
+              "hour": 0,
+              "visits": 50,
+              "weekday": 5,
+              "sample_size": 50
+            },
+            {
+              "hour": 1,
+              "visits": 50,
+              "weekday": 5,
+              "sample_size": 50
+            },
+            {
+              "hour": 2,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 3,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 4,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 5,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 6,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 7,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 8,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 9,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 10,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 11,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 12,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 13,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 14,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 15,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 16,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 17,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 18,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 19,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 20,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 21,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 22,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 23,
+              "visits": 40,
+              "weekday": 5,
+              "sample_size": 40
+            },
+            {
+              "hour": 0,
+              "visits": 40,
+              "weekday": 6,
+              "sample_size": 40
+            },
+            {
+              "hour": 1,
+              "visits": 40,
+              "weekday": 6,
+              "sample_size": 40
+            },
+            {
+              "hour": 2,
+              "visits": 40,
+              "weekday": 6,
+              "sample_size": 40
+            },
+            {
+              "hour": 3,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 4,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 5,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 6,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 7,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 8,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 9,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 10,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 11,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 12,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 13,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 14,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 15,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 16,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 17,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 18,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 19,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 20,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 21,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 22,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 23,
+              "visits": 30,
+              "weekday": 6,
+              "sample_size": 30
+            },
+            {
+              "hour": 0,
+              "visits": 30,
+              "weekday": 7,
+              "sample_size": 30
+            },
+            {
+              "hour": 1,
+              "visits": 30,
+              "weekday": 7,
+              "sample_size": 30
+            },
+            {
+              "hour": 2,
+              "visits": 30,
+              "weekday": 7,
+              "sample_size": 30
+            },
+            {
+              "hour": 3,
+              "visits": 30,
+              "weekday": 7,
+              "sample_size": 30
+            },
+            {
+              "hour": 4,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 5,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 6,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 7,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 8,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 9,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 10,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 11,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 12,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 13,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 14,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 15,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 16,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 17,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 18,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 19,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 20,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 21,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 22,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            },
+            {
+              "hour": 23,
+              "visits": 20,
+              "weekday": 7,
+              "sample_size": 20
+            }
+          ],
+          "granularity": "weekday_hour"
+        },
+        "visit_frequency": {
+          "status": "ok",
+          "buckets": [
+            {
+              "guests": 10,
+              "visits_per_guest": "1"
+            },
+            {
+              "guests": 10,
+              "visits_per_guest": "2-3"
+            },
+            {
+              "guests": 100,
+              "visits_per_guest": "4+"
+            }
+          ]
+        }
+      },
+      {
+        "to": "2026-10-05T00:00:00+02:00",
+        "from": "2026-09-28T00:00:00+02:00",
+        "offers": {
+          "status": "ok",
+          "buckets": [
+            {
+              "deal_id": "cd919814-1eef-41f6-9a36-d70e52f064bb",
+              "redemptions": 130,
+              "sample_size": 130
+            }
+          ]
+        },
+        "peak_times": {
+          "status": "ok",
+          "buckets": [
+            {
+              "hour": 0,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 1,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 2,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 3,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 4,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 5,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 6,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 7,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 8,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 9,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 10,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 11,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 12,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 13,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 14,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 15,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 16,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 17,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 18,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 19,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 20,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 21,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 22,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 23,
+              "visits": 20,
+              "weekday": 1,
+              "sample_size": 20
+            },
+            {
+              "hour": 0,
+              "visits": 20,
+              "weekday": 2,
+              "sample_size": 20
+            },
+            {
+              "hour": 1,
+              "visits": 20,
+              "weekday": 2,
+              "sample_size": 20
+            },
+            {
+              "hour": 2,
+              "visits": 20,
+              "weekday": 2,
+              "sample_size": 20
+            },
+            {
+              "hour": 3,
+              "visits": 20,
+              "weekday": 2,
+              "sample_size": 20
+            },
+            {
+              "hour": 4,
+              "visits": 20,
+              "weekday": 2,
+              "sample_size": 20
+            },
+            {
+              "hour": 5,
+              "visits": 20,
+              "weekday": 2,
+              "sample_size": 20
+            },
+            {
+              "hour": 6,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 7,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 8,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 9,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 10,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 11,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 12,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 13,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 14,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 15,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 16,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 17,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 18,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 19,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 20,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 21,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 22,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 23,
+              "visits": 10,
+              "weekday": 2,
+              "sample_size": 10
+            },
+            {
+              "hour": 0,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 1,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 2,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 3,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 4,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 5,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 6,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 7,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 8,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 9,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 10,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 11,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 12,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 13,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 14,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 15,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 16,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 17,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 18,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 19,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 20,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 21,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 22,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 23,
+              "visits": 10,
+              "weekday": 3,
+              "sample_size": 10
+            },
+            {
+              "hour": 0,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 1,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 2,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 3,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 4,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 5,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 6,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 7,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 8,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 9,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 10,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 11,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 12,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 13,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 14,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 15,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 16,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 17,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 18,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 19,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 20,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 21,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 22,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 23,
+              "visits": 10,
+              "weekday": 4,
+              "sample_size": 10
+            },
+            {
+              "hour": 0,
+              "visits": 140,
+              "weekday": 5,
+              "sample_size": 130
+            },
+            {
+              "hour": 1,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 2,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 3,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 4,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 5,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 6,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 7,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 8,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 9,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 10,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 11,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 12,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 13,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 14,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 15,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 16,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 17,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 18,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 19,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 20,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 21,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 22,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 23,
+              "visits": 10,
+              "weekday": 5,
+              "sample_size": 10
+            },
+            {
+              "hour": 0,
+              "visits": 10,
+              "weekday": 6,
+              "sample_size": 10
+            },
+            {
+              "hour": 1,
+              "visits": 10,
+              "weekday": 6,
+              "sample_size": 10
+            },
+            {
+              "hour": 2,
+              "visits": 10,
+              "weekday": 6,
+              "sample_size": 10
+            },
+            {
+              "hour": 3,
+              "visits": 10,
+              "weekday": 6,
+              "sample_size": 10
+            },
+            {
+              "hour": 4,
+              "visits": 10,
+              "weekday": 6,
+              "sample_size": 10
+            },
+            {
+              "hour": 5,
+              "visits": 10,
+              "weekday": 6,
+              "sample_size": 10
+            },
+            {
+              "hour": 6,
+              "visits": 10,
+              "weekday": 6,
+              "sample_size": 10
+            },
+            {
+              "hour": 7,
+              "visits": 10,
+              "weekday": 6,
+              "sample_size": 10
+            },
+            {
+              "hour": 8,
+              "visits": 10,
+              "weekday": 6,
+              "sample_size": 10
+            },
+            {
+              "hour": 9,
+              "visits": 10,
+              "weekday": 6,
+              "sample_size": 10
+            }
+          ],
+          "granularity": "weekday_hour"
+        },
+        "visit_frequency": {
+          "status": "ok",
+          "buckets": [
+            {
+              "guests": 110,
+              "visits_per_guest": "1"
+            },
+            {
+              "guests": 20,
+              "visits_per_guest": "4+"
+            }
+          ]
+        }
+      }
+    ],
+    "status": "ok"
+  },
+  "comparison": {
+    "guests": {
+      "status": "ok",
+      "previous": 120,
+      "absolute_change": 10,
+      "relative_change": 0.08333333333333333
+    },
+    "stamps": {
+      "status": "ok",
+      "previous": 120,
+      "absolute_change": 7250,
+      "relative_change": 60.416666666666664
+    },
+    "visits": {
+      "status": "ok",
+      "previous": 120,
+      "absolute_change": 7250,
+      "relative_change": 60.416666666666664
+    },
+    "redemptions": {
+      "status": "no_comparison",
+      "previous": 0,
+      "absolute_change": 130
+    },
+    "returning_guests": {
+      "status": "no_comparison",
+      "previous": 0,
+      "absolute_change": 120
+    },
+    "first_time_guests": {
+      "status": "ok",
+      "previous": 120,
+      "absolute_change": -110,
+      "relative_change": -0.9166666666666666
+    }
+  },
+  "partner_id": "cf1067a0-ceaa-40f6-bb97-0a20c15a163d",
+  "definitions": {
+    "retention": "return_on_local_days_1_through_30_after_first_visit",
+    "comparison": "equal_local_wall_clock_duration",
+    "population": "reportable_completed_visits",
+    "feedback_scope": "latest_completed_iso_week",
+    "fine_segment_scope": "whole_completed_iso_weeks",
+    "segment_min_guests": 10,
+    "feedback_min_guests": 5,
+    "first_and_returning_can_overlap": true
+  },
+  "source_status": {
+    "stamps": "available",
+    "visits": "available",
+    "feedback": "available",
+    "open_cards": "available",
+    "redemptions": "available",
+    "reward_redemptions": "unavailable"
+  },
+  "comparison_period": {
+    "to": "2026-09-07T00:00:00+02:00",
+    "from": "2026-08-08T06:38:51.76748+02:00",
+    "status": "ok",
+    "timezone": "Europe/Berlin"
+  },
+  "definition_version": "partner-dashboard-v1",
+  "suppression_reasons": [
+    {
+      "metric": "return_30d",
+      "reason": "not_yet_evaluable",
+      "status": "not_yet_evaluable"
+    },
+    {
+      "metric": "offer_conversion",
+      "reason": "denominator_not_instrumented",
+      "status": "unavailable"
+    },
+    {
+      "metric": "reward_redemptions",
+      "reason": "reward_claim_coverage_unverified",
+      "status": "unavailable"
+    },
+    {
+      "metric": "card_completion_rate",
+      "reason": "card_cohort_not_instrumented",
+      "status": "unavailable"
+    }
+  ]
+}
