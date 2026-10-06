@@ -10,6 +10,7 @@ import { BlockEditor } from './block-editor'
 import { QuestionEditor } from './question-editor'
 import { ResourcesEditor, TasksEditor } from './resources-editor'
 import { PartnerContext } from './partner-context'
+import { usePartnerBrief } from './use-partner-brief'
 import { Button, Field, inputClass } from './ui'
 
 type Props={page:WorkspacePage;pages:PageMeta[];favorite:boolean;externalBusy:boolean;services:WorkspaceServices;onStored:(page:WorkspacePage)=>void;onReplace:(page:WorkspacePage)=>void;onFavorite:()=>void;onCreate:(kind:PageKind,parent?:PageMeta,source?:WorkspacePage)=>Promise<void>;onBack:()=>void;setGuard:(guard:()=>Promise<boolean>)=>void}
@@ -18,6 +19,7 @@ export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,servic
   const [navigating,setNavigating]=useState(false)
   const [session]=useState(()=>new DocumentSession(initial,services.saveWorkspacePage,onStored))
   const snapshot=useSyncExternalStore(session.subscribe,session.snapshot,session.snapshot),page=snapshot.page
+  const partnerBrief=usePartnerBrief(page.partner_id,services)
   const [tab,setTab]=useState(initial.kind==='conversation'?'conversation':'notes'),[focus,setFocus]=useState(false),[versions,setVersions]=useState<PageVersion[]>([]),[versionPreview,setVersionPreview]=useState<PageVersion|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[moreVersions,setMoreVersions]=useState(true)
   useEffect(()=>{session.activate();setGuard(()=>session.flush());return()=>{setGuard(async()=>true);session.dispose()}},[session,setGuard])
   useEffect(()=>{
@@ -99,8 +101,8 @@ export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,servic
             {tab==='notes'?<><BlockEditor blocks={page.content.blocks} onChange={blocks=>content({blocks})}/>{pages.some(p=>p.parent_id===page.id)?<div className="mt-8 border-t border-[#061829]/10 pt-5"><p className="mb-2 text-xs font-bold text-[#697680]">UNTERSEITEN</p>{pages.filter(p=>p.parent_id===page.id).map(p=><a className="flex items-center gap-2 py-2 text-sm text-[#0671d1]" href={`/workspace?page=${p.id}`} key={p.id}>{p.title}<ArrowSquareOut size={13}/></a>)}</div>:null}</>:null}
             {tab==='conversation'?<div className="space-y-6"><div className="grid gap-4 sm:grid-cols-2"><Field label="Gesprächstermin"><input type="datetime-local" className={inputClass} value={page.content.meeting.date} onChange={e=>content({meeting:{...page.content.meeting,date:e.target.value}})}/></Field><Field label="Teilnehmende & Rollen"><input className={inputClass} value={page.content.meeting.participants} maxLength={2000} onChange={e=>content({meeting:{...page.content.meeting,participants:e.target.value}})}/></Field></div>
               <details><summary className="cursor-pointer text-sm font-semibold">Freie Gesprächsnotizen ({page.content.blocks.length} Blöcke)</summary><div className="mt-4"><BlockEditor blocks={page.content.blocks} onChange={blocks=>content({blocks})}/></div></details>
-              {!page.content.questions.length?<div className="rounded-xl bg-[#f7f6f1] p-6"><h3 className="font-bold">Mit dem Onboarding-Leitfaden starten</h3><p className="my-3 text-sm text-[#526170]">50 anpassbare Fragen, davon 26 Kernfragen. Alle Antworten bleiben zunächst leer.</p><Button onClick={()=>{const template=onboardingContent();content({questions:template.questions,meeting:{...page.content.meeting,templateVersion:template.meeting.templateVersion}})}}>Leitfaden einfügen</Button></div>:null}
-              <QuestionEditor questions={page.content.questions} onChange={questions=>content({questions})}/>
+              {!page.content.questions.length?<div className="rounded-xl bg-[#f7f6f1] p-6"><h3 className="font-bold">Mit dem Onboarding-Leitfaden starten</h3><p className="my-3 text-sm text-[#526170]">Vorbereitete Angaben gemeinsam prüfen und offene Fragen zu Zielen, Alltag und Wünschen besprechen.</p><Button onClick={()=>{const template=onboardingContent();content({questions:template.questions,meeting:{...page.content.meeting,templateVersion:template.meeting.templateVersion}})}}>Leitfaden einfügen</Button></div>:null}
+              <QuestionEditor questions={page.content.questions} onChange={questions=>content({questions})} partnerId={page.partner_id} partnerBrief={partnerBrief}/>
               <Field label="Gespräch zusammenfassen"><textarea className={inputClass} rows={5} value={page.content.meeting.summary} maxLength={20000} onChange={e=>content({meeting:{...page.content.meeting,summary:e.target.value}})} placeholder="Wichtigste Vereinbarungen und nächste Schritte"/></Field><p className="text-xs text-[#697680]">Vorlagenfassung: {page.content.meeting.templateVersion||'Eigene Fragen'} · Antworten ändern keine laufenden Partnerangebote.</p>
             </div>:null}
             {tab==='links'?<ResourcesEditor links={page.content.links} onChange={links=>content({links})}/>:null}

@@ -1,8 +1,9 @@
 import { canonicalPartnerSlug } from '../partner-paths'
+import { upgradeOnboarding } from './onboarding-upgrade'
 
 export const pageKinds = { note: 'Notiz', idea: 'Idee', partner: 'Partnerakte', conversation: 'Gespräch', template: 'Vorlage' } as const
 export const pageStatuses = { open: 'Offen', active: 'In Arbeit', blocked: 'Zu klären', done: 'Abgeschlossen' } as const
-export const questionStatuses = { open: 'Offen', answered: 'Beantwortet', clarify: 'Zu klären', agreed: 'Vereinbart', irrelevant: 'Nicht relevant' } as const
+export const questionStatuses = { open: 'Offen', answered: 'Beantwortet', clarify: 'Zu klären', agreed: 'Bestätigt', irrelevant: 'Nicht relevant' } as const
 export type PageKind = keyof typeof pageKinds
 export type PageStatus = keyof typeof pageStatuses
 export type Block = { id: string; type: 'paragraph'|'heading'|'bullet'|'number'|'todo'|'callout'; text: string; checked: boolean }
@@ -18,6 +19,21 @@ export type PageVersion = { revision: number; created_at: string; snapshot: Work
 export type ActionResult<T> = {ok: true; value: T} | {ok: false; error: string; conflict?: WorkspacePage}
 
 export const newId = () => crypto.randomUUID()
+// Old documents keep their original fields on disk until the answer is edited.
+// Rendering and exports combine them without truncation or discarding earlier notes.
+export function questionAnswer(q:Question):string {
+  return [...new Set([q.answer,q.change,q.agreement,q.reason].filter(value=>value.trim()))].join('\n\n')
+}
+export function answerQuestion(q:Question,answer:string):Question {
+  return {...q,answer,change:'',agreement:'',reason:q.status==='irrelevant'?answer:'',status:answer&&q.status==='open'?'answered':q.status}
+}
+export function questionWithStatus(q:Question,status:Question['status']):Question {
+  const answer=questionAnswer(q)
+  if(answer.length<=10000)return {...answerQuestion(q,answer),status,reason:status==='irrelevant'?answer:''}
+  // Older fields can each contain 10,000 characters. Status-only changes must
+  // preserve that larger historical record while retaining the wire limits.
+  return {...q,status,reason:status==='irrelevant'?([q.reason,q.answer,q.change,q.agreement].find(value=>value.trim())??''):q.reason}
+}
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function validId(value: unknown): value is string { return typeof value === 'string' && uuidPattern.test(value) }
 export function safeLink(value: string): string|null {
@@ -85,7 +101,7 @@ export function validateContent(input: unknown): Content {
   }
   for(const entries of [content.blocks,content.questions,content.links,content.tasks]) if(entries.some(x=>!x.id) || new Set(entries.map(x=>x.id)).size!==entries.length) throw new Error('Inhalt enthält doppelte oder fehlende IDs.')
   if(new TextEncoder().encode(JSON.stringify(content)).length>512*1024)throw new Error('Die Seite ist zu groß. Bitte teile sie in Unterseiten auf.')
-  return content
+  return upgradeOnboarding(content)
 }
 export function validatePage(input: unknown): WorkspacePage {
   const p=object(input,'Seite'), title=str(p.title,'Titel',200).trim()

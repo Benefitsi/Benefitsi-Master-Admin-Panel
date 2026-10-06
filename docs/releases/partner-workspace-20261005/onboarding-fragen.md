@@ -1,8 +1,8 @@
 # Gesprächsleitfaden für Benefitsi-Partner
 
-Stand: 05.10.2026 · Vorlage für den implementierten internen Workspace (Review-Stand)
+Stand: 06.10.2026 · Vorlagenfassung 2026-10-06.2
 
-Die Fragen sind im neuen Workspace mit bearbeitbaren Antwortfeldern, Vorschlägen und Vereinbarungen implementiert. Die Freischaltung in der produktiven Admin-Umgebung steht noch aus. Der [Workspace-Entwurf](design.md) dokumentiert den abgestimmten Umfang.
+Der Workspace ist veröffentlicht. Diese Aktualisierung vereinfacht jeden Gesprächspunkt auf ein Antwortfeld und zeigt vorbereitete Angaben aus der Partnerverwaltung zum gemeinsamen Prüfen. Der [Workspace-Entwurf](design.md) dokumentiert den abgestimmten Umfang.
 
 **Ziel des Gesprächs:** den Betrieb verstehen, ein wirtschaftlich tragfähiges Startangebot und Stempelmodell besprechen, benötigte Inhalte klären und konkrete nächste Schritte festhalten. Die Dauer von etwa 45–60 Minuten ist ein Planungsvorschlag. Beim ersten kurzen Kennenlernen reichen Ziele, passende Vorteile und ein Folgetermin.
 
@@ -25,32 +25,22 @@ Die Fragen sind im neuen Workspace mit bearbeitbaren Antwortfeldern, Vorschläge
 
 _Hier mitschreiben._
 
-## Antwortfelder für jede Frage
+## Ablauf je Gesprächspunkt
 
-Im Workspace erhält jede Frage dieselbe klare Struktur. Die Frage kann umformuliert oder ergänzt werden. Die Antworttypen unten bestimmen nur die Eingabehilfe; eine zusätzliche Freitextnotiz bleibt immer möglich.
+Vorhandene Angaben aus der Partnerverwaltung stehen unter „Im Admin hinterlegt · gemeinsam prüfen“. Was stimmt, lässt sich mit „Stimmt so“ in der Antwort festhalten. Korrekturen, fehlende Angaben und neue Erkenntnisse kommen in dasselbe Antwortfeld. Der Link „Im Admin bearbeiten“ öffnet die passende Stelle für die tatsächliche Änderung. Eine Gesprächsantwort verändert keine Partnerangebote automatisch.
 
-| Feld | Eintrag |
-| --- | --- |
-| Frage / Frage-ID | |
-| Vorschlag von Benefitsi | |
-| Tatsächliche Partnerantwort | |
-| Gewünschte Abweichung | |
-| Gemeinsam vereinbart | |
-| Status: offen / beantwortet / zu klären / vereinbart / nicht relevant | |
-| Zuständig / bis wann | |
-| Zugehörige Datei oder Admin-Funktion | |
-| Umsetzung geprüft am / durch / Nachweis | |
+Es gibt ein Feld **Antwort** und einen Status: offen, beantwortet, zu klären, bestätigt oder nicht relevant. Für nicht relevante Punkte wird der Grund direkt in der Antwort notiert. Alte Notizen bleiben erhalten. Individuelle Fragen, Reihenfolgen und ausgeblendete Punkte werden beim Vorlagenupdate respektiert.
 
-Die markierten **Kernfragen** bilden das erste Gespräch. Vertiefungsfragen kommen je nach Interesse, Branche und Tarif dazu. Nicht relevante Themen werden mit kurzem Grund geschlossen. Eine neue Vorlagenversion verändert keine bereits ausgefüllten Protokolle.
+Die markierten **Kernfragen** bilden den ersten Durchgang. Weitere Themen kommen nach Bedarf hinzu. Die Tabellen nennen die im Gespräch zu klärenden Inhalte; alle Antworten können als Freitext notiert werden. Hinweise sind keine automatisch zugesagten Angebote. Tatsächliche Vorschläge ergeben sich aus den Angaben des ausgewählten Partners.
 
 ## A. Betrieb und Ansprechpartner
 
 | ID | Frage | Antwortfeld | Hilfestellung / Vorschlag | Ziel |
 | --- | --- | --- | --- | --- |
-| A01 · Kern | Wie soll der Betrieb öffentlich heißen, und welche Art von Betrieb seid ihr? | Kurztext + Branche | Öffentlichen Namen und geschäftlichen Vertragspartner getrennt erfassen. | Partnerdetails |
-| A02 · Kern | Wer entscheidet über Angebote, Inhalte und die Veröffentlichung, und wer ist im Alltag erreichbar? | Name, Rolle, Kontakt | Eine entscheidungsbefugte Person und bei Bedarf eine Vertretung benennen. | Kontakt und Aufgaben |
-| A03 · Kern | Welche Adresse, Öffnungszeiten, Telefonnummer und Website sollen Gäste sehen? Gibt es saisonale Abweichungen? | Strukturierte Angaben + Notiz | Vorhandenes Profil gemeinsam prüfen; fehlende Angaben als offen markieren. | Partnerdetails / Öffnungszeiten |
-| A04 | Was macht euch besonders, und welche zwei oder drei Angebote sollen neue Gäste zuerst kennenlernen? | Freitext | Konkrete Spezialitäten, Leistungen, Atmosphäre oder besondere Ausstattung nennen lassen. | Profil / Microsite |
+| A01 · Kern | Öffentlichen Namen und Betriebsart gemeinsam prüfen. | Kurztext + Branche | Öffentlichen Namen und geschäftlichen Vertragspartner getrennt erfassen. | Partnerdetails |
+| A02 · Kern | Hinterlegte Ansprechpartner prüfen: Wer entscheidet und wer ist im Alltag erreichbar? | Name, Rolle, Kontakt | Eine entscheidungsbefugte Person und bei Bedarf eine Vertretung benennen. | Kontakt und Aufgaben |
+| A03 · Kern | Adresse, Kontakt und Öffnungszeiten gemeinsam prüfen. Fehlen saisonale Abweichungen? | Strukturierte Angaben + Notiz | Vorhandenes Profil gemeinsam prüfen; fehlende Angaben als offen markieren. | Partnerdetails / Öffnungszeiten |
+| A04 | Vorbereitete Beschreibung prüfen: Was fehlt oder macht euch besonders? | Freitext | Konkrete Spezialitäten, Leistungen, Atmosphäre oder besondere Ausstattung nennen lassen. | Profil / Microsite |
 | A05 | Welche weiteren Standorte, Sprachen oder wichtigen Hinweise für Besucher sollen wir berücksichtigen? | Liste + Auswahl | Je Standort getrennte Öffnungszeiten und Bedingungen; Besucherhinweise aus tatsächlichen Angaben übernehmen. | Profil / Umfang |
 
 ## B. Ziele und Besuchsverhalten
@@ -62,6 +52,10 @@ Die markierten **Kernfragen** bilden das erste Gespräch. Vertiefungsfragen komm
 | B03 | An welchen Tagen und Uhrzeiten habt ihr freie Kapazität – und wann soll keine Aktion zusätzliche Nachfrage erzeugen? | Wochentage + Zeitfenster | Daraus lässt sich eine begrenzte Happy Hour entwickeln. | Deals |
 | B04 | Woran würdet ihr nach den ersten Wochen erkennen, dass sich die Zusammenarbeit lohnt? | Ziel + Prüftermin | Bestätigte Besuche, Wiederkehr und Einlösungen sind geeignete Gesprächsgrößen. Umsatz nur bei vorhandener Datenquelle verwenden. | Nachbesprechung |
 
+| B05 · Kern | Was nervt euch im Betriebsalltag am meisten oder kostet unnötig Zeit? | Freitext | Konkrete Situation, Häufigkeit und bisherige Lösung festhalten. | Wünsche & nächste Schritte |
+| B06 · Kern | Welche Funktion oder Unterstützung wünscht ihr euch von Benefitsi am dringendsten? | Freitext | Wunsch, Nutzen und Priorität erfassen. Eine Idee ist noch keine zugesagte Funktion. | Wünsche & nächste Schritte |
+| B07 | Was würdet ihr gern verbessern, und welche weiteren Ideen oder Bedürfnisse habt ihr? | Freitext | Auch Themen außerhalb der vorhandenen Funktionen aufnehmen. | Wünsche & nächste Schritte |
+
 ## C. Stempelkarte und Belohnungen
 
 **Erklärung für den Partner:** „Mit der digitalen Stempelkarte können Gäste bei bestätigten Besuchen Fortschritt sammeln. Wir besprechen, welche Belohnung für eure Gäste attraktiv und für euren Betrieb gut erfüllbar ist. Die Bedingungen sollen für Gast und Team eindeutig sein.“
@@ -70,14 +64,14 @@ Der gelesene Benefitsi-Editor sieht aktuell eine Karte mit **zehn Stempeln** vor
 
 | ID | Frage | Antwortfeld | Hilfestellung / Vorschlag | Ziel |
 | --- | --- | --- | --- | --- |
-| C01 · Kern | Möchtet ihr die digitale Stempelkarte nutzen, und für welche Besuche oder Leistungen soll sie gelten? | Ja / nein / später + Freitext | Vorhandenen Scanablauf zeigen und die gewünschten Teilnahmebedingungen abgleichen. | Stempelkarte |
-| C02 · Kern | Welche Belohnung würde eure Gäste freuen und wäre für euch dauerhaft gut erfüllbar? | Artikel / Zusatzleistung / Rabatt + Beschreibung | Zuerst einen attraktiven Artikel oder eine kleine Zusatzleistung diskutieren. Ein allgemeiner hoher Rabatt ist keine automatische Empfehlung. | Meilenstein |
+| C01 · Kern | Vorbereitete Stempelkarte prüfen: Für welche Besuche oder Leistungen soll sie gelten? | Ja / nein / später + Freitext | Vorhandenen Scanablauf zeigen und die gewünschten Teilnahmebedingungen abgleichen. | Stempelkarte |
+| C02 · Kern | Vorbereitete Belohnungen prüfen: Sind sie für Gäste attraktiv und im Alltag erfüllbar? | Artikel / Zusatzleistung / Rabatt + Beschreibung | Zuerst einen attraktiven Artikel oder eine kleine Zusatzleistung diskutieren. Ein allgemeiner hoher Rabatt ist keine automatische Empfehlung. | Meilenstein |
 | C03 · Kern | Was ist für euch der tatsächliche Aufwand dieser Belohnung, und gibt es eine Grenze, die wir beachten sollen? | Betrag oder Aufwand + interne Notiz | Interne Kalkulation dient dem Vorschlag und muss nicht öffentlich erscheinen. | Wirtschaftliche Abstimmung |
-| C04 · Kern | Bei welchem Meilenstein innerhalb der Zehnerkarte soll die Belohnung erreicht werden? | Ganze Zahl 1–10 + Wunschfeld | Einfacher Startvorschlag: eine gut verständliche Belohnung bei zehn Stempeln. Einen früheren Meilenstein nur nach gemeinsamer Abwägung ergänzen. | Meilenstein |
-| C05 · Kern | Für welche Gäste gilt die Belohnung, und wie erklären wir die Bedingungen in einem Satz? | Zielgruppe + Kundentext | Verfügbare Zielgruppen mit dem Editor abgleichen. Partner Pro beschreibt euren Tarif; Consumer Premium beschreibt den Zugang des Gasts. | Meilenstein / Zielgruppe |
-| C06 | Gibt es Mindestkauf, ausgeschlossene Produkte, Kombinationen mit anderen Aktionen oder zeitliche Einschränkungen? | Einzelne Bedingungen + Freitext | Nur klare und technisch abbildbare Regeln übernehmen. Keine Einschränkung stillschweigend ergänzen. | Bedingungen |
+| C04 · Kern | Hinterlegte Stempel-Meilensteine und Belohnungen gemeinsam prüfen. | Ganze Zahl 1–10 + Wunschfeld | Einfacher Startvorschlag: eine gut verständliche Belohnung bei zehn Stempeln. Einen früheren Meilenstein nur nach gemeinsamer Abwägung ergänzen. | Meilenstein |
+| C05 · Kern | Zielgruppen und Gültigkeit der Belohnungen gemeinsam prüfen. | Zielgruppe + Kundentext | Verfügbare Zielgruppen mit dem Editor abgleichen. Partner Pro beschreibt euren Tarif; Consumer Premium beschreibt den Zugang des Gasts. | Meilenstein / Zielgruppe |
+| C06 | Hinterlegte Bedingungen und Ausnahmen der Stempelkarte gemeinsam prüfen. | Einzelne Bedingungen + Freitext | Nur klare und technisch abbildbare Regeln übernehmen. Keine Einschränkung stillschweigend ergänzen. | Bedingungen |
 | C07 | Was soll passieren, wenn der Belohnungsartikel ausverkauft ist oder eine Zusatzleistung gerade nicht möglich ist? | Ersatzlösung + Verantwortlicher | Eine verständliche Alternative vereinbaren; zugesagte Ansprüche nicht einfach entfernen. | Interne Einlösehinweise |
-| C08 · Kern | Wer prüft die Einlösung im Alltag, und welcher kurze Hinweis hilft dieser Person? | Rolle + kurzer Text | Vorhandene Scanner-/Verwaltungsrechte zuordnen; als internen Ablauf dokumentieren. | Team / Einlösehinweise |
+| C08 · Kern | Vorbereiteten Einlösehinweis prüfen: Ist er für euer Team eindeutig? | Rolle + kurzer Text | Vorhandene Scanner-/Verwaltungsrechte zuordnen; als internen Ablauf dokumentieren. | Team / Einlösehinweise |
 
 **Beispiel zum Besprechen, keine automatische Konfiguration:** „Nach zehn bestätigten Stempeln ein kleines Heißgetränk aus einer festgelegten Auswahl.“ Gemeinsam klären: Auswahl, Größen, mögliche Aufpreise, Zielgruppe, Kombinationen und Verhalten bei Nichtverfügbarkeit. Für andere Branchen wird ein passender konkreter Vorteil gewählt.
 
@@ -89,14 +83,14 @@ Normale Angebote und Happy Hour sind für Free und Pro ohne Tarif-Mengenlimit vo
 
 | ID | Frage | Antwortfeld | Hilfestellung / Vorschlag | Ziel |
 | --- | --- | --- | --- | --- |
-| D01 · Kern | Welches konkrete Angebot soll zum Start sichtbar sein? | Titel, Leistung, Nutzen | Ein leicht erklärbares Startangebot auswählen; zusätzliche Angebote können später ergänzt werden. | Deals |
-| D02 · Kern | Passt dafür ein normales Angebot, eine Happy Hour oder eine begrenzte Deal-Drop-Aktion? | Typ + Begründung | Das Hauptziel aus B01 und freie Zeiten aus B03 heranziehen. | Deal-Typ |
-| D03 · Kern | Welchen Vorteil bekommt der Gast genau: festen Betrag, Prozentrabatt, Zugabe, Gratisartikel oder 2 für 1? | Vorteilstyp + Wert/Artikel | Auswahl gegen die tatsächlich angebotenen Editoroptionen prüfen. Konkrete Produkte und Mengen nennen. | Deal-Wert |
-| D04 · Kern | Wann beginnt und endet die Aktion, und an welchen Wochentagen oder Uhrzeiten gilt sie? | Datum + Wochentage + Zeiten | Europe/Berlin verwenden; Enddatum, Ausschlusstage und Startfreigabe gemeinsam prüfen. | Gültigkeit |
-| D05 · Kern | Wer darf die Aktion nutzen, wie häufig und gegebenenfalls wie viele Gäste insgesamt? | Zielgruppe + gewünschte Grenzen | Technische Umsetzbarkeit einzelner Limits im Editor prüfen. Die Free-Drop-Quote ist eine Veröffentlichungsquote, keine Besucherquote. | Zielgruppe / Begrenzung |
-| D06 · Kern | Welche Bedingungen, Ausnahmen und Kombinationen müssen Gast und Team kennen? | Kundentext + interner Text | Ein verständlicher öffentlicher Satz und ein kurzer Einlösehinweis; tatsächliche Auswahl im Editor prüfen. | Deal-Bedingungen |
-| D07 | Soll die Aktion bei hoher Nachfrage pausiert werden, und wer entscheidet darüber? | Zuständigkeit + Kriterium | Pause und Ende sind unterschiedliche Entscheidungen. Bereits zugesagte Vorteile gesondert beachten. | Betriebsablauf |
-| D08 | Möchtet ihr den vorbereiteten Text oder Vorteil anders gestalten? | Änderungswunsch + Einigung | Originalvorschlag, Partnerantwort und beschlossene Fassung nebeneinander erhalten. | Freigabe |
+| D01 · Kern | Vorbereitete Angebote gemeinsam durchgehen: Was soll zum Start sichtbar sein? | Titel, Leistung, Nutzen | Ein leicht erklärbares Startangebot auswählen; zusätzliche Angebote können später ergänzt werden. | Deals |
+| D02 · Kern | Hinterlegte Angebotsarten prüfen: Angebot, Happy Hour oder Deal Drop? | Typ + Begründung | Das Hauptziel aus B01 und freie Zeiten aus B03 heranziehen. | Deal-Typ |
+| D03 · Kern | Hinterlegte Vorteile prüfen: Stimmen Rabatt, Zugabe oder Belohnung? | Vorteilstyp + Wert/Artikel | Auswahl gegen die tatsächlich angebotenen Editoroptionen prüfen. Konkrete Produkte und Mengen nennen. | Deal-Wert |
+| D04 · Kern | Zeitraum, Wochentage und Uhrzeiten der vorbereiteten Aktionen prüfen. | Datum + Wochentage + Zeiten | Europe/Berlin verwenden; Enddatum, Ausschlusstage und Startfreigabe gemeinsam prüfen. | Gültigkeit |
+| D05 · Kern | Zielgruppen, Kontingente und Nutzungslimits gemeinsam prüfen. | Zielgruppe + gewünschte Grenzen | Technische Umsetzbarkeit einzelner Limits im Editor prüfen. Die Free-Drop-Quote ist eine Veröffentlichungsquote, keine Besucherquote. | Zielgruppe / Begrenzung |
+| D06 · Kern | Bedingungen und Ausnahmen der vorbereiteten Angebote gemeinsam prüfen. | Kundentext + interner Text | Ein verständlicher öffentlicher Satz und ein kurzer Einlösehinweis; tatsächliche Auswahl im Editor prüfen. | Deal-Bedingungen |
+| D07 | Aktivierungsstand prüfen: Wann soll pausiert werden und wer entscheidet? | Zuständigkeit + Kriterium | Pause und Ende sind unterschiedliche Entscheidungen. Bereits zugesagte Vorteile gesondert beachten. | Betriebsablauf |
+| D08 | Vorbereitete Angebotstexte prüfen: Was möchtet ihr ändern oder ergänzen? | Änderungswunsch + Einigung | Originalvorschlag, Partnerantwort und beschlossene Fassung nebeneinander erhalten. | Freigabe |
 
 **Vorschläge als Gesprächsöffner:**
 
@@ -113,11 +107,11 @@ Rabattwert und Stempelbelohnung werden aus den Antworten entwickelt. Kein Beispi
 
 | ID | Frage | Antwortfeld | Hilfestellung / Vorschlag | Ziel |
 | --- | --- | --- | --- | --- |
-| E01 · Kern | Sind Name, Beschreibung, Kontakt und Öffnungszeiten im vorbereiteten Profil richtig? | Bestätigung + Korrekturen | Vorhandenen Stand gemeinsam öffnen und Abweichungen erfassen. | Partnerdetails |
-| E02 · Kern | Welche Logos, Bilder, Speise- oder Leistungskarten liegen bereits vor und dürfen verwendet werden? | Benannte Dateilinks + Status | Quelle, Fassung und zuständige Freigabeperson festhalten. | Dateien / Menü / Medien |
+| E01 · Kern | Vorbereitetes Profil und Microsite gemeinsam auf Richtigkeit prüfen. | Bestätigung + Korrekturen | Vorhandenen Stand gemeinsam öffnen und Abweichungen erfassen. | Partnerdetails |
+| E02 · Kern | Vorhandene Logos, Bilder und Karten prüfen: Was fehlt und was darf genutzt werden? | Benannte Dateilinks + Status | Quelle, Fassung und zuständige Freigabeperson festhalten. | Dateien / Menü / Medien |
 | E03 | Was sollen Gäste auf eurer Microsite als Erstes verstehen oder tun? | Hauptbotschaft + gewünschte Aktion | Je nach Betrieb anrufen, Route öffnen, Leistungen ansehen oder einen vorhandenen Buchungsweg aufrufen. | Microsite |
-| E04 | Welche Produkte, Leistungen, Räume oder Besonderheiten sollen hervorgehoben werden? | Liste + Datei-/Seitenlinks | Lieber eine klare Auswahl mit vorhandenem Material als unbelegte Aussagen. | Microsite-Inhalte |
-| E05 | Welche externen Links sollen eingebunden werden, und wer hält sie aktuell? | Website, Karte, Reservierung etc. | Nur tatsächlich vorhandene und geprüfte Ziele verlinken. Ein Link ist keine neu integrierte Buchungslösung. | Profil / Microsite |
+| E04 | Vorbereitete Beschreibung und Leistungen prüfen: Was soll hervorgehoben werden? | Liste + Datei-/Seitenlinks | Lieber eine klare Auswahl mit vorhandenem Material als unbelegte Aussagen. | Microsite-Inhalte |
+| E05 | Hinterlegte externe Links gemeinsam prüfen. Wer hält sie aktuell? | Website, Karte, Reservierung etc. | Nur tatsächlich vorhandene und geprüfte Ziele verlinken. Ein Link ist keine neu integrierte Buchungslösung. | Profil / Microsite |
 | E06 · Kern | Wer prüft die fertige Vorschau, und wann können wir die Freigabe erwarten? | Person + Datum + Freigabestatus | Inhaltlich vereinbart, technisch fertig und veröffentlicht getrennt erfassen. | Veröffentlichung |
 
 ## F. Bilder, 360°-Ansichten und Video
@@ -129,18 +123,18 @@ Rabattwert und Stempelbelohnung werden aus den Antworten entwickelt. Kein Beispi
 | ID | Frage | Antwortfeld | Hilfestellung / Vorschlag | Ziel |
 | --- | --- | --- | --- | --- |
 | F01 · Kern | Wäre es hilfreich, wenn Gäste eure Räume oder Außenbereiche vorab ansehen könnten? | Ja / nein / später + Zweck | Nutzen am Betrieb festmachen: Atmosphäre, Raumaufteilung, Ausstattung oder Orientierung. | Medienentscheidung |
-| F02 | Gibt es bereits gute Fotos, ein Video oder eine 360°-Tour? | Dateilinks + Anbieter/Quelle | Vorhandene Medien und freigegebene Nutzbarkeit zuerst prüfen. | Medienbestand |
+| F02 | Vorhandene Fotos, Videos und 360°-Quellen gemeinsam prüfen. Was fehlt noch? | Dateilinks + Anbieter/Quelle | Vorhandene Medien und freigegebene Nutzbarkeit zuerst prüfen. | Medienbestand |
 | F03 | Welche Räume oder Blickpunkte sollen gezeigt werden und welche ausdrücklich nicht? | Liste + Ausschlüsse | Etwa Gastraum, Terrasse, Zimmer, Showroom oder Besucherbereich. Private und betriebsinterne Bereiche gesondert markieren. | Aufnahme-/Einbindungsbriefing |
-| F04 | Wer kann die Nutzung der Medien und die Darstellung abgebildeter Personen freigeben? | Person + Freigabeverweis | Freigabestatus dokumentieren; fehlende Zustimmung bleibt offen. | Medienfreigabe |
+| F04 | Erfasste Medienrechte prüfen: Wer kann die Nutzung und abgebildete Personen freigeben? | Person + Freigabeverweis | Freigabestatus dokumentieren; fehlende Zustimmung bleibt offen. | Medienfreigabe |
 | F05 | Falls neue Aufnahmen sinnvoll sind: Wann ist der Betrieb vorbereitet, ruhig und zugänglich? | Wunschtermine + Kontakt | Aufnahmeumfang, Termin und gesonderte Beauftragung abstimmen. | Produktionsanfrage |
 | F06 | Würde eine Außen- oder Drohnenansicht einen konkreten Mehrwert zeigen? | Zweck + gewünschter Bereich | Lage, Gelände oder Außenanlage können relevant sein. Machbarkeit wird separat geprüft; keine pauschale Aufnahmezusage. | Optionale Medienanfrage |
-| F07 | Wer prüft die fertigen Medien vor Einbindung und meldet spätere Änderungen? | Person + Freigabeprozess | Veraltete oder nicht mehr passende Ansichten müssen austauschbar bleiben. | Medienpflege |
+| F07 | Medien-Freigabestand prüfen: Wer nimmt die fertigen Inhalte ab und meldet Änderungen? | Person + Freigabeprozess | Veraltete oder nicht mehr passende Ansichten müssen austauschbar bleiben. | Medienpflege |
 
 ## G. Team und Nutzung im Alltag
 
 | ID | Frage | Antwortfeld | Hilfestellung / Vorschlag | Ziel |
 | --- | --- | --- | --- | --- |
-| G01 · Kern | Wer soll Partnerdaten bearbeiten und wer ausschließlich Scans oder Einlösungen bedienen? | Personen/Rollen + gewünschter Zugriff | Vorhandene Rollen und Tarifkontingente beachten; keine gemeinsamen Passwörter im Protokoll speichern. | Teamzugänge |
+| G01 · Kern | Vorhandene Teamzugänge prüfen: Wer braucht Bearbeitungs- oder Scan-Zugriff? | Personen/Rollen + gewünschter Zugriff | Vorhandene Rollen und Tarifkontingente beachten; keine gemeinsamen Passwörter im Protokoll speichern. | Teamzugänge |
 | G02 | Welche Geräte stehen im Alltag zur Verfügung, und ist die Internetverbindung am Einsatzort zuverlässig? | Gerätetyp + Situation | Bestehenden Ablauf passend erklären. Offline-Verhalten nur so zusagen, wie es für den konkreten Weg geprüft ist. | Technische Vorbereitung |
 | G03 | Wer hilft vor Ort, wenn eine Einlösung nicht klappt oder der Ansprechpartner fehlt? | Rolle + Kontaktweg | Klare Zuständigkeit und bestehenden Supportweg dokumentieren. | Betriebsablauf |
 | G04 | Wer hält Öffnungszeiten, Urlaubszeiten, Menü und Aktionsverfügbarkeit aktuell? | Zuständigkeiten | Änderungen in den bestehenden Verwaltungsbereichen vornehmen. | Pflege |

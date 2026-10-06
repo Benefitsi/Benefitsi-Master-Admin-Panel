@@ -1,24 +1,35 @@
 # Interner Workspace und Partner-Onboarding
 
-Der Master-Admin erhält `/workspace` mit Arbeitsbereichen, Seiten/Unterseiten, Notizen und Ideen. Aus der Partnerbearbeitung führt „Workspace öffnen“ in den passenden Partnerkontext. Eine Partnerakte kann ein neues Gespräch mit 50 anpassbaren Fragen (26 Kernfragen) beginnen.
+Der Master-Admin erhält `/workspace` mit Arbeitsbereichen, Seiten/Unterseiten, Notizen und Ideen. Aus der Partnerbearbeitung führt „Workspace öffnen“ in den passenden Partnerkontext. Eine Partnerakte kann ein neues Gespräch mit 53 anpassbaren Gesprächspunkten (28 Kernpunkte) beginnen.
 
-Enthalten: Text-/Listen-/Checklistenblöcke, Suche in Text und Antworten, Typ-/Status-/Tag-/Partnerfilter, Tabellen- und Boardansicht, persönliche Favoriten, Archiv/Wiederherstellung, leere wiederverwendbare Gesprächsvorlagen, Dateilinks, Aufgaben mit Nachweisen, Markdown/JSON-Export sowie Versionen und Wiederherstellung. Jedes Gespräch trennt Vorschlag, Partnerantwort, Änderungswunsch und Vereinbarung. Die bestehenden Partnereditoren bleiben die Quelle veröffentlichter Angebote und Stammdaten.
+Enthalten: Text-/Listen-/Checklistenblöcke, Suche in Text und Antworten, Typ-/Status-/Tag-/Partnerfilter, Tabellen- und Boardansicht, persönliche Favoriten, Archiv/Wiederherstellung, leere wiederverwendbare Gesprächsvorlagen, Dateilinks, Aufgaben mit Nachweisen, Markdown/JSON-Export sowie Versionen und Wiederherstellung. Jeder Gesprächspunkt hat ein Antwortfeld. Vorbereitete Angaben des verknüpften Partners werden direkt aus der Partnerverwaltung geladen und gemeinsam geprüft. Bestätigungen, Korrekturen und neue Erkenntnisse stehen in derselben Antwort. Die bestehenden Partnereditoren bleiben die Quelle veröffentlichter Angebote und Stammdaten.
 
 ## Benutzung
 
 1. Workspace öffnen, Arbeitsbereich anlegen und eine Notiz oder Partnerakte erstellen.
 2. In der Partnerakte den Partner zuordnen und „Gespräch starten“ wählen. Fokusmodus bietet Platz während des Gesprächs.
-3. Antworten und Abweichungen erfassen. Deals, Stempelkarte, Microsite und Tarifprüfung öffnen sich über die Partnerlinks in einem neuen Tab.
+3. Vorbereitete Angaben mit „Stimmt so“ bestätigen oder Korrekturen und neue Erkenntnisse im Antwortfeld erfassen. Deals, Stempelkarte, Microsite und Tarifprüfung öffnen sich über die Partnerlinks in einem neuen Tab.
 4. Vereinbarte Umsetzung als Aufgabe mit Zuständigkeit und Termin festhalten. Erst nach Bearbeitung und Prüfung als erledigt markieren.
 5. Auf „Gespeichert“ achten. Bei Versionskonflikt vergleichen, den Entwurf als Kopie sichern oder die Serverfassung laden. Export bleibt verfügbar.
 
 ## Bereitstellung
 
-Zuerst die zusammengehörige Migration `20261005153637_admin_partner_workspace.sql` aus Benefitsi-Database nach Review in der gewünschten Umgebung anwenden, danach diesen Admin-Stand bereitstellen. In dieser Aufgabe wurden keine gemeinsame Datenbank und keine Produktionsumgebung verändert. Ohne Migration zeigt der Admin einen Einrichtungsfehler und überschreibt nichts.
+Zuerst die zusammengehörige Migration `20261005153637_admin_partner_workspace.sql` aus Benefitsi-Database nach Review in der gewünschten Umgebung anwenden, danach diesen Admin-Stand bereitstellen. Die erste Fassung wurde am 06.10.2026 mit Admin-PR #89 und Datenbank-PR #47 veröffentlicht; die Migration ist in Staging und Produktion angewendet. Die Vereinfachung vom 06.10. benötigt keine neue Migration. Ohne Migration zeigt der Admin einen Einrichtungsfehler und überschreibt nichts.
 
 Die SQL-Migration schützt alle vier Tabellen durch Admin-RLS und widerrufene direkte Schreibrechte. Jeder Server Action authentifiziert erneut. Schreib-RPCs prüfen den Admin selbst, vergleichen Revisionen und schreiben Inhalt und Historie atomar. Partner und öffentliche Clients erhalten keinen Zugriff. Kein Hard-Delete-Endpunkt; Archiv und Historie erhalten Daten. Links übernehmen die Berechtigungen ihrer Quelle.
 
-## Prüfung am 05.10.2026
+## Vereinfachung am 06.10.2026
+
+- Ein Antwortfeld in Oberfläche und Markdown-Export. Frühere Antworten, Änderungswünsche, Vereinbarungen und Zusatznotizen bleiben erhalten, auch bei reinen Statuswechseln.
+- Partnerbezogene Angaben für Stammdaten, Kontakte, Zeiten, Stempelkarte, Deals, Microsite, Medien, Menü und Team werden nach Admin-Authentifizierung geladen. Nur ausdrücklich benötigte Felder; keine PINs, kein Zugriff durch Partner. Die Microsite nutzt den neuesten vorbereiteten Entwurf, sonst die konkrete veröffentlichte Version.
+- Erneutes Laden bei Rückkehr ins Fenster und über „Admin-Daten aktualisieren“. Das ändert keine Gesprächsantwort; verspätete Antworten eines anderen Partners werden verworfen. Ein Ladefehler wird als Fehler angezeigt.
+- A01 bleibt Name und Betriebsart, A02 Ansprechpartner. Neue Fragen B05–B07 behandeln Alltagsprobleme, Funktionswünsche und Ideen. Individuelle Texte, Antworten, Reihenfolge und ausgeblendete Punkte bleiben beim Vorlagenupdate erhalten.
+- 91 gezielte Workspace-, Navigations- und Zugangstests bestanden. Der Workspace-Testlauf ist zusätzlich in CI aufgenommen. ESLint und Diff-Prüfung bestanden. Lokaler vollständiger Typecheck ist durch drei bereits fehlende Leaflet-/ONNX-Module in den wiederverwendeten Abhängigkeiten begrenzt; die Cloud-Prüfung verwendet die vollständigen Lockfile-Abhängigkeiten.
+
+- Browserprüfung mit synthetischen Daten: Bestätigung und Speicherung in einem Antwortfeld, neue Fragen B05–B07 sowie 390-px-Fokusansicht ohne seitlichen Seitenüberlauf; keine Konsolenfehler.
+- Unabhängiger Code-Review abgeschlossen, keine offenen Blocker.
+
+## Ursprüngliche Prüfung am 05.10.2026
 
 - 74 gezielte Tests bestanden: echte React-Komponenten mit Transportadapter, Model/Template/Export, Speicherwarteschlange, Pagination, Navigation und Zugangstrennung. Neue Tests decken langsame Antworten, Konflikte, Browser-Historie, Formziel, verlorene Create-Antworten und Kopier-Wiederholungen ab.
 - Datenbank: 18 echte PostgreSQL-Verhaltenstests bestanden. Zusätzlich kompletter Anwendungs-Fragebogen → echte RPC → Anwendungsvalidator erfolgreich; Antwortupdate erzeugt Revision 2. Temporäre Datenbanken anschließend entfernt.

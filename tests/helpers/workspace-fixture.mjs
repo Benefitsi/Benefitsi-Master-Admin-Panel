@@ -1,3 +1,4 @@
+import { buildPartnerBrief } from '../../lib/workspace/partner-brief.ts'
 import { validatePage, pagePayload } from '../../lib/workspace/model.ts'
 
 // Transport boundary only: React editors and document validation stay real.
@@ -11,6 +12,7 @@ export function workspaceFixture(seed = {}) {
   const ok = value => ({ok:true,value:structuredClone(value)})
   const fail = error => ({ok:false,error})
   const services = {
+    async loadWorkspacePartnerBrief(id) { return ok(buildPartnerBrief({partner:{id,name:fixturePartner.name},owner:null,microsite:null,deals:[],rewards:[],hours:[],holidays:[],socials:[],menus:[],staff:[]})) },
     async loadWorkspaceIndex() { return ok({workspaces:[...workspaces.values()],favorites:[...favorites]}) },
     async loadWorkspacePages(id, filter = {}, offset = 0) {
       const matches = [...pages.values()].filter(p => p.workspace_id===id && p.archived===(filter.archived===true)

@@ -2,11 +2,19 @@
 
 import { requireAdmin } from '@/lib/admin'
 import { readAllRows } from '@/lib/workspace/pagination'
+import { readWorkspacePartnerBrief } from '@/lib/workspace/partner-brief-data'
+import type { PartnerBrief } from '@/lib/workspace/partner-brief'
 import { pagePayload, validatePage, validId, pageKinds, pageStatuses, type ActionResult, type Workspace, type WorkspacePage, type PageMeta, type PageVersion, type PartnerReference } from '@/lib/workspace/model'
 
 const metaColumns='id,workspace_id,parent_id,partner_id,kind,title,status,tags,owner,due_date,revision,archived,created_at,updated_at'
 const workspaceColumns='id,title,description,revision,archived,created_at,updated_at'
 const pageColumns=metaColumns+',content'
+export async function loadWorkspacePartnerBrief(partnerId:string):Promise<ActionResult<PartnerBrief>> {
+  const {supabase}=await requireAdmin()
+  if(!validId(partnerId))return {ok:false,error:'Ungültiger Partner.'}
+  try{return {ok:true,value:await readWorkspacePartnerBrief(supabase,partnerId)}}
+  catch(error){return {ok:false,error:error instanceof Error?error.message:'Die Admin-Daten konnten nicht geladen werden.'}}
+}
 function message(error:{code?:string;message?:string}|null) {
   if(error?.message?.includes('workspace_conflict'))return 'Diese Seite wurde inzwischen geändert. Dein Entwurf ist erhalten. Bitte vergleiche beide Fassungen.'
   if(['42P01','PGRST202','PGRST205','42883'].includes(error?.code??''))return 'Der Workspace ist noch nicht in dieser Datenbank eingerichtet. Bitte die zugehörige Workspace-Migration bereitstellen.'
