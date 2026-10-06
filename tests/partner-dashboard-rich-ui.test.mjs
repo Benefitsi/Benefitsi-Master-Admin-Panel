@@ -242,3 +242,83 @@ test('existing admin override expiry is required in allowance mode and absent fo
     dom.window.close()
   }
 })
+
+const legacyOffers = () =>
+  JSON.parse(
+    readFileSync(
+      new URL(
+        './fixtures/partner-dashboard/legacy-offers.json',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+  )
+test('released legacy v1 offer counts stay visible without supported additive insights and without identities', () => {
+  for (const version of [null, 'future']) {
+    const d = legacyOffers()
+    if (version)
+      d.insights = {
+        definition_version: version,
+        sections: { offers: { status: 'ok', definition_version: version } },
+      }
+    const html = render(h(PartnerStatistics, { data: d }))
+    assert.match(html, /7654321/)
+    assert.match(html, /Name nicht verfügbar/)
+    assert.match(html, /21\.09\.2026/)
+    assert.doesNotMatch(
+      html,
+      /cd919814|Vorteil 1|Keine freigegebenen Angebotswerte verfügbar/,
+    )
+  }
+})
+test('legacy offer fallback respects every ancestor and bucket restriction and malformed count', () => {
+  const changes = [
+    (d) => (d.definition_version = 'future'),
+    (d) => (d.breakdowns.status = 'suppressed'),
+    (d) => (d.breakdowns.weeks[0].status = 'locked'),
+    (d) => (d.breakdowns.weeks[0].offers.status = 'unavailable'),
+    (d) => (d.breakdowns.weeks[0].offers.buckets[0].status = 'suppressed'),
+  ]
+  for (const change of changes) {
+    const d = legacyOffers()
+    change(d)
+    assert.doesNotMatch(
+      render(h(PartnerStatistics, { data: d })),
+      /7654321|cd919814/,
+    )
+  }
+  for (const redemptions of [
+    null,
+    undefined,
+    '7654321',
+    -7654321,
+    NaN,
+    Infinity,
+    0.5,
+  ]) {
+    const d = legacyOffers()
+    d.breakdowns.weeks[0].offers.buckets[0].redemptions = redemptions
+    assert.doesNotMatch(
+      render(h(PartnerStatistics, { data: d })),
+      /7654321|Infinity|NaN|Name nicht verfügbar/,
+    )
+  }
+  const d = legacyOffers()
+  d.breakdowns.weeks[0].offers.buckets[0].redemptions = 0
+  assert.match(render(h(PartnerStatistics, { data: d })), /<dd[^>]*>0<\/dd>/)
+})
+test('supported locked or unavailable rich offers never bypass their state through legacy rows', () => {
+  for (const state of ['locked', 'suppressed', 'unavailable']) {
+    const d = legacyOffers()
+    d.insights = {
+      definition_version: 'partner-dashboard-insights-v1',
+      sections: {
+        offers: {
+          definition_version: 'partner-dashboard-insights-v1',
+          status: state,
+        },
+      },
+    }
+    assert.doesNotMatch(render(h(PartnerStatistics, { data: d })), /7654321/)
+  }
+})

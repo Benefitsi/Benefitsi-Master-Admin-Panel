@@ -81,6 +81,72 @@ function Topic({
     </section>
   )
 }
+// The v1 aggregate has counts but no publishable catalogue names. Keep this
+// UI-only fallback separate from the shared additive CSV projection.
+function LegacyOffers({ data }: { data: Dashboard }) {
+  const root = object(data.breakdowns)
+  const rootStatus =
+    data.definition_version === 'partner-dashboard-v1'
+      ? safeStatus(root.status)
+      : 'unavailable'
+  const weeks = released(rootStatus) ? objects(root.weeks) : []
+  const rows = weeks.flatMap((week) => {
+    if (!released(childStatus(week, rootStatus))) return []
+    const dimension = object(week.offers)
+    if (!released(dimension.status)) return []
+    return objects(dimension.buckets).flatMap((bucket) => {
+      if (!released(childStatus(bucket, dimension.status))) return []
+      const count = safeNumber(bucket.redemptions)
+      if (count === null || !Number.isInteger(count)) return []
+      const sample = safeNumber(bucket.sample_size)
+      const range =
+        typeof week.from === 'string' &&
+        typeof week.to === 'string' &&
+        Number.isFinite(Date.parse(week.from)) &&
+        Number.isFinite(Date.parse(week.to))
+          ? formatBerlinRange(week.from, week.to)
+          : 'Bezugszeitraum nicht verfügbar'
+      return [
+        {
+          count,
+          sample: sample !== null && Number.isInteger(sample) ? sample : null,
+          range,
+        },
+      ]
+    })
+  })
+  return (
+    <div className={panel}>
+      <h3 className="font-bold">Einlösungen je Angebot</h3>
+      <p className="mt-2 text-sm text-slate-500">
+        Freigegebene Wochenwerte. Angebotsnamen und weitere Angebotsdetails sind
+        in dieser Datengrundlage nicht verfügbar.
+      </p>
+      {rows.map((row, index) => (
+        <div key={index} className="mt-4">
+          <p className="text-xs text-slate-500">{row.range}</p>
+          <DistributionBar
+            label="Name nicht verfügbar"
+            value={row.count}
+            max={Math.max(1, ...rows.map((entry) => entry.count))}
+          />
+          {row.sample !== null && (
+            <p className="mt-1 text-xs text-slate-500">
+              Datengrundlage: {number(row.sample)}
+            </p>
+          )}
+        </div>
+      ))}
+      {!rows.length && (
+        <p className="mt-3 text-sm text-slate-500">
+          {released(rootStatus)
+            ? 'Keine freigegebenen Angebotswerte verfügbar.'
+            : status(rootStatus)}
+        </p>
+      )}
+    </div>
+  )
+}
 function Scope({ section }: { section: Json }) {
   const p = object(section.period),
     date =
@@ -606,64 +672,73 @@ export function PartnerStatistics({
                 abgeleitet.
               </p>
             </div>
-            <InsightMetrics
-              data={data}
-              sectionKey="offers"
-              rows={rows}
-              note="Konkrete Angebote und Angebotstypen werden getrennt ausgewertet. Eindeutige Gäste nicht über Angebote aufsummieren; Erst- und Wiederkehrgäste können sich überschneiden. Katalognamen entsprechen dem aktuellen öffentlichen Stand."
-            />
-            <div className={panel}>
-              <h3 className="font-bold">
-                Einlösungen je Angebot und Angebotstyp
-              </h3>
-              <p className="mt-2 text-sm text-slate-500">
-                Separat gemessene Angebote und Typen; nicht addieren. Jede Zeile
-                zeigt ihre vollständige Woche.
-              </p>
-              {rows
-                .filter(
-                  (r) =>
-                    r.section === 'offers' &&
-                    r.label.endsWith(' · Einlösungen'),
-                )
-                .map((r, i) => (
-                  <div key={i} className="mt-3">
-                    <p className="text-xs text-slate-500">
-                      {typeof r.from === 'string' && typeof r.to === 'string'
-                        ? formatBerlinRange(r.from, r.to)
-                        : ''}
-                    </p>
-                    {r.value === null ? (
-                      <p className="text-sm">
-                        {r.label} · {status(r.status)}
-                      </p>
-                    ) : (
-                      <DistributionBar
-                        label={r.label}
-                        value={r.value}
-                        max={Math.max(
-                          1,
-                          ...rows
-                            .filter(
-                              (v) =>
-                                v.section === 'offers' &&
-                                v.label.endsWith(' · Einlösungen'),
-                            )
-                            .map((v) => v.value ?? 0),
+            {insight(data, 'offers').reason ===
+            'unsupported_or_missing_insights' ? (
+              <LegacyOffers data={data} />
+            ) : (
+              <>
+                <InsightMetrics
+                  data={data}
+                  sectionKey="offers"
+                  rows={rows}
+                  note="Konkrete Angebote und Angebotstypen werden getrennt ausgewertet. Eindeutige Gäste nicht über Angebote aufsummieren; Erst- und Wiederkehrgäste können sich überschneiden. Katalognamen entsprechen dem aktuellen öffentlichen Stand."
+                />
+                <div className={panel}>
+                  <h3 className="font-bold">
+                    Einlösungen je Angebot und Angebotstyp
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-500">
+                    Separat gemessene Angebote und Typen; nicht addieren. Jede
+                    Zeile zeigt ihre vollständige Woche.
+                  </p>
+                  {rows
+                    .filter(
+                      (r) =>
+                        r.section === 'offers' &&
+                        r.label.endsWith(' · Einlösungen'),
+                    )
+                    .map((r, i) => (
+                      <div key={i} className="mt-3">
+                        <p className="text-xs text-slate-500">
+                          {typeof r.from === 'string' &&
+                          typeof r.to === 'string'
+                            ? formatBerlinRange(r.from, r.to)
+                            : ''}
+                        </p>
+                        {r.value === null ? (
+                          <p className="text-sm">
+                            {r.label} · {status(r.status)}
+                          </p>
+                        ) : (
+                          <DistributionBar
+                            label={r.label}
+                            value={r.value}
+                            max={Math.max(
+                              1,
+                              ...rows
+                                .filter(
+                                  (v) =>
+                                    v.section === 'offers' &&
+                                    v.label.endsWith(' · Einlösungen'),
+                                )
+                                .map((v) => v.value ?? 0),
+                            )}
+                          />
                         )}
-                      />
-                    )}
-                  </div>
-                ))}
-              {!rows.some(
-                (r) =>
-                  r.section === 'offers' && r.label.endsWith(' · Einlösungen'),
-              ) && (
-                <p className="mt-3 text-sm text-slate-500">
-                  Keine freigegebenen Angebotswerte verfügbar.
-                </p>
-              )}
-            </div>
+                      </div>
+                    ))}
+                  {!rows.some(
+                    (r) =>
+                      r.section === 'offers' &&
+                      r.label.endsWith(' · Einlösungen'),
+                  ) && (
+                    <p className="mt-3 text-sm text-slate-500">
+                      Keine freigegebenen Angebotswerte verfügbar.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
           </Topic>
           <Topic id="loyalty" title="Treue">
             <div className={panel}>
