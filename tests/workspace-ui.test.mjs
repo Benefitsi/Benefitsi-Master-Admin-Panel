@@ -69,7 +69,7 @@ test('create workspace and note, save blocks, favorite, child, search, board, ar
   })
 })
 
-test('partner entry creates linked meeting, keeps proposals separate, saves resources and tasks across remount',async()=>{
+test('partner entry uses one answer and keeps resources and tasks across remount',async()=>{
   const fixture=workspaceFixture({workspaces:[workspace]})
   await withApp(fixture,{initialPartnerId:fixturePartner.id},async({remount})=>{
     await click(button('Partnerakte anlegen'))
@@ -77,16 +77,16 @@ test('partner entry creates linked meeting, keeps proposals separate, saves reso
     await click(button('Gespräch starten'))
     await wait(()=>field('Antwort · A01'))
     await fill(field('Antwort · A01'),'Mara verantwortet Freigaben')
-    await fill(field('Änderungswunsch · A01'),'Rücksprache am Dienstag')
-    assert.equal(field('Vereinbart · A01').value,'')
-    await click(button('In Vereinbarung übernehmen',document.getElementById('question-A01')))
+    assert.ok(!field('Änderungswunsch · A01'),'Only one answer field should be shown')
+    assert.ok(!field('Vereinbart · A01'),'No second agreement field')
+    assert.ok(!button('In Vereinbarung übernehmen'))
     await fill(field('Status · A01'),'agreed')
     await fill(field('Teilnehmende & Rollen'),'Mara, Inhaberin; Patrick, Benefitsi')
     await save()
     const meeting=[...fixture.pages.values()].find(p=>p.kind==='conversation')
     assert.equal(meeting.partner_id,fixturePartner.id)
     assert.ok(meeting.parent_id)
-    assert.equal(meeting.content.questions.length,50)
+    assert.equal(meeting.content.questions.length,53)
     assert.equal(meeting.content.questions[0].answer,'Mara verantwortet Freigaben')
     const target=document.querySelector(`a[href="/partners?partner=${fixturePartner.id}&tab=deals"]`)
     assert.equal(target?.target,'_blank')
@@ -244,5 +244,85 @@ test('a deferred initial permalink cannot overtake a newly opened editor',async(
     await act(async()=>Promise.all(finishes.map(finish=>finish())))
     await wait(()=>field('Seitentitel')?.value==='Verlinkte Notiz')
     assert.equal(field('Seitentitel').matches(':disabled'),false)
+  })
+})
+
+
+test('legacy changes and agreements remain readable in the one answer and save without duplicate fields',async()=>{
+  const page={...makePage(workspace.id,'conversation'),revision:1,content:onboardingContent()}
+  Object.assign(page.content.questions[0],{answer:'Erste Antwort',change:'Korrektur des Partners',agreement:'Endgültige Fassung'})
+  const fixture=workspaceFixture({workspaces:[workspace],pages:[page]})
+  await withApp(fixture,{initialPageId:page.id},async()=>{
+    await wait(()=>field('Antwort · A01'))
+    const answer=field('Antwort · A01')
+    for(const value of ['Erste Antwort','Korrektur des Partners','Endgültige Fassung'])assert.ok(answer.value.includes(value))
+    assert.ok(!field('Änderungswunsch · A01'),'Only one answer field should be shown')
+    assert.ok(!field('Vereinbart · A01'),'No second agreement field')
+    await fill(answer,'Gemeinsam korrigierte Antwort')
+    await save()
+    const q=fixture.pages.get(page.id).content.questions[0]
+    assert.equal(q.answer,'Gemeinsam korrigierte Antwort')
+    assert.equal(q.change,'')
+    assert.equal(q.agreement,'')
+  })
+})
+
+test('partner facts refresh independently of answers and failed refreshes are not shown as empty research',async()=>{
+  const page={...makePage(workspace.id,'conversation'),partner_id:fixturePartner.id,revision:1,content:onboardingContent()}
+  const fixture=workspaceFixture({workspaces:[workspace],pages:[page]})
+  let name='Café Beispiel',failed=false
+  fixture.services.loadWorkspacePartnerBrief=async id=>({ok:!failed,...(failed?{error:'Datenabruf fehlgeschlagen'}:{value:{partnerId:id,partnerName:name,loadedAt:'2026-10-06T21:00:00Z',facts:{A01:[{label:'Name',value:name,href:'/partners?partner='+id+'&tab=details'}]}}})})
+  await withApp(fixture,{initialPageId:page.id},async()=>{
+    await wait(()=>button('Stimmt so',document.getElementById('question-A01')))
+    assert.equal(field('Antwort · A01').value,'')
+    await click(button('Stimmt so',document.getElementById('question-A01')))
+    assert.ok(field('Antwort · A01').value.includes('Café Beispiel'))
+    await fill(field('Antwort · A01'),'Partner hat den Namen bestätigt')
+    name='Neuer Adminname'
+    await click(button('Admin-Daten aktualisieren'))
+    await wait(()=>document.getElementById('question-A01').textContent.includes('Neuer Adminname'))
+    assert.equal(field('Antwort · A01').value,'Partner hat den Namen bestätigt')
+    failed=true
+    await click(button('Admin-Daten aktualisieren'))
+    await wait(()=>document.body.textContent.includes('Datenabruf fehlgeschlagen'))
+    assert.ok(!button('Stimmt so',document.getElementById('question-A01')))
+    assert.equal(field('Antwort · A01').value,'Partner hat den Namen bestätigt')
+  })
+})
+
+test('changing only the question status preserves legacy notes exactly once',async()=>{
+  const page={...makePage(workspace.id,'conversation'),revision:1,content:onboardingContent()}
+  Object.assign(page.content.questions[0],{answer:'Antwort',reason:'Zusatznotiz'})
+  const fixture=workspaceFixture({workspaces:[workspace],pages:[page]})
+  await withApp(fixture,{initialPageId:page.id},async()=>{
+    await wait(()=>field('Antwort · A01'))
+    await fill(field('Status · A01'),'agreed')
+    assert.equal(field('Antwort · A01').value,'Antwort\n\nZusatznotiz')
+    await fill(field('Status · A01'),'irrelevant')
+    assert.equal(field('Antwort · A01').value,'Antwort\n\nZusatznotiz')
+    await save()
+    assert.equal(fixture.pages.get(page.id).content.questions[0].answer,'Antwort\n\nZusatznotiz')
+  })
+})
+
+test('a late partner-data response cannot replace the newly selected partner',async()=>{
+  const other={...fixturePartner,id:'00000000-0000-4000-8000-000000000088',name:'Zweites Café'}
+  const page={...makePage(workspace.id,'conversation'),partner_id:fixturePartner.id,revision:1,content:onboardingContent()}
+  const fixture=workspaceFixture({workspaces:[workspace],pages:[page]}),pending=[]
+  fixture.services.findWorkspacePartners=async(query='',id)=>({ok:true,value:[fixturePartner,other].filter(p=>(!id||p.id===id)&&p.name.includes(query))})
+  fixture.services.loadWorkspacePartnerBrief=id=>new Promise(resolve=>pending.push({id,resolve}))
+  const finish=request=>request.resolve({ok:true,value:{partnerId:request.id,partnerName:request.id===other.id?other.name:fixturePartner.name,loadedAt:'2026-10-06T21:00:00Z',facts:{A01:[{label:'Name',value:request.id===other.id?other.name:'Veralteter Partnername',href:'/partners?partner='+request.id}]}}})
+  await withApp(fixture,{initialPageId:page.id},async()=>{
+    await wait(()=>pending.length>0&&field('Antwort · A01'))
+    await fill(field('Antwort · A01'),'Gesprächsnotiz bleibt erhalten')
+    await click(button('Partner wechseln'))
+    await wait(()=>button(other.name))
+    await click(button(other.name))
+    await wait(()=>pending.some(request=>request.id===other.id))
+    await act(async()=>pending.filter(request=>request.id===other.id).forEach(finish))
+    assert.ok(document.getElementById('question-A01').textContent.includes(other.name))
+    await act(async()=>pending.filter(request=>request.id===fixturePartner.id).forEach(finish))
+    assert.ok(!document.getElementById('question-A01').textContent.includes('Veralteter Partnername'))
+    assert.equal(field('Antwort · A01').value,'Gesprächsnotiz bleibt erhalten')
   })
 })

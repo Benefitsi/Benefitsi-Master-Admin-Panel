@@ -30,11 +30,11 @@ test('international file URLs are normalized for the database and backslashes ar
   page.content.links[0].url='https://example.test/'+'ä'.repeat(700)
   assert.throws(()=>validatePage(page),/URL.*4000/)
 })
-test('onboarding provides fifty distinct questions and twenty-six core questions with empty answers', () => {
+test('onboarding provides fifty-three distinct questions and twenty-eight core questions with empty answers', () => {
   const content = onboardingContent()
-  assert.equal(content.questions.length, 50)
-  assert.equal(new Set(content.questions.map(q => q.id)).size, 50)
-  assert.equal(content.questions.filter(q => q.core).length, 26)
+  assert.equal(content.questions.length, 53)
+  assert.equal(new Set(content.questions.map(q => q.id)).size, 53)
+  assert.equal(content.questions.filter(q => q.core).length, 28)
   assert.ok(content.questions.every(q => q.answer === '' && q.agreement === '' && q.status === 'open'))
   content.questions[0].answer = 'Only this meeting'
   assert.equal(onboardingContent().questions[0].answer, '')
@@ -65,7 +65,7 @@ test('irrelevant and hidden questions are not answered; implementation tracks ta
   content.questions[2] = {...content.questions[2],hidden:true}
   const progress = pageProgress(content)
   assert.equal(progress.answered,1)
-  assert.equal(progress.open,47)
+  assert.equal(progress.open,50)
   assert.equal(progress.completedTasks,0)
 })
 test('partner editor links target the selected partner; unpublished pages have no public URL', () => {

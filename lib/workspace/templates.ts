@@ -1,7 +1,8 @@
 import questions from './onboarding.json'
 import { emptyContent, type Content, type Question } from './model'
 
-export const templateVersion = '2026-10-05.1'
+export { templateVersion } from './onboarding-upgrade'
+import { templateVersion } from './onboarding-upgrade'
 export function onboardingContent(): Content {
   return {...emptyContent(),questions:questions.map(q=>({...q,answerType:q.answerType as Question['answerType'],options:[...q.options],answer:'',change:'',agreement:'',status:'open',reason:'',hidden:false})),meeting:{date:'',participants:'',summary:'',templateVersion}}
 }

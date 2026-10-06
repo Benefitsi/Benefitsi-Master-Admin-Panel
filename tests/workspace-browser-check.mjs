@@ -14,7 +14,7 @@ const adapters={
   'next/image':`import React from 'react';export default function Image({priority,...props}){return <img {...props}/>}`,
   'next/navigation':`export function usePathname(){return '/workspace'}`,
   './actions':`export async function signOut(){}`,
-  '@/app/workspace/actions':`export const loadWorkspaceIndex=()=>{},loadWorkspacePages=()=>{},loadWorkspacePage=()=>{},saveWorkspacePage=()=>{},saveWorkspace=()=>{},setWorkspaceFavorite=()=>{},loadWorkspaceVersions=()=>{},restoreWorkspacePage=()=>{},findWorkspacePartners=()=>{};`,
+  '@/app/workspace/actions':`export const loadWorkspaceIndex=()=>{},loadWorkspacePages=()=>{},loadWorkspacePage=()=>{},saveWorkspacePage=()=>{},saveWorkspace=()=>{},setWorkspaceFavorite=()=>{},loadWorkspaceVersions=()=>{},restoreWorkspacePage=()=>{},findWorkspacePartners=()=>{},loadWorkspacePartnerBrief=()=>{};`,
 }
 const entry=`
 import React from 'react';import {createRoot} from 'react-dom/client';
