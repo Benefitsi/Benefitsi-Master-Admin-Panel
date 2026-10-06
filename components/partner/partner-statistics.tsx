@@ -149,22 +149,36 @@ function LegacyOffers({ data }: { data: Dashboard }) {
   )
 }
 function Scope({ section }: { section: Json }) {
-  const p = object(section.period),
-    date =
-      typeof section.as_of === 'string' &&
-      Number.isFinite(Date.parse(section.as_of))
-        ? formatBerlin(section.as_of)
-        : null
-  return (
-    <p className="mt-1 text-sm text-slate-500">
-      {typeof p.from === 'string' && typeof p.to === 'string'
-        ? formatBerlinRange(p.from, p.to)
-        : date
-          ? `Bestand am ${date}`
-          : 'Bezugszeitraum nicht verfügbar'}
-    </p>
-  )
+  const p = object(section.period)
+  const validDate = (value: unknown): value is string =>
+    typeof value === 'string' && Number.isFinite(Date.parse(value))
+  const date = validDate(section.as_of) ? formatBerlin(section.as_of) : null
+  let caption = 'Bezugszeitraum nicht verfügbar'
+  switch (section.scope) {
+    case 'selected_period':
+      if (
+        validDate(p.from) &&
+        validDate(p.to) &&
+        Date.parse(p.from) < Date.parse(p.to)
+      ) {
+        caption = formatBerlinRange(p.from, p.to)
+      }
+      break
+    case 'whole_completed_iso_weeks':
+      caption = `Abgeschlossene Wochen · Stand ${date ?? 'nicht verfügbar'}`
+      break
+    case 'current_stock':
+      caption = date
+        ? `Bestand am ${date}`
+        : 'Aktueller Bestand · Stichtag nicht verfügbar'
+      break
+    case 'recorded_current_stock':
+      caption = `Gespeicherter Bestand · Stand ${date ?? 'nicht verfügbar'}`
+      break
+  }
+  return <p className="mt-1 text-sm text-slate-500">{caption}</p>
 }
+
 function Rows({
   rows,
   title = 'Kennzahlen & Datengrundlage',
