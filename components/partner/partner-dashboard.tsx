@@ -20,6 +20,7 @@ import type { Dashboard } from "@/lib/partners/analytics";
 import type { ReactNode } from "react";
 import type { Entitlements } from "@/lib/partners/entitlements";
 import { canManageProfile } from "@/lib/partners/entitlements";
+import { canConfirmPartnerTask } from "@/lib/partners/tasks";
 export function PartnerDashboard({
   partnerId,
   name,
@@ -225,6 +226,7 @@ export function PartnerOverview({
             Tarif & Module ansehen
           </a>
           <a className="underline" href={`/partner/crm?partner=${partnerId}`}>Kundenbindung ansehen</a>
+          {canConfirmPartnerTask(rights) && <a className="underline" href={`/partner/tasks/confirm?partner=${partnerId}`}>Aufgabe bestätigen</a>}
         </div>
       </section>
       <section className="mt-4 rounded-2xl bg-[#061829] p-5 text-white">

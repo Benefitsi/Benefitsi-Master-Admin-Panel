@@ -42,6 +42,8 @@ function runtime(action = noop, refresh = () => {}) {
     "@/lib/supabase/client": { createClient: () => { throw new Error("Unexpected browser DB access") } },
     "@/components/loading-ui": { LoadingSpinner: () => null },
     "@/components/partner/partner-feedback-settings-loader": { PartnerFeedbackSettingsLoader: () => null },
+    // Imported by the workspace; these isolated tests must not render task settings.
+    "@/components/partner/partner-task-settings-loader": { PartnerTaskSettingsLoader: () => { throw new Error("Unexpected task settings in isolated workspace fixture") } },
   }
 }
 

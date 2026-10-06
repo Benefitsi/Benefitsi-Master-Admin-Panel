@@ -23,6 +23,8 @@ function loadUi(action) {
     "@/app/admin-language": { useAdminLanguage: () => ({ language: "de" }) },
     "@/lib/supabase/client": {}, "@/components/loading-ui": { LoadingSpinner: () => null },
     "@/components/partner/partner-feedback-settings-loader": {},
+    // Imported by the workspace; these isolated tests must not render task settings.
+    "@/components/partner/partner-task-settings-loader": { PartnerTaskSettingsLoader: () => { throw new Error("Unexpected task settings in isolated workspace fixture") } },
     "@/components/microsite-read-only-notice": {},
     "@/components/menu-ai-import-dialog": {}, "@/components/partner/partner-plan-panel": {},
   }
