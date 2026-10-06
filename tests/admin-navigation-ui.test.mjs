@@ -126,7 +126,7 @@ test("the active nested page stays visible and opens its group even in the compa
   await withDom(async ({ render }) => {
     const shell = () => React.createElement(Shell, { adminName: "Test" }, "Page")
     await render(shell())
-    assert.equal(document.querySelectorAll("nav > ul > li").length, 7)
+    assert.equal(document.querySelectorAll("nav > ul > li").length, 8)
     for (const [path, label] of [["/city-operations/events/123", "Prüfung & Freigaben"], ["/wissen/123", "Wissen"]]) {
       setPath(path); await render(shell())
       const link = document.querySelector('nav a[aria-current="page"]')
@@ -140,5 +140,18 @@ test("the active nested page stays visible and opens its group even in the compa
       assert.equal(link.closest("ul").hidden, false)
     }
     assert.equal(expanded(), false)
+  })
+})
+
+
+test("company detail highlights Unternehmen and retains every existing grouped destination", async () => {
+  const { Shell, setPath } = loadShell()
+  await withDom(async ({ render }) => {
+    setPath("/companies/example")
+    await render(React.createElement(Shell, { adminName: "Test" }, "Page"))
+    const current = document.querySelector('nav a[aria-current="page"]')
+    assert.equal(current.textContent, "Unternehmen")
+    assert.equal(current.getAttribute("href"), "/companies")
+    assert.equal(document.querySelectorAll("nav a[href]").length, 14)
   })
 })

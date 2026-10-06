@@ -1,0 +1,105 @@
+"use server"
+
+import { loadOccasionSettings, previewOccasionOffer, approveOccasionOffer, saveOccasionProgram, saveMemberOccasion } from "@/lib/corporate/occasions"
+import { createCompany, updateCompany, setCompanyPremium, issueInvitation, revokeInvitation, removeMember } from "@/lib/corporate/company-mutations"
+import { saveCorporateBranding, readCorporateLogo, type BrandingMutation } from "@/lib/corporate/branding"
+import { loadCorporateCompany, isUuid, type CompanyMutationState } from "@/lib/corporate/companies"
+import { revalidatePath, refresh } from "next/cache"
+import { requireAdmin } from "@/lib/admin"
+import { saveCorporateRequest, type CorporateUpdateState } from "@/lib/corporate/requests"
+
+export async function updateCorporateRequest(_previous: CorporateUpdateState, formData: FormData): Promise<CorporateUpdateState> {
+  const { supabase } = await requireAdmin()
+  const result = await saveCorporateRequest(supabase, formData)
+  if (result.status === "updated") revalidatePath("/companies")
+  return result
+}
+
+export async function createCorporateCompany(formData: FormData): Promise<CompanyMutationState> {
+  const { supabase } = await requireAdmin()
+  const result = await createCompany(supabase, formData)
+  if (result.status === "created" && result.companyId) {
+    revalidatePath("/companies")
+    revalidatePath(`/companies/${result.companyId}`)
+  }
+  return result
+}
+export async function updateCorporateCompany(formData: FormData): Promise<CompanyMutationState> {
+  const { supabase } = await requireAdmin()
+  const result = await updateCompany(supabase, formData)
+  if (result.status === "updated") refreshCompany(formData)
+  return result
+}
+export async function setCorporatePremium(formData: FormData): Promise<CompanyMutationState> {
+  const { supabase } = await requireAdmin()
+  const result = await setCompanyPremium(supabase, formData)
+  if (result.status === "updated") { refreshCompany(formData); refresh() }
+  return result
+}
+export async function issueCorporateInvitation(formData: FormData): Promise<CompanyMutationState> {
+  const { supabase } = await requireAdmin()
+  const result = await issueInvitation(supabase, formData)
+  if (result.status === "issued") refreshCompany(formData)
+  return result
+}
+export async function revokeCorporateInvitation(formData: FormData): Promise<CompanyMutationState> {
+  const { supabase } = await requireAdmin()
+  const result = await revokeInvitation(supabase, formData)
+  if (result.status === "revoked") refreshCompany(formData)
+  return result
+}
+export async function removeCorporateMember(formData: FormData): Promise<CompanyMutationState> {
+  const { supabase } = await requireAdmin()
+  const result = await removeMember(supabase, formData)
+  if (result.status === "removed") refreshCompany(formData)
+  return result
+}
+function refreshCompany(data: FormData) {
+  const id = data.get("companyId")
+  if (isUuid(id)) {
+    revalidatePath("/companies")
+    revalidatePath(`/companies/${id}`)
+  }
+}
+
+export async function saveCorporateCompanyBranding(formData: FormData): Promise<BrandingMutation> {
+  const { supabase } = await requireAdmin()
+  const result = await saveCorporateBranding(supabase, formData)
+  if (result.status === "updated") { refreshCompany(formData); refresh() }
+  return result
+}
+export async function readCorporateCompanyLogo(companyId: string, path: string) {
+  const { supabase } = await requireAdmin()
+  return readCorporateLogo(supabase, companyId, path)
+}
+export async function reloadCorporateCompanyBranding(companyId: string) {
+  const { supabase } = await requireAdmin()
+  return loadCorporateCompany(supabase, companyId, 0)
+}
+
+export async function loadCorporateOccasions(companyId: string, offset = 0) {
+  const { supabase } = await requireAdmin()
+  return loadOccasionSettings(supabase, companyId, offset)
+}
+export async function previewCorporateOccasionOffer(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  return previewOccasionOffer(supabase, formData)
+}
+export async function approveCorporateOccasionOffer(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const result = await approveOccasionOffer(supabase, formData)
+  if (result.status === "updated") refreshCompany(formData)
+  return result
+}
+export async function saveCorporateOccasionProgram(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const result = await saveOccasionProgram(supabase, formData)
+  if (result.status === "updated") refreshCompany(formData)
+  return result
+}
+export async function saveCorporateMemberOccasion(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const result = await saveMemberOccasion(supabase, formData)
+  if (result.status === "updated") refreshCompany(formData)
+  return result
+}

@@ -19,6 +19,7 @@ export type AdminNavigationGroup = {
 export const adminNavigation: readonly (AdminNavigationLink | AdminNavigationGroup)[] = [
   { label: "Übersicht", href: "/", icon: "overview" },
   { label: "Partner", href: "/partners", icon: "partner" },
+  { label: "Unternehmen", href: "/companies", icon: "partner" },
   { id: "cities", label: "Städte", icon: "cities", items: [
     { label: "Stadtportale", href: "/city-pages", icon: "cities" },
     { label: "Prüfung & Freigaben", href: "/city-operations", icon: "review" },

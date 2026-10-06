@@ -1,0 +1,177 @@
+{
+  "default_detail": {
+    "offset": 0,
+    "roster": [
+      {
+        "id": "1d72e299-485b-4a18-b694-f5d3bf00d62c",
+        "kind": "member",
+        "role": "employee",
+        "email": "employee-012b3d9c-4c5e-4ae7-8ad1-27241afce004@example.test",
+        "expires_at": null,
+        "updated_at": "2026-10-05T14:24:46.739819+00:00"
+      },
+      {
+        "id": "370afa95-4966-40b7-8283-67134f75e4f9",
+        "kind": "member",
+        "role": "owner",
+        "email": "owner-ebef67f7-5649-469a-a863-cd2c2567995f@example.test",
+        "expires_at": null,
+        "updated_at": "2026-10-05T14:24:46.68142+00:00"
+      }
+    ],
+    "status": "ok",
+    "company": {
+      "city": "Annweiler",
+      "seats": 2,
+      "status": "enrolling",
+      "ends_on": "2027-10-05",
+      "branding": {
+        "logo_path": null,
+        "welcome_text": ""
+      },
+      "currency": "EUR",
+      "tax_mode": "net_reference",
+      "starts_on": "2026-10-05",
+      "company_id": "34e359ac-af8b-4d5d-8b75-2a7032ca2132",
+      "updated_at": "2026-10-05T14:24:46.705557+00:00",
+      "company_name": "Example Company",
+      "contact_name": "Example Contact",
+      "contact_email": "415b2165-1369-4e6b-84f7-0d0a6b0ea9bd@example.test",
+      "employee_count": 1,
+      "reserved_count": 0,
+      "available_seats": 1,
+      "catalog_version": "2026-10-04.2",
+      "premium_enabled": false,
+      "invoice_reference": "Invoice 42",
+      "source_request_id": "415b2165-1369-4e6b-84f7-0d0a6b0ea9bd",
+      "unit_amount_cents": 2490,
+      "entitlement_status": "not_enabled",
+      "total_amount_cents": 4980,
+      "premium_payment_reference": ""
+    },
+    "page_size": 50,
+    "roster_total": 2
+  },
+  "default_summary": {
+    "companies": [
+      {
+        "roles": [
+          "employee"
+        ],
+        "status": "enrolling",
+        "ends_on": "2027-10-05",
+        "branding": {
+          "logo_path": null,
+          "welcome_text": ""
+        },
+        "starts_on": "2026-10-05",
+        "company_id": "34e359ac-af8b-4d5d-8b75-2a7032ca2132",
+        "company_name": "Example Company",
+        "entitlement_status": "not_enabled",
+        "employee_updated_at": "2026-10-05T14:24:46.739819+00:00"
+      }
+    ]
+  },
+  "update": {
+    "status": "updated",
+    "updated_at": "2026-10-05T14:24:46.813263+00:00",
+    "previous_logo_path": null
+  },
+  "conflict": {
+    "status": "conflict"
+  },
+  "branded_owner_detail": {
+    "offset": 0,
+    "roster": [
+      {
+        "id": "1d72e299-485b-4a18-b694-f5d3bf00d62c",
+        "kind": "member",
+        "role": "employee",
+        "email": "employee-012b3d9c-4c5e-4ae7-8ad1-27241afce004@example.test",
+        "expires_at": null,
+        "updated_at": "2026-10-05T14:24:46.739819+00:00"
+      },
+      {
+        "id": "370afa95-4966-40b7-8283-67134f75e4f9",
+        "kind": "member",
+        "role": "owner",
+        "email": "owner-ebef67f7-5649-469a-a863-cd2c2567995f@example.test",
+        "expires_at": null,
+        "updated_at": "2026-10-05T14:24:46.68142+00:00"
+      }
+    ],
+    "status": "ok",
+    "company": {
+      "city": "Annweiler",
+      "seats": 2,
+      "status": "enrolling",
+      "ends_on": "2027-10-05",
+      "branding": {
+        "logo_path": "34e359ac-af8b-4d5d-8b75-2a7032ca2132/932b031c-e4ba-4a9b-8762-7a985bec6a7b.png",
+        "welcome_text": "Willkommen im Team! \ud83d\udc4b"
+      },
+      "currency": "EUR",
+      "tax_mode": "net_reference",
+      "starts_on": "2026-10-05",
+      "company_id": "34e359ac-af8b-4d5d-8b75-2a7032ca2132",
+      "updated_at": "2026-10-05T14:24:46.813263+00:00",
+      "company_name": "Example Company",
+      "contact_name": "Example Contact",
+      "contact_email": "415b2165-1369-4e6b-84f7-0d0a6b0ea9bd@example.test",
+      "employee_count": 1,
+      "reserved_count": 0,
+      "available_seats": 1,
+      "catalog_version": "2026-10-04.2",
+      "premium_enabled": false,
+      "invoice_reference": "Invoice 42",
+      "source_request_id": "415b2165-1369-4e6b-84f7-0d0a6b0ea9bd",
+      "unit_amount_cents": 2490,
+      "entitlement_status": "not_enabled",
+      "total_amount_cents": 4980,
+      "premium_payment_reference": ""
+    },
+    "page_size": 50,
+    "roster_total": 2
+  },
+  "branded_employee_summary": {
+    "companies": [
+      {
+        "roles": [
+          "employee"
+        ],
+        "status": "enrolling",
+        "ends_on": "2027-10-05",
+        "branding": {
+          "logo_path": "34e359ac-af8b-4d5d-8b75-2a7032ca2132/932b031c-e4ba-4a9b-8762-7a985bec6a7b.png",
+          "welcome_text": "Willkommen im Team! \ud83d\udc4b"
+        },
+        "starts_on": "2026-10-05",
+        "company_id": "34e359ac-af8b-4d5d-8b75-2a7032ca2132",
+        "company_name": "Example Company",
+        "entitlement_status": "not_enabled",
+        "employee_updated_at": "2026-10-05T14:24:46.739819+00:00"
+      }
+    ]
+  },
+  "inactive_premium": {
+    "active": false,
+    "user_id": "1d72e299-485b-4a18-b694-f5d3bf00d62c",
+    "branding": null,
+    "company_id": null,
+    "valid_until": null,
+    "company_name": null,
+    "company_count": 0
+  },
+  "branded_active_premium": {
+    "active": true,
+    "user_id": "1d72e299-485b-4a18-b694-f5d3bf00d62c",
+    "branding": {
+      "logo_path": "34e359ac-af8b-4d5d-8b75-2a7032ca2132/932b031c-e4ba-4a9b-8762-7a985bec6a7b.png",
+      "welcome_text": "Willkommen im Team! \ud83d\udc4b"
+    },
+    "company_id": "34e359ac-af8b-4d5d-8b75-2a7032ca2132",
+    "valid_until": "2027-10-04T22:00:00+00:00",
+    "company_name": "Example Company",
+    "company_count": 1
+  }
+}

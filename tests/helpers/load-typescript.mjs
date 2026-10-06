@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import {readFileSync} from 'node:fs'
+import {readFileSync, existsSync} from 'node:fs'
 import {createRequire} from 'node:module'
 import vm from 'node:vm'
 import ts from 'typescript'
@@ -10,10 +10,13 @@ export function loadTypescript(relative,stubs={},globals={}) {
   if(cache.has(url.href))return cache.get(url.href)
   const loadedModule={exports:{}};cache.set(url.href,loadedModule.exports)
   const js=ts.transpileModule(readFileSync(url,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true,jsx:ts.JsxEmit.ReactJSX}}).outputText
-  vm.runInNewContext(js,{...globals,module:loadedModule,exports:loadedModule.exports,Buffer,URL,process,console,require:id=>{
+  vm.runInNewContext(js,{module:loadedModule,exports:loadedModule.exports,Buffer,URL,process,console,...globals,require:id=>{
    if(Object.hasOwn(stubs,id))return stubs[id]
    if(id==='server-only')return {}
-   if(id.startsWith('@/'))return load(new URL('../../'+id.slice(2)+'.ts',import.meta.url))
+   if(id.startsWith('@/')) {
+    const source=new URL('../../'+id.slice(2)+'.ts',import.meta.url)
+    return load(existsSync(source)?source:new URL('../../'+id.slice(2)+'.tsx',import.meta.url))
+   }
    assert.ok(!id.startsWith('.'),'relative imports require an explicit stub')
    return nativeRequire(id)
   }},{filename:url.pathname})

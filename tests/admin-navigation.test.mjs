@@ -5,6 +5,7 @@ import { adminNavigation, isAdminNavigationActive } from "../lib/admin-navigatio
 const destinations = [
   ["Übersicht", "Übersicht", "/"],
   ["Partner", "Partner", "/partners"],
+  ["Unternehmen", "Unternehmen", "/companies"],
   ["Städte", "Stadtportale", "/city-pages"],
   ["Städte", "Prüfung & Freigaben", "/city-operations"],
   ["Inhalte", "Magazin", "/editorial"],
@@ -18,9 +19,9 @@ const destinations = [
   ["Auswertung", "SEO & Sichtbarkeit", "/seo"],
 ]
 
-test("keeps all thirteen destinations under the seven approved main areas", () => {
+test("keeps all fourteen destinations under the eight approved main areas", () => {
   assert.deepEqual(adminNavigation.map(entry => entry.label), [
-    "Übersicht", "Partner", "Städte", "Inhalte", "Buchungen & Bestellungen", "Agenten", "Auswertung",
+    "Übersicht", "Partner", "Unternehmen", "Städte", "Inhalte", "Buchungen & Bestellungen", "Agenten", "Auswertung",
   ])
   assert.deepEqual(adminNavigation.flatMap(entry => "items" in entry
     ? entry.items.map(item => [entry.label, item.label, item.href])
@@ -32,6 +33,7 @@ test("marks the current page and its parent group on nested routes", () => {
     ["/", "Übersicht", "Übersicht"],
     ["/partners", "Partner", "Partner"],
     ["/partners/example", "Partner", "Partner"],
+    ["/companies/example", "Unternehmen", "Unternehmen"],
     ["/city-pages/annweiler/content/event/123", "Städte", "Stadtportale"],
     ["/city-operations/events/123", "Städte", "Prüfung & Freigaben"],
     ["/editorial/new", "Inhalte", "Magazin"],
