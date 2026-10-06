@@ -27,7 +27,7 @@ function loadUi(action) {
     "@/components/menu-ai-import-dialog": {}, "@/components/partner/partner-plan-panel": {},
     "@/components/menu-item-video-field": require("../components/menu-item-video-field.tsx"),
   }
-  const source = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8") + "\nexport { DealForm, MilestoneForm, useActionSuccess, WeekdayChipField };"
+  const source = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8") + "\nexport { DealForm, MilestoneForm, useActionSuccess, WeekdayChipField, DealsPanel };"
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText
   const loaded = { exports: {} }
   new Function("require", "module", "exports", js)(id => {
@@ -210,4 +210,34 @@ test("canonical streak triggers open the calendar editor while a Happy Hour camp
       assert.equal(document.querySelector("form").elements.required_visits_per_period, undefined)
     }
   })
+})
+
+test('partner offer cards filter actual offers and open the existing editor with the chosen offer', async () => {
+  const { DealsPanel } = loadUi(async () => ({ok:false,message:'No test mutation'}))
+  const partner={id:'partner-test',name:'Cafe',visits:[],deals:[
+    {id:'active-offer',partner_id:'partner-test',type:'discount',active:true,display_title:'Mittag',discount_type:'percent',discount_value:15,audience:'both'},
+    {id:'paused-offer',partner_id:'partner-test',type:'happy_hour',active:false,display_title:'Abend',discount_type:'percent',discount_value:10,audience:'both',happy_hour_start:'17:00',happy_hour_end:'18:00'}
+  ]}
+  await withDom(async (root,win) => {
+    await act(async()=>root.render(React.createElement(DealsPanel,{partner,embedded:true,portalMode:true})))
+    const button=text=>[...document.querySelectorAll('button')].find(b=>b.textContent===text)
+    assert.ok(button('Alle'),'status filters must exist')
+    await act(async()=>button('Pausiert').dispatchEvent(new win.MouseEvent('click',{bubbles:true})))
+    assert.equal(document.querySelectorAll('[data-partner-offer]').length,1)
+    assert.match(document.querySelector('[data-partner-offer]').textContent,/Abend/)
+    await act(async()=>button('Bearbeiten').dispatchEvent(new win.MouseEvent('click',{bubbles:true})))
+    assert.ok(document.querySelector('[role="dialog"]'))
+    assert.equal(document.querySelector('input[name="display_title"]').value,'Abend')
+  })
+})
+
+test('Happy Hour shortcut selects canonical campaign offers and create opens the real dialog', async()=>{
+ const {DealsPanel}=loadUi(async()=>({ok:false,message:'No test mutation'}))
+ const partner={id:'partner-test',name:'Cafe',visits:[],deals:[{id:'happy',type:'discount',campaign_type:'happy_hour',active:true,display_title:'Kaffeezeit',discount_type:'percent',discount_value:15,audience:'both',metadata:{}}]}
+ await withDom(async root=>{
+  await act(async()=>root.render(React.createElement(DealsPanel,{partner,embedded:true,portalMode:true,initialType:'happy_hour'})))
+  assert.equal(document.querySelectorAll('[data-partner-offer]').length,1)
+  await act(async()=>root.render(React.createElement(DealsPanel,{key:'create',partner,embedded:true,portalMode:true,initialCreate:true})))
+  assert.ok(document.querySelector('[role="dialog"]'))
+ })
 })

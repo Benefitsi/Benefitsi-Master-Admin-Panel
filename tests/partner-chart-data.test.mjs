@@ -207,3 +207,7 @@ test("chart ticks and dates use CSS-sized HTML labels outside the scaled graphic
   assert.match(range.textContent, /27.09.2026/);
   assert.equal(doc.querySelectorAll("tbody tr").length, 2);
 });
+
+test('an explicit restricted series bucket rejects the chart rather than drawing stale counts',()=>{
+  assert.deepEqual(chartBuckets({status:'ok',buckets:[{start:'2026-10-01T00:00:00Z',status:'suppressed',visits:123456}]}),[])
+})

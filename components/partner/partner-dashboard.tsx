@@ -42,12 +42,12 @@ export function PartnerDashboard({
   accountName?: string;
 }) {
   const navigation = [
-    ["overview", "Übersicht", "/partner"],
+    ["overview", "Start", "/partner"],
     ["deals", "Vorteile", "/partner?section=deals"],
-    ["statistics", "Statistiken", "/partner/statistics"],
+    ["statistics", "Statistik", "/partner/statistics"],
     ["crm", "Kundenbindung", "/partner/crm"],
     ["business", "Betrieb", "/partner?section=business"],
-    ["billing", "Tarif & Module", "/partner/billing"],
+    ["billing", "Abo", "/partner/billing"],
   ].filter(
     ([key]) => !["deals", "business"].includes(key) || canManageProfile(rights),
   );
@@ -67,12 +67,12 @@ export function PartnerDashboard({
       <main className="min-h-screen bg-[#f4f7fb] text-[#061829]">
         <PartnerRefreshOnReturn />
         <div className="border-b border-slate-200 bg-white">
-          <header className="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-8">
+          <header className="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-8">
             <a
               aria-label="Benefitsi Partnerbereich"
               href={`/partner?partner=${encodeURIComponent(partnerId)}`}
             >
-              <BrandLogo priority className="h-auto w-[175px]" />
+              <BrandLogo priority className="h-auto w-[145px]" />
             </a>
             <div className="flex flex-wrap items-center gap-3">
               <details className="relative rounded-2xl border border-slate-200 px-4 py-2 text-sm">
@@ -158,19 +158,6 @@ export function PartnerDashboard({
             })}
           </nav>
           <div className="min-w-0 py-7 sm:py-9">
-            <header className="mb-6">
-              <h1 className="text-3xl font-bold tracking-tight">
-                {active === "statistics"
-                  ? "Deine Statistiken"
-                  : (navigation.find(([key]) => key === active)?.[1] ??
-                    "Übersicht")}
-              </h1>
-              <p className="mt-1 text-slate-500">
-                {active === "statistics"
-                  ? "So entwickelt sich dein Betrieb."
-                  : "Alles für deinen Betrieb an einem Ort."}
-              </p>
-            </header>
             {children}
           </div>
         </div>
@@ -192,19 +179,16 @@ export function PartnerOverview({
 }) {
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold">So läuft es bei {name}</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Bestätigte Besuche und Einlösungen im angezeigten Zeitraum
-          </p>
-        </div>
-        <a
-          className="text-sm font-semibold text-sky-700 underline"
-          href={`/partner/statistics?partner=${partnerId}`}
-        >
-          Alle Statistiken ansehen
-        </a>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-bold">{name}</h1>
+        <a className="text-sm font-semibold text-[#0874d1]" href={`/partner/statistics?partner=${partnerId}`}>Alle Statistiken ansehen →</a>
+      </div>
+      <div className="mb-6 flex flex-wrap gap-2">
+        {canManageProfile(rights) && <>
+          <a className="rounded-xl bg-[#118cff] px-4 py-3 text-sm font-semibold text-white" href={`/partner?section=deals&tab=deals&action=create&partner=${partnerId}`}>Angebot erstellen</a>
+          <a className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold" href={`/partner?section=business&tab=hours&partner=${partnerId}`}>Zeiten bearbeiten</a>
+        </>}
+        <a className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold" href={`/partner/crm?partner=${partnerId}`}>Gäste zurückholen</a>
       </div>
       {data && <PartnerStatistics data={data} compact />}
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">

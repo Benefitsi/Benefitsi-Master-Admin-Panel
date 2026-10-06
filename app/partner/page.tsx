@@ -7,6 +7,7 @@ import { PartnerWorkspace } from "@/app/partner-admin";
 import { partnerPageContext } from "@/lib/partners/page-context";
 import { dashboardWindow, readDashboard } from "@/lib/partners/analytics";
 import { readPartnerWorkspace } from "@/lib/partners/workspace-data";
+import { PartnerBusinessLinks } from "@/components/partner/partner-business-links";
 import { canManageProfile } from "@/lib/partners/entitlements";
 import { signOutPartner } from "./actions";
 import type { MicrositeStatus } from "@/lib/microsites";
@@ -72,16 +73,16 @@ export default async function PartnerDashboardPage({
         </div>
       )}
       {section === "overview" && <PartnerOverview {...ctx} data={statistics} />}
-      {section === "business" && <a href={`/partner/crm?partner=${ctx.partnerId}`} className="mb-5 block rounded-2xl border border-slate-200 bg-white p-5 text-sm font-semibold text-[#0874d1]">Kundenbindung · Zielgruppen, Entwürfe & redaktionelle Leistungen ansehen →</a>}
+      {section === "business" && workspace && <PartnerBusinessLinks partnerId={ctx.partnerId} rights={ctx.rights} partnerType={workspace.partner.type} />}
       {workspace && (
         <>
           <p className="mb-4 text-sm text-slate-500">
-            Microsite:{" "}
-            {workspace.partner.microsite
+            {ctx.rights.plan_code === "free" ? "Städteseite & App-Profil · Eigene Microsite nicht enthalten" : "Eigene Microsite:"}{" "}
+            {ctx.rights.plan_code === "pro" && (workspace.partner.microsite
               ? (micrositeStatusLabels.get(
                   workspace.partner.microsite.status ?? "",
                 ) ?? "Status nicht verfügbar")
-              : "Noch nicht angelegt"}{" "}
+              : "Noch nicht angelegt")}{" "}
             · Layoutänderungen und Veröffentlichung durch das Benefitsi-Team.
           </p>
           <PartnerWorkspace
@@ -91,6 +92,8 @@ export default async function PartnerDashboardPage({
             initialMode="view"
             initialPartnerId={ctx.partnerId}
             initialSettingsTab={section === "deals" ? "deals" : query.tab}
+            initialDealAction={section === "deals" ? query.action : undefined}
+            initialDealType={query.filter}
             initialView="settings"
             portalMode
             micrositeEditingEnabled={false}

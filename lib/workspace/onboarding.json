@@ -1,0 +1,549 @@
+[
+  {
+    "id": "A01",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Öffentlichen Namen und Betriebsart gemeinsam prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "A02",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Hinterlegte Ansprechpartner prüfen: Wer entscheidet und wer ist im Alltag erreichbar?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "A03",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Adresse, Kontakt und Öffnungszeiten gemeinsam prüfen. Fehlen saisonale Abweichungen?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "A04",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Vorbereitete Beschreibung prüfen: Was fehlt oder macht euch besonders?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "A05",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Welche weiteren Standorte, Sprachen oder wichtigen Hinweise für Besucher sollen wir berücksichtigen?",
+    "help": "Antwortformat: Liste + Auswahl",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "B01",
+    "section": "B. Ziele und Besuchsverhalten",
+    "prompt": "Was soll Benefitsi für euch zuerst verbessern: neue Gäste, mehr Wiederbesuche, ruhigere Zeiten oder bessere Sichtbarkeit?",
+    "help": "Antwortformat: Eine Priorität + Freitext",
+    "suggestion": "",
+    "answerType": "choice",
+    "options": [
+      "Neue Gäste",
+      "Mehr Wiederbesuche",
+      "Ruhige Zeiten beleben",
+      "Bessere Sichtbarkeit"
+    ],
+    "core": true
+  },
+  {
+    "id": "B02",
+    "section": "B. Ziele und Besuchsverhalten",
+    "prompt": "Welche Gäste möchtet ihr erreichen, und wie oft kommen passende Stammgäste normalerweise wieder?",
+    "help": "Antwortformat: Freitext + optionaler Zeitraum",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "B03",
+    "section": "B. Ziele und Besuchsverhalten",
+    "prompt": "An welchen Tagen und Uhrzeiten habt ihr freie Kapazität – und wann soll keine Aktion zusätzliche Nachfrage erzeugen?",
+    "help": "Antwortformat: Wochentage + Zeitfenster",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "B04",
+    "section": "B. Ziele und Besuchsverhalten",
+    "prompt": "Woran würdet ihr nach den ersten Wochen erkennen, dass sich die Zusammenarbeit lohnt?",
+    "help": "Antwortformat: Ziel + Prüftermin",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "B05",
+    "section": "B. Ziele und Besuchsverhalten",
+    "prompt": "Was nervt euch im Betriebsalltag am meisten oder kostet unnötig Zeit?",
+    "help": "Konkrete Situation, Häufigkeit und bisherige Lösung festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "B06",
+    "section": "B. Ziele und Besuchsverhalten",
+    "prompt": "Welche Funktion oder Unterstützung wünscht ihr euch von Benefitsi am dringendsten?",
+    "help": "Wunsch, Nutzen und Priorität erfassen. Eine Idee ist noch keine zugesagte Funktion.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "B07",
+    "section": "B. Ziele und Besuchsverhalten",
+    "prompt": "Was würdet ihr gern verbessern, und welche weiteren Ideen oder Bedürfnisse habt ihr?",
+    "help": "Auch Themen außerhalb der vorhandenen Funktionen aufnehmen.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "C01",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Vorbereitete Stempelkarte prüfen: Für welche Besuche oder Leistungen soll sie gelten?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "choice",
+    "options": [
+      "Ja",
+      "Nein",
+      "Später"
+    ],
+    "core": true
+  },
+  {
+    "id": "C02",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Vorbereitete Belohnungen prüfen: Sind sie für Gäste attraktiv und im Alltag erfüllbar?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "C03",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Was ist für euch der tatsächliche Aufwand dieser Belohnung, und gibt es eine Grenze, die wir beachten sollen?",
+    "help": "Antwortformat: Betrag oder Aufwand + interne Notiz",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "C04",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Hinterlegte Stempel-Meilensteine und Belohnungen gemeinsam prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "number",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "C05",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Zielgruppen und Gültigkeit der Belohnungen gemeinsam prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "C06",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Hinterlegte Bedingungen und Ausnahmen der Stempelkarte gemeinsam prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "C07",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Was soll passieren, wenn der Belohnungsartikel ausverkauft ist oder eine Zusatzleistung gerade nicht möglich ist?",
+    "help": "Antwortformat: Ersatzlösung + Verantwortlicher",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "C08",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Vorbereiteten Einlösehinweis prüfen: Ist er für euer Team eindeutig?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "D01",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Vorbereitete Angebote gemeinsam durchgehen: Was soll zum Start sichtbar sein?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "D02",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Hinterlegte Angebotsarten prüfen: Angebot, Happy Hour oder Deal Drop?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "choice",
+    "options": [
+      "Normales Angebot",
+      "Happy Hour",
+      "Deal Drop"
+    ],
+    "core": true
+  },
+  {
+    "id": "D03",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Hinterlegte Vorteile prüfen: Stimmen Rabatt, Zugabe oder Belohnung?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "D04",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Zeitraum, Wochentage und Uhrzeiten der vorbereiteten Aktionen prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "D05",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Zielgruppen, Kontingente und Nutzungslimits gemeinsam prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "D06",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Bedingungen und Ausnahmen der vorbereiteten Angebote gemeinsam prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "D07",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Aktivierungsstand prüfen: Wann soll pausiert werden und wer entscheidet?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "D08",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Vorbereitete Angebotstexte prüfen: Was möchtet ihr ändern oder ergänzen?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "E01",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Vorbereitetes Profil und Microsite gemeinsam auf Richtigkeit prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "E02",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Vorhandene Logos, Bilder und Karten prüfen: Was fehlt und was darf genutzt werden?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "E03",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Was sollen Gäste auf eurer Microsite als Erstes verstehen oder tun?",
+    "help": "Antwortformat: Hauptbotschaft + gewünschte Aktion",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "E04",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Vorbereitete Beschreibung und Leistungen prüfen: Was soll hervorgehoben werden?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "E05",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Hinterlegte externe Links gemeinsam prüfen. Wer hält sie aktuell?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "E06",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Wer prüft die fertige Vorschau, und wann können wir die Freigabe erwarten?",
+    "help": "Antwortformat: Person + Datum + Freigabestatus",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "F01",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Wäre es hilfreich, wenn Gäste eure Räume oder Außenbereiche vorab ansehen könnten?",
+    "help": "Antwortformat: Ja / nein / später + Zweck",
+    "suggestion": "",
+    "answerType": "choice",
+    "options": [
+      "Ja",
+      "Nein",
+      "Später"
+    ],
+    "core": true
+  },
+  {
+    "id": "F02",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Vorhandene Fotos, Videos und 360°-Quellen gemeinsam prüfen. Was fehlt noch?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "F03",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Welche Räume oder Blickpunkte sollen gezeigt werden und welche ausdrücklich nicht?",
+    "help": "Antwortformat: Liste + Ausschlüsse",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "F04",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Erfasste Medienrechte prüfen: Wer kann die Nutzung und abgebildete Personen freigeben?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "F05",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Falls neue Aufnahmen sinnvoll sind: Wann ist der Betrieb vorbereitet, ruhig und zugänglich?",
+    "help": "Antwortformat: Wunschtermine + Kontakt",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "F06",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Würde eine Außen- oder Drohnenansicht einen konkreten Mehrwert zeigen?",
+    "help": "Antwortformat: Zweck + gewünschter Bereich",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "F07",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Medien-Freigabestand prüfen: Wer nimmt die fertigen Inhalte ab und meldet Änderungen?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "G01",
+    "section": "G. Team und Nutzung im Alltag",
+    "prompt": "Vorhandene Teamzugänge prüfen: Wer braucht Bearbeitungs- oder Scan-Zugriff?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "G02",
+    "section": "G. Team und Nutzung im Alltag",
+    "prompt": "Welche Geräte stehen im Alltag zur Verfügung, und ist die Internetverbindung am Einsatzort zuverlässig?",
+    "help": "Antwortformat: Gerätetyp + Situation",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "G03",
+    "section": "G. Team und Nutzung im Alltag",
+    "prompt": "Wer hilft vor Ort, wenn eine Einlösung nicht klappt oder der Ansprechpartner fehlt?",
+    "help": "Antwortformat: Rolle + Kontaktweg",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "G04",
+    "section": "G. Team und Nutzung im Alltag",
+    "prompt": "Wer hält Öffnungszeiten, Urlaubszeiten, Menü und Aktionsverfügbarkeit aktuell?",
+    "help": "Antwortformat: Zuständigkeiten",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "H01",
+    "section": "H. Weitere Funktionen passend erklären",
+    "prompt": "Möchtet ihr nach Besuchen freiwilliges Feedback erhalten? Welche eine Sache würdet ihr zuerst erfahren wollen?",
+    "help": "Antwortformat: Frageziel + optionaler Rewardwunsch",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "H02",
+    "section": "H. Weitere Funktionen passend erklären",
+    "prompt": "Welche Gäste möchtet ihr künftig gezielt wiedersehen: Erstbesucher, länger ausgebliebene Gäste oder Gäste kurz vor einer Belohnung?",
+    "help": "Antwortformat: Ziel + gewünschter Zeitraum",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "H03",
+    "section": "H. Weitere Funktionen passend erklären",
+    "prompt": "Möchtet ihr eure Geschichte in einem Artikel oder Interview erzählen? Was wäre dafür besonders interessant?",
+    "help": "Antwortformat: Thema + Format + Ansprechpartner",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "H04",
+    "section": "H. Weitere Funktionen passend erklären",
+    "prompt": "Gibt es Bedarf an Bestellungen, Terminen oder zusätzlicher Sichtbarkeitsauswertung? Wie löst ihr das heute?",
+    "help": "Antwortformat: Bestehender Ablauf + Bedarf",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "I01",
+    "section": "I. Abschluss und nächste Schritte",
+    "prompt": "Habe ich eure wichtigsten Ziele, das Startangebot und die Belohnung richtig zusammengefasst?",
+    "help": "Antwortformat: Bestätigung + Korrekturen",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "I02",
+    "section": "I. Abschluss und nächste Schritte",
+    "prompt": "Was fehlt noch, wer liefert es und bis wann?",
+    "help": "Antwortformat: Aufgaben mit Person + Datum",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "I03",
+    "section": "I. Abschluss und nächste Schritte",
+    "prompt": "Welche Inhalte dürfen nach der Prüfung veröffentlicht werden und welche noch nicht?",
+    "help": "Antwortformat: Freigabeumfang + Nachweis",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "I04",
+    "section": "I. Abschluss und nächste Schritte",
+    "prompt": "Wann prüfen wir das vorbereitete Setup gemeinsam und wann besprechen wir die ersten Ergebnisse?",
+    "help": "Antwortformat: Folgetermine",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  }
+]

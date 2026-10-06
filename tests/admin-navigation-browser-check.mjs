@@ -39,15 +39,15 @@ async function run(){
  const saved=new URLSearchParams(location.search).get("expect");
  if(saved){await check(saved==="expanded","restores "+saved+" after full document load"); output.dataset.status="passed"; return}
  await check(false,"initially collapsed");
- if(document.querySelectorAll("nav > ul > li").length!==7)throw new Error("Expected seven main navigation areas");
- output.append(document.createTextNode("PASS seven main navigation areas\\n"));
+ if(document.querySelectorAll("nav > ul > li").length!==8)throw new Error("Expected eight main navigation areas");
+ output.append(document.createTextNode("PASS eight main navigation areas\\n"));
  button().click(); await check(true,"manual expansion");
  for(const path of ["/city-pages","/media","/partners"]){await navigate(path);await check(true,"expanded on "+path)}
  button().click(); await check(false,"manual collapse");
  for(const path of ["/media","/city-pages","/partners"]){await navigate(path);await check(false,"collapsed on "+path)}
  button().click();await check(true,"manual re-expansion");
  await navigate("/media");await check(true,"re-expanded on /media");
- const targets=[["/","Übersicht"],["/partners","Partner"],["/city-pages/annweiler","Stadtportale"],["/city-operations/events/123","Prüfung & Freigaben"],["/editorial/new","Magazin"],["/media/123","Medien"],["/wissen/123","Wissen"],["/bookings/123","Buchungen"],["/commerce/orders/123","Essensbestellungen"],["/agents/123","Agentenübersicht"],["/automation/jobs/123","Aufträge & Abläufe"],["/analytics/revenue","Geschäftszahlen"],["/seo/audit","SEO & Sichtbarkeit"]];
+ const targets=[["/","Übersicht"],["/partners","Partner"],["/workspace","Workspace"],["/city-pages/annweiler","Stadtportale"],["/city-operations/events/123","Prüfung & Freigaben"],["/editorial/new","Magazin"],["/media/123","Medien"],["/wissen/123","Wissen"],["/bookings/123","Buchungen"],["/commerce/orders/123","Essensbestellungen"],["/agents/123","Agentenübersicht"],["/automation/jobs/123","Aufträge & Abläufe"],["/analytics/revenue","Geschäftszahlen"],["/seo/audit","SEO & Sichtbarkeit"]];
  for(const [path,label] of targets){window.history.pushState({},"",path);window.dispatchEvent(new Event("fixture-route"));await wait(()=>document.querySelector("h1")?.textContent===path);const current=document.querySelectorAll('nav a[aria-current="page"]');if(current.length!==1 || current[0].textContent!==label || current[0].closest("ul").hidden)throw new Error("Active destination not visible: "+path);await check(true,"active "+label+" on "+path)}
  button().click();await check(false,"collapse after nested-route checks");
  for(const [path,label] of targets){window.history.pushState({},"",path);window.dispatchEvent(new Event("fixture-route"));await wait(()=>document.querySelector("h1")?.textContent===path);const current=document.querySelectorAll('nav a[aria-current="page"]');if(current.length!==1 || current[0].textContent!==label || current[0].closest("ul").hidden)throw new Error("Collapsed active destination not visible: "+path);await check(false,"collapsed active "+label+" on "+path)}
