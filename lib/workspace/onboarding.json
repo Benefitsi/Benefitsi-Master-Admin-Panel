@@ -1,0 +1,519 @@
+[
+  {
+    "id": "A01",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Wie soll der Betrieb öffentlich heißen, und welche Art von Betrieb seid ihr?",
+    "help": "Antwortformat: Kurztext + Branche",
+    "suggestion": "Öffentlichen Namen und geschäftlichen Vertragspartner getrennt erfassen.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "A02",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Wer entscheidet über Angebote, Inhalte und die Veröffentlichung, und wer ist im Alltag erreichbar?",
+    "help": "Antwortformat: Name, Rolle, Kontakt",
+    "suggestion": "Eine entscheidungsbefugte Person und bei Bedarf eine Vertretung benennen.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "A03",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Welche Adresse, Öffnungszeiten, Telefonnummer und Website sollen Gäste sehen? Gibt es saisonale Abweichungen?",
+    "help": "Antwortformat: Strukturierte Angaben + Notiz",
+    "suggestion": "Vorhandenes Profil gemeinsam prüfen; fehlende Angaben als offen markieren.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "A04",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Was macht euch besonders, und welche zwei oder drei Angebote sollen neue Gäste zuerst kennenlernen?",
+    "help": "Antwortformat: Freitext",
+    "suggestion": "Konkrete Spezialitäten, Leistungen, Atmosphäre oder besondere Ausstattung nennen lassen.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "A05",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Welche weiteren Standorte, Sprachen oder wichtigen Hinweise für Besucher sollen wir berücksichtigen?",
+    "help": "Antwortformat: Liste + Auswahl",
+    "suggestion": "Je Standort getrennte Öffnungszeiten und Bedingungen; Besucherhinweise aus tatsächlichen Angaben übernehmen.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "B01",
+    "section": "B. Ziele und Besuchsverhalten",
+    "prompt": "Was soll Benefitsi für euch zuerst verbessern: neue Gäste, mehr Wiederbesuche, ruhigere Zeiten oder bessere Sichtbarkeit?",
+    "help": "Antwortformat: Eine Priorität + Freitext",
+    "suggestion": "Ein Hauptziel und höchstens ein Nebenziel für den Start auswählen.",
+    "answerType": "choice",
+    "options": [
+      "Neue Gäste",
+      "Mehr Wiederbesuche",
+      "Ruhige Zeiten beleben",
+      "Bessere Sichtbarkeit"
+    ],
+    "core": true
+  },
+  {
+    "id": "B02",
+    "section": "B. Ziele und Besuchsverhalten",
+    "prompt": "Welche Gäste möchtet ihr erreichen, und wie oft kommen passende Stammgäste normalerweise wieder?",
+    "help": "Antwortformat: Freitext + optionaler Zeitraum",
+    "suggestion": "Keine Branchenhäufigkeit voraussetzen. Café, Restaurant und Friseur können sehr unterschiedliche Rhythmen haben.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "B03",
+    "section": "B. Ziele und Besuchsverhalten",
+    "prompt": "An welchen Tagen und Uhrzeiten habt ihr freie Kapazität – und wann soll keine Aktion zusätzliche Nachfrage erzeugen?",
+    "help": "Antwortformat: Wochentage + Zeitfenster",
+    "suggestion": "Daraus lässt sich eine begrenzte Happy Hour entwickeln.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "B04",
+    "section": "B. Ziele und Besuchsverhalten",
+    "prompt": "Woran würdet ihr nach den ersten Wochen erkennen, dass sich die Zusammenarbeit lohnt?",
+    "help": "Antwortformat: Ziel + Prüftermin",
+    "suggestion": "Bestätigte Besuche, Wiederkehr und Einlösungen sind geeignete Gesprächsgrößen. Umsatz nur bei vorhandener Datenquelle verwenden.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "C01",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Möchtet ihr die digitale Stempelkarte nutzen, und für welche Besuche oder Leistungen soll sie gelten?",
+    "help": "Antwortformat: Ja / nein / später + Freitext",
+    "suggestion": "Vorhandenen Scanablauf zeigen und die gewünschten Teilnahmebedingungen abgleichen.",
+    "answerType": "choice",
+    "options": [
+      "Ja",
+      "Nein",
+      "Später"
+    ],
+    "core": true
+  },
+  {
+    "id": "C02",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Welche Belohnung würde eure Gäste freuen und wäre für euch dauerhaft gut erfüllbar?",
+    "help": "Antwortformat: Artikel / Zusatzleistung / Rabatt + Beschreibung",
+    "suggestion": "Zuerst einen attraktiven Artikel oder eine kleine Zusatzleistung diskutieren. Ein allgemeiner hoher Rabatt ist keine automatische Empfehlung.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "C03",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Was ist für euch der tatsächliche Aufwand dieser Belohnung, und gibt es eine Grenze, die wir beachten sollen?",
+    "help": "Antwortformat: Betrag oder Aufwand + interne Notiz",
+    "suggestion": "Interne Kalkulation dient dem Vorschlag und muss nicht öffentlich erscheinen.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "C04",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Bei welchem Meilenstein innerhalb der Zehnerkarte soll die Belohnung erreicht werden?",
+    "help": "Antwortformat: Ganze Zahl 1–10 + Wunschfeld",
+    "suggestion": "Einfacher Startvorschlag: eine gut verständliche Belohnung bei zehn Stempeln. Einen früheren Meilenstein nur nach gemeinsamer Abwägung ergänzen.",
+    "answerType": "number",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "C05",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Für welche Gäste gilt die Belohnung, und wie erklären wir die Bedingungen in einem Satz?",
+    "help": "Antwortformat: Zielgruppe + Kundentext",
+    "suggestion": "Verfügbare Zielgruppen mit dem Editor abgleichen. Partner Pro beschreibt euren Tarif; Consumer Premium beschreibt den Zugang des Gasts.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "C06",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Gibt es Mindestkauf, ausgeschlossene Produkte, Kombinationen mit anderen Aktionen oder zeitliche Einschränkungen?",
+    "help": "Antwortformat: Einzelne Bedingungen + Freitext",
+    "suggestion": "Nur klare und technisch abbildbare Regeln übernehmen. Keine Einschränkung stillschweigend ergänzen.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "C07",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Was soll passieren, wenn der Belohnungsartikel ausverkauft ist oder eine Zusatzleistung gerade nicht möglich ist?",
+    "help": "Antwortformat: Ersatzlösung + Verantwortlicher",
+    "suggestion": "Eine verständliche Alternative vereinbaren; zugesagte Ansprüche nicht einfach entfernen.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "C08",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Wer prüft die Einlösung im Alltag, und welcher kurze Hinweis hilft dieser Person?",
+    "help": "Antwortformat: Rolle + kurzer Text",
+    "suggestion": "Vorhandene Scanner-/Verwaltungsrechte zuordnen; als internen Ablauf dokumentieren.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "D01",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Welches konkrete Angebot soll zum Start sichtbar sein?",
+    "help": "Antwortformat: Titel, Leistung, Nutzen",
+    "suggestion": "Ein leicht erklärbares Startangebot auswählen; zusätzliche Angebote können später ergänzt werden.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "D02",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Passt dafür ein normales Angebot, eine Happy Hour oder eine begrenzte Deal-Drop-Aktion?",
+    "help": "Antwortformat: Typ + Begründung",
+    "suggestion": "Das Hauptziel aus B01 und freie Zeiten aus B03 heranziehen.",
+    "answerType": "choice",
+    "options": [
+      "Normales Angebot",
+      "Happy Hour",
+      "Deal Drop"
+    ],
+    "core": true
+  },
+  {
+    "id": "D03",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Welchen Vorteil bekommt der Gast genau: festen Betrag, Prozentrabatt, Zugabe, Gratisartikel oder 2 für 1?",
+    "help": "Antwortformat: Vorteilstyp + Wert/Artikel",
+    "suggestion": "Auswahl gegen die tatsächlich angebotenen Editoroptionen prüfen. Konkrete Produkte und Mengen nennen.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "D04",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Wann beginnt und endet die Aktion, und an welchen Wochentagen oder Uhrzeiten gilt sie?",
+    "help": "Antwortformat: Datum + Wochentage + Zeiten",
+    "suggestion": "Europe/Berlin verwenden; Enddatum, Ausschlusstage und Startfreigabe gemeinsam prüfen.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "D05",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Wer darf die Aktion nutzen, wie häufig und gegebenenfalls wie viele Gäste insgesamt?",
+    "help": "Antwortformat: Zielgruppe + gewünschte Grenzen",
+    "suggestion": "Technische Umsetzbarkeit einzelner Limits im Editor prüfen. Die Free-Drop-Quote ist eine Veröffentlichungsquote, keine Besucherquote.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "D06",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Welche Bedingungen, Ausnahmen und Kombinationen müssen Gast und Team kennen?",
+    "help": "Antwortformat: Kundentext + interner Text",
+    "suggestion": "Ein verständlicher öffentlicher Satz und ein kurzer Einlösehinweis; tatsächliche Auswahl im Editor prüfen.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "D07",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Soll die Aktion bei hoher Nachfrage pausiert werden, und wer entscheidet darüber?",
+    "help": "Antwortformat: Zuständigkeit + Kriterium",
+    "suggestion": "Pause und Ende sind unterschiedliche Entscheidungen. Bereits zugesagte Vorteile gesondert beachten.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "D08",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Möchtet ihr den vorbereiteten Text oder Vorteil anders gestalten?",
+    "help": "Antwortformat: Änderungswunsch + Einigung",
+    "suggestion": "Originalvorschlag, Partnerantwort und beschlossene Fassung nebeneinander erhalten.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "E01",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Sind Name, Beschreibung, Kontakt und Öffnungszeiten im vorbereiteten Profil richtig?",
+    "help": "Antwortformat: Bestätigung + Korrekturen",
+    "suggestion": "Vorhandenen Stand gemeinsam öffnen und Abweichungen erfassen.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "E02",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Welche Logos, Bilder, Speise- oder Leistungskarten liegen bereits vor und dürfen verwendet werden?",
+    "help": "Antwortformat: Benannte Dateilinks + Status",
+    "suggestion": "Quelle, Fassung und zuständige Freigabeperson festhalten.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "E03",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Was sollen Gäste auf eurer Microsite als Erstes verstehen oder tun?",
+    "help": "Antwortformat: Hauptbotschaft + gewünschte Aktion",
+    "suggestion": "Je nach Betrieb anrufen, Route öffnen, Leistungen ansehen oder einen vorhandenen Buchungsweg aufrufen.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "E04",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Welche Produkte, Leistungen, Räume oder Besonderheiten sollen hervorgehoben werden?",
+    "help": "Antwortformat: Liste + Datei-/Seitenlinks",
+    "suggestion": "Lieber eine klare Auswahl mit vorhandenem Material als unbelegte Aussagen.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "E05",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Welche externen Links sollen eingebunden werden, und wer hält sie aktuell?",
+    "help": "Antwortformat: Website, Karte, Reservierung etc.",
+    "suggestion": "Nur tatsächlich vorhandene und geprüfte Ziele verlinken. Ein Link ist keine neu integrierte Buchungslösung.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "E06",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Wer prüft die fertige Vorschau, und wann können wir die Freigabe erwarten?",
+    "help": "Antwortformat: Person + Datum + Freigabestatus",
+    "suggestion": "Inhaltlich vereinbart, technisch fertig und veröffentlicht getrennt erfassen.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "F01",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Wäre es hilfreich, wenn Gäste eure Räume oder Außenbereiche vorab ansehen könnten?",
+    "help": "Antwortformat: Ja / nein / später + Zweck",
+    "suggestion": "Nutzen am Betrieb festmachen: Atmosphäre, Raumaufteilung, Ausstattung oder Orientierung.",
+    "answerType": "choice",
+    "options": [
+      "Ja",
+      "Nein",
+      "Später"
+    ],
+    "core": true
+  },
+  {
+    "id": "F02",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Gibt es bereits gute Fotos, ein Video oder eine 360°-Tour?",
+    "help": "Antwortformat: Dateilinks + Anbieter/Quelle",
+    "suggestion": "Vorhandene Medien und freigegebene Nutzbarkeit zuerst prüfen.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "F03",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Welche Räume oder Blickpunkte sollen gezeigt werden und welche ausdrücklich nicht?",
+    "help": "Antwortformat: Liste + Ausschlüsse",
+    "suggestion": "Etwa Gastraum, Terrasse, Zimmer, Showroom oder Besucherbereich. Private und betriebsinterne Bereiche gesondert markieren.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "F04",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Wer kann die Nutzung der Medien und die Darstellung abgebildeter Personen freigeben?",
+    "help": "Antwortformat: Person + Freigabeverweis",
+    "suggestion": "Freigabestatus dokumentieren; fehlende Zustimmung bleibt offen.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "F05",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Falls neue Aufnahmen sinnvoll sind: Wann ist der Betrieb vorbereitet, ruhig und zugänglich?",
+    "help": "Antwortformat: Wunschtermine + Kontakt",
+    "suggestion": "Aufnahmeumfang, Termin und gesonderte Beauftragung abstimmen.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "F06",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Würde eine Außen- oder Drohnenansicht einen konkreten Mehrwert zeigen?",
+    "help": "Antwortformat: Zweck + gewünschter Bereich",
+    "suggestion": "Lage, Gelände oder Außenanlage können relevant sein. Machbarkeit wird separat geprüft; keine pauschale Aufnahmezusage.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "F07",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Wer prüft die fertigen Medien vor Einbindung und meldet spätere Änderungen?",
+    "help": "Antwortformat: Person + Freigabeprozess",
+    "suggestion": "Veraltete oder nicht mehr passende Ansichten müssen austauschbar bleiben.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "G01",
+    "section": "G. Team und Nutzung im Alltag",
+    "prompt": "Wer soll Partnerdaten bearbeiten und wer ausschließlich Scans oder Einlösungen bedienen?",
+    "help": "Antwortformat: Personen/Rollen + gewünschter Zugriff",
+    "suggestion": "Vorhandene Rollen und Tarifkontingente beachten; keine gemeinsamen Passwörter im Protokoll speichern.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "G02",
+    "section": "G. Team und Nutzung im Alltag",
+    "prompt": "Welche Geräte stehen im Alltag zur Verfügung, und ist die Internetverbindung am Einsatzort zuverlässig?",
+    "help": "Antwortformat: Gerätetyp + Situation",
+    "suggestion": "Bestehenden Ablauf passend erklären. Offline-Verhalten nur so zusagen, wie es für den konkreten Weg geprüft ist.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "G03",
+    "section": "G. Team und Nutzung im Alltag",
+    "prompt": "Wer hilft vor Ort, wenn eine Einlösung nicht klappt oder der Ansprechpartner fehlt?",
+    "help": "Antwortformat: Rolle + Kontaktweg",
+    "suggestion": "Klare Zuständigkeit und bestehenden Supportweg dokumentieren.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "G04",
+    "section": "G. Team und Nutzung im Alltag",
+    "prompt": "Wer hält Öffnungszeiten, Urlaubszeiten, Menü und Aktionsverfügbarkeit aktuell?",
+    "help": "Antwortformat: Zuständigkeiten",
+    "suggestion": "Änderungen in den bestehenden Verwaltungsbereichen vornehmen.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "H01",
+    "section": "H. Weitere Funktionen passend erklären",
+    "prompt": "Möchtet ihr nach Besuchen freiwilliges Feedback erhalten? Welche eine Sache würdet ihr zuerst erfahren wollen?",
+    "help": "Antwortformat: Frageziel + optionaler Rewardwunsch",
+    "suggestion": "Mit einer kurzen, verständlichen Frage beginnen; optionale Belohnung gesondert konfigurieren.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "H02",
+    "section": "H. Weitere Funktionen passend erklären",
+    "prompt": "Welche Gäste möchtet ihr künftig gezielt wiedersehen: Erstbesucher, länger ausgebliebene Gäste oder Gäste kurz vor einer Belohnung?",
+    "help": "Antwortformat: Ziel + gewünschter Zeitraum",
+    "suggestion": "Branchenrhythmus aus B02 nutzen. Als Kampagnenwunsch/Entwurf erfassen; noch keinen Versand zusagen.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "H03",
+    "section": "H. Weitere Funktionen passend erklären",
+    "prompt": "Möchtet ihr eure Geschichte in einem Artikel oder Interview erzählen? Was wäre dafür besonders interessant?",
+    "help": "Antwortformat: Thema + Format + Ansprechpartner",
+    "suggestion": "Material, redaktionellen Umfang, Freigabe und Termin separat abstimmen.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "H04",
+    "section": "H. Weitere Funktionen passend erklären",
+    "prompt": "Gibt es Bedarf an Bestellungen, Terminen oder zusätzlicher Sichtbarkeitsauswertung? Wie löst ihr das heute?",
+    "help": "Antwortformat: Bestehender Ablauf + Bedarf",
+    "suggestion": "Passendes Zusatzmodul prüfen; weder Preis noch Verfügbarkeit aus einem unverbindlichen Wunsch ableiten.",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "I01",
+    "section": "I. Abschluss und nächste Schritte",
+    "prompt": "Habe ich eure wichtigsten Ziele, das Startangebot und die Belohnung richtig zusammengefasst?",
+    "help": "Antwortformat: Bestätigung + Korrekturen",
+    "suggestion": "Die vereinbarten Formulierungen kurz vorlesen beziehungsweise gemeinsam ansehen.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "I02",
+    "section": "I. Abschluss und nächste Schritte",
+    "prompt": "Was fehlt noch, wer liefert es und bis wann?",
+    "help": "Antwortformat: Aufgaben mit Person + Datum",
+    "suggestion": "Jede fehlende Datei und Entscheidung bekommt genau eine Zuständigkeit.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "I03",
+    "section": "I. Abschluss und nächste Schritte",
+    "prompt": "Welche Inhalte dürfen nach der Prüfung veröffentlicht werden und welche noch nicht?",
+    "help": "Antwortformat: Freigabeumfang + Nachweis",
+    "suggestion": "Wünsche, Freigaben und tatsächliche Veröffentlichung getrennt festhalten.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "I04",
+    "section": "I. Abschluss und nächste Schritte",
+    "prompt": "Wann prüfen wir das vorbereitete Setup gemeinsam und wann besprechen wir die ersten Ergebnisse?",
+    "help": "Antwortformat: Folgetermine",
+    "suggestion": "Termine vereinbaren, ohne ungeklärte Aktivierung oder Betriebsfreigabe vorwegzunehmen.",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  }
+]
