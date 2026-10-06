@@ -114,6 +114,8 @@ jobs:
           tests/corporate-premium.test.mjs
           tests/corporate-branding.test.mjs
           tests/corporate-branding-ui.test.mjs
+          tests/corporate-occasions.test.mjs
+          tests/corporate-occasions-ui.test.mjs
 
       - name: Admin navigation, dashboard streaming and source boundaries
         run: >-

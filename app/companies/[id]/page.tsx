@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { AdminShell } from "@/app/admin-shell"
 import { requireAdmin } from "@/lib/admin"
 import { loadCorporateCompany, parseOffset, type CompanyDetailResult } from "@/lib/corporate/companies"
-import { CorporateCompanySummary, CorporateCompanyEditor, CorporateRoster } from "@/components/corporate/company-detail"
+import { CorporateCompanySummary, CorporateCompanyEditor, CorporateRoster, CorporateCompanyOccasions } from "@/components/corporate/company-detail"
 import { CorporateCompanyBranding } from "@/components/corporate/company-branding"
 import { CorporateCompanyPremium } from "@/components/corporate/company-premium"
 import { CorporateCompanyInvitation } from "@/components/corporate/company-invitation"
@@ -22,6 +22,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
         <CorporateCompanySummary company={result.company} />
         <CorporateCompanyEditor key={`${adminSession.user.id}:${result.company.company_id}`} company={result.company} />
         <CorporateCompanyBranding company={result.company} adminIdentity={adminSession.user.id} />
+        <CorporateCompanyOccasions company={result.company} adminIdentity={adminSession.user.id} />
         <CorporateCompanyPremium company={result.company} adminIdentity={adminSession.user.id} />
         <CorporateCompanyInvitation key={`${adminSession.user.id}:${result.company.company_id}`} company={result.company} />
         <CorporateRoster key={`${adminSession.user.id}:${result.company.company_id}`} detail={result} />

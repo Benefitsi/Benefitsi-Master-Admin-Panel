@@ -1,4 +1,5 @@
 "use client"
+import { CorporateOccasionWorkspace } from "@/components/corporate/occasion-workspace"
 import { useRef, useState, useTransition } from "react"
 import { updateCorporateCompany, revokeCorporateInvitation, removeCorporateMember } from "@/app/companies/actions"
 import { companyStatusLabels, companyRoleLabels, entitlementStatusLabels, euro, period, mutationInitial, mutationFailure, type CorporateCompany, type CompanyStatus, type CompanyMutationState, type CompanyDetailResult, type RosterRow } from "@/lib/corporate/companies"
@@ -92,4 +93,8 @@ function CorporateRosterRow({ row, companyId, href }: { row: RosterRow; companyI
       <CompanyFeedback state={state} href={href} />
     </td>
   </tr>
+}
+
+export function CorporateCompanyOccasions({ company, adminIdentity }: { company: CorporateCompany; adminIdentity: string }) {
+  return <CorporateOccasionWorkspace companyId={company.company_id} adminIdentity={adminIdentity} />
 }

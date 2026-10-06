@@ -1,0 +1,285 @@
+{
+  "manager_default": {
+    "offers": [],
+    "status": "ok",
+    "members": [
+      {
+        "name": null,
+        "email": "21bd868f-a555-4236-942e-257a57c18fca@example.test",
+        "user_id": "21bd868f-a555-4236-942e-257a57c18fca",
+        "updated_at": null,
+        "birthday_day": null,
+        "membership_id": "a0a96397-2a75-46f0-9f8c-79d7ceff2b01",
+        "birthday_month": null,
+        "birthday_enabled": false,
+        "next_birthday_on": null,
+        "next_anniversary_on": null,
+        "employment_started_on": null
+      }
+    ],
+    "programs": [
+      {
+        "kind": "birthday",
+        "enabled": false,
+        "offer_id": null,
+        "updated_at": null,
+        "anniversary_interval": 1
+      },
+      {
+        "kind": "anniversary",
+        "enabled": false,
+        "offer_id": null,
+        "updated_at": null,
+        "anniversary_interval": 1
+      }
+    ],
+    "company_id": "e23362a5-bfda-41e9-bd27-337353b44d68",
+    "next_offset": null,
+    "can_approve_offers": true
+  },
+  "manager_configured": {
+    "offers": [
+      {
+        "terms": null,
+        "title": "Vorteil",
+        "deal_id": "cf89495d-0a08-434a-8596-2ceaed0a3d12",
+        "enabled": true,
+        "offer_id": "4a654c57-2a87-4ec0-8dc6-ee9d48a17da1",
+        "available": true,
+        "partner_id": "2f2c1af2-c954-4c6e-9c74-2d6645f4dbe3",
+        "updated_at": "2026-10-06T06:17:02.877825+00:00",
+        "description": null,
+        "partner_name": "Synthetic BEN35",
+        "reapproval_required": false,
+        "authorization_reference": "Synthetic agreement"
+      }
+    ],
+    "status": "ok",
+    "members": [
+      {
+        "name": null,
+        "email": "21bd868f-a555-4236-942e-257a57c18fca@example.test",
+        "user_id": "21bd868f-a555-4236-942e-257a57c18fca",
+        "updated_at": "2026-10-06T06:17:02.919663+00:00",
+        "birthday_day": 6,
+        "membership_id": "a0a96397-2a75-46f0-9f8c-79d7ceff2b01",
+        "birthday_month": 10,
+        "birthday_enabled": true,
+        "next_birthday_on": "2026-10-06",
+        "next_anniversary_on": null,
+        "employment_started_on": null
+      }
+    ],
+    "programs": [
+      {
+        "kind": "birthday",
+        "enabled": true,
+        "offer_id": "4a654c57-2a87-4ec0-8dc6-ee9d48a17da1",
+        "updated_at": "2026-10-06T06:17:02.907388+00:00",
+        "anniversary_interval": 1
+      },
+      {
+        "kind": "anniversary",
+        "enabled": false,
+        "offer_id": null,
+        "updated_at": null,
+        "anniversary_interval": 1
+      }
+    ],
+    "company_id": "e23362a5-bfda-41e9-bd27-337353b44d68",
+    "next_offset": null,
+    "can_approve_offers": true
+  },
+  "employee_default": {
+    "grants": [],
+    "status": "ok",
+    "programs": [
+      {
+        "kind": "birthday",
+        "enabled": false,
+        "offer_id": null,
+        "updated_at": null,
+        "next_occurrence_on": null,
+        "anniversary_interval": 1
+      },
+      {
+        "kind": "anniversary",
+        "enabled": false,
+        "offer_id": null,
+        "updated_at": null,
+        "next_occurrence_on": null,
+        "anniversary_interval": 1
+      }
+    ],
+    "company_id": "e23362a5-bfda-41e9-bd27-337353b44d68",
+    "company_name": "Gate Company",
+    "has_birthday": false,
+    "membership_id": "a0a96397-2a75-46f0-9f8c-79d7ceff2b01",
+    "birthday_enabled": false,
+    "employment_started_on": null,
+    "preference_updated_at": null
+  },
+  "employee_available": {
+    "grants": [
+      {
+        "kind": "birthday",
+        "terms": null,
+        "title": "Vorteil",
+        "status": "available",
+        "grant_id": "4ec796c6-be6c-403f-a9d3-1065c4120667",
+        "company_id": "e23362a5-bfda-41e9-bd27-337353b44d68",
+        "expires_at": "2026-11-04T23:00:00+00:00",
+        "partner_id": "2f2c1af2-c954-4c6e-9c74-2d6645f4dbe3",
+        "description": null,
+        "partner_name": "Synthetic BEN35",
+        "selection_id": "2d049962-9cec-418d-8f1d-79e3df6b9145",
+        "occurrence_on": "2026-10-06"
+      }
+    ],
+    "status": "ok",
+    "programs": [
+      {
+        "kind": "birthday",
+        "enabled": true,
+        "offer_id": "4a654c57-2a87-4ec0-8dc6-ee9d48a17da1",
+        "updated_at": "2026-10-06T06:17:02.907388+00:00",
+        "next_occurrence_on": "2026-10-06",
+        "anniversary_interval": 1
+      },
+      {
+        "kind": "anniversary",
+        "enabled": false,
+        "offer_id": null,
+        "updated_at": null,
+        "next_occurrence_on": null,
+        "anniversary_interval": 1
+      }
+    ],
+    "company_id": "e23362a5-bfda-41e9-bd27-337353b44d68",
+    "company_name": "Gate Company",
+    "has_birthday": true,
+    "membership_id": "a0a96397-2a75-46f0-9f8c-79d7ceff2b01",
+    "birthday_enabled": true,
+    "employment_started_on": null,
+    "preference_updated_at": "2026-10-06T06:17:02.919663+00:00"
+  },
+  "employee_unavailable": {
+    "grants": [
+      {
+        "kind": "birthday",
+        "terms": null,
+        "title": "Vorteil",
+        "status": "unavailable",
+        "grant_id": "4ec796c6-be6c-403f-a9d3-1065c4120667",
+        "company_id": "e23362a5-bfda-41e9-bd27-337353b44d68",
+        "expires_at": "2026-11-04T23:00:00+00:00",
+        "partner_id": "2f2c1af2-c954-4c6e-9c74-2d6645f4dbe3",
+        "description": null,
+        "partner_name": "Synthetic BEN35",
+        "selection_id": "2d049962-9cec-418d-8f1d-79e3df6b9145",
+        "occurrence_on": "2026-10-06"
+      }
+    ],
+    "status": "ok",
+    "programs": [
+      {
+        "kind": "birthday",
+        "enabled": true,
+        "offer_id": "4a654c57-2a87-4ec0-8dc6-ee9d48a17da1",
+        "updated_at": "2026-10-06T06:17:02.907388+00:00",
+        "next_occurrence_on": "2026-10-06",
+        "anniversary_interval": 1
+      },
+      {
+        "kind": "anniversary",
+        "enabled": false,
+        "offer_id": null,
+        "updated_at": null,
+        "next_occurrence_on": null,
+        "anniversary_interval": 1
+      }
+    ],
+    "company_id": "e23362a5-bfda-41e9-bd27-337353b44d68",
+    "company_name": "Gate Company",
+    "has_birthday": true,
+    "membership_id": "a0a96397-2a75-46f0-9f8c-79d7ceff2b01",
+    "birthday_enabled": true,
+    "employment_started_on": null,
+    "preference_updated_at": "2026-10-06T06:17:02.919663+00:00"
+  },
+  "employee_expired": {
+    "grants": [
+      {
+        "kind": "birthday",
+        "terms": null,
+        "title": "Vorteil",
+        "status": "expired",
+        "grant_id": "4ec796c6-be6c-403f-a9d3-1065c4120667",
+        "company_id": "e23362a5-bfda-41e9-bd27-337353b44d68",
+        "expires_at": "2026-11-04T23:00:00+00:00",
+        "partner_id": "2f2c1af2-c954-4c6e-9c74-2d6645f4dbe3",
+        "description": null,
+        "partner_name": "Synthetic BEN35",
+        "selection_id": "2d049962-9cec-418d-8f1d-79e3df6b9145",
+        "occurrence_on": "2026-10-06"
+      }
+    ],
+    "status": "ok",
+    "programs": [
+      {
+        "kind": "birthday",
+        "enabled": true,
+        "offer_id": "4a654c57-2a87-4ec0-8dc6-ee9d48a17da1",
+        "updated_at": "2026-10-06T06:17:02.907388+00:00",
+        "next_occurrence_on": "2027-10-06",
+        "anniversary_interval": 1
+      },
+      {
+        "kind": "anniversary",
+        "enabled": false,
+        "offer_id": null,
+        "updated_at": null,
+        "next_occurrence_on": null,
+        "anniversary_interval": 1
+      }
+    ],
+    "company_id": "e23362a5-bfda-41e9-bd27-337353b44d68",
+    "company_name": "Gate Company",
+    "has_birthday": true,
+    "membership_id": "a0a96397-2a75-46f0-9f8c-79d7ceff2b01",
+    "birthday_enabled": true,
+    "employment_started_on": null,
+    "preference_updated_at": "2026-10-06T06:17:02.919663+00:00"
+  },
+  "reward": {
+    "reward": {
+      "kind": "birthday",
+      "terms": null,
+      "title": "Vorteil",
+      "status": "available",
+      "grant_id": "4ec796c6-be6c-403f-a9d3-1065c4120667",
+      "company_id": "e23362a5-bfda-41e9-bd27-337353b44d68",
+      "expires_at": "2026-11-04T23:00:00+00:00",
+      "partner_id": "2f2c1af2-c954-4c6e-9c74-2d6645f4dbe3",
+      "description": null,
+      "partner_name": "Synthetic BEN35",
+      "selection_id": "2d049962-9cec-418d-8f1d-79e3df6b9145",
+      "occurrence_on": "2026-10-06"
+    },
+    "status": "ok"
+  },
+  "conflict": {
+    "status": "conflict"
+  },
+  "preview": {
+    "terms": null,
+    "title": "Vorteil",
+    "status": "ok",
+    "deal_id": "cf89495d-0a08-434a-8596-2ceaed0a3d12",
+    "company_id": "e23362a5-bfda-41e9-bd27-337353b44d68",
+    "partner_id": "2f2c1af2-c954-4c6e-9c74-2d6645f4dbe3",
+    "description": null,
+    "partner_name": "Synthetic BEN35",
+    "preview_hash": "fe15f1d5db0b20ef6061e6adfaa04ab1fdb022da9738c07b359cb5f7b456268e"
+  }
+}

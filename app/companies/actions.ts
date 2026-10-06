@@ -1,5 +1,6 @@
 "use server"
 
+import { loadOccasionSettings, previewOccasionOffer, approveOccasionOffer, saveOccasionProgram, saveMemberOccasion } from "@/lib/corporate/occasions"
 import { createCompany, updateCompany, setCompanyPremium, issueInvitation, revokeInvitation, removeMember } from "@/lib/corporate/company-mutations"
 import { saveCorporateBranding, readCorporateLogo, type BrandingMutation } from "@/lib/corporate/branding"
 import { loadCorporateCompany, isUuid, type CompanyMutationState } from "@/lib/corporate/companies"
@@ -74,4 +75,31 @@ export async function readCorporateCompanyLogo(companyId: string, path: string) 
 export async function reloadCorporateCompanyBranding(companyId: string) {
   const { supabase } = await requireAdmin()
   return loadCorporateCompany(supabase, companyId, 0)
+}
+
+export async function loadCorporateOccasions(companyId: string, offset = 0) {
+  const { supabase } = await requireAdmin()
+  return loadOccasionSettings(supabase, companyId, offset)
+}
+export async function previewCorporateOccasionOffer(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  return previewOccasionOffer(supabase, formData)
+}
+export async function approveCorporateOccasionOffer(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const result = await approveOccasionOffer(supabase, formData)
+  if (result.status === "updated") refreshCompany(formData)
+  return result
+}
+export async function saveCorporateOccasionProgram(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const result = await saveOccasionProgram(supabase, formData)
+  if (result.status === "updated") refreshCompany(formData)
+  return result
+}
+export async function saveCorporateMemberOccasion(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const result = await saveMemberOccasion(supabase, formData)
+  if (result.status === "updated") refreshCompany(formData)
+  return result
 }
