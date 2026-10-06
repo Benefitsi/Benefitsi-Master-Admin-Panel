@@ -25,6 +25,7 @@ function loadUi(action) {
     "@/components/partner/partner-feedback-settings-loader": {},
     "@/components/microsite-read-only-notice": {},
     "@/components/menu-ai-import-dialog": {}, "@/components/partner/partner-plan-panel": {},
+    "@/components/menu-item-video-field": require("../components/menu-item-video-field.tsx"),
   }
   const source = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8") + "\nexport { DealForm, MilestoneForm, useActionSuccess, WeekdayChipField };"
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText

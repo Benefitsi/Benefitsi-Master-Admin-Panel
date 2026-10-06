@@ -3,6 +3,8 @@
 import type { PartnerWithDeals, PartnerSocial } from "@/lib/admin-data"
 import { readPartnerWorkspace } from "@/lib/partners/workspace-data"
 import { randomInt, randomUUID } from "node:crypto"
+import { MENU_VIDEO_BUCKET, validateMenuVideoFile } from "@/lib/menu-video"
+import { verifyMenuVideoUpload, removeUnusedMenuVideos } from "@/lib/menu-video-storage"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import sharp from "sharp"
@@ -186,6 +188,7 @@ export type PartnerActionState = {
     price: number | string | null
     currency: string | null
     image_url: string | null
+    video_url?: string | null
     tags: string[] | null
     allergens: string[] | null
     addons: ParsedMenuItemAddon[] | null
@@ -1952,7 +1955,7 @@ export async function deleteMenu(
   const { supabase } = access
 
   const [itemMediaResult, categoryMediaResult] = await Promise.all([
-    supabase.from("menu_items").select("image_url").eq("menu_id", id),
+    supabase.from("menu_items").select("image_url,video_url").eq("menu_id", id),
     supabase.from("menu_categories").select("image_url").eq("menu_id", id),
   ])
 
@@ -1988,7 +1991,7 @@ export async function deleteMenu(
   }
 
   const menuImageUrls = collectNonEmptyStrings([
-    ...(itemMediaResult.data ?? []).map((row) => row.image_url),
+    ...(itemMediaResult.data ?? []).flatMap((row) => [row.image_url, row.video_url]),
     ...(categoryMediaResult.data ?? []).map((row) => row.image_url),
   ])
   if (menuImageUrls.length) {
@@ -2114,7 +2117,7 @@ export async function deleteMenuCategory(
       .maybeSingle(),
     supabase
       .from("menu_items")
-      .select("image_url")
+      .select("image_url,video_url")
       .eq("category_id", id),
   ])
 
@@ -2146,7 +2149,7 @@ export async function deleteMenuCategory(
 
   const imageUrls = collectNonEmptyStrings([
     existingResult.data?.image_url,
-    ...(itemMediaResult.data ?? []).map((item) => item.image_url),
+    ...(itemMediaResult.data ?? []).flatMap((item) => [item.image_url, item.video_url]),
   ])
   if (imageUrls.length) {
     after(() => cleanupPublicMediaUrls(supabase, imageUrls))
@@ -2157,6 +2160,33 @@ export async function deleteMenuCategory(
     message: "Menu category and its items removed.",
     deletedId: id,
   }
+}
+
+export async function createMenuItemVideoUpload(
+  menuId: string,
+  fileName: string,
+  contentType: string,
+  size: number,
+): Promise<PartnerCoverUploadTarget> {
+  const access = await authorizeMenuMutation(null, null, menuId)
+  if (!access.ok) return { ok: false, message: access.message }
+  const validation = validateMenuVideoFile({ name: fileName, type: contentType, size })
+  if (validation) return { ok: false, message: validation }
+  const path = `${access.partnerId}/${access.menuId}/${randomUUID()}.mp4`
+  const storage = access.supabase.storage.from(MENU_VIDEO_BUCKET)
+  const { data, error } = await storage.createSignedUploadUrl(path, { upsert: false })
+  if (error || !data) return { ok: false, message: error?.message ?? "Video-Upload konnte nicht vorbereitet werden." }
+  return { ok: true, bucket: MENU_VIDEO_BUCKET, path, token: data.token,
+    publicUrl: storage.getPublicUrl(path).data.publicUrl }
+}
+
+export async function discardMenuItemVideoUpload(menuId: string, videoUrl: string): Promise<PartnerActionState> {
+  const access = await authorizeMenuMutation(null, null, menuId)
+  if (!access.ok) return { ok: false, message: access.message }
+  const config = getSupabaseConfig()
+  if (!config.isConfigured) return { ok: false, message: "Medienspeicher ist nicht konfiguriert." }
+  await removeUnusedMenuVideos(access.supabase, [videoUrl], config.url, access.partnerId!, access.menuId!)
+  return { ok: true, message: "" }
 }
 
 export async function saveMenuItem(
@@ -2170,6 +2200,22 @@ export async function saveMenuItem(
   const { supabase } = access
   const resolvedMenuId = access.menuId ?? menuId
   const now = new Date().toISOString()
+  const submittedVideoUrl = formData.has("video_url") ? nullableStringValue(formData, "video_url") : undefined
+  let previousVideoUrl: string | null = null
+  if (submittedVideoUrl !== undefined) {
+    if (id) {
+      const existing = await supabase.from("menu_items").select("video_url")
+        .eq("id", id).eq("menu_id", resolvedMenuId).single()
+      if (existing.error) return { ok: false, message: existing.error.message }
+      previousVideoUrl = existing.data.video_url
+    }
+    if (submittedVideoUrl && submittedVideoUrl !== previousVideoUrl) {
+      const config = getSupabaseConfig()
+      if (!config.isConfigured) return { ok: false, message: "Medienspeicher ist nicht konfiguriert." }
+      const message = await verifyMenuVideoUpload(supabase, submittedVideoUrl, config.url, access.partnerId!, resolvedMenuId)
+      if (message) return { ok: false, message }
+    }
+  }
   const imageFile = fileValue(formData, "image_file")
   const existingImageUrl = stringValue(formData, "existing_image_url")
   const removeImage = checkboxValue(formData, "remove_image")
@@ -2229,6 +2275,7 @@ export async function saveMenuItem(
 
   const mutationPayload = {
     ...payload,
+    ...(submittedVideoUrl === undefined ? {} : { video_url: submittedVideoUrl }),
     updated_at: now,
     ...(id ? {} : { created_at: now }),
   }
@@ -2237,12 +2284,12 @@ export async function saveMenuItem(
         .from("menu_items")
         .update(mutationPayload)
         .eq("id", id)
-        .select("id,menu_id,category_id,name,description,price,currency,image_url,tags,allergens,addons,is_popular,is_stamp_eligible,sort_order")
+        .select("id,menu_id,category_id,name,description,price,currency,image_url,video_url,tags,allergens,addons,is_popular,is_stamp_eligible,sort_order")
         .single()
     : await supabase
         .from("menu_items")
         .insert(mutationPayload)
-        .select("id,menu_id,category_id,name,description,price,currency,image_url,tags,allergens,addons,is_popular,is_stamp_eligible,sort_order")
+        .select("id,menu_id,category_id,name,description,price,currency,image_url,video_url,tags,allergens,addons,is_popular,is_stamp_eligible,sort_order")
         .single()
 
   if (result.error) {
@@ -2252,6 +2299,10 @@ export async function saveMenuItem(
 
   if (oldImageUrlsToCleanup.length) {
     after(() => cleanupPublicMediaUrls(supabase, oldImageUrlsToCleanup))
+  }
+
+  if (previousVideoUrl && previousVideoUrl !== submittedVideoUrl) {
+    after(() => cleanupPublicMediaUrls(supabase, [previousVideoUrl!]))
   }
 
   return {
@@ -2369,7 +2420,7 @@ export async function saveMenuItemImage(
       .update({ image_url: uploaded.url, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("menu_id", resolvedMenuId)
-      .select("id,menu_id,category_id,name,description,price,currency,image_url,tags,allergens,addons,is_popular,is_stamp_eligible,sort_order")
+      .select("id,menu_id,category_id,name,description,price,currency,image_url,video_url,tags,allergens,addons,is_popular,is_stamp_eligible,sort_order")
       .single()
     if (result.error) {
       await cleanupUploadedFiles(supabase, [uploaded])
@@ -2413,7 +2464,7 @@ export async function deleteMenuItem(
 
   const existingResult = await supabase
     .from("menu_items")
-    .select("image_url")
+    .select("image_url,video_url")
     .eq("id", id)
     .maybeSingle()
 
@@ -2432,8 +2483,9 @@ export async function deleteMenuItem(
       ? existingResult.data.image_url
       : ""
 
-  if (imageUrl) {
-    after(() => cleanupPublicMediaUrls(supabase, [imageUrl]))
+  const urls = collectNonEmptyStrings([imageUrl, existingResult.data?.video_url])
+  if (urls.length) {
+    after(() => cleanupPublicMediaUrls(supabase, urls))
   }
 
   return { ok: true, message: "Menu item removed.", deletedId: id }
@@ -3818,6 +3870,15 @@ async function cleanupPublicMediaUrls(supabase: SupabaseClient, urls: string[]) 
     const storagePath = parsePublicStorageUrl(url)
 
     if (!storagePath) {
+      continue
+    }
+
+    if (storagePath.bucket === MENU_VIDEO_BUCKET) {
+      const [partnerId, menuId] = storagePath.path.split("/")
+      const config = getSupabaseConfig()
+      if (config.isConfigured && partnerId && menuId) {
+        await removeUnusedMenuVideos(supabase, [url], config.url, partnerId, menuId)
+      }
       continue
     }
 

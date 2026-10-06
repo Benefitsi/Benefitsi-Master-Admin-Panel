@@ -182,6 +182,7 @@ export type MenuItem = {
   price: number | string | null
   currency: string | null
   image_url: string | null
+  video_url?: string | null
   tags: string[] | null
   allergens: string[] | null
   addons: MenuItemAddon[] | null

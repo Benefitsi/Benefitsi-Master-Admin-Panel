@@ -42,6 +42,7 @@ function runtime(action = noop, refresh = () => {}) {
     "@/lib/supabase/client": { createClient: () => { throw new Error("Unexpected browser DB access") } },
     "@/components/loading-ui": { LoadingSpinner: () => null },
     "@/components/partner/partner-feedback-settings-loader": { PartnerFeedbackSettingsLoader: () => null },
+    "@/components/menu-item-video-field": require("../components/menu-item-video-field.tsx"),
   }
 }
 
