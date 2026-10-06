@@ -160,7 +160,7 @@ function ApprovedOffer({ companyId, offer, canApprove, blocked, save, select }: 
     {canApprove && <button type="button" disabled={blocked} className={plainButton} onClick={select}>Dieses Angebot erneut prüfen</button>}
     {canApprove && offer.enabled && (confirm ? <div className="space-y-2">
       <p className="text-sm">Widerrufen: Neue Ausgabe ist gesperrt; ausstehende Vorteile sind sofort nicht mehr nutzbar.</p>
-      <button type="button" disabled={blocked} className={`${buttonClass} bg-red-700`} onClick={() => save(approveCorporateOccasionOffer, payload(companyId, offer.updated_at, { dealId: offer.deal_id, enabled: "false", authorizationReference: "", previewHash: "", confirmed: "true" }))}>Widerruf bestätigen</button>
+      <button type="button" disabled={blocked} className={`${buttonClass} bg-red-700`} onClick={() => save(approveCorporateOccasionOffer, payload(companyId, offer.updated_at, { dealId: offer.deal_id, enabled: "false", authorizationReference: offer.authorization_reference ?? "", previewHash: "", confirmed: "true" }))}>Widerruf bestätigen</button>
       <button type="button" disabled={blocked} onClick={() => setConfirm(false)} className={`${plainButton} ml-3`}>Abbrechen</button>
     </div> : <button type="button" disabled={blocked} className={plainButton} onClick={() => setConfirm(true)}>Freigabe widerrufen</button>)}
   </li>

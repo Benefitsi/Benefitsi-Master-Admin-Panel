@@ -21,7 +21,7 @@ async function preview(window){await act(async()=>edit(window,form('Partnerangeb
 test('concrete preview requires reference and unchecked separate confirmation, binds shown hash/version and reloads authoritative settings',async()=>{
  const calls=[],reads=[];const Editor=editor({loadCorporateOccasions:async(company,offset)=>{reads.push([company,offset]);return fixture.manager_configured},approveCorporateOccasionOffer:async data=>{calls.push(new Map(data));return success}})
  await withDom(async(root,window)=>{await show(root,Editor);const approval=form('Partnerangebot freigeben');assert.equal(button('Freigabe bestätigen'),undefined);await preview(window)
- assert.match(document.body.textContent,/Synthetic BEN35/);assert.match(document.body.textContent,/Vorteil/);assert.match(document.body.textContent,/Bedingungen/);assert.match(document.body.textContent,/außerhalb.*normalen Angebotslimits/)
+ assert.match(document.body.textContent,/Synthetic BEN35/);assert.match(approval.textContent,/2,00 € Rabatt/);assert.ok(approval.textContent.includes(fixture.preview.description));assert.match(document.body.textContent,/Bedingungen/);assert.match(document.body.textContent,/außerhalb.*normalen Angebotslimits/)
  assert.equal(approval.elements.confirmed.checked,false);assert.equal(button('Freigabe bestätigen').disabled,true)
  await act(async()=>{edit(window,approval.elements.authorizationReference,'Vereinbarung 42');approval.elements.confirmed.click()})
  await act(async()=>approval.requestSubmit());assert.equal(calls.length,1);assert.equal(calls[0].get('previewHash'),fixture.preview.preview_hash);assert.equal(calls[0].get('expectedUpdatedAt'),offer.updated_at);assert.equal(calls[0].get('dealId'),deal);assert.equal(calls[0].get('confirmed'),'true');assert.equal(reads.length,2);assert.equal(form('Partnerangebot freigeben').elements.dealId.value,'');assert.equal(button('Freigabe bestätigen'),undefined)
@@ -49,7 +49,7 @@ test('start-date save preserves null/full membership version, actual calendar in
 })
 test('revoke shows immediate impact and requires explicit confirmation with null preview payload',async()=>{
  const calls=[];const Editor=editor({approveCorporateOccasionOffer:async data=>{calls.push(new Map(data));return success}})
- await withDom(async root=>{await show(root,Editor);await act(async()=>button('Freigabe widerrufen').click());assert.match(document.body.textContent,/ausstehende.*nicht mehr nutzbar/);assert.equal(calls.length,0);await act(async()=>button('Widerruf bestätigen').click());assert.equal(calls[0].get('enabled'),'false');assert.equal(calls[0].get('previewHash'),'');assert.equal(calls[0].get('authorizationReference'),'');assert.equal(calls[0].get('expectedUpdatedAt'),offer.updated_at)})
+ await withDom(async root=>{await show(root,Editor);await act(async()=>button('Freigabe widerrufen').click());assert.match(document.body.textContent,/ausstehende.*nicht mehr nutzbar/);assert.equal(calls.length,0);await act(async()=>button('Widerruf bestätigen').click());assert.equal(calls[0].get('enabled'),'false');assert.equal(calls[0].get('previewHash'),'');assert.equal(calls[0].get('authorizationReference'),offer.authorization_reference);assert.equal(calls[0].get('expectedUpdatedAt'),offer.updated_at)})
 })
 test('unavailable/reapproval offers stay visible, cannot enable an issuing rule; private birthday year and consent editor stay absent',async()=>{
  const Editor=editor({loadCorporateOccasions:async()=>({...fixture.manager_configured,offers:[{...offer,available:false,reapproval_required:true}]})})
@@ -88,4 +88,17 @@ test('denied save and failed explicit reload retain date draft; stale-preview co
 test('changed approved offer can be selected for an explicit new preview without reusing its old confirmation',async()=>{
  const Editor=editor({loadCorporateOccasions:async()=>({...fixture.manager_configured,offers:[{...offer,available:false,reapproval_required:true}]})})
  await withDom(async(root,window)=>{await show(root,Editor);assert.ok(button('Dieses Angebot erneut prüfen'));await act(async()=>button('Dieses Angebot erneut prüfen').click());assert.equal(form('Partnerangebot freigeben').elements.dealId.value,deal);assert.equal(button('Freigabe bestätigen'),undefined);await act(async()=>button('Angebot prüfen').click());assert.equal(form('Partnerangebot freigeben').elements.confirmed.checked,false);assert.equal(button('Freigabe bestätigen').disabled,true)})
+})
+
+test('confirmed revoke goes from mounted UI through guarded action with native SQL reference/version contract',async()=>{
+ const {createClient}=await import('@supabase/supabase-js');const calls=[];let guards=0
+ const supabase=createClient('https://synthetic.supabase.invalid','synthetic-publishable',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{fetch:async(url,init)=>{
+  const name=new URL(url).pathname.split('/').at(-1),body=JSON.parse(init.body);calls.push([name,body]);
+  if(name==='get_corporate_occasion_settings')return Response.json(fixture.manager_configured)
+  if(name==='admin_set_corporate_occasion_offer')return Response.json({status:'updated',updated_at:offer.updated_at})
+  throw Error(`unexpected RPC ${name}`)
+ }}})
+ const actions=loadTypescript('app/companies/actions.ts',{'@/lib/admin':{requireAdmin:async()=>{guards++;return {supabase}}},'next/cache':{revalidatePath:()=>{},refresh:()=>{}}},{FormData})
+ const Editor=editor(actions)
+ await withDom(async root=>{await show(root,Editor);await act(async()=>button('Freigabe widerrufen').click());assert.equal(calls.length,1);await act(async()=>button('Widerruf bestätigen').click());assert.deepEqual(calls[1],['admin_set_corporate_occasion_offer',{p_company_id:id,p_deal_id:deal,p_enabled:false,p_authorization_reference:offer.authorization_reference,p_expected_updated_at:offer.updated_at,p_expected_preview_hash:null}]);assert.equal(guards,3)})
 })

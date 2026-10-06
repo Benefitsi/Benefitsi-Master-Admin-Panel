@@ -79,8 +79,8 @@ async function mutate(client: Client, name: string, args: Record<string, unknown
 }
 export async function approveOccasionOffer(client: Client, data: FormData): Promise<OccasionMutation> {
   const enabled = data.get("enabled"), reference = data.get("authorizationReference"), previewHash = data.get("previewHash")
-  if (!baseValid(data) || !fields(data, ["dealId", "enabled", "authorizationReference", "previewHash", "confirmed"]) || !occasionUuid(data.get("dealId")) || data.get("confirmed") !== "true" || (enabled !== "true" && enabled !== "false") || (enabled === "true" ? !occasionReference(reference) || !hash(previewHash) : reference !== "" || previewHash !== "")) return invalid
-  return mutate(client, "admin_set_corporate_occasion_offer", { p_company_id: data.get("companyId"), p_deal_id: data.get("dealId"), p_enabled: enabled === "true", p_authorization_reference: enabled === "true" ? reference : null, p_expected_updated_at: expected(data), p_expected_preview_hash: enabled === "true" ? previewHash : null })
+  if (!baseValid(data) || !fields(data, ["dealId", "enabled", "authorizationReference", "previewHash", "confirmed"]) || !occasionUuid(data.get("dealId")) || data.get("confirmed") !== "true" || (enabled !== "true" && enabled !== "false") || !occasionReference(reference) || (enabled === "true" ? !hash(previewHash) : previewHash !== "")) return invalid
+  return mutate(client, "admin_set_corporate_occasion_offer", { p_company_id: data.get("companyId"), p_deal_id: data.get("dealId"), p_enabled: enabled === "true", p_authorization_reference: reference, p_expected_updated_at: expected(data), p_expected_preview_hash: enabled === "true" ? previewHash : null })
 }
 export async function saveOccasionProgram(client: Client, data: FormData): Promise<OccasionMutation> {
   const kind = data.get("kind"), enabled = data.get("enabled"), offer = data.get("offerId"), interval = data.get("anniversaryInterval")
