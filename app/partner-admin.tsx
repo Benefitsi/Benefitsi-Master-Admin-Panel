@@ -10,6 +10,7 @@ import { formDataSignature } from "@/lib/partner-form-signature"
 import Link from "next/link"
 import { visitLevelsHref } from "@/lib/partner-visit-levels"
 import { PartnerFeedbackSettingsLoader } from "@/components/partner/partner-feedback-settings-loader"
+import { PartnerTaskSettingsLoader } from "@/components/partner/partner-task-settings-loader"
 import { useRouter } from "next/navigation"
 import {
   useActionState,
@@ -1399,6 +1400,9 @@ function PartnerDetail({
                 {portalMode ? <section className="rounded-2xl border border-slate-200 bg-white p-5"><h3 className="text-lg font-bold">Stempelprogramm</h3><p className="mt-2 text-sm text-slate-600">Stempelziel: {partner.stamp_target ?? "Noch nicht hinterlegt"} · Prämien und Meilensteine für deine Gäste</p><MilestonesPanel partner={partner} embedded /></section> : <DealsPanel partner={partner} embedded />}
                 {portalMode && partner.id ? (
                   <PartnerFeedbackSettingsLoader key={partner.id} partnerId={partner.id} dealRevision={JSON.stringify(partner.deals)} />
+                ) : null}
+                {portalMode && partner.id ? (
+                  <PartnerTaskSettingsLoader key={partner.id} partnerId={partner.id} dealRevision={JSON.stringify(partner.deals)} />
                 ) : null}
               </div>
             ) : null}
