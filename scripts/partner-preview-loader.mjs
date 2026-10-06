@@ -45,6 +45,8 @@ export function loadPreview(relative) {
         id === "server-only"
       )
         return new Proxy({}, { get: () => blocked });
+      // A browser Worker is never initialized in this offline SSR harness.
+      if (id.endsWith("partner-image-upscaler")) return { upscalePartnerMediaFile: blocked };
       if (id.endsWith("microsite-panel")) return { MicrositePanel: () => null };
       if (id.endsWith("menu-ai-import-dialog"))
         return { MenuAiImportDialog: () => null };

@@ -20,6 +20,7 @@ export function chartBuckets(series?: Dashboard["series"][string]) {
     (b) =>
       b &&
       typeof b === "object" &&
+      (!("status" in b) || ["ok", "empty"].includes(String(b.status))) &&
       Number.isFinite(Date.parse(b.start)) &&
       typeof b.visits === "number" &&
       Number.isFinite(b.visits) &&
