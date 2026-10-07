@@ -3,8 +3,8 @@ import previous from './onboarding-v2.json'
 import current from './onboarding.json'
 import type { Block, Content, Question } from './model'
 
-export const templateVersion='2026-10-07.3'
-const v1='2026-10-05.1',v2='2026-10-06.2'
+export const templateVersion='2026-10-07.4'
+const v1='2026-10-05.1',v2='2026-10-06.2',v3='2026-10-07.3'
 type DefaultQuestion = typeof previous[number]
 const fields=['section','prompt','help','suggestion','answerType','options','core'] as const
 type DefaultField = typeof fields[number]
@@ -44,6 +44,10 @@ function fits(content:Content):boolean {
 
 /** Upgrade known defaults atomically. Bespoke wording and every legacy answer survive. */
 export function upgradeOnboarding(content:Content):Content {
+  if(content.meeting.templateVersion===v3) {
+    const upgraded={...content,questions:addMissing(content.questions,current,['H06','I05']),meeting:{...content.meeting,templateVersion}}
+    return fits(upgraded)?upgraded:content
+  }
   if(![v1,v2].includes(content.meeting.templateVersion))return content
   // Detect customization against the source version once. A bespoke v1 value
   // may equal a v2 default without becoming eligible for a later replacement.

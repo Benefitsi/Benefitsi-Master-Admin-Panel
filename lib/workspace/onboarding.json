@@ -389,6 +389,16 @@
     "core": true
   },
   {
+    "id": "H06",
+    "section": "H. Weitere Funktionen passend erklären",
+    "prompt": "Hättet ihr Interesse an Workshops mit Benefitsi? Welche Themen und Formate wären für euch interessant?",
+    "help": "Interesse, Wunschthemen, bevorzugtes Format und mögliche Teilnahme festhalten. Konkrete Termine und Bedingungen später abstimmen.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
     "id": "I01",
     "section": "I. Abschluss und nächste Schritte",
     "prompt": "Habe ich eure wichtigsten Ziele, das Startangebot und die Belohnung richtig zusammengefasst?",
@@ -423,6 +433,16 @@
     "section": "I. Abschluss und nächste Schritte",
     "prompt": "Wann prüfen wir das vorbereitete Setup gemeinsam und wann besprechen wir die ersten Ergebnisse?",
     "help": "Antwortformat: Folgetermine",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "I05",
+    "section": "I. Abschluss und nächste Schritte",
+    "prompt": "Kennt ihr persönlich jemanden, für den eine Partnerschaft mit Benefitsi interessant sein könnte? Wen darf ich kontaktieren, und darf ich dabei erwähnen, dass ihr uns empfohlen habt?",
+    "help": "Name, Betrieb, passenden Kontaktweg und Erlaubnis zur Nennung der Empfehlung festhalten. Alternativ eine persönliche Vorstellung anbieten.",
     "suggestion": "",
     "answerType": "text",
     "options": [],

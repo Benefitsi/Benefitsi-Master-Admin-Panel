@@ -20,7 +20,7 @@ test('v2 consolidates every legacy answer, archives deleted answers and custom w
   const custom={...source.questions[0],id:'custom-local',prompt:'Meine zusätzliche Frage',answer:'Zusatzantwort'}
   source.questions.push(custom)
   const upgraded=upgradeOnboarding(source)
-  assert.equal(upgraded.meeting.templateVersion,'2026-10-07.3')
+  assert.equal(upgraded.meeting.templateVersion,'2026-10-07.4')
   assert.ok(removed.every(id=>!upgraded.questions.some(q=>q.id===id)))
   for(const [target,ids] of [['A01',['A01','A02','A03','A04']],['C01',['C01','C02','C04']],['D01',['D01','D02','D03']]]) {
     const text=questionAnswer(upgraded.questions.find(q=>q.id===target))
@@ -138,4 +138,33 @@ test('v1 empty removed custom questions matching v2 defaults still receive an ar
   assert.ok(upgraded.blocks.some(b=>b.text.includes('Frühere Frage A02')&&b.text.includes(intermediate.prompt)))
   assert.deepEqual(upgradeOnboarding(upgraded),upgraded)
   assert.deepEqual(validateContent(upgraded),upgraded)
+})
+function compactV3() {
+  const source=onboardingContent()
+  source.meeting.templateVersion='2026-10-07.3'
+  source.questions=source.questions.filter(q=>!['H06','I05'].includes(q.id))
+  return source
+}
+test('existing compact conversations gain workshops and a final referral question without changing saved content',()=>{
+  const source=compactV3()
+  Object.assign(source.questions.find(q=>q.id==='H03'),{prompt:'Meine eigene Frage',answer:'Bereits besprochen',hidden:true,status:'agreed'})
+  source.blocks=[{id:'note',type:'paragraph',text:'Gesprächsnotizen behalten',checked:false}]
+  const before=structuredClone(source)
+  const upgraded=upgradeOnboarding(source)
+  assert.equal(upgraded.meeting.templateVersion,'2026-10-07.4')
+  assert.match(upgraded.questions.find(q=>q.id==='H06').prompt,/Workshops/)
+  assert.equal(upgraded.questions.at(-1).id,'I05')
+  assert.match(upgraded.questions.at(-1).prompt,/kontaktieren/)
+  assert.match(upgraded.questions.at(-1).prompt,/erwähnen.*empfohlen/)
+  assert.deepEqual(upgraded.questions.filter(q=>!['H06','I05'].includes(q.id)),before.questions)
+  assert.deepEqual(upgraded.blocks,before.blocks)
+  assert.deepEqual(source,before)
+  assert.deepEqual(validateContent(upgraded),upgraded)
+  assert.equal(upgradeOnboarding(upgraded),upgraded)
+})
+test('compact conversation additions are atomic when there is no capacity for both questions',()=>{
+  const source=compactV3()
+  while(source.questions.length<199)source.questions.push({...source.questions[0],id:`custom-${source.questions.length}`})
+  assert.equal(upgradeOnboarding(source),source)
+  assert.equal(source.meeting.templateVersion,'2026-10-07.3')
 })
