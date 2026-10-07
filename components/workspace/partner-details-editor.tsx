@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { partnerTypeOptions } from '@/lib/partner-categories'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { getPartnerCategoriesForType, normalizePartnerCategories, normalizePartnerCategoriesForType, partnerTypeOptions } from '@/lib/partner-categories'
 import { partnerSocialPlatformOptions, MAX_PARTNER_SOCIALS } from '@/lib/partner-config'
 import { newId, safeLink, type ActionResult } from '@/lib/workspace/model'
 import type { EditRow, PartnerDetails, PartnerDetailChange } from '@/lib/workspace/partner-edit'
@@ -17,7 +17,7 @@ type Draft = string | boolean
 type Addition = {kind: 'social' | 'hour'; id: string; values: EditRow; submitted?: EditRow; error?: string}
 const weekdays = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag']
 const profileFields = [
-  ['name', 'Partnername'], ['type', 'Betriebsart'], ['category', 'Kategorien'], ['description', 'Beschreibung'],
+  ['name', 'Partnername'], ['description', 'Beschreibung'],
   ['address', 'Adresse'], ['phone', 'Telefon · öffentlicher Geschäftskontakt'], ['email', 'E-Mail · öffentlicher Geschäftskontakt'], ['website', 'Website'],
 ] as const
 const failure = 'Die Änderung konnte nicht bestätigt werden. Deine Eingabe bleibt erhalten. Bitte erneut versuchen.'
@@ -31,6 +31,14 @@ function displayValue(column: string, value: EditRow[string]): Draft {
 }
 function saveValue(column: string, value: Draft) {
   return column === 'category' ? [...new Set(String(value).split(',').map(item => item.trim()).filter(Boolean))] : value
+}
+function classificationError(type: string, category: string[]) {
+  if (!partnerTypeOptions.some(option => option.value === type)) return 'Bitte eine gültige Betriebsart wählen.'
+  if (category.length > 20 || category.some(value => value.length > 100)) return 'Bitte höchstens 20 gültige Kategorien eingeben.'
+  const normalized = normalizePartnerCategories(category)
+  const allowed = normalizePartnerCategoriesForType(type, normalized)
+  if (!allowed.length || allowed.length !== normalized.length) return 'Bitte mindestens eine zur Betriebsart passende Kategorie wählen. Alle Kategorien müssen zur Betriebsart passen.'
+  return null
 }
 function validDetails(value: PartnerDetails, partnerId: string) {
   return value?.partnerId === partnerId && value.profile?.id === partnerId &&
@@ -60,6 +68,7 @@ export function PartnerDetailsEditor(props: Props) {
 }
 
 function PartnerEditorSession({partnerId, services, onDirtyChange, onSaved}: Props) {
+  const categoryListId = useId()
   const [details, setDetails] = useState<PartnerDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -107,22 +116,38 @@ function PartnerEditorSession({partnerId, services, onDirtyChange, onSaved}: Pro
       else next[key] = value
       return next
     })
-    setMessages(current => {const next = {...current}; delete next[key]; return next})
+    setMessages(current => {
+      const next = {...current}; delete next[key]
+      if (kind === 'profile' && (column === 'type' || column === 'category')) delete next[keyFor(kind, row, 'classification')]
+      return next
+    })
   }
   async function save(kind: PartnerDetailChange['kind'], row: EditRow, column: string) {
-    const key = keyFor(kind, row, column), lock = rowKey(kind, row), value = drafts[key]
-    if (value === undefined || loading || locks.current.has(lock)) return
+    const key = keyFor(kind, row, column), lock = rowKey(kind, row)
+    const columns = column === 'classification' ? ['type', 'category'] : [column]
+    if (!columns.some(field => Object.hasOwn(drafts, keyFor(kind, row, field))) || loading || locks.current.has(lock)) return
+    const snapshot = Object.fromEntries(columns.map(field => [keyFor(kind, row, field), drafts[keyFor(kind, row, field)] ?? displayValue(field, row[field])]))
+    const classification = column === 'classification' ? {
+      type: String(snapshot[keyFor(kind, row, 'type')]),
+      category: String(snapshot[keyFor(kind, row, 'category')]).split(',').map(value => value.trim()).filter(Boolean),
+    } : null
+    if (classification) {
+      const error = classificationError(classification.type, classification.category)
+      if (error) {setMessages(current => ({...current, [key]: {error}})); return}
+    }
+    const value = snapshot[key]
     const request = epoch.current
     locks.current.add(lock)
-    pendingFields.current.add(key)
+    for (const fieldKey of Object.keys(snapshot)) pendingFields.current.add(fieldKey)
     setBusyRows(current => ({...current, [lock]: true}))
     setMessages(current => ({...current, [key]: {}}))
     try {
-      const result = await callbacks.current.services.saveWorkspacePartnerDetail(partnerId, {kind, row, column, value: saveValue(column, value)})
+      const result = await callbacks.current.services.saveWorkspacePartnerDetail(partnerId, {kind, row, column, value: classification ?? saveValue(column, value)})
       if (request !== epoch.current) return
       if (!result.ok) throw new Error(result.error)
       const saved = result.value
-      if (saved.id !== row.id || (kind === 'profile' ? saved.id !== partnerId || typeof saved.updated_at !== 'string' || !Number.isFinite(Date.parse(saved.updated_at)) : saved.partner_id !== partnerId) || !confirmedValue(column, value, saved)) throw new Error(failure)
+      const confirmed = classification ? saved?.type === classification.type && JSON.stringify(saved.category) === JSON.stringify(normalizePartnerCategoriesForType(classification.type, normalizePartnerCategories(classification.category))) : saved && confirmedValue(column, value, saved)
+      if (!saved || saved.id !== row.id || (kind === 'profile' ? saved.id !== partnerId || typeof saved.updated_at !== 'string' || !Number.isFinite(Date.parse(saved.updated_at)) : saved.partner_id !== partnerId) || !confirmed) throw new Error(failure)
       setDetails(current => {
         if (!current) return current
         if (kind === 'profile') return {...current, profile: saved}
@@ -131,8 +156,12 @@ function PartnerEditorSession({partnerId, services, onDirtyChange, onSaved}: Pro
       })
       // Edits made while this request was pending remain drafts.
       setDrafts(current => {
-        if (current[key] !== value) return current
-        const next = {...current}; delete next[key]; return next
+        const next = {...current}
+        for (const field of columns) {
+          const fieldKey = keyFor(kind, row, field)
+          if (current[fieldKey] === snapshot[fieldKey] || current[fieldKey] === displayValue(field, saved[field])) delete next[fieldKey]
+        }
+        return next
       })
       setMessages(current => ({...current, [key]: {saved: true}}))
       callbacks.current.onSaved()
@@ -140,7 +169,7 @@ function PartnerEditorSession({partnerId, services, onDirtyChange, onSaved}: Pro
       if (request === epoch.current) setMessages(current => ({...current, [key]: {error: error instanceof Error ? error.message : failure}}))
     } finally {
       locks.current.delete(lock)
-      pendingFields.current.delete(key)
+      for (const fieldKey of Object.keys(snapshot)) pendingFields.current.delete(fieldKey)
       if (request === epoch.current) setBusyRows(current => ({...current, [lock]: false}))
     }
   }
@@ -189,19 +218,27 @@ function PartnerEditorSession({partnerId, services, onDirtyChange, onSaved}: Pro
   }
   function editField(kind: PartnerDetailChange['kind'], row: EditRow, column: string, label: string, control?: 'textarea' | 'select') {
     const key = keyFor(kind, row, column), value = drafts[key] ?? displayValue(column, row[column]), changed = Object.hasOwn(drafts, key), message = messages[key]
+    const classificationField = kind === 'profile' && (column === 'type' || column === 'category')
     let input: ReactNode
     if (column === 'is_closed') input = <input aria-label={label} type="checkbox" className="size-5 accent-[#118cff]" checked={value === true} onChange={event => patch(kind, row, column, event.target.checked)}/>
     else if (control === 'textarea') input = <textarea className={inputClass} value={String(value)} maxLength={4000} onChange={event => patch(kind, row, column, event.target.value)}/>
     else if (control === 'select') input = <select className={inputClass} value={String(value)} onChange={event => patch(kind, row, column, event.target.value)}>{!partnerTypeOptions.some(option => option.value === value) ? <option value={String(value)}>{String(value) || 'Bitte wählen'}</option> : null}{partnerTypeOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
-    else input = <input className={inputClass} type={column.endsWith('_at') ? 'time' : column === 'email' ? 'email' : column === 'website' || column === 'url' ? 'url' : column === 'phone' ? 'tel' : 'text'} value={String(value)} maxLength={column === 'website' || column === 'url' ? 4000 : 500} onChange={event => patch(kind, row, column, event.target.value)}/>
-    return <div key={key} className="min-w-0 space-y-2"><Field label={label} hint={column === 'category' ? 'Mehrere Kategorien mit Komma trennen.' : undefined}>{input}</Field>{changed ? <Button aria-label={`${label} speichern`} disabled={Boolean(busyRows[rowKey(kind, row)])} onClick={() => void save(kind, row, column)}>{busyRows[rowKey(kind, row)] ? 'Wird gespeichert …' : 'Speichern'}</Button> : null}{message?.error ? <p role="alert" className="text-sm text-red-700">{message.error}</p> : message?.saved && !changed ? <p role="status" className="text-xs text-emerald-700">Gespeichert</p> : null}</div>
+    else input = <input className={inputClass} list={column === 'category' ? categoryListId : undefined} type={column.endsWith('_at') ? 'time' : column === 'email' ? 'email' : column === 'website' || column === 'url' ? 'url' : column === 'phone' ? 'tel' : 'text'} value={String(value)} maxLength={column === 'website' || column === 'url' ? 4000 : 500} onChange={event => patch(kind, row, column, event.target.value)}/>
+    return <div key={key} className="min-w-0 space-y-2"><Field label={label} hint={column === 'category' ? 'Mindestens eine passende Kategorie. Mehrere Kategorien mit Komma trennen.' : undefined}>{input}</Field>{changed && !classificationField ? <Button aria-label={`${label} speichern`} disabled={Boolean(busyRows[rowKey(kind, row)])} onClick={() => void save(kind, row, column)}>{busyRows[rowKey(kind, row)] ? 'Wird gespeichert …' : 'Speichern'}</Button> : null}{message?.error ? <p role="alert" className="text-sm text-red-700">{message.error}</p> : message?.saved && !changed ? <p role="status" className="text-xs text-emerald-700">Gespeichert</p> : null}</div>
+  }
+  function classificationEditor(row: EditRow) {
+    const type = String(drafts[keyFor('profile', row, 'type')] ?? row.type ?? '')
+    const options = getPartnerCategoriesForType(type)
+    const changed = ['type', 'category'].some(field => Object.hasOwn(drafts, keyFor('profile', row, field)))
+    const message = messages[keyFor('profile', row, 'classification')]
+    return <div className="space-y-3 sm:col-span-2"><div className="grid gap-4 sm:grid-cols-2">{editField('profile', row, 'type', 'Betriebsart', 'select')}{editField('profile', row, 'category', 'Kategorien')}</div><datalist id={categoryListId}>{options.map(category => <option key={category} value={category}/>)}</datalist><p className="text-xs leading-5 text-[#526170]">Passende Kategorien: {options.join(', ')}</p>{changed ? <Button aria-label="Betriebsart & Kategorien speichern" disabled={Boolean(busyRows[rowKey('profile', row)])} onClick={() => void save('profile', row, 'classification')}>{busyRows[rowKey('profile', row)] ? 'Wird gespeichert …' : 'Betriebsart & Kategorien speichern'}</Button> : null}{message?.error ? <p role="alert" className="text-sm text-red-700">{message.error}</p> : message?.saved && !changed ? <p role="status" className="text-xs text-emerald-700">Gespeichert</p> : null}</div>
   }
 
   if (loading) return <p role="status" className="text-sm text-[#526170]">Partnerangaben werden geladen …</p>
   if (loadError || !details) return <div className="space-y-3"><p role="alert" className="text-sm text-red-700">{loadError || 'Keine Partnerangaben verfügbar.'}</p><div className="flex flex-wrap gap-3"><Button onClick={reloadDetails}>Partnerangaben neu laden</Button>{dirty ? <Button disabled={busy} onClick={reset}>Änderungen verwerfen</Button> : null}</div></div>
   return <div className="space-y-6">
     <p className="text-sm leading-6 text-[#526170]">Betriebsangaben direkt bearbeiten. Jede Änderung einzeln speichern.</p>
-    <section aria-label="Profil und Geschäftskontakt" className="space-y-3"><h4 className="text-sm font-bold">Profil und Geschäftskontakt</h4><div className="grid gap-4 sm:grid-cols-2">{profileFields.map(([column, label]) => editField('profile', details.profile, column, label, column === 'description' ? 'textarea' : column === 'type' ? 'select' : undefined))}</div></section>
+    <section aria-label="Profil und Geschäftskontakt" className="space-y-3"><h4 className="text-sm font-bold">Profil und Geschäftskontakt</h4><div className="grid gap-4 sm:grid-cols-2">{classificationEditor(details.profile)}{profileFields.map(([column, label]) => editField('profile', details.profile, column, label, column === 'description' ? 'textarea' : undefined))}</div></section>
     <section aria-label="Social-Links" className="space-y-4"><h4 className="text-sm font-bold">Social-Links</h4>{details.socials.length ? details.socials.map((row, index) => editField('social', row, 'url', `${partnerSocialPlatformOptions.find(option => option.value === row.platform)?.label ?? row.platform} · Link ${index + 1}`)) : <p className="text-sm text-[#526170]">Noch keine Social-Links hinterlegt.</p>}<Button disabled={Boolean(addition) || details.socials.length >= MAX_PARTNER_SOCIALS} onClick={() => beginAdd('social')}>Social-Link hinzufügen</Button></section>
     <section aria-label="Öffnungszeiten" className="space-y-4"><h4 className="text-sm font-bold">Öffnungszeiten</h4>{details.hours.length ? details.hours.map((row, index) => {const name = `${weekdays[Number(row.weekday) - 1] ?? 'Wochentag'} ${index + 1}`; return <div key={String(row.id)} className="grid gap-4 border-b border-[#061829]/10 pb-4 sm:grid-cols-2">{editField('hour', row, 'opens_at', `Öffnet · ${name}`)}{editField('hour', row, 'closes_at', `Schließt · ${name}`)}{editField('hour', row, 'label', `Hinweis · ${name}`)}{editField('hour', row, 'is_closed', `Geschlossen · ${name}`)}</div>}) : <p className="text-sm text-[#526170]">Noch keine Öffnungszeiten hinterlegt.</p>}<Button disabled={Boolean(addition)} onClick={() => beginAdd('hour')}>Öffnungszeit hinzufügen</Button></section>
     {addition ? <section aria-label={addition.kind === 'social' ? 'Neuer Social-Link' : 'Neue Öffnungszeit'} className="space-y-3 rounded-lg border border-[#118cff]/25 bg-[#f3f8ff] p-4"><h4 className="text-sm font-bold">{addition.kind === 'social' ? 'Neuer Social-Link' : 'Neue Öffnungszeit'}</h4><fieldset disabled={Boolean(addition.submitted) || Boolean(busyRows.addition)} className="grid min-w-0 gap-3 sm:grid-cols-2">

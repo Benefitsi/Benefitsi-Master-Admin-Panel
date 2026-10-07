@@ -19,7 +19,7 @@ const field=name=>[...document.querySelectorAll('input,select,textarea')].find(e
 const wait=async predicate=>{for(let n=0;n<60;n++){if(predicate())return;await act(async()=>new Promise(resolve=>setTimeout(resolve,10)))}assert.ok(predicate(),'Timed out waiting for editor state')}
 const click=async el=>{assert.ok(el,'Control exists');await act(async()=>el.click())}
 const fill=async(el,value)=>{assert.ok(el,'Field exists');await act(async()=>{const prototype=el instanceof window.HTMLSelectElement?window.HTMLSelectElement.prototype:el instanceof window.HTMLTextAreaElement?window.HTMLTextAreaElement.prototype:window.HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(prototype,'value').set.call(el,value);el.dispatchEvent(new window.Event(el instanceof window.HTMLSelectElement?'change':'input',{bubbles:true}))})}
-const transport=()=>({loadWorkspacePartnerDetails:async id=>({ok:true,value:details(id)}),saveWorkspacePartnerDetail:async(id,input)=>({ok:true,value:{...input.row,[input.column]:input.value,updated_at:'2026-10-07T12:01:00Z'}}),addWorkspacePartnerDetail:async(id,input)=>({ok:true,value:{...input.values,id:input.id,partner_id:id}})})
+const transport=()=>({loadWorkspacePartnerDetails:async id=>({ok:true,value:details(id)}),saveWorkspacePartnerDetail:async(id,input)=>({ok:true,value:{...input.row,...(input.column==='classification'?input.value:{[input.column]:input.value}),updated_at:'2026-10-07T12:01:00Z'}}),addWorkspacePartnerDetail:async(id,input)=>({ok:true,value:{...input.values,id:input.id,partner_id:id}})})
 async function withEditor(services,run){
   const root=createRoot(document.getElementById('root')),states=[];let saved=0
   const render=async id=>act(async()=>root.render(React.createElement(React.StrictMode,null,React.createElement(PartnerDetailsEditor,{partnerId:id,services,onDirtyChange:state=>states.push(state),onSaved:()=>saved++}))))
@@ -211,5 +211,60 @@ test('a failed reload still exposes confirmed discard for its retained draft',as
     dom.window.confirm=()=>false;await click(button('Änderungen verwerfen'));assert.deepEqual(states.at(-1),{dirty:true,busy:false})
     dom.window.confirm=()=>true;await click(button('Änderungen verwerfen'));assert.deepEqual(states.at(-1),{dirty:false,busy:false})
     failed=false;await click(button('Partnerangaben neu laden'));await wait(()=>field('Partnername'));assert.equal(field('Partnername').value,'Café Beispiel')
+  })
+})
+
+test('type and categories save atomically while preserving an independent profile draft',async()=>{
+  const services=transport(),calls=[]
+  services.saveWorkspacePartnerDetail=async(id,input)=>{calls.push({id,input});return {ok:true,value:{...input.row,type:'Services',category:['Hotel'],updated_at:'2026-10-07T12:01:00Z'}}}
+  await withEditor(services,async({states})=>{
+    await wait(()=>field('Betriebsart'));await fill(field('Betriebsart'),'Services');await fill(field('Kategorien'),'Hotel');await fill(field('Adresse'),'Unabhängiger Entwurf')
+    assert.equal(calls.length,0);assert.ok(!button('Betriebsart speichern'));assert.ok(!button('Kategorien speichern'))
+    await click(button('Betriebsart & Kategorien speichern'))
+    assert.equal(calls.length,1);assert.equal(calls[0].id,partnerId);assert.equal(calls[0].input.kind,'profile');assert.equal(calls[0].input.column,'classification')
+    assert.deepEqual(calls[0].input.value,{type:'Services',category:['Hotel']});assert.equal(calls[0].input.row.updated_at,'2026-10-07T12:00:00Z')
+    assert.equal(field('Adresse').value,'Unabhängiger Entwurf');assert.equal(states.at(-1).dirty,true);assert.equal(button('Betriebsart & Kategorien speichern'),undefined)
+  })
+})
+
+test('category-only classification acknowledges canonical categories with unchanged type fallback',async()=>{
+  const services=transport(),calls=[]
+  services.saveWorkspacePartnerDetail=async(id,input)=>{calls.push(input);return {ok:true,value:{...input.row,type:'Food & Drink',category:['Cafe'],updated_at:'2026-10-07T12:01:00Z'}}}
+  await withEditor(services,async({states,saved})=>{
+    await wait(()=>field('Kategorien'));await fill(field('Kategorien'),'Café');await click(button('Betriebsart & Kategorien speichern'))
+    assert.deepEqual(calls[0].value,{type:'Food & Drink',category:['Café']});assert.equal(field('Kategorien').value,'Cafe');assert.deepEqual(states.at(-1),{dirty:false,busy:false});assert.equal(saved(),1)
+    assert.ok(document.body.textContent.includes('Gespeichert'))
+  })
+})
+
+test('classification keeps later reverted type and category drafts and retries using its confirmed revision',async()=>{
+  const services=transport(),calls=[];let finish
+  services.saveWorkspacePartnerDetail=(id,input)=>{calls.push(input);return new Promise(resolve=>{finish=()=>resolve({ok:true,value:{...input.row,...input.value,updated_at:'2026-10-07T12:01:00Z'}})})}
+  await withEditor(services,async({states})=>{
+    await wait(()=>field('Betriebsart'));await fill(field('Betriebsart'),'Services');await fill(field('Kategorien'),'Hotel');await click(button('Betriebsart & Kategorien speichern'))
+    await fill(field('Betriebsart'),'Food & Drink');await fill(field('Kategorien'),'Cafe');assert.deepEqual(states.at(-1),{dirty:true,busy:true});await act(async()=>finish())
+    assert.equal(field('Betriebsart').value,'Food & Drink');assert.equal(field('Kategorien').value,'Cafe');assert.deepEqual(states.at(-1),{dirty:true,busy:false});assert.ok(!document.body.textContent.includes('Gespeichert'))
+    await click(button('Betriebsart & Kategorien speichern'));assert.deepEqual(calls[1].value,{type:'Food & Drink',category:['Cafe']});assert.equal(calls[1].row.type,'Services');assert.deepEqual(calls[1].row.category,['Hotel']);assert.equal(calls[1].row.updated_at,'2026-10-07T12:01:00Z')
+    await act(async()=>finish());assert.deepEqual(states.at(-1),{dirty:false,busy:false})
+  })
+})
+
+test('classification error retains both drafts and offers categories for the current draft type',async()=>{
+  const services=transport();services.saveWorkspacePartnerDetail=async()=>({ok:false,error:'Klassifizierung konnte nicht gespeichert werden'})
+  await withEditor(services,async({states,saved})=>{
+    await wait(()=>field('Betriebsart'));await fill(field('Betriebsart'),'Services');await fill(field('Kategorien'),'Hotel')
+    const suggestions=document.getElementById(field('Kategorien').getAttribute('list'))
+    assert.ok(suggestions);assert.ok([...suggestions.querySelectorAll('option')].some(option=>option.value==='Hotel'));assert.ok(![...suggestions.querySelectorAll('option')].some(option=>option.value==='Pizza'))
+    await click(button('Betriebsart & Kategorien speichern'));assert.equal(field('Betriebsart').value,'Services');assert.equal(field('Kategorien').value,'Hotel');assert.equal(saved(),0);assert.deepEqual(states.at(-1),{dirty:true,busy:false});assert.ok(document.body.textContent.includes('Klassifizierung konnte nicht gespeichert werden'))
+  })
+})
+
+test('classification rejects missing or mismatched categories before writing and allows correction',async()=>{
+  const services=transport(),calls=[]
+  services.saveWorkspacePartnerDetail=async(id,input)=>{calls.push(input);return {ok:true,value:{...input.row,...input.value,updated_at:'2026-10-07T12:01:00Z'}}}
+  await withEditor(services,async({states})=>{
+    await wait(()=>field('Kategorien'));await fill(field('Kategorien'),'');await click(button('Betriebsart & Kategorien speichern'));assert.equal(calls.length,0);assert.ok(document.querySelector('[role="alert"]'));assert.equal(states.at(-1).dirty,true)
+    await fill(field('Kategorien'),'Cafe, Hotel');await click(button('Betriebsart & Kategorien speichern'));assert.equal(calls.length,0);assert.equal(field('Kategorien').value,'Cafe, Hotel')
+    await fill(field('Kategorien'),'Restaurant');await click(button('Betriebsart & Kategorien speichern'));assert.equal(calls.length,1);assert.equal(states.at(-1).dirty,false)
   })
 })
