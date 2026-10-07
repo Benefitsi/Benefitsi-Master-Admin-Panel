@@ -61,3 +61,15 @@ test('incomplete opening times and unrecognized additions cannot reach transport
   await assert.rejects(()=>savePartnerDetail(db.client,partnerId,{kind:'hour',row:{id:rowId,partner_id:partnerId,weekday:1,is_closed:false,opens_at:'09:00',closes_at:'17:00',label:null,sort_order:0},column:'closes_at',value:''}))
   assert.equal(db.calls.length,0)
 })
+test('classification saves normalize categories and enforce type/category consistency atomically',async()=>{
+  const {savePartnerDetail}=await import('../lib/workspace/partner-edit.ts')
+  const profile={...row,type:'Food & Drink',category:['Pizza']}
+  const db=database(({body})=>[{...profile,...body}])
+  const saved=await savePartnerDetail(db.client,partnerId,{kind:'profile',row:profile,column:'classification',value:{type:'Food & Drink',category:['Café','cafe']}})
+  assert.deepEqual(saved.category,['Cafe'])
+  assert.deepEqual(Object.keys(db.calls[0].body).sort(),['category','type','updated_at'])
+  assert.equal(db.calls[0].url.searchParams.get('updated_at'),'eq.2026-10-07T10:00:00Z')
+  const blocked=database(()=>{throw new Error('No request allowed')})
+  for(const input of [{column:'classification',value:{type:'Wellness',category:['Pizza']}},{column:'classification',value:{type:'Food & Drink',category:[]}},{column:'type',value:'Wellness'},{column:'category',value:[]},{column:'classification',value:{type:'anything',category:['Pizza']}}])await assert.rejects(()=>savePartnerDetail(blocked.client,partnerId,{kind:'profile',row:profile,...input}))
+  assert.equal(blocked.calls.length,0)
+})

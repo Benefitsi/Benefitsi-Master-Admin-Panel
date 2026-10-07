@@ -19,7 +19,7 @@ export function workspaceFixture(seed = {}) {
       const rows=input.kind==='profile'?[details.profile]:details[input.kind==='social'?'socials':'hours']
       const row=rows.find(row=>row.id===input.row.id)
       if(!row)return fail('Eintrag nicht gefunden.')
-      Object.assign(row,{[input.column]:input.value},input.kind==='profile'?{updated_at:new Date().toISOString()}:{})
+      Object.assign(row,input.column==='classification'?input.value:{[input.column]:input.value},input.kind==='profile'?{updated_at:new Date().toISOString()}:{})
       return ok(row)
     },
     async addWorkspacePartnerDetail(id,input) {

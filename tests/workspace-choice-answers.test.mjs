@@ -28,3 +28,11 @@ test('status changes and exports preserve selected choices instead of flattening
   assert.match(markdown,/2 für 1: Pizza/);assert.ok(!markdown.includes('benefitsi-choice-v1'))
   assert.equal(questionAnswer(changed).split('Alte Notiz').length-1,1)
 })
+test('paid interests distinguish available benefits from requests and unavailable delivery',async()=>{
+  const {choiceOptions}=await import('../lib/workspace/choice-answers.ts')
+  const paid=choiceOptions.H05
+  assert.ok(paid.some(option=>option.id==='paid_media'&&option.description.includes('getrennt')))
+  assert.ok(paid.some(option=>option.id==='paid_delivery'&&option.description.includes('noch nicht verfügbar')))
+  assert.ok(paid.some(option=>option.id==='paid_commerce'&&option.description.includes('Verfügbarkeit')))
+  assert.ok(paid.some(option=>option.id==='paid_production'&&option.description.includes('Kosten gesondert')))
+})

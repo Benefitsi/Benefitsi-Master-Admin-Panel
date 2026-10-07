@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { safeLink, validId } from './model'
 import { readAllRows } from './pagination'
 import { isPartnerSocialPlatform } from '../partner-config'
+import { normalizePartnerCategories, normalizePartnerCategoriesForType, partnerTypeOptions } from '../partner-categories'
 
 export type EditRow=Record<string,string|number|boolean|null|string[]>
 export type PartnerDetails={partnerId:string;profile:EditRow;socials:EditRow[];hours:EditRow[]}
@@ -41,9 +42,10 @@ function cleanValue(kind:PartnerDetailChange['kind'],column:string,value:unknown
 export async function savePartnerDetail(client:SupabaseClient,partnerId:string,input:PartnerDetailChange):Promise<EditRow>{
   if(!validId(partnerId)||!input||!Object.hasOwn(schemas,input.kind)||!input.row||!validId(input.row.id))throw new Error('Ungültiger Eintrag.')
   const {kind,row,column}=input,schema=schemas[kind]
-  const editable=kind==='profile'?profileFields:kind==='social'?['url']:['opens_at','closes_at','label','is_closed']
+  const editable=kind==='profile'?[...profileFields,'classification']:kind==='social'?['url']:['opens_at','closes_at','label','is_closed']
   if(!(editable as readonly string[]).includes(column)||kind==='profile'&&row.id!==partnerId||kind!=='profile'&&row.partner_id!==partnerId)throw new Error('Dieser Eintrag kann hier nicht geändert werden.')
-  const value=cleanValue(kind,column,input.value),patch:Record<string,unknown>={[column]:value}
+  const classification=kind==='profile'&&['classification','type','category'].includes(column)?cleanClassification(column==='classification'?input.value:{type:column==='type'?input.value:row.type,category:column==='category'?input.value:row.category}):null
+  const value=classification??cleanValue(kind,column,input.value),patch:Record<string,unknown>=classification?{...classification}:{[column]:value}
   if(kind==='hour')checkHours({...row,[column]:value})
   if(kind==='profile'){
     if(typeof row.updated_at!=='string'||!Number.isFinite(Date.parse(row.updated_at)))throw new Error('Bitte den aktuellen Partnerstand neu laden.')
@@ -61,9 +63,19 @@ export async function savePartnerDetail(client:SupabaseClient,partnerId:string,i
   if(result.error)throw new Error('Die Änderung konnte nicht gespeichert werden. Deine Eingabe bleibt erhalten.')
   const saved=result.data?.[0]
   if(result.data?.length!==1||saved?.id!==row.id||kind!=='profile'&&saved.partner_id!==partnerId)throw new Error(conflict)
-  const equivalent=kind==='hour'&&typeof value==='string'&&['opens_at','closes_at'].includes(column)?String(saved[column]).slice(0,5)===value.slice(0,5):JSON.stringify(saved[column])===JSON.stringify(value)
+  const equivalent=classification?saved.type===classification.type&&JSON.stringify(saved.category)===JSON.stringify(classification.category):kind==='hour'&&typeof value==='string'&&['opens_at','closes_at'].includes(column)?String(saved[column]).slice(0,5)===value.slice(0,5):JSON.stringify(saved[column])===JSON.stringify(value)
   if(!equivalent)throw new Error('Die Änderung wurde nicht vollständig bestätigt. Bitte neu laden und vergleichen.')
   return saved
+}
+
+function cleanClassification(input:unknown){
+  if(!input||typeof input!=='object'||Array.isArray(input))throw new Error('Bitte Betriebsart und Kategorien gemeinsam angeben.')
+  const {type,category}=input as Record<string,unknown>
+  if(typeof type!=='string'||!partnerTypeOptions.some(option=>option.value===type))throw new Error('Bitte eine gültige Betriebsart wählen.')
+  if(!Array.isArray(category)||category.length>20||category.some(value=>typeof value!=='string'||value.length>100))throw new Error('Bitte gültige Kategorien eingeben.')
+  const normalized=normalizePartnerCategories(category),allowed=normalizePartnerCategoriesForType(type,normalized)
+  if(!normalized.length||allowed.length!==normalized.length)throw new Error('Bitte mindestens eine zur Betriebsart passende Kategorie angeben.')
+  return {type,category:allowed}
 }
 
 function checkHours(row:EditRow){
