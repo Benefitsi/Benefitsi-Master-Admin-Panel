@@ -20,7 +20,7 @@ Implemented `PartnerDetailsEditor` with injected `DetailServices`, `onDirtyChang
 
 The initial red test failed because the component was absent. Later regression tests were observed failing on canonical URL confirmation, invalid additions sent prematurely, Sunday labeling/value, and missing conflict reload, then passed with the corresponding changes. The initial module-availability assertion was removed once the real behavior tests could import the component directly.
 
-`node --import tsx --test tests/workspace-partner-edit-ui.test.mjs`: **15 passed, 0 failed**, final run exit 0.
+`node --import tsx --test tests/workspace-partner-edit-ui.test.mjs`: **17 passed, 0 failed**, final run after review corrections exit 0.
 
 The suite mounts real React under StrictMode in JSDOM and injects only the transport boundary. It exercises explicit save payload/revision, retained errors/drafts, stale loads and saves, wrong partner identity, newer drafts during saves, retry UUID/payload stability, independent hour fields, weekday mapping, correction before additions, canonical URLs, discard confirmation, and conflict reload.
 
@@ -31,3 +31,11 @@ The suite mounts real React under StrictMode in JSDOM and injects only the trans
 No installs, builds, browser/server processes, production writes, pushes, account/PIN/permission editing, deletions, or spelling changes were performed. No temporary test/compiler directories were created. Parent integration still needs to wire services and navigation guards and include the component in its project-wide type check and applicable UI checks.
 
 A submitted addition intentionally remains frozen until retry confirmation or explicit discard/reload: a failed response may follow an already committed write. Its stable UUID/payload prevents an accidental second row on retry. Runtime success identity/value checks complement the backend's authoritative validation; JSDOM verification does not claim browser layout coverage.
+
+## Review corrections
+
+The independent review identified a draft-preservation hole when a pending field is changed back to its pre-save value. The old row comparison deleted that newer input from the draft map, so the acknowledgement could overwrite it and incorrectly clear dirty status. A focused real React regression failed with `dirty:false` while the write was still pending. Per-field pending tracking now retains that raw edit even when it equals the old row, preserving the original value and `dirty:true` after acknowledgement. The regression also explicitly saves that retained value using the acknowledgement's current row and revision, then verifies clean state.
+
+The review also found that a failed explicit reload retained drafts but hid their discard action. A second regression failed on the missing control. The error view now exposes the existing confirmed discard action; rejecting confirmation preserves dirty state, accepting it clears drafts, and a subsequent successful retry loads the stored value.
+
+Both regressions were observed red before their respective changes. The full owned React suite now passes **17/17**; targeted ESLint again exits 0 with no diagnostics. Only the same component, test, and implementation report were changed. Concurrent controller/services changes and the reviewer's separate report were preserved.

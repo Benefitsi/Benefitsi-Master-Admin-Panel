@@ -69,6 +69,7 @@ function PartnerEditorSession({partnerId, services, onDirtyChange, onSaved}: Pro
   const [busyRows, setBusyRows] = useState<Record<string, boolean>>({})
   const [addition, setAddition] = useState<Addition | null>(null)
   const locks = useRef(new Set<string>())
+  const pendingFields = useRef(new Set<string>())
   const epoch = useRef(0)
   const callbacks = useRef({services, onDirtyChange, onSaved})
   callbacks.current = {services, onDirtyChange, onSaved}
@@ -98,9 +99,11 @@ function PartnerEditorSession({partnerId, services, onDirtyChange, onSaved}: Pro
 
   function patch(kind: PartnerDetailChange['kind'], row: EditRow, column: string, value: Draft) {
     const key = keyFor(kind, row, column)
+    // The old row is about to change, so returning to its value is still a newer edit.
+    const preservePendingEdit = pendingFields.current.has(key)
     setDrafts(current => {
       const next = {...current}
-      if (value === displayValue(column, row[column])) delete next[key]
+      if (value === displayValue(column, row[column]) && !preservePendingEdit) delete next[key]
       else next[key] = value
       return next
     })
@@ -111,6 +114,7 @@ function PartnerEditorSession({partnerId, services, onDirtyChange, onSaved}: Pro
     if (value === undefined || loading || locks.current.has(lock)) return
     const request = epoch.current
     locks.current.add(lock)
+    pendingFields.current.add(key)
     setBusyRows(current => ({...current, [lock]: true}))
     setMessages(current => ({...current, [key]: {}}))
     try {
@@ -136,6 +140,7 @@ function PartnerEditorSession({partnerId, services, onDirtyChange, onSaved}: Pro
       if (request === epoch.current) setMessages(current => ({...current, [key]: {error: error instanceof Error ? error.message : failure}}))
     } finally {
       locks.current.delete(lock)
+      pendingFields.current.delete(key)
       if (request === epoch.current) setBusyRows(current => ({...current, [lock]: false}))
     }
   }
@@ -193,7 +198,7 @@ function PartnerEditorSession({partnerId, services, onDirtyChange, onSaved}: Pro
   }
 
   if (loading) return <p role="status" className="text-sm text-[#526170]">Partnerangaben werden geladen …</p>
-  if (loadError || !details) return <div className="space-y-3"><p role="alert" className="text-sm text-red-700">{loadError || 'Keine Partnerangaben verfügbar.'}</p><Button onClick={reloadDetails}>Partnerangaben neu laden</Button></div>
+  if (loadError || !details) return <div className="space-y-3"><p role="alert" className="text-sm text-red-700">{loadError || 'Keine Partnerangaben verfügbar.'}</p><div className="flex flex-wrap gap-3"><Button onClick={reloadDetails}>Partnerangaben neu laden</Button>{dirty ? <Button disabled={busy} onClick={reset}>Änderungen verwerfen</Button> : null}</div></div>
   return <div className="space-y-6">
     <p className="text-sm leading-6 text-[#526170]">Betriebsangaben direkt bearbeiten. Jede Änderung einzeln speichern.</p>
     <section aria-label="Profil und Geschäftskontakt" className="space-y-3"><h4 className="text-sm font-bold">Profil und Geschäftskontakt</h4><div className="grid gap-4 sm:grid-cols-2">{profileFields.map(([column, label]) => editField('profile', details.profile, column, label, column === 'description' ? 'textarea' : column === 'type' ? 'select' : undefined))}</div></section>

@@ -186,3 +186,30 @@ test('typing a newer value during save keeps the newer draft after the older val
     assert.equal(field('Partnername').value,'Neuerer Entwurf');assert.equal(states.at(-1).dirty,true);assert.ok(button('Partnername speichern'));assert.ok(!document.body.textContent.includes('Gespeichert'))
   })
 })
+
+test('reverting to the original value during an outstanding save remains dirty and can be saved against its acknowledgement',async()=>{
+  const services=transport(),calls=[];let finish
+  services.saveWorkspacePartnerDetail=(id,input)=>{calls.push(input);return new Promise(resolve=>{finish=()=>resolve({ok:true,value:{...input.row,name:input.value,updated_at:'2026-10-07T12:01:00Z'}})})}
+  await withEditor(services,async({states})=>{
+    await wait(()=>field('Partnername'));assert.deepEqual(states.at(-1),{dirty:false,busy:false})
+    await fill(field('Partnername'),'Gesendeter Name');await click(button('Partnername speichern'))
+    assert.deepEqual(states.at(-1),{dirty:true,busy:true})
+    await fill(field('Partnername'),'Café Beispiel');assert.equal(field('Partnername').value,'Café Beispiel');assert.deepEqual(states.at(-1),{dirty:true,busy:true})
+    await act(async()=>finish())
+    assert.equal(field('Partnername').value,'Café Beispiel');assert.deepEqual(states.at(-1),{dirty:true,busy:false});assert.ok(!document.body.textContent.includes('Gespeichert'))
+    await click(button('Partnername speichern'));assert.equal(calls[1].value,'Café Beispiel');assert.equal(calls[1].row.name,'Gesendeter Name');assert.equal(calls[1].row.updated_at,'2026-10-07T12:01:00Z')
+    await act(async()=>finish());assert.equal(field('Partnername').value,'Café Beispiel');assert.deepEqual(states.at(-1),{dirty:false,busy:false})
+  })
+})
+
+test('a failed reload still exposes confirmed discard for its retained draft',async()=>{
+  const services=transport();let failed=false
+  services.loadWorkspacePartnerDetails=async id=>failed?{ok:false,error:'Erneuter Abruf fehlgeschlagen'}:{ok:true,value:details(id)}
+  await withEditor(services,async({states})=>{
+    await wait(()=>field('Partnername'));await fill(field('Partnername'),'Zurückbehaltener Entwurf');failed=true;await click(button('Partnerangaben neu laden'))
+    await wait(()=>document.body.textContent.includes('Erneuter Abruf fehlgeschlagen'));assert.deepEqual(states.at(-1),{dirty:true,busy:false});assert.equal(field('Partnername'),undefined)
+    dom.window.confirm=()=>false;await click(button('Änderungen verwerfen'));assert.deepEqual(states.at(-1),{dirty:true,busy:false})
+    dom.window.confirm=()=>true;await click(button('Änderungen verwerfen'));assert.deepEqual(states.at(-1),{dirty:false,busy:false})
+    failed=false;await click(button('Partnerangaben neu laden'));await wait(()=>field('Partnername'));assert.equal(field('Partnername').value,'Café Beispiel')
+  })
+})
