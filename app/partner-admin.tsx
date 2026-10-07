@@ -12105,7 +12105,7 @@ function MediaUploadField({
         sourceFiles,
         spec,
         { zoom, x, y },
-        spec.label === "Logo" && hasTransparentLogo ? backgroundColor : undefined,
+        spec.label === "Logo" ? backgroundColor : undefined,
         setUploadMessage,
       )
       const previews = createImagePreviews(resizedFiles)
@@ -12229,9 +12229,9 @@ function MediaUploadField({
           ))}
         </div>
       ) : null}
-      {spec.label === "Logo" && hasTransparentLogo && selectedPreview ? (
+      {spec.label === "Logo" && selectedPreview && (hasTransparentLogo || cropZoom < 1) ? (
         <label className="flex items-center justify-between gap-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-950">
-          <span>Transparent PNG background</span>
+          <span>Logo background color</span>
           <span className="flex items-center gap-2">
             <input
               aria-label="Logo background color"
