@@ -83,7 +83,8 @@ function PartnerEditorSession({partnerId, services, onDirtyChange, onSaved}: Pro
   const callbacks = useRef({services, onDirtyChange, onSaved})
   callbacks.current = {services, onDirtyChange, onSaved}
   const dirty = Object.keys(drafts).length > 0 || addition !== null
-  const busy = loading || Object.values(busyRows).some(Boolean)
+  // Reads can be cancelled safely by navigation; only pending writes must block it.
+  const busy = Object.values(busyRows).some(Boolean)
 
   useEffect(() => {
     const request = ++epoch.current
