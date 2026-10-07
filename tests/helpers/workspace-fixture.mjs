@@ -11,8 +11,25 @@ export function workspaceFixture(seed = {}) {
   const versions = new Map([...pages.values()].map(p => [p.id, [{revision:p.revision,created_at:p.updated_at,snapshot:structuredClone(p)}]]))
   const ok = value => ({ok:true,value:structuredClone(value)})
   const fail = error => ({ok:false,error})
+  const details={partnerId:fixturePartner.id,profile:{id:fixturePartner.id,name:fixturePartner.name,type:'Food & Drink',category:['Café'],description:'Kaffee und Kuchen',address:'Beispielstraße 1',phone:'0123456',email:'info@example.test',website:'https://example.test',updated_at:'2026-10-07T10:00:00Z'},socials:[],hours:[]}
   const services = {
-    async loadWorkspacePartnerBrief(id) { return ok(buildPartnerBrief({partner:{id,name:fixturePartner.name},owner:null,microsite:null,deals:[],rewards:[],hours:[],holidays:[],socials:[],menus:[],staff:[]})) },
+    async loadWorkspacePartnerDetails(id) { return id===details.partnerId?ok(details):fail('Partner nicht gefunden.') },
+    async saveWorkspacePartnerDetail(id,input) {
+      if(id!==details.partnerId)return fail('Partner nicht gefunden.')
+      const rows=input.kind==='profile'?[details.profile]:details[input.kind==='social'?'socials':'hours']
+      const row=rows.find(row=>row.id===input.row.id)
+      if(!row)return fail('Eintrag nicht gefunden.')
+      Object.assign(row,input.column==='classification'?input.value:{[input.column]:input.value},input.kind==='profile'?{updated_at:new Date().toISOString()}:{})
+      return ok(row)
+    },
+    async addWorkspacePartnerDetail(id,input) {
+      if(id!==details.partnerId)return fail('Partner nicht gefunden.')
+      const rows=details[input.kind==='social'?'socials':'hours']
+      const row=rows.find(row=>row.id===input.id)??{...input.values,id:input.id,partner_id:id}
+      if(!rows.includes(row))rows.push(row)
+      return ok(row)
+    },
+    async loadWorkspacePartnerBrief(id) { return ok(buildPartnerBrief({partner:{...details.profile,id},owner:null,microsite:null,deals:[],rewards:[],hours:details.hours,holidays:[],socials:details.socials,menus:[],staff:[]})) },
     async loadWorkspaceIndex() { return ok({workspaces:[...workspaces.values()],favorites:[...favorites]}) },
     async loadWorkspacePages(id, filter = {}, offset = 0) {
       const matches = [...pages.values()].filter(p => p.workspace_id===id && p.archived===(filter.archived===true)
@@ -48,5 +65,5 @@ export function workspaceFixture(seed = {}) {
     },
     async findWorkspacePartners(query='',id) { return ok((!id||id===fixturePartner.id) && fixturePartner.name.toLowerCase().includes(query.toLowerCase()) ? [fixturePartner] : []) },
   }
-  return {services,workspaces,pages,favorites,versions}
+  return {services,workspaces,pages,favorites,versions,details}
 }

@@ -1,3 +1,4 @@
+import { loadWorkspacePartnerDetails, saveWorkspacePartnerDetail, addWorkspacePartnerDetail } from '@/app/workspace/partner-edit-actions'
 import { loadWorkspaceIndex, loadWorkspacePages, loadWorkspacePage, saveWorkspacePage, saveWorkspace, setWorkspaceFavorite, loadWorkspaceVersions, restoreWorkspacePage, findWorkspacePartners, loadWorkspacePartnerBrief } from '@/app/workspace/actions'
-export const workspaceServices={loadWorkspaceIndex,loadWorkspacePages,loadWorkspacePage,saveWorkspacePage,saveWorkspace,setWorkspaceFavorite,loadWorkspaceVersions,restoreWorkspacePage,findWorkspacePartners,loadWorkspacePartnerBrief}
+export const workspaceServices={loadWorkspacePartnerDetails,saveWorkspacePartnerDetail,addWorkspacePartnerDetail,loadWorkspaceIndex,loadWorkspacePages,loadWorkspacePage,saveWorkspacePage,saveWorkspace,setWorkspaceFavorite,loadWorkspaceVersions,restoreWorkspacePage,findWorkspacePartners,loadWorkspacePartnerBrief}
 export type WorkspaceServices=typeof workspaceServices

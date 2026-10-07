@@ -2,12 +2,52 @@
   {
     "id": "A01",
     "section": "A. Betrieb und Ansprechpartner",
-    "prompt": "Stammdaten gemeinsam prüfen: Stimmen Name, Betriebsart, Beschreibung, Ansprechpartner, Adresse, Kontakt, Öffnungszeiten und Social Media?",
-    "help": "Die vorbereiteten Angaben einmal gemeinsam durchgehen. Mit „Stimmt so“ bestätigen oder fehlende Angaben und Korrekturen festhalten. Änderungen an den Stammdaten gesondert speichern.",
+    "prompt": "Öffentlichen Namen und Betriebsart gemeinsam prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
     "suggestion": "",
     "answerType": "text",
     "options": [],
     "core": true
+  },
+  {
+    "id": "A02",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Hinterlegte Ansprechpartner prüfen: Wer entscheidet und wer ist im Alltag erreichbar?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "A03",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Adresse, Kontakt und Öffnungszeiten gemeinsam prüfen. Fehlen saisonale Abweichungen?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "A04",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Vorbereitete Beschreibung prüfen: Was fehlt oder macht euch besonders?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "A05",
+    "section": "A. Betrieb und Ansprechpartner",
+    "prompt": "Welche weiteren Standorte, Sprachen oder wichtigen Hinweise für Besucher sollen wir berücksichtigen?",
+    "help": "Antwortformat: Liste + Auswahl",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
   },
   {
     "id": "B01",
@@ -85,20 +125,24 @@
     "core": false
   },
   {
-    "id": "B08",
-    "section": "B. Ziele und Besuchsverhalten",
-    "prompt": "Wie erkennt oder erfasst ihr heute neue und wiederkehrende Gäste?",
-    "help": "Vorhandene Systeme, Listen oder Abläufe beschreiben: Was funktioniert bereits und was fehlt?",
+    "id": "C01",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Vorbereitete Stempelkarte prüfen: Für welche Besuche oder Leistungen soll sie gelten?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
     "suggestion": "",
-    "answerType": "text",
-    "options": [],
+    "answerType": "choice",
+    "options": [
+      "Ja",
+      "Nein",
+      "Später"
+    ],
     "core": true
   },
   {
-    "id": "C01",
+    "id": "C02",
     "section": "C. Stempelkarte und Belohnungen",
-    "prompt": "Stempelkarte und Belohnungen gemeinsam prüfen: Stimmen die Besuche, Meilensteine und Vorteile?",
-    "help": "Die vorhandenen Meilensteine und ihre Belohnungen gemeinsam durchgehen. Attraktivität und Umsetzbarkeit bestätigen oder konkrete Änderungswünsche festhalten.",
+    "prompt": "Vorbereitete Belohnungen prüfen: Sind sie für Gäste attraktiv und im Alltag erfüllbar?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
     "suggestion": "",
     "answerType": "text",
     "options": [],
@@ -107,12 +151,52 @@
   {
     "id": "C03",
     "section": "C. Stempelkarte und Belohnungen",
-    "prompt": "Welche tatsächlichen Herstellungskosten entstehen euch pro Belohnungsartikel oder Zusatzleistung?",
-    "help": "Für jeden Artikel die Herstellungskosten transparent festhalten; eine Kostenspanne ist möglich. Verkaufspreis, Kosten und zusätzlicher Aufwand getrennt benennen. Angaben dienen der Abstimmung und lösen keine Zahlung aus.",
+    "prompt": "Was ist für euch der tatsächliche Aufwand dieser Belohnung, und gibt es eine Grenze, die wir beachten sollen?",
+    "help": "Antwortformat: Betrag oder Aufwand + interne Notiz",
     "suggestion": "",
     "answerType": "text",
     "options": [],
     "core": true
+  },
+  {
+    "id": "C04",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Hinterlegte Stempel-Meilensteine und Belohnungen gemeinsam prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "number",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "C05",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Zielgruppen und Gültigkeit der Belohnungen gemeinsam prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": true
+  },
+  {
+    "id": "C06",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Hinterlegte Bedingungen und Ausnahmen der Stempelkarte gemeinsam prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "C07",
+    "section": "C. Stempelkarte und Belohnungen",
+    "prompt": "Was soll passieren, wenn der Belohnungsartikel ausverkauft ist oder eine Zusatzleistung gerade nicht möglich ist?",
+    "help": "Antwortformat: Ersatzlösung + Verantwortlicher",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
   },
   {
     "id": "C08",
@@ -125,30 +209,44 @@
     "core": true
   },
   {
-    "id": "C09",
-    "section": "C. Stempelkarte und Belohnungen",
-    "prompt": "Passt die aktuelle Level- und Abzeichenstruktur zu euren Gästen und eurem Betrieb?",
-    "help": "Die vorhandenen Levels, Besuchsziele und Abzeichen gemeinsam ansehen. Passende Punkte bestätigen und Änderungswünsche festhalten.",
+    "id": "D01",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Vorbereitete Angebote gemeinsam durchgehen: Was soll zum Start sichtbar sein?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
     "suggestion": "",
     "answerType": "text",
     "options": [],
     "core": true
   },
   {
-    "id": "C10",
-    "section": "C. Stempelkarte und Belohnungen",
-    "prompt": "Welche Abzeichen wünscht ihr euch, und welche nachvollziehbaren Kriterien sollen Gäste dafür erfüllen?",
-    "help": "Idee, Name, Nutzen und prüfbare Kriterien festhalten. Wünsche sind noch keine verfügbaren oder zugesagten Funktionen.",
+    "id": "D02",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Hinterlegte Angebotsarten prüfen: Angebot, Happy Hour oder Deal Drop?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "choice",
+    "options": [
+      "Normales Angebot",
+      "Happy Hour",
+      "Deal Drop"
+    ],
+    "core": true
+  },
+  {
+    "id": "D03",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Hinterlegte Vorteile prüfen: Stimmen Rabatt, Zugabe oder Belohnung?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
     "suggestion": "",
     "answerType": "text",
     "options": [],
-    "core": false
+    "core": true
   },
   {
-    "id": "D01",
+    "id": "D04",
     "section": "D. Angebote, Happy Hour und Deal Drops",
-    "prompt": "Vorbereitete Angebote prüfen: Welche Angebotsarten und Vorteile möchtet ihr zum Start nutzen?",
-    "help": "Vorhandene Angebote gemeinsam ansehen. Interesse an normalen Angeboten, Happy Hour und Deal Drops festhalten; Details nur für die gewünschten Arten ergänzen. Die Antwort aktiviert oder veröffentlicht keine Aktion.",
+    "prompt": "Zeitraum, Wochentage und Uhrzeiten der vorbereiteten Aktionen prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
     "suggestion": "",
     "answerType": "text",
     "options": [],
@@ -157,28 +255,38 @@
   {
     "id": "D05",
     "section": "D. Angebote, Happy Hour und Deal Drops",
-    "prompt": "Wie oft darf jeder Gast den Vorteil nutzen: einmal jährlich, in einem festen Intervall oder nach einer individuellen Regel?",
-    "help": "Pro Angebot die Nutzung je Gast, Jahresbezug oder Intervall und eigene Regeln festhalten. Zielgruppe, Kontingente und Gültigkeit gemeinsam prüfen; abweichende Wünsche erst gesondert bestätigen.",
+    "prompt": "Zielgruppen, Kontingente und Nutzungslimits gemeinsam prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
     "suggestion": "",
     "answerType": "text",
     "options": [],
     "core": true
   },
   {
-    "id": "D09",
+    "id": "D06",
     "section": "D. Angebote, Happy Hour und Deal Drops",
-    "prompt": "Habt ihr Interesse an Deal Drops, und welche ersten begrenzten Aktionen könntet ihr euch vorstellen?",
-    "help": "Erste Inhalte, Vorteil, Menge und Zeitpunkt besprechen. Ein Deal Drop ist eine begrenzte Aktion; Vorbereitung und Interesse lösen keine Veröffentlichung und keinen Marketingversand aus.",
+    "prompt": "Bedingungen und Ausnahmen der vorbereiteten Angebote gemeinsam prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
     "suggestion": "",
     "answerType": "text",
     "options": [],
     "core": true
   },
   {
-    "id": "D10",
+    "id": "D07",
     "section": "D. Angebote, Happy Hour und Deal Drops",
-    "prompt": "Möchtet ihr eine zusätzliche Promo für neue Benefitsi-Premium-Kunden mit vereinbartem Herstellungskostenersatz und einem zusätzlichen Vorteil nach dem ersten Besuch besprechen?",
-    "help": "Eine zusätzliche Aktion getrennt von bestehenden Deals planen: Artikel oder Leistung, Herstellungskosten, Umfang des vereinbarten Kostenersatzes und zusätzlicher Vorteil nach dem ersten Besuch. Teilnahme, Kosten und Freigaben gesondert vereinbaren; die Antwort löst weder eine Aktion noch eine Zahlung aus.",
+    "prompt": "Aktivierungsstand prüfen: Wann soll pausiert werden und wer entscheidet?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "D08",
+    "section": "D. Angebote, Happy Hour und Deal Drops",
+    "prompt": "Vorbereitete Angebotstexte prüfen: Was möchtet ihr ändern oder ergänzen?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
     "suggestion": "",
     "answerType": "text",
     "options": [],
@@ -187,8 +295,8 @@
   {
     "id": "E01",
     "section": "E. Profil, Microsite und vorhandene Unterlagen",
-    "prompt": "Dürfen wir die vorbereitete Microsite in dieser Form freigeben, oder fehlen noch Änderungen?",
-    "help": "Die verlinkte Microsite gemeinsam ansehen. Freigabeumfang, fehlende Änderungen und eventuelle Vorbehalte festhalten; die Veröffentlichung erfolgt gesondert nach bestätigter Freigabe.",
+    "prompt": "Vorbereitetes Profil und Microsite gemeinsam auf Richtigkeit prüfen.",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
     "suggestion": "",
     "answerType": "text",
     "options": [],
@@ -218,6 +326,16 @@
     "id": "E04",
     "section": "E. Profil, Microsite und vorhandene Unterlagen",
     "prompt": "Vorbereitete Beschreibung und Leistungen prüfen: Was soll hervorgehoben werden?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "E05",
+    "section": "E. Profil, Microsite und vorhandene Unterlagen",
+    "prompt": "Hinterlegte externe Links gemeinsam prüfen. Wer hält sie aktuell?",
     "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
     "suggestion": "",
     "answerType": "text",
@@ -263,6 +381,16 @@
     "section": "F. Bilder, 360°-Ansichten und Video",
     "prompt": "Welche Räume oder Blickpunkte sollen gezeigt werden und welche ausdrücklich nicht?",
     "help": "Antwortformat: Liste + Ausschlüsse",
+    "suggestion": "",
+    "answerType": "text",
+    "options": [],
+    "core": false
+  },
+  {
+    "id": "F04",
+    "section": "F. Bilder, 360°-Ansichten und Video",
+    "prompt": "Erfasste Medienrechte prüfen: Wer kann die Nutzung und abgebildete Personen freigeben?",
+    "help": "Den aktuellen Stand aus der Partnerverwaltung gemeinsam ansehen. Mit „Stimmt so“ bestätigen oder Korrekturen in der Antwort festhalten.",
     "suggestion": "",
     "answerType": "text",
     "options": [],
@@ -331,8 +459,8 @@
   {
     "id": "G04",
     "section": "G. Team und Nutzung im Alltag",
-    "prompt": "Wer hält Öffnungszeiten, Urlaubszeiten, Social Media und externe Links, Menü, Preise und Aktionsverfügbarkeit aktuell?",
-    "help": "Zuständigkeiten und einen einfachen Ablauf für Änderungen festhalten.",
+    "prompt": "Wer hält Öffnungszeiten, Urlaubszeiten, Menü und Aktionsverfügbarkeit aktuell?",
+    "help": "Antwortformat: Zuständigkeiten",
     "suggestion": "",
     "answerType": "text",
     "options": [],
@@ -377,16 +505,6 @@
     "answerType": "text",
     "options": [],
     "core": false
-  },
-  {
-    "id": "H05",
-    "section": "H. Weitere Funktionen passend erklären",
-    "prompt": "Welche kostenpflichtigen Funktionen aus dem Benefitsi-Leistungskatalog sind für euch interessant?",
-    "help": "Den bestehenden Leistungskatalog mit Nutzen und Interesse gemeinsam durchgehen. Verfügbare Funktionen und geplante Leistungen unterscheiden; insbesondere geplanten Versand nicht als verfügbar zusagen. Verbindlichen Umfang und Kosten gesondert abstimmen. Interesse bucht keinen Tarif und löst keine Zahlung aus.",
-    "suggestion": "",
-    "answerType": "text",
-    "options": [],
-    "core": true
   },
   {
     "id": "I01",

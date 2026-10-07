@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import {createRequire} from 'node:module'
 import React, {act} from 'react'
 import {JSDOM} from 'jsdom'
 import {makePage} from '../lib/workspace/model.ts'
@@ -12,6 +13,10 @@ const previous=Object.fromEntries(names.map(name=>[name,Object.getOwnPropertyDes
 for(const name of names)Object.defineProperty(globalThis,name,{configurable:true,writable:true,value:name==='IS_REACT_ACT_ENVIRONMENT'?true:dom.window[name]})
 dom.window.confirm=()=>true
 const {createRoot}=await import('react-dom/client')
+// Next substitutes server actions in the browser. Tests inject the transport and never execute them.
+const require=createRequire(import.meta.url),serverOnly=require.resolve('server-only'),priorServerOnly=require.cache[serverOnly]
+require.cache[serverOnly]={exports:{}}
+test.after(()=>{if(priorServerOnly)require.cache[serverOnly]=priorServerOnly;else delete require.cache[serverOnly]})
 const {WorkspaceApp}=await import('../components/workspace/workspace-app.tsx')
 test.after(()=>{dom.window.close();for(const name of names){if(previous[name])Object.defineProperty(globalThis,name,previous[name]);else delete globalThis[name]}})
 
@@ -86,7 +91,7 @@ test('partner entry uses one answer and keeps resources and tasks across remount
     const meeting=[...fixture.pages.values()].find(p=>p.kind==='conversation')
     assert.equal(meeting.partner_id,fixturePartner.id)
     assert.ok(meeting.parent_id)
-    assert.equal(meeting.content.questions.length,53)
+    assert.equal(meeting.content.questions.length,42)
     assert.equal(meeting.content.questions[0].answer,'Mara verantwortet Freigaben')
     const target=document.querySelector(`a[href="/partners?partner=${fixturePartner.id}&tab=deals"]`)
     assert.equal(target?.target,'_blank')
@@ -324,5 +329,44 @@ test('a late partner-data response cannot replace the newly selected partner',as
     await act(async()=>pending.filter(request=>request.id===fixturePartner.id).forEach(finish))
     assert.ok(!document.getElementById('question-A01').textContent.includes('Veralteter Partnername'))
     assert.equal(field('Antwort · A01').value,'Gesprächsnotiz bleibt erhalten')
+  })
+})
+
+test('inline partner drafts survive cancelled tab/filter navigation and saved data refreshes preparation',async()=>{
+  const page={...makePage(workspace.id,'conversation'),partner_id:fixturePartner.id,content:onboardingContent(),revision:1}
+  const fixture=workspaceFixture({workspaces:[workspace],pages:[page]})
+  await withApp(fixture,{initialPageId:page.id},async()=>{
+    await wait(()=>field('Partnername'))
+    await fill(field('Partnername'),'Café Neuer Name')
+    window.confirm=()=>false
+    await click(button('Notizen'))
+    assert.equal(field('Partnername').value,'Café Neuer Name')
+    const core=[...document.querySelectorAll('input[type=checkbox]')].find(el=>el.closest('label')?.textContent==='Nur Kernfragen')
+    await click(core)
+    assert.equal(core.checked,false)
+    assert.equal(field('Partnername').value,'Café Neuer Name')
+    await click(button('Partnername speichern'))
+    await wait(()=>document.querySelector('#question-A01 dl').textContent.includes('Café Neuer Name'))
+    assert.equal(fixture.details.profile.name,'Café Neuer Name')
+    await click(button('Notizen'))
+    assert.ok(!field('Partnername'))
+    window.confirm=()=>true
+  })
+})
+test('open-only filtering cannot unmount unsaved inline partner fields after an answer changes status',async()=>{
+  const page={...makePage(workspace.id,'conversation'),partner_id:fixturePartner.id,content:onboardingContent(),revision:1}
+  const fixture=workspaceFixture({workspaces:[workspace],pages:[page]})
+  await withApp(fixture,{initialPageId:page.id},async()=>{
+    await wait(()=>field('Partnername'))
+    const onlyOpen=[...document.querySelectorAll('input[type=checkbox]')].find(el=>el.closest('label')?.textContent==='Nur offene Fragen')
+    await click(onlyOpen)
+    await fill(field('Partnername'),'Noch nicht gespeicherter Name')
+    await fill(field('Antwort · A01'),'Angaben geprüft, Name korrigieren')
+    await save()
+    assert.equal(field('Partnername').value,'Noch nicht gespeicherter Name')
+    window.confirm=()=>false
+    await click(button('Notizen'))
+    assert.equal(field('Partnername').value,'Noch nicht gespeicherter Name')
+    window.confirm=()=>true
   })
 })
