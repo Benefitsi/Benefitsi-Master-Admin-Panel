@@ -47,10 +47,10 @@ function database({failure,missing=false,draft=true}={}) {
 test('real PostgREST client emits scoped editorial reads and uses only the latest prepared microsite',async()=>{
   const db=database(),brief=await readWorkspacePartnerBrief(db.client,id)
   assert.ok(brief.facts.A01.some(f=>f.value==='Bistro Beispiel'))
-  assert.ok(brief.facts.A02.some(f=>f.value.includes('Inhaberin Beispiel')))
-  assert.ok(brief.facts.A03.some(f=>f.value.includes('Mo: 11:00–14:00')))
+  assert.ok(brief.facts.A01.some(f=>f.value.includes('Inhaberin Beispiel')))
+  assert.ok(brief.facts.A01.some(f=>f.value.includes('Mo: 11:00–14:00')))
   assert.ok(brief.facts.F02.some(f=>f.value.includes('Tourentwurf')))
-  assert.ok(brief.facts.F04.some(f=>f.value.includes('Nutzungsrechte noch offen')))
+  assert.ok(brief.facts.F07.some(f=>f.value.includes('Nutzungsrechte noch offen')))
   assert.equal(db.requests.filter(r=>r.pathname.endsWith('microsite_versions')).length,1)
 })
 test('published media is used only when there is no prepared draft',async()=>{

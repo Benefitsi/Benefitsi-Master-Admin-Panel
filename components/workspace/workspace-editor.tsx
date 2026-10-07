@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Archive, ArrowLeft, ArrowSquareOut, Check, Copy, DownloadSimple, FloppyDisk, Plus, Star } from '@phosphor-icons/react'
 import { DocumentSession } from '@/lib/workspace/save-queue'
 import { newId, pageFingerprint, pageKinds, pageStatuses, pageFromTemplate, type WorkspacePage, type PageMeta, type PageVersion, type Content, type PageKind } from '@/lib/workspace/model'
@@ -21,22 +21,33 @@ export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,servic
   const snapshot=useSyncExternalStore(session.subscribe,session.snapshot,session.snapshot),page=snapshot.page
   const partnerBrief=usePartnerBrief(page.partner_id,services)
   const [tab,setTab]=useState(initial.kind==='conversation'?'conversation':'notes'),[focus,setFocus]=useState(false),[versions,setVersions]=useState<PageVersion[]>([]),[versionPreview,setVersionPreview]=useState<PageVersion|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[moreVersions,setMoreVersions]=useState(true)
-  useEffect(()=>{session.activate();setGuard(()=>session.flush());return()=>{setGuard(async()=>true);session.dispose()}},[session,setGuard])
+  const partnerEditRef=useRef({dirty:false,busy:false})
+  const [partnerEdit,setPartnerEdit]=useState({dirty:false,busy:false}),[partnerEditKey,setPartnerEditKey]=useState(0)
+  const onPartnerEditStateChange=useCallback((state:{dirty:boolean;busy:boolean})=>{partnerEditRef.current=state;setPartnerEdit(old=>old.dirty===state.dirty&&old.busy===state.busy?old:state)},[])
+  const canLeavePartnerEdit=useCallback(()=>{
+    const state=partnerEditRef.current
+    if(state.busy){setError('Bitte warten, bis die Partnerangaben vollständig geladen oder gespeichert sind.');return false}
+    if(!state.dirty)return true
+    if(!window.confirm('Ungespeicherte Partnerangaben verwerfen? Speichere sie bei Bedarf zuerst direkt beim jeweiligen Feld.'))return false
+    onPartnerEditStateChange({dirty:false,busy:false});setPartnerEditKey(value=>value+1);return true
+  },[onPartnerEditStateChange])
+  useEffect(()=>{session.activate();setGuard(async()=>canLeavePartnerEdit()&&await session.flush());return()=>{setGuard(async()=>true);session.dispose()}},[session,setGuard,canLeavePartnerEdit])
   useEffect(()=>{
     const currentUrl=window.location.href,currentState=window.history.state
     const leave=async(url:string)=>{
+      if(!canLeavePartnerEdit())return
       setNavigating(true)
       if(await session.flush())window.location.assign(url)
       else setNavigating(false)
     }
-    const before=(e:BeforeUnloadEvent)=>{if(session.dirty()){e.preventDefault();e.returnValue=''}}
+    const before=(e:BeforeUnloadEvent)=>{if(session.dirty()||partnerEditRef.current.dirty||partnerEditRef.current.busy){e.preventDefault();e.returnValue=''}}
     const click=(e:MouseEvent)=>{
       const target=(e.target as Element)?.closest?.('a')
-      if(!target||target.target==='_blank'||target.hasAttribute('download')||!session.dirty()||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey)return
+      if(!target||target.target==='_blank'||target.hasAttribute('download')||!(session.dirty()||partnerEditRef.current.dirty||partnerEditRef.current.busy)||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey)return
       e.preventDefault();void leave(target.href)
     }
     const pop=(e:PopStateEvent)=>{
-      if(!session.dirty())return
+      if(!session.dirty()&&!partnerEditRef.current.dirty&&!partnerEditRef.current.busy)return
       // Stop the SPA router from unmounting a draft before its save completes.
       e.stopImmediatePropagation()
       const destination=window.location.href
@@ -47,7 +58,7 @@ export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,servic
     window.addEventListener('popstate',pop,true)
     document.addEventListener('click',click,true)
     return()=>{window.removeEventListener('beforeunload',before);window.removeEventListener('popstate',pop,true);document.removeEventListener('click',click,true)}
-  },[session])
+  },[session,canLeavePartnerEdit])
   const patch=(values:Partial<WorkspacePage>)=>session.edit({...session.snapshot().page,...values})
   const content=(values:Partial<Content>)=>patch({content:{...session.snapshot().page.content,...values}})
   const operation=async(fn:()=>Promise<void>)=>{if(busy)return;setBusy(true);setError('');try{await fn()}catch{setError('Die Aktion ist fehlgeschlagen. Dein Entwurf bleibt erhalten.')}finally{setBusy(false)}}
@@ -60,7 +71,7 @@ export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,servic
   }
   const exportPage=(format:'md'|'json',value=page)=>{const blob=new Blob([format==='md'?exportMarkdown(value):JSON.stringify(value,null,2)],{type:format==='md'?'text/markdown;charset=utf-8':'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`${value.title.replace(/[^a-z0-9äöüß_-]+/gi,'-').slice(0,70)||'workspace'}.${format}`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
   const loadVersions=async(offset=0)=>{const result=await services.loadWorkspaceVersions(page.id,offset);if(result.ok){setVersions(old=>offset?[...old,...result.value]:result.value);setMoreVersions(result.value.length===10)}else setError(result.error)}
-  const loadTab=(value:string)=>{setTab(value);if(value==='history')void operation(()=>loadVersions())}
+  const loadTab=(value:string)=>{if(value===tab||!canLeavePartnerEdit())return;setTab(value);if(value==='history')void operation(()=>loadVersions())}
   const descendants=new Set([page.id]);for(let i=0;i<pages.length;i++){let changed=false;for(const p of pages)if(p.parent_id&&descendants.has(p.parent_id)&&!descendants.has(p.id)){descendants.add(p.id);changed=true}if(!changed)break}
   return <section aria-label="Seiteneditor" className={`${focus?'fixed inset-0 z-50 overflow-y-auto bg-[#f7f6f1] p-3 sm:p-6':'min-w-0'} `}>
     <fieldset disabled={busy||externalBusy||navigating} className={`${focus?'mx-auto max-w-[1400px]':''} min-w-0 rounded-2xl border border-[#061829]/10 bg-white`}>
@@ -68,12 +79,13 @@ export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,servic
         <Button aria-label="Zur Seitenübersicht" onClick={()=>{setFocus(false);onBack()}}><ArrowLeft size={16}/></Button>
         <span className="mr-auto text-xs font-semibold text-[#697680]">{pageKinds[page.kind]} · {page.archived?'Archiviert':'Intern'}</span>
         <span role="status" aria-live="polite" className={`flex items-center gap-1.5 text-xs ${snapshot.state==='error'||snapshot.state==='conflict'?'text-red-700':'text-[#526170]'}`}>{snapshot.state==='saved'?<Check size={14}/>:null}{{saved:'Gespeichert',dirty:'Ungespeichert',saving:'Wird gespeichert …',error:'Nicht gespeichert',conflict:'Versionskonflikt'}[snapshot.state]}</span>
+        <span role="status" className="text-xs text-[#697680]">{partnerEdit.dirty?'Partnerangaben ungespeichert':''}</span>
         <Button disabled={busy||snapshot.state==='saving'} onClick={()=>void session.flush()} aria-label="Jetzt speichern"><FloppyDisk size={16}/></Button>
         <Button aria-label={favorite?'Favorit entfernen':'Als Favorit markieren'} aria-pressed={favorite} onClick={onFavorite}><Star size={16} weight={favorite?'fill':'regular'}/></Button>
         <Button onClick={()=>setFocus(v=>!v)}>{focus?'Fokus beenden':'Fokus'}</Button>
       </header>
       {(snapshot.message||error)?<div role="alert" className="mx-4 mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"><p>{error||snapshot.message}</p>{snapshot.state==='error'?<Button className="mt-3" onClick={()=>void session.flush()}>Erneut speichern</Button>:null}
-        {snapshot.server?<div className="mt-3 grid gap-3"><details><summary className="cursor-pointer font-semibold">Gespeicherte Fassung vergleichen (Version {snapshot.server.revision})</summary><pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap text-xs">{exportMarkdown(snapshot.server)}</pre></details><div className="flex flex-wrap gap-2"><Button onClick={()=>{if(window.confirm('Serverfassung laden? Exportiere bei Bedarf zuerst deinen lokalen Entwurf.'))session.acceptServer()}}>Serverfassung laden</Button><Button onClick={()=>void operation(async()=>{const copy={...page,id:newId(),revision:0,title:`${page.title.slice(0,170)} (lokaler Entwurf)`,parent_id:null};await saveCopy('conflict',copy)})}>Lokalen Entwurf als Kopie sichern</Button><Button onClick={()=>exportPage('json')}>Entwurf exportieren</Button></div></div>:null}
+        {snapshot.server?<div className="mt-3 grid gap-3"><details><summary className="cursor-pointer font-semibold">Gespeicherte Fassung vergleichen (Version {snapshot.server.revision})</summary><pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap text-xs">{exportMarkdown(snapshot.server)}</pre></details><div className="flex flex-wrap gap-2"><Button onClick={()=>{if(canLeavePartnerEdit()&&window.confirm('Serverfassung laden? Exportiere bei Bedarf zuerst deinen lokalen Entwurf.'))session.acceptServer()}}>Serverfassung laden</Button><Button onClick={()=>void operation(async()=>{if(!canLeavePartnerEdit())return;const copy={...page,id:newId(),revision:0,title:`${page.title.slice(0,170)} (lokaler Entwurf)`,parent_id:null};await saveCopy('conflict',copy)})}>Lokalen Entwurf als Kopie sichern</Button><Button onClick={()=>exportPage('json')}>Entwurf exportieren</Button></div></div>:null}
       </div>:null}
       <div className="p-4 sm:p-6 lg:p-8">
         <label className="block"><span className="sr-only">Seitentitel</span><input value={page.title} onChange={e=>patch({title:e.target.value})} maxLength={200} className="mb-5 w-full min-w-0 border-0 bg-transparent !text-2xl !font-bold tracking-tight outline-none placeholder:text-zinc-300 sm:!text-3xl" placeholder="Seitentitel"/></label>
@@ -85,14 +97,14 @@ export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,servic
           <Field label="Übergeordnete Seite"><select className={inputClass} value={page.parent_id??''} onChange={e=>patch({parent_id:e.target.value||null})}><option value="">Keine · oberste Ebene</option>{pages.filter(p=>!descendants.has(p.id)&&!p.archived).map(p=><option key={p.id} value={p.id}>{p.title}</option>)}</select></Field>
           <Field label="Seitentyp"><select className={inputClass} value={page.kind} onChange={e=>patch({kind:e.target.value as PageKind})}>{Object.entries(pageKinds).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></Field>
         </div></details>
-        <div className="mb-6 flex flex-wrap gap-2"><Button disabled={busy} onClick={()=>void operation(async()=>{if(await session.flush())await onCreate('note',session.snapshot().page)})}><Plus size={14}/>Unterseite</Button>
-          {(page.kind==='partner'||page.partner_id)?<Button disabled={busy} onClick={()=>void operation(async()=>{if(await session.flush())await onCreate('conversation',session.snapshot().page)})}>Gespräch starten</Button>:null}
+        <div className="mb-6 flex flex-wrap gap-2"><Button disabled={busy} onClick={()=>void operation(async()=>{if(canLeavePartnerEdit()&&await session.flush())await onCreate('note',session.snapshot().page)})}><Plus size={14}/>Unterseite</Button>
+          {(page.kind==='partner'||page.partner_id)?<Button disabled={busy} onClick={()=>void operation(async()=>{if(canLeavePartnerEdit()&&await session.flush())await onCreate('conversation',session.snapshot().page)})}>Gespräch starten</Button>:null}
           <details className="relative"><summary className="cursor-pointer rounded-lg border border-[#061829]/15 px-3 py-2.5 text-sm font-semibold">Weitere Aktionen</summary><div className="absolute left-0 top-full z-20 mt-1 grid w-64 gap-1 rounded-xl border border-[#061829]/15 bg-white p-2 shadow-lg">
-            <Button onClick={()=>void operation(async()=>{if(await session.flush()){await saveCopy('duplicate',{...session.snapshot().page,id:newId(),revision:0,title:`${page.title.slice(0,180)} (Kopie)`})}})}><Copy size={14}/>Seite duplizieren</Button>
-            <Button onClick={()=>void operation(async()=>{if(await session.flush()){const template=pageFromTemplate(session.snapshot().page,page.workspace_id,'template');template.title=`Vorlage: ${page.title.slice(0,190)}`;await saveCopy('template',template)}})}>Als Vorlage speichern</Button>
-            {page.kind==='template'?<Button onClick={()=>void operation(async()=>{if(await session.flush())await onCreate(page.content.questions.length?'conversation':'note',undefined,session.snapshot().page)})}>Vorlage verwenden</Button>:null}
+            <Button onClick={()=>void operation(async()=>{if(canLeavePartnerEdit()&&await session.flush()){await saveCopy('duplicate',{...session.snapshot().page,id:newId(),revision:0,title:`${page.title.slice(0,180)} (Kopie)`})}})}><Copy size={14}/>Seite duplizieren</Button>
+            <Button onClick={()=>void operation(async()=>{if(canLeavePartnerEdit()&&await session.flush()){const template=pageFromTemplate(session.snapshot().page,page.workspace_id,'template');template.title=`Vorlage: ${page.title.slice(0,190)}`;await saveCopy('template',template)}})}>Als Vorlage speichern</Button>
+            {page.kind==='template'?<Button onClick={()=>void operation(async()=>{if(canLeavePartnerEdit()&&await session.flush())await onCreate(page.content.questions.length?'conversation':'note',undefined,session.snapshot().page)})}>Vorlage verwenden</Button>:null}
             <Button onClick={()=>exportPage('md')}><DownloadSimple size={14}/>Markdown exportieren</Button><Button onClick={()=>exportPage('json')}><DownloadSimple size={14}/>JSON exportieren</Button>
-            <Button onClick={()=>{patch({archived:!page.archived});void session.flush()}}><Archive size={14}/>{page.archived?'Wiederherstellen':'Archivieren'}</Button>
+            <Button onClick={()=>{if(!canLeavePartnerEdit())return;patch({archived:!page.archived});void session.flush()}}><Archive size={14}/>{page.archived?'Wiederherstellen':'Archivieren'}</Button>
           </div></details>
         </div>
         <div className="grid min-w-0 gap-7 xl:grid-cols-[minmax(0,1fr)_210px]">
@@ -102,14 +114,14 @@ export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,servic
             {tab==='conversation'?<div className="space-y-6"><div className="grid gap-4 sm:grid-cols-2"><Field label="Gesprächstermin"><input type="datetime-local" className={inputClass} value={page.content.meeting.date} onChange={e=>content({meeting:{...page.content.meeting,date:e.target.value}})}/></Field><Field label="Teilnehmende & Rollen"><input className={inputClass} value={page.content.meeting.participants} maxLength={2000} onChange={e=>content({meeting:{...page.content.meeting,participants:e.target.value}})}/></Field></div>
               <details><summary className="cursor-pointer text-sm font-semibold">Freie Gesprächsnotizen ({page.content.blocks.length} Blöcke)</summary><div className="mt-4"><BlockEditor blocks={page.content.blocks} onChange={blocks=>content({blocks})}/></div></details>
               {!page.content.questions.length?<div className="rounded-xl bg-[#f7f6f1] p-6"><h3 className="font-bold">Mit dem Onboarding-Leitfaden starten</h3><p className="my-3 text-sm text-[#526170]">Vorbereitete Angaben gemeinsam prüfen und offene Fragen zu Zielen, Alltag und Wünschen besprechen.</p><Button onClick={()=>{const template=onboardingContent();content({questions:template.questions,meeting:{...page.content.meeting,templateVersion:template.meeting.templateVersion}})}}>Leitfaden einfügen</Button></div>:null}
-              <QuestionEditor questions={page.content.questions} onChange={questions=>content({questions})} partnerId={page.partner_id} partnerBrief={partnerBrief}/>
+              <QuestionEditor services={services} partnerEditKey={partnerEditKey} partnerEditPending={partnerEdit.dirty||partnerEdit.busy} onPartnerEditStateChange={onPartnerEditStateChange} canLeavePartnerEdit={canLeavePartnerEdit} questions={page.content.questions} onChange={questions=>content({questions})} partnerId={page.partner_id} partnerBrief={partnerBrief}/>
               <Field label="Gespräch zusammenfassen"><textarea className={inputClass} rows={5} value={page.content.meeting.summary} maxLength={20000} onChange={e=>content({meeting:{...page.content.meeting,summary:e.target.value}})} placeholder="Wichtigste Vereinbarungen und nächste Schritte"/></Field><p className="text-xs text-[#697680]">Vorlagenfassung: {page.content.meeting.templateVersion||'Eigene Fragen'} · Antworten ändern keine laufenden Partnerangebote.</p>
             </div>:null}
             {tab==='links'?<ResourcesEditor links={page.content.links} onChange={links=>content({links})}/>:null}
             {tab==='tasks'?<TasksEditor tasks={page.content.tasks} onChange={tasks=>content({tasks})}/>:null}
-            {tab==='history'?<div className="space-y-3"><p className="text-sm leading-6 text-[#526170]">Jede erfolgreiche Speicherung erhält eine Version. Wiederherstellen legt eine neue Version an.</p>{versions.map(v=><div key={v.revision} className="flex flex-wrap items-center gap-3 border-b border-[#061829]/10 py-3"><span className="mr-auto text-sm">Version {v.revision} · {new Date(v.created_at).toLocaleString('de-DE')}</span><Button onClick={()=>setVersionPreview(v)}>Ansehen</Button><Button disabled={busy||v.revision===page.revision} onClick={()=>void operation(async()=>{if(!await session.flush())return;if(!window.confirm(`Version ${v.revision} als neue Fassung wiederherstellen?`))return;const result=await services.restoreWorkspacePage(page.id,v.revision,session.snapshot().page.revision);if(result.ok)onReplace(result.value);else setError(result.error)})}>Wiederherstellen</Button></div>)}{moreVersions?<Button disabled={busy} onClick={()=>void operation(()=>loadVersions(versions.length))}>Weitere Versionen</Button>:null}{versionPreview?<div className="rounded-xl bg-[#f7f6f1] p-4"><div className="mb-3 flex justify-between text-sm font-bold">Version {versionPreview.revision}<button onClick={()=>setVersionPreview(null)}>Schließen</button></div><pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs leading-6">{exportMarkdown(versionPreview.snapshot)}</pre></div>:null}</div>:null}
+            {tab==='history'?<div className="space-y-3"><p className="text-sm leading-6 text-[#526170]">Jede erfolgreiche Speicherung erhält eine Version. Wiederherstellen legt eine neue Version an.</p>{versions.map(v=><div key={v.revision} className="flex flex-wrap items-center gap-3 border-b border-[#061829]/10 py-3"><span className="mr-auto text-sm">Version {v.revision} · {new Date(v.created_at).toLocaleString('de-DE')}</span><Button onClick={()=>setVersionPreview(v)}>Ansehen</Button><Button disabled={busy||v.revision===page.revision} onClick={()=>void operation(async()=>{if(!canLeavePartnerEdit()||!await session.flush())return;if(!window.confirm(`Version ${v.revision} als neue Fassung wiederherstellen?`))return;const result=await services.restoreWorkspacePage(page.id,v.revision,session.snapshot().page.revision);if(result.ok)onReplace(result.value);else setError(result.error)})}>Wiederherstellen</Button></div>)}{moreVersions?<Button disabled={busy} onClick={()=>void operation(()=>loadVersions(versions.length))}>Weitere Versionen</Button>:null}{versionPreview?<div className="rounded-xl bg-[#f7f6f1] p-4"><div className="mb-3 flex justify-between text-sm font-bold">Version {versionPreview.revision}<button onClick={()=>setVersionPreview(null)}>Schließen</button></div><pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs leading-6">{exportMarkdown(versionPreview.snapshot)}</pre></div>:null}</div>:null}
           </div>
-          <div className="self-start xl:sticky xl:top-24"><PartnerContext partnerId={page.partner_id} onChange={partner_id=>patch({partner_id})} services={services}/><p className="mt-3 px-1 text-xs leading-5 text-[#697680]">Interner Workspace. Partner können diese Notizen nicht sehen.</p></div>
+          <div className="self-start xl:sticky xl:top-24"><PartnerContext partnerId={page.partner_id} preparedName={partnerBrief.brief?.partnerName} onChange={partner_id=>{if(!canLeavePartnerEdit())return false;patch({partner_id});return true}} services={services}/><p className="mt-3 px-1 text-xs leading-5 text-[#697680]">Interner Workspace. Partner können diese Notizen nicht sehen.</p></div>
         </div>
       </div>
     </fieldset>

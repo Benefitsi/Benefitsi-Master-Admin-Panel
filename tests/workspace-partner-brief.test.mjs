@@ -12,10 +12,9 @@ test('prepared facts use the selected partner, retain inactive status and never 
     rewards:[{partner_id:partnerId,title:'Kaffee',required_stamps:5,active:true}],hours:[],holidays:[],socials:[],menus:[],staff:[],owner:null,microsite:null})
   assert.ok(brief.facts.A01.some(f=>f.value==='Bistro Beispiel'))
   assert.ok(!brief.facts.A02?.some(f=>f.value.includes('Bistro Beispiel')))
-  assert.ok(brief.facts.D01.some(f=>f.value.includes('Mittagsangebot')&&f.value.includes('Im Admin deaktiviert')))
+  assert.ok(brief.facts.D01.some(f=>f.label.includes('Pausiert')&&f.value.includes('10 %')))
   assert.ok(!JSON.stringify(brief).includes('Nicht dieser Partner'))
-  assert.ok(brief.facts.C04.some(f=>f.value.includes('5')&&f.value.includes('Kaffee')))
-  assert.ok(brief.facts.D06.some(f=>f.value.includes('Nur vor Ort')))
+  assert.ok(brief.facts.C01.some(f=>f.label.includes('5')&&f.value.includes('Kaffee')))
   assert.ok(!JSON.stringify(brief).includes('undefined'))
 })
 
@@ -25,10 +24,9 @@ test('prepared benefits distinguish free items, two-for-one and the stored numbe
   source.rewards=[{partner_id:partnerId,reward_type:'item',reward_item:'Kaffee',required_stamps:5,active:true},{partner_id:partnerId,reward_type:'2for1',reward_item:'Kaffee',required_stamps:10,active:true}]
   source.deals=[{partner_id:partnerId,type:'bonus_stamp',reward_format:'bonus_stamp',benefit_count:3,active:true,valid_until:'2020-01-01'}]
   const brief=buildPartnerBrief(source)
-  assert.ok(brief.facts.C02.some(f=>f.value.includes('Gratis Kaffee')))
-  assert.ok(brief.facts.C02.some(f=>f.value.includes('2 für 1 Kaffee')))
-  assert.ok(brief.facts.D03.some(f=>f.value.includes('+3 Bonusstempel')))
-  assert.ok(brief.facts.D07.every(f=>f.value.includes('Im Admin aktiviert')))
+  assert.ok(brief.facts.C01.some(f=>f.value.includes('Gratis Kaffee')))
+  assert.ok(brief.facts.C01.some(f=>f.value.includes('2 für 1 Kaffee')))
+  assert.ok(brief.facts.D01.some(f=>f.value.includes('+3 Bonusstempel')))
 })
 
 test('old onboarding content gains current review prompts and discovery questions without losing custom edits or answers',async()=>{
@@ -41,8 +39,8 @@ test('old onboarding content gains current review prompts and discovery question
   const migrated=validateContent(content)
   assert.match(migrated.questions[0].prompt,/prüfen/i)
   assert.equal(migrated.questions[0].answer,'Schon bestätigt')
-  assert.equal(migrated.questions[1].prompt,'Eigene wichtige Frage')
-  assert.equal(migrated.questions[2].hidden,true)
+  assert.ok(migrated.blocks.some(b=>b.text.includes('Eigene wichtige Frage')))
+  assert.ok(migrated.blocks.some(b=>b.text.includes('A03')))
   assert.deepEqual(migrated.questions.filter(q=>['B05','B06','B07'].includes(q.id)).map(q=>q.id),['B05','B06','B07'])
   assert.equal(validateContent(migrated).questions.length,migrated.questions.length)
   assert.equal(migrated.questions[0].id,'A01')
@@ -79,4 +77,19 @@ test('an irrelevant answer is exported once without a duplicate reason field',as
   const page={...makePage(partnerId,'conversation'),content:onboardingContent()}
   page.content.questions=[answerQuestion({...page.content.questions[0],status:'irrelevant'},'Diese Angabe trifft nicht zu')]
   assert.equal(exportMarkdown(page).split('Diese Angabe trifft nicht zu').length-1,1)
+})
+test('compact facts present contact once, stamp rewards and offers without repetitive marketing descriptions',async()=>{
+  const {buildPartnerBrief}=await import('../lib/workspace/partner-brief.ts')
+  const brief=buildPartnerBrief({partner:{id:partnerId,name:'Pizza Beispiel',phone:'123',email:'info@example.test',level_frequency:'high',stamp_target:10},owner:null,
+    microsite:{slug:'pizza-beispiel',status:'published'},deals:[{partner_id:partnerId,public_title:'Pizza',type:'two_for_one',discount_type:'2for1',reward_item:'Pizza',active:true,customer_description:'Aktiviere 2 für 1: Erhalte zwei Pizza zum Preis von einem.'}],
+    rewards:[{partner_id:partnerId,title:'Gratis Pizza',required_stamps:10,reward_type:'item',reward_item:'Pizza',active:true,customer_description:'Sammle 10 Stempel und erhalte eine gratis Pizza.'}],hours:[],holidays:[],socials:[{partner_id:partnerId,platform:'instagram',url:'https://instagram.com/beispiel',handle:'beispiel'}],menus:[],staff:[]})
+  assert.ok(brief.facts.A01.some(f=>f.value.includes('https://instagram.com/beispiel')))
+  assert.equal(brief.facts.C01.filter(f=>f.value.includes('Gratis Pizza')).length,1)
+  assert.ok(brief.facts.C01.some(f=>f.label==='10 Stempel'&&f.value==='Gratis Pizza'))
+  assert.equal(brief.facts.D01.length,1)
+  assert.ok(!JSON.stringify(brief.facts.D01).includes('Aktiviere'))
+  assert.equal(brief.facts.E01.length,1)
+  assert.equal(brief.facts.E01[0].href,'https://benefitsi.de/partner/pizza-beispiel')
+  assert.ok(brief.facts.C09.some(f=>/Besuche/.test(f.value)))
+  assert.ok(!brief.facts.A02&&!brief.facts.A03&&!brief.facts.C02&&!brief.facts.D03&&!brief.facts.F04)
 })

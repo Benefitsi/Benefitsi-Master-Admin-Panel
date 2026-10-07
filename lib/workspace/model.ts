@@ -1,5 +1,6 @@
 import { canonicalPartnerSlug } from '../partner-paths'
 import { upgradeOnboarding } from './onboarding-upgrade'
+import { formatChoiceAnswer, parseChoiceAnswer } from './choice-answers'
 
 export const pageKinds = { note: 'Notiz', idea: 'Idee', partner: 'Partnerakte', conversation: 'Gespräch', template: 'Vorlage' } as const
 export const pageStatuses = { open: 'Offen', active: 'In Arbeit', blocked: 'Zu klären', done: 'Abgeschlossen' } as const
@@ -22,12 +23,13 @@ export const newId = () => crypto.randomUUID()
 // Old documents keep their original fields on disk until the answer is edited.
 // Rendering and exports combine them without truncation or discarding earlier notes.
 export function questionAnswer(q:Question):string {
-  return [...new Set([q.answer,q.change,q.agreement,q.reason].filter(value=>value.trim()))].join('\n\n')
+  return [...new Set([q.answer,q.change,q.agreement,q.reason].filter(value=>value.trim()).map(formatChoiceAnswer))].join('\n\n')
 }
 export function answerQuestion(q:Question,answer:string):Question {
   return {...q,answer,change:'',agreement:'',reason:q.status==='irrelevant'?answer:'',status:answer&&q.status==='open'?'answered':q.status}
 }
 export function questionWithStatus(q:Question,status:Question['status']):Question {
+  if(parseChoiceAnswer(q.answer))return {...q,status,reason:status==='irrelevant'?q.answer:''}
   const answer=questionAnswer(q)
   if(answer.length<=10000)return {...answerQuestion(q,answer),status,reason:status==='irrelevant'?answer:''}
   // Older fields can each contain 10,000 characters. Status-only changes must

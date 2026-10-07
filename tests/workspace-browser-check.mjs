@@ -14,6 +14,7 @@ const adapters={
   'next/image':`import React from 'react';export default function Image({priority,...props}){return <img {...props}/>}`,
   'next/navigation':`export function usePathname(){return '/workspace'}`,
   './actions':`export async function signOut(){}`,
+  '@/app/workspace/partner-edit-actions':`export const loadWorkspacePartnerDetails=()=>{},saveWorkspacePartnerDetail=()=>{},addWorkspacePartnerDetail=()=>{};`,
   '@/app/workspace/actions':`export const loadWorkspaceIndex=()=>{},loadWorkspacePages=()=>{},loadWorkspacePage=()=>{},saveWorkspacePage=()=>{},saveWorkspace=()=>{},setWorkspaceFavorite=()=>{},loadWorkspaceVersions=()=>{},restoreWorkspacePage=()=>{},findWorkspacePartners=()=>{},loadWorkspacePartnerBrief=()=>{};`,
 }
 const entry=`
@@ -32,7 +33,7 @@ const params=new URLSearchParams(location.search);
 createRoot(document.getElementById('root')).render(<React.StrictMode><AdminShell adminName="Workspace · Prüfdaten" title="Workspace" subtitle="Notizen, Ideen und Partnergespräche"><WorkspaceApp initial={initial} initialPageId={params.has('meeting')?meeting.id:undefined} services={fixture.services}/></AdminShell></React.StrictMode>);
 `
 const plugin={name:'workspace-fixture-boundaries',setup(builder){
-  builder.onResolve({filter:/^(next\/(link|image|navigation)|\.\/actions|@\/app\/workspace\/actions)$/},args=>{
+  builder.onResolve({filter:/^(next\/(link|image|navigation)|\.\/actions|@\/app\/workspace\/(?:actions|partner-edit-actions))$/},args=>{
     if(args.path==='./actions'&&!args.importer.endsWith('admin-shell.tsx'))return
     return {path:args.path,namespace:'fixture'}
   })
