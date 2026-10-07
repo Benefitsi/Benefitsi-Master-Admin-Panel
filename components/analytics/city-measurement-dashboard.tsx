@@ -14,11 +14,12 @@ const linkClass = "inline-flex min-h-11 items-center rounded-xl border border-[#
 const coverageLabels = { observed_subset: "Einwilligungsgebundene Beobachtungen", no_observations: "Keine Beobachtungen im Zeitraum", partial_retention: "Teilweise Daten durch Aufbewahrungsgrenze", outside_retention: "Zeitraum außerhalb der Aufbewahrung" }
 const stageLabels: Record<string, string> = {
   city_page_views: "Stadt-Routenaufrufe", partner_form_views: "Partnerformular angesehen", partner_submissions_observed: "Partneranfrage beobachtet",
+  public_web_page_views: "Weitere öffentliche Seitenaufrufe", app_handoff_attempts: "App-Übergabe versucht",
   app_entry_clicks: "App-Einstieg angeklickt", today_selections: "Heute-Auswahl", newsletter_confirmations_observed: "Newsletter-Bestätigung beobachtet",
   other_city_ctas: "Weitere Stadtaktionen", benefit_views: "Vorteil angesehen", benefit_selections: "Vorteil ausgewählt", partner_views: "Partner angesehen",
   searches: "Suche", newsletter_signups_observed: "Newsletter-Antrag beobachtet", other_web_observations: "Weitere Web-Beobachtungen",
 }
-const channelLabels: Record<string, string> = { direct: "Direkt", organic_search: "Organische Suche", organic_social: "Social Media · organisch", paid_search: "Suchanzeigen", paid_social: "Social Media · Anzeigen", referral: "Verweis", email: "E-Mail", other: "Sonstige", unknown: "Nicht zugeordnet" }
+const channelLabels: Record<string, string> = { direct: "Direkt", organic_search: "Organische Suche", organic_social: "Social Media · organisch", paid_search: "Suchanzeigen", paid_social: "Social Media · Anzeigen", ai_referral: "KI-Verweis", referral: "Verweis", email: "E-Mail", other: "Sonstige", unknown: "Nicht zugeordnet" }
 const routeLabels: Record<CityWebRouteKind, string> = {
   city_home: "Stadtstart", city_guides: "Guide-Übersicht", city_guide: "Guide", city_places: "Orte-Übersicht", city_place: "Ort",
   city_events: "Veranstaltungsübersicht", city_event: "Veranstaltung", city_meetups: "Treffpunktübersicht", city_meetup: "Treffpunkt",
@@ -151,7 +152,7 @@ function VitalsTable({ data }: { data: CityWebOperations }) {
 }
 
 function GoogleSources() {
-  return <section id="google-measurement" className={panelClass} aria-labelledby="google-measurement-heading"><h3 id="google-measurement-heading" className="font-bold">Google-Auswertung</h3><p className="mt-2 text-sm leading-6 text-[#526170]">GA4 und Search Console sind verknüpft. Der Statistikabruf über die Google-APIs ist in diesem Admin noch nicht verbunden. Hier werden keine Google-Messwerte als importiert dargestellt.</p><div className="mt-3 flex flex-wrap gap-2"><a className={linkClass} href="https://analytics.google.com/analytics/web/#/p516005474/reports/intelligenthome" target="_blank" rel="noopener noreferrer">GA4 öffnen</a><a className={linkClass} href="https://search.google.com/search-console?resource_id=https%3A%2F%2Fbenefitsi.de%2F" target="_blank" rel="noopener noreferrer">Search Console öffnen</a></div></section>
+  return <section id="google-measurement" className={panelClass} aria-labelledby="google-measurement-heading"><h3 id="google-measurement-heading" className="font-bold">Google-Auswertung</h3><p className="mt-2 text-sm leading-6 text-[#526170]">Providerstatus und Messbelege stehen im SEO-Bereich. Offizielle KI-Berichtswerte werden getrennt von den internen Nutzungsbeobachtungen erfasst. Fehlende Berichte sind keine Nullwerte.</p><div className="mt-3 flex flex-wrap gap-2"><a className={linkClass} href="https://analytics.google.com/analytics/web/#/p516005474/reports/intelligenthome" target="_blank" rel="noopener noreferrer">GA4 öffnen</a><a className={linkClass} href="https://search.google.com/search-console?resource_id=https%3A%2F%2Fbenefitsi.de%2F" target="_blank" rel="noopener noreferrer">Search Console öffnen</a><Link className={linkClass} href="/seo/aieo">KI-Berichte &amp; Import</Link></div></section>
 }
 
 function scopeIssue(reason: string) {

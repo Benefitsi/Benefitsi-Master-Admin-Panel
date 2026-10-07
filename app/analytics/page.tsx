@@ -10,6 +10,8 @@ import {
   type AnalyticsSearchParams,
 } from "@/lib/analytics/filters"
 import { loadBusinessAnalytics } from "@/lib/analytics/loader"
+import { loadAieoMeasurement } from "@/lib/analytics/aieo-measurement-loader"
+import { AieoMeasurementPanel } from "@/components/analytics/aieo-measurement-panel"
 import { loadCityMeasurement } from "@/lib/analytics/city-measurement-loader"
 import { CityMeasurementDashboard } from "@/components/analytics/city-measurement-dashboard"
 import { getSupabaseConfig } from "@/lib/supabase/config"
@@ -33,9 +35,10 @@ export default async function AnalyticsPage({
 
   const filters = parseBusinessAnalyticsFilters(await searchParams)
   const { supabase, adminSession } = await requireAdmin()
-  const [analytics, cityMeasurement] = await Promise.all([
+  const [analytics, cityMeasurement, aieoMeasurement] = await Promise.all([
     loadBusinessAnalytics(supabase, filters),
     loadCityMeasurement(supabase, filters),
+    loadAieoMeasurement(supabase, filters),
   ])
   const adminName =
     adminSession.profile?.display_name ||
@@ -56,11 +59,13 @@ export default async function AnalyticsPage({
           payload={analytics.payload}
           canReadFinance={analytics.permissions.financeRead}
         >
+          <AieoMeasurementPanel result={aieoMeasurement} />
           <CityMeasurementDashboard result={cityMeasurement} filters={filters} />
         </BusinessControlCenter>
       ) : (
         <div className="space-y-5">
           <AnalyticsAccessState state={analytics.state} />
+          <AieoMeasurementPanel result={aieoMeasurement} />
           <CityMeasurementDashboard result={cityMeasurement} filters={filters} showFilters />
         </div>
       )}
