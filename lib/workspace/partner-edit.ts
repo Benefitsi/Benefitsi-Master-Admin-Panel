@@ -45,7 +45,7 @@ export async function savePartnerDetail(client:SupabaseClient,partnerId:string,i
   const editable=kind==='profile'?[...profileFields,'classification']:kind==='social'?['url']:['opens_at','closes_at','label','is_closed']
   if(!(editable as readonly string[]).includes(column)||kind==='profile'&&row.id!==partnerId||kind!=='profile'&&row.partner_id!==partnerId)throw new Error('Dieser Eintrag kann hier nicht geändert werden.')
   const classification=kind==='profile'&&['classification','type','category'].includes(column)?cleanClassification(column==='classification'?input.value:{type:column==='type'?input.value:row.type,category:column==='category'?input.value:row.category}):null
-  const value=classification??cleanValue(kind,column,input.value),patch:Record<string,unknown>=classification?{...classification}:{[column]:value}
+  const value=classification?null:cleanValue(kind,column,input.value),patch:Record<string,unknown>=classification?{...classification}:{[column]:value}
   if(kind==='hour')checkHours({...row,[column]:value})
   if(kind==='profile'){
     if(typeof row.updated_at!=='string'||!Number.isFinite(Date.parse(row.updated_at)))throw new Error('Bitte den aktuellen Partnerstand neu laden.')
