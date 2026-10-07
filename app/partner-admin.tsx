@@ -7280,7 +7280,7 @@ export function DealFields({
             <MultiSelectField
               label="Wochentage"
               name={`${prefix}weekdays`}
-              defaultValues={deal?.weekdays}
+              defaultValues={deal?.weekdays?.length ? deal.weekdays : (deal?.valid_weekdays ?? []).flatMap(day => weekdayOptions[day - 1]?.value ?? [])}
               options={withCurrentOptions(weekdayOptions, deal?.weekdays)}
               hint={dealFieldHelp.weekdays}
             />
