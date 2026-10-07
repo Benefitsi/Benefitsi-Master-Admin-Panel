@@ -26,8 +26,8 @@ export function WorkspaceEditor({page:initial,pages,favorite,externalBusy,servic
   const onPartnerEditStateChange=useCallback((state:{dirty:boolean;busy:boolean})=>{partnerEditRef.current=state;setPartnerEdit(old=>old.dirty===state.dirty&&old.busy===state.busy?old:state)},[])
   const canLeavePartnerEdit=useCallback(()=>{
     const state=partnerEditRef.current
-    if(state.busy){setError('Bitte warten, bis die Partnerangaben vollständig geladen oder gespeichert sind.');return false}
-    if(!state.dirty)return true
+    if(state.busy){setError('Bitte warten, bis die Partnerangaben gespeichert sind.');return false}
+    if(!state.dirty){setError('');return true}
     if(!window.confirm('Ungespeicherte Partnerangaben verwerfen? Speichere sie bei Bedarf zuerst direkt beim jeweiligen Feld.'))return false
     onPartnerEditStateChange({dirty:false,busy:false});setPartnerEditKey(value=>value+1);return true
   },[onPartnerEditStateChange])

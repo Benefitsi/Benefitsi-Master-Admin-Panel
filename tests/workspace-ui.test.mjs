@@ -370,3 +370,22 @@ test('open-only filtering cannot unmount unsaved inline partner fields after an 
     window.confirm=()=>true
   })
 })
+test('partner data loading does not block question filters or topic navigation',async()=>{
+  const page={...makePage(workspace.id,'conversation'),partner_id:fixturePartner.id,content:onboardingContent(),revision:1}
+  const fixture=workspaceFixture({workspaces:[workspace],pages:[page]})
+  const original=fixture.services.loadWorkspacePartnerDetails
+  let finish
+  fixture.services.loadWorkspacePartnerDetails=id=>new Promise(resolve=>{finish=()=>original(id).then(resolve)})
+  await withApp(fixture,{initialPageId:page.id},async()=>{
+    await wait(()=>finish)
+    const core=[...document.querySelectorAll('input[type=checkbox]')].find(el=>el.closest('label')?.textContent==='Nur Kernfragen')
+    await click(core)
+    assert.equal(core.checked,true,'A read-only load must not block filter changes')
+    const hidden=[...document.querySelectorAll('input[type=checkbox]')].find(el=>el.closest('label')?.textContent==='Nur ausgeblendete Fragen')
+    await click(hidden)
+    assert.equal(hidden.checked,true)
+    assert.equal(document.querySelector('#question-A01'),null)
+    await act(async()=>finish())
+    assert.equal(document.querySelector('#question-A01'),null)
+  })
+})
