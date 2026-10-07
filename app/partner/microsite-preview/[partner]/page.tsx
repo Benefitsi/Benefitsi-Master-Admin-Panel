@@ -10,6 +10,7 @@ import {
   getPartnerPortalSession,
 } from "@/lib/partner-portal"
 import { resolveMicrositeConfig } from "@/lib/microsites"
+import { micrositeVersions } from "@/lib/microsite-workflow"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { MicrositePreviewShell } from "@/app/microsite-preview/[partner]/preview-shell"
@@ -18,7 +19,7 @@ import { MicrositeCapabilitiesNotice } from "@/components/microsite-capabilities
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Partner-Mikroseite · Builder-Referenz & Versionsvergleich | Benefitsi",
+  title: "Partner-Mikroseite · Vorschau | Benefitsi",
   robots: {
     index: false,
     follow: false,
@@ -86,7 +87,8 @@ export default async function PartnerMicrositePreviewPage({
   const capabilities = await getPartnerCapabilityFlags(supabase, selectedPartner.id).catch(() => null)
   const partner = { ...selectedPartner, ...capabilities }
   const previewSource = query.source === "published" ? "published" : query.source === "builder" ? "builder" : "saved"
-  const version = previewSource === "published" ? partner.microsite?.publishedVersion : partner.microsite?.draftVersion ?? partner.microsite?.publishedVersion
+  const versions = micrositeVersions(partner.microsite)
+  const version = previewSource === "published" ? versions.published : versions.editable
   if (previewSource === "published" && !version) notFound()
   const configValue = resolveMicrositeConfig(version?.config, partner)
 

@@ -10,10 +10,10 @@ import {
   milestoneAudienceOptions,
 } from "../lib/reward-config.ts"
 
-test("keeps all four canonical audiences available to deal writers", () => {
+test("offers Free, Premium and both audiences for current configuration", () => {
   assert.deepEqual(
     audienceOptions.map((option) => option.value),
-    ["free", "premium", "both", "free_trial_only"],
+    ["free", "premium", "both"],
   )
   assert.deepEqual(
     milestoneAudienceOptions.map((option) => option.value),

@@ -1406,7 +1406,9 @@ function SiteHeader({
             href={hasBenefits ? "#deals" : "#speisekarte"}
             className="premium-button group inline-flex min-h-11 items-center justify-center gap-3 rounded-xl bg-[var(--site-accent)] px-5 py-3 text-sm font-black text-white shadow-[0_16px_30px_-18px_var(--site-accent)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105"
           >
-            {hasBenefits ? config.hero.primaryButtonLabel : config.hero.secondaryButtonLabel}
+            <span {...editable(hasBenefits ? "hero.primaryButtonLabel" : "hero.secondaryButtonLabel", "text", "Navigation CTA")} style={textStyleFor(config, hasBenefits ? "hero.primaryButtonLabel" : "hero.secondaryButtonLabel")}>
+              {hasBenefits ? config.hero.primaryButtonLabel : config.hero.secondaryButtonLabel}
+            </span>
             <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
           </MicrositeLink>}
         </div>
@@ -4351,7 +4353,7 @@ function textStyleFor(config: MicrositeConfig, id: string): CSSProperties {
   }
 }
 
-function navigationTabsStyleFor(config: MicrositeConfig): CSSProperties {
+export function navigationTabsStyleFor(config: MicrositeConfig): CSSProperties {
   const style = config.elementStyles["navigation.group"]
 
   return {
@@ -4361,7 +4363,7 @@ function navigationTabsStyleFor(config: MicrositeConfig): CSSProperties {
   }
 }
 
-function spacingStyleFor(config: MicrositeConfig, id: string): CSSProperties {
+export function spacingStyleFor(config: MicrositeConfig, id: string): CSSProperties {
   const style = config.elementStyles[id]
 
   return {

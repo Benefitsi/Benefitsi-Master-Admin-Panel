@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { loadTypescript } from "./helpers/load-typescript.mjs"
 
-function fixture({ error = null, throws = false, signedIn = true, commitFailure = null } = {}) {
+function fixture({ error = null, throws = false, signedIn = true, commitFailure = null, noRows = false } = {}) {
   const writes = [], invalidations = [], rows = new Map()
   let commitFailed = false
   const db = { from(table) {
@@ -12,10 +12,12 @@ function fixture({ error = null, throws = false, signedIn = true, commitFailure 
       if (commitFailure && !commitFailed) {
         rows.set(payload.id, structuredClone(payload))
         commitFailed = true
-        return commitFailure === "throw" ? Promise.reject(new Error("Response lost after commit")) : Promise.resolve({ error: { message: "Response lost after commit" } })
+        query.then = (resolve, reject) => (commitFailure === "throw" ? Promise.reject(new Error("Response lost after commit")) : Promise.resolve({ data: null, error: { message: "Response lost after commit" } })).then(resolve, reject)
+        return query
       }
       if (!error && !throws) rows.set(payload.id, structuredClone(payload))
-      return throws ? Promise.reject(new Error("Network interrupted")) : Promise.resolve({ error })
+      query.then = (resolve, reject) => (throws ? Promise.reject(new Error("Network interrupted")) : Promise.resolve({ data: noRows ? [] : [payload], error })).then(resolve, reject)
+      return query
     }
     query.then = resolve => Promise.resolve({ data: table === "partner_reward_milestones" ? null : { id: "partner-1" }, error: null }).then(resolve)
     let rowId
@@ -40,9 +42,16 @@ function fixture({ error = null, throws = false, signedIn = true, commitFailure 
     "@supabase/supabase-js": {},
     "@/lib/partners/entitlements": {},
     "@/lib/partners/menu-quota": {},
+    "@/lib/partners/workspace-data": {},
   }, { FormData })
   return { actions, writes, invalidations, rows }
 }
+test("a milestone save with no confirmed row is reported as failed", async () => {
+  const { actions, invalidations } = fixture({ noRows: true })
+  const result = await actions.saveRewardMilestone({}, form())
+  assert.equal(result.ok, false)
+  assert.equal(invalidations.length, 0)
+})
 function form(values = {}) {
   const data = new FormData()
   Object.entries({ partner_id: "partner-1", required_stamps: "5", reward_type: "item", reward_item: "Kaffee", audience: "both", active: "on", ...values }).forEach(([key, value]) => data.set(key, value))

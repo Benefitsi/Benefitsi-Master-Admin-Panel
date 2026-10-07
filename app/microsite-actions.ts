@@ -24,6 +24,8 @@ export type MicrositeActionState = {
   config?: MicrositeConfig
   publicRefreshPending?: boolean
   editorRefreshPending?: boolean
+  savedVersion?: { id: string; version_number: number; status: string }
+  publicationWithdrawn?: boolean
 }
 
 const MICROSITE_ASSET_BUCKET =
@@ -135,8 +137,13 @@ async function persistMicrositeVersion(
     const existing = await supabase.from("microsites").select("id,slug,status").eq("partner_id", partnerId).maybeSingle()
     if (existing.error || !existing.data) return { ok: false, message: "Die gespeicherte Microsite konnte nicht geladen werden." }
     if (rawIntent === "withdraw") {
-      const withdrawn = await supabase.from("microsites").update({ status: "archived", updated_at: new Date().toISOString() }).eq("id", existing.data.id)
-      if (withdrawn.error) return { ok: false, message: "Die Veröffentlichung konnte nicht zurückgenommen werden." }
+      const withdrawn = await supabase.from("microsites")
+        .update({ status: "archived", updated_at: new Date().toISOString() })
+        .eq("id", existing.data.id).eq("partner_id", partnerId)
+        .select("id,status").maybeSingle()
+      if (withdrawn.error || !withdrawn.data || withdrawn.data.id !== existing.data.id || withdrawn.data.status !== "archived") {
+        return { ok: false, message: "Die Veröffentlichung konnte nicht bestätigt zurückgenommen werden. Bitte neu laden und erneut versuchen." }
+      }
     }
     let editorRefreshPending = false
     try {
@@ -156,6 +163,7 @@ async function persistMicrositeVersion(
     if (!refresh.ok) console.warn("[microsite:public-refresh] pending", { operation: rawIntent, reason: refresh.reason })
     return {
       ok: true, publicRefreshPending: !refresh.ok, editorRefreshPending,
+      publicationWithdrawn: rawIntent === "withdraw",
       message: (!refresh.ok
         ? "Änderung gespeichert. Die öffentliche Aktualisierung steht noch aus. Bitte erneut anstoßen."
         : rawIntent === "withdraw" ? "Veröffentlichung zurückgenommen. Die öffentliche Seite wurde aktualisiert." : "Die öffentliche Seite wurde aktualisiert.") + (editorRefreshPending ? " Die Editoranzeige bitte neu laden." : ""),
@@ -314,14 +322,20 @@ async function persistMicrositeVersion(
     .from("microsites")
     .update(micrositeUpdate)
     .eq("id", microsite.id)
+    .eq("partner_id", partnerId)
+    .select("id,status,published_version_id")
+    .maybeSingle()
 
-  if (workflowResult.error) {
+  const confirmedWorkflow = workflowResult.data && workflowResult.data.id === microsite.id &&
+    (intent !== "publish" || (workflowResult.data.status === "published" && workflowResult.data.published_version_id === versionId))
+  if (workflowResult.error || !confirmedWorkflow) {
+    const reason = workflowResult.error?.message || "Keine passende gespeicherte Zeile bestätigt. Bitte neu laden und erneut versuchen."
     return {
       ok: false,
       message:
         intent === "publish"
-          ? `Version gespeichert, aber die Veröffentlichung ist fehlgeschlagen: ${workflowResult.error.message}`
-          : `Version gespeichert, aber der Status konnte nicht aktualisiert werden: ${workflowResult.error.message}`,
+          ? `Version gespeichert, aber die Veröffentlichung ist fehlgeschlagen: ${reason}`
+          : `Version gespeichert, aber der Status konnte nicht aktualisiert werden: ${reason}`,
     }
   }
 
@@ -360,6 +374,7 @@ async function persistMicrositeVersion(
   return {
     ok: true,
     config,
+    savedVersion: { id: versionId, version_number: nextVersion.number, status },
     publicRefreshPending: !refresh.ok,
     message:
       intent === "publish"

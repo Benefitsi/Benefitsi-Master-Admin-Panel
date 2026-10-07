@@ -5,10 +5,10 @@ import test from "node:test"
 import React, { act } from "react"
 import * as jsx from "react/jsx-runtime"
 import { renderToStaticMarkup } from "react-dom/server"
-import { JSDOM } from "jsdom"
 import ts from "typescript"
 
 const require = createRequire(import.meta.url)
+const { JSDOM } = require(process.env.BENEFITSI_TEST_JSDOM_PATH || "jsdom")
 const noop = async () => ({ ok: false, message: "Test boundary" })
 function compile(path, boundaries, testExports = "") {
   const js = ts.transpileModule(readFileSync(new URL(path, import.meta.url), "utf8") + testExports, {
@@ -33,6 +33,8 @@ function runtime(action = noop, refresh = () => {}) {
     "lucide-react": require("lucide-react"),
     "@/app/partner-actions": actions, "./partner-actions": actions,
     "./partner-enrichment-actions": { researchPartner: noop },
+    "./partner-configuration-actions": {},
+    "@/components/partner/partner-internal-tools": {},
     "./use-partner-capabilities": require("../app/use-partner-capabilities.ts"),
     "./streak-rule-fields": require("../app/streak-rule-fields.tsx"),
     "./microsite-panel": { MicrositePanel: () => null },
@@ -97,7 +99,8 @@ test("existing deal editor lets Owner select which excess Free offer to deactiva
   const partner={id:'synthetic-free',name:'Synthetic Free over limit',visits:[],deals:['keep','selected','other'].map(id=>({id,partner_id:'synthetic-free',type:'discount',discount_type:'percent',discount_value:10,active:true,premium_only:false}))}
   await act(async()=>root.render(React.createElement(DealsPanel,{partner,embedded:true})))
   const cards=document.querySelectorAll('[role="button"]');assert.equal(cards.length,3)
-  await act(async()=>cards[1].dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true})))
+  const selectedCard=[...cards].find(card=>card.querySelector('input[name="id"]')?.value==='selected');assert.ok(selectedCard)
+  await act(async()=>selectedCard.dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true})))
   const checkbox=document.querySelector('[role="dialog"] input[name="active"]');assert.ok(checkbox);assert.equal(checkbox.checked,true)
   await act(async()=>checkbox.click())
   const form=checkbox.closest('form'),payload=new dom.window.FormData(form)

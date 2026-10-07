@@ -56,6 +56,8 @@ import {
   appDownloadUrlForPartner,
   editable,
   imageStyleFor,
+  spacingStyleFor,
+  navigationTabsStyleFor,
   micrositeMenuItemsForPartner,
   micrositeThemeVars,
   textStyleFor,
@@ -268,9 +270,9 @@ function CategoryHeader({ context }: { context: MicrositeContext }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const links = mediaNavigation(config.navigation.links, (approvedRichMedia(config.richMedia,config.mediaPermitted) || approvedRichMedia(config.richMediaTour,config.mediaPermitted))).filter((link) => showBenefitSection || !["deals", "stempelkarte"].includes(link.anchor))
   const logo = config.branding.logoUrl || partner.logo_url || "/Benefitsi_Icon_FullColor_RGB_512.png"
-  return <header className={styles.header} data-family={family}><div className={styles.headerInner}>
-    <MicrositeLink href="#partner-content" className={styles.brand} aria-label={name}><img {...editable("branding.logo", "image", "Partnerlogo")} src={logo} alt="" width={42} height={42} style={imageStyleFor(config, "branding.logo")} /><span>{name}</span></MicrositeLink>
-    <nav className={styles.desktopNav} aria-label={config.language === "en" ? "Microsite navigation" : "Microsite-Navigation"}>{links.map((link) => <MicrositeLink key={link.anchor} {...editable(`navigation.${link.anchor}`, "text", `Navigation ${link.label}`)} href={`#${link.anchor}`} style={textStyleFor(config, `navigation.${link.anchor}`)}>{textValue(config, `navigation.${link.anchor}`, link.label)}</MicrositeLink>)}</nav>
+  return <header {...editable("navigation.group", "group", "Top-Navigation")} className={styles.header} data-family={family} style={{ ...spacingStyleFor(config, "navigation.group"), minHeight: config.elementStyles["navigation.group"]?.height }}><div className={styles.headerInner}>
+    <MicrositeLink href="#partner-content" className={styles.brand} aria-label={textValue(config, "branding.partnerName", name)}><img {...editable("branding.logo", "image", "Partnerlogo")} src={logo} alt="" width={42} height={42} style={imageStyleFor(config, "branding.logo")} /><span {...editable("branding.partnerName", "text", "Partnername")} style={textStyleFor(config, "branding.partnerName")}>{textValue(config, "branding.partnerName", name)}</span></MicrositeLink>
+    <nav className={styles.desktopNav} style={navigationTabsStyleFor(config)} aria-label={config.language === "en" ? "Microsite navigation" : "Microsite-Navigation"}>{links.map((link) => <MicrositeLink key={link.anchor} {...editable(`navigation.${link.anchor}`, "text", `Navigation ${link.label}`)} href={`#${link.anchor}`} style={textStyleFor(config, `navigation.${link.anchor}`)}>{textValue(config, `navigation.${link.anchor}`, link.label)}</MicrositeLink>)}</nav>
     <MicrositeLink className={styles.headerCta} href={showBenefitSection ? "#deals" : "#speisekarte"}><span {...editable(showBenefitSection ? "hero.primaryButtonLabel" : "hero.secondaryButtonLabel", "text", "Navigation CTA")} style={textStyleFor(config, showBenefitSection ? "hero.primaryButtonLabel" : "hero.secondaryButtonLabel")}>{showBenefitSection ? config.hero.primaryButtonLabel : config.hero.secondaryButtonLabel}</span><ArrowRight size={16} aria-hidden="true" /></MicrositeLink>
     <button className={styles.menuButton} type="button" onClick={() => setMenuOpen((open) => !open)} aria-expanded={menuOpen} aria-controls="category-mobile-navigation" aria-label={config.language === "en" ? "Open navigation" : "Navigation öffnen"}><span aria-hidden="true">{menuOpen ? "×" : "☰"}</span></button>
     {menuOpen ? <nav id="category-mobile-navigation" className={styles.mobileNav} aria-label={config.language === "en" ? "Mobile navigation" : "Mobile Navigation"}>{links.map((link) => <MicrositeLink key={link.anchor} href={`#${link.anchor}`} onClick={() => setMenuOpen(false)}>{textValue(config, `navigation.${link.anchor}`, link.label)}</MicrositeLink>)}</nav> : null}

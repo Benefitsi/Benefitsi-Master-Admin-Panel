@@ -5,6 +5,7 @@ import { getAdminSession } from "@/lib/admin"
 import { getDashboardData, type PartnerWithDeals } from "@/lib/admin-data"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
+import { micrositeVersions } from "@/lib/microsite-workflow"
 
 export const dynamic = "force-dynamic"
 
@@ -34,19 +35,19 @@ export default async function MicrositesPage() {
     "Admin"
 
   const liveCount = dashboard.partners.filter(
-    (partner) => partner.microsite?.publishedVersion,
+    (partner) => micrositeVersions(partner.microsite).published,
   ).length
   const draftCount = dashboard.partners.filter(
     (partner) =>
-      partner.microsite?.draftVersion &&
-      !partner.microsite?.publishedVersion,
+      micrositeVersions(partner.microsite).draft &&
+      !micrositeVersions(partner.microsite).published,
   ).length
 
   return (
     <AdminShell
       adminName={adminName}
       title="Mikroseiten"
-      subtitle="Builder-Referenz, gespeicherte Entwürfe und veröffentlichte Stände"
+      subtitle="Seiten bearbeiten, speichern und veröffentlichen"
       micrositeCount={dashboard.partners.length}
     >
       <section className="grid gap-3 sm:grid-cols-3">
@@ -72,7 +73,7 @@ export default async function MicrositesPage() {
             Mikroseiten der Partner
           </h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Die Builder-Referenz zeigt das maßgebliche Layout. Vergleiche daneben den gespeicherten und den veröffentlichten Stand.
+            Bearbeite deine Seite und speichere sie als Entwurf. Erst mit Veröffentlichen werden die Änderungen auf der Live-Seite sichtbar.
           </p>
         </header>
 
@@ -119,14 +120,14 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
     partner.id ||
     "partner"
   const previewIdentifier = identifier
+  const versions = micrositeVersions(partner.microsite)
   const liveHref =
-    partner.microsite?.canonical_url ||
-    (partner.microsite?.publishedVersion
+    (versions.published
       ? `${publicWebBaseUrl}/partner/${encodeURIComponent(identifier)}`
       : null)
-  const state = partner.microsite?.publishedVersion
+  const state = versions.published
     ? "Live"
-    : partner.microsite?.draftVersion
+    : versions.draft
       ? "Draft"
       : "Not created"
 
@@ -146,6 +147,7 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
           <p className="mt-1 truncate text-sm text-zinc-500">
             {partner.city_name || partner.address || identifier}
           </p>
+          {versions.editable ? <p className="mt-1 text-xs text-zinc-500">Gespeichert: Version {versions.editable.version_number ?? "–"}{versions.published ? ` · Online: Version ${versions.published.version_number ?? "–"}` : " · Noch nicht veröffentlicht"}</p> : null}
         </div>
       </div>
 
@@ -154,20 +156,15 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
           href={`/microsite-builder/${encodeURIComponent(identifier)}`}
           className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#17d4d7_0%,#118cff_100%)] px-4 text-sm font-bold text-white shadow-[0_8px_20px_rgba(17,140,255,.18)] transition hover:-translate-y-px hover:shadow-[0_10px_24px_rgba(17,140,255,.24)] active:translate-y-0 active:scale-[.98]"
         >
-          Builder bearbeiten
+          Bearbeiten
         </Link>
         <Link
           href={`/microsite-preview/${encodeURIComponent(previewIdentifier)}?source=builder&mode=light`}
           target="_blank"
           className="inline-flex min-h-10 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50"
         >
-          Builder-Referenz
+          Vorschau
         </Link>
-        {partner.microsite?.publishedVersion ? <Link
-          href={`/microsite-preview/${encodeURIComponent(previewIdentifier)}?source=published&mode=light`}
-          target="_blank"
-          className="inline-flex min-h-10 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800"
-        >Veröffentlichten Stand vergleichen</Link> : null}
         {liveHref ? (
           <a
             href={liveHref}
@@ -175,7 +172,7 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
             rel="noreferrer"
             className="col-span-2 inline-flex min-h-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
           >
-            Öffentliche Seite
+            Live-Seite · Version {versions.published?.version_number ?? "–"}
           </a>
         ) : null}
       </div>

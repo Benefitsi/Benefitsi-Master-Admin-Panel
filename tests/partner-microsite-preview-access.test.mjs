@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import ts from "typescript"
 import partnerPortal from "../lib/partner-portal.ts"
 import microsites from "../lib/microsites.ts"
+import * as micrositeWorkflow from "../lib/microsite-workflow.ts"
 import {loadUi} from "./helpers/partner-ui-fixtures.mjs"
 
 const partnerId = "11111111-1111-4111-8111-111111111111"
@@ -42,6 +43,7 @@ function loadRoute(path, session, selectedPartner, { capabilityError = false, pl
     return createElement("article", null, props.initialConfig.hero.headline)
   }
   const imports = {
+    "@/lib/microsite-workflow": micrositeWorkflow,
     "@/components/partner/partner-business-links": loadUi("components/partner/partner-business-links.tsx"),
     "@/components/partner/partner-drop-usage": { PartnerDropUsage: () => null },
     "@/components/partner/partner-dashboard": {PartnerDashboard:({children,name})=>createElement('main',null,name,children),PartnerOverview:()=>null},

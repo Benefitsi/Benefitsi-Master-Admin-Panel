@@ -4,13 +4,14 @@ import type { Metadata } from "next"
 import { requireAdmin } from "@/lib/admin"
 import { getDashboardData, getPartnerCapabilityFlags, type PartnerWithDeals } from "@/lib/admin-data"
 import { resolveMicrositeConfig } from "@/lib/microsites"
+import { micrositeVersions } from "@/lib/microsite-workflow"
 import { MicrositePreviewShell } from "./preview-shell"
 import { MicrositeCapabilitiesNotice } from "@/components/microsite-capabilities-notice"
 
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Mikroseite · Builder-Referenz & Versionsvergleich | Benefitsi Admin",
+  title: "Mikroseite · Vorschau | Benefitsi Admin",
   robots: {
     index: false,
     follow: false,
@@ -40,7 +41,8 @@ export default async function MicrositePreviewPage({
   const partner = { ...selectedPartner, ...capabilities }
 
   const previewSource = query.source === "published" ? "published" : query.source === "builder" ? "builder" : "saved"
-  const version = previewSource === "published" ? partner.microsite?.publishedVersion : partner.microsite?.draftVersion ?? partner.microsite?.publishedVersion
+  const versions = micrositeVersions(partner.microsite)
+  const version = previewSource === "published" ? versions.published : versions.editable
   if (previewSource === "published" && !version) notFound()
   const config = resolveMicrositeConfig(version?.config, partner)
 

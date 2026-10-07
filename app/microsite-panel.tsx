@@ -33,6 +33,8 @@ import {
 import { applyMicrositeTemplatePreset, micrositeTemplateDescription, micrositeTemplatePresets, templateDefaults } from "@/lib/microsite-templates"
 import { MicrositeIntegrationProvider, type MicrositeCommerceAction } from "@/components/microsite/microsite-integration"
 import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
+import { MicrositePublicationSummary } from "@/components/microsite/publication-summary"
+import { micrositeVersions } from "@/lib/microsite-workflow"
 import { PrintableStudioPanel } from "@/components/microsite/printable-studio-panel"
 import { LoadingSpinner } from "@/components/loading-ui"
 import {
@@ -124,7 +126,7 @@ const builderTranslations: Record<string, string> = {
   "Restaurant-Premium-Vorlage": "Restaurant premium template",
   "Für Mobilgeräte optimierte Vorlage · Daten vom Partnerprofil · versionierte Veröffentlichung":
     "Mobile-first template · partner-profile data · versioned publishing",
-  "Builder-Referenz öffnen": "Open Builder reference",
+  "Vorschau": "Preview",
   "Gespeicherten Entwurf öffnen": "Open saved draft",
   "Noch nicht live": "Not live yet",
   "In Prüfung": "In review",
@@ -315,7 +317,6 @@ const builderTranslations: Record<string, string> = {
   "Die Live-Veröffentlichung ist gesperrt, bis alle Pflichtprüfungen erledigt sind. Entwurf und Prüfung bleiben möglich.":
     "Live publishing is locked until all required checks are complete. Draft and review actions are still available.",
   "Editor": "Editor",
-  "Builder-Referenz": "Builder reference",
   "Preview herauszoomen": "Zoom out preview",
   "Vorschau verkleinern": "Zoom out preview",
   "Zoom zurücksetzen": "Reset zoom",
@@ -1034,12 +1035,20 @@ export function MicrositePanel({
   previewBasePath?: string
 }) {
   const router = useRouter()
+  const initialVersions = micrositeVersions(partner.microsite)
   const initialConfig = resolveMicrositeConfig(
-    partner.microsite?.draftVersion?.config ??
-      partner.microsite?.publishedVersion?.config,
+    initialVersions.editable?.config,
     partner,
   )
   const [config, setConfig] = useState<MicrositeConfig>(initialConfig)
+  const [savedConfigJson, setSavedConfigJson] = useState(() => JSON.stringify(initialConfig))
+  const [formDirty, setFormDirty] = useState(false)
+  type VersionIdentity = { id: string; version_number: number | null }
+  const [savedVersion, setSavedVersion] = useState<VersionIdentity | null>(initialVersions.editable)
+  const [publishedVersion, setPublishedVersion] = useState<VersionIdentity | null>(initialVersions.published)
+  const publicationKey = `${partner.microsite?.status ?? ""}:${initialVersions.published?.id ?? ""}:${initialVersions.published?.version_number ?? ""}`
+  const observedPublicationKeyRef = useRef(publicationKey)
+  const hasUnsavedChanges = formDirty || JSON.stringify(config) !== savedConfigJson
   const isOriginalFoodTemplate = config.template === "restaurant-premium"
   const contentSectionLabel = isOriginalFoodTemplate
     ? "Speisekarte"
@@ -1066,9 +1075,11 @@ export function MicrositePanel({
     saveMicrositeVersionWithFallback,
     initialState,
   )
+  const appliedSaveStateRef = useRef<MicrositeActionState | null>(null)
   const [pendingIntent, setPendingIntent] = useState("")
   const publicActionFormId = useId()
-  const isPublished = partner.microsite?.status === "published" && Boolean(partner.microsite.publishedVersion)
+  const editorFormId = useId()
+  const isPublished = Boolean(publishedVersion)
   const [clientSaveError, setClientSaveError] = useState("")
   const renderedAssetLibrary = config.assets.library.filter((asset) =>
     isAvailableMicrositeLibraryAsset(asset, partner),
@@ -1096,6 +1107,7 @@ export function MicrositePanel({
     partner.microsite?.slug || partner.slug || partner.subdomain || partner.id || "partner"
   const previewStorageKey = `benefitsi:microsite-preview:${partner.id || partner.slug || "partner"}`
   const previewHref = `${previewBasePath}/${encodeURIComponent(previewIdentifier)}?source=builder&mode=${config.appearance?.mode ?? "light"}`
+  const publicHref = `${(process.env.NEXT_PUBLIC_BENEFITSI_WEB_URL || "https://benefitsi.de").replace(/\/+$/, "")}/partner/${encodeURIComponent(previewIdentifier)}`
   const publishBlocked = readinessReport.status === "blocked"
   const publishBlockers = readinessReport.items.filter(
     (item) => item.severity === "required" && !item.ok,
@@ -1149,11 +1161,11 @@ export function MicrositePanel({
     )
 
     if (selectedDetails) selectedDetails.open = true
-  }, [selectedElementId])
+  }, [selectedElementId, editorPanelOpen])
 
   const previewToolbar = (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm font-medium text-zinc-700">{tr("Builder-Referenz")}</p>
+      <p className="text-sm font-medium text-zinc-700">{tr("Vorschau")}</p>
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex items-center rounded-md border border-zinc-200 bg-white p-1">
           <button
@@ -1383,14 +1395,23 @@ export function MicrositePanel({
   }
 
   useEffect(() => {
-    if (state.ok && state.config) {
+    if (state.ok && state.config && appliedSaveStateRef.current !== state) {
       let cancelled = false
 
       queueMicrotask(() => {
         if (!cancelled && state.config) {
           const savedConfig = resolveMicrositeConfig(state.config, partner)
 
+          // A background partner refresh must not replay an old save over
+          // edits made after that save completed.
+          appliedSaveStateRef.current = state
           setConfig(savedConfig)
+          setSavedConfigJson(JSON.stringify(savedConfig))
+          setFormDirty(false)
+          if (state.savedVersion) {
+            setSavedVersion(state.savedVersion)
+            if (state.savedVersion.status === "published") setPublishedVersion(state.savedVersion)
+          }
           window.localStorage.setItem(
             previewStorageKey,
             JSON.stringify(savedConfig),
@@ -1415,7 +1436,31 @@ export function MicrositePanel({
         cancelled = true
       }
     }
-  }, [partner, previewStorageKey, state.config, state.ok])
+  }, [partner, previewStorageKey, state])
+
+  useEffect(() => {
+    if (state.ok && state.publicationWithdrawn) queueMicrotask(() => setPublishedVersion(null))
+  }, [state.ok, state.publicationWithdrawn])
+
+  useEffect(() => {
+    if (observedPublicationKeyRef.current === publicationKey) return
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      observedPublicationKeyRef.current = publicationKey
+      // Publication can change in another editor. Refresh its identity without
+      // replacing the local draft; unchanged pre-save props cannot undo our save.
+      setPublishedVersion(initialVersions.published)
+    })
+    return () => { cancelled = true }
+  }, [publicationKey, initialVersions.published])
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = "" }
+    window.addEventListener("beforeunload", warnBeforeLeaving)
+    return () => window.removeEventListener("beforeunload", warnBeforeLeaving)
+  }, [hasUnsavedChanges])
 
   useEffect(() => {
     const applySharedConfig = (serializedConfig: string | null) => {
@@ -1472,11 +1517,11 @@ export function MicrositePanel({
         '[data-microsite-editable-kind="text"]',
       )
       .forEach((element) => {
-        element.contentEditable = "true"
+        element.contentEditable = String(!pending)
         element.spellcheck = false
         element.dataset.builderInlineText = "true"
       })
-  }, [config, previewZoom, viewport])
+  }, [config, previewZoom, viewport, pending])
 
   function syncInlineTextOverride(id: string, value: string) {
     if (!id) {
@@ -1507,6 +1552,7 @@ export function MicrositePanel({
 
     const id = editableTarget.dataset.micrositeEditable || ""
 
+    setFormDirty(true)
     setSelectedElementId(id)
     syncInlineTextOverride(id, textFromEditableElement(editableTarget))
   }
@@ -1552,6 +1598,7 @@ export function MicrositePanel({
     }
 
     setSelectedElementId(editableTarget.dataset.micrositeEditable || "")
+    setEditorPanelOpen(true)
   }
 
   function handlePreviewPointerDown(event: PointerEvent<HTMLDivElement>) {
@@ -1719,12 +1766,18 @@ export function MicrositePanel({
             }}
             className="inline-flex h-9 items-center rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
           >
-            {tr("Builder-Referenz öffnen")}
+            {tr("Vorschau")}
           </a>
-          <StatusBadge
-            label={isPublished ? "Live" : "Noch nicht live"}
-            active={isPublished}
-          />
+          <button type="submit" form={editorFormId} name="intent" value="draft" disabled={pending}
+            onClick={() => setPendingIntent("draft")}
+            className="inline-flex h-9 items-center rounded-md border border-teal-700 bg-white px-3 text-xs font-semibold text-teal-800 disabled:opacity-60">
+            {pending && pendingIntent === "draft" ? tr("Speichert…") : builderLocale === "en" ? "Save" : "Speichern"}
+          </button>
+          <button type="submit" form={editorFormId} name="intent" value="publish" disabled={pending || publishBlocked}
+            onClick={() => setPendingIntent("publish")}
+            className="inline-flex h-9 items-center rounded-md bg-teal-700 px-3 text-xs font-semibold text-white disabled:opacity-60">
+            {pending && pendingIntent === "publish" ? tr("Wird veröffentlicht…") : tr("Veröffentlichen")}
+          </button>
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold tabular-nums ring-1 ring-inset ${
               builderChecklistDone === builderChecklistTotal
@@ -1737,6 +1790,7 @@ export function MicrositePanel({
           </span>
         </div>
         </div>
+        <MicrositePublicationSummary saved={savedVersion} published={publishedVersion} dirty={hasUnsavedChanges} publicUrl={publicHref} locale={builderLocale} />
         <div
           className={`border-t px-5 py-3 ${
             publishBlocked
@@ -1805,9 +1859,11 @@ export function MicrositePanel({
         <input type="hidden" name="partner_id" value={partner.id || ""} />
       </form>
       <form
+        id={editorFormId}
         ref={formRef}
         action={formAction}
         onSubmit={handleSaveSubmit}
+        onChangeCapture={() => setFormDirty(true)}
         aria-busy={pending}
         className={`grid min-w-0 max-w-full grid-cols-1 gap-0 transition-[grid-template-columns] duration-200 lg:items-start ${
           useViewportShell
@@ -1839,7 +1895,7 @@ export function MicrositePanel({
             <option key={asset} value={asset} />
           ))}
         </datalist>
-
+        <fieldset disabled={pending} className="contents">
         <aside
           ref={sidebarRef}
             className={`relative w-full min-w-0 max-w-full self-start touch-pan-y overflow-x-hidden border-zinc-200 bg-white [scrollbar-width:thin] lg:!sticky lg:!self-start lg:z-20 ${
@@ -2354,7 +2410,7 @@ export function MicrositePanel({
         >
           <div className="mb-4">{previewToolbar}</div>{false ? (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm font-medium text-zinc-700">{tr("Builder-Referenz")}</p>
+            <p className="text-sm font-medium text-zinc-700">{tr("Vorschau")}</p>
             <div className="flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center rounded-md border border-zinc-200 bg-white p-1">
                 <button
@@ -2433,6 +2489,7 @@ export function MicrositePanel({
             </div>
           </div>
         </div>
+        </fieldset>
       </form>
     </section>
     </BuilderI18nContext.Provider>
@@ -4718,7 +4775,7 @@ function getEditableElement(
       "Partnername",
       config,
       "branding.partnerName",
-      config.hero.headline,
+      partner?.name || config.hero.headline,
     ),
     "hero.backgroundImageUrl": {
       label: "Startbild",
@@ -6117,32 +6174,6 @@ function AssetUploadField({
         </span>
       ) : null}
     </label>
-  )
-}
-
-function StatusBadge({
-  label,
-  active = false,
-  tone,
-}: {
-  label: string
-  active?: boolean
-  tone?: "review"
-}) {
-  const { tr } = useBuilderI18n()
-  const classes =
-    tone === "review"
-      ? "border-blue-200 bg-blue-50 text-blue-700"
-      : active
-        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-        : "border-amber-200 bg-amber-50 text-amber-700"
-
-  return (
-    <span
-      className={`inline-flex min-h-6 items-center rounded-full border px-3 py-1 text-xs font-semibold leading-none ${classes}`}
-    >
-      {tr(label)}
-    </span>
   )
 }
 

@@ -4,10 +4,10 @@ import { createRequire } from "node:module"
 import test from "node:test"
 import React, { act } from "react"
 import * as jsx from "react/jsx-runtime"
-import { JSDOM } from "jsdom"
 import ts from "typescript"
 
 const require = createRequire(import.meta.url)
+const { JSDOM } = require(process.env.BENEFITSI_TEST_JSDOM_PATH || "jsdom")
 const target = { ok: true, bucket: "menu-videos", path: "partner/menu/video.mp4", token: "signed-token", publicUrl: "https://storage.example.test/video.mp4" }
 function loadForm(actions, upload) {
   const boundaries = {
@@ -16,6 +16,7 @@ function loadForm(actions, upload) {
     "next/link": { default: ({ children, ...props }) => React.createElement("a", props, children) },
     "next/image": { default: () => null }, "lucide-react": require("lucide-react"),
     "./partner-actions": actions, "@/app/partner-actions": actions,
+    "./partner-configuration-actions": {}, "@/components/partner/partner-internal-tools": {},
     "./partner-enrichment-actions": {}, "./microsite-panel": {},
     "./use-partner-capabilities": require("../app/use-partner-capabilities.ts"),
     "./streak-rule-fields": require("../app/streak-rule-fields.tsx"),

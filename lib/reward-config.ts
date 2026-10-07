@@ -51,7 +51,6 @@ export const audienceOptions = [
   { value: "free", label: "Free" },
   { value: "premium", label: "Premium" },
   { value: "both", label: "Free und Premium" },
-  { value: "free_trial_only", label: "Nur Free-Testphase" },
 ] as const
 
 // Milestones use a separate database constraint and intentionally keep their
@@ -104,7 +103,8 @@ export const rewardTrackTargetOptions = [
 export type DealType = (typeof dealTypeOptions)[number]["value"]
 export type DiscountType = (typeof discountTypeOptions)[number]["value"]
 export type BenefitCategory = (typeof benefitCategoryOptions)[number]["value"]
-export type Audience = (typeof audienceOptions)[number]["value"]
+// Retain legacy stored values without offering them for new configuration.
+export type Audience = (typeof audienceOptions)[number]["value"] | "free_trial_only"
 export type MilestoneAudience = (typeof milestoneAudienceOptions)[number]["value"]
 export type RewardType = (typeof rewardTypeOptions)[number]["value"]
 export type PartnerStaffRole = (typeof partnerStaffRoleOptions)[number]["value"]
@@ -251,7 +251,7 @@ export function isBenefitCategory(value: string): value is BenefitCategory {
 }
 
 export function isAudience(value: string): value is Audience {
-  return audienceOptions.some((option) => option.value === value)
+  return value === "free_trial_only" || audienceOptions.some((option) => option.value === value)
 }
 
 export function isMilestoneAudience(value: string): value is MilestoneAudience {

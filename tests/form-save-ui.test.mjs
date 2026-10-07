@@ -4,11 +4,11 @@ import { createRequire } from "node:module"
 import test from "node:test"
 import React, { act, useActionState } from "react"
 import * as jsx from "react/jsx-runtime"
-import { JSDOM } from "jsdom"
 import ts from "typescript"
 
 const require = createRequire(import.meta.url)
-function loadUi(action) {
+const { JSDOM } = require(process.env.BENEFITSI_TEST_JSDOM_PATH || "jsdom")
+function loadUi(action, configurationActions = {}) {
   const actions = new Proxy({}, { get: () => action })
   const boundaries = {
     react: React, "react/jsx-runtime": jsx, "react-dom": require("react-dom"),
@@ -17,6 +17,8 @@ function loadUi(action) {
     "next/image": { default: () => null }, "lucide-react": require("lucide-react"),
     "@/app/partner-actions": actions, "./partner-actions": actions,
     "./partner-enrichment-actions": {}, "./microsite-panel": {},
+    "./partner-configuration-actions": configurationActions,
+    "@/components/partner/partner-internal-tools": {},
     "./use-partner-capabilities": require("../app/use-partner-capabilities.ts"),
     "./streak-rule-fields": require("../app/streak-rule-fields.tsx"),
     "./admin-language": { useAdminLanguage: () => ({ language: "de" }) },
@@ -240,4 +242,47 @@ test('Happy Hour shortcut selects canonical campaign offers and create opens the
   await act(async()=>root.render(React.createElement(DealsPanel,{key:'create',partner,embedded:true,portalMode:true,initialCreate:true})))
   assert.ok(document.querySelector('[role="dialog"]'))
  })
+})
+
+test("keyboard order saves the complete list only after confirmation and keeps an active Drop pinned", async () => {
+  let resolveOrder
+  const calls = []
+  const { DealsPanel } = loadUi(async () => ({ ok: false }), { reorderPartnerDeals: async (id, ids) => { calls.push([id, ids]); return await new Promise(resolve => { resolveOrder = resolve }) } })
+  const partner = { id: "partner-test", name: "Cafe", visits: [], deals: [
+    { id: "plain", type: "discount", active: true, display_title: "Rabatt", discount_type: "percent", discount_value: 10 },
+    { id: "two", type: "two_for_one", active: true, display_title: "Zwei", discount_type: "2for1", reward_item: "Kaffee" },
+    { id: "drop", type: "limited_drop", active: true, display_title: "Drop", stock_remaining: 5, valid_from: "2010-01-01T00:00:00Z", valid_until: "2100-01-01T00:00:00Z" },
+  ] }
+  await withDom(async root => {
+    await act(async () => root.render(React.createElement(DealsPanel, { partner, embedded: true, portalMode: true })))
+    const cards = () => [...document.querySelectorAll("[data-partner-offer]")]
+    const titles = () => cards().map(card => card.querySelector("h3").textContent.trim())
+    assert.deepEqual(titles(), ["Drop", "Zwei", "Rabatt"])
+    assert.equal(cards()[0].draggable, false)
+    assert.ok([...cards()[0].querySelectorAll("button[aria-label]")].every(button => button.disabled))
+    const down = cards()[1].querySelector('button[aria-label$="nach unten verschieben"]')
+    await act(async () => down.click())
+    assert.deepEqual(calls[0], ["partner-test", ["drop", "plain", "two"]])
+    assert.deepEqual(titles(), ["Drop", "Zwei", "Rabatt"])
+    await act(async () => resolveOrder({ ok: false, message: "Stand wurde geändert" }))
+    assert.deepEqual(titles(), ["Drop", "Zwei", "Rabatt"])
+    assert.match(document.querySelector('[role="status"]').textContent, /Stand wurde geändert/)
+    await act(async () => down.click())
+    await act(async () => resolveOrder({ ok: true, message: "Gespeichert", data: calls[1][1].map((id, display_order) => ({ id, display_order })) }))
+    assert.deepEqual(titles(), ["Drop", "Rabatt", "Zwei"])
+  })
+})
+test("drag and drop uses the same persisted full-list order", async () => {
+  const calls = []
+  const { DealsPanel } = loadUi(async () => ({ ok: false }), { reorderPartnerDeals: async (_partner, ids) => { calls.push(ids); return { ok: true, message: "Gespeichert", data: ids.map((id, display_order) => ({ id, display_order })) } } })
+  const partner = { id: "partner", visits: [], deals: [{ id: "a", active: true, type: "discount", display_title: "A" }, { id: "b", active: true, type: "discount", display_title: "B" }] }
+  await withDom(async (root, window) => {
+    await act(async () => root.render(React.createElement(DealsPanel, { partner, embedded: true, portalMode: true })))
+    const [a, b] = document.querySelectorAll("[data-partner-offer]")
+    const start = new window.Event("dragstart", { bubbles: true }); Object.defineProperty(start, "dataTransfer", { value: { setData() {}, effectAllowed: "" } })
+    await act(async () => b.dispatchEvent(start))
+    await act(async () => a.dispatchEvent(new window.Event("drop", { bubbles: true, cancelable: true })))
+    assert.deepEqual(calls, [["b", "a"]])
+    assert.deepEqual([...document.querySelectorAll("[data-partner-offer] h3")].map(el => el.textContent), ["B", "A"])
+  })
 })

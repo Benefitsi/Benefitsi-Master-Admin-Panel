@@ -798,7 +798,7 @@ const translations = [
   ["Live preview", "Live-Vorschau"],
   ["Maximum visits", "Maximale Besuche"],
   ["Minimum visits", "Minimale Besuche"],
-  ["More setup details", "Weitere Einstellungen"],
+  ["More setup details", "Weitere Infos"],
   ["Move cover photo earlier", "Titelbild nach vorne verschieben"],
   ["Move cover photo later", "Titelbild nach hinten verschieben"],
   ["No add-ons yet.", "Noch keine Extras hinzugefügt."],
