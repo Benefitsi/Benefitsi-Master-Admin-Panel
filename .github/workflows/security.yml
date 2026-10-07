@@ -140,6 +140,23 @@ jobs:
           tests/partner-management-regressions.test.mjs
           tests/menu-ai-dialog.test.mjs
 
+      - name: Partner configuration and microsite editor regression tests
+        run: >-
+          node --import tsx --test --test-concurrency=2
+          tests/benefit-taxonomy.test.mjs
+          tests/deal-audience.test.mjs
+          tests/deal-order.test.mjs
+          tests/deal-save-action.test.mjs
+          tests/deal-editor-behavior.test.mjs
+          tests/milestone-save.test.mjs
+          tests/partner-configuration-actions.test.mjs
+          tests/partner-internal-tools.test.mjs
+          tests/partner-upload-optimization.test.mjs
+          tests/microsite-workflow.test.mjs
+          tests/microsite-editor-behavior.test.mjs
+          tests/microsite-public-action-forms.test.mjs
+          tests/microsite-publication-labels.test.mjs
+
       - name: Menu video upload, ownership and retry regression tests
         run: >-
           node --import tsx --test --test-concurrency=2

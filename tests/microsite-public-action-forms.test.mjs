@@ -4,11 +4,12 @@ import { createRequire } from "node:module"
 import test from "node:test"
 import React, { act, useId, useRef } from "react"
 import { createRoot } from "react-dom/client"
-import { JSDOM } from "jsdom"
 import ts from "typescript"
 
 const require = createRequire(import.meta.url)
-const { implForWrapper } = require("jsdom/lib/generated/idl/utils.js")
+const jsdomPackage = process.env.BENEFITSI_TEST_JSDOM_PATH || "jsdom"
+const { JSDOM } = require(jsdomPackage)
+const { implForWrapper } = require(`${jsdomPackage}/lib/generated/idl/utils.js`)
 
 // Keep the production form hierarchy, ownership attributes, handlers and action
 // buttons. Only unrelated editor layout/fields are replaced by hostile inputs.
@@ -54,6 +55,8 @@ function loadFormFixture() {
     const isPublished = partner.microsite.status === "published" && Boolean(partner.microsite.publishedVersion);
     const formRef = useRef(null), previewRef = useRef(null);
     const publicActionFormId = ${id ? id.initializer.getText(file) : "undefined"};
+    const editorFormId = useId();
+    const setFormDirty = () => {};
     const formAction = "/synthetic-action", pending = false, builderLocale = "en";
     const state = {publicRefreshPending: true};
     const tr = value => value;

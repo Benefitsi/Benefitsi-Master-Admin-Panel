@@ -8,6 +8,7 @@ import {
 } from "@/lib/microsites"
 import { MicrositeIntegrationProvider, type MicrositeCommerceAction } from "@/components/microsite/microsite-integration"
 import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
+import { micrositeVersions } from "@/lib/microsite-workflow"
 
 export function MicrositePreviewShell({
   partner,
@@ -41,6 +42,9 @@ export function MicrositePreviewShell({
   const selectedMode = previewMode || displayedConfig.appearance?.mode || "light"
   const previewHref = (source: "builder" | "saved" | "published") => `${previewBasePath}/${previewIdentifier}?${new URLSearchParams({ source, mode: selectedMode })}`
   const mobileParams = new URLSearchParams({ viewport: "mobile", source: previewSource, mode: selectedMode })
+  const versions = micrositeVersions(partner.microsite)
+  const builderHref = `${previewBasePath.replace(/microsite-preview$/, "microsite-builder")}/${previewIdentifier}`
+  const liveHref = `${(process.env.NEXT_PUBLIC_BENEFITSI_WEB_URL || "https://benefitsi.de").replace(/\/+$/, "")}/partner/${previewIdentifier}`
 
   useEffect(() => {
     if (!useBuilderDraft) {
@@ -82,39 +86,42 @@ export function MicrositePreviewShell({
 
   const statusLabel = useMemo(() => {
     if (useBuilderDraft) {
-      return "Builder-Referenz · aktueller Arbeitsstand"
+      return "Vorschau · aktueller Arbeitsstand"
     }
-    const version = previewSource === "published" ? partner.microsite?.publishedVersion : partner.microsite?.draftVersion ?? partner.microsite?.publishedVersion
+    const savedVersions = micrositeVersions(partner.microsite)
+    const version = previewSource === "published" ? savedVersions.published : savedVersions.editable
     const versionLabel = version?.version_number != null ? ` · v${version.version_number}` : ""
-    return previewSource !== "published" && partner.microsite?.draftVersion
+    return previewSource !== "published" && savedVersions.draft
       ? `Gespeicherter Entwurf${versionLabel}`
       : version
-        ? `Veröffentlichter Stand${versionLabel}`
-        : "Partnerdaten-Fallback"
-  }, [partner.microsite?.draftVersion, partner.microsite?.publishedVersion, previewSource, useBuilderDraft])
+        ? `${savedVersions.published?.id === version.id ? "Veröffentlichte Version" : "Gespeicherte Version"}${versionLabel}`
+        : "Vorschau · noch nicht gespeichert"
+  }, [partner.microsite, previewSource, useBuilderDraft])
 
   return (
     <main className="min-h-screen min-w-0 overflow-x-clip bg-[#f7f6f3] px-2 py-3 sm:px-5 sm:py-5">
       <div className="mx-auto mb-3 flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs font-semibold">
         <div className="space-y-2">
           <span className="inline-flex rounded-full border border-sky-200 bg-white px-3 py-2 text-sky-900">{statusLabel}</span>
-          <p className="max-w-xl font-normal text-zinc-600">{useBuilderDraft ? "Verbindliche Layout-Vorschau. Änderungen im Builder können noch ungespeichert sein." : "Versionsvergleich. Maßgeblich für das Layout ist die Builder-Referenz."}</p>
+          <p className="max-w-xl font-normal text-zinc-600">{useBuilderDraft ? "Hier siehst du deine aktuellen Änderungen. Mit Speichern sicherst du sie; mit Veröffentlichen werden sie öffentlich." : "Diese Vorschau zeigt den gespeicherten Stand. Deine Änderungen bearbeitest du im Builder."}</p>
         </div>
         <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-          {!useBuilderDraft ? <a className="rounded-md border border-sky-200 bg-white px-3 py-2 text-center text-sky-900" href={previewHref("builder")}>Builder-Referenz öffnen</a> : null}
-          <a
-            className="min-w-0 rounded-md border border-zinc-200 bg-white px-3 py-2 text-center text-zinc-700 transition hover:bg-zinc-50"
-            href={previewHref("saved")}
-          >
-            Gespeicherten Entwurf öffnen
-          </a>
-          {partner.microsite?.publishedVersion ? <a className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-center text-zinc-700" href={previewHref("published")}>Veröffentlichten Stand vergleichen</a> : null}
+          <a className="rounded-md bg-teal-700 px-3 py-2 text-center text-white" href={builderHref}>Bearbeiten</a>
+          {versions.published ? <a className="rounded-md border border-emerald-200 bg-white px-3 py-2 text-center text-emerald-800" href={liveHref} target="_blank" rel="noreferrer">Live-Seite · Version {versions.published.version_number ?? "–"}</a> : null}
           <a
             className="min-w-0 rounded-md border border-zinc-200 bg-white px-3 py-2 text-center text-zinc-700 transition hover:bg-zinc-50"
             href={`${previewBasePath}/${previewIdentifier}?${mobileParams.toString()}`}
           >
             Mobile
           </a>
+          <details className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-zinc-700">
+            <summary className="cursor-pointer">Gespeicherte Versionen</summary>
+            <div className="mt-2 flex flex-col gap-2">
+              <a className="py-1 underline" href={previewHref("builder")}>Aktuelle Vorschau</a>
+              {versions.editable ? <a className="py-1 underline" href={previewHref("saved")}>Gespeicherter Stand · Version {versions.editable.version_number ?? "–"}</a> : null}
+              {versions.published ? <a className="py-1 underline" href={previewHref("published")}>Veröffentlichte Version {versions.published.version_number ?? "–"}</a> : null}
+            </div>
+          </details>
         </div>
       </div>
       <div className={isMobile ? "mx-auto w-full min-w-0 max-w-[390px]" : "min-w-0"}>

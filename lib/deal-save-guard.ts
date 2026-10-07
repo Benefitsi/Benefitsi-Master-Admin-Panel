@@ -71,11 +71,11 @@ export async function recoverDealCreate(client: SupabaseClient, id: string, part
   return receipt.fingerprint === fingerprint && receipt.editor_id === editorId
 }
 
-export async function prepareDealCreate(client: SupabaseClient, payload: DealRecord, requestId: string, editorId: string): Promise<CreateDecision> {
+export async function prepareDealCreate(client: SupabaseClient, payload: DealRecord, requestId: string, editorId: string, mediaIntent?: Record<string, unknown>): Promise<CreateDecision> {
   const id = requestId || randomUUID()
   const metadata = { ...record(payload.metadata) }
   delete metadata.admin_create_receipt
-  const fingerprint = createHash("sha256").update(JSON.stringify(canonical({ ...payload, metadata }))).digest("hex")
+  const fingerprint = createHash("sha256").update(JSON.stringify(canonical({ ...payload, metadata, ...(mediaIntent ? { mediaIntent } : {}) }))).digest("hex")
   const decision: CreateDecision = { id, fingerprint, metadata: { ...metadata, admin_create_receipt: { editor_id: editorId, fingerprint } } }
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
     return { ...decision, error: "Die Speicheranfrage ist ungültig. Bitte öffne das Formular erneut." }

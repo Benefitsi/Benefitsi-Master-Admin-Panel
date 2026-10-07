@@ -6,10 +6,19 @@ import { loadTypescript } from "./helpers/load-typescript.mjs"
 const require = createRequire(import.meta.url)
 const partner = "11111111-1111-4111-8111-111111111111"
 const request = "22222222-2222-4222-8222-222222222222"
-function fixture({ denied = false, mutationError = null, existing = [], beforeUpdate } = {}) {
+function fixture({ denied = false, isAdmin = true, mutationError = null, existing = [], beforeUpdate, media = {} } = {}) {
   const rows = new Map(existing.map(row => [row.id, structuredClone(row)])), writes = [], invalidations = []
   const db = { from(table) {
-    assert.equal(table, "deals")
+    if (table !== "deals") {
+      const filters = [], query = {}, records = media[table] || []
+      query.select = () => query
+      query.eq = (key, value) => { filters.push(row => row[key] === value); return query }
+      query.in = (key, values) => { filters.push(row => values.includes(row[key])); return query }
+      const get = () => records.filter(row => filters.every(matches => matches(row)))
+      query.single = () => Promise.resolve({ data: get()[0] || null, error: null })
+      query.then = resolve => Promise.resolve({ data: get(), error: null }).then(resolve)
+      return query
+    }
     const filters = [], query = {}, get = () => [...rows.values()].filter(row => filters.every(([key, value]) => row[key] === value))
     query.select = query.order = query.limit = () => query
     query.eq = (key, value) => { filters.push([key, value]); return query }
@@ -19,19 +28,20 @@ function fixture({ denied = false, mutationError = null, existing = [], beforeUp
     query.then = resolve => Promise.resolve({ data: get(), error: null }).then(resolve)
     query.insert = values => {
       writes.push(values)
-      if (mutationError) return Promise.resolve({ error: { message: mutationError } })
+      if (mutationError) { query.then = resolve => Promise.resolve({ data: null, error: { message: mutationError } }).then(resolve); return query }
       for (const row of values) {
         if (rows.has(row.id)) return Promise.resolve({ error: { message: "duplicate key value violates unique constraint" } })
         rows.set(row.id, structuredClone(row))
       }
-      return Promise.resolve({ error: null })
+      query.then = resolve => Promise.resolve({ data: get(), error: null }).then(resolve)
+      return query
     }
     query.update = value => {
       writes.push(value)
       query.then = resolve => {
         beforeUpdate?.(rows)
         for (const row of get()) rows.set(row.id, { ...row, ...structuredClone(value) })
-        return Promise.resolve({ error: null }).then(resolve)
+        return Promise.resolve({ data: get(), error: null }).then(resolve)
       }
       return query
     }
@@ -39,12 +49,13 @@ function fixture({ denied = false, mutationError = null, existing = [], beforeUp
   } }
   const actions = loadTypescript("app/partner-actions.ts", {
     "next/cache": { revalidatePath: path => invalidations.push(path) }, "next/server": { after() {} },
-    "@/lib/partner-portal": { getPartnerPortalSession: async () => ({ user: { id: "editor-1" }, isAdmin: true }), canManagePartner: () => !denied },
+    "@/lib/partner-portal": { getPartnerPortalSession: async () => ({ user: { id: "editor-1" }, isAdmin }), canManagePartner: () => !denied },
     "@/lib/supabase/server": { createClient: async () => db }, "@/lib/supabase/config": {}, "@supabase/supabase-js": {},
     "@/lib/admin": {}, "@/lib/deal-copy": {}, "@/lib/content-agent": {},
     "@/lib/deal-form": require("../lib/deal-form.ts"),
     "@/lib/menu-import.js": {}, "@/lib/menu-zip-import.js": {}, "@/lib/menu-ai-import": {},
     "@/lib/partners/entitlements": {}, "@/lib/partners/menu-quota": {},
+    "@/lib/partners/workspace-data": {},
   }, { FormData, File })
   return { actions, rows, writes, invalidations }
 }
@@ -54,6 +65,74 @@ function form(values = {}, days = [1, 2, 3, 4, 5, 6, 7]) {
   days.forEach(day => data.append("valid_weekdays", String(day)))
   return data
 }
+
+const drop = (values = {}) => form({ type: "limited_drop", discount_type: "item", reward_item: "Kaffee", stock_total: "100", stock_remaining: "100", timezone: "Europe/Berlin", starts_at: "2026-10-07T11:00", ends_at: "2026-10-14T11:00", ...values })
+test("Drop save interprets the configured partner wall time in summer and winter", async () => {
+  for (const [local, expected] of [["2026-10-07T11:00", "2026-10-07T09:00:00.000Z"], ["2027-01-07T11:00", "2027-01-07T10:00:00.000Z"]]) {
+    const { actions, rows } = fixture()
+    const result = await actions.saveDeal({}, drop({ starts_at: local, ends_at: "2027-02-01T11:00" }))
+    assert.equal(result.ok, true, result.message)
+    assert.equal(rows.get(request).starts_at, expected)
+    assert.equal(rows.get(request).valid_from, expected)
+  }
+})
+test("nonexistent and ambiguous local times are rejected with the unsaved form retained", async () => {
+  for (const starts_at of ["2026-03-29T02:30", "2026-10-25T02:30", "2026-02-30T11:00"]) {
+    const { actions, writes } = fixture()
+    const result = await actions.saveDeal({}, drop({ starts_at, ends_at: "2027-02-01T11:00" }))
+    assert.equal(result.ok, false, starts_at)
+    assert.equal(result.dealDraft.rewardItem, "Kaffee")
+    assert.equal(writes.length, 0)
+  }
+})
+test("an update returning no persisted row cannot report a successful save", async () => {
+  const existing = { id: request, partner_id: partner, type: "happy_hour", customer_description: null, staff_instructions: null, terms: null, reward_item: null }
+  const { actions, invalidations } = fixture({ existing: [existing], beforeUpdate: rows => rows.delete(request) })
+  const result = await actions.saveDeal({}, form({ id: request }))
+  assert.equal(result.ok, false)
+  assert.equal(result.dealDraft.discountType, "fixed")
+  assert.equal(invalidations.length, 0)
+})
+test("missing schema columns fail without silently deleting configured values and retrying", async () => {
+  const { actions, writes } = fixture({ mutationError: "Could not find the 'terms' column of 'deals' in the schema cache" })
+  const result = await actions.saveDeal({}, form({ terms: "Nur vor Ort" }))
+  assert.equal(result.ok, false)
+  assert.equal(writes.length, 1)
+  assert.equal(writes[0][0].terms, "Nur vor Ort")
+})
+test("normal Drop edits never restore already redeemed remaining stock", async () => {
+  const existing = { id: request, partner_id: partner, type: "limited_drop", stock_total: 100, stock_remaining: 70, customer_description: null, staff_instructions: null, terms: null, reward_item: "Kaffee" }
+  const { actions, rows, writes } = fixture({ existing: [existing], beforeUpdate: stored => { stored.get(request).stock_remaining = 69 } })
+  const result = await actions.saveDeal({}, drop({ id: request, stock_remaining: "100" }))
+  assert.equal(result.ok, true, result.message)
+  assert.equal(rows.get(request).stock_remaining, 69)
+  assert.equal(Object.hasOwn(writes[0], "stock_remaining"), false)
+})
+test("partner requests cannot broaden Premium campaign eligibility; internal overrides remain allowed", async () => {
+  for (const values of [{ type: "welcome" }, { type: "two_for_one", discount_type: "2for1", reward_item: "Kaffee" }, { type: "limited_drop", discount_type: "item", reward_item: "Kaffee" }]) {
+    const partnerFixture = fixture({ isAdmin: false })
+    const refused = await partnerFixture.actions.saveDeal({}, drop({ ...values, audience: "both" }))
+    assert.equal(refused.ok, false, values.type)
+    assert.equal(partnerFixture.writes.length, 0)
+    const adminFixture = fixture()
+    const saved = await adminFixture.actions.saveDeal({}, drop({ ...values, audience: "free" }))
+    assert.equal(saved.ok, true, saved.message)
+    assert.equal(adminFixture.rows.get(request).audience, "free")
+  }
+})
+test("an existing admin audience exception survives an unrelated partner edit", async () => {
+  const existing = { id: request, partner_id: partner, type: "welcome", audience: "free", premium_only: false, allow_free_trial: false, customer_description: null, staff_instructions: null, terms: null, reward_item: null }
+  const { actions, rows } = fixture({ isAdmin: false, existing: [existing] })
+  const result = await actions.saveDeal({}, form({ id: request, type: "welcome", audience: "free", discount_type: "fixed" }))
+  assert.equal(result.ok, true, result.message)
+  assert.equal(rows.get(request).audience, "free")
+})
+test("new Premium campaigns choose Premium when no audience is submitted", async () => {
+  const { actions, rows } = fixture()
+  const data = form({ type: "welcome" }); data.delete("audience")
+  assert.equal((await actions.saveDeal({}, data)).ok, true)
+  assert.equal(rows.get(request).audience, "premium")
+})
 
 test("real benefit save retains each Happy Hour reward format and its exact reward values", async () => {
   for (const discount_type of ["fixed", "percent", "item", "2for1", "bonus_stamp"]) {
@@ -131,7 +210,7 @@ test("canonical Happy Hour edits preserve authoritative activation, qualifiers, 
     const row = rows.get(request)
     const types = { fixed: "discount", percent: "discount", item: "free_item", "2for1": "two_for_one", bonus_stamp: "bonus_stamp" }
     assert.equal(row.type, types[discount_type])
-    for (const key of ["campaign_type", "trigger_key", "trigger_value", "expiry_days", "benefit_category", "activation_mode", "activation_required", "starts_at", "ends_at", "stock_total", "stock_remaining", "selection_expires_minutes", "reserve_on_selection"]) assert.equal(row[key], existing[key], key)
+    for (const key of ["campaign_type", "trigger_key", "trigger_value", "expiry_days", "benefit_category", "activation_mode", "activation_required", "starts_at", "ends_at", "stock_total", "stock_remaining", "selection_expires_minutes", "reserve_on_selection"]) assert.equal(/^(starts_at|ends_at)$/.test(key) ? Date.parse(row[key]) : row[key], /^(starts_at|ends_at)$/.test(key) ? Date.parse(existing[key]) : existing[key], key)
     assert.match(row.customer_description, /Happy Hour.*automatisch.*kein anderer/)
   }
 })
@@ -154,8 +233,78 @@ test("canonical calendar-series edits retain their direct reward category and st
   const result = await actions.saveDeal({}, form({ id: request, type: "streak", discount_type: "bonus_stamp", benefit_count: "1", trigger_value: "4", metadata: JSON.stringify(metadata), ...metadata }))
   assert.equal(result.ok, true, result.message)
   const row = rows.get(request)
-  for (const key of ["type", "reward_format", "trigger_key", "campaign_type", "benefit_category", "activation_mode", "activation_required"]) assert.equal(row[key], existing[key], key)
+  for (const key of ["type", "reward_format", "trigger_key", "campaign_type", "benefit_category", "activation_mode", "activation_required"]) assert.equal(/^(starts_at|ends_at)$/.test(key) ? Date.parse(row[key]) : row[key], /^(starts_at|ends_at)$/.test(key) ? Date.parse(existing[key]) : existing[key], key)
   assert.equal(row.metadata.required_visits_per_period, 2)
   assert.equal(row.metadata.required_consecutive_periods, 4)
   assert.match(row.customer_description, /Kalenderwoche.*einmal pro Serienlauf/)
+})
+
+test("a stale configuration revision cannot overwrite a concurrent editor", async () => {
+  const existing = { id: request, partner_id: partner, type: "limited_drop", updated_at: "2026-10-07T10:00:00Z", reward_item: "Kaffee" }
+  const { actions, rows } = fixture({ existing: [existing], beforeUpdate: stored => { stored.get(request).updated_at = "2026-10-07T10:01:00Z"; stored.get(request).reward_item = "Tee" } })
+  const result = await actions.saveDeal({}, drop({ id: request, expected_updated_at: existing.updated_at, reward_item: "Saft" }))
+  assert.equal(result.ok, false)
+  assert.equal(rows.get(request).reward_item, "Tee")
+  assert.equal(result.dealDraft.rewardItem, "Saft")
+})
+test("only media attached to the authorized partner can become a Drop card image", async () => {
+  const url = "https://images.example.test/own.webp", foreign = "https://images.example.test/other.webp"
+  const media = { partners: [{ id: partner, feature_card_url: url }, { id: "other", feature_card_url: foreign }] }
+  const allowed = fixture({ media })
+  const saved = await allowed.actions.saveDeal({}, drop({ selected_deal_drop_image_url: url }))
+  assert.equal(saved.ok, true, saved.message)
+  assert.equal(allowed.rows.get(request).metadata.card_image_url, url)
+  const refused = fixture({ media })
+  assert.equal((await refused.actions.saveDeal({}, drop({ selected_deal_drop_image_url: foreign }))).ok, false)
+  assert.equal(refused.writes.length, 0)
+})
+test("removing a reused card image only detaches it, and ignores a forged existing image field", async () => {
+  const existing = { id: request, partner_id: partner, type: "limited_drop", metadata: { card_image_url: "https://images.example.test/shared.webp" } }
+  const { actions, rows } = fixture({ existing: [existing] })
+  const removed = await actions.saveDeal({}, drop({ id: request, remove_deal_drop_image: "on", existing_deal_drop_image_url: "https://images.example.test/other.webp" }))
+  assert.equal(removed.ok, true, removed.message)
+  assert.equal(rows.get(request).metadata.card_image_url, undefined)
+})
+test("a create retry with a different selected image is never acknowledged as the original save", async () => {
+  const a = "https://images.example.test/a.webp", b = "https://images.example.test/b.webp"
+  const { actions, rows } = fixture({ media: { partners: [{ id: partner, cover_urls: [a, b] }] } })
+  assert.equal((await actions.saveDeal({}, drop({ selected_deal_drop_image_url: a }))).ok, true)
+  const changed = await actions.saveDeal({}, drop({ selected_deal_drop_image_url: b }))
+  assert.equal(changed.ok, false)
+  assert.equal(rows.get(request).metadata.card_image_url, a)
+})
+
+test("a canonical Happy Hour keeps its saved internal lifecycle exception on an unrelated partner edit", async () => {
+  const existing = { id: request, partner_id: partner, type: "discount", campaign_type: "happy_hour", trigger_key: "welcome", audience: "free", premium_only: false, allow_free_trial: false, discount_type: "fixed" }
+  const { actions, rows } = fixture({ isAdmin: false, existing: [existing] })
+  const result = await actions.saveDeal({}, form({ id: request, type: "happy_hour", discount_type: "fixed", audience: "free" }))
+  assert.equal(result.ok, true, result.message)
+  assert.equal(rows.get(request).audience, "free")
+  assert.equal(rows.get(request).trigger_key, "welcome")
+})
+
+test("an automatic benefit with a fixed priority acknowledges its identical create retry", async () => {
+  const { actions, rows, writes } = fixture()
+  const data = form({ type: "bonus_stamp", benefit_category: "automatic_background", priority: "73", audience: "premium", discount_type: "bonus_stamp", benefit_count: "1" })
+  const first = await actions.saveDeal({}, data)
+  assert.equal(first.ok, true, first.message)
+  const retry = await actions.saveDeal({}, data)
+  assert.equal(retry.ok, true, retry.message)
+  assert.equal(rows.size, 1)
+  assert.equal(writes.length, 1)
+})
+
+test("canonical Drop edits retain reward storage, lifecycle qualifiers and concurrent remaining stock", async () => {
+  const existing = { id: request, partner_id: partner, type: "free_item", campaign_type: "deal_drop", trigger_key: "welcome", trigger_value: 2, expiry_days: 7, reward_format: "free_item", discount_type: "item", reward_item: "Kaffee", audience: "free", premium_only: false, allow_free_trial: false, stock_total: 100, stock_remaining: 70 }
+  const { actions, rows } = fixture({ isAdmin: false, existing: [existing], beforeUpdate: stored => { stored.get(request).stock_remaining = 69 } })
+  const result = await actions.saveDeal({}, drop({ id: request, audience: "free" }))
+  assert.equal(result.ok, true, result.message)
+  const saved = rows.get(request)
+  assert.equal(saved.type, "free_item")
+  assert.equal(saved.campaign_type, "deal_drop")
+  assert.equal(saved.trigger_key, "welcome")
+  assert.equal(saved.trigger_value, 2)
+  assert.equal(saved.expiry_days, 7)
+  assert.equal(saved.stock_remaining, 69)
+  assert.equal(saved.valid_from, "2026-10-07T09:00:00.000Z")
 })

@@ -67,14 +67,14 @@ export default async function MicrositeBuilderPage({ params }: PageProps) {
               href="/"
               className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-bold text-zinc-800 transition hover:bg-zinc-50"
             >
-              Back to admin
+              Zurück zum Admin
             </Link>
             <Link
               href={`/microsite-preview/${encodeURIComponent(previewIdentifier)}?source=builder`}
               target="_blank"
               className="rounded-xl bg-teal-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-800"
             >
-              Builder-Referenz öffnen
+              Vorschau
             </Link>
           </div>
         </div>

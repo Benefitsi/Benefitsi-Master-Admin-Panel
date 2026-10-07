@@ -1,8 +1,12 @@
 "use server"
 
+import { partnerDateTimeToUtc } from "@/lib/deal-datetime"
+import { defaultDealAudience, partnerAudienceError } from "@/lib/deal-audience"
+import { partnerMediaLibrary } from "@/lib/partner-media-library"
+
 import type { PartnerWithDeals, PartnerSocial } from "@/lib/admin-data"
 import { readPartnerWorkspace } from "@/lib/partners/workspace-data"
-import { randomInt, randomUUID } from "node:crypto"
+import { createHash, randomInt, randomUUID } from "node:crypto"
 import { MENU_VIDEO_BUCKET, validateMenuVideoFile } from "@/lib/menu-video"
 import { verifyMenuVideoUpload, removeUnusedMenuVideos } from "@/lib/menu-video-storage"
 import { revalidatePath } from "next/cache"
@@ -1303,6 +1307,7 @@ async function saveDealRequest(formData: FormData): Promise<PartnerActionState> 
   const { supabase } = access
   const now = new Date().toISOString()
   let payload: ParsedDeal
+  let storedDeal: Partial<ParsedDeal> | null = null
 
   try {
     payload = parseDealPayload(formData, "", stringValue(formData, "partner_id"))
@@ -1315,17 +1320,25 @@ async function saveDealRequest(formData: FormData): Promise<PartnerActionState> 
   }
 
   if (id) {
-    const preservationMessage = await preserveExistingDealCopy(
-      supabase,
-      id,
+    const stored = await supabase.from("deals").select("*").eq("id", id).eq("partner_id", access.partnerId).single()
+    if (stored.error || !stored.data) return dealSaveFailure(formData, "Der vorhandene Vorteil konnte nicht geladen werden. Deine Eingaben bleiben erhalten.")
+    storedDeal = stored.data as Partial<ParsedDeal>
+    const preservationMessage = preserveExistingDealCopy(
+      storedDeal,
       formData,
       "",
       payload,
+      access.portalSession.isAdmin,
     )
 
     if (preservationMessage) {
       return dealSaveFailure(formData, preservationMessage)
     }
+  }
+
+  if (!id && !access.portalSession.isAdmin) {
+    const audienceError = partnerAudienceError(payload)
+    if (audienceError) return dealSaveFailure(formData, audienceError)
   }
 
   const validationMessage = validateDealPayload(payload)
@@ -1335,7 +1348,29 @@ async function saveDealRequest(formData: FormData): Promise<PartnerActionState> 
     return { ...dealSaveFailure(formData, validationMessage), fieldErrors }
   }
 
-  const create = id ? null : await prepareDealCreate(supabase, withDefaultDealCopy({ ...payload }), stringValue(formData, "create_request_id"), access.portalSession.user.id)
+  // Handle deal drop card image
+  const dealDropImageFile = fileValue(formData, "deal_drop_image_file")
+  const existingDealDropImageUrl = String(metadataRecord(storedDeal?.metadata).card_image_url || "")
+  const selectedMediaUrl = stringValue(formData, "selected_deal_drop_image_url")
+  const removeDealDropImage = checkboxValue(formData, "remove_deal_drop_image")
+  // removed_media_urls is populated by MediaUploadField when user hits remove
+  let dealDropImageUrl: string | null = existingDealDropImageUrl || null
+
+  if (selectedMediaUrl && !dealDropImageFile && !removeDealDropImage) {
+    const choices = await loadPartnerMediaLibrary(supabase, access.partnerId)
+    if (!choices.some(choice => choice.url === selectedMediaUrl)) return dealSaveFailure(formData, "Dieses Bild gehört nicht zur Medienauswahl dieses Betriebs. Bitte wähle das Bild erneut.")
+    dealDropImageUrl = selectedMediaUrl
+  }
+
+  if (dealDropImageFile) {
+    const mediaError = validateMediaFile(dealDropImageFile)
+    if (mediaError) return dealSaveFailure(formData, mediaError)
+  }
+  // Media is part of the same create intent. A changed image must not be
+  // acknowledged as an earlier successful request with different contents.
+  const mediaIntent = dealDropImageFile ? { upload_sha256: createHash("sha256").update(new Uint8Array(await dealDropImageFile.arrayBuffer())).digest("hex") }
+    : selectedMediaUrl || removeDealDropImage ? { card_image_url: dealDropImageUrl } : undefined
+  const create = id ? null : await prepareDealCreate(supabase, withDefaultDealCopy({ ...payload }), stringValue(formData, "create_request_id"), access.portalSession.user.id, mediaIntent)
   if (create?.error) return dealSaveFailure(formData, create.error)
   if (create?.replayed) {
     revalidatePath("/")
@@ -1353,24 +1388,7 @@ async function saveDealRequest(formData: FormData): Promise<PartnerActionState> 
     return dealSaveFailure(formData, priorityMessage)
   }
 
-  // Handle deal drop card image
-  const dealDropImageFile = fileValue(formData, "deal_drop_image_file")
-  const existingDealDropImageUrl = stringValue(
-    formData,
-    "existing_deal_drop_image_url",
-  )
-  const removeDealDropImage = checkboxValue(formData, "remove_deal_drop_image")
-  // removed_media_urls is populated by MediaUploadField when user hits remove
-  const removedMediaUrls = stringListValue(formData, "removed_media_urls")
-  let dealDropImageUrl: string | null = existingDealDropImageUrl || null
-
   if (dealDropImageFile) {
-    const mediaError = validateMediaFile(dealDropImageFile)
-
-    if (mediaError) {
-      return dealSaveFailure(formData, mediaError)
-    }
-
     const dealId = id || "new"
     const partnerId = payload.partner_id
     const uploaded = await uploadPartnerFile(
@@ -1400,7 +1418,7 @@ async function saveDealRequest(formData: FormData): Promise<PartnerActionState> 
     ...(id ? {} : { id: create!.id, created_at: now }),
   }
   const mutationMessage = id
-    ? await updateDeal(supabase, id, mutationPayload)
+    ? await updateDeal(supabase, id, mutationPayload, stringValue(formData, "expected_updated_at"))
     : await insertDeals(supabase, [mutationPayload])
 
   if (mutationMessage) {
@@ -1416,19 +1434,8 @@ async function saveDealRequest(formData: FormData): Promise<PartnerActionState> 
     return dealSaveFailure(formData, mutationMessage)
   }
 
-  // Clean up replaced or removed deal drop images.
-  // existingDealDropImageUrl covers the replace case (new file uploaded over old one).
-  // removedMediaUrls covers the remove case (user hit remove without uploading a new file).
-  const urlsToCleanup = [
-    ...(existingDealDropImageUrl && existingDealDropImageUrl !== dealDropImageUrl
-      ? [existingDealDropImageUrl]
-      : []),
-    ...removedMediaUrls.filter((url) => url !== dealDropImageUrl),
-  ]
-
-  if (urlsToCleanup.length > 0) {
-    after(() => cleanupPublicMediaUrls(supabase, urlsToCleanup))
-  }
+  // Saved image URLs can be shared by partner slots, other benefits and published
+  // versions. Removing a selection never deletes its underlying library asset.
 
   revalidatePath("/")
 
@@ -1482,12 +1489,11 @@ async function saveRewardMilestoneRequest(formData: FormData): Promise<PartnerAc
     updated_at: now,
     ...(id ? {} : { id: create!.id, created_at: now }),
   }
-  const result = id
-    ? await supabase
-        .from("partner_reward_milestones")
-        .update(mutationPayload)
-        .eq("id", id)
-    : await supabase.from("partner_reward_milestones").insert(mutationPayload)
+  const query = id
+    ? supabase.from("partner_reward_milestones").update(mutationPayload).eq("id", id).eq("partner_id", access.partnerId)
+    : supabase.from("partner_reward_milestones").insert(mutationPayload)
+  const revision = stringValue(formData, "expected_updated_at")
+  const result = await (id && revision ? query.eq("updated_at", revision) : query).select("id,partner_id")
 
   if (result.error) {
     if (create && await recoverMilestoneCreate(supabase, create.id, payload)) {
@@ -1495,6 +1501,9 @@ async function saveRewardMilestoneRequest(formData: FormData): Promise<PartnerAc
       return { ok: true, message: "Diese Stempelbelohnung wurde bereits gespeichert." }
     }
     return { ok: false, message: "Die Stempelbelohnung konnte nicht gespeichert werden. Deine Eingaben bleiben erhalten. Bitte versuche es erneut." }
+  }
+  if (!Array.isArray(result.data) || result.data.length !== 1 || result.data[0].id !== (id || create!.id) || result.data[0].partner_id !== access.partnerId) {
+    return { ok: false, message: "Die Speicherung wurde nicht bestätigt. Bitte prüfe, ob die Stempelbelohnung inzwischen geändert wurde. Deine Eingaben bleiben erhalten." }
   }
 
   revalidatePath("/")
@@ -3761,6 +3770,15 @@ async function preparePartnerUploadFile(
 
   const input = Buffer.from(await file.arrayBuffer())
   try {
+    const metadata = await sharp(input).metadata()
+    if (metadata.format === "webp" && metadata.width && metadata.height &&
+      metadata.width <= spec.width && metadata.height <= spec.height &&
+      Math.abs(metadata.width / metadata.height - spec.width / spec.height) < 0.01 &&
+      (!metadata.orientation || metadata.orientation === 1) && (metadata.pages || 1) === 1) {
+      // The browser (or source) already prepared this crop. Preserve its encoded
+      // pixels; encoding a second time increases loss without improving layout.
+      return new File([new Uint8Array(input)], replaceFileExtension(file.name, `${metadata.width}x${metadata.height}.webp`), { type: "image/webp", lastModified: Date.now() })
+    }
     const { data: resized, info } = await sharp(input)
       .rotate()
       .resize(spec.width, spec.height, {
@@ -3864,8 +3882,6 @@ async function cleanupUploadedFiles(
 }
 
 async function cleanupPublicMediaUrls(supabase: SupabaseClient, urls: string[]) {
-  const pathsByBucket = new Map<string, string[]>()
-
   for (const url of urls) {
     const storagePath = parsePublicStorageUrl(url)
 
@@ -3882,15 +3898,26 @@ async function cleanupPublicMediaUrls(supabase: SupabaseClient, urls: string[]) 
       continue
     }
 
-    pathsByBucket.set(storagePath.bucket, [
-      ...(pathsByBucket.get(storagePath.bucket) ?? []),
-      storagePath.path,
-    ])
+    // Persisted images remain reusable and may be referenced by immutable
+    // published/history versions or another partner. An editor's RLS view cannot
+    // prove global exclusivity. Only uncommitted uploads use cleanupUploadedFiles.
   }
+}
 
-  for (const [bucket, paths] of pathsByBucket) {
-    await supabase.storage.from(bucket).remove(paths)
-  }
+async function loadPartnerMediaLibrary(supabase: SupabaseClient, partnerId: string) {
+  const [partner, menus, deals] = await Promise.all([
+    supabase.from("partners").select("logo_url,feature_card_url,discover_card_image_url,cover_urls").eq("id", partnerId).single(),
+    supabase.from("menus").select("id").eq("partner_id", partnerId),
+    supabase.from("deals").select("metadata").eq("partner_id", partnerId),
+  ])
+  if (partner.error || menus.error || deals.error || !partner.data) throw new Error("Die Partnerbilder konnten nicht geprüft werden.")
+  const menuIds = (menus.data || []).map(menu => menu.id)
+  const [categories, items] = menuIds.length ? await Promise.all([
+    supabase.from("menu_categories").select("name,image_url").in("menu_id", menuIds),
+    supabase.from("menu_items").select("name,image_url").in("menu_id", menuIds),
+  ]) : [{ data: [], error: null }, { data: [], error: null }]
+  if (categories.error || items.error) throw new Error("Die Partnerbilder konnten nicht geprüft werden.")
+  return partnerMediaLibrary({ ...partner.data, deals: deals.data || [], menus: [{ categories: categories.data || [], items: items.data || [] }] })
 }
 
 function parsePublicStorageUrl(url: string): UploadedStoragePath | null {
@@ -4334,9 +4361,9 @@ async function insertDeals(
   supabase: SupabaseClient,
   deals: Array<ParsedDeal & { created_at?: string; updated_at?: string }>,
 ) {
-  return await mutateDealPayloadWithSchemaRetry(
+  return await mutateConfirmedDeals(
     deals.map((deal) => withDefaultDealCopy({ ...deal })),
-    (payload) => supabase.from("deals").insert(payload),
+    (payload) => supabase.from("deals").insert(payload).select("id,partner_id"),
   )
 }
 
@@ -4344,94 +4371,40 @@ async function updateDeal(
   supabase: SupabaseClient,
   id: string,
   deal: ParsedDeal & { created_at?: string; updated_at?: string },
+  expectedUpdatedAt = "",
 ) {
   const mutationPayload: Record<string, unknown> = withDefaultDealCopy({ ...deal })
+  // Remaining stock is a live redemption counter, never ordinary configuration.
+  if (isLimitedDropDeal(deal)) delete mutationPayload.stock_remaining
   if (isHappyHourDeal(deal)) {
     // HH stock is consumed by scans and has no editable fields here. Omitting
     // it also preserves a redemption committed after the edit loaded its row.
     for (const field of ["stock_total", "stock_remaining", "selection_expires_minutes", "reserve_on_selection"]) delete mutationPayload[field]
   }
-  return await mutateDealPayloadWithSchemaRetry(
+  return await mutateConfirmedDeals(
     mutationPayload,
-    (payload) => supabase.from("deals").update(payload).eq("id", id),
+    (payload) => {
+      const query = supabase.from("deals").update(payload).eq("id", id).eq("partner_id", deal.partner_id)
+      return (expectedUpdatedAt ? query.eq("updated_at", expectedUpdatedAt) : query).select("id,partner_id")
+    },
   )
 }
 
-async function mutateDealPayloadWithSchemaRetry<
+async function mutateConfirmedDeals<
   TPayload extends Record<string, unknown> | Array<Record<string, unknown>>,
 >(
   payload: TPayload,
-  mutate: (payload: TPayload) => PromiseLike<{ error: { message: string } | null }>,
+  mutate: (payload: TPayload) => PromiseLike<{ data?: unknown; error: { message: string } | null }>,
 ) {
-  const removedColumns = new Set<string>()
-
-  while (true) {
-    const result = await mutate(payload)
-
-    if (!result.error) {
-      return null
-    }
-
-    const missingColumn = missingSchemaCacheColumn(result.error.message)
-
-    if (!missingColumn || removedColumns.has(missingColumn)) {
-      return result.error.message
-    }
-
-    if (missingColumn === "valid_weekdays") {
-      mirrorValidWeekdaysToWeekdays(payload)
-    }
-
-    removeMutationColumn(payload, missingColumn)
-    removedColumns.add(missingColumn)
+  const result = await mutate(payload)
+  if (result.error) return result.error.message
+  const expected = Array.isArray(payload) ? payload : [payload]
+  const rows = Array.isArray(result.data) ? result.data as Array<{ id?: string; partner_id?: string }> : []
+  if (rows.length !== expected.length || expected.some(row => !rows.some(saved =>
+    saved.id && (!row.id || saved.id === row.id) && saved.partner_id === row.partner_id))) {
+    return "Die Speicherung wurde nicht bestätigt. Deine Eingaben bleiben erhalten. Bitte lade den Vorteil neu und versuche es erneut."
   }
-}
-
-function missingSchemaCacheColumn(message: string) {
-  return (
-    message.match(/Could not find the '([^']+)' column/)?.[1] ??
-    message.match(/column "([^"]+)" of relation "[^"]+" does not exist/)?.[1] ??
-    null
-  )
-}
-
-function removeMutationColumn(
-  payload: Record<string, unknown> | Array<Record<string, unknown>>,
-  column: string,
-) {
-  if (Array.isArray(payload)) {
-    for (const row of payload) {
-      delete row[column]
-    }
-
-    return
-  }
-
-  delete payload[column]
-}
-
-function mirrorValidWeekdaysToWeekdays(
-  payload: Record<string, unknown> | Array<Record<string, unknown>>,
-) {
-  const rows = Array.isArray(payload) ? payload : [payload]
-
-  for (const row of rows) {
-    const validWeekdays = row.valid_weekdays
-    const existingWeekdays = row.weekdays
-
-    if (
-      !Array.isArray(validWeekdays) ||
-      validWeekdays.some((weekday) => typeof weekday !== "number")
-    ) {
-      continue
-    }
-
-    if (Array.isArray(existingWeekdays) && existingWeekdays.length > 0) {
-      continue
-    }
-
-    row.weekdays = [...validWeekdays]
-  }
+  return null
 }
 
 function parseDealPayload(
@@ -4459,7 +4432,7 @@ function parseDealPayload(
   const benefitCount = integerValue(formData, `${prefix}benefit_count`)
   const audience =
     normalizeChoice(stringValue(formData, `${prefix}audience`), isAudience) ??
-    DEFAULT_AUDIENCE
+    defaultDealAudience({ type: dealConcept, discount_type: discountType })
   const stockTotal = integerValue(formData, `${prefix}stock_total`)
   const stockRemaining =
     isLimitedDrop &&
@@ -4467,8 +4440,9 @@ function parseDealPayload(
     !stringValue(formData, `${prefix}stock_remaining`)
       ? stockTotal
       : integerValue(formData, `${prefix}stock_remaining`)
-  const startsAt = nullableStringValue(formData, `${prefix}starts_at`)
-  const endsAt = nullableStringValue(formData, `${prefix}ends_at`)
+  const timezone = stringValue(formData, `${prefix}timezone`) || DEFAULT_TIMEZONE
+  const startsAt = partnerDateTimeToUtc(nullableStringValue(formData, `${prefix}starts_at`), timezone)
+  const endsAt = partnerDateTimeToUtc(nullableStringValue(formData, `${prefix}ends_at`), timezone)
   const usesDiscountValue =
     discountType === "fixed" || discountType === "percent"
   const usesRewardItem = discountTypeUsesRewardItem(discountType)
@@ -4500,10 +4474,7 @@ function parseDealPayload(
         : manualEstimatedSavings
   const validWeekdays = integerListValue(formData, `${prefix}valid_weekdays`)
   const hasWeekdaySelector = formData.has(`${prefix}valid_weekdays_present`)
-  const allowFreeTrial =
-    isLimitedDrop &&
-    discountType === "2for1" &&
-    checkboxValue(formData, `${prefix}allow_free_trial`)
+  const allowFreeTrial = false
   const { displayTitle, displaySubtitle } = readDealPublicDisplayValues(
     formData,
     prefix,
@@ -4573,10 +4544,10 @@ function parseDealPayload(
     ends_at: isLimitedDrop ? endsAt : null,
     valid_from: isLimitedDrop
       ? startsAt
-      : nullableStringValue(formData, `${prefix}valid_from`),
+      : partnerDateTimeToUtc(nullableStringValue(formData, `${prefix}valid_from`), timezone),
     valid_until: isLimitedDrop
       ? endsAt
-      : nullableStringValue(formData, `${prefix}valid_until`),
+      : partnerDateTimeToUtc(nullableStringValue(formData, `${prefix}valid_until`), timezone),
     valid_weekdays:
       isLimitedDrop || usesHappyHour
         ? validWeekdays.length
@@ -4606,8 +4577,7 @@ function parseDealPayload(
     reward_track_target:
       stringValue(formData, `${prefix}reward_track_target`) ||
       DEFAULT_REWARD_TRACK_TARGET,
-    timezone:
-      stringValue(formData, `${prefix}timezone`) || DEFAULT_TIMEZONE,
+    timezone,
     weekdays: listValue(formData, `${prefix}weekdays`),
     // TODO: Backend selection handling must expire reserved stock holds.
     reserve_on_selection:
@@ -4782,28 +4752,22 @@ function savedDealCopyValue(
   return nullableStringValue(formData, `${prefix}original_${field}`)
 }
 
-async function preserveExistingDealCopy(
-  supabase: SupabaseClient,
-  id: string,
+function preserveExistingDealCopy(
+  current: Partial<ParsedDeal>,
   formData: FormData,
   prefix: string,
   payload: ParsedDeal,
+  isAdmin = true,
 ) {
-  const result = await supabase
-    .from("deals")
-    .select("*")
-    .eq("id", id)
-    .single()
+  payload.allow_free_trial = current.allow_free_trial ?? false
 
-  if (result.error) {
-    return result.error.message
-  }
-
-  const current = result.data as Partial<ParsedDeal> & {
-    customer_description: string | null
-    staff_instructions: string | null
-    terms: string | null
-    reward_item: string | null
+  if (isLimitedDropDeal(payload) && isLimitedDropDeal(current)) {
+    if (current.type && ["discount", "free_item", "two_for_one"].includes(current.type)) {
+      payload.type = canonicalRewardFormat("limited_drop", payload.discount_type) ?? current.type
+    }
+    payload.trigger_key = current.trigger_key ?? null
+    payload.trigger_value = current.trigger_value ?? null
+    payload.expiry_days = current.expiry_days ?? null
   }
 
   // The editor represents the campaign as HH. Keep storage compatibility and
@@ -4846,10 +4810,10 @@ async function preserveExistingDealCopy(
       formData,
       prefix,
       "customer_description",
-      current.customer_description,
+      current.customer_description ?? null,
     )
   ) {
-    payload.customer_description = current.customer_description
+    payload.customer_description = current.customer_description ?? null
   }
 
   if (
@@ -4857,24 +4821,24 @@ async function preserveExistingDealCopy(
       formData,
       prefix,
       "staff_instructions",
-      current.staff_instructions,
+      current.staff_instructions ?? null,
     )
   ) {
-    payload.staff_instructions = current.staff_instructions
+    payload.staff_instructions = current.staff_instructions ?? null
   }
 
-  if (!dealCopyFieldChanged(formData, prefix, "terms", current.terms)) {
-    payload.terms = current.terms
+  if (!dealCopyFieldChanged(formData, prefix, "terms", current.terms ?? null)) {
+    payload.terms = current.terms ?? null
   }
 
   if (
     discountTypeUsesRewardItem(payload.discount_type) &&
-    !dealCopyFieldChanged(formData, prefix, "reward_item", current.reward_item)
+    !dealCopyFieldChanged(formData, prefix, "reward_item", current.reward_item ?? null)
   ) {
-    payload.reward_item = current.reward_item
+    payload.reward_item = current.reward_item ?? null
   }
 
-  return null
+  return isAdmin ? null : partnerAudienceError(payload, current)
 }
 
 function dealCopyFieldChanged(
@@ -4928,6 +4892,10 @@ function normalizeDealDiscountType(type: string, discountType: string) {
   return discountType === "twoforone"
     ? "2for1"
     : discountType || "bonus_stamp"
+}
+
+function isLimitedDropDeal(deal: { type?: string | null; campaign_type?: string | null }) {
+  return ["limited_drop", "deal_drop"].includes(deal.type || "") || ["limited_drop", "deal_drop"].includes(deal.campaign_type || "")
 }
 
 function isHappyHourDeal(deal: { type?: string | null; campaign_type?: string | null }) {
@@ -4992,7 +4960,7 @@ function validateDealPayload(payload: ParsedDeal) {
     return textValidation
   }
 
-  if (payload.type === "limited_drop") {
+  if (isLimitedDropDeal(payload)) {
     const allowedDropDiscountTypes = [
       "item",
       "fixed",
@@ -5255,7 +5223,7 @@ function validateDealPayload(payload: ParsedDeal) {
 }
 
 function withDefaultDealCopy<T extends ParsedDeal>(payload: T): T {
-  const copyType = isHappyHourDeal(payload) ? "happy_hour" : isStreakDeal(payload) ? "streak" : payload.type
+  const copyType = isHappyHourDeal(payload) ? "happy_hour" : isLimitedDropDeal(payload) ? "limited_drop" : isStreakDeal(payload) ? "streak" : payload.type
   const reward = describeDealReward(
     payload.discount_type,
     payload.discount_value,

@@ -96,6 +96,7 @@ export type Deal = {
   stock_remaining: number | null
   selection_expires_minutes: number | null
   priority: number | null
+  display_order?: number | null
   min_spend: number | null
   max_discount_amount: number | null
   allow_free_trial: boolean | null

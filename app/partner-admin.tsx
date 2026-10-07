@@ -1,5 +1,12 @@
 "use client"
 
+import { defaultDealAudience, premiumCampaignKey, requiresPremiumAudience } from "@/lib/deal-audience"
+import { formatPartnerDateTime, partnerDateTimeToUtc } from "@/lib/deal-datetime"
+import { PartnerInternalContact, PartnerBadgeManager, PartnerConfigurationHistory } from "@/components/partner/partner-internal-tools"
+import { reorderPartnerDeals } from "./partner-configuration-actions"
+import { isActiveDisplayDrop, sortDealsForDisplay } from "@/lib/deal-display-order"
+import { partnerMediaLibrary, type PartnerMediaChoice } from "@/lib/partner-media-library"
+
 import { normalizePartnerTypeValue, partnerTypeSupportsMenu } from "@/lib/partners/management"
 
 import { usePartnerCapabilities } from "./use-partner-capabilities"
@@ -1391,6 +1398,7 @@ function PartnerDetail({
                   portalMode={portalMode}
                   compactMode={compactMode}
                 />
+                {!portalMode && adminAccess && partner.id ? <PartnerInternalContact key={partner.id} partnerId={partner.id} /> : null}
                 <div className="flex flex-wrap items-end justify-between gap-3 border-t border-zinc-200 pt-3">
                   <div className="max-w-xs flex-1">
                     <PartnerPinDisplay
@@ -1409,6 +1417,7 @@ function PartnerDetail({
                 {portalMode && partner.id ? (
                   <PartnerFeedbackSettingsLoader key={partner.id} partnerId={partner.id} dealRevision={JSON.stringify(partner.deals)} />
                 ) : null}
+                {!portalMode && adminAccess && partner.id ? <><PartnerBadgeManager key={`badges-${partner.id}`} partnerId={partner.id} /><PartnerConfigurationHistory key={`history-${partner.id}`} partnerId={partner.id} /></> : null}
               </div>
             ) : null}
             {settingsTab === "menu" ? <MenuPanel partner={partner} embedded /> : null}
@@ -4497,10 +4506,48 @@ function DealsPanel({
   const [typeFilter, setTypeFilter] = useState(
     initialType === "happy_hour" ? "happy_hour" : "all",
   )
-  const [asOf] = useState(() => Date.now())
+  const [asOf, setAsOf] = useState(() => Date.now())
+  useEffect(() => { const timer = window.setInterval(() => setAsOf(Date.now()), 30_000); return () => window.clearInterval(timer) }, [])
+  const [orderState, setOrderState] = useState<{ source: Deal[]; values: Map<string, number> } | null>(null)
+  const [orderMessage, setOrderMessage] = useState("")
+  const [orderPending, startOrderTransition] = useTransition()
+  const orderingRef = useRef(false)
+  const [draggedDealId, setDraggedDealId] = useState("")
+  const displayDeals = sortDealsForDisplay(partner.deals.map(deal => orderState?.source === partner.deals && deal.id && orderState.values.has(deal.id) ? { ...deal, display_order: orderState.values.get(deal.id) } : deal), new Date(asOf))
+  function persistDealOrder(id: string, targetId: string) {
+    if (orderingRef.current || !id || id === targetId) return
+    const moving = displayDeals.find(deal => deal.id === id), target = displayDeals.find(deal => deal.id === targetId)
+    if (!moving || !target || isActiveDisplayDrop(moving, new Date(asOf)) || isActiveDisplayDrop(target, new Date(asOf))) return
+    const ids = displayDeals.map(deal => deal.id).filter((value): value is string => Boolean(value))
+    if (ids.length !== partner.deals.length) return
+    const from = ids.indexOf(id), to = ids.indexOf(targetId)
+    ids.splice(from, 1); ids.splice(to, 0, id)
+    orderingRef.current = true
+    setOrderMessage("")
+    startOrderTransition(async () => {
+      try {
+        const result = await reorderPartnerDeals(partnerId, ids)
+        setOrderMessage(result.message)
+        if (result.ok && result.data) setOrderState({ source: partner.deals, values: new Map(result.data.map(row => [row.id, row.display_order])) })
+      } catch { setOrderMessage("Der Speicherstatus konnte nicht bestätigt werden. Bitte lade die Vorteilsliste neu, bevor du die Reihenfolge erneut änderst.") }
+      finally { orderingRef.current = false; setDraggedDealId("") }
+    })
+  }
+  function orderControls(deal: Deal) {
+    const index = displayDeals.findIndex(row => row.id === deal.id), pinned = isActiveDisplayDrop(deal, new Date(asOf))
+    const name = formatBenefitTitle(deal, "de")
+    return <div className="mb-2 flex items-center justify-between gap-2 text-xs text-zinc-500"><span>{pinned ? "Aktiver Deal Drop · bleibt oben" : "↕ Zum Verschieben ziehen"}</span><div className="flex gap-1"><button type="button" aria-label={`${name} nach oben verschieben`} className="min-h-9 min-w-9 rounded-lg border border-zinc-200 bg-white disabled:opacity-30" disabled={orderPending || pinned || index <= 0 || isActiveDisplayDrop(displayDeals[index - 1], new Date(asOf))} onClick={() => persistDealOrder(deal.id || "", displayDeals[index - 1]?.id || "")}>↑</button><button type="button" aria-label={`${name} nach unten verschieben`} className="min-h-9 min-w-9 rounded-lg border border-zinc-200 bg-white disabled:opacity-30" disabled={orderPending || pinned || index >= displayDeals.length - 1} onClick={() => persistDealOrder(deal.id || "", displayDeals[index + 1]?.id || "")}>↓</button></div></div>
+  }
+  const dragProps = (deal: Deal) => ({
+    draggable: !orderPending && !isActiveDisplayDrop(deal, new Date(asOf)),
+    onDragStart: (event: React.DragEvent<HTMLElement>) => { event.dataTransfer.setData("text/plain", deal.id || ""); event.dataTransfer.effectAllowed = "move"; setDraggedDealId(deal.id || "") },
+    onDragEnd: () => setDraggedDealId(""),
+    onDragOver: (event: React.DragEvent<HTMLElement>) => { if (draggedDealId && !isActiveDisplayDrop(deal, new Date(asOf))) event.preventDefault() },
+    onDrop: (event: React.DragEvent<HTMLElement>) => { event.preventDefault(); persistDealOrder(draggedDealId, deal.id || "") },
+  })
   const offerStatus = (deal: Deal) => {
     if (
-      deal.type === "limited_drop" &&
+      dealUiTypeForDeal(deal) === "limited_drop" &&
       isSoldOutDealDrop(deal.stock_total, deal.stock_remaining)
     )
       return "Ausverkauft"
@@ -4511,13 +4558,14 @@ function DealsPanel({
     if (Number.isFinite(start) && start > asOf) return "Geplant"
     return "Aktiv"
   }
-  const filteredDeals = partner.deals.filter(
+  const filteredDeals = displayDeals.filter(
     (deal) =>
       (statusFilter === "Alle" || offerStatus(deal) === statusFilter) &&
       (typeFilter === "all" || dealUiTypeForDeal(deal) === typeFilter),
   )
   const portalContent = (
     <div className="space-y-5">
+      {orderMessage ? <p role="status" className="text-sm text-zinc-600">{orderMessage}</p> : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold">Vorteile</h2>
         <button
@@ -4558,10 +4606,12 @@ function DealsPanel({
       <div className="grid items-start gap-4 xl:grid-cols-2">
         {filteredDeals.map((deal, index) => (
           <article
+            {...dragProps(deal)}
             data-partner-offer
             key={deal.id ?? index}
             className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5"
           >
+            {orderControls(deal)}
             <div className="flex items-start gap-4">
               <div className="flex min-h-20 w-24 shrink-0 items-center justify-center rounded-2xl bg-sky-50 p-3 text-center text-lg font-bold text-[#0874d1]">
                 {formatDealRewardSummary(deal)}
@@ -4654,6 +4704,8 @@ function DealsPanel({
       </p>
       <DealEditorDialog
         editor={dealEditor}
+        mediaOptions={partnerMediaLibrary(partner)}
+        portalMode={portalMode}
         onClose={() => setDealEditor(null)}
         partnerId={partnerId}
         partnerName={partner.name ?? ""}
@@ -4664,6 +4716,7 @@ function DealsPanel({
 
   const content = (
     <div className="space-y-4">
+      {orderMessage ? <p role="status" className="text-sm text-zinc-600">{orderMessage}</p> : null}
       {!hasDealRows ? (
         <WarningNote>
           At least one benefit is recommended, but this partner can exist
@@ -4672,13 +4725,15 @@ function DealsPanel({
       ) : null}
       {hasDealRows ? (
         <div className="space-y-3">
-          {partner.deals.map((deal, index) => (
+          {displayDeals.map((deal, index) => (
+            <div key={deal.id ?? `${deal.partner_id}-${deal.type}`} {...dragProps(deal)} aria-busy={orderPending} className={draggedDealId === deal.id ? "opacity-60" : ""}>
+            {orderControls(deal)}
             <DealCard
-              key={deal.id ?? `${deal.partner_id}-${deal.type}`}
               deal={deal}
               index={index}
               onEdit={() => setDealEditor({ mode: "edit", deal })}
             />
+            </div>
           ))}
         </div>
       ) : (
@@ -4697,6 +4752,8 @@ function DealsPanel({
       ) : null}
       <DealEditorDialog
         editor={dealEditor}
+        mediaOptions={partnerMediaLibrary(partner)}
+        portalMode={portalMode}
         onClose={() => setDealEditor(null)}
         partnerId={partnerId}
         partnerName={partner.name ?? ""}
@@ -4832,13 +4889,13 @@ function dealAudienceValueLabel(audience = "both") {
   if (audience === "premium") return "Premium"
   if (audience === "free") return "Free"
   if (audience === "both") return "Free + Premium"
-  if (audience === "free_trial_only") return "Nur Free-Testphase"
+  if (audience === "free_trial_only") return "Bestehende Einstellung"
 
   return "Free + Premium"
 }
 
 function normalizeAudienceForEditor(audience?: string | null) {
-  return audienceOptions.some((option) => option.value === audience)
+  return audience === "free_trial_only" || audienceOptions.some((option) => option.value === audience)
     ? audience!
     : DEFAULT_AUDIENCE
 }
@@ -4862,7 +4919,7 @@ function DealCard({
   index: number
   onEdit: () => void
 }) {
-  const isLimitedDrop = deal.type === "limited_drop"
+  const isLimitedDrop = dealUiTypeForDeal(deal) === "limited_drop"
   const soldOut =
     isLimitedDrop &&
     isSoldOutDealDrop(deal.stock_total ?? null, deal.stock_remaining ?? null)
@@ -4935,12 +4992,16 @@ function DealEditorDialog({
   partnerId,
   partnerName,
   visits,
+  portalMode = false,
+  mediaOptions = [],
 }: {
   editor: DealEditorState | null
   onClose: () => void
   partnerId: string
   partnerName: string
   visits: Visit[]
+  portalMode?: boolean
+  mediaOptions?: PartnerMediaChoice[]
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -5007,6 +5068,8 @@ function DealEditorDialog({
         <div className="overflow-y-auto p-3 sm:p-4">
           <DealForm
             deal={deal}
+            mediaOptions={mediaOptions}
+            portalMode={portalMode}
             partnerName={partnerName}
             partnerId={partnerId}
             mode={deal ? "edit" : "create"}
@@ -5051,6 +5114,8 @@ function DealForm({
   partnerId,
   mode,
   visits = [],
+  portalMode = false,
+  mediaOptions = [],
 }: {
   deal?: Deal
   partnerName?: string
@@ -5065,6 +5130,8 @@ function DealForm({
   partnerId: string
   mode: "create" | "edit"
   visits?: Visit[]
+  portalMode?: boolean
+  mediaOptions?: PartnerMediaChoice[]
 }) {
   const submittingRef = useRef(false)
   const createRequestId = useRef<string | null>(null)
@@ -5108,10 +5175,13 @@ function DealForm({
     >
       <input type="hidden" name="id" value={deal?.id ?? ""} />
       <input type="hidden" name="partner_id" value={partnerId} />
+      <input type="hidden" name="expected_updated_at" value={deal?.updated_at || ""} />
 
       <fieldset disabled={pending} className="min-w-0">
       <DealFields
         deal={deal}
+        mediaOptions={mediaOptions}
+        portalMode={portalMode}
         dealDraft={state.dealDraft}
         fieldErrors={state.fieldErrors}
         partnerName={partnerName}
@@ -5771,15 +5841,12 @@ function DealTypeDescription({
 }) {
   return (
     <div className="space-y-1.5 text-xs">
-      <p className="leading-5 text-zinc-600">
-        <span className="font-semibold text-zinc-700">{typeLabel}:</span>{" "}
-        {explanation.description}
-      </p>
       <details className="text-zinc-600">
         <summary className="cursor-pointer list-none font-semibold text-teal-700 outline-none focus-visible:ring-2 focus-visible:ring-teal-100 [&::-webkit-details-marker]:hidden">
-          More setup details
+          Weitere Infos
         </summary>
         <div className="mt-2 space-y-2 border-l border-zinc-200 pl-3 leading-5">
+          <p><span className="font-semibold">{typeLabel}:</span> {explanation.description}</p>
           <p>Example: {explanation.example}</p>
           {explanation.important ? <p>{explanation.important}</p> : null}
           <div className="grid gap-2 sm:grid-cols-2">
@@ -6071,7 +6138,7 @@ function normalizeRewardItem(value: string | null | undefined) {
     .trim()
 }
 
-function DealFields({
+export function DealFields({
   deal,
   dealDraft,
   fieldErrors,
@@ -6084,6 +6151,8 @@ function DealFields({
   onDraftTitleChange,
   visits = [],
   useBrowserValidation = true,
+  portalMode = false,
+  mediaOptions = [],
 }: {
   deal?: Deal
   dealDraft?: DealFormDraft
@@ -6097,10 +6166,15 @@ function DealFields({
   onDraftTitleChange?: (title: string) => void
   visits?: Visit[]
   useBrowserValidation?: boolean
+  portalMode?: boolean
+  mediaOptions?: PartnerMediaChoice[]
 }) {
   const initialDealType = dealDraft?.dealConcept || dealUiTypeForDeal(deal)
   const initialBackendDealType = backendDealTypeForUi(initialDealType)
   const dealMetadata = metadataObject(deal?.metadata)
+  const storedCardImage = metadataString(dealMetadata, "card_image_url")
+  const [selectedCardImage, setSelectedCardImage] = useState(storedCardImage)
+  const [previewCardImage, setPreviewCardImage] = useState(storedCardImage)
   const initialDiscountType =
     normalizeDiscountTypeForUi(
       initialBackendDealType,
@@ -6126,7 +6200,7 @@ function DealFields({
     deal?.stock_remaining !== null && deal?.stock_remaining !== undefined,
   )
   const [selectedAudience, setSelectedAudience] = useState(
-    normalizeAudienceForEditor(dealDraft?.audience || deal?.audience),
+    normalizeAudienceForEditor(dealDraft?.audience || deal?.audience || (deal?.premium_only ? "premium" : deal ? DEFAULT_AUDIENCE : defaultDealAudience({ type: initialDealType, discount_type: initialDiscountType }))),
   )
   const [active, setActive] = useState(defaultActive)
   const [discountValue, setDiscountValue] = useState(
@@ -6203,26 +6277,24 @@ function DealFields({
   const [happyHourEnd, setHappyHourEnd] = useState(
     formatTextInputValue(deal?.happy_hour_end),
   )
+  const [selectedTimezone, setSelectedTimezone] = useState(deal?.timezone || DEFAULT_TIMEZONE)
   const [startsAt, setStartsAt] = useState(
-    formatDateTimeInput(deal?.starts_at ?? deal?.valid_from),
+    formatPartnerDateTime(deal?.starts_at ?? deal?.valid_from, selectedTimezone),
   )
   const [endsAt, setEndsAt] = useState(
-    formatDateTimeInput(deal?.ends_at ?? deal?.valid_until),
+    formatPartnerDateTime(deal?.ends_at ?? deal?.valid_until, selectedTimezone),
   )
   const [validFrom, setValidFrom] = useState(
-    formatDateTimeInput(deal?.valid_from ?? (initialDealType === "happy_hour" ? deal?.starts_at : null)),
+    formatPartnerDateTime(deal?.valid_from ?? (initialDealType === "happy_hour" ? deal?.starts_at : null), selectedTimezone),
   )
   const [validUntil, setValidUntil] = useState(
-    formatDateTimeInput(deal?.valid_until ?? (initialDealType === "happy_hour" ? deal?.ends_at : null)),
+    formatPartnerDateTime(deal?.valid_until ?? (initialDealType === "happy_hour" ? deal?.ends_at : null), selectedTimezone),
   )
   const [minSpend, setMinSpend] = useState(
     formatTextInputValue(deal?.min_spend),
   )
   const [expiryDays, setExpiryDays] = useState(
     formatTextInputValue(deal?.expiry_days),
-  )
-  const [allowFreeTrial, setAllowFreeTrial] = useState(
-    deal?.allow_free_trial ?? false,
   )
   useEffect(() => {
     if (!dealDraft) return
@@ -6277,8 +6349,7 @@ function DealFields({
   const isLimitedDrop = selectedBackendDealType === "limited_drop"
   const isWelcomeDeal = selectedBackendDealType === "welcome"
   const isHappyHour = selectedBackendDealType === "happy_hour"
-  const showsAllowFreeTrial =
-    isLimitedDrop && selectedDiscountType === "2for1"
+  const audienceLocked = portalMode && (requiresPremiumAudience({ type: selectedDealType, discount_type: selectedDiscountType }) || requiresPremiumAudience(deal || {}))
   const dealDropSoldOut =
     isLimitedDrop &&
     isSoldOutDealDrop(
@@ -6464,12 +6535,15 @@ function DealFields({
     setSelectedDealType(value)
     setSelectedDiscountType(nextDiscountType)
     setSelectedBenefitCategory(nextConfig.autoValues.benefitCategory)
+    const nextAudience = defaultDealAudience({ type: value, discount_type: nextDiscountType }) === "premium" ? "premium" : selectedAudience
+    setSelectedAudience(nextAudience)
     applyConfigSideEffects(nextConfig)
     onDraftTypeChange?.(value)
     onDraftMetaChange?.({
       benefitCategory: nextConfig.autoValues.benefitCategory,
       dealType: value,
       discountType: nextDiscountType,
+      audience: nextAudience,
     })
     emitDraftTitle({ type: value, discountType: nextDiscountType })
   }
@@ -6488,9 +6562,14 @@ function DealFields({
     setSelectedDiscountType(nextDiscountType)
     setSelectedBenefitCategory(nextConfig.autoValues.benefitCategory)
     applyConfigSideEffects(nextConfig)
+    const nextKey = premiumCampaignKey({ type: selectedDealType, discount_type: nextDiscountType })
+    const currentKey = premiumCampaignKey({ type: selectedDealType, discount_type: selectedDiscountType })
+    const nextAudience = nextKey && nextKey !== currentKey ? "premium" : selectedAudience
+    setSelectedAudience(nextAudience)
     onDraftMetaChange?.({
       benefitCategory: nextConfig.autoValues.benefitCategory,
       discountType: nextDiscountType,
+      audience: nextAudience,
     })
     emitDraftTitle({ discountType: nextDiscountType })
   }
@@ -6610,17 +6689,17 @@ function DealFields({
             onChange={handleDiscountTypeChange}
             required={useBrowserValidation}
           />
-          <SelectField
+          {audienceLocked ? <div className="space-y-1.5 text-sm"><FieldLabel label="Zielgruppe" /><input type="hidden" name={`${prefix}audience`} value={selectedAudience} /><p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">{dealAudienceValueLabel(selectedAudience)}</p><p className="text-xs text-zinc-500">Die Zielgruppe dieses Vorteils ist festgelegt.</p></div> : <SelectField
             label="Zielgruppe"
             name={`${prefix}audience`}
             value={selectedAudience}
-            options={audienceOptions}
+            options={selectedAudience === "free_trial_only" ? [{ value: "free_trial_only", label: "Bestehende Einstellung beibehalten" }, ...audienceOptions] : audienceOptions}
             onChange={(audience) => {
               setSelectedAudience(audience)
               onDraftMetaChange?.({ audience })
             }}
             required
-          />
+          />}
           <CheckboxField
             label="Aktiv"
             name={`${prefix}active`}
@@ -6945,15 +7024,6 @@ function DealFields({
                 />
               </>
             ) : null}
-            {showsAllowFreeTrial ? (
-              <CheckboxField
-                label="Free-Testeinlösung erlauben"
-                name={`${prefix}allow_free_trial`}
-                checked={allowFreeTrial}
-                onChange={setAllowFreeTrial}
-                hint="Free-Nutzer können diesen Vorteil einmal mit ihrer globalen 2-für-1-Testeinlösung nutzen."
-              />
-            ) : null}
           </FieldGrid>
         </FormSection>
       ) : null}
@@ -6993,7 +7063,7 @@ function DealFields({
               }}
               required={useBrowserValidation}
             />
-            <TextField
+            {deal?.id ? <div className="space-y-1.5 text-sm"><FieldLabel label="Verbleibendes Kontingent" /><p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">{dealDropStockRemaining || "—"}</p><p className="text-xs text-zinc-500">Wird durch Einlösungen aktualisiert.</p></div> : <TextField
               label="Verbleibendes Kontingent"
               name={`${prefix}stock_remaining`}
               type="number"
@@ -7004,7 +7074,7 @@ function DealFields({
                 setStockRemainingEdited(true)
               }}
               required={useBrowserValidation}
-            />
+            />}
           </FieldGrid>
           {dealDropSoldOut ? (
             <p className="text-xs font-semibold text-amber-700">
@@ -7080,17 +7150,18 @@ function DealFields({
       {isLimitedDrop ? (
         <FormSection title="Deal-Drop-Kartenbild" compact>
           <p className="text-xs leading-5 text-zinc-500">
-            Lade ein Highlight-Bild für die Vorteilskarte hoch (1420×800 px).
+            Wähle ein vorhandenes Partnerbild oder lade ein Highlight-Bild hoch (1420×800 px).
           </p>
+          <input type="hidden" name={`${prefix}selected_deal_drop_image_url`} value={selectedCardImage} />
+          {mediaOptions.length ? <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" aria-label="Vorhandene Partnerbilder">{mediaOptions.map(option => <button key={option.url} type="button" aria-label={`${option.label} als Kartenbild verwenden`} aria-pressed={selectedCardImage === option.url} onClick={() => { setSelectedCardImage(option.url); setPreviewCardImage(option.url) }} className={`overflow-hidden rounded-lg border-2 text-left ${selectedCardImage === option.url ? "border-[#118cff]" : "border-zinc-200"}`}><PartnerPreviewImage src={option.url} className="aspect-[71/40] w-full object-cover" /><span className="block truncate px-2 py-1 text-xs">{option.label}</span></button>)}</div> : null}
           <MediaUploadField
-            key={`deal-drop-image-${deal?.id ?? "new"}`}
+            key={`deal-drop-image-${deal?.id ?? "new"}-${selectedCardImage}`}
             label="Deal-Drop-Kartenbild (1420×800)"
             fileName={`${prefix}deal_drop_image_file`}
             existingName={`${prefix}existing_deal_drop_image_url`}
             removeName={`${prefix}remove_deal_drop_image`}
-            currentUrl={
-              metadataString(metadataObject(deal?.metadata), "card_image_url") || undefined
-            }
+            currentUrl={selectedCardImage || undefined}
+            onPreviewChange={setPreviewCardImage}
             spec={partnerMediaSpecs.dealDrop}
           />
         </FormSection>
@@ -7098,6 +7169,12 @@ function DealFields({
 
       {isLimitedDrop ? (
         <DealDropPreviewCard
+          imageUrl={previewCardImage}
+          partnerName={partnerName}
+          active={active}
+          publicTitle={displayTitle || generatedDisplayTitle}
+          publicSubtitle={displaySubtitleAuto ? customerDescription : displaySubtitle}
+          startsAt={startsAt}
           audience={selectedAudience}
           discountType={selectedDiscountType}
           discountValue={parseOptionalNumberInput(discountValue)}
@@ -7109,7 +7186,7 @@ function DealFields({
           soldOut={dealDropSoldOut}
           stockRemaining={parseOptionalNumberInput(dealDropStockRemaining)}
           stockTotal={parseOptionalNumberInput(dealDropStockTotal)}
-          trialEligible={allowFreeTrial}
+          timezone={selectedTimezone}
         />
       ) : null}
 
@@ -7186,7 +7263,8 @@ function DealFields({
           <TextField
             label="Zeitzone"
             name={`${prefix}timezone`}
-            defaultValue={deal?.timezone ?? DEFAULT_TIMEZONE}
+            value={selectedTimezone}
+            onChange={setSelectedTimezone}
             hint={dealFieldHelp.timezone}
           />
           {isLimitedDrop ? (
@@ -7211,20 +7289,23 @@ function DealFields({
   )
 }
 
-function DealDropPreviewCard({
-  audience,
-  discountType,
-  discountValue,
-  endsAt,
-  estimatedSavings,
-  expiryDays,
-  rewardItem,
-  rewardText,
-  soldOut,
-  stockRemaining,
-  stockTotal,
-  trialEligible,
+// Stored partner media is already optimized, and local upload previews are blob URLs.
+function PartnerPreviewImage({ src, className }: { src: string; className: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" className={className} loading="lazy" />
+}
+
+export function DealDropPreviewCard({
+  imageUrl, partnerName = "Partnername", active = true, publicTitle, publicSubtitle,
+  startsAt, audience, discountType, discountValue, endsAt, estimatedSavings,
+  expiryDays, rewardItem, rewardText, soldOut, stockRemaining, stockTotal, timezone,
 }: {
+  imageUrl?: string
+  partnerName?: string
+  active?: boolean
+  publicTitle?: string
+  publicSubtitle?: string
+  startsAt?: string
   audience: string
   discountType: string
   discountValue: number | null
@@ -7236,42 +7317,70 @@ function DealDropPreviewCard({
   soldOut: boolean
   stockRemaining: number | null
   stockTotal: number | null
-  trialEligible: boolean
+  timezone: string
 }) {
+  const { language } = useAdminLanguage()
+  const [viewer, setViewer] = useState("free")
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 30_000); return () => window.clearInterval(timer) }, [])
   const rewardTitle = formatDealDropRewardTitle(discountType, discountValue, rewardItem)
-  const description = rewardText.trim() || formatDealDropRewardText(discountType)
-  const stockState = formatDealDropStockState(stockTotal, stockRemaining, soldOut)
-  const countdownState = formatCountdownState(endsAt)
-  const expiryInfo = formatPreviewExpiryInfo(endsAt, expiryDays)
-  const audienceLabel = dealAudienceValueLabel(audience)
-  const accessLabel = formatPreviewAccessLabel(audience, trialEligible)
+  const title = publicTitle?.trim() && !publicTitle.toLowerCase().includes("deal drop") ? publicTitle : rewardTitle
+  const description = publicSubtitle?.trim() || rewardText.trim() || formatDealDropRewardText(discountType)
+  let startInstant = "", endInstant = "", dateError = ""
+  try {
+    startInstant = partnerDateTimeToUtc(startsAt || "", timezone) || ""
+    endInstant = partnerDateTimeToUtc(endsAt, timezone) || ""
+  } catch (error) { dateError = error instanceof Error ? error.message : "Datum prüfen" }
+  const scheduled = Boolean(startInstant && Date.parse(startInstant) > now)
+  const ended = Boolean(endInstant && Date.parse(endInstant) <= now)
+  const status = dateError ? "Datum prüfen" : !active ? "Pausiert" : soldOut ? "Ausverkauft" : ended ? "Beendet" : scheduled ? "Geplant" : "Aktiv"
+  const locked = audience === "premium" && viewer === "free"
+  const unavailableAudience = audience === "free" && viewer === "premium"
+  const available = status === "Aktiv" && !unavailableAudience
+  const formatDate = (instant: string) => instant ? new Intl.DateTimeFormat("de-DE", { timeZone: timezone, dateStyle: "medium", timeStyle: "short" }).format(new Date(instant)) : "Nicht festgelegt"
+  const expiryInfo = endInstant ? `${formatDate(endInstant)} (${timezone})` : expiryDays ? `${expiryDays} Tage nach Auswahl` : "Nicht festgelegt"
+  const savings = estimatedSavings !== null && estimatedSavings > 0 ? new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(estimatedSavings) : null
 
   return (
     <FormSection title="Live-Vorschau" defaultOpen={false} compact>
-      <div className="max-w-md rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
-        {soldOut ? (
-          <div className="mb-3">
-            <WarningNote>
-              Dieser Deal Drop ist ausverkauft und kann nicht mehr eingelöst werden.
-            </WarningNote>
-          </div>
-        ) : null}
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge>Deal Drop</Badge>
-          <Badge>{accessLabel ?? audienceLabel}</Badge>
+      <div className="max-w-md space-y-3">
+        <div className="flex items-center justify-between gap-3 text-xs text-zinc-600">
+          <span>App-Karte · Deal Drop</span>
+          <label className="flex items-center gap-2">Ansicht
+            <select aria-label="Vorschau-Mitgliedschaft" value={viewer} onChange={event => setViewer(event.target.value)} className="rounded-md border border-zinc-200 bg-white px-2 py-1">
+              <option value="free">Free</option><option value="premium">Premium</option>
+            </select>
+          </label>
         </div>
-        <h4 className="mt-3 text-lg font-semibold tracking-normal text-zinc-950">
-          {rewardTitle}
-        </h4>
-        <p className="mt-1 text-sm leading-6 text-zinc-600">{description}</p>
-        <div className="mt-4 grid gap-2 text-sm text-zinc-700 sm:grid-cols-2">
-          <Info label="Kontingent" value={stockState} />
-          <Info label="Countdown" value={countdownState} />
-          <Info
-            label="Geschätzte Ersparnis"
-            value={formatSavingsPreview(discountType, estimatedSavings)}
-          />
+        <style>{`
+          @font-face { font-family: "Benefitsi App Preview"; src: url("/fonts/benefitsi-app-preview/Inter-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+          @font-face { font-family: "Benefitsi App Preview"; src: url("/fonts/benefitsi-app-preview/Inter-ExtraBold.ttf") format("truetype"); font-weight: 800; font-style: normal; font-display: swap; }
+          @font-face { font-family: "Benefitsi App Preview"; src: url("/fonts/benefitsi-app-preview/Inter-Black.ttf") format("truetype"); font-weight: 900; font-style: normal; font-display: swap; }
+        `}</style>
+        <div data-deal-drop-preview className="w-full max-w-[358px] rounded-[32px] p-[2px]" style={{ fontFamily: '"Benefitsi App Preview", Inter, sans-serif', background: "linear-gradient(135deg,#8A5A00 0%,#FFF1A8 24%,#E2B93B 50%,#FFF1A8 72%,#8A5A00 100%)", boxShadow: "0 4px 12px #E2B93B2e" }}>
+          <div className="relative h-[192px] overflow-hidden rounded-[30px] bg-[#242c35]">
+            {imageUrl ? <PartnerPreviewImage src={imageUrl} className="absolute inset-0 h-full w-full object-cover object-right" /> : <div className="absolute inset-0 bg-gradient-to-br from-[#153b50] to-[#091322]" />}
+            <div className="absolute inset-0" style={{ background: "linear-gradient(90deg,rgba(0,0,0,.84) 0%,rgba(0,0,0,.50) 28%,rgba(0,0,0,.12) 54%,transparent 76%)" }} />
+            <div className="absolute bottom-[14px] left-[18px] w-[60%] max-w-[220px] text-white">
+              <div title={title} className="truncate text-[28px] leading-[30px] font-black tracking-normal">{title}</div>
+              <div className="mt-[2px] truncate text-[17px] leading-[21px] font-bold">{partnerName || "Partnername"}</div>
+              {savings ? <div className="mt-[5px] w-fit rounded-full border border-[#b9deff] bg-[#e7f3ff] px-[11px] py-[7px] text-[12.5px] leading-[1.1] font-extrabold text-[#0a6fcb]">{language === "de" ? "Spare" : "Save"} {savings}</div> : null}
+              <span className={`mt-[6px] inline-flex min-h-9 items-center justify-center gap-2 rounded-full py-2 leading-4 font-extrabold ${locked ? "min-w-[86px] border border-white/70 bg-white/30 px-[10px] text-[11.5px] backdrop-blur-lg" : "min-w-[118px] bg-gradient-to-r from-[#118cff] to-[#17d4d7] px-[13px] text-[12px]"} ${available || locked ? "" : "opacity-45"}`}>
+                {locked ? <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2ZM10 6a2 2 0 0 1 4 0v2h-4V6Z" /></svg> : null}
+                {locked ? "Premium" : language === "de" ? "Aktivieren" : "Activate"}
+              </span>
+            </div>
+          </div>
+        </div>
+        <p className="text-xs leading-5 text-zinc-500">{description}</p>
+        {dateError ? <WarningNote>{dateError}</WarningNote> : null}
+        <div className="grid gap-2 text-sm text-zinc-700 sm:grid-cols-2">
+          <Info label="Status" value={status} />
+          <Info label="Kontingent" value={formatDealDropStockState(stockTotal, stockRemaining, soldOut, language)} />
+          <Info label="Zielgruppe" value={dealAudienceValueLabel(audience)} />
+          <Info label="Start" value={formatDate(startInstant)} />
           <Info label="Gültigkeit" value={expiryInfo} />
+          <Info label="Countdown" value={formatCountdownState(endInstant, language, now)} />
         </div>
       </div>
     </FormSection>
@@ -7513,6 +7622,7 @@ function MilestoneForm({
       else submittingRef.current = true
     }}>
       <input type="hidden" name="id" value={milestone?.id ?? ""} />
+      <input type="hidden" name="expected_updated_at" value={milestone?.updated_at || ""} />
       <input type="hidden" name="partner_id" value={partner.id ?? ""} />
       <input
         type="hidden"
@@ -11966,7 +12076,7 @@ function MediaUploadField({
       revokeImagePreviews(current)
       return []
     })
-    onPreviewChange?.("")
+    onPreviewChange?.(!removed ? currentUrl || "" : "")
     setUploadMessage("")
   }
 
@@ -12042,7 +12152,7 @@ function MediaUploadField({
             spec={spec}
             maxWidth={dense ? 150 : undefined}
             onActivate={() => fileInputRef.current?.click()}
-            onRemove={() => setRemoved(true)}
+            onRemove={() => { setRemoved(true); onPreviewChange?.("") }}
             removeLabel={`Remove ${label}`}
           />
         ) : (
@@ -12078,7 +12188,7 @@ function MediaUploadField({
             <input type="hidden" name="removed_media_urls" value={currentUrl} />
             <button
               type="button"
-              onClick={() => setRemoved(false)}
+              onClick={() => { setRemoved(false); onPreviewChange?.(currentUrl || "") }}
               className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
             >
               Restore
@@ -13769,6 +13879,7 @@ function backendDealTypeForUi(type: string) {
 
 function dealUiTypeForDeal(deal?: Pick<Deal, "type" | "metadata"> & Partial<Pick<Deal, "campaign_type" | "trigger_key">> | null) {
   if (deal?.type === "happy_hour" || deal?.campaign_type === "happy_hour") return "happy_hour"
+  if (["deal_drop", "limited_drop"].includes(deal?.campaign_type || "") || deal?.type === "deal_drop") return "limited_drop"
   if (deal?.trigger_key === "streak" || deal?.campaign_type === "streak") return "streak"
   const type = deal?.type || "discount"
 
@@ -14242,88 +14353,33 @@ function formatDealDropStockState(
   stockTotal: number | null,
   stockRemaining: number | null,
   soldOut: boolean,
+  language: "de" | "en",
 ) {
-  if (soldOut) {
-    return "Sold out"
-  }
-
+  if (soldOut) return language === "de" ? "Ausverkauft" : "Sold out"
   if (stockTotal !== null && stockTotal > 0) {
     return stockRemaining !== null
-      ? `Only ${stockRemaining} left`
-      : `${stockTotal} available`
+      ? language === "de" ? `Nur noch ${stockRemaining} verfügbar` : `Only ${stockRemaining} left`
+      : language === "de" ? `${stockTotal} verfügbar` : `${stockTotal} available`
   }
-
-  return "No stock limit"
+  return language === "de" ? "Kein Kontingentlimit" : "No stock limit"
 }
 
-function formatCountdownState(endsAt: string) {
-  if (!endsAt) {
-    return "No end date"
-  }
-
+function formatCountdownState(endsAt: string, language: "de" | "en", now: number) {
+  if (!endsAt) return language === "de" ? "Kein Enddatum" : "No end date"
   const endTime = new Date(endsAt).getTime()
-
-  if (Number.isNaN(endTime)) {
-    return "End date not set"
-  }
-
-  const milliseconds = endTime - Date.now()
-
-  if (milliseconds <= 0) {
-    return "Ended"
-  }
-
-  return `Ends in ${formatDuration(milliseconds)}`
+  if (Number.isNaN(endTime)) return language === "de" ? "Enddatum fehlt" : "End date not set"
+  const milliseconds = endTime - now
+  if (milliseconds <= 0) return language === "de" ? "Beendet" : "Ended"
+  return `${language === "de" ? "Endet in" : "Ends in"} ${formatDuration(milliseconds, language)}`
 }
 
-function formatDuration(milliseconds: number) {
+function formatDuration(milliseconds: number, language: "de" | "en") {
   const minutes = Math.ceil(milliseconds / 60000)
-
-  if (minutes < 60) {
-    return `${minutes}m`
-  }
-
+  if (minutes < 60) return language === "de" ? `${minutes} ${minutes === 1 ? "Minute" : "Minuten"}` : `${minutes} ${minutes === 1 ? "minute" : "minutes"}`
   const hours = Math.ceil(minutes / 60)
-
-  if (hours < 24) {
-    return `${hours}h`
-  }
-
-  return `${Math.ceil(hours / 24)}d`
-}
-
-function formatSavingsPreview(discountType: string, value: number | null) {
-  if (discountType === "percent") {
-    return "Cannot estimate"
-  }
-
-  return value === null ? "Not set" : String(value)
-}
-
-function formatPreviewAccessLabel(audience: string, trialEligible: boolean) {
-  const audienceLabel = dealAudienceValueLabel(audience)
-
-  if (!trialEligible) {
-    return audienceLabel
-  }
-
-  if (audience === "premium") {
-    return "Premium + Trial Eligible"
-  }
-
-  return `${audienceLabel} + Trial Eligible`
-}
-
-function formatPreviewExpiryInfo(endsAt: string, expiryDays: number | null) {
-  if (endsAt) {
-    return formatDateTime(endsAt)
-  }
-
-  if (expiryDays !== null && expiryDays > 0) {
-    return `${expiryDays} day${expiryDays === 1 ? "" : "s"} after selection`
-  }
-
-  return "No expiry set"
+  if (hours < 24) return language === "de" ? `${hours} ${hours === 1 ? "Stunde" : "Stunden"}` : `${hours} ${hours === 1 ? "hour" : "hours"}`
+  const days = Math.ceil(hours / 24)
+  return language === "de" ? `${days} ${days === 1 ? "Tag" : "Tagen"}` : `${days} ${days === 1 ? "day" : "days"}`
 }
 
 function normalizeDealDropDiscountType(dealType: string, discountType: string) {
@@ -14695,20 +14751,6 @@ function formatDateTime(value?: string | null) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date)
-}
-
-function formatDateTimeInput(value?: string | null) {
-  if (!value) {
-    return ""
-  }
-
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-
-  return date.toISOString().slice(0, 16)
 }
 
 function formatMetadataInput(value: unknown) {

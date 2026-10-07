@@ -7,7 +7,7 @@ import { resolveMicrositeConfig } from "../lib/microsites.ts"
 import * as richMedia from "../lib/microsite-rich-media.ts"
 import * as publicContract from "../lib/public-microsite-contract.ts"
 
-export function publicationFixture({ authorized = true, delivery = { ok: true }, writeError = false } = {}) {
+export function publicationFixture({ authorized = true, delivery = { ok: true }, writeError = false, emptyWorkflow = false } = {}) {
   const partner = { id: "test-partner-id", name: "Synthetic restaurant", slug: "test-partner", cities: { slug: "annweiler" } }
   const microsite = { id: "test-microsite", partner_id: partner.id, slug: partner.slug, status: "published", published_version_id: "version-old" }
   const writes = [], invalidations = [], localInvalidations = []
@@ -20,6 +20,7 @@ export function publicationFixture({ authorized = true, delivery = { ok: true },
       if (operation) {
         writes.push({ table, operation, payload })
         if (writeError) return Promise.resolve({ data: null, error: { message: "Synthetic write failure" } }).then(resolve, reject)
+        if (emptyWorkflow && table === "microsites" && operation === "update") return Promise.resolve({ data: null, error: null }).then(resolve, reject)
         if (table === "microsites") Object.assign(microsite, payload)
       }
       const data = table === "partners" ? partner : table === "microsites" ? { ...microsite } : { id: "version-new", version_number: 1 }
@@ -72,6 +73,26 @@ test("publish invalidates only after the new public pointer was committed", asyn
   assert.equal(f.invalidations.length, 1)
   assert.notEqual(f.invalidations[0].publicState.published_version_id, "version-old")
   assert.equal(f.invalidations[0].publicState.status, "published")
+})
+test("successful saves identify the actual committed version for the editor", async () => {
+  for (const intent of ["draft", "publish"]) {
+    const f = publicationFixture()
+    const result = await f.save(intent)
+    const inserted = f.writes.find(w => w.table === "microsite_versions").payload
+    assert.deepEqual(result.savedVersion, { id: inserted.id, version_number: inserted.version_number, status: intent === "publish" ? "published" : "draft" })
+  }
+})
+test("a zero-row workflow update cannot report a saved publication or withdrawal", async () => {
+  for (const intent of ["draft", "publish", "withdraw"]) {
+    const f = publicationFixture({ emptyWorkflow: true })
+    const result = await f.save(intent)
+    assert.equal(result.ok, false, intent)
+    assert.equal(result.savedVersion, undefined)
+    assert.notEqual(result.publicationWithdrawn, true)
+    assert.equal(f.microsite.status, "published")
+    assert.equal(f.microsite.published_version_id, "version-old")
+    assert.equal(f.invalidations.length, 0)
+  }
 })
 test("cache failure reports a saved publication with a separate retry state", async () => {
   const f = publicationFixture({ delivery: { ok: false, reason: "unavailable" } })
