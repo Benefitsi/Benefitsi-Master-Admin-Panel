@@ -2310,6 +2310,7 @@ function PartnerForm({
     form.addEventListener("input", scheduleDirtyStateRefresh, true)
     form.addEventListener("change", scheduleDirtyStateRefresh, true)
     form.addEventListener("click", scheduleDirtyStateRefresh, true)
+    form.addEventListener("partner-form-value-change", scheduleDirtyStateRefresh, true)
     form.addEventListener("toggle", keepOneSectionOpen, true)
     return () => {
       if (dirtyCheckFrameRef.current !== null) {
@@ -2319,6 +2320,7 @@ function PartnerForm({
       form.removeEventListener("input", scheduleDirtyStateRefresh, true)
       form.removeEventListener("change", scheduleDirtyStateRefresh, true)
       form.removeEventListener("click", scheduleDirtyStateRefresh, true)
+      form.removeEventListener("partner-form-value-change", scheduleDirtyStateRefresh, true)
       form.removeEventListener("toggle", keepOneSectionOpen, true)
     }
   }, [mode, partner?.id, partner?.updated_at, formVersion, scheduleDirtyStateRefresh])
@@ -13112,6 +13114,7 @@ function replaceFileInputFiles(input: HTMLInputElement, files: File[]) {
 
   files.forEach((file) => transfer.items.add(file))
   input.files = transfer.files
+  input.dispatchEvent(new Event("partner-form-value-change", { bubbles: true }))
 }
 
 function ReadOnlyField({
