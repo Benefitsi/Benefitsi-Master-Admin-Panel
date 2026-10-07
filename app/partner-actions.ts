@@ -68,6 +68,7 @@ import {
   isPartnerStaffRole,
   isRewardType,
   normalizeBenefitCategory,
+  weekdayOptions,
 } from "@/lib/reward-config"
 import {
   partnerUpdateMissingMessage,
@@ -4362,7 +4363,7 @@ async function insertDeals(
   deals: Array<ParsedDeal & { created_at?: string; updated_at?: string }>,
 ) {
   return await mutateConfirmedDeals(
-    deals.map((deal) => withDefaultDealCopy({ ...deal })),
+    deals.map(dealDatabasePayload),
     (payload) => supabase.from("deals").insert(payload).select("id,partner_id"),
   )
 }
@@ -4373,7 +4374,7 @@ async function updateDeal(
   deal: ParsedDeal & { created_at?: string; updated_at?: string },
   expectedUpdatedAt = "",
 ) {
-  const mutationPayload: Record<string, unknown> = withDefaultDealCopy({ ...deal })
+  const mutationPayload = dealDatabasePayload(deal)
   // Remaining stock is a live redemption counter, never ordinary configuration.
   if (isLimitedDropDeal(deal)) delete mutationPayload.stock_remaining
   if (isHappyHourDeal(deal)) {
@@ -4388,6 +4389,22 @@ async function updateDeal(
       return (expectedUpdatedAt ? query.eq("updated_at", expectedUpdatedAt) : query).select("id,partner_id")
     },
   )
+}
+
+function dealDatabasePayload(deal: ParsedDeal): Record<string, unknown> {
+  const payload: Record<string, unknown> = withDefaultDealCopy({ ...deal })
+  // The editor uses aliases; public.deals stores the already-normalized
+  // valid_from/valid_until timestamps and ISO weekday numbers in weekdays.
+  payload.weekdays = deal.weekdays.length
+    ? deal.weekdays.map((day) => {
+        const index = weekdayOptions.findIndex((option) => option.value === day)
+        return index >= 0 ? index + 1 : /^[1-7]$/.test(day) ? Number(day) : day
+      })
+    : [...deal.valid_weekdays]
+  delete payload.starts_at
+  delete payload.ends_at
+  delete payload.valid_weekdays
+  return payload
 }
 
 async function mutateConfirmedDeals<

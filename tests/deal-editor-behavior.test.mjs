@@ -78,6 +78,11 @@ test("reopening a saved Drop formats UTC in its partner timezone and keeps expla
     assert.equal(explanation.open, false)
   })
 })
+test("reopening a regular benefit retains stored ISO weekday restrictions in the submitted form", async () => {
+  await withEditor({ deal: { id: "discount", type: "permanent_discount", discount_type: "fixed", discount_value: 2, weekdays: null, valid_weekdays: [2, 6] } }, async ({ form }) => {
+    assert.deepEqual(new FormData(form).getAll("weekdays"), ["tuesday", "saturday"])
+  })
+})
 
 test("changing a reward format keeps an explicit admin audience override within the same campaign", async () => {
   await withEditor({ deal: { type: "welcome", discount_type: "fixed", audience: "both", premium_only: false } }, async ({ form, choose }) => {
