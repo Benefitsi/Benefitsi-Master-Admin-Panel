@@ -91,7 +91,7 @@ test('partner entry uses one answer and keeps resources and tasks across remount
     const meeting=[...fixture.pages.values()].find(p=>p.kind==='conversation')
     assert.equal(meeting.partner_id,fixturePartner.id)
     assert.ok(meeting.parent_id)
-    assert.equal(meeting.content.questions.length,42)
+    assert.equal(meeting.content.questions.length,44)
     assert.equal(meeting.content.questions[0].answer,'Mara verantwortet Freigaben')
     const target=document.querySelector(`a[href="/partners?partner=${fixturePartner.id}&tab=deals"]`)
     assert.equal(target?.target,'_blank')
