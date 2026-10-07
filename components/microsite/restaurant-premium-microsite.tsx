@@ -1610,7 +1610,7 @@ function DealsSection({
   showLoyalty?: boolean
 }) {
   const published = useMicrositeIntegration().publishedBenefits
-  const publicDeals = published ? partner.deals : getMicrositePublicDeals(partner.deals)
+  const publicDeals = getMicrositePublicDeals(partner.deals)
   const welcomeDeals = getMicrositeWelcomeDeals(partner.deals)
   const stampDeals = getMicrositeStampDeals(partner.deals)
   const stampRewards = getMicrositeStampRewards(partner.reward_milestones)
@@ -1694,7 +1694,7 @@ function DealsSection({
       window.removeEventListener("resize", requestBannerUpdate)
     }
   }, [publicDeals.length])
-  const stampMilestoneCards = published ? (published.loyalty?.rewards || []).map(reward => ({
+  const publishedMilestoneCards = (published?.loyalty?.rewards || []).map(reward => ({
     id: reward.id,
     stamp: reward.requiredStamps,
     eyebrow: `${reward.requiredStamps} ${config.language === "en" ? "stamps" : "Stempel"}${reward.audienceLabel ? ` · ${reward.audienceLabel}` : ""}`,
@@ -1703,10 +1703,14 @@ function DealsSection({
     textId: `stamps.reward.${reward.requiredStamps}.description`,
     textFallback: reward.description || "",
     imageId: `stamps.reward.${reward.requiredStamps}.image`,
-    imageUrl: textValue(config, `stamps.reward.${reward.requiredStamps}.image`, ""),
+    imageUrl: textValue(config, `stamps.reward.${reward.requiredStamps}.image`, (() => {
+      const milestone = stampRewards.find(milestone => milestone.id === reward.id)
+      return milestone ? rewardImageForStamp(partner, config, milestone) : ""
+    })()),
     iconName: micrositeRewardIconName(reward.title),
     tone: "amber" as const,
-  })) : [
+  }))
+  const stampMilestoneCards = [
     ...welcomeDeals.map((deal, index) => {
       const title = micrositeWelcomeTitle(deal, config.language)
       return {
@@ -1740,7 +1744,7 @@ function DealsSection({
         tone: "emerald" as const,
       }
     }),
-    ...stampRewards.map((milestone, index) => {
+    ...(published ? publishedMilestoneCards : stampRewards.map((milestone, index) => {
       const stamp = milestone.required_stamps || 1
       const title = micrositeStampRewardTitle(milestone, config.language)
       const trackLabel = micrositeRewardTrackLabel(milestone, config.language)
@@ -1762,9 +1766,9 @@ function DealsSection({
         iconName: micrositeRewardIconName(title),
         tone: "amber" as const,
       }
-    }),
+    })),
   ]
-  const hasLoyaltyContent = showLoyalty && stampMilestoneCards.length > 0
+  const hasLoyaltyContent = showLoyalty && (!published || Boolean(published.loyalty)) && stampMilestoneCards.length > 0
 
   if (!featuredDeal && !hasLoyaltyContent && !published) return null
 
@@ -1773,7 +1777,6 @@ function DealsSection({
       <div className="mx-auto flex max-w-6xl flex-col gap-8 @min-[900px]:gap-10">
         <div className="premium-reveal pb-2 pt-12 @min-[640px]:pt-16">
           <div className="max-w-3xl">
-            {published ? <p className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--site-muted)]">{published.label}</p> : null}
             <h2
               {...editable("deals.headline", "text", "Vorteils-Überschrift")}
               className="text-[clamp(2rem,4.8cqw,3.3rem)] font-black leading-[1.04] tracking-[-0.04em]"
