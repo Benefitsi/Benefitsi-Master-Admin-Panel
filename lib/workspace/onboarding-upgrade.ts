@@ -7,21 +7,18 @@ export const templateVersion='2026-10-07.3'
 const v1='2026-10-05.1',v2='2026-10-06.2'
 type DefaultQuestion = typeof previous[number]
 const fields=['section','prompt','help','suggestion','answerType','options','core'] as const
+type DefaultField = typeof fields[number]
 const answerFields=['answer','change','agreement','reason'] as const
 const combined:Record<string,string[]>={A01:['A01','A02','A03','A04'],C01:['C01','C02','C04'],D01:['D01','D02','D03'],G04:['G04','E05']}
 const removed=new Set(['A02','A03','A04','A05','C02','C04','C05','C06','C07','D02','D03','D04','D06','D07','D08','E05','F04'])
 const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b)
 const hasAnswer=(q:Question)=>answerFields.some(field=>q[field].length>0)
-const isCustom=(q:Question)=>{
-  const before=previous.find(value=>value.id===q.id)
-  return !!before&&fields.some(field=>!equal(q[field],before[field]))
-}
 function fresh(q:DefaultQuestion):Question {
   return {...q,options:[...q.options],answerType:q.answerType as Question['answerType'],answer:'',change:'',agreement:'',reason:'',status:'open',hidden:false}
 }
-function updateDefaults(q:Question,before:DefaultQuestion|undefined,after:DefaultQuestion|undefined):Question {
+function updateDefaults(q:Question,before:DefaultQuestion|undefined,after:DefaultQuestion|undefined,custom?:ReadonlySet<DefaultField>):Question {
   if(!before||!after)return q
-  return {...q,...Object.fromEntries(fields.filter(field=>equal(q[field],before[field])).map(field=>[field,after[field]]))}
+  return {...q,...Object.fromEntries(fields.filter(field=>!custom?.has(field)&&equal(q[field],before[field])).map(field=>[field,after[field]]))}
 }
 function addMissing(questions:Question[],catalog:DefaultQuestion[],ids:string[]):Question[] {
   const result=[...questions]
@@ -48,10 +45,17 @@ function fits(content:Content):boolean {
 /** Upgrade known defaults atomically. Bespoke wording and every legacy answer survive. */
 export function upgradeOnboarding(content:Content):Content {
   if(![v1,v2].includes(content.meeting.templateVersion))return content
+  // Detect customization against the source version once. A bespoke v1 value
+  // may equal a v2 default without becoming eligible for a later replacement.
+  const sourceCatalog=content.meeting.templateVersion===v1?original:previous
+  const customFields=new Map(content.questions.map(q=>{
+    const before=sourceCatalog.find(value=>value.id===q.id)
+    return [q.id,new Set(fields.filter(field=>!before||!equal(q[field],before[field])))] as const
+  }))
   let questions=content.questions
   let blocks=[...content.blocks]
   if(content.meeting.templateVersion===v1) {
-    questions=questions.map(q=>updateDefaults(q,original.find(value=>value.id===q.id),previous.find(value=>value.id===q.id)))
+    questions=questions.map(q=>updateDefaults(q,original.find(value=>value.id===q.id),previous.find(value=>value.id===q.id),customFields.get(q.id)))
     questions=addMissing(questions,previous,previous.filter(q=>!original.some(old=>old.id===q.id)).map(q=>q.id))
     const originalNote='Für jedes Partnergespräch unter „Weitere Aktionen“ → „Vorlage verwenden“ ein eigenes Gespräch anlegen. Dort den Partner verknüpfen, Termin und Teilnehmende ergänzen und im Bereich „Gespräch“ die passenden Fragen durchgehen. Antworten, Änderungswünsche und Vereinbarungen getrennt festhalten. Über die Partnerlinks die zuständigen Admin-Editoren öffnen; Dokumente unter „Dateien“ verlinken und nächste Schritte unter „Aufgaben“ erfassen. Diese Vorlage enthält bewusst keine Partnerantworten.'
     blocks=blocks.map(block=>block.text===originalNote?{...block,text:block.text.replace('Antworten, Änderungswünsche und Vereinbarungen getrennt festhalten.','Vorbereitete Angaben gemeinsam prüfen; Bestätigungen und Korrekturen im Antwortfeld festhalten.')}:block)
@@ -71,7 +75,7 @@ export function upgradeOnboarding(content:Content):Content {
   }
   let safe=true
   const result=questions.filter(q=>!removed.has(q.id)).map(q=>{
-    let updated=updateDefaults(q,previous.find(value=>value.id===q.id),current.find(value=>value.id===q.id))
+    let updated=updateDefaults(q,previous.find(value=>value.id===q.id),current.find(value=>value.id===q.id),customFields.get(q.id))
     const ids=combined[q.id]
     if(!ids)return updated
     const sources=ids.flatMap(id=>questions.filter(value=>value.id===id))
@@ -91,7 +95,7 @@ export function upgradeOnboarding(content:Content):Content {
   })
   for(const q of questions.filter(q=>removed.has(q.id))) {
     // Deleted answers, bespoke wording, and meaningful historical flags need a record.
-    if(hasAnswer(q)||isCustom(q)||q.hidden||q.status!=='open')if(archive(q)===false)safe=false
+    if(hasAnswer(q)||customFields.get(q.id)?.size||q.hidden||q.status!=='open')if(archive(q)===false)safe=false
   }
   questions=addMissing(result,current,current.filter(q=>!previous.some(old=>old.id===q.id)).map(q=>q.id))
   const upgraded={...content,blocks,questions,meeting:{...content.meeting,templateVersion}}

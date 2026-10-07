@@ -114,3 +114,28 @@ test('removed open answers and nonempty whitespace fields retain a complete arch
   assert.ok(archive.text.includes('Offene Kontaktantwort'))
   assert.ok(archive.text.includes('Partnerwunsch:\n  \n\n'))
 })
+test('v1 customized retained fields matching v2 defaults survive while untouched fields advance to v3',()=>{
+  const source=legacy('2026-10-05.1')
+  const q=source.questions.find(q=>q.id==='A01')
+  const intermediate=readCatalog('onboarding-v2').find(q=>q.id==='A01')
+  const latest=readCatalog('onboarding').find(q=>q.id==='A01')
+  q.prompt=intermediate.prompt
+  const before=structuredClone(source)
+  const upgraded=upgradeOnboarding(source)
+  assert.equal(upgraded.questions.find(q=>q.id==='A01').prompt,intermediate.prompt)
+  assert.equal(upgraded.questions.find(q=>q.id==='A01').help,latest.help)
+  assert.deepEqual(source,before)
+  assert.deepEqual(upgradeOnboarding(upgraded),upgraded)
+  assert.deepEqual(validateContent(upgraded),upgraded)
+})
+test('v1 empty removed custom questions matching v2 defaults still receive an archival record',()=>{
+  const source=legacy('2026-10-05.1')
+  const q=source.questions.find(q=>q.id==='A02')
+  const intermediate=readCatalog('onboarding-v2').find(q=>q.id==='A02')
+  q.prompt=intermediate.prompt
+  const upgraded=upgradeOnboarding(source)
+  assert.equal(upgraded.questions.some(q=>q.id==='A02'),false)
+  assert.ok(upgraded.blocks.some(b=>b.text.includes('Frühere Frage A02')&&b.text.includes(intermediate.prompt)))
+  assert.deepEqual(upgradeOnboarding(upgraded),upgraded)
+  assert.deepEqual(validateContent(upgraded),upgraded)
+})

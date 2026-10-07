@@ -38,3 +38,17 @@ No installs, production calls/writes, pushes, development servers, browser sessi
 ## Integration notes
 
 The catalog is ready for controller-owned special rendering for A01/C01/D01/E01/C09/H05. Migration history uses the existing ordinary block schema and its existing editor/export behavior. Questions whose combined history exceeds the answer field retain a complete narrative in blocks rather than pretending a truncated answer is complete.
+
+## Review fix — source-version customization provenance
+
+The review found a real preservation defect in v1→v2→v3: a customized v1 field could happen to equal its v2 default and then be overwritten as if untouched. A removed empty/open/visible v1 question with such a field could also disappear without history.
+
+The migration now determines customized fields once against the input version's catalog and carries that per-ID/per-field provenance through both upgrade stages. Protected fields cannot become eligible for replacement merely because an intermediate default matches their text. Removed custom questions are archived using the same source-version provenance. Existing questions absent from the source version's catalog are treated as custom; newly inserted defaults remain eligible for upgrades. This metadata is local to the operation and adds no persisted model fields.
+
+Two focused regressions were added first and both failed with the reviewed implementation: retained A01 customized to the v2 prompt, and removed empty A02 customized to the v2 prompt. Both now pass. The retained-field test also verifies that untouched help still advances to v3, that input content is not mutated, and that repeated upgrades and real content validation remain stable.
+
+Verification after this fix:
+
+- Focused upgrade suite: **10/10 pass** (`node --import tsx --test tests/workspace-onboarding-upgrade.test.mjs`).
+- Targeted TypeScript noEmit check for `lib/workspace/onboarding-upgrade.ts`: passes with the existing dependencies.
+- Only the migration implementation, its focused tests and this appended report were edited. All controller/model/inline editor changes from other work remain untouched. No builds, installs, production operations or pushes.
