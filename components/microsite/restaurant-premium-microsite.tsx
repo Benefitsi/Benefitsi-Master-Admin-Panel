@@ -745,41 +745,6 @@ function MicrositeThemeCss() {
         box-shadow: 0 22px 44px -24px color-mix(in srgb, var(--site-accent) 76%, var(--site-secondary));
       }
 
-      .premium-app-cta::after {
-        content: "";
-        position: absolute;
-        inset: -80% -30%;
-        z-index: -1;
-        opacity: .7;
-        background: linear-gradient(110deg, transparent 42%, rgba(255,255,255,.48) 50%, transparent 58%);
-        transform: translate3d(-58%,0,0);
-        animation: premium-app-cta-sheen 4.8s ease-in-out infinite;
-      }
-
-      .premium-button-shine {
-        position: relative;
-        isolation: isolate;
-        overflow: hidden;
-      }
-
-      .premium-button-shine::after {
-        content: "";
-        position: absolute;
-        inset: -80% -35%;
-        z-index: 2;
-        pointer-events: none;
-        opacity: .62;
-        background: linear-gradient(110deg, transparent 42%, rgba(255,255,255,.52) 50%, transparent 58%);
-        mix-blend-mode: screen;
-        transform: translate3d(-58%,0,0);
-        animation: premium-app-cta-sheen 4.4s ease-in-out infinite;
-      }
-
-      .premium-button-shine-subtle::after {
-        opacity: .28;
-        animation-duration: 5.4s;
-      }
-
       .premium-faq-item {
         transition: transform .38s var(--ease-out-expo), border-color .3s ease, box-shadow .38s ease;
       }
@@ -794,11 +759,6 @@ function MicrositeThemeCss() {
       @keyframes premium-liquid-hover {
         from { transform: translate3d(-34%,0,0); }
         to { transform: translate3d(34%,0,0); }
-      }
-
-      @keyframes premium-app-cta-sheen {
-        0%, 55% { transform: translate3d(-58%,0,0); }
-        78%, 100% { transform: translate3d(58%,0,0); }
       }
 
       .premium-quote-rule {
@@ -1613,6 +1573,10 @@ function DealsSection({
   const publicDeals = getMicrositePublicDeals(partner.deals)
   const welcomeDeals = getMicrositeWelcomeDeals(partner.deals)
   const stampDeals = getMicrositeStampDeals(partner.deals)
+  const isHappyHourDeal = (deal: Deal) => [deal.campaign_type, deal.type].some(
+    value => ["happy_hour", "happyhour"].includes(value?.trim().toLowerCase() || ""),
+  )
+  const happyHourDeals = stampDeals.filter(isHappyHourDeal)
   const stampRewards = getMicrositeStampRewards(partner.reward_milestones)
   const { featuredDeal, secondaryDeals } = partitionMicrositePublicDeals(publicDeals)
   const stampCount = published ? published.loyalty?.targetCount || 0 : Math.max(
@@ -1727,7 +1691,7 @@ function DealsSection({
         tone: "emerald" as const,
       }
     }),
-    ...stampDeals.map((deal, index) => {
+    ...stampDeals.filter(deal => !isHappyHourDeal(deal)).map((deal, index) => {
       const title = micrositeDealTitle(deal, config.language)
 
       return {
@@ -1768,7 +1732,7 @@ function DealsSection({
       }
     })),
   ]
-  const hasLoyaltyContent = showLoyalty && (!published || Boolean(published.loyalty)) && stampMilestoneCards.length > 0
+  const hasLoyaltyContent = showLoyalty && (!published || Boolean(published.loyalty)) && (stampMilestoneCards.length > 0 || happyHourDeals.length > 0)
 
   if (!featuredDeal && !hasLoyaltyContent && !published) return null
 
@@ -2021,6 +1985,24 @@ function DealsSection({
             </div>
           </div>
           </div>
+          {happyHourDeals.length > 0 ? <div className="premium-happy-hour mt-5 grid gap-3">
+            {happyHourDeals.map((deal, index) => (
+              <aside
+                key={deal.id || `happy-hour-${index}`}
+                aria-label="Happy Hour"
+                className="flex items-start gap-4 rounded-[1.6rem] border border-[#0a9fe1]/25 bg-[#eef8ff] p-5 @min-[640px]:p-6"
+              >
+                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#0a9fe1] text-white">
+                  <Clock3 className="size-6" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-extrabold uppercase tracking-wide text-[#0875ad]">Happy Hour</p>
+                  <h4 className="mt-1 text-lg font-black leading-tight text-[#075985]">{micrositeDealTitle(deal, config.language)}</h4>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">{micrositeDealDescription(deal, config.language)}</p>
+                </div>
+              </aside>
+            ))}
+          </div> : null}
         </div>
 
         : !published && !showLoyalty ? <p id="stempelkarte" className="text-sm leading-7 text-zinc-600">{siteCopy(config, "Aktuelle Vorteile und verfügbare Treuebelohnungen findest du in der Benefitsi-App.", "Find current benefits and available loyalty rewards in the Benefitsi app.")}</p> : null}
@@ -2146,7 +2128,7 @@ export function MicrositeDealBanner({
           {...(primary ? editable("deals.topDealButtonLabel", "text", "Vorteil Button") : {})}
           className={
             isFeaturedDeal
-              ? "premium-button premium-button-shine group mt-6 inline-flex min-h-11 w-fit items-center gap-3 rounded-lg bg-[var(--site-accent)] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]"
+              ? "premium-button group mt-6 inline-flex min-h-11 w-fit items-center gap-3 rounded-lg bg-[var(--site-accent)] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]"
               : "premium-button group mt-4 inline-flex min-h-9 w-fit items-center gap-2 rounded-lg border border-[var(--site-accent)] bg-transparent px-3.5 py-2 text-xs font-semibold text-[var(--site-accent)] transition duration-300 hover:-translate-y-0.5 hover:bg-[color-mix(in_srgb,var(--site-accent)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)] focus-visible:ring-offset-2"
           }
           style={isFeaturedDeal ? textStyleFor(config, "deals.topDealButtonLabel") : undefined}
@@ -2939,7 +2921,7 @@ function MenuSection({
               <button
                 type="button"
                 onClick={() => setMenuOpen(true)}
-                className="premium-button premium-button-shine rounded-2xl bg-[var(--site-accent)] px-8 py-4 text-base font-black text-white shadow-[0_16px_32px_-18px_var(--site-accent)] transition hover:-translate-y-0.5 hover:brightness-105"
+                className="premium-button rounded-2xl bg-[var(--site-accent)] px-8 py-4 text-base font-black text-white shadow-[0_16px_32px_-18px_var(--site-accent)] transition hover:-translate-y-0.5 hover:brightness-105"
               >
                 {siteCopy(config, "Komplette Speisekarte öffnen", "Open full menu")}
               </button>
@@ -4064,7 +4046,7 @@ function HeroButton({
       href={href}
       className={`premium-button group inline-flex min-h-11 items-center justify-center gap-3 rounded-xl px-6 py-3 text-center text-sm font-black transition duration-300 hover:-translate-y-1 ${
         primary
-          ? "premium-button-shine premium-button-shine-subtle bg-[var(--site-accent)] text-white shadow-[0_16px_30px_-16px_var(--site-accent)] hover:brightness-105"
+          ? "bg-[var(--site-accent)] text-white shadow-[0_16px_30px_-16px_var(--site-accent)] hover:brightness-105"
           : "premium-hero-secondary bg-white text-[var(--site-secondary)] shadow-[0_12px_26px_-20px_var(--site-secondary)] ring-1 ring-black/10 hover:ring-[var(--site-tertiary)]"
       }`}
       style={textStyleFor(config, id)}
