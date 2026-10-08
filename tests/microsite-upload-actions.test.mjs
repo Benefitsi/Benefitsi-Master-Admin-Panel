@@ -22,13 +22,13 @@ function fixture({ authorized = true, size = 100, type = "image/png", bytes, upl
     "@/lib/supabase/server": { createClient: async () => ({ storage: { from: () => storage } }) },
     "@/lib/partner-portal": { getPartnerPortalSession: async () => ({ user: { id: "editor" } }), canEditPartnerMicrosite: () => authorized },
   }
-  const module = { exports: {} }
+  const loadedModule = { exports: {} }
   const js = ts.transpileModule(readFileSync(new URL("../app/microsite-upload-actions.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
   new Function("require", "module", "exports", js)(id => {
     assert.ok(Object.hasOwn(boundaries, id), id)
     return boundaries[id]
-  }, module, module.exports)
-  return { ...module.exports, calls }
+  }, loadedModule, loadedModule.exports)
+  return { ...loadedModule.exports, calls }
 }
 
 test("signed uploads are scoped to an authorized partner and validate file metadata", async () => {
