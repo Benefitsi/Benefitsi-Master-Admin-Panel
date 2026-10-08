@@ -2190,12 +2190,6 @@ function BenefitsEcosystemSection({
       text: siteCopy(config, "Erfolge sammeln und deinen Fortschritt sichtbar machen.", "Collect achievements and make your progress visible."),
     },
     {
-      id: "content.ecosystem.streaks",
-      icon: "flame",
-      title: siteCopy(config, "Streaks aufbauen", "Build streaks"),
-      text: siteCopy(config, "Regelmäßige Besuche werden mit neuen Meilensteinen belohnt.", "Regular visits unlock new milestones."),
-    },
-    {
       id: "content.ecosystem.drops",
       icon: "bell",
       title: siteCopy(config, "Deal Drops zuerst sehen", "See deal drops first"),

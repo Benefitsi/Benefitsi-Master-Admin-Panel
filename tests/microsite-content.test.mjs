@@ -410,3 +410,10 @@ test("microsite titles reject every retired public alias before rendering", () =
     "Willkommensdeal: 20 % Rabatt",
   )
 })
+
+ test("retirement removes stale streak variants from every microsite benefit list", () => {
+  const retired = [{ type: " StReAk " }, { type: "streak_bonus" }, { type: "free_item", trigger_key: "streak_bonus" }, { type: "bonus_stamp", campaign_type: "STREAK" }, { type: "discount", metadata: { streak_mode: "calendar_frequency" } }].map((deal, i) => ({ ...deal, id: `retired-${i}`, active: true, discount_type: deal.type === "bonus_stamp" ? "bonus_stamp" : "item" }))
+  const keep = [{ id: "ordinary", type: "free_item", active: true }, { id: "hh", type: "happy_hour", active: true }, { id: "challenge", type: "challenge", discount_type: "bonus_stamp", active: true }]
+  assert.deepEqual(getMicrositePublicDeals([...retired, ...keep], now).map(d => d.id), ["ordinary", "hh"])
+  assert.deepEqual(getMicrositeStampDeals([...retired, ...keep], now).map(d => d.id), ["challenge"])
+})

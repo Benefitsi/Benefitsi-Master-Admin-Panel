@@ -1,9 +1,11 @@
+import { isRetiredStreakDeal } from "./streak-retirement"
 import type { Deal } from "./admin-data"
 
 export function isMicrositeDealAvailable(
   deal: Deal,
   now = Date.now(),
 ) {
+  if (isRetiredStreakDeal(deal)) return false
   if (deal.active !== true || deal.stock_remaining === 0) return false
 
   const startsAt = Date.parse(deal.valid_from || deal.starts_at || "")

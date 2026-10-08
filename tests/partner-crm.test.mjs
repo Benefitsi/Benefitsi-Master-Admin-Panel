@@ -278,6 +278,7 @@ test('active deal source selects existing columns and derives labels from nullab
     metadata: null
   }];
   rows.push({...rows[0], id: '00000000-0000-4000-8000-000000000097', display_title: null});
+  rows.push(...[{type:'streak'}, {type:'streak_bonus'}, {trigger_key:' StReAk '}, {campaign_type:'streak_bonus'}, {metadata:{streak_mode:'calendar_frequency'}}].map((variant, i) => ({...rows[0], ...variant, id:`00000000-0000-4000-8000-00000000008${i}`})));
   const c = client();
   c.from = table => {
     assert.equal(table, 'deals');

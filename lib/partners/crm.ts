@@ -1,3 +1,4 @@
+import { isRetiredStreakDeal } from "@/lib/streak-retirement"
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { readEntitlements, type Entitlements } from '@/lib/partners/entitlements';
 import { formatBenefitTitle, type BenefitTaxonomyInput } from '@/lib/benefit-taxonomy';
@@ -374,6 +375,7 @@ export async function readCrmDeals(client: SupabaseClient, partnerId: string): P
     deals: CrmDeal[] = [];
   for (const item of data) {
     const d = row(item);
+    if (isRetiredStreakDeal(d)) continue;
     const labelStrings = ['display_title', 'type', 'reward_format', 'discount_type', 'reward_item', 'trigger_key', 'campaign_type', 'activation_mode'];
     const labelNumbers = ['discount_value', 'benefit_count'];
     if (!validCrmUuid(d.id) || d.partner_id !== partnerId || d.active !== true || !(d.valid_from === null || timestamp(d.valid_from)) || !(d.valid_until === null || timestamp(d.valid_until)) || labelStrings.some(key => d[key] !== null && typeof d[key] !== 'string') || labelNumbers.some(key => d[key] !== null && (typeof d[key] !== 'number' || !Number.isFinite(d[key])))) return {

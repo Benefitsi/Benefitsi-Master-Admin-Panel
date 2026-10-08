@@ -215,24 +215,14 @@ test("older HH form submissions without a weekday selector preserve the legacy a
   assert.equal((await actions.saveDeal({}, data)).ok, true)
   assert.deepEqual([...rows.get(request).weekdays], [1,2,3,4,5,6,7])
 })
-test("calendar-series save stores separate rule dimensions, concrete copy and no lifetime redemption limit", async () => {
-  const { actions, rows } = fixture()
-  const result = await actions.saveDeal({}, form({ type: "streak", discount_type: "bonus_stamp", benefit_count: 1, trigger_value: 4, streak_mode: "calendar_frequency", required_visits_per_period: 2, period_unit: "weeks", required_consecutive_periods: 4 }))
-  assert.equal(result.ok, true, result.message)
-  const row = rows.get(request)
-  assert.equal(row.metadata.streak_mode, "calendar_frequency")
-  assert.equal(row.metadata.required_visits_per_period, 2)
-  assert.equal(row.metadata.required_consecutive_periods, 4)
-  assert.equal(row.metadata.period_unit, "weeks")
-  assert.equal(row.max_redemptions_per_user, null)
-  assert.match(row.customer_description, /2.*Kalenderwoche.*4.*Wochen.*einmal pro Serienlauf/)
-})
-test("invalid calendar minimum is rejected before a DB write with an actionable field error", async () => {
-  const { actions, writes } = fixture()
-  const result = await actions.saveDeal({}, form({ type: "streak", discount_type: "bonus_stamp", benefit_count: 1, trigger_value: 4, streak_mode: "calendar_frequency", required_visits_per_period: "1.5", period_unit: "weeks", required_consecutive_periods: 4 }))
-  assert.equal(result.ok, false)
-  assert.match(result.fieldErrors.required_visits_per_period, /ganze/)
-  assert.equal(writes.length, 0)
+test("forged retired deals are rejected before every write", async () => {
+  for (const values of [{ type: "streak" }, { type: " StReAk_BoNuS " }, { type: "bonus_stamp", trigger_key: "streak_bonus" }, { type: "happy_hour", campaign_type: "STREAK" }, { type: "free_item", metadata: JSON.stringify({ streak_mode: "calendar_frequency" }) }, { type: "free_item", deal_concept: "streak" }]) {
+    const { actions, writes } = fixture()
+    const result = await actions.saveDeal({}, form({ discount_type: "bonus_stamp", benefit_count: 1, trigger_value: 4, ...values }))
+    assert.equal(result.ok, false, JSON.stringify(values))
+    assert.match(result.message, /nicht mehr verfügbar/)
+    assert.equal(writes.length, 0)
+  }
 })
 test("database HH duplicate markers are readable and unauthorized benefit saves never write", async () => {
   const duplicate = fixture({ mutationError: "happy_hour_duplicate" })
@@ -268,19 +258,16 @@ test("a Happy Hour edit cannot restore stock consumed between its authorized rea
   assert.equal(Object.hasOwn(writes[0], "stock_remaining"), false)
   assert.equal(Object.hasOwn(writes[0], "stock_total"), false)
 })
-test("canonical calendar-series edits retain their direct reward category and storage dimensions", async () => {
-  const metadata = { streak_mode: "calendar_frequency", required_visits_per_period: 2, period_unit: "weeks", required_consecutive_periods: 4 }
-  const existing = { id: request, partner_id: partner, type: "bonus_stamp", reward_format: "bonus_stamp", trigger_key: "streak", campaign_type: null, discount_type: "bonus_stamp",
-    benefit_category: "direct_selectable", activation_mode: "direct_selectable", activation_required: true, metadata,
-    customer_description: null, staff_instructions: null, terms: null, reward_item: null }
-  const { actions, rows } = fixture({ existing: [existing] })
-  const result = await actions.saveDeal({}, form({ id: request, type: "streak", discount_type: "bonus_stamp", benefit_count: "1", trigger_value: "4", metadata: JSON.stringify(metadata), ...metadata }))
-  assert.equal(result.ok, true, result.message)
-  const row = rows.get(request)
-  for (const key of ["type", "reward_format", "trigger_key", "campaign_type", "benefit_category", "activation_mode", "activation_required"]) assert.equal(/^(starts_at|ends_at)$/.test(key) ? Date.parse(row[key]) : row[key], /^(starts_at|ends_at)$/.test(key) ? Date.parse(existing[key]) : existing[key], key)
-  assert.equal(row.metadata.required_visits_per_period, 2)
-  assert.equal(row.metadata.required_consecutive_periods, 4)
-  assert.match(row.customer_description, /Kalenderwoche.*einmal pro Serienlauf/)
+test("a stored canonical series cannot be converted or reactivated by a stale editor", async () => {
+  for (const current of [{ type: "bonus_stamp", trigger_key: "streak" }, { type: "free_item", metadata: { streak_mode: "calendar_frequency" } }]) {
+    const existing = { ...current, id: request, partner_id: partner, active: false }
+    const { actions, rows, writes } = fixture({ existing: [existing] })
+    const result = await actions.saveDeal({}, form({ id: request, type: "happy_hour" }))
+    assert.equal(result.ok, false)
+    assert.match(result.message, /nicht mehr verfügbar/)
+    assert.equal(writes.length, 0)
+    assert.equal(rows.get(request).active, false)
+  }
 })
 
 test("a stale configuration revision cannot overwrite a concurrent editor", async () => {

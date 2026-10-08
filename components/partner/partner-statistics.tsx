@@ -299,7 +299,7 @@ function InsightMetrics({
     metricRows = rows.filter((r) => r.section === sectionKey),
     weekly = sectionKey === 'consumer_premium',
     tableFirst =
-      weekly || sectionKey === 'offers' || sectionKey === 'calendar_streaks'
+      weekly || sectionKey === 'offers'
   return (
     <div className={panel}>
       <h3 className="font-bold">
@@ -309,8 +309,6 @@ function InsightMetrics({
               period_aggregates: 'Besuche im Zeitraum',
               loyalty: 'Stammgäste heute',
               stamp_program: 'Stempelprogramm',
-              legacy_streaks: 'Gespeicherte Besuchsserien',
-              calendar_streaks: 'Kalenderserien',
               consumer_premium: 'Consumer-Premium',
               offers: 'Angebote im Vergleich',
               measurement_gaps: 'Messgrenzen',
@@ -665,9 +663,8 @@ export function PartnerStatistics({
                 <Buckets section={badges} />
                 <p className="mt-4 text-sm leading-6 text-slate-500">
                   Erster Besuch: mindestens ein bestätigter Besuch. Stammgast:
-                  mindestens zehn Lifetime-Besuche. Serie: gespeicherte
-                  Besuchsserie größer null, ohne verifizierten Ablauf. Diese
-                  drei Gruppen überlappen sich.
+                  mindestens zehn Lifetime-Besuche. Diese beiden
+                  Gruppen überlappen sich.
                 </p>
               </div>
             </div>
@@ -781,18 +778,6 @@ export function PartnerStatistics({
               <h3 className="font-bold">Kartenfortschritt zum echten Ziel</h3>
               <Buckets section={insight(data, 'stamp_program')} />
             </div>
-            <InsightMetrics
-              data={data}
-              sectionKey="legacy_streaks"
-              rows={rows}
-              note="Gespeicherte Partner-Serienschritte, keine Tage oder Wochen. Ein allgemeiner Ablauf und die Nähe zum Ziel sind nicht belastbar auswertbar."
-            />
-            <InsightMetrics
-              data={data}
-              sectionKey="calendar_streaks"
-              rows={rows}
-              note="Kalenderserien je Angebot: Tage, Wochen, Monate und Quartale bleiben getrennt. Aktuelle Abschlüsse beziehen sich auf den gespeicherten Lauf, nicht auf sämtliche historischen Abschlüsse."
-            />
           </Topic>
           <Topic id="growth" title="Wachstum">
             <div className={panel}>

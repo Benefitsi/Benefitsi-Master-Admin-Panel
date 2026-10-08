@@ -25,11 +25,9 @@ test('all seven topics expose rich metrics, overlapping badges and actual offer 
     'Wachstum',
     'Erster Besuch',
     'Stammgast',
-    'Serie',
     'Bronze IV',
     'Diamant',
     'Willkommenskaffee',
-    'Kalenderserie',
     'Tage zwischen Besuchen',
   ])
     assert.ok(html.includes(text), text)
@@ -352,6 +350,7 @@ test('all canonical offer types show meaningful labels with their distinct value
   try {
     const rows = [...dom.window.document.querySelectorAll('tr')]
     offerTypeCases.forEach(([code, label], i) => {
+      if (code === 'streak') { assert.ok(!rows.some(r => r.cells[0]?.textContent?.includes(label))); return }
       assert.ok(
         rows.some(
           (r) =>
@@ -404,10 +403,7 @@ test('canonical weekly offer and Premium captions distinguish historical weeks f
     sectionCaption(d, 'Deine Gäste nach Treuestufe'),
     'Bestand am 06.10.2026',
   )
-  assert.equal(
-    sectionCaption(d, 'Gespeicherte Besuchsserien'),
-    'Gespeicherter Bestand · Stand 06.10.2026',
-  )
+  assert.doesNotMatch(render(h(PartnerStatistics, { data: d })), /Gespeicherte Besuchsserien|Kalenderserien/)
   assert.equal(
     sectionCaption(d, 'Besuche im Zeitraum'),
     '07.09.2026 – 06.10.2026, 17:21',

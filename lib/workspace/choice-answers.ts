@@ -13,7 +13,6 @@ export const choiceOptions:Record<string,ChoiceOption[]>={
     option('time_bonus','Zeitbonus','Eine schnelle Rückkehr innerhalb einer festgelegten Frist belohnen.'),
     option('comeback','Comeback-Deal','Einen Wiederbesuch nach einer längeren Pause belohnen.'),
     option('birthday','Geburtstagsangebot','Einen Vorteil rund um den Geburtstag anbieten.'),
-    option('streak','Besuchsserie','Regelmäßige Besuche in Folge belohnen.'),
     option('challenge','Challenge','Ein festgelegtes Besuchsziel belohnen.'),
     option('happy_hour','Happy Hour','Einen Vorteil an ausgewählten Tagen und Uhrzeiten anbieten.'),
     option('deal_drop','Deal Drop','Eine begrenzte Aktion mit festem Inhalt, Zeitraum und Kontingent. Erste Ideen unter D09.')

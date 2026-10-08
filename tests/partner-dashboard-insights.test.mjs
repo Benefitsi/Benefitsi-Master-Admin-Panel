@@ -135,6 +135,7 @@ test('all canonical offer types retain distinct labels and metrics in projection
     rows = dashboardDetailRows(d),
     text = dashboardCsv(d)
   offerTypeCases.forEach(([code, label], i) => {
+    if (code === 'streak') { assert.ok(!rows.some(r => r.label.includes(label))); assert.ok(!text.includes(label)); return }
     assert.equal(
       rows.filter(
         (r) => r.section === 'offers' &&
