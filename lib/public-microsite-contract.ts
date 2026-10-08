@@ -96,7 +96,8 @@ function color(value: unknown) { const v = text(value); return /^#(?:[0-9a-f]{3}
 function projectGroup<K extends keyof typeof fields>(input: Record<string, unknown>, group: K): Group<K> {
   const source = record(input[group]); const overrides = record(input.elementText)
   return Object.fromEntries(fields[group].map(key => {
-    const value = overrides[`${group}.${key}`] ?? source[key]
+    const override = overrides[`${group}.${key}`]
+    const value = key.endsWith("Url") && !text(override) ? source[key] : override ?? source[key]
     return [key, key.endsWith("Url") ? publicMicrositeUrl(value, "asset") : key.startsWith("accent") ? color(value) : text(value)]
   })) as Group<K>
 }
@@ -107,6 +108,9 @@ export function createPublicMicrositeSnapshot(value: unknown): PublicMicrositeCo
   for (const [key, raw] of Object.entries(record(input.elementText))) {
     if (!supportedText(key)) continue
     const value = text(raw)
+    // Missing image overrides inherit the Builder fallback. Older v1 snapshots
+    // serialized optional upload slots as empty strings, suppressing all photos.
+    if (assetKey(key) && !value) continue
     elementText[key] = visibilityKey(key) ? (value === "false" ? "false" : "true") : assetKey(key) ? publicMicrositeUrl(value, "asset") : linkKey(key) ? publicMicrositeUrl(value) : value
   }
   const elementStyles: Record<string, PublicMicrositeStyle> = {}

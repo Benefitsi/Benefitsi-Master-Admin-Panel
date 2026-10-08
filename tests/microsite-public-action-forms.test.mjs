@@ -57,6 +57,7 @@ function loadFormFixture() {
     const publicActionFormId = ${id ? id.initializer.getText(file) : "undefined"};
     const editorFormId = useId();
     const setFormDirty = () => {};
+    const imageUploads = {isBlocked: () => false}, hasMicrositeLocalImage = () => false, config = {};
     const formAction = "/synthetic-action", pending = false, builderLocale = "en";
     const state = {publicRefreshPending: true};
     const tr = value => value;

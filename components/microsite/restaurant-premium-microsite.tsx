@@ -657,10 +657,13 @@ function MicrositeThemeCss() {
         box-shadow: 0 32px 72px -36px color-mix(in srgb, var(--site-accent) 42%, #6b3b20);
       }
 
+      /* Utility positioning/visibility must still apply to missing images. */
+      @layer components {
+        .premium-branded-image { position: relative; display: grid; }
+      }
+
       .premium-branded-image {
-        position: relative;
         isolation: isolate;
-        display: grid;
         place-items: center;
         overflow: hidden;
         background:

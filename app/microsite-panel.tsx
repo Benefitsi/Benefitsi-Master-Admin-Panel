@@ -64,10 +64,10 @@ import {
   micrositeMenuItemVisibilityId,
 } from "@/lib/microsite-menu"
 import { saveMicrositeVersion, type MicrositeActionState } from "./microsite-actions"
+import { hasMicrositeLocalImage, MicrositeImageUploadContext, micrositeImageUploadSlot, micrositeImageSlotUrl, micrositeLocalImageSlots, useMicrositeImageUploadContext, useMicrositeImageUploads } from "./microsite-image-uploads"
 
 const initialState: MicrositeActionState = { ok: false, message: "" }
 type BuilderLocale = "de" | "en"
-const MICROSITE_UPLOADS_CLEARED_EVENT = "benefitsi:microsite-uploads-cleared"
 const MAX_MICROSITE_ASSET_BYTES = 10 * 1024 * 1024
 const MAX_MICROSITE_UPLOAD_BYTES = 20 * 1024 * 1024
 const ALLOWED_MICROSITE_ASSET_TYPES = new Set([
@@ -121,6 +121,18 @@ function useBuilderI18n() {
 }
 
 const builderTranslations: Record<string, string> = {
+  "Diese Bilder wurden früher nur als lokale Vorschau gespeichert. Bitte erneut hochladen oder das vorherige Bild wiederherstellen.": "These images were previously saved only as local previews. Please upload them again or restore the previous image.",
+  "Bild erneut auswählen": "Select image again",
+  "Vorheriges Bild wiederherstellen": "Restore previous image",
+  "Bild wird hochgeladen…": "Uploading image…",
+  "Bild hochgeladen. Bitte Entwurf speichern.": "Image uploaded. Please save the draft.",
+  "Bild-Upload fehlgeschlagen. Bitte erneut versuchen.": "Image upload failed. Please try again.",
+  "Dieser Bildtyp wird nicht unterstützt. Bitte PNG, JPG, WebP oder SVG verwenden.": "This image type is not supported. Please use PNG, JPG, WebP or SVG.",
+  "Ein Bild muss zwischen 1 Byte und 10 MB groß sein.": "An image must be between 1 byte and 10 MB.",
+  "Offene Bild-Uploads dürfen zusammen maximal 20 MB groß sein. Bitte laufende Uploads abwarten.": "Pending image uploads may total up to 20 MB. Please wait for current uploads to finish.",
+  "Bitte Bild-Uploads abschließen oder erneut versuchen, bevor du speicherst.": "Please finish or retry the image uploads before saving.",
+  "Erneut versuchen": "Try again",
+  "Auswahl verwerfen": "Discard selection",
   ...micrositeReadinessEnglishTranslations,
   "Microsite": "Microsite",
   "Restaurant-Premium-Vorlage": "Restaurant premium template",
@@ -1041,6 +1053,9 @@ export function MicrositePanel({
     partner,
   )
   const [config, setConfig] = useState<MicrositeConfig>(initialConfig)
+  const imageUploads = useMicrositeImageUploads(partner.id || "", config, setConfig)
+  const clearImageUploads = imageUploads.clear
+  const legacyImageSlots = micrositeLocalImageSlots(config).filter(slot => !imageUploads.uploads.some(upload => upload.previewUrl === micrositeImageSlotUrl(config, slot)))
   const [savedConfigJson, setSavedConfigJson] = useState(() => JSON.stringify(initialConfig))
   const [formDirty, setFormDirty] = useState(false)
   type VersionIdentity = { id: string; version_number: number | null }
@@ -1048,7 +1063,7 @@ export function MicrositePanel({
   const [publishedVersion, setPublishedVersion] = useState<VersionIdentity | null>(initialVersions.published)
   const publicationKey = `${partner.microsite?.status ?? ""}:${initialVersions.published?.id ?? ""}:${initialVersions.published?.version_number ?? ""}`
   const observedPublicationKeyRef = useRef(publicationKey)
-  const hasUnsavedChanges = formDirty || JSON.stringify(config) !== savedConfigJson
+  const hasUnsavedChanges = imageUploads.blocked || formDirty || JSON.stringify(config) !== savedConfigJson
   const isOriginalFoodTemplate = config.template === "restaurant-premium"
   const contentSectionLabel = isOriginalFoodTemplate
     ? "Speisekarte"
@@ -1324,7 +1339,20 @@ export function MicrositePanel({
       .forEach((input) => {
         input.value = ""
       })
-    window.dispatchEvent(new Event(MICROSITE_UPLOADS_CLEARED_EVENT))
+    clearImageUploads()
+    setClientSaveError("")
+  }
+
+  function restoreLegacyImage(slot: string) {
+    const publishedConfig = partner.microsite?.publishedVersion?.config
+      ? resolveMicrositeConfig(partner.microsite.publishedVersion.config, partner)
+      : null
+    const candidates = [
+      publishedConfig ? micrositeImageSlotUrl(publishedConfig, slot) : "",
+      ...config.assets.library.filter(asset => asset.slot === slot).reverse().map(asset => asset.url),
+    ]
+    const previousUrl = candidates.find(url => /^(https?:\/\/|\/[^/])/.test(url)) || ""
+    setConfig(current => applyAssetToSlot(current, slot, previousUrl))
     setClientSaveError("")
   }
 
@@ -1349,6 +1377,16 @@ export function MicrositePanel({
         activeEditable.dataset.micrositeEditable || "",
         textFromEditableElement(activeEditable),
       )
+    }
+
+    if (imageUploads.isBlocked() || hasMicrositeLocalImage(config)) {
+      event.preventDefault()
+      setClientSaveError(
+        builderLocale === "en"
+          ? "Please finish or retry the image uploads before saving."
+          : "Bitte Bild-Uploads abschließen oder erneut versuchen, bevor du speicherst.",
+      )
+      return
     }
 
     const files = Array.from(
@@ -1427,7 +1465,7 @@ export function MicrositePanel({
             .forEach((input) => {
               input.value = ""
             })
-          window.dispatchEvent(new Event(MICROSITE_UPLOADS_CLEARED_EVENT))
+          clearImageUploads()
           setClientSaveError("")
         }
       })
@@ -1436,7 +1474,7 @@ export function MicrositePanel({
         cancelled = true
       }
     }
-  }, [partner, previewStorageKey, state])
+  }, [partner, previewStorageKey, state, clearImageUploads])
 
   useEffect(() => {
     if (state.ok && state.publicationWithdrawn) queueMicrotask(() => setPublishedVersion(null))
@@ -1732,6 +1770,7 @@ export function MicrositePanel({
         tr,
       }}
     >
+    <MicrositeImageUploadContext.Provider value={imageUploads}>
     <section
       className="overflow-visible rounded-md border border-zinc-200 bg-white shadow-sm"
     >
@@ -1761,19 +1800,24 @@ export function MicrositePanel({
             href={previewHref}
             target="_blank"
             rel="noreferrer"
-            onClick={() => {
+            onClick={(event) => {
+              if (imageUploads.isBlocked() || hasMicrositeLocalImage(config)) {
+                event.preventDefault()
+                setClientSaveError(tr("Bitte Bild-Uploads abschließen oder erneut versuchen, bevor du speicherst."))
+                return
+              }
               window.localStorage.setItem(previewStorageKey, JSON.stringify(config))
             }}
             className="inline-flex h-9 items-center rounded-md border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
           >
             {tr("Vorschau")}
           </a>
-          <button type="submit" form={editorFormId} name="intent" value="draft" disabled={pending}
+          <button type="submit" form={editorFormId} name="intent" value="draft" disabled={pending || imageUploads.blocked}
             onClick={() => setPendingIntent("draft")}
             className="inline-flex h-9 items-center rounded-md border border-teal-700 bg-white px-3 text-xs font-semibold text-teal-800 disabled:opacity-60">
             {pending && pendingIntent === "draft" ? tr("Speichert…") : builderLocale === "en" ? "Save" : "Speichern"}
           </button>
-          <button type="submit" form={editorFormId} name="intent" value="publish" disabled={pending || publishBlocked}
+          <button type="submit" form={editorFormId} name="intent" value="publish" disabled={pending || publishBlocked || imageUploads.blocked}
             onClick={() => setPendingIntent("publish")}
             className="inline-flex h-9 items-center rounded-md bg-teal-700 px-3 text-xs font-semibold text-white disabled:opacity-60">
             {pending && pendingIntent === "publish" ? tr("Wird veröffentlicht…") : tr("Veröffentlichen")}
@@ -1834,6 +1878,19 @@ export function MicrositePanel({
             </button>
           </div>
         </div>
+        {legacyImageSlots.length ? (
+          <div role="alert" className="space-y-2 border-t border-amber-200 bg-amber-50 px-5 py-3 text-xs text-amber-950">
+            <p>{tr("Diese Bilder wurden früher nur als lokale Vorschau gespeichert. Bitte erneut hochladen oder das vorherige Bild wiederherstellen.")}</p>
+            {legacyImageSlots.map(slot => (
+              <div key={slot} className="flex flex-wrap items-center gap-3">
+                <span className="font-semibold">{tr(getEditableElement(slot, config, partner)?.label || slot)}</span>
+                <button type="button" onClick={() => { setSelectedElementId(slot); setEditorPanelOpen(true) }} className="font-bold underline">{tr("Bild erneut auswählen")}</button>
+                <button type="button" onClick={() => restoreLegacyImage(slot)} className="font-bold underline">{tr("Vorheriges Bild wiederherstellen")}</button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <MicrositeImageUploadStatus />
         {pending || clientSaveError || state.message ? (
           <div
             role={clientSaveError || (!state.ok && state.message) ? "alert" : "status"}
@@ -2294,7 +2351,7 @@ export function MicrositePanel({
               name="intent"
               value="draft"
               onClick={() => setPendingIntent("draft")}
-              disabled={pending}
+              disabled={pending || imageUploads.blocked}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 disabled:opacity-60"
             >
               {pending && pendingIntent === "draft" ? <LoadingSpinner /> : null}
@@ -2305,7 +2362,7 @@ export function MicrositePanel({
               name="intent"
               value="publish"
               onClick={() => setPendingIntent("publish")}
-              disabled={pending || publishBlocked}
+              disabled={pending || publishBlocked || imageUploads.blocked}
               title={
                 publishBlocked
                   ? `Pflichtpunkte fehlen: ${publishBlockers
@@ -2492,6 +2549,7 @@ export function MicrositePanel({
         </fieldset>
       </form>
     </section>
+    </MicrositeImageUploadContext.Provider>
     </BuilderI18nContext.Provider>
   )
 }
@@ -3014,7 +3072,6 @@ function AssetReadinessPanel({
   const [selectedAssetTarget, setSelectedAssetTarget] = useState(
     assetTargets[0]?.slot || "hero.backgroundImageUrl",
   )
-  const [pendingLibraryUploadTarget, setPendingLibraryUploadTarget] = useState("")
   const activeAssetTarget = assetTargets.some((target) => target.slot === selectedAssetTarget)
     ? selectedAssetTarget
     : assetTargets[0]?.slot || "hero.backgroundImageUrl"
@@ -3051,17 +3108,12 @@ function AssetReadinessPanel({
               ))}
             </select>
           </label>
-          <input
-            type="hidden"
-            name="asset_library_target"
-            value={pendingLibraryUploadTarget || activeAssetTarget}
-          />
           <div className="mt-3">
             <AssetUploadField
               name="asset_library_file"
+              slot={activeAssetTarget}
               label="Neues Bild direkt zur Asset-Bibliothek hinzufügen"
               onPreview={(url) => {
-                setPendingLibraryUploadTarget(activeAssetTarget)
                 setConfig((current) => applyAssetToSlot(current, activeAssetTarget, url))
               }}
             />
@@ -6112,65 +6164,60 @@ function ColorField({
   )
 }
 
+function MicrositeImageUploadStatus() {
+  const { tr } = useBuilderI18n()
+  const uploads = useMicrositeImageUploadContext()
+  const unresolved = uploads.uploads.filter(upload => upload.status !== "complete")
+  if (!unresolved.length) return null
+
+  return (
+    <div className="space-y-2 border-t border-amber-200 bg-amber-50 px-5 py-3 text-xs text-amber-950" aria-live="polite">
+      {unresolved.map(upload => (
+        <div key={upload.slot} className="flex flex-wrap items-center gap-2" role={upload.status === "error" ? "alert" : "status"}>
+          <span className="min-w-0 break-words font-semibold">{upload.fileName}: {upload.status === "uploading" ? tr("Bild wird hochgeladen…") : tr(upload.message || "Bild-Upload fehlgeschlagen. Bitte erneut versuchen.")}</span>
+          {upload.status === "error" && upload.file ? <button type="button" onClick={() => uploads.retry(upload.slot)} className="font-bold underline">{tr("Erneut versuchen")}</button> : null}
+          {upload.status === "error" ? <button type="button" onClick={() => uploads.cancel(upload.slot)} className="font-bold underline">{tr("Auswahl verwerfen")}</button> : null}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function AssetUploadField({
   name,
+  slot,
   label,
   onPreview,
 }: {
   name: string
+  slot?: string
   label: string
   onPreview?: (url: string) => void
 }) {
   const { tr } = useBuilderI18n()
-  const [fileName, setFileName] = useState("")
-  const previewUrlRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    const clearUpload = () => {
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current)
-        previewUrlRef.current = null
-      }
-      setFileName("")
-    }
-
-    window.addEventListener(MICROSITE_UPLOADS_CLEARED_EVENT, clearUpload)
-
-    return () => {
-      window.removeEventListener(MICROSITE_UPLOADS_CLEARED_EVENT, clearUpload)
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
-    }
-  }, [])
+  const uploads = useMicrositeImageUploadContext()
+  const uploadSlot = slot || micrositeImageUploadSlot(name)
+  const upload = uploads.uploads.find(entry => entry.slot === uploadSlot)
 
   return (
     <label className="block space-y-1.5 text-xs font-medium text-zinc-600">
       {tr(label)}
       <input
         type="file"
-        name={name}
-        data-microsite-upload
+        data-microsite-upload={name}
         accept="image/png,image/jpeg,image/webp,image/svg+xml"
         onChange={(event) => {
           const file = event.target.files?.[0]
-
-          setFileName(file?.name ?? "")
-
-          if (previewUrlRef.current) {
-            URL.revokeObjectURL(previewUrlRef.current)
-            previewUrlRef.current = null
-          }
-
-          if (file && onPreview) {
-            const previewUrl = URL.createObjectURL(file)
-            previewUrlRef.current = previewUrl
-            onPreview(previewUrl)
-          }
+          if (file) uploads.select(uploadSlot, file, onPreview)
+          // The editor owns the File until completion/retry. Never send it again
+          // in the draft action, and allow selecting the same file after errors.
+          event.target.value = ""
         }}
         className="block w-full rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2 text-xs file:mr-2 file:rounded file:border-0 file:bg-teal-50 file:px-2 file:py-1 file:font-semibold file:text-teal-800"
       />
-      {fileName ? (
-        <span className="block rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-          {tr("Vorschau aktiv: {fileName}. Zum dauerhaften Speichern bitte Entwurf speichern.").replace("{fileName}", fileName)}
+      {upload ? (
+        <span className={`block rounded-md px-2 py-1 text-[11px] font-semibold ${upload.status === "complete" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-900"}`}>
+          {upload.fileName}: {upload.status === "complete" ? tr("Bild hochgeladen. Bitte Entwurf speichern.") : upload.status === "uploading" ? tr("Bild wird hochgeladen…") : tr(upload.message || "Bild-Upload fehlgeschlagen. Bitte erneut versuchen.")}
         </span>
       ) : null}
     </label>
