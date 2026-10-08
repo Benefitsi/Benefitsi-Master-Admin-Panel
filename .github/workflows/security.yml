@@ -90,6 +90,7 @@ jobs:
           tests/admin-microsite-loading.test.mjs
           tests/partner-microsite-preview-access.test.mjs
           tests/microsite-publication-cache.test.mjs
+          tests/public-microsite-contract.test.mjs
           tests/partner-capability-policy.test.mjs
           tests/partner-plan-actions.test.mjs
           tests/partner-onboarding-ui.test.mjs
@@ -154,6 +155,9 @@ jobs:
           tests/partner-upload-optimization.test.mjs
           tests/microsite-workflow.test.mjs
           tests/microsite-editor-behavior.test.mjs
+          tests/microsite-image-upload.test.mjs
+          tests/microsite-upload-actions.test.mjs
+          tests/microsite-responsive.test.mjs
           tests/microsite-public-action-forms.test.mjs
           tests/microsite-publication-labels.test.mjs
 

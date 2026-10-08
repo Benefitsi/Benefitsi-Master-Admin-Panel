@@ -27,6 +27,7 @@ function loadEditor(save) {
     }).outputText
     new Function("require", "module", "exports", js)(id => {
       if (id === "next/navigation") return { useRouter: () => ({ refresh() {}, push() {} }) }
+      if (id.endsWith("microsite-upload-actions")) return {}
       if (id.endsWith("microsite-actions")) return { saveMicrositeVersion: save }
       if (id.startsWith("@/") || id.startsWith(".")) {
         const base = id.startsWith("@/") ? resolve(repo, id.slice(2)) : resolve(dirname(file), id)

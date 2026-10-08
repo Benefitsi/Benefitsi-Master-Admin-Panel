@@ -236,6 +236,12 @@ async function persistMicrositeVersion(
   }
 
   config = applyUploadedAssets(config, uploadedAssets.urls)
+  if ([config.hero.backgroundImageUrl, config.branding.logoUrl, config.branding.partnerBadgeUrl,
+    config.deals.illustrationUrl, config.deals.topDealImageUrl, config.seo.ogImageUrl,
+    ...config.assets.library.map(asset => asset.url), ...Object.values(config.elementText)]
+    .some(value => typeof value === "string" && /^blob:/i.test(value.trim()))) {
+    return { ok: false, message: "Mindestens ein Bild wurde noch nicht dauerhaft hochgeladen. Bitte den Upload abschließen oder das betroffene Bild erneut auswählen." }
+  }
   const publicSnapshot = intent === "publish" ? createPublicMicrositeSnapshot(config) : null
   if (intent === "publish" && (!publicSnapshot || publicMicrositePublishBlockers(config).length)) {
     return { ok: false, config, message: "Veröffentlichung blockiert: Die hochgeladenen Medien benötigen sichere öffentliche URLs ohne Zugangsdaten." }

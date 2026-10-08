@@ -5,6 +5,34 @@ import { createDefaultMicrositeConfig } from '../lib/microsites.ts'
 import { createPublicMicrositeSnapshot, readPublicMicrositeSnapshot, publicMicrositePublishBlockers, publicMicrositeUrl } from '../lib/public-microsite-contract.ts'
 const config = () => createDefaultMicrositeConfig({ name: 'Synthetic BEN61', slug: 'ben61' }, 'restaurant-premium')
 
+test('empty legacy image overrides inherit Builder images without discarding authored text or valid images', () => {
+  const c = config()
+  c.hero.backgroundImageUrl = 'https://assets.example.org/hero.webp'
+  c.elementText = { 'hero.backgroundImageUrl': '', 'content.aboutHeroImageUrl': '', 'content.aboutPrepImageUrl': undefined, 'content.aboutIngredientImageUrl': 'https://assets.example.org/ingredient.webp', 'content.aboutHeadline': '' }
+  const snapshot = createPublicMicrositeSnapshot(c)
+  assert.equal(snapshot.elementText['content.aboutHeroImageUrl'], undefined)
+  assert.equal(snapshot.elementText['content.aboutPrepImageUrl'], undefined)
+  assert.equal(snapshot.elementText['content.aboutIngredientImageUrl'], c.elementText['content.aboutIngredientImageUrl'])
+  assert.equal(snapshot.elementText['content.aboutHeadline'], '')
+  snapshot.elementText['content.aboutHeroImageUrl'] = ''
+  const restored = readPublicMicrositeSnapshot({ publicSnapshot: snapshot })
+  assert.equal(restored.elementText['content.aboutHeroImageUrl'], undefined)
+  assert.equal(restored.hero.backgroundImageUrl, c.hero.backgroundImageUrl)
+})
+
+test('drafts cannot report success while an image is only a temporary browser URL', async () => {
+  const temporary = 'blob:https://admin.example.org/lost-upload'
+  for (const edit of [c => { c.elementText['content.aboutIngredientImageUrl'] = temporary }, c => { c.seo.ogImageUrl = temporary }, c => { c.assets.library.push({ id: 'unsaved', url: temporary, slot: 'hero.backgroundImageUrl', label: 'Pending image', source: 'upload', createdAt: '' }) }]) {
+    const c = config()
+    edit(c)
+    const f = publicationFixture()
+    const result = await f.save('draft', { existing_config: JSON.stringify(c) })
+    assert.equal(result.ok, false)
+    assert.match(result.message, /Bild.*hochgeladen|Bild.*auswählen/i)
+    assert.equal(f.writes.length, 0)
+  }
+})
+
 test('palette mode survives publication while older v1 snapshots remain readable', () => {
   for (const paletteMode of ['auto', 'manual']) {
     const c = config(); c.branding.paletteMode = paletteMode
