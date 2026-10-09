@@ -662,6 +662,26 @@ export async function savePartner(
     return { ok: false, message: validationError }
   }
 
+  const openingHoursToSave = isUpdate && formData.has("holiday_count")
+    ? parseWeeklyOpeningHourRows(formData, partnerId)
+    : null
+  const holidaysToSave = openingHoursToSave
+    ? parsePartnerHolidays(formData, partnerId)
+    : null
+  if (openingHoursToSave) {
+    const invalidRow = invalidWeeklyOpeningHourRow(openingHoursToSave)
+    if (invalidRow) {
+      return {
+        ok: false,
+        message: `${weekdayName(invalidRow.weekday)} needs opening and closing times, or mark it closed.`,
+      }
+    }
+    const hoursValidation = validateOpeningHourRows(openingHoursToSave)
+    if (hoursValidation) return { ok: false, message: hoursValidation }
+    const holidayValidation = validatePartnerHolidays(holidaysToSave ?? [])
+    if (holidayValidation) return { ok: false, message: holidayValidation }
+  }
+
   const partnerSocials = parsePartnerSocials(formData)
   const partnerSocialValidation = validatePartnerSocials(partnerSocials)
   if (partnerSocialValidation) return { ok: false, message: partnerSocialValidation }
@@ -751,6 +771,32 @@ export async function savePartner(
       }
 
       return { ok: false, message: socialSyncMessage }
+    }
+
+    if (openingHoursToSave && holidaysToSave) {
+      const deleteHoursResult = await supabase
+        .from("partner_opening_hours")
+        .delete()
+        .eq("partner_id", partnerId)
+      if (deleteHoursResult.error) {
+        return { ok: false, message: `Partner details were saved, but operating hours could not be updated: ${deleteHoursResult.error.message}` }
+      }
+
+      const insertHoursResult = await supabase
+        .from("partner_opening_hours")
+        .insert(openingHoursToSave)
+      if (insertHoursResult.error) {
+        return { ok: false, message: `Partner details were saved, but operating hours could not be updated: ${insertHoursResult.error.message}` }
+      }
+
+      const holidayMessage = await replacePartnerHolidays(
+        supabase,
+        partnerId,
+        holidaysToSave,
+      )
+      if (holidayMessage) {
+        return { ok: false, message: `Partner details and weekly hours were saved, but holiday exceptions could not be updated: ${holidayMessage}` }
+      }
     }
 
     const oldMediaUrls = [
@@ -897,6 +943,8 @@ export async function savePartner(
       ...(result.data![0] as unknown as Partial<PartnerWithDeals>), id: partnerId,
       socials: partnerSocialsEqual(existingSocials, partnerSocials) ? existingSocials
         : partnerSocials.map(social => ({ ...social, partner_id: partnerId })),
+      ...(openingHoursToSave ? { opening_hours: openingHoursToSave } : {}),
+      ...(holidaysToSave ? { holidays: holidaysToSave } : {}),
     } as Partial<PartnerWithDeals> & { id: string }
     if (!isUpdate) {
       try {
@@ -5998,7 +6046,7 @@ function validatePartnerHolidays(holidays: ParsedPartnerHoliday[]) {
       !holiday.is_closed &&
       (!holiday.opens_at ||
         !holiday.closes_at ||
-        holiday.opens_at === holiday.closes_at)
+        holiday.closes_at <= holiday.opens_at)
     ) {
       return "Holiday replacement hours need different opening and closing times."
     }

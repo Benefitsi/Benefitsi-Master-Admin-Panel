@@ -110,7 +110,6 @@ import {
   savePartnerStaff,
   savePartner,
   saveRewardMilestone,
-  saveWeeklyOpeningHours,
   rotatePartnerPin,
   type PartnerActionState,
 } from "./partner-actions"
@@ -1226,7 +1225,7 @@ function PartnerDetail({
   const requestedTab =
     tabState.partnerIdentity === partnerIdentity ? tabState.tab : "details"
   const settingsTab =
-    (requestedTab === "hours" && !portalMode) || requestedTab === "menu" && !partnerTypeSupportsMenu(partner.type)
+    requestedTab === "hours" || requestedTab === "menu" && !partnerTypeSupportsMenu(partner.type)
       ? "details"
       : portalMode &&
           ((requestedTab === "access" && !partner.team_manage_enabled) || requestedTab === "plan" ||
@@ -1240,7 +1239,6 @@ function PartnerDetail({
     hasRequiredFields?: boolean
   }> = [
     { id: "details", label: portalMode ? "Profil & Kontakt" : "Partner Profile", hasRequiredFields: true },
-    ...(portalMode ? [{ id: "hours" as const, label: "Öffnungszeiten" }] : []),
     { id: "deals", label: portalMode ? "Vorteile & Stempelprogramm" : "Stamps & Deals", hasRequiredFields: true },
     ...(partnerTypeSupportsMenu(partner.type)
       ? [{ id: "menu" as const, label: "Menu Management", hasRequiredFields: true }]
@@ -1384,7 +1382,6 @@ function PartnerDetail({
               </p>
             </header>
             {settingsTab === "plan" && adminAccess && partner.id ? <PartnerPlanPanel key={partner.id} partnerId={partner.id}/> : null}
-            {settingsTab === "hours" && portalMode ? <OpeningHoursPanel partner={partner} /> : null}
             {settingsTab === "details" ? (
               <div className="space-y-3">
                 <PartnerForm
@@ -2990,8 +2987,7 @@ function PartnerForm({
       {mode === "edit" && partner?.id ? (
         <OpeningHoursPanel
           partner={partner}
-          embedded
-          withinPartnerForm
+          defaultOpen={portalMode}
         />
       ) : null}
 
@@ -7969,14 +7965,11 @@ function PartnerStaffForm({
 
 function OpeningHoursPanel({
   partner,
-  embedded = false,
-  withinPartnerForm = false,
+  defaultOpen = false,
 }: {
   partner: PartnerWithDeals
-  embedded?: boolean
-  withinPartnerForm?: boolean
+  defaultOpen?: boolean
 }) {
-  const partnerId = partner.id ?? ""
   const hoursByWeekday = new Map<number | null, PartnerOpeningHour[]>()
   for (const hour of partner.opening_hours) {
     hoursByWeekday.set(hour.weekday, [
@@ -7985,139 +7978,26 @@ function OpeningHoursPanel({
     ])
   }
 
-  const content = (
-    <div className="space-y-4">
-      <InfoNote>
-        Toggle closed days, adjust times, then save the weekly schedule once.
-      </InfoNote>
-      {partnerId ? (
-        <WeeklyOpeningHoursForm
-          embedded={withinPartnerForm}
+  return (
+    <FormSection title="Operating hours" required="subtle" defaultOpen={defaultOpen}>
+      <div className="space-y-4">
+        <InfoNote>Changes to this schedule are saved with Save partner.</InfoNote>
+        <WeeklyHoursFields
           holidays={partner.holidays}
           hoursByWeekday={hoursByWeekday}
-          partnerId={partnerId}
         />
-      ) : null}
-    </div>
-  )
-
-  if (embedded) {
-    return (
-      <FormSection title="Operating hours" required="subtle" defaultOpen={false}>
-        {content}
-      </FormSection>
-    )
-  }
-
-  return (
-    <EditorShell
-      title="Operating hours"
-      description="Set the full weekly schedule in one pass."
-      collapsible
-      defaultOpen={false}
-    >
-      {content}
-    </EditorShell>
-  )
-}
-
-function WeeklyOpeningHoursForm({
-  embedded = false,
-  holidays,
-  hoursByWeekday,
-  partnerId,
-}: {
-  embedded?: boolean
-  holidays: PartnerHoliday[]
-  hoursByWeekday: Map<number | null, PartnerOpeningHour[]>
-  partnerId: string
-}) {
-  const [state, formAction] = useActionState(
-    saveWeeklyOpeningHours,
-    initialState,
-  )
-  const formRef = useActionSuccess(state)
-  const embeddedFieldsRef = useRef<HTMLDivElement>(null)
-
-  const saveEmbeddedHours = () => {
-    const container = embeddedFieldsRef.current
-
-    if (!container) {
-      return
-    }
-
-    const formData = new FormData()
-    formData.set("partner_id", partnerId)
-
-    container
-      .querySelectorAll<HTMLInputElement>("[data-opening-hours-name]")
-      .forEach((input) => {
-        const name = input.dataset.openingHoursName
-
-        if (
-          !name ||
-          input.disabled ||
-          ((input.type === "checkbox" || input.type === "radio") &&
-            !input.checked)
-        ) {
-          return
-        }
-
-        formData.append(name, input.value)
-      })
-
-    formAction(formData)
-  }
-
-  const fields = (
-    <WeeklyHoursFields
-      embedded={embedded}
-      holidays={holidays}
-      hoursByWeekday={hoursByWeekday}
-    />
-  )
-
-  if (embedded) {
-    return (
-      <div ref={embeddedFieldsRef} className="space-y-4">
-        {fields}
-        <ActionMessage state={state} />
-        <button
-          type="button"
-          onClick={saveEmbeddedHours}
-          className="h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
-        >
-          Save operating hours
-        </button>
       </div>
-    )
-  }
-
-  return (
-    <form ref={formRef} action={formAction} className="space-y-4">
-      <input type="hidden" name="partner_id" value={partnerId} />
-      {fields}
-      <ActionMessage state={state} />
-      <SubmitButton
-        label="Save operating hours"
-        pendingLabel="Saving operating hours..."
-      />
-    </form>
+    </FormSection>
   )
 }
 
 function WeeklyHoursFields({
-  embedded = false,
   holidays = [],
   hoursByWeekday = new Map(),
 }: {
-  embedded?: boolean
   holidays?: PartnerHoliday[]
   hoursByWeekday?: Map<number | null, PartnerOpeningHour[]>
 }) {
-  const fieldName = (name: string) => (embedded ? undefined : name)
-  const fieldDataName = (name: string) =>
-    embedded ? { "data-opening-hours-name": name } : {}
   const [bulkOpenTime, setBulkOpenTime] = useState("09:00")
   const [bulkCloseTime, setBulkCloseTime] = useState("18:00")
   const [bulkApplied, setBulkApplied] = useState(false)
@@ -8282,48 +8162,41 @@ function WeeklyHoursFields({
         <div className="p-3 sm:p-4">
           <input
             type="hidden"
-            name={fieldName("holiday_count")}
+            name="holiday_count"
             value={holidayRows.length}
-            {...fieldDataName("holiday_count")}
           />
           {holidayRows.map((holiday, index) => (
             <div key={`holiday-fields-${holiday.id}`}>
               <input
                 type="hidden"
-                name={fieldName(`holiday_${index}_date`)}
+                name={`holiday_${index}_date`}
                 value={holiday.date}
-                {...fieldDataName(`holiday_${index}_date`)}
               />
               <input
                 type="hidden"
-                name={fieldName(`holiday_${index}_label`)}
+                name={`holiday_${index}_label`}
                 value={holiday.label}
-                {...fieldDataName(`holiday_${index}_label`)}
               />
               <input
                 type="hidden"
-                name={fieldName(`holiday_${index}_kind`)}
+                name={`holiday_${index}_kind`}
                 value={holiday.kind}
-                {...fieldDataName(`holiday_${index}_kind`)}
               />
               <input
                 type="hidden"
-                name={fieldName(`holiday_${index}_opens_at`)}
+                name={`holiday_${index}_opens_at`}
                 value={holiday.opensAt}
-                {...fieldDataName(`holiday_${index}_opens_at`)}
               />
               <input
                 type="hidden"
-                name={fieldName(`holiday_${index}_closes_at`)}
+                name={`holiday_${index}_closes_at`}
                 value={holiday.closesAt}
-                {...fieldDataName(`holiday_${index}_closes_at`)}
               />
               {holiday.repeatsYearly ? (
                 <input
                   type="hidden"
-                  name={fieldName(`holiday_${index}_repeats_yearly`)}
+                  name={`holiday_${index}_repeats_yearly`}
                   value="on"
-                  {...fieldDataName(`holiday_${index}_repeats_yearly`)}
                 />
               ) : null}
             </div>
@@ -8407,8 +8280,7 @@ function WeeklyHoursFields({
                 <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
                   <input
                     type="checkbox"
-                    name={fieldName(`is_closed_${day.value}`)}
-                    {...fieldDataName(`is_closed_${day.value}`)}
+                    name={`is_closed_${day.value}`}
                     checked={hour.isClosed}
                     onChange={(event) =>
                       updateWeeklyHour(day.value, { isClosed: event.target.checked })
@@ -8420,9 +8292,8 @@ function WeeklyHoursFields({
                 <div className="space-y-2">
                   <input
                     type="hidden"
-                    name={fieldName(`slot_count_${day.value}`)}
+                    name={`slot_count_${day.value}`}
                     value={hour.ranges.length}
-                    {...fieldDataName(`slot_count_${day.value}`)}
                   />
                   {hour.ranges.map((range, rangeIndex) => {
                     const suffix = rangeIndex === 0 ? "" : `_${rangeIndex}`
@@ -8430,8 +8301,7 @@ function WeeklyHoursFields({
                       <div key={`${day.value}-${rangeIndex}`} className="flex flex-wrap items-center gap-2">
                         <input
                           aria-label={`${day.label} opening time ${rangeIndex + 1}`}
-                          name={fieldName(`opens_at_${day.value}${suffix}`)}
-                          {...fieldDataName(`opens_at_${day.value}${suffix}`)}
+                          name={`opens_at_${day.value}${suffix}`}
                           type="time"
                           required={!hour.isClosed}
                           value={hour.isClosed ? "" : range.opensAt}
@@ -8444,8 +8314,7 @@ function WeeklyHoursFields({
                         <span className="text-xs font-medium text-zinc-400">to</span>
                         <input
                           aria-label={`${day.label} closing time ${rangeIndex + 1}`}
-                          name={fieldName(`closes_at_${day.value}${suffix}`)}
-                          {...fieldDataName(`closes_at_${day.value}${suffix}`)}
+                          name={`closes_at_${day.value}${suffix}`}
                           type="time"
                           required={!hour.isClosed}
                           value={hour.isClosed ? "" : range.closesAt}
@@ -8487,9 +8356,8 @@ function WeeklyHoursFields({
                 </div>
                 <input
                   type="hidden"
-                  name={fieldName(`label_${day.value}`)}
+                  name={`label_${day.value}`}
                   value={hour.label}
-                  {...fieldDataName(`label_${day.value}`)}
                 />
               </div>
             )
@@ -8681,7 +8549,7 @@ function HolidayEditorDialog({
             </p>
           ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 pt-4">
-            <p className="text-xs text-zinc-500">Save operating hours afterward to publish this change.</p>
+            <p className="text-xs text-zinc-500">Save the partner afterward to publish this change.</p>
             <div className="flex gap-2">
               <button
                 type="button"
