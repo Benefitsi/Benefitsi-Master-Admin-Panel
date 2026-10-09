@@ -36,7 +36,7 @@ export default async function CommerceSettingsPage({ searchParams }: {
       {partners.map(partner => {
         const provider = providers.find(p => p.partner_id === partner.id)
         return <article key={partner.id} className="flex flex-wrap items-center justify-between gap-4 p-5">
-          <div><h2 className="font-bold text-[#061829]">{partner.name}</h2><Link className="mt-1 inline-block text-sm text-blue-700 underline" href={provider ? `/partner/commerce?provider=${provider.id}` : '/partner/commerce'}>{provider ? 'Speisekarte, Bilder & Bestellzeiten' : 'Bestellangebot einrichten'}</Link></div>
+          <div><h2 data-admin-i18n-ignore="true" className="font-bold text-[#061829]">{partner.name}</h2><Link className="mt-1 inline-block text-sm text-blue-700 underline" href={provider ? `/partner/commerce?provider=${provider.id}` : '/partner/commerce'}>{provider ? 'Speisekarte, Bilder & Bestellzeiten' : 'Bestellangebot einrichten'}</Link></div>
           {provider ? <OrderingSwitch providerId={provider.id} partnerId={partner.id} partnerName={partner.name} enabled={provider.food_ordering_enabled === true} /> : <span className="text-sm text-slate-500">Noch nicht eingerichtet</span>}
         </article>
       })}

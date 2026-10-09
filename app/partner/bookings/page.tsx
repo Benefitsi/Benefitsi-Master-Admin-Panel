@@ -1,5 +1,7 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
+import { AdminNumber } from "@/components/admin-format"
+import { AdminTranslationBoundary } from "@/components/admin-translation-boundary"
 import { BrandLogo } from "@/components/brand-logo"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { requireProviderBookingContext } from "@/lib/bookings/provider-data"
@@ -22,6 +24,7 @@ export default async function PartnerBookingsPage({
   const gross = confirmed.reduce((sum, booking) => sum + booking.totalAmount, 0)
 
   return (
+    <AdminTranslationBoundary>
     <main className="min-h-screen bg-[#f7f6f1] px-5 py-6 text-[#061829]">
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-col gap-4 rounded-3xl border border-[#061829]/10 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -44,7 +47,7 @@ export default async function PartnerBookingsPage({
         {feedback.success ? <Message tone="success">Stornoanfrage wurde sicher protokolliert.</Message> : null}
 
         <section className="mt-5 grid overflow-hidden rounded-3xl border border-[#061829]/10 bg-white sm:grid-cols-2">
-          <Metric label="Bestätigte Buchungen" value={String(confirmed.length)} />
+          <Metric label="Bestätigte Buchungen" value={<AdminNumber value={confirmed.length} />} />
           <Metric label="Bruttovolumen" value={money(gross)} />
         </section>
 
@@ -76,7 +79,7 @@ export default async function PartnerBookingsPage({
                   <div>
                     <p className="font-black">{booking.publicReference} · {booking.offerTitle}</p>
                     <p className="mt-1 text-sm text-[#617080]">
-                      {booking.quantity} Platz/Plätze · {money(booking.totalAmount)} · {booking.state}
+                      <AdminNumber value={booking.quantity} /> Platz/Plätze · {money(booking.totalAmount)} · {booking.state}
                     </p>
                   </div>
                   {["hold", "payment_pending", "confirmed"].includes(booking.state) ? (
@@ -95,10 +98,11 @@ export default async function PartnerBookingsPage({
         </section>
       </div>
     </main>
+    </AdminTranslationBoundary>
   )
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="border-[#061829]/10 p-5 sm:border-l sm:first:border-l-0">
       <p className="text-2xl font-black">{value}</p>
@@ -118,5 +122,5 @@ function Message({ tone, children }: { tone: "error" | "success"; children: Reac
 }
 
 function money(cents: number) {
-  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100)
+  return <AdminNumber value={cents / 100} options={{ style: "currency", currency: "EUR" }} />
 }

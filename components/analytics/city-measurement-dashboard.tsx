@@ -1,3 +1,4 @@
+import { AdminDate, AdminNumber } from "@/components/admin-format"
 import Link from "next/link"
 import type { ReactNode } from "react"
 import type { BusinessAnalyticsFilters } from "@/lib/analytics/contracts"
@@ -6,9 +7,9 @@ import { cityMeasurementHref } from "@/lib/analytics/city-measurement-filters"
 import { cityVitalAssessment } from "@/lib/analytics/city-measurement-normalize"
 
 const environmentLabels = { production: "Produktion", staging: "Staging · Testdaten", test: "Test · Testdaten" }
-const count = (value: number | null) => value === null ? "—" : new Intl.NumberFormat("de-DE").format(value)
-const date = (value: string) => new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(value))
-const timestamp = (value: string | null) => value === null ? "Nicht nachgewiesen" : new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(value))
+const count = (value: number | null) => <AdminNumber value={value} />
+const date = (value: string) => <AdminDate value={value} options={{ dateStyle: "medium", timeZone: "UTC" }} />
+const timestamp = (value: string | null) => value === null ? "Nicht nachgewiesen" : <AdminDate value={value} options={{ dateStyle: "short", timeStyle: "short" }} />
 const panelClass = "rounded-2xl border border-[#061829]/10 bg-white p-4 sm:p-5"
 const linkClass = "inline-flex min-h-11 items-center rounded-xl border border-[#061829]/15 px-3 py-2 text-sm font-semibold text-[#0872c6] hover:bg-[#f3f8ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff]"
 const coverageLabels = { observed_subset: "Einwilligungsgebundene Beobachtungen", no_observations: "Keine Beobachtungen im Zeitraum", partial_retention: "Teilweise Daten durch Aufbewahrungsgrenze", outside_retention: "Zeitraum außerhalb der Aufbewahrung" }
@@ -68,7 +69,7 @@ function CityFilters({ cities, filters }: { cities: MeasurementCity[]; filters: 
   const control = "min-h-11 w-full rounded-lg border border-[#061829]/20 bg-white px-3 text-sm text-[#061829] focus-visible:outline-2 focus-visible:outline-[#118cff]"
   return (
     <form action="/analytics#city-measurement" method="get" aria-label="Stadtmessung filtern" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr_auto] lg:items-end">
-      <label className="grid gap-1 text-xs font-semibold">Stadt<select className={control} name="city" defaultValue={filters.cityId ?? ""} required><option value="">Stadt auswählen</option>{cities.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
+      <label className="grid gap-1 text-xs font-semibold">Stadt<select className={control} name="city" defaultValue={filters.cityId ?? ""} required><option value="">Stadt auswählen</option>{cities.map(city => <option data-admin-i18n-ignore="true" key={city.id} value={city.id}>{city.name}</option>)}</select></label>
       <label className="grid gap-1 text-xs font-semibold">Von<input className={control} type="date" name="from" defaultValue={filters.dateFrom} max={filters.dateTo} required /></label>
       <label className="grid gap-1 text-xs font-semibold">Bis<input className={control} type="date" name="to" defaultValue={filters.dateTo} required /></label>
       <label className="grid gap-1 text-xs font-semibold">Umgebung<select className={control} name="environment" defaultValue={filters.environment}>{Object.entries(environmentLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
@@ -80,7 +81,7 @@ function CityFilters({ cities, filters }: { cities: MeasurementCity[]; filters: 
 
 function ScopeSummary({ scope }: { scope: CityMeasurementScope }) {
   return <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl bg-white px-4 py-3 text-sm">
-    <div><p className="font-bold text-[#061829]">{scope.city.name} · {environmentLabels[scope.environment]}</p><p className="mt-1 text-[#526170]">{date(scope.dateFrom)} – {date(scope.dateTo)} · Europe/Berlin · EUR</p></div>
+    <div><p className="font-bold text-[#061829]"><span data-admin-i18n-ignore="true">{scope.city.name}</span> · {environmentLabels[scope.environment]}</p><p className="mt-1 text-[#526170]">{date(scope.dateFrom)} – {date(scope.dateTo)} · Europe/Berlin · EUR</p></div>
     <p className="text-xs leading-5 text-[#526170]">Abfrage: {timestamp(scope.checkedAt)}<br />Abfragezeit und letzte Beobachtung sind getrennt.</p>
     {scope.environment !== "production" && <p className="basis-full font-semibold text-amber-900">Testumgebung: Diese Werte gehören nicht zur Produktionsmessung.</p>}
   </div>
@@ -126,7 +127,7 @@ function WebOperationsPanel({ source, scope }: { source: CityMeasurementSource<C
       <section id="web-alerts" className="mt-6 scroll-mt-5" aria-labelledby="web-alerts-heading"><h4 id="web-alerts-heading" className="font-bold">Alarme</h4>
         {source.data.alerts.length === 0 ? <p className="mt-2 text-sm leading-6 text-[#526170]">Keine Alarm-Einträge in dieser Quelle. Ohne Messnachweis ist dies keine Entwarnung.</p> : <ul className="mt-3 space-y-2">{source.data.alerts.map(alert => <li key={alert.key} className="rounded-xl border border-[#061829]/15 p-3">
           <div className="flex flex-wrap items-start justify-between gap-2"><p className="font-semibold">{alert.title}</p><span className={`text-xs font-bold ${alert.state === "resolved" ? "text-[#526170]" : alert.severity === "critical" ? "text-red-800" : "text-amber-900"}`}>{alert.state === "resolved" ? "Behoben" : alert.severity === "critical" ? "Kritisch · offen" : "Prüfung nötig · offen"}</span></div>
-          <p className="mt-2 text-xs leading-5 text-[#526170]">Letzter Nachweis: {timestamp(alert.lastObservedAt)}{alert.sampleCount === null ? "" : ` · ${count(alert.sampleCount)} Beobachtungen`}</p>
+          <p className="mt-2 text-xs leading-5 text-[#526170]">Letzter Nachweis: {timestamp(alert.lastObservedAt)}{alert.sampleCount === null ? "" : <> · {count(alert.sampleCount)} Beobachtungen</>}</p>
           <div className="mt-2 flex flex-wrap gap-4 text-sm font-semibold text-[#0872c6]">
             <a href="#web-vitals" className="underline underline-offset-4">Messwerte öffnen</a>
             <a href="#web-errors" className="underline underline-offset-4">Fehlerbeobachtungen öffnen</a>
@@ -145,7 +146,7 @@ function VitalsTable({ data }: { data: CityWebOperations }) {
   return <section id="web-vitals" className="mt-6 scroll-mt-5" aria-labelledby="web-vitals-heading"><h4 id="web-vitals-heading" className="font-bold">Ladezeiten & Core Web Vitals</h4><p className="mt-2 text-xs leading-5 text-[#526170]">p75 je Gerät und Seitentyp. Unter 100 Stichproben bleibt die Einordnung vorläufig. Gute Grenzen: LCP ≤ 2.500 ms, INP ≤ 200 ms, CLS ≤ 0,1. TTFB und FCP ergänzen die Ladezeitdiagnose.</p>
     {data.vitals.length === 0 ? <p className="mt-3 text-sm text-[#526170]">Noch keine Messstichprobe verfügbar.</p> : <Table label="Web-Vitals-Stichproben"><thead><tr><Th>Metrik</Th><Th>Gerät</Th><Th>Seite</Th><Th>p75</Th><Th>Stichprobe</Th><Th>Einordnung</Th><Th>Zuletzt</Th></tr></thead><tbody>{data.vitals.map(metric => {
       const state = cityVitalAssessment(metric)
-      return <tr key={`${metric.metric}:${metric.device}:${metric.routeKind}`}><Td>{metric.metric}</Td><Td>{{ mobile: "Mobil", desktop: "Desktop", unknown: "Unbekannt" }[metric.device]}</Td><Td>{routeLabel(metric.routeKind)}</Td><Td>{metric.p75 === null ? "—" : `${new Intl.NumberFormat("de-DE", { maximumFractionDigits: metric.metric === "CLS" ? 3 : 0 }).format(metric.p75)}${metric.metric === "CLS" ? "" : " ms"}`}</Td><Td>{count(metric.sampleCount)}</Td><Td><span className={state === "attention" ? "font-semibold text-amber-900" : state === "good" ? "text-emerald-800" : "text-[#526170]"}>{assessmentLabels[state]}</span></Td><Td>{timestamp(metric.lastObservedAt)}</Td></tr>
+      return <tr key={`${metric.metric}:${metric.device}:${metric.routeKind}`}><Td>{metric.metric}</Td><Td>{{ mobile: "Mobil", desktop: "Desktop", unknown: "Unbekannt" }[metric.device]}</Td><Td>{routeLabel(metric.routeKind)}</Td><Td>{metric.p75 === null ? "—" : <><AdminNumber value={metric.p75} options={{ maximumFractionDigits: metric.metric === "CLS" ? 3 : 0 }} />{metric.metric === "CLS" ? "" : " ms"}</>}</Td><Td>{count(metric.sampleCount)}</Td><Td><span className={state === "attention" ? "font-semibold text-amber-900" : state === "good" ? "text-emerald-800" : "text-[#526170]"}>{assessmentLabels[state]}</span></Td><Td>{timestamp(metric.lastObservedAt)}</Td></tr>
     })}</tbody></Table>}
   </section>
 }

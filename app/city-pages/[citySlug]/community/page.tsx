@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+import { AdminDate } from "@/components/admin-format"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -144,7 +146,7 @@ function SubmissionCard({
             <span className="text-[#a0a9b2]">·</span>
             <span className="text-[#617080]">{submission.reference ?? "Alte Einreichung ohne Tracking"}</span>
           </div>
-          <h2 className="mt-2 text-2xl font-black tracking-[-0.025em]">{submission.title}</h2>
+          <h2 className="mt-2 text-2xl font-black tracking-[-0.025em]"><span data-admin-i18n-ignore="true">{submission.title}</span></h2>
         </div>
         <span className={`h-fit rounded-full px-3 py-1.5 text-xs font-black ${submission.status === "needs_review" ? "bg-amber-100 text-amber-900" : "bg-[#edf2f4] text-[#526170]"}`}>
           {statusLabels[submission.status] ?? submission.status}
@@ -153,9 +155,9 @@ function SubmissionCard({
 
       <div className="grid gap-7 p-5 md:grid-cols-[minmax(0,1.2fr)_minmax(18rem,.8fr)] md:p-6">
         <div>
-          <p className="whitespace-pre-wrap text-sm leading-7 text-[#455767]">{submission.description}</p>
+          <p className="whitespace-pre-wrap text-sm leading-7 text-[#455767]"><span data-admin-i18n-ignore="true">{submission.description}</span></p>
           <dl className="mt-6 grid gap-x-5 gap-y-3 border-y border-[#061829]/10 py-5 text-sm sm:grid-cols-2">
-            <Fact label="Kontakt" value={`${submission.contactName} · ${submission.contactEmail}`} />
+            <Fact label="Kontakt" value={<span data-admin-i18n-ignore="true">{`${submission.contactName} · ${submission.contactEmail}`}</span>} />
             <Fact label="Eingang" value={formatDate(submission.createdAt)} />
             {submission.eventStartsAt ? <Fact label="Beginn (Europe/Berlin)" value={formatDate(submission.eventStartsAt)} /> : null}
             {submission.kind === "meetup" || submission.kind === "event" ? <>
@@ -163,11 +165,11 @@ function SubmissionCard({
               <Fact label="Zeitzone" value={submission.eventTimezone ?? "Nicht strukturiert erfasst"} />
               <Fact label="Aktivität" value={activityLabel(submission.activityType)} />
               <Fact label="Maximale Gruppengröße" value={submission.capacity === null ? "Nicht angegeben" : String(submission.capacity)} />
-              <Fact label="Zielgruppe" value={submission.targetAudience ?? "Nicht angegeben"} />
-              <Fact label="Kosten" value={submission.costDescription ?? "Nicht angegeben"} />
+              <Fact label="Zielgruppe" value={submission.targetAudience !== null ? <span data-admin-i18n-ignore="true">{submission.targetAudience}</span> : "Nicht angegeben"} />
+              <Fact label="Kosten" value={submission.costDescription !== null ? <span data-admin-i18n-ignore="true">{submission.costDescription}</span> : "Nicht angegeben"} />
               {submission.kind === "meetup" ? <Fact label="Gastgeberkonto" value={submission.hostUserId ? "Mit bestehendem Benefitsi-Konto verknüpft" : "Fehlt – Kontaktangaben allein genügen nicht"} /> : null}
             </> : null}
-            {submission.eventLocation ? <Fact label="Ort" value={submission.eventLocation} /> : null}
+            {submission.eventLocation ? <Fact label="Ort" value={<span data-admin-i18n-ignore="true">{submission.eventLocation}</span>} /> : null}
             {submission.sourceUrl ? (
               <div>
                 <dt className="text-xs font-bold text-[#7a8793]">Quelle</dt>
@@ -184,8 +186,8 @@ function SubmissionCard({
                 <span className="absolute -left-[1.52rem] top-1 size-2.5 rounded-full bg-[#118cff]" />
                 <p className="text-sm font-black">{statusLabels[entry.toStatus] ?? entry.toStatus}</p>
                 <p className="mt-1 text-xs text-[#7a8793]">{formatDate(entry.createdAt)}{entry.actorProfile ? ` · ${entry.actorProfile}` : ""}</p>
-                {entry.privateNote ? <p className="mt-2 text-sm leading-6 text-[#455767]">Intern: {entry.privateNote}</p> : null}
-                {entry.publicMessage ? <p className="mt-1 text-sm leading-6 text-[#617080]">Öffentlich: {entry.publicMessage}</p> : null}
+                {entry.privateNote ? <p className="mt-2 text-sm leading-6 text-[#455767]">Intern: <span data-admin-i18n-ignore="true">{entry.privateNote}</span></p> : null}
+                {entry.publicMessage ? <p className="mt-1 text-sm leading-6 text-[#617080]">Öffentlich: <span data-admin-i18n-ignore="true">{entry.publicMessage}</span></p> : null}
               </li>
             ))}
           </ol>
@@ -242,21 +244,21 @@ function NativeMeetupCard({ citySlug, meetup, linkedProposalPending = false }: {
   const blockers = meetupApprovalBlockers(meetup)
   const historical = isHistoricalMeetup(meetup)
   return <article className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white p-5 md:p-6">
-    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-wide text-[#0b75d9]">{meetup.linkedSubmission ? "Verknüpftes Community-Treffen" : "App-Treffen"} · {statusLabels[meetup.lifecycleStatus] ?? meetup.lifecycleStatus}</p><h3 className="mt-2 text-2xl font-black">{meetup.title}</h3></div><span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-900">{statusLabels[meetup.moderationStatus] ?? meetup.moderationStatus}</span></div>
-    <div className="mt-5 grid gap-7 md:grid-cols-[minmax(0,1.2fr)_minmax(18rem,.8fr)]"><div><p className="whitespace-pre-wrap text-sm leading-7 text-[#455767]">{meetup.description}</p>
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-wide text-[#0b75d9]">{meetup.linkedSubmission ? "Verknüpftes Community-Treffen" : "App-Treffen"} · {statusLabels[meetup.lifecycleStatus] ?? meetup.lifecycleStatus}</p><h3 className="mt-2 text-2xl font-black"><span data-admin-i18n-ignore="true">{meetup.title}</span></h3></div><span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-900">{statusLabels[meetup.moderationStatus] ?? meetup.moderationStatus}</span></div>
+    <div className="mt-5 grid gap-7 md:grid-cols-[minmax(0,1.2fr)_minmax(18rem,.8fr)]"><div><p className="whitespace-pre-wrap text-sm leading-7 text-[#455767]"><span data-admin-i18n-ignore="true">{meetup.description}</span></p>
       <dl className="mt-5 grid gap-4 border-y border-[#061829]/10 py-5 text-sm sm:grid-cols-2">
-        <Fact label="Öffentlicher Gastgebername" value={meetup.hostDisplayName ?? "Nicht verfügbar"} />
+        <Fact label="Öffentlicher Gastgebername" value={meetup.hostDisplayName ? <span data-admin-i18n-ignore="true">{meetup.hostDisplayName}</span> : "Nicht verfügbar"} />
         <Fact label="Beginn (Europe/Berlin)" value={meetup.startsAt ? formatDate(meetup.startsAt) : "Nicht angegeben"} />
         <Fact label="Ende" value={meetup.endsAt ? formatDate(meetup.endsAt) : "Nicht angegeben"} />
-        <Fact label="Treffpunkt" value={meetup.meetingPoint ?? "Nicht angegeben"} />
+        <Fact label="Treffpunkt" value={meetup.meetingPoint !== null ? <span data-admin-i18n-ignore="true">{meetup.meetingPoint}</span> : "Nicht angegeben"} />
         <Fact label="Aktivität" value={activityLabel(meetup.activityType)} />
         <Fact label="Maximale Gruppengröße" value={meetup.capacity === null ? "Nicht angegeben" : String(meetup.capacity)} />
-        <Fact label="Zielgruppe" value={meetup.targetAudience ?? "Nicht angegeben"} />
-        <Fact label="Kosten" value={meetup.costDescription ?? "Nicht angegeben"} />
+        <Fact label="Zielgruppe" value={meetup.targetAudience !== null ? <span data-admin-i18n-ignore="true">{meetup.targetAudience}</span> : "Nicht angegeben"} />
+        <Fact label="Kosten" value={meetup.costDescription !== null ? <span data-admin-i18n-ignore="true">{meetup.costDescription}</span> : "Nicht angegeben"} />
         <Fact label="Sichtbarkeit" value={meetup.visibility === "PUBLIC" ? "Öffentlich" : "Eingeschränkt – bleibt nach Freigabe unverändert"} />
         <Fact label="Eingang" value={formatDate(meetup.createdAt)} />
       </dl><p className="mt-3 text-xs leading-5 text-[#617080]">Nur der öffentliche Profilname wird geladen. Private E-Mail, Telefonnummer und Teilnehmerlisten werden nicht angezeigt.</p>
-      {meetup.reports.length ? <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4"><h4 className="font-black">Offene private Meldungen ({meetup.reports.length})</h4><ul className="mt-3 grid gap-3">{meetup.reports.map(report => <li key={report.id} className="rounded-xl bg-white p-3 text-sm"><p className="font-black">{report.reason} · {formatDate(report.createdAt)}</p>{report.details ? <p className="mt-2 whitespace-pre-wrap break-words text-[#455767]">{report.details}</p> : null}</li>)}</ul><p className="mt-3 text-xs">Nur für die interne Prüfung. Die Identität der meldenden Person wird hier nicht angezeigt.</p></section> : null}
+      {meetup.reports.length ? <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4"><h4 className="font-black">Offene private Meldungen ({meetup.reports.length})</h4><ul className="mt-3 grid gap-3">{meetup.reports.map(report => <li key={report.id} className="rounded-xl bg-white p-3 text-sm"><p className="font-black">{report.reason} · {formatDate(report.createdAt)}</p>{report.details ? <p className="mt-2 whitespace-pre-wrap break-words text-[#455767]"><span data-admin-i18n-ignore="true">{report.details}</span></p> : null}</li>)}</ul><p className="mt-3 text-xs">Nur für die interne Prüfung. Die Identität der meldenden Person wird hier nicht angezeigt.</p></section> : null}
     </div>{historical ? <form action={resolveCommunityMeetupReports} className="h-fit rounded-2xl bg-[#f6f8f7] p-4">
       <input type="hidden" name="cityId" value={meetup.cityId} /><input type="hidden" name="citySlug" value={citySlug} /><input type="hidden" name="meetupId" value={meetup.id} />
       <h4 className="text-lg font-black">Historische Meldungen bearbeiten</h4>
@@ -285,7 +287,7 @@ function publicMeetupUrl(citySlug: string, meetupId: string) {
   return new URL(path, process.env.BENEFITSI_WEB_URL || "https://benefitsi.de").toString()
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function Fact({ label, value }: { label: string; value: ReactNode }) {
   return <div><dt className="text-xs font-bold text-[#7a8793]">{label}</dt><dd className="mt-1 font-semibold">{value}</dd></div>
 }
 
@@ -295,7 +297,7 @@ function Metric({ label, value }: { label: string; value: number }) {
 
 function formatDate(value: string) {
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "unbekannt" : new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", dateStyle: "medium", timeStyle: "short" }).format(date)
+  return Number.isNaN(date.getTime()) ? "unbekannt" : <AdminDate value={value} options={{ timeZone: "Europe/Berlin", dateStyle: "medium", timeStyle: "short" }} />
 }
 
 const inputClass =

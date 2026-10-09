@@ -8,6 +8,10 @@ import ts from "typescript"
 
 const require = createRequire(import.meta.url)
 const { JSDOM } = require(process.env.BENEFITSI_TEST_JSDOM_PATH || "jsdom")
+const languageBoundary = {
+  useAdminLanguage: () => ({ language: "de", tr: value => value }),
+  useAdminLocale: require("../app/admin-language.tsx").useAdminLocale,
+}
 function loadUi(action, configurationActions = {}) {
   const actions = new Proxy({}, { get: () => action })
   const boundaries = {
@@ -21,8 +25,9 @@ function loadUi(action, configurationActions = {}) {
     "@/components/partner/partner-internal-tools": {},
     "./use-partner-capabilities": require("../app/use-partner-capabilities.ts"),
     "./streak-rule-fields": require("../app/streak-rule-fields.tsx"),
-    "./admin-language": { useAdminLanguage: () => ({ language: "de" }) },
-    "@/app/admin-language": { useAdminLanguage: () => ({ language: "de" }) },
+    "./admin-language": languageBoundary,
+    "@/app/admin-language": languageBoundary,
+    "@/components/admin-format": require("../components/admin-format.tsx"),
     "@/lib/supabase/client": {}, "@/components/loading-ui": { LoadingSpinner: () => null },
     "@/components/partner/partner-feedback-settings-loader": {},
     "@/components/microsite-read-only-notice": {},

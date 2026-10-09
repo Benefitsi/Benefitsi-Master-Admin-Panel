@@ -1,5 +1,6 @@
 "use client"
 
+import { translateValue, useAdminLocale } from "@/app/admin-language"
 import { useRef, useState } from "react"
 import type { EditorialPost } from "@/lib/editorial-types"
 
@@ -35,6 +36,7 @@ export function EditorialContentFields({ initial }: { initial?: EditorialPost | 
 }
 
 function LinkFields({ title, name, targetKey, initial }: { title: string; name: string; targetKey: "url" | "href"; initial: {label:string;target:string}[] }) {
+  const language = useAdminLocale() === "de-DE" ? "de" : "en"
   const sequence = useRef(0)
   const [links, setLinks] = useState(() => initial.map((link, index) => ({ ...link, key: `saved-${index}` })))
   return <section aria-label={title} className="min-w-0 space-y-3">
@@ -43,9 +45,9 @@ function LinkFields({ title, name, targetKey, initial }: { title: string; name: 
     <p className="text-sm leading-6 text-[#617080]">{targetKey === "url" ? "Die Seiten, auf denen die Angaben beruhen." : "Passende Ziele für den nächsten Klick."}</p>
     {links.map((link, index) => <fieldset key={link.key} className="min-w-0 space-y-3 rounded-2xl border border-[#061829]/10 bg-[#f7f9fc] p-4">
       <legend className="px-1 text-xs font-bold text-[#526170]">Link {index + 1}</legend>
-      <label className="grid gap-1.5 text-xs font-bold">Bezeichnung<input aria-label={`${title}: Bezeichnung ${index + 1}`} required maxLength={200} value={link.label} onChange={event => setLinks(rows => rows.map(row => row.key === link.key ? {...row,label:event.target.value} : row))} className={inputClass} /></label>
-      <label className="grid gap-1.5 text-xs font-bold">Webadresse<input aria-label={`${title}: Webadresse ${index + 1}`} required maxLength={2000} value={link.target} onChange={event => setLinks(rows => rows.map(row => row.key === link.key ? {...row,target:event.target.value} : row))} placeholder="https://… oder /stadt/annweiler" className={inputClass} /></label>
-      <button type="button" aria-label={`${title}: Link ${index + 1} entfernen`} onClick={() => setLinks(rows => rows.filter(row => row.key !== link.key))} className="min-h-11 text-sm font-bold text-rose-700 hover:underline">Link entfernen</button>
+      <label className="grid gap-1.5 text-xs font-bold">Bezeichnung<input aria-label={`${translateValue(title, language)}: Bezeichnung ${index + 1}`} required maxLength={200} value={link.label} onChange={event => setLinks(rows => rows.map(row => row.key === link.key ? {...row,label:event.target.value} : row))} className={inputClass} /></label>
+      <label className="grid gap-1.5 text-xs font-bold">Webadresse<input aria-label={`${translateValue(title, language)}: Webadresse ${index + 1}`} required maxLength={2000} value={link.target} onChange={event => setLinks(rows => rows.map(row => row.key === link.key ? {...row,target:event.target.value} : row))} placeholder="https://… oder /stadt/annweiler" className={inputClass} /></label>
+      <button type="button" aria-label={`${translateValue(title, language)}: Link ${index + 1} entfernen`} onClick={() => setLinks(rows => rows.filter(row => row.key !== link.key))} className="min-h-11 text-sm font-bold text-rose-700 hover:underline">Link entfernen</button>
     </fieldset>)}
     <button type="button" onClick={() => { const key = `new-${sequence.current++}`; setLinks(rows => [...rows,{key,label:"",target:""}]) }} className={buttonClass}>{targetKey === "url" ? "+ Quelle hinzufügen" : "+ Link hinzufügen"}</button>
   </section>

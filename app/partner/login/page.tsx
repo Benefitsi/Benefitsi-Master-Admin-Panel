@@ -27,7 +27,7 @@ export default async function PartnerLoginPage() {
   }
 
   return (
-    <AdminLanguageProvider initialLanguage="de" storageKey="benefitsi-partner-language">
+    <AdminLanguageProvider initialLanguage="de">
     <main className="min-h-screen bg-[#f7f6f1] text-[#061829]">
       <div className="fixed right-4 top-4 z-20">
         <AdminLanguageControl />

@@ -44,7 +44,7 @@ export function MediaInventory({ data, query = "", cityId = "", status = "" }: {
       </label>
       <label className="text-xs font-bold text-[#526778]">Stadt
         <select name="city" defaultValue={cityFilter} disabled={data.cities.state === "unavailable"} className="mt-1 w-full rounded-xl border border-[#061829]/20 p-2.5 text-sm font-normal text-[#061829]">
-          <option value="">Alle geladenen Städte</option>{data.cities.rows.map(city => <option value={city.id} key={city.id}>{city.name}</option>)}
+          <option value="">Alle geladenen Städte</option>{data.cities.rows.map(city => <option value={city.id} key={city.id} data-admin-i18n-ignore="true">{city.name}</option>)}
         </select>
       </label>
       <label className="text-xs font-bold text-[#526778]">Bildstatus
@@ -65,13 +65,13 @@ export function MediaInventory({ data, query = "", cityId = "", status = "" }: {
               // URL is restricted by the server loader to this project's public
               // image bucket. Direct loading avoids a server image proxy fetch.
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={asset.thumbnail} alt={asset.altText || asset.title} width={160} height={120} loading="lazy" referrerPolicy="no-referrer" className="h-32 w-full shrink-0 rounded-xl bg-[#f1f5f8] object-contain sm:w-40" />
+              <img data-admin-i18n-ignore="true" src={asset.thumbnail} alt={asset.altText || asset.title} width={160} height={120} loading="lazy" referrerPolicy="no-referrer" className="h-32 w-full shrink-0 rounded-xl bg-[#f1f5f8] object-contain sm:w-40" />
             ) : <div className="flex h-32 w-full shrink-0 items-center justify-center rounded-xl bg-[#f1f5f8] px-4 text-center text-xs text-[#526778] sm:w-40">Keine geprüfte Bildvorschau</div>}
             <div className="min-w-0">
-              <h3 className="break-words text-lg font-black text-[#061829]">{asset.title}</h3>
-              <p className="mt-1 text-sm text-[#526778]">{asset.cityId ? city?.name || "Stadt nicht verifiziert" : "Stadtübergreifendes Bild"}</p>
+              <h3 className="break-words text-lg font-black text-[#061829]"><span data-admin-i18n-ignore="true">{asset.title}</span></h3>
+              <p className="mt-1 text-sm text-[#526778]">{asset.cityId ? city?.name ? <span data-admin-i18n-ignore="true">{city.name}</span> : "Stadt nicht verifiziert" : "Stadtübergreifendes Bild"}</p>
               <p className="mt-2 text-xs font-bold text-[#086fcc]">{statusLabels[asset.status] || "Status unbekannt"} · {sourceLabels[asset.sourceType] || "Quelle unbekannt"}</p>
-              <p className="mt-2 break-words text-xs text-[#526778]">{asset.altText ? `Bildbeschreibung: ${asset.altText}` : "Bildbeschreibung fehlt"}</p>
+              <p className="mt-2 break-words text-xs text-[#526778]">{asset.altText ? <>Bildbeschreibung: <span data-admin-i18n-ignore="true">{asset.altText}</span></> : "Bildbeschreibung fehlt"}</p>
             </div>
           </div>
           <div className="border-t border-[#061829]/10 px-5 py-4">
@@ -82,9 +82,9 @@ export function MediaInventory({ data, query = "", cityId = "", status = "" }: {
                 const place = findAssignmentPlace(assignment, data.places.rows)
                 const href = publicMediaPreviewHref({ asset, assignment, city: assignmentCity, place })
                 return <li key={assignment.id} className="rounded-xl bg-[#f7f8fa] p-3 text-sm">
-                  <p className="font-bold text-[#061829]">{assignmentCity?.name || "Stadt nicht verifiziert"} · {place?.name || `${assignment.entityType}: Ziel nicht geprüft`} · {assignment.role}</p>
+                  <p className="font-bold text-[#061829]">{assignmentCity?.name ? <span data-admin-i18n-ignore="true">{assignmentCity.name}</span> : "Stadt nicht verifiziert"} · {place?.name ? <span data-admin-i18n-ignore="true">{place.name}</span> : `${assignment.entityType}: Ziel nicht geprüft`} · {assignment.role}</p>
                   <p className="mt-1 text-xs text-[#526778]">{assignment.isPrimary ? "Als primär markiert" : "Weitere Zuordnung"}{assignment.manualLock ? " · Manuell gesperrt" : ""}</p>
-                  {href ? <a href={href} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block min-h-8 font-bold text-[#086fcc] underline underline-offset-4">Öffentlichen {assignment.role}-Einsatzort prüfen</a> : <p className="mt-2 text-xs text-[#526778]">Öffentliches Vorschauziel nicht verifiziert.</p>}
+                  {href ? <a href={href} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block min-h-8 font-bold text-[#086fcc] underline underline-offset-4">{`Öffentlichen ${assignment.role}-Einsatzort prüfen`}</a> : <p className="mt-2 text-xs text-[#526778]">Öffentliches Vorschauziel nicht verifiziert.</p>}
                 </li>
               })}
             </ul> : <p className="mt-2 text-sm text-[#526778]">{data.assignments.state === "limited" ? "Keine Zuordnung im geladenen Ausschnitt." : "Keine Zuordnung hinterlegt."}</p>}

@@ -1,4 +1,6 @@
 "use client";
+import { useAdminLocale } from "@/app/admin-language";
+import { AdminNumber } from "@/components/admin-format";
 import { useActionState, useEffect, useState, useCallback } from "react";
 import {
   loadPartnerPlanPanel,
@@ -21,8 +23,8 @@ const input =
 const box = "rounded-3xl border border-slate-200 bg-white p-5 sm:p-6";
 const button =
   "rounded-lg bg-[#087cd9] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50";
-export function priceLabel(offer: PriceOffer) {
-  return new Intl.NumberFormat("de-DE", {
+export function priceLabel(offer: PriceOffer, locale = "de-DE") {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: offer.currency,
   }).format(offer.unit_amount / 100);
@@ -57,6 +59,7 @@ const reasons: Record<string, string> = {
   maximum_five_keywords: "SEO ist auf höchstens fünf Keywords begrenzt",
 };
 export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
+  const locale = useAdminLocale();
   const rights = data.entitlements,
     sub = data.subscription;
   const catalogPlan = data.catalog.plans?.find(
@@ -99,7 +102,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
           ].map(([key, label]) => (
             <div key={key} className="rounded-2xl bg-white/5 p-4">
               <dd className="text-3xl font-bold">
-                {key === 'deal_drops_monthly' && rights.limits[key] === null ? 'Ohne Monatslimit (vorläufig)' : rights.limits[key] ?? '—'}
+                {key === 'deal_drops_monthly' && rights.limits[key] === null ? 'Ohne Monatslimit (vorläufig)' : <AdminNumber value={rights.limits[key]} />}
               </dd>
               <dt className="mt-1 text-sm text-slate-300">{label}</dt>
             </div>
@@ -136,15 +139,15 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
           <p className="mt-3 text-sm">
             Founder-Abschluss ausstehend.{" "}
             {data.pending_founder.planned_activation
-              ? `Geplante Aktivierung: ${formatBerlin(data.pending_founder.planned_activation)}. Pro beginnt erst mit bestätigter Abo-Aktivierung. Der Abrechnungsabgleich prüft dies erneut.`
+              ? `Geplante Aktivierung: ${formatBerlin(data.pending_founder.planned_activation, locale)}. Pro beginnt erst mit bestätigter Abo-Aktivierung. Der Abrechnungsabgleich prüft dies erneut.`
               : "Zahlungsmethode und Vereinbarung müssen noch bestätigt werden; die Gratisphase hat nicht begonnen."}
           </p>
         )}
         {data.founder_cancellation && (
           <p role="status" className="mt-3 text-sm text-amber-800">
             Kündigung eingegangen am{" "}
-            {formatBerlin(data.founder_cancellation.requested_at)} zum{" "}
-            {formatBerlin(data.founder_cancellation.effective_at)}.{" "}
+            <span data-admin-i18n-ignore="true">{formatBerlin(data.founder_cancellation.requested_at, locale)}</span> zum{" "}
+            <span data-admin-i18n-ignore="true">{formatBerlin(data.founder_cancellation.effective_at, locale)}</span>.{" "}
             {data.billing_recovery?.pending
               ? "Abwicklung / Bestätigung ausstehend."
               : "Aktuellen Vertragsstatus unten beachten."}{" "}
@@ -154,13 +157,13 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
         )}
         {sub?.activated_at && sub.trial_end && sub.paid_minimum_end && (
           <p className="mt-3 text-sm">
-            Founder aktiviert: {formatBerlin(sub.activated_at)}. Gratisphase bis{" "}
-            {formatBerlin(sub.trial_end)}.{" "}
+            Founder aktiviert: <span data-admin-i18n-ignore="true">{formatBerlin(sub.activated_at, locale)}</span>. Gratisphase bis{" "}
+            <span data-admin-i18n-ignore="true">{formatBerlin(sub.trial_end, locale)}</span>.{" "}
             {freeExit
               ? "Rechtzeitiger Ausstieg aus der Gratisphase: Keine Verpflichtung zur bezahlten Zwölfmonatslaufzeit. Erste Zahlung entfällt; eine dennoch entstandene Abrechnung des Zahlungsdienstleisters wird gesondert geprüft."
-              : `Nur bei Fortsetzung: erste Zahlung ${formatBerlin(sub.trial_end)} und zwölf Monate bezahlte Mindestlaufzeit bis ${formatBerlin(sub.paid_minimum_end)}.`}{" "}
+              : `Nur bei Fortsetzung: erste Zahlung ${formatBerlin(sub.trial_end, locale)} und zwölf Monate bezahlte Mindestlaufzeit bis ${formatBerlin(sub.paid_minimum_end, locale)}.`}{" "}
             {sub.cancellation_at &&
-              `Vereinbarte Kündigung: ${formatBerlin(sub.cancellation_at)}.`}
+              `Vereinbarte Kündigung: ${formatBerlin(sub.cancellation_at, locale)}.`}
           </p>
         )}
         {data.billing_recovery?.pending && (
@@ -176,7 +179,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
         {sub?.grace_until && (
           <p className="mt-3 text-sm text-amber-800">
             Übergangsfrist bei ausstehender Zahlung: bis{" "}
-            {formatBerlin(sub.grace_until)}.
+            <span data-admin-i18n-ignore="true">{formatBerlin(sub.grace_until, locale)}</span>.
           </p>
         )}
         <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
@@ -188,7 +191,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
             </dt>
             <dd className="font-semibold">
               {sub?.offer
-                ? `${sub.offer.offer_code.startsWith("founder") ? "Founder" : "Standard"} · ${priceLabel(sub.offer)} / ${sub.offer.billing_interval === "year" ? "Jahr im Voraus" : "Monat"} zzgl. MwSt.`
+                ? `${sub.offer.offer_code.startsWith("founder") ? "Founder" : "Standard"} · ${priceLabel(sub.offer, locale)} / ${sub.offer.billing_interval === "year" ? "Jahr im Voraus" : "Monat"} zzgl. MwSt.`
                 : sub?.source === "admin_freegrant"
                   ? "Kostenlos · keine Rechnung"
                   : "Free · kostenlos"}
@@ -198,7 +201,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
             <dt className="text-slate-500">Nächster Ablauf einer Freigabe</dt>
             <dd>
               {rights.valid_until
-                ? `${formatBerlin(rights.valid_until)} · kann eine einzelne Funktion betreffen`
+                ? `${formatBerlin(rights.valid_until, locale)} · kann eine einzelne Funktion betreffen`
                 : "Kein befristeter Ablauf"}
             </dd>
           </div>
@@ -211,8 +214,8 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                     : "Abrechnungszeitraum"}
                 </dt>
                 <dd>
-                  {formatBerlin(sub.period_start)} –{" "}
-                  {formatBerlin(sub.period_end)}
+                  <span data-admin-i18n-ignore="true">{formatBerlin(sub.period_start, locale)}</span> –{" "}
+                  <span data-admin-i18n-ignore="true">{formatBerlin(sub.period_end, locale)}</span>
                 </dd>
               </div>
               <div>
@@ -227,7 +230,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                       : sub.payment_status === "past_due"
                         ? "Zahlung ausstehend"
                         : sub.paid_through
-                          ? `Bezahlt bis ${formatBerlin(sub.paid_through)}`
+                          ? `Bezahlt bis ${formatBerlin(sub.paid_through, locale)}`
                           : "Noch keine bestätigte Zahlung"}
                 </dd>
               </div>
@@ -238,12 +241,12 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                   </dt>
                   <dd>
                     {sub.trial_end
-                      ? `Testphase bis ${formatBerlin(sub.trial_end)}. `
+                      ? `Testphase bis ${formatBerlin(sub.trial_end, locale)}. `
                       : ""}
                     {freeExit
                       ? "Erste Zahlung entfällt wegen rechtzeitiger Kündigung während der Gratisphase."
                       : sub.first_payment_at
-                        ? `${sub.activated_at ? "Bei Fortsetzung: " : ""}${formatBerlin(sub.first_payment_at)}`
+                        ? `${sub.activated_at ? "Bei Fortsetzung: " : ""}${formatBerlin(sub.first_payment_at, locale)}`
                         : "Erster Zahlungstermin noch nicht bestätigt"}
                   </dd>
                 </div>
@@ -252,9 +255,9 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                 <dt className="text-slate-500">Kündigung</dt>
                 <dd>
                   {sub.cancellation_at
-                    ? `Vereinbart zum ${formatBerlin(sub.cancellation_at)}${data.billing_recovery?.pending ? " · Bestätigung des Zahlungsdienstleisters ausstehend" : ""}`
+                    ? `Vereinbart zum ${formatBerlin(sub.cancellation_at, locale)}${data.billing_recovery?.pending ? " · Bestätigung des Zahlungsdienstleisters ausstehend" : ""}`
                     : sub.cancel_at_period_end
-                      ? `Zum ${formatBerlin(sub.period_end)}`
+                      ? `Zum ${formatBerlin(sub.period_end, locale)}`
                       : "Keine Kündigung zum Periodenende"}
                 </dd>
               </div>
@@ -282,7 +285,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
               ? "aktiv"
               : `gesperrt (${reasons[rights.reason_codes[addon.offer_code === "commerce" ? "commerce" : "seo.monitor"]] ?? "Einrichtung oder Freigabe ausstehend"})`}{" "}
             · {addon.cancel_at_period_end ? "gekündigt zum" : "Zeitraum bis"}{" "}
-            {formatBerlin(addon.valid_until)}
+            <span data-admin-i18n-ignore="true">{formatBerlin(addon.valid_until, locale)}</span>
           </p>
         ))}
       </section>
@@ -326,7 +329,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                         ? "Admin-Ausnahme"
                         : "Bestehende Freigabe"}{" "}
                       · {e.effect === "deny" ? "Sperre" : "Erlaubnis"} bis{" "}
-                      {formatBerlin(e.valid_until)}
+                      <span data-admin-i18n-ignore="true">{formatBerlin(e.valid_until, locale)}</span>
                     </small>
                   ))}
               </span>
@@ -341,7 +344,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
             <div key={key}>
               <dt className="text-sm text-slate-500">{label}</dt>
               <dd className="text-2xl font-bold">
-                {key === 'deal_drops_monthly' && rights.limits[key] === null ? 'Ohne Monatslimit (vorläufig)' : rights.limits[key] ?? '—'}
+                {key === 'deal_drops_monthly' && rights.limits[key] === null ? 'Ohne Monatslimit (vorläufig)' : <AdminNumber value={rights.limits[key]} />}
               </dd>
             </div>
           ))}
@@ -349,8 +352,8 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
         {data.usage.length ? (
           data.usage.map((u) => (
             <p key={u.period_start} className="mt-4 text-sm">
-              KI-Importe: {u.used} belegt, davon {u.reserved} in Bearbeitung ·{" "}
-              {formatBerlin(u.period_start)} – {formatBerlin(u.period_end)}
+              KI-Importe: <span data-admin-i18n-ignore="true">{u.used.toLocaleString(locale)}</span> belegt, davon <span data-admin-i18n-ignore="true">{u.reserved.toLocaleString(locale)}</span> in Bearbeitung ·{" "}
+              <span data-admin-i18n-ignore="true">{formatBerlin(u.period_start, locale)}</span> – <span data-admin-i18n-ignore="true">{formatBerlin(u.period_end, locale)}</span>
             </p>
           ))
         ) : (
@@ -397,17 +400,17 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                     ? "Pro Founder"
                     : "Pro Standard"}
                 </h4>
-                <p className="mt-4 text-3xl font-bold">{priceLabel(o)}</p>
+                <p data-admin-i18n-ignore="true" className="mt-4 text-3xl font-bold">{priceLabel(o, locale)}</p>
                 <p className="mt-1 text-sm text-slate-500">
                   / {o.billing_interval === "year" ? "Jahr im Voraus" : "Monat"}{" "}
                   · zzgl. MwSt.
                 </p>
                 {o.setup_amount > 0 && (
                   <p className="mt-2 text-sm">
-                    {new Intl.NumberFormat("de-DE", {
+                    <span data-admin-i18n-ignore="true">{new Intl.NumberFormat(locale, {
                       style: "currency",
                       currency: o.currency,
-                    }).format(o.setup_amount / 100)}{" "}
+                    }).format(o.setup_amount / 100)}</span>{" "}
                     Einrichtung
                   </p>
                 )}
@@ -449,7 +452,7 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                       : "SEO Monitor"}
                   </h4>
                   <p className="mt-3 text-2xl font-bold">
-                    {priceLabel(o)}{" "}
+                    <span data-admin-i18n-ignore="true">{priceLabel(o, locale)}</span>{" "}
                     <small className="text-sm font-normal text-slate-500">
                       /{" "}
                       {o.billing_interval === "year"
@@ -460,10 +463,10 @@ export function PartnerPlanSummary({ data }: { data: BillingSummary }) {
                   </p>
                   {o.setup_amount > 0 && (
                     <p className="mt-2 text-sm">
-                      {new Intl.NumberFormat("de-DE", {
+                      <span data-admin-i18n-ignore="true">{new Intl.NumberFormat(locale, {
                         style: "currency",
                         currency: o.currency,
-                      }).format(o.setup_amount / 100)}{" "}
+                      }).format(o.setup_amount / 100)}</span>{" "}
                       Einrichtung
                     </p>
                   )}
@@ -562,6 +565,7 @@ function ChangeForm({
 export function PartnerOnboarding({data, partnerId, onSaved}: {
   data: PlanPanel; partnerId: string; onSaved: () => void;
 }) {
+  const locale = useAdminLocale();
   const sub = data.subscription;
   const active = data.entitlements.state === "manual_grant";
   const commercial = !!sub && sub.source !== "admin_freegrant";
@@ -577,7 +581,7 @@ export function PartnerOnboarding({data, partnerId, onSaved}: {
     </div>
     {sub?.source === "admin_freegrant" && <p className="rounded-xl bg-sky-50 p-3 text-sm text-sky-950">
       <strong>{active ? "Onboarding läuft" : "Onboarding beendet"}</strong>
-      {" · "}{formatBerlin(sub.period_start)} bis {formatBerlin(sub.period_end)} (Berlin)
+      {" · "}<span data-admin-i18n-ignore="true">{formatBerlin(sub.period_start, locale)}</span> bis <span data-admin-i18n-ignore="true">{formatBerlin(sub.period_end, locale)}</span> (Berlin)
     </p>}
     {active && microsite && data.entitlements.features["microsite.publish"] && <a
       className="inline-flex min-h-11 items-center rounded-lg border border-sky-200 px-4 text-sm font-bold text-sky-700"
@@ -617,6 +621,7 @@ export function PartnerPlanPanel({
   partnerId: string;
   initialData?: PlanPanel;
 }) {
+  const locale = useAdminLocale();
   const [data, setData] = useState<PlanPanel | undefined>(initialData),
     [error, setError] = useState(""),
     [generation, setGeneration] = useState(0);
@@ -793,7 +798,7 @@ export function PartnerPlanPanel({
               <p className="mb-3 text-sm">
                 Letzter Nachweis: {data.founder.evidence}
                 {data.founder.decided_at
-                  ? ` · ${formatBerlin(data.founder.decided_at)}`
+                  ? ` · ${formatBerlin(data.founder.decided_at, locale)}`
                   : ""}
               </p>
             )}
@@ -930,7 +935,7 @@ export function PartnerPlanPanel({
                   ? o.limit_value
                   : "Erlaubt"}{" "}
               · {o.source === "admin" ? "Admin" : "Bestehende Freigabe"} · bis{" "}
-              {formatBerlin(o.valid_until)} · {o.reason}
+              <span data-admin-i18n-ignore="true">{formatBerlin(o.valid_until, locale)}</span> · {o.reason}
             </li>
           ))}
         </ul>
@@ -1056,15 +1061,15 @@ export function PartnerPlanPanel({
               </h4>
               {d.kind === "offer" ? (
                 <p className="my-3 text-sm">
-                  {new Intl.NumberFormat("de-DE", {
+                  <span data-admin-i18n-ignore="true">{new Intl.NumberFormat(locale, {
                     style: "currency",
                     currency: "EUR",
-                  }).format(Number(d.payload.unit_amount) / 100)}{" "}
+                  }).format(Number(d.payload.unit_amount) / 100)}</span>{" "}
                   {d.payload.offer_code === "founder_annual"
                     ? "jährlich im Voraus"
                     : "monatlich"}
                   , zzgl. MwSt. · Einrichtung{" "}
-                  {Number(d.payload.setup_amount ?? 0) / 100} EUR · Tarifversion{" "}
+                  <AdminNumber value={Number(d.payload.setup_amount ?? 0) / 100} options={{ style: "currency", currency: "EUR" }} /> · Tarifversion{" "}
                   {String(d.payload.plan_version ?? "Zusatzmodul")}
                 </p>
               ) : (
@@ -1124,7 +1129,7 @@ export function PartnerPlanPanel({
                 "seo",
                 "pro",
               ].map((c) => (
-                <option key={c}>{c}</option>
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </label>
@@ -1143,7 +1148,7 @@ export function PartnerPlanPanel({
         <ol className="space-y-3">
           {data.audit.map((a, i) => (
             <li key={i} className="border-l-2 border-sky-200 pl-3 text-sm">
-              <time>{formatBerlin(a.created_at)}</time> ·{" "}
+              <time data-admin-i18n-ignore="true">{formatBerlin(a.created_at, locale)}</time> ·{" "}
               {a.source === "admin" ? "Benefitsi Admin" : "Bestehende Freigabe"}
               <p>{a.reason}</p>
             </li>

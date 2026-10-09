@@ -1,5 +1,6 @@
 'use client';
 
+import { AdminDate } from '@/components/admin-format';
 import { useEffect, useRef, useState, useTransition, type FormEvent } from 'react';
 import { updatePartnerEditorial } from '@/app/partner/crm-actions';
 import { parseAdminEditorialRequests, type AdminEditorialRequest, type EditorialStatus } from '@/lib/partners/crm';
@@ -89,12 +90,9 @@ function EditorialAdminCard({
     </h4>
     <p className="mt-2 text-sm font-semibold">Aktueller Status: {statuses[saved.status]}
     </p>
-    {saved.partner_note && <p className="mt-3 whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-3 text-sm leading-6">Partnerbriefing: {saved.partner_note}
+    {saved.partner_note && <p className="mt-3 whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-3 text-sm leading-6">Partnerbriefing: <span data-admin-i18n-ignore="true">{saved.partner_note}</span>
     </p>}
-    {saved.requested_at && <p className="mt-2 text-xs text-slate-500">Angefragt: {new Intl.DateTimeFormat('de-DE', {
-      timeZone: 'Europe/Berlin',
-      dateStyle: 'medium'
-    }).format(new Date(saved.requested_at))}
+    {saved.requested_at && <p className="mt-2 text-xs text-slate-500">Angefragt: <AdminDate value={saved.requested_at} options={{ dateStyle: 'medium' }} />
     </p>}
     {saved.status === 'not_requested' ? <p className="mt-3 text-sm text-slate-500">Noch keine Partneranfrage. Ein Status kann erst nach der Anfrage gepflegt werden.</p> : <form key={`${saved.updated_at}:${saved.status}:${saved.admin_note}`} onSubmit={submit} className="mt-4 space-y-3">
       <fieldset disabled={pending} className="space-y-3">

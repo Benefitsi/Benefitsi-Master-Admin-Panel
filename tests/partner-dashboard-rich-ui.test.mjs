@@ -266,7 +266,7 @@ test('released legacy v1 offer counts stay visible without supported additive in
         sections: { offers: { status: 'ok', definition_version: versions[1] } },
       }
     const html = render(h(PartnerStatistics, { data: d }))
-    assert.match(html, /7654321/)
+    assert.match(html, /7\.654\.321/)
     assert.match(html, /Name nicht verfügbar/)
     assert.match(html, /21\.09\.2026/)
     assert.doesNotMatch(
@@ -288,7 +288,7 @@ test('legacy offer fallback respects every ancestor and bucket restriction and m
     change(d)
     assert.doesNotMatch(
       render(h(PartnerStatistics, { data: d })),
-      /7654321|cd919814/,
+      /7\.654\.321|7654321|cd919814/,
     )
   }
   for (const redemptions of [

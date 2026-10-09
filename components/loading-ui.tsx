@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { AdminLanguageProvider } from "@/app/admin-language"
 
 export function LoadingSpinner({
   className = "size-4",
@@ -23,10 +24,12 @@ export function Skeleton({ className = "h-4 w-full" }: { className?: string }) {
 
 function LoadingScreen({ children, label }: { children: ReactNode; label: string }) {
   return (
+    <AdminLanguageProvider>
     <main aria-busy="true" aria-label={label} className="min-h-screen bg-[#f6f7f4] text-zinc-950">
       <span className="sr-only" role="status">{label}</span>
       {children}
     </main>
+    </AdminLanguageProvider>
   )
 }
 

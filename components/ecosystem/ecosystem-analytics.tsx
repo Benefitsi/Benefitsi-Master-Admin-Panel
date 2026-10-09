@@ -1,5 +1,8 @@
 "use client"
 
+import { useAdminLocale } from "@/app/admin-language"
+import { AdminDate } from "@/components/admin-format"
+import { AdminAnalyticsValue } from "@/components/analytics/admin-analytics-value"
 import { useId, useState } from "react"
 import Link from "next/link"
 import { ArrowUpRight, ChartLineUp, DotsThree, LockSimple } from "@phosphor-icons/react"
@@ -44,7 +47,7 @@ export function EcosystemActivity({ analytics }: { analytics: OverviewAnalytics 
     <div id={`${id}-content`} className={styles.content}>
       <div className={styles.kpis} role="group" aria-label="Kennzahlen">
         {view?.kpis.length ? view.kpis.slice(0, 3).map((metric, index) => <div key={metric.key} className={styles.kpi} data-primary={index === 0}>
-          <strong>{metric.value === null ? "—" : metric.formatted}</strong>
+          <strong>{metric.value === null ? "—" : <AdminAnalyticsValue value={metric.value} unit={metric.unit} formattedValue={metric.formattedValue} />}</strong>
           <span>{metric.label}</span>
           {metric.quality !== "verified" ? <small>{qualityLabels[metric.quality]}</small> : null}
         </div>) : <div className={styles.kpi} data-primary="true"><strong>—</strong><span>{emptyLabel(analytics.state, view)}</span></div>}
@@ -52,7 +55,7 @@ export function EcosystemActivity({ analytics }: { analytics: OverviewAnalytics 
 
       <div className={styles.chartRegion}>
         {view && view.series.length > 1 ? <div className={styles.chartControls}>
-          <label htmlFor={`${id}-metric`}>Verlauf</label>
+          <label htmlFor={`${id}-metric`}>Trend</label>
           <select id={`${id}-metric`} aria-label="Diagramm-Kennzahl" value={series?.key ?? ""} onChange={event => setSeriesKeys(current => ({ ...current, [view.key]: event.target.value }))}>
             {view.series.map(item => <option key={item.key} value={item.key}>{item.title}</option>)}
           </select>
@@ -67,16 +70,16 @@ export function EcosystemActivity({ analytics }: { analytics: OverviewAnalytics 
     </div>
 
     <div className={styles.footer}>
-      <span>{qualityNotice ? <em>{qualityNotice} · </em> : null}{view?.asOf ? `Datenstand ${dateTime(view.asOf)}` : "Kein bestätigter Datenstand"}</span>
+      <span>{qualityNotice ? <em>{qualityNotice} · </em> : null}{view?.asOf ? <>Datenstand {dateTime(view.asOf)}</> : "Kein bestätigter Datenstand"}</span>
       {view ? <details>
         <summary>Details <DotsThree size={18} aria-hidden="true" /></summary>
         <div className={styles.details}>
-          {analytics.period ? <p>{environmentLabels[analytics.period.environment]} · {dateLabel(analytics.period.dateFrom)} – {dateLabel(analytics.period.dateTo)}</p> : null}
+          {analytics.period ? <p>{environmentLabels[analytics.period.environment]} · <AdminDate value={analytics.period.dateFrom} options={{ dateStyle: "medium", timeZone: "UTC" }} /> – <AdminDate value={analytics.period.dateTo} options={{ dateStyle: "medium", timeZone: "UTC" }} /></p> : null}
           {series ? <SeriesDetails series={series} /> : null}
           {view.kpis.length ? <section><h3>Alle Kennzahlen</h3><div className={styles.tableWrap} role="region" aria-label="Kennzahlendetails" tabIndex={0}>
             <table><thead><tr><th scope="col">Kennzahl</th><th scope="col">Wert</th><th scope="col">Quelle & Datenstand</th><th scope="col">Qualität</th></tr></thead><tbody>{view.kpis.map(metric => <tr key={metric.key}>
               <th scope="row">{metric.label}{metric.definition ? <small>{metric.definition}</small> : null}</th>
-              <td>{metric.value === null ? "Keine Daten" : metric.formatted}</td><td>{metric.source || "Quelle unbekannt"}<small>{dateTime(metric.asOf)}</small></td><td>{qualityLabels[metric.quality]}</td>
+              <td>{metric.value === null ? "Keine Daten" : <AdminAnalyticsValue value={metric.value} unit={metric.unit} formattedValue={metric.formattedValue} />}</td><td>{metric.source || "Quelle unbekannt"}<small>{dateTime(metric.asOf)}</small></td><td>{qualityLabels[metric.quality]}</td>
             </tr>)}</tbody></table>
           </div></section> : null}
           {view.tables.map(table => <BreakdownDetails key={table.key} table={table} />)}
@@ -101,6 +104,7 @@ function emptyLabel(state: OverviewAnalytics["state"], view: OverviewAnalyticsVi
 }
 
 function ActivityChart({ series }: { series: AnalyticsTimeSeries }) {
+  const locale = useAdminLocale()
   const id = useId()
   const finite = series.points.flatMap(point => point.value !== null && Number.isFinite(point.value) ? [point.value] : [])
   if (!finite.length) return <div className={styles.emptyChart}><ChartLineUp size={44} weight="light" aria-hidden="true" /><span>Noch keine Messwerte im Verlauf</span></div>
@@ -138,27 +142,28 @@ function ActivityChart({ series }: { series: AnalyticsTimeSeries }) {
         <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop stopColor="#118CFF" stopOpacity=".27" /><stop offset="1" stopColor="#118CFF" stopOpacity="0" /></linearGradient>
       </defs>
       {[28, 99, 170].map(level => <line key={level} x1="54" x2="748" y1={level} y2={level} stroke="#FFFFFF" strokeOpacity=".09" strokeDasharray="3 7" />)}
-      <text x="0" y="32" fill="#91ADC4" fontSize="11">{axisValue(max * magnitude, series.unit)}</text>
-      <text x="0" y="174" fill="#91ADC4" fontSize="11">{axisValue(min * magnitude, series.unit)}</text>
+      <text data-admin-i18n-ignore="true" x="0" y="32" fill="#91ADC4" fontSize="11">{axisValue(max * magnitude, series.unit, locale)}</text>
+      <text data-admin-i18n-ignore="true" x="0" y="174" fill="#91ADC4" fontSize="11">{axisValue(min * magnitude, series.unit, locale)}</text>
       {segments.map((part, index) => <g key={index}>
         <path d={`${part.line} L${part.lastX},170 L${part.firstX},170 Z`} fill={`url(#${id}-area)`} />
         <path d={part.line} fill="none" stroke={`url(#${id}-line)`} strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
       </g>)}
-      {series.points.map((point, index) => point.value !== null && Number.isFinite(point.value) ? <circle key={index} cx={x(index)} cy={y(point.value)} r="3" fill="#17D4D7"><title>{`${point.label ?? dateLabel(point.date)}: ${formatAnalyticsValue(point.value, series.unit)}`}</title></circle> : null)}
-      <text x="54" y="201" fill="#9AAFC3" fontSize="12">{series.points[0]?.label ?? dateLabel(series.points[0]?.date)}</text>
-      <text x="748" y="201" textAnchor="end" fill="#9AAFC3" fontSize="12">{series.points.at(-1)?.label ?? dateLabel(series.points.at(-1)?.date)}</text>
+      {series.points.map((point, index) => point.value !== null && Number.isFinite(point.value) ? <circle key={index} cx={x(index)} cy={y(point.value)} r="3" fill="#17D4D7"><title data-admin-i18n-ignore="true">{`${point.label ?? dateLabel(point.date, locale)}: ${formatAnalyticsValue(point.value, series.unit, null, locale)}`}</title></circle> : null)}
+      <text data-admin-i18n-ignore="true" x="54" y="201" fill="#9AAFC3" fontSize="12">{series.points[0]?.label ?? dateLabel(series.points[0]?.date, locale)}</text>
+      <text data-admin-i18n-ignore="true" x="748" y="201" textAnchor="end" fill="#9AAFC3" fontSize="12">{series.points.at(-1)?.label ?? dateLabel(series.points.at(-1)?.date, locale)}</text>
     </svg>
   </figure>
 }
 
 function SeriesDetails({ series }: { series: AnalyticsTimeSeries }) {
+  const locale = useAdminLocale()
   const comparison = series.points.some(point => point.comparisonValue !== null)
   return <section><h3>{series.title}</h3><p>{qualityLabels[series.quality]} · Quelle: {series.source || "Unbekannt"} · {dateTime(series.asOf)}</p>
     {series.description ? <p>{series.description}</p> : null}
     <div className={styles.tableWrap} role="region" aria-label="Zeitreihendaten" tabIndex={0}>
       <table aria-label={series.title}><thead><tr><th scope="col">Zeitpunkt</th><th scope="col">Wert</th>{comparison ? <th scope="col">Vergleichswert</th> : null}</tr></thead><tbody>{series.points.map((point, index) => <tr key={index}>
-        <th scope="row">{point.label ?? dateLabel(point.date)}</th><td>{point.value === null ? "Keine Daten" : formatAnalyticsValue(point.value, series.unit)}</td>
-        {comparison ? <td>{point.comparisonValue === null ? "Keine Daten" : formatAnalyticsValue(point.comparisonValue, series.unit)}</td> : null}
+        <th scope="row">{point.label ?? <span data-admin-i18n-ignore="true">{dateLabel(point.date, locale)}</span>}</th><td>{point.value === null ? "Keine Daten" : <AdminAnalyticsValue value={point.value} unit={series.unit} />}</td>
+        {comparison ? <td>{point.comparisonValue === null ? "Keine Daten" : <AdminAnalyticsValue value={point.comparisonValue} unit={series.unit} />}</td> : null}
       </tr>)}</tbody></table>
     </div>
   </section>
@@ -177,24 +182,24 @@ function BreakdownDetails({ table }: { table: AnalyticsBreakdownTable }) {
 
 function tableValue(value: string | number | boolean | null | undefined, unit: AnalyticsMetricUnit) {
   if (value === null || value === undefined) return "Keine Daten"
-  if (typeof value === "number") return formatAnalyticsValue(value, unit)
+  if (typeof value === "number") return <AdminAnalyticsValue value={value} unit={unit} />
   if (typeof value === "boolean") return value ? "Ja" : "Nein"
   return value
 }
 
-function dateLabel(value: string | undefined) {
+function dateLabel(value: string | undefined, locale: string) {
   if (!value) return ""
   const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00Z`) : new Date(value)
-  return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Berlin" }).format(date) : value
+  return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Berlin" }).format(date) : value
 }
 
 function dateTime(value: string | null) {
   return value && Number.isFinite(Date.parse(value))
-    ? new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }).format(new Date(value))
+    ? <AdminDate value={value} options={{ day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }} />
     : "Kein bestätigter Datenstand"
 }
 
-function axisValue(value: number, unit: AnalyticsMetricUnit) {
-  const number = new Intl.NumberFormat("de-DE", { notation: "compact", maximumFractionDigits: 1 }).format(value)
+function axisValue(value: number, unit: AnalyticsMetricUnit, locale: string) {
+  const number = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value)
   return unit === "currency_eur" ? `${number} €` : unit === "percent" || unit === "percentage_points" ? `${number} %` : number
 }

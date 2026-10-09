@@ -106,7 +106,7 @@ test('Founder draft approval derives annual versus monthly interval from support
  for(const [code,amount,label] of [['founder',1990,'monatlich'],['founder_annual',19900,'jährlich im Voraus']]){
   const data=billing(true);data.drafts[0].payload={offer_code:code,version:2,unit_amount:amount}
   const html=render(h(PartnerPlanPanel,{partnerId,initialData:data}))
-  assert.match(html,new RegExp((amount/100).toFixed(2).replace('.',',')+'[^<]* '+label+', zzgl. MwSt.'))
+  assert.match(html.replace(/<[^>]+>/g,''),new RegExp((amount/100).toFixed(2).replace('.',',')+'[^<]* '+label+', zzgl. MwSt.'))
  }
 })
 test('existing partner navigation and overview expose Kundenbindung using the selected partner',()=>{

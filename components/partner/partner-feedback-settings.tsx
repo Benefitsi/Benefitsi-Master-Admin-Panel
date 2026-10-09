@@ -4,11 +4,13 @@ import { startTransition, useActionState, useId, useState } from 'react'
 import { ArrowRight, Gift, MessageSquareHeart, ShieldCheck } from 'lucide-react'
 import { updateFeedbackReward, type FeedbackSettingsResult } from '@/app/partner/feedback-actions'
 import type { FeedbackSettingsRead } from '@/lib/partners/feedback'
+import { useAdminLanguage } from '@/app/admin-language'
 
 export function PartnerFeedbackSettings({ partnerId, initial }: {
   partnerId: string
   initial: FeedbackSettingsRead
 }) {
+  const { language } = useAdminLanguage()
   const controlId = useId()
   const settings = initial.settings
   const [enabled, setEnabled] = useState(settings?.enabled ?? false)
@@ -51,7 +53,7 @@ export function PartnerFeedbackSettings({ partnerId, initial }: {
             <select id={`${controlId}-deal`} name="deal_id" value={dealId} onChange={event => setDealId(event.target.value)} disabled={!enabled || pending} required={enabled} aria-describedby={`${controlId}-help`} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm disabled:bg-slate-50 disabled:text-slate-500">
               <option value="">Vorteil auswählen</option>
               {dealId && !selected && <option value={dealId}>Bisheriger Vorteil ist nicht mehr verfügbar</option>}
-              {deals.map(deal => <option key={deal.id} value={deal.id}>{deal.title}</option>)}
+              {deals.map(deal => <option key={deal.id} value={deal.id} data-admin-i18n-ignore="true">{deal.title}</option>)}
             </select>
             <p id={`${controlId}-help`} className="mt-2 text-xs leading-5 text-slate-500">Geeignet sind aktive Rabatte oder Gratisartikel für alle Gäste ohne zusätzliche Besuchs-, Zeit- oder Stempelvoraussetzungen, Mindestbestellwert, Kontingent oder Rabattobergrenze. Die angezeigten Einlösebedingungen gelten weiterhin.</p>
             {!deals.length && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Lege zuerst einen geeigneten aktiven Vorteil an. Danach kannst du ihn hier als Belohnung auswählen.</p>}
@@ -64,10 +66,12 @@ export function PartnerFeedbackSettings({ partnerId, initial }: {
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">So sehen es deine Gäste</p>
           <div className="mt-4 flex items-center gap-3"><Gift aria-hidden="true" size={25} className="shrink-0 text-[#0874d1]" /><h3 className="text-lg font-bold">Ein Dankeschön für dein Feedback</h3></div>
           {enabled && selected ? <>
-            <p className="mt-4 text-xl font-bold text-[#061829]">{selected.title}</p>
-            {selected.description && <p className="mt-2 whitespace-pre-line break-words text-sm leading-6 text-slate-600">{selected.description}</p>}
-            {selected.terms && <div className="mt-4 border-t border-sky-100 pt-4"><p className="text-xs font-semibold text-slate-700">Einlösebedingungen</p><p className="mt-1 whitespace-pre-line break-words text-sm leading-6 text-slate-600">{selected.terms}</p></div>}
-            <p className="mt-4 text-xs leading-5 text-slate-500">Nach dem Absenden einmalig freigeschaltet, bis zu {validDays} Tage gültig{selected.expires_at ? `, spätestens bis ${new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin' }).format(new Date(selected.expires_at))}` : ''}. Bereits angezeigte Belohnungen bleiben zugesagt.</p>
+            <p data-admin-i18n-ignore="true" className="mt-4 text-xl font-bold text-[#061829]">{selected.title}</p>
+            {selected.description && <p data-admin-i18n-ignore="true" className="mt-2 whitespace-pre-line break-words text-sm leading-6 text-slate-600">{selected.description}</p>}
+            {selected.terms && <div className="mt-4 border-t border-sky-100 pt-4"><p className="text-xs font-semibold text-slate-700">Einlösebedingungen</p><p data-admin-i18n-ignore="true" className="mt-1 whitespace-pre-line break-words text-sm leading-6 text-slate-600">{selected.terms}</p></div>}
+            <p data-admin-i18n-ignore="true" className="mt-4 text-xs leading-5 text-slate-500">{language === 'en'
+              ? `Unlocked once after submission, valid for up to ${validDays} days${selected.expires_at ? `, no later than ${new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin' }).format(new Date(selected.expires_at))}` : ''}. Rewards already displayed remain promised.`
+              : `Nach dem Absenden einmalig freigeschaltet, bis zu ${validDays} Tage gültig${selected.expires_at ? `, spätestens bis ${new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin' }).format(new Date(selected.expires_at))}` : ''}. Bereits angezeigte Belohnungen bleiben zugesagt.`}</p>
           </> : <p className="mt-4 text-sm leading-6 text-slate-600">{enabled ? 'Wähle einen Vorteil, um die Vorschau zu sehen.' : 'Der Fragebogen bleibt freiwillig. Aktuell ist keine Belohnung verknüpft.'}</p>}
         </aside>
       </div>}

@@ -133,8 +133,8 @@ test('canceling drafts requires confirmation and never writes business data',asy
 test('normalized URL confirmation clears a draft after the transport confirms its canonical value',async()=>{
   const services=transport();services.saveWorkspacePartnerDetail=async(id,input)=>({ok:true,value:{...input.row,website:'https://example.org/',updated_at:'2026-10-07T12:01:00Z'}})
   await withEditor(services,async({states,saved})=>{
-    await wait(()=>field('Website'));await fill(field('Website'),'https://example.org');await click(button('Website speichern'))
-    assert.equal(field('Website').value,'https://example.org/');assert.equal(states.at(-1).dirty,false);assert.equal(saved(),1)
+    await wait(()=>field('Webseite'));await fill(field('Webseite'),'https://example.org');await click(button('Webseite speichern'))
+    assert.equal(field('Webseite').value,'https://example.org/');assert.equal(states.at(-1).dirty,false);assert.equal(saved(),1)
   })
 })
 

@@ -22,6 +22,7 @@ import { getPartnerPortalSession } from "@/lib/partner-portal"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
 import { AdminShell, PartnerPanelLink } from "./admin-shell"
+import { AdminLanguageControl, AdminLanguageProvider } from "./admin-language"
 import { DashboardAutoRefresh } from "./dashboard-auto-refresh"
 
 export const dynamic = "force-dynamic"
@@ -172,8 +173,10 @@ function singleQueryValue(value: string | string[] | undefined) {
 
 function SetupRequired() {
   return (
+    <AdminLanguageProvider>
     <main className="grid min-h-screen place-items-center bg-[#f6f7f4] px-5 text-zinc-950">
       <section className="w-full max-w-xl rounded-md border border-zinc-200 bg-white p-6 shadow-sm">
+        <AdminLanguageControl />
         <p className="text-sm font-medium text-teal-700">Benefitsi Admin</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-normal">
           Supabase env setup required
@@ -184,5 +187,6 @@ function SetupRequired() {
         </p>
       </section>
     </main>
+    </AdminLanguageProvider>
   )
 }

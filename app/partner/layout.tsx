@@ -1,3 +1,5 @@
+import { AdminLanguageProvider } from "@/app/admin-language"
+import { PartnerRouteLanguageControl } from "@/components/partner/partner-route-language-control"
 import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: { absolute: 'Benefitsi Partner' },
@@ -8,5 +10,5 @@ export default function PartnerLayout({
 }: {
   children: React.ReactNode
 }) {
-  return children
+  return <AdminLanguageProvider initialLanguage="de"><PartnerRouteLanguageControl />{children}</AdminLanguageProvider>
 }

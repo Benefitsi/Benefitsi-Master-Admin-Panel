@@ -6,6 +6,12 @@ import { templateVersion } from './onboarding-upgrade'
 export function onboardingContent(): Content {
   return {...emptyContent(),questions:questions.map(q=>({...q,answerType:q.answerType as Question['answerType'],options:[...q.options],answer:'',change:'',agreement:'',status:'open',reason:'',hidden:false})),meeting:{date:'',participants:'',summary:'',templateVersion}}
 }
+
+/** Translate the supplied guide, while preserving any authored question edits. */
+export function isFixedOnboardingCopy(question: Question, field: 'prompt' | 'section' | 'help'): boolean {
+  const original = questions.find(item => item.id === question.id)
+  return Boolean(original && original[field] === question[field])
+}
 export const featureGuides = [
   {title:'Stempelkarte, Levels & Abzeichen',text:'Gäste sammeln bei bestätigten Besuchen Stempel. Der aktuelle Editor verwendet zehn Stempel als Kartenmodell. Vorhandene Meilensteine und Belohnungen gemeinsam prüfen; Herstellungskosten pro Artikel oder Leistung getrennt erfassen. Auch Levels und Abzeichen auf ihre Eignung prüfen. Neue Kartenmodelle, Abzeichen und Kriterien bleiben Wünsche mit Prüfbedarf.'},
   {title:'Angebote, Happy Hour & Deal Drops',text:'Normale Angebote und Happy Hour sind für Free und Pro ohne Tarif-Mengenlimit vorgesehen. Ein Deal Drop ist eine gezielt begrenzte Aktion. Free: eine Veröffentlichung je Kalendermonat und Standort; Pro aktuell vorläufig ohne Monatslimit. Eine Veröffentlichung startet keinen Marketingversand.'},

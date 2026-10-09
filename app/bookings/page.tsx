@@ -1,3 +1,5 @@
+import { operationsStatusLabel, operationsFeedbackLabel } from "@/lib/admin-i18n/operations-labels"
+import { AdminNumber } from "@/components/admin-format"
 import type { Metadata } from "next"
 import type { InputHTMLAttributes, ReactNode } from "react"
 import Link from "next/link"
@@ -45,7 +47,7 @@ export default async function BookingsPage({
   const feedbackError =
     feedback.error === "connect_platform_not_ready"
       ? "Stripe Connect bleibt bis zur Verifizierung der Benefitsi UG gesperrt."
-      : feedback.error
+      : feedback.error ? operationsFeedbackLabel(feedback.error) : undefined
   const adminName =
     adminSession.profile?.display_name ||
     adminSession.profile?.email ||
@@ -107,7 +109,7 @@ export default async function BookingsPage({
 
       {feedback.success ? (
         <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
-          Aktion erfolgreich gespeichert: {feedback.success}
+          Aktion erfolgreich gespeichert: {operationsFeedbackLabel(feedback.success)}
         </div>
       ) : null}
       {feedbackError ? (
@@ -193,13 +195,13 @@ export default async function BookingsPage({
               <SelectField name="providerId" label="Anbieter" required>
                 <option value="">Bitte wählen</option>
                 {data.providers.map((provider) => (
-                  <option key={provider.id} value={provider.id}>{provider.displayName}</option>
+                  <option key={provider.id} value={provider.id} data-admin-i18n-ignore="true">{provider.displayName}</option>
                 ))}
               </SelectField>
               <SelectField name="cityId" label="Stadt" required>
                 <option value="">Bitte wählen</option>
                 {data.cities.map((city) => (
-                  <option key={city.id} value={city.id}>{city.name}</option>
+                  <option key={city.id} value={city.id} data-admin-i18n-ignore="true">{city.name}</option>
                 ))}
               </SelectField>
               <Field name="title" label="Titel" required />
@@ -239,9 +241,9 @@ export default async function BookingsPage({
                     <article key={provider.id} className="p-5">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
-                          <h3 className="font-black">{provider.displayName}</h3>
+                          <h3 className="font-black"><span data-admin-i18n-ignore="true">{provider.displayName}</span></h3>
                           <p className="mt-1 text-sm text-[#617080]">
-                            Connect: {provider.onboardingStatus} · Zahlungen: {provider.chargesEnabled ? "bereit" : "gesperrt"}
+                            Connect: {operationsStatusLabel(provider.onboardingStatus)} · Zahlungen: {provider.chargesEnabled ? "bereit" : "gesperrt"}
                           </p>
                         </div>
                         {stripeConfigured ? (
@@ -259,12 +261,12 @@ export default async function BookingsPage({
                             <div key={offer.id} className="rounded-2xl border border-[#061829]/10 bg-[#f8fafb] p-4">
                               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
-                                  <p className="font-black">{offer.title}</p>
+                                  <p data-admin-i18n-ignore="true" className="font-black">{offer.title}</p>
                                   <p className="mt-1 text-sm text-[#617080]">
                                     {money(offer.unitAmount)} · {offer.cityName}
                                   </p>
                                   <p className="mt-1 text-xs font-semibold text-[#526170]">
-                                    {offer.status} · {offer.reviewStage} · {offer.canonicalPath}
+                                    {operationsStatusLabel(offer.status)} · {operationsStatusLabel(offer.reviewStage)} · {offer.canonicalPath}
                                   </p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
@@ -325,8 +327,8 @@ export default async function BookingsPage({
                             {booking.publicReference}
                           </Link>
                         </td>
-                        <td className="px-5 py-4">{booking.offerTitle}</td>
-                        <td className="px-5 py-4">{booking.state}</td>
+                        <td data-admin-i18n-ignore="true" className="px-5 py-4">{booking.offerTitle}</td>
+                        <td className="px-5 py-4">{operationsStatusLabel(booking.state)}</td>
                         <td className="px-5 py-4">{money(booking.totalAmount)}</td>
                       </tr>
                     ))}
@@ -344,7 +346,7 @@ export default async function BookingsPage({
 const inputClass =
   "min-h-11 rounded-xl border border-[#061829]/15 bg-white px-3 py-2.5 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="border-[#061829]/10 px-5 py-5 sm:border-l sm:first:border-l-0">
       <p className="text-2xl font-black tracking-[-0.04em]">{value}</p>
@@ -409,5 +411,5 @@ function SmallSubmit({ label, pending, primary = false }: { label: string; pendi
 }
 
 function money(cents: number) {
-  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100)
+  return <AdminNumber value={cents / 100} options={{ style: "currency", currency: "EUR" }} />
 }

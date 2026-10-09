@@ -1,3 +1,6 @@
+import { operationsStatusLabel, operationsFeedbackLabel } from "@/lib/admin-i18n/operations-labels"
+import type { ReactNode } from "react"
+import { AdminDate, AdminNumber } from "@/components/admin-format"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { AdminShell } from "@/app/admin-shell"
@@ -48,19 +51,19 @@ export default async function BookingDetailPage({
     <AdminShell
       adminName={adminName}
       title={`Buchung ${booking.publicReference}`}
-      subtitle={`${booking.offerTitle} · ${booking.state}`}
+      subtitle={<><span data-admin-i18n-ignore="true">{booking.offerTitle}</span> · <span>{operationsStatusLabel(booking.state)}</span></>}
     >
       <Link href="/bookings" className="inline-flex min-h-11 items-center text-sm font-black text-[#0b75d9]">
         ← Zurück zum Booking Control
       </Link>
       {feedback.error ? (
         <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900">
-          Aktion blockiert: {feedback.error}
+          Aktion blockiert: {operationsFeedbackLabel(feedback.error)}
         </div>
       ) : null}
       {feedback.success ? (
         <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
-          Aktion gespeichert: {feedback.success}
+          Aktion gespeichert: {operationsFeedbackLabel(feedback.success)}
         </div>
       ) : null}
 
@@ -69,14 +72,14 @@ export default async function BookingDetailPage({
           <section className="rounded-3xl border border-[#061829]/10 bg-white p-5 sm:p-6">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">Buchungsdaten</p>
             <dl className="mt-5 grid gap-5 sm:grid-cols-2">
-              <Datum label="Angebot" value={offer?.title || booking.offerTitle} />
-              <Datum label="Anbieter" value={provider?.displayName || booking.providerName} />
+              <Datum label="Angebot" value={<span data-admin-i18n-ignore="true">{offer?.title || booking.offerTitle}</span>} />
+              <Datum label="Anbieter" value={<span data-admin-i18n-ignore="true">{provider?.displayName || booking.providerName}</span>} />
               <Datum label="Termin" value={date(slot?.startsAt)} />
               <Datum label="Plätze" value={String(booking.quantity)} />
               <Datum label="Brutto" value={money(booking.totalAmount)} />
               <Datum label="Benefitsi-Gebühr" value={money(booking.applicationFeeAmount)} />
               <Datum label="Anbieteranteil" value={money(booking.totalAmount - booking.applicationFeeAmount)} />
-              <Datum label="Zustand" value={booking.state} />
+              <Datum label="Zustand" value={operationsStatusLabel(booking.state)} />
               <Datum label="Checkout" value={booking.stripeCheckoutSessionId || "—"} />
               <Datum label="Payment Intent" value={booking.stripePaymentIntentId || "—"} />
               <Datum label="Refund" value={booking.stripeRefundId || "—"} />
@@ -146,7 +149,7 @@ export default async function BookingDetailPage({
   )
 }
 
-function Datum({ label, value }: { label: string; value: string }) {
+function Datum({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
       <dt className="text-xs font-bold text-[#617080]">{label}</dt>
@@ -156,13 +159,9 @@ function Datum({ label, value }: { label: string; value: string }) {
 }
 
 function money(cents: number) {
-  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100)
+  return <AdminNumber value={cents / 100} options={{ style: "currency", currency: "EUR" }} />
 }
 
 function date(value?: string | null) {
-  if (!value) return "—"
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime())
-    ? value
-    : new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(parsed)
+  return value && Number.isFinite(Date.parse(value)) ? <AdminDate value={value} options={{ dateStyle: "medium", timeStyle: "short" }} /> : "—"
 }

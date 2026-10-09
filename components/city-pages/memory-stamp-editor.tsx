@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition, type FormEvent, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, MapPin, Stamp } from 'lucide-react'
+import { translateValue, useAdminLocale } from '@/app/admin-language'
 import { MemoryStampMap } from './memory-stamp-map'
 import { bindMemoryZones } from '@/lib/city-pages/memory-place-centers'
 import { saveMemoryStamp } from '@/app/city-pages/[citySlug]/memory-stamps/actions'
@@ -36,23 +37,23 @@ function initialInput(catalog: MemoryCatalog, record?: MemoryStampRecord): Memor
 
 export function MemoryStampEditor({ catalog, selectedId }: { catalog: MemoryCatalog; selectedId?: string }) {
   const router = useRouter()
-  const [notice, setNotice] = useState('')
+  const [notice, setNotice] = useState<string[]>([])
   const [search, setSearch] = useState('')
   const record = selectedId === 'new' ? undefined : catalog.stamps.find(s => s.definition.id === selectedId) ?? catalog.stamps[0]
   const filtered = catalog.stamps.filter(s => `${s.definition.title} ${s.definition.memory_code}`.toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de')))
   function select(id: string) {
-    setNotice('')
+    setNotice([])
     router.push(`/city-pages/${catalog.city.slug}/memory-stamps?stamp=${encodeURIComponent(id)}`)
   }
   return <>
-    {notice && <p role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">{notice}</p>}
+    {notice.length > 0 && <p role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">{notice.map((part, index) => <span key={index}>{part}</span>)}</p>}
     <div className="grid items-start gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
       <aside className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4" aria-label="Stempel auswählen">
-        <div className="mb-4 flex items-center justify-between gap-2"><h2 className="font-bold">{catalog.stamps.length} Stempel</h2><button onClick={() => select('new')} className={secondary}><Plus size={16} aria-hidden />Neu</button></div>
+        <div className="mb-4 flex items-center justify-between gap-2"><h2 className="font-bold">{`${catalog.stamps.length} Stempel`}</h2><button onClick={() => select('new')} className={secondary}><Plus size={16} aria-hidden />Neu</button></div>
         <label className="text-sm font-semibold">Stempel suchen<input type="search" value={search} onChange={e => setSearch(e.target.value)} className={field} placeholder="Name oder Code" /></label>
         <ul className="mt-3 grid max-h-[28rem] gap-2 overflow-auto">
           {filtered.map(s => <li key={s.definition.id}><button onClick={() => select(s.definition.id)} aria-pressed={s.definition.id === record?.definition.id} className={`w-full rounded-xl border p-3 text-left transition hover:border-blue-500 ${s.definition.id === record?.definition.id ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white'}`}>
-            <span className="block text-xs font-semibold text-slate-500">{s.definition.memory_code}</span><span className="mt-1 block text-sm font-bold">{s.definition.title}</span>
+            <span className="block text-xs font-semibold text-slate-500">{s.definition.memory_code}</span><span className="mt-1 block text-sm font-bold"><span data-admin-i18n-ignore="true">{s.definition.title}</span></span>
             <span className={`mt-2 inline-block rounded-full px-2 py-1 text-xs font-semibold ${s.definition.active ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-100 text-slate-700'}`}>{status(s)}</span>
           </button></li>)}
         </ul>
@@ -71,7 +72,8 @@ function Label({ title, children }: { title: string; children: ReactNode }) {
   return <label className="block text-sm font-semibold text-slate-700">{title}{children}</label>
 }
 
-function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog; record?: MemoryStampRecord; onSaved: (id: string, message: string) => void }) {
+function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog; record?: MemoryStampRecord; onSaved: (id: string, message: string[]) => void }) {
+  const language = useAdminLocale() === 'de-DE' ? 'de' : 'en'
   const [value, setValue] = useState(() => initialInput(catalog, record))
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState('')
@@ -100,12 +102,12 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
         if (!result.ok) { setError(result.message); return }
         const saved = operation === 'approve' ? 'Stempel freigegeben.' : operation === 'withdraw' ? 'Stempel zurückgezogen. Gesammelte Erinnerungen bleiben erhalten.' : 'Stempel gespeichert. Änderungen an Sammelorten benötigen eine neue Freigabe.'
         const refresh = result.refresh === 'ok' ? ' Die Stadtseite wurde aktualisiert.' : ' Die automatische Aktualisierung der Stadtseite konnte nicht bestätigt werden. Bitte die öffentliche Anzeige prüfen; die Speicherung war erfolgreich.'
-        onSaved(result.id, saved + refresh)
+        onSaved(result.id, [saved, refresh])
       } catch { setError('Die Speicherung konnte nicht bestätigt werden. Bitte lade vor einem weiteren Versuch die Seite neu. Deine Anmeldung könnte abgelaufen sein.') }
     })
   }
   return <form onSubmit={submit} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6" aria-busy={pending}>
-    <div className="mb-6 flex items-start gap-3"><Stamp className="mt-1 shrink-0 text-[#0b75d9]" aria-hidden /><div><h2 className="text-xl font-bold">{record ? record.definition.title : 'Neuer Entdeckerstempel'}</h2><p className="mt-1 text-sm text-slate-600">{catalog.city.name}{record ? ` · ${status(record)} · ${record.claim_count} bestätigte Erinnerungen` : ' · Wird zunächst als Entwurf gespeichert'}</p></div></div>
+    <div className="mb-6 flex items-start gap-3"><Stamp className="mt-1 shrink-0 text-[#0b75d9]" aria-hidden /><div><h2 className="text-xl font-bold">{record ? <span data-admin-i18n-ignore="true">{record.definition.title}</span> : 'Neuer Entdeckerstempel'}</h2><p className="mt-1 text-sm text-slate-600"><span data-admin-i18n-ignore="true">{catalog.city.name}</span>{record ? <> · {status(record)} <span>{`· ${record.claim_count} bestätigte Erinnerungen`}</span></> : ' · Wird zunächst als Entwurf gespeichert'}</p></div></div>
     {error && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-900">{error}</p>}
     <fieldset disabled={pending} className="min-w-0 space-y-7">
       <section className="space-y-4" aria-labelledby="memory-details-heading">
@@ -123,18 +125,18 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
           <Label title="Edition"><select className={field} value={value.edition_type} onChange={e => change('edition_type', e.target.value)}>{memoryEditions.map(e => <option key={e} value={e}>{editionLabels[e]}{e !== 'standard' ? ' (nur Entwurf)' : ''}</option>)}</select></Label>
           <Label title="Reihenfolge"><input className={field} type="number" min={0} max={100000} step={1} value={value.sort_order} onChange={e => change('sort_order', e.target.valueAsNumber)} required /></Label>
         </div>
-        <Label title="Veröffentlichtes Stempelbild"><select className={field} value={value.artwork_asset_id ?? ''} onChange={e => change('artwork_asset_id', e.target.value || null)}><option value="">Noch kein Bild ausgewählt</option>{value.artwork_asset_id && !selectedAsset && <option value={value.artwork_asset_id}>Bisheriges Bild ist nicht mehr veröffentlicht</option>}{catalog.assets.map(a => <option key={a.id} value={a.id}>{a.title || a.alt_text || a.id}</option>)}</select></Label>
+        <Label title="Veröffentlichtes Stempelbild"><select className={field} value={value.artwork_asset_id ?? ''} onChange={e => change('artwork_asset_id', e.target.value || null)}><option value="">Noch kein Bild ausgewählt</option>{value.artwork_asset_id && !selectedAsset && <option value={value.artwork_asset_id}>Bisheriges Bild ist nicht mehr veröffentlicht</option>}{catalog.assets.map(a => <option data-admin-i18n-ignore="true" key={a.id} value={a.id}>{a.title || a.alt_text || a.id}</option>)}</select></Label>
         {selectedAsset && <div className="flex items-center gap-4 rounded-xl bg-slate-50 p-3">
           {/* Existing published media may use several approved storage domains. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={selectedAsset.public_url} alt={selectedAsset.alt_text || selectedAsset.title || 'Ausgewähltes Stempelbild'} width={96} height={96} className="size-24 rounded-xl object-contain" />
+          <img data-admin-i18n-ignore={selectedAsset.alt_text || selectedAsset.title ? "true" : undefined} src={selectedAsset.public_url} alt={selectedAsset.alt_text || selectedAsset.title || 'Ausgewähltes Stempelbild'} width={96} height={96} className="size-24 rounded-xl object-contain" />
           <p className="text-sm text-slate-600">Dieses Bild wird für den Stempel in App und Stadtseite verwendet.</p>
         </div>}
         <p className="text-xs leading-5 text-slate-500">Die Auswahl enthält veröffentlichte Bilder aus der Mediathek dieser Stadt. Neue Motive zuerst dort hochladen und freigeben.</p>
       </section>
       <section className="space-y-4 border-t border-slate-200 pt-6" aria-labelledby="memory-place-heading">
         <h3 id="memory-place-heading" className="flex items-center gap-2 font-bold"><MapPin size={18} aria-hidden />Ort und Sammelbereiche</h3>
-        <Label title="Ort in dieser Stadt"><select className={field} value={value.place_id ?? ''} disabled={!!record?.claim_count || drawing} onChange={e => change('place_id', e.target.value || null)}><option value="">Ort auswählen</option>{catalog.places.map(p => <option key={p.id} value={p.id}>{p.name}{p.status !== 'active' ? ' (noch nicht veröffentlicht)' : ''}</option>)}</select></Label>
+        <Label title="Ort in dieser Stadt"><select className={field} value={value.place_id ?? ''} disabled={!!record?.claim_count || drawing} onChange={e => change('place_id', e.target.value || null)}><option value="">Ort auswählen</option>{catalog.places.map(p => <option key={p.id} value={p.id} data-admin-i18n-ignore="true">{p.name}{p.status !== 'active' ? translateValue(' (noch nicht veröffentlicht)', language) : ''}</option>)}</select></Label>
         {!!record?.claim_count && <p className="text-xs leading-5 text-slate-600">Dieser Stempel wurde bereits gesammelt. Für einen anderen Ort bitte einen neuen Stempel anlegen.</p>}
         <p className="text-sm leading-6 text-slate-600">Kreisradius um den Ort oder freie Fläche: Setze dafür die Eckpunkte direkt auf der Karte.</p>
         <MemoryStampMap zones={boundZones} place={selectedPlace} disabled={pending} onDrawingChange={setDrawing} onAreaChange={(key, geometry) => {
@@ -143,7 +145,7 @@ function MemoryStampForm({ catalog, record, onSaved }: { catalog: MemoryCatalog;
         }} />
         {boundZones.map((zone, index) => <fieldset key={index} disabled={drawing} className="min-w-0 space-y-3 rounded-xl border border-slate-200 p-4">
           <legend className="px-1 text-sm font-bold">Sammelbereich {index + 1}</legend>
-          {zone.verification_type === 'POINT_RADIUS' && index > 0 && zone.zone_key !== 'primary' && <Label title="Zugehöriger Ort"><select className={field} value={zone.source_place_id ?? ''} onChange={e => zoneChange(index, { source_place_id: e.target.value || null })} required><option value="">Ort auswählen</option>{catalog.places.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Label>}
+          {zone.verification_type === 'POINT_RADIUS' && index > 0 && zone.zone_key !== 'primary' && <Label title="Zugehöriger Ort"><select className={field} value={zone.source_place_id ?? ''} onChange={e => zoneChange(index, { source_place_id: e.target.value || null })} required><option value="">Ort auswählen</option>{catalog.places.map(p => <option key={p.id} value={p.id} data-admin-i18n-ignore="true">{p.name}</option>)}</select></Label>}
           <div className="grid gap-3 sm:grid-cols-2">
             <Label title="Bezeichnung"><input className={field} value={zone.label} maxLength={180} required onChange={e => zoneChange(index, { label: e.target.value })} /></Label>
             <Label title="Kennung"><input className={field} value={zone.zone_key} maxLength={80} pattern="[a-z0-9]+(-[a-z0-9]+)*" required readOnly={(index < existingZoneCount)} onChange={e => zoneChange(index, { zone_key: e.target.value })} /></Label>

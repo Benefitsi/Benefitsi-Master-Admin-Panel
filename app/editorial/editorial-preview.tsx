@@ -1,3 +1,4 @@
+import { AdminDate } from "@/components/admin-format"
 import { Fragment, type ReactNode } from "react"
 import { publicMicrositeUrl } from "@/lib/public-microsite-contract"
 import type { EditorialPost } from "@/lib/editorial-types"
@@ -40,7 +41,7 @@ export function EditorialPreview({ post, embedded = false }: { post: EditorialPr
   const Heading = embedded ? "h3" : "h2"
   const image = post.image_alt?.trim() ? websiteUrl(post.image_url, "asset") : ""
   const date = new Date(post.updated_at)
-  const dateLabel = Number.isNaN(date.getTime()) ? null : new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeZone: "Europe/Berlin" }).format(date)
+  const dateLabel = Number.isNaN(date.getTime()) ? null : <AdminDate value={post.updated_at} options={{ dateStyle: "medium", timeZone: "Europe/Berlin" }} />
   const minutes = Math.max(1, Math.ceil(post.content.flatMap(section => section.paragraphs).join(" ").trim().split(/\s+/).length / 190))
   const sources = post.sources.flatMap(source => { const href = websiteUrl(source.url); return href ? [{ ...source, href }] : [] })
   const links = post.related_links.flatMap(link => { const href = websiteUrl(link.href); return href ? [{ ...link, href }] : [] })
@@ -50,10 +51,10 @@ export function EditorialPreview({ post, embedded = false }: { post: EditorialPr
     <article className="@container/editorial min-w-0 bg-white text-[#061829] [overflow-wrap:anywhere]">
       <header className={partner ? "mx-auto max-w-3xl px-5 pt-10 pb-8 @3xl/editorial:px-8" : "border-b border-[#d5cfc3] bg-[#061829] py-8 text-white @3xl/editorial:py-10"}>
         <div className={partner ? "" : "mx-auto max-w-[1000px] px-5 @3xl/editorial:px-8"}>
-          <p className={partner ? "text-sm text-[#516477]" : `text-xs font-black uppercase tracking-[.2em] ${city ? "text-[#ffb400]" : "text-[#17d4d7]"}`}>{partner ? "Benefitsi Magazin" : post.eyebrow} · {minutes} Min. Lesezeit</p>
-          <Title className={partner ? "mt-3 text-3xl font-bold leading-tight tracking-tight @3xl/editorial:text-4xl" : "mt-5 max-w-[24ch] text-[clamp(1.875rem,4cqw,2.625rem)] leading-[1.08] font-black tracking-[-.045em]"}>{post.title || "Beitrag ohne Titel"}</Title>
+          <p className={partner ? "text-sm text-[#516477]" : `text-xs font-black uppercase tracking-[.2em] ${city ? "text-[#ffb400]" : "text-[#17d4d7]"}`}>{partner ? "Benefitsi Magazin" : <span data-admin-i18n-ignore="true">{post.eyebrow}</span>} · {minutes} Min. Lesezeit</p>
+          <Title data-admin-i18n-ignore={post.title ? "true" : undefined} className={partner ? "mt-3 text-3xl font-bold leading-tight tracking-tight @3xl/editorial:text-4xl" : "mt-5 max-w-[24ch] text-[clamp(1.875rem,4cqw,2.625rem)] leading-[1.08] font-black tracking-[-.045em]"}>{post.title || "Beitrag ohne Titel"}</Title>
           {city && dateLabel ? <p className="mt-4 text-sm leading-6 text-white/80">Von Benefitsi · Stand: <time dateTime={date.toISOString()}>{dateLabel}</time></p> : null}
-          <p className={partner ? "mt-4 text-lg leading-8 text-[#516477]" : "mt-7 max-w-[60ch] text-lg leading-8 text-white/72"}>{post.excerpt}</p>
+          <p data-admin-i18n-ignore="true" className={partner ? "mt-4 text-lg leading-8 text-[#516477]" : "mt-7 max-w-[60ch] text-lg leading-8 text-white/72"}>{post.excerpt}</p>
           {partner && dateLabel ? <p className="mt-4 text-xs text-[#516477]">Stand: <time dateTime={date.toISOString()}>{dateLabel}</time></p> : null}
         </div>
       </header>
@@ -62,10 +63,10 @@ export function EditorialPreview({ post, embedded = false }: { post: EditorialPr
           {(city || partner) && image ? (
             // Use the same public URL policy and 3:2 treatment as the website.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt={post.image_alt ?? ""} width={1200} height={800} className="aspect-[3/2] h-auto w-full rounded-2xl object-cover" referrerPolicy="no-referrer" decoding="async" />
+            <img data-admin-i18n-ignore="true" src={image} alt={post.image_alt ?? ""} width={1200} height={800} className="aspect-[3/2] h-auto w-full rounded-2xl object-cover" referrerPolicy="no-referrer" decoding="async" />
           ) : null}
           {sections.map((section, index) => (
-            <section key={index}>
+            <section data-admin-i18n-ignore="true" key={index}>
               <Heading className={partner ? "text-xl leading-tight font-bold tracking-tight @3xl/editorial:text-2xl" : "text-[clamp(1.375rem,3cqw,1.75rem)] leading-[1.15] font-black tracking-[-.035em]"}>{section.heading}</Heading>
               <div className={partner ? "mt-3 space-y-4 leading-7 text-[#405467]" : "mt-5 space-y-5 text-base leading-8 text-[#586778]"}>
                 {section.paragraphs.map((paragraph, paragraphIndex) => <p key={paragraphIndex}>{city ? <InlineText text={paragraph} /> : paragraph}</p>)}
@@ -74,15 +75,15 @@ export function EditorialPreview({ post, embedded = false }: { post: EditorialPr
           ))}
           {links.length ? <nav aria-label="Weiterlesen" className="border-t border-[#dbe4ee] pt-8">
             <Heading className="text-xs font-black uppercase tracking-[.16em] text-[#086fcc]">Weiterlesen</Heading>
-            <div className="mt-5 grid gap-3 @xl/editorial:grid-cols-2">{links.map((link, index) => <a key={index} href={link.href} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-between gap-3 border border-[#dbe4ee] px-4 py-3 text-sm font-black hover:border-[#118cff]"><span>{link.label}</span><span aria-hidden="true" className="text-[#118cff]">→</span></a>)}</div>
+            <div className="mt-5 grid gap-3 @xl/editorial:grid-cols-2">{links.map((link, index) => <a key={index} href={link.href} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-between gap-3 border border-[#dbe4ee] px-4 py-3 text-sm font-black hover:border-[#118cff]"><span data-admin-i18n-ignore="true">{link.label}</span><span aria-hidden="true" className="text-[#118cff]">→</span></a>)}</div>
           </nav> : null}
         </div>
         {sources.length || notes.length ? <footer aria-label="Quellen und Bildnachweise" className="mt-10 space-y-3 border-t border-[#e3e8ee] pt-5 text-[11px] leading-5 text-[#617080] [overflow-wrap:anywhere] [&_a]:font-normal [&_a]:text-inherit [&_strong]:text-inherit">
           {sources.length ? <section>
             <Heading className="font-semibold">Quellen</Heading>
-            <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">{sources.map((source, index) => <li key={index}><a href={source.href} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:decoration-transparent focus-visible:outline-2 focus-visible:outline-offset-4">{source.label}</a></li>)}</ul>
+            <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">{sources.map((source, index) => <li key={index}><a data-admin-i18n-ignore="true" href={source.href} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:decoration-transparent focus-visible:outline-2 focus-visible:outline-offset-4">{source.label}</a></li>)}</ul>
           </section> : null}
-          {notes.map((note, index) => <section key={index}>
+          {notes.map((note, index) => <section data-admin-i18n-ignore="true" key={index}>
             <Heading className="font-semibold">{note.heading}</Heading>
             <div className="mt-1 space-y-1">{note.paragraphs.map((paragraph, i) => <p key={i}><InlineText text={paragraph} /></p>)}</div>
           </section>)}

@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import React from 'react'
 import {renderToStaticMarkup} from 'react-dom/server'
+import {JSDOM} from 'jsdom'
 import {loadTypescript} from './helpers/load-typescript.mjs'
 import * as config from '../lib/seo/collection-config.ts'
 import * as health from '../lib/seo/collection-health.ts'
@@ -21,9 +22,9 @@ const run = (kind, data) => ({
   observed_at:'2026-09-28T12:00:00Z', created_at:'2026-09-28T12:00:00Z',
   attempts:1, error_code:null, source:'source', method:'method', data,
 })
-const render = (kind, data) => renderToStaticMarkup(React.createElement(Observations, {
+const render = (kind, data) => JSDOM.fragment(renderToStaticMarkup(React.createElement(Observations, {
   history:[run(kind, data)], targetId:'target-1',
-}))
+}))).textContent
 
 test('missing crawl arrays remain unknown instead of measured zero or no findings', () => {
   const html = render('crawl', {linksChecked:0})

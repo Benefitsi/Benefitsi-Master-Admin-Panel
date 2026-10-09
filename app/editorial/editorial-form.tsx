@@ -118,13 +118,13 @@ export function EditorialForm({ action, initial, cities, partners }: EditorialFo
           <Field label="Zielstadt" helper={scope === "city" ? "Pflicht für Stadtbeiträge" : "Nur bei Stadtbeiträgen benötigt"}>
             <select name="cityId" disabled={scope !== "city"} defaultValue={initial?.city_id ?? ""} className={`${inputClass} disabled:bg-[#f3f6f7] disabled:text-[#8995a0]`}>
               <option value="">Stadt auswählen</option>
-              {cities.map((city) => <option key={city.id} value={city.id}>{city.name} · /{city.slug}</option>)}
+              {cities.map((city) => <option key={city.id} value={city.id} data-admin-i18n-ignore="true">{city.name} · /{city.slug}</option>)}
             </select>
           </Field>
           <Field label="Zielpartner" helper={scope === "partner" ? "Pflicht für Partnerbeiträge" : "Nur bei Partnerbeiträgen benötigt"}>
             <select name="partnerId" disabled={scope !== "partner"} defaultValue={initial?.partner_id ?? ""} className={`${inputClass} disabled:bg-[#f3f6f7] disabled:text-[#8995a0]`}>
               <option value="">Partner auswählen</option>
-              {partners.map((partner) => <option key={partner.id} value={partner.id}>{partner.name} · /{partner.slug}</option>)}
+              {partners.map((partner) => <option key={partner.id} value={partner.id} data-admin-i18n-ignore="true">{partner.name} · /{partner.slug}</option>)}
             </select>
           </Field>
         </div>

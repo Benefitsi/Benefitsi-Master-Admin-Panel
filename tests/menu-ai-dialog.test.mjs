@@ -65,7 +65,10 @@ async function mount(t, { value = draft(), preview, confirm, props = {} } = {}) 
   const { createRoot } = await import("react-dom/client")
   const root = createRoot(dom.window.document.getElementById("root"))
   const runtime = { react: React, "react/jsx-runtime": jsx }
-  const spinner = compile("../components/loading-ui.tsx", runtime)
+  const spinner = compile("../components/loading-ui.tsx", {
+    ...runtime,
+    "@/app/admin-language": require("../app/admin-language.tsx"),
+  })
   const { MenuAiImportDialog } = compile("../components/menu-ai-import-dialog.tsx", {
     ...runtime,
     "next/image": { default: (props) => {

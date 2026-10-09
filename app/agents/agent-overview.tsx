@@ -1,10 +1,12 @@
+import { AdminDate, AdminNumber } from "@/components/admin-format"
+import type { ReactNode } from "react"
 import Link from "next/link"
 import type { AgentControlData, CityControl } from "@/lib/agent-control-data"
 import type { AgentProfile } from "@/lib/agent-control"
 import { agentProfileAnchor, buildAgentSummaries, type AgentSummary } from "@/lib/ecosystem/agent-summaries"
 
 const dateTime = (value: string | null) => value && Number.isFinite(Date.parse(value))
-  ? new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(value))
+  ? <AdminDate value={value} options={{ dateStyle: "medium", timeStyle: "short" }} />
   : "Nicht nachgewiesen"
 
 const flow = ["Auftrag", "Recherche", "Prüfung", "Freigabe", "Veröffentlichung"]
@@ -63,7 +65,7 @@ function Notice({ state }: { state: AgentControlData["runtime"]["state"] }) {
 }
 
 function Metric({ value, label }: { value: number | null; label: string }) {
-  return <div className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-3xl font-black tabular-nums text-[#061829]">{value ?? "—"}</p><p className="mt-1 text-sm text-slate-600">{value === null ? `${label} · Quelle unbekannt` : label}</p></div>
+  return <div className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-3xl font-black tabular-nums text-[#061829]">{value ?? "—"}</p><p className="mt-1 text-sm text-slate-600">{value === null ? <>{label} · Quelle unbekannt</> : label}</p></div>
 }
 
 function ConfiguredProfile({ summary }: { summary: AgentSummary }) {
@@ -88,10 +90,10 @@ function ProfileCard({ profile, summary, selected }: { profile: AgentProfile; su
   const contextText = profile.contextHealth === "over_limit" ? "Kontextlimit überschritten" : profile.contextHealth === "missing" ? "Kontextdatei fehlt" : profile.contextHealth === "ok" ? "Kontext vollständig beobachtet" : "Kontext unbekannt"
   return <article id={agentProfileAnchor(profile.id) ?? undefined} data-selected={selected ? "true" : undefined} className={`min-w-0 scroll-mt-24 rounded-2xl border bg-white p-5 ${selected ? "border-teal-500 ring-2 ring-teal-500/20" : "border-slate-200"}`}>
     <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-lg font-bold">{profile.id === "benefitsi-finance" ? <Link href="/agents/finance" className="text-teal-700 hover:underline">{summary.name}</Link> : profile.id}</p><p className="mt-1 text-sm leading-6 text-slate-600">{summary.purpose}</p></div><span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-800">{automationLabel(profile.automation)}</span></div>
-    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><Info label="Provider" value={profile.provider} /><Info label="Modell" value={profile.model} /><Info label="Laufnachweis" value={summary.lastRunLabel} /><Info label="Letzter Lauf" value={dateTime(summary.lastRunAt)} /><Info label="Beobachtung" value={`${summary.freshnessLabel} · ${dateTime(summary.observedAt)}`} /><Info label="Kontext" value={contextText} /></dl>
+    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><Info label="Provider" value={profile.provider} /><Info label="Modell" value={profile.model} /><Info label="Laufnachweis" value={summary.lastRunLabel} /><Info label="Letzter Lauf" value={dateTime(summary.lastRunAt)} /><Info label="Beobachtung" value={<>{summary.freshnessLabel} · {dateTime(summary.observedAt)}</>} /><Info label="Kontext" value={contextText} /></dl>
     <details open={selected} className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4"><summary className="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-teal-600">Technische Einzelheiten zu {profile.id}</summary><div className="mt-4 space-y-4 text-sm">
-      <div><h3 className="font-semibold">Zeitpläne</h3>{profile.schedules.length ? <ul className="mt-2 space-y-2">{profile.schedules.map(schedule => <li key={`${schedule.source}-${schedule.id}`} className="rounded-lg bg-white p-3"><span className="font-medium">{schedule.id}</span><span className="block text-slate-600">{schedule.cadence ?? "Takt unbekannt"} · {schedule.enabled === true ? "aktiviert" : schedule.enabled === false ? "deaktiviert" : "Aktivierung unbekannt"}</span><span className="block text-xs text-slate-500">Letzter Status: {schedule.lastStatus ?? "nicht nachgewiesen"} · {dateTime(schedule.lastRunAt)}</span></li>)}</ul> : <p className="mt-1 text-slate-500">Kein Zeitplan im Snapshot.</p>}</div>
-      <div><h3 className="font-semibold">Kontextdateien</h3>{profile.contextFiles.length ? <ul className="mt-2 space-y-2">{profile.contextFiles.map(file => <li key={file.path} className="rounded-lg bg-white p-3"><span className="break-all font-medium">{file.path}</span><span className="block text-slate-600">{file.exists ? sizeLabel(file.chars, file.limit) : "Fehlt"} · geladen: {loadedByLabel(file.loadedBy)}</span><span className="block text-xs text-slate-500">Geändert: {dateTime(file.modifiedAt)}</span></li>)}</ul> : <p className="mt-1 text-slate-500">Keine Kontextmetadaten beobachtet.</p>}</div>
+      <div><h3 className="font-semibold">Zeitpläne</h3>{profile.schedules.length ? <ul className="mt-2 space-y-2">{profile.schedules.map(schedule => <li key={`${schedule.source}-${schedule.id}`} className="rounded-lg bg-white p-3"><span data-admin-i18n-ignore="true" className="font-medium">{schedule.id}</span><span className="block text-slate-600">{schedule.cadence ?? "Takt unbekannt"} · {schedule.enabled === true ? "aktiviert" : schedule.enabled === false ? "deaktiviert" : "Aktivierung unbekannt"}</span><span className="block text-xs text-slate-500">Letzter Status: {schedule.lastStatus ?? "nicht nachgewiesen"} · {dateTime(schedule.lastRunAt)}</span></li>)}</ul> : <p className="mt-1 text-slate-500">Kein Zeitplan im Snapshot.</p>}</div>
+      <div><h3 className="font-semibold">Kontextdateien</h3>{profile.contextFiles.length ? <ul className="mt-2 space-y-2">{profile.contextFiles.map(file => <li key={file.path} className="rounded-lg bg-white p-3"><span data-admin-i18n-ignore="true" className="break-all font-medium">{file.path}</span><span className="block text-slate-600">{file.exists ? sizeLabel(file.chars, file.limit) : "Fehlt"} · geladen: {loadedByLabel(file.loadedBy)}</span><span className="block text-xs text-slate-500">Geändert: {dateTime(file.modifiedAt)}</span></li>)}</ul> : <p className="mt-1 text-slate-500">Keine Kontextmetadaten beobachtet.</p>}</div>
     </div></details>
   </article>
 }
@@ -108,13 +110,13 @@ function CityOperations({ data }: { data: AgentControlData }) {
 function CityCard({ city, data }: { city: CityControl; data: AgentControlData }) {
   const pipeline = data.pipeline.item?.cityId === city.cityId ? data.pipeline.item : null
   const schedules = data.citySchedules.items.filter(item => item.cityId === city.cityId)
-  return <article className="rounded-xl bg-slate-50 p-4"><h3 className="font-bold">{city.cityName ?? `Unbekannte Stadt · ${city.cityId}`}</h3><dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Info label="Technischer Status" value={cityTechnicalStatus(pipeline, data.checkedAt)} /><Info label="Veröffentlichungskonfiguration" value={publicationConfiguration(city.autoPublishEnabled)} /><Info label="Redaktionelle Prüfung" value={editorialReviewStatus(pipeline?.editorialReviewPending ?? null)} /><Info label="Letzte Recherche" value={dateTime(pipeline?.researchCheckedAt ?? null)} /><Info label="Beobachtete Pläne" value={data.citySchedules.state === "unavailable" ? null : String(schedules.length)} /></dl></article>
+  return <article className="rounded-xl bg-slate-50 p-4"><h3 className="font-bold">{city.cityName ? <span data-admin-i18n-ignore="true">{city.cityName}</span> : `Unbekannte Stadt · ${city.cityId}`}</h3><dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Info label="Technischer Status" value={cityTechnicalStatus(pipeline, data.checkedAt)} /><Info label="Veröffentlichungskonfiguration" value={publicationConfiguration(city.autoPublishEnabled)} /><Info label="Redaktionelle Prüfung" value={editorialReviewStatus(pipeline?.editorialReviewPending ?? null)} /><Info label="Letzte Recherche" value={dateTime(pipeline?.researchCheckedAt ?? null)} /><Info label="Beobachtete Pläne" value={data.citySchedules.state === "unavailable" ? null : String(schedules.length)} /></dl></article>
 }
 
-function Info({ label, value }: { label: string; value: string | null }) { return <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-1 break-words font-medium text-slate-800">{value ?? "Nicht nachgewiesen"}</dd></div> }
+function Info({ label, value }: { label: string; value: ReactNode }) { return <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-1 break-words font-medium text-slate-800">{value ?? "Nicht nachgewiesen"}</dd></div> }
 function automationLabel(value: AgentProfile["automation"]) { return value === "scheduled" ? "Automatisch geplant" : value === "manual" ? "Manuell" : "Planung unbekannt" }
 function loadedByLabel(value: AgentProfile["contextFiles"][number]["loadedBy"]) { return value === "system" ? "automatisch" : value === "reference" ? "bei Bedarf" : "unbekannt" }
-function sizeLabel(chars: number | null, limit: number | null) { return chars === null ? "Größe unbekannt" : `${chars.toLocaleString("de-DE")} Zeichen${limit === null ? "" : ` / Limit ${limit.toLocaleString("de-DE")}`}` }
+function sizeLabel(chars: number | null, limit: number | null) { return chars === null ? "Größe unbekannt" : <><AdminNumber value={chars} /> Zeichen{limit === null ? null : <> / Limit <AdminNumber value={limit} /></>}</> }
 function publicationConfiguration(value: boolean | null) { return value === true ? "Automatische Veröffentlichung aktiviert" : value === false ? "Automatische Veröffentlichung deaktiviert" : "Nicht nachgewiesen" }
 function editorialReviewStatus(value: boolean | null) { return value === true ? "Menschliche Prüfung ausstehend" : value === false ? "Keine ausstehende Prüfung gemeldet" : "Nicht nachgewiesen" }
 function cityTechnicalStatus(pipeline: AgentControlData["pipeline"]["item"], checkedAt: string) {

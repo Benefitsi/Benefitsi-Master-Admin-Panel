@@ -1,3 +1,4 @@
+import { AdminDate } from "@/components/admin-format"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { AdminShell } from "@/app/admin-shell"
@@ -94,8 +95,8 @@ function EditorialCard({ post, city, partner }: { post: EditorialPost; city?: { 
             <span className="rounded-full bg-[#eef8f8] px-2.5 py-1 text-[11px] font-black text-[#227174]">{target}</span>
             <span className="rounded-full bg-[#f3f6f7] px-2.5 py-1 text-[11px] font-black text-[#617080]">{post.audience === "partner" ? "Für Partner" : "Für Benefitsi"}</span>
           </div>
-          <h3 className="mt-3 text-xl font-black tracking-[-0.03em]"><Link href={`/editorial/${post.id}/preview`} className="rounded-sm hover:text-[#086fcc] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#118cff]">{post.title}</Link></h3>
-          <p className="mt-1 text-sm leading-6 text-[#617080]">{post.excerpt}</p>
+          <h3 className="mt-3 text-xl font-black tracking-[-0.03em]"><Link href={`/editorial/${post.id}/preview`} className="rounded-sm hover:text-[#086fcc] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#118cff]"><span data-admin-i18n-ignore="true">{post.title}</span></Link></h3>
+          <p className="mt-1 text-sm leading-6 text-[#617080]"><span data-admin-i18n-ignore="true">{post.excerpt}</span></p>
           <p className="mt-3 text-xs font-bold text-[#8995a0]">/{post.slug} · aktualisiert {formatDate(post.updated_at)}</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -117,7 +118,7 @@ function publicUrl(path: string) {
 function formatDate(value: string) {
   if (!value) return "–"
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "–" : new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(date)
+  return Number.isNaN(date.getTime()) ? "–" : <AdminDate value={value} options={{ dateStyle: "medium" }} />
 }
 
 function Metric({ label, value }: { label: string; value: number }) {

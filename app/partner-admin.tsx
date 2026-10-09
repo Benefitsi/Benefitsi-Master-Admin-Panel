@@ -129,7 +129,8 @@ import type {
 } from "@/lib/partner-enrichment"
 import { MicrositePanel } from "./microsite-panel"
 import { MicrositeReadOnlyNotice } from "@/components/microsite-read-only-notice"
-import { useAdminLanguage } from "./admin-language"
+import { useAdminLanguage, useAdminLocale } from "./admin-language"
+import { AdminDate } from "@/components/admin-format"
 import { LoadingSpinner } from "@/components/loading-ui"
 import { MenuAiImportDialog } from "@/components/menu-ai-import-dialog"
 import { PartnerPlanPanel } from "@/components/partner/partner-plan-panel"
@@ -1136,7 +1137,7 @@ function PartnerListButton({
         <LogoPreview url={partner.logo_url} name={partner.name} />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-start justify-between gap-2">
-            <p className="truncate text-sm font-semibold text-zinc-950">
+            <p data-admin-i18n-ignore={Boolean(partner.name)} className="truncate text-sm font-semibold text-zinc-950">
               {partner.name || "Untitled partner"}
             </p>
             <StatusPill active={isPartnerActive(partner)} />
@@ -1274,6 +1275,7 @@ function PartnerDetail({
       <EditorShell
         compact={activeView === "settings"}
         title={partner.name || "Untitled partner"}
+        titleIsAuthored={Boolean(partner.name)}
         description={
           activeView === "settings"
             ? portalMode
@@ -1477,6 +1479,7 @@ function PartnerDetail({
 
 function EditorShell({
   title,
+  titleIsAuthored = false,
   description,
   aside,
   children,
@@ -1487,6 +1490,7 @@ function EditorShell({
   status,
 }: {
   title: string
+  titleIsAuthored?: boolean
   description: string
   aside?: ReactNode
   children: ReactNode
@@ -1517,6 +1521,7 @@ function EditorShell({
           >
             <EditorShellTitle
               title={title}
+              titleIsAuthored={titleIsAuthored}
               description={description}
               status={status}
             />
@@ -1529,6 +1534,7 @@ function EditorShell({
         ) : (
           <EditorShellTitle
             title={title}
+            titleIsAuthored={titleIsAuthored}
             description={description}
             status={status}
           />
@@ -1569,17 +1575,19 @@ function CompactModeButton({ enabled, onToggle }: { enabled: boolean; onToggle: 
 
 function EditorShellTitle({
   title,
+  titleIsAuthored = false,
   description,
   status,
 }: {
   title: string
+  titleIsAuthored?: boolean
   description: string
   status?: SectionStatusValue
 }) {
   return (
     <span className="min-w-0">
       <span className="flex flex-wrap items-center gap-2">
-        <span className="text-lg font-semibold tracking-normal text-zinc-950">
+        <span data-admin-i18n-ignore={titleIsAuthored} className="text-lg font-semibold tracking-normal text-zinc-950">
           {title}
         </span>
         {status ? <SectionStatusList status={status} /> : null}
@@ -1967,7 +1975,7 @@ function PartnerResearchPanel({
                       <span className="text-xs font-semibold text-zinc-600">Official menu</span>
                       <span className={`rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${confidenceClasses(result.menu.confidence)}`}>{result.menu.confidence}</span>
                     </span>
-                    <span className="mt-1 block text-sm font-medium text-zinc-950">{result.menu.name}</span>
+                    <span data-admin-i18n-ignore={Boolean(result.menu.name)} className="mt-1 block text-sm font-medium text-zinc-950">{result.menu.name}</span>
                     <span className="mt-1 block text-xs leading-5 text-zinc-500">
                       {result.menu.categories.length} categories · {result.menu.categories.reduce((count, category) => count + category.items.length, 0)} items · prices and images included where published
                     </span>
@@ -1998,7 +2006,7 @@ function PartnerResearchPanel({
                   className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 transition hover:border-teal-300 hover:text-teal-800"
                 >
                   <span className="shrink-0 text-zinc-400">{source.id}</span>
-                  <span className="truncate">{source.title}</span>
+                  <span data-admin-i18n-ignore={Boolean(source.title)} className="truncate">{source.title}</span>
                   <span className="shrink-0 text-[10px] uppercase text-zinc-400">{source.kind}</span>
                 </a>
               ))}
@@ -3377,7 +3385,7 @@ function CreatePartnerReview({
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-100">
               Partner launch brief
             </p>
-            <h4 className="mt-1 truncate text-lg font-bold tracking-tight">
+            <h4 data-admin-i18n-ignore={Boolean(snapshot.name)} className="mt-1 truncate text-lg font-bold tracking-tight">
               {snapshot.name}
             </h4>
             <p className="mt-0.5 text-xs text-teal-50/85">
@@ -3792,6 +3800,7 @@ function InitialDealsEditor({
                       ? deal.title
                       : undefined
                   }
+                  typeLabelIsAuthored={deal.dealType === "challenge" && Boolean(deal.title)}
                   expanded={expanded}
                   onToggle={() =>
                     setExpandedDealIds((current) =>
@@ -4487,6 +4496,7 @@ function DealsPanel({
   initialCreate?: boolean
   initialType?: string
 }) {
+  const locale = useAdminLocale()
   const [dealEditor, setDealEditor] = useState<DealEditorState | null>(
     initialCreate ? { mode: "create" } : null,
   )
@@ -4622,12 +4632,12 @@ function DealsPanel({
                 <span className="text-xs font-semibold text-slate-500">
                   {offerStatus(deal)} · {dealCardTypeLabel(deal)}
                 </span>
-                <h3 className="mt-1 text-lg font-bold break-words">
+                <h3 data-admin-i18n-ignore={Boolean(deal.display_title || deal.public_title)} className="mt-1 text-lg font-bold break-words">
                   {deal.display_title ||
                     deal.public_title ||
                     dealCardTypeLabel(deal)}
                 </h3>
-                <p className="mt-2 text-sm text-slate-600">
+                <p data-admin-i18n-ignore={Boolean(deal.customer_description || deal.display_subtitle || deal.public_subtitle)} className="mt-2 text-sm text-slate-600">
                   {deal.customer_description ||
                     deal.display_subtitle ||
                     deal.public_subtitle}
@@ -4643,13 +4653,13 @@ function DealsPanel({
                     {deal.valid_weekdays
                       .map(
                         (day) =>
-                          ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][day % 7],
+                          new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 7 + day % 7))),
                       )
                       .join(" · ")}
                   </p>
                 ) : null}
                 {deal.terms ? (
-                  <p className="mt-2 text-xs leading-5 text-slate-600">
+                  <p data-admin-i18n-ignore={Boolean(deal.terms)} className="mt-2 text-xs leading-5 text-slate-600">
                     {deal.terms}
                   </p>
                 ) : null}
@@ -4666,7 +4676,7 @@ function DealsPanel({
                         (value) => value && Number.isFinite(Date.parse(value)),
                       )
                       .map((value) =>
-                        new Intl.DateTimeFormat("de-DE", {
+                        new Intl.DateTimeFormat(locale, {
                           timeZone: "Europe/Berlin",
                           dateStyle: "short",
                           timeStyle: "short",
@@ -4792,6 +4802,7 @@ function DealCardHeader({
   rewardSummary,
   title,
   typeLabel,
+  typeLabelIsAuthored = false,
 }: {
   actions: ReactNode
   active: boolean
@@ -4803,6 +4814,7 @@ function DealCardHeader({
   rewardSummary: string
   title: string
   typeLabel?: string
+  typeLabelIsAuthored?: boolean
 }) {
   const displayTypeLabel =
     typeLabel || labelForValue(dealUiTypeOptions, dealType) || "Benefit"
@@ -4819,7 +4831,7 @@ function DealCardHeader({
           <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
             {title}
           </span>
-          <span className="mt-0.5 block truncate text-sm font-semibold text-zinc-900">
+          <span data-admin-i18n-ignore={typeLabelIsAuthored} className="mt-0.5 block truncate text-sm font-semibold text-zinc-900">
             {displayTypeLabel}
           </span>
           <span className="mt-0.5 block truncate text-xs text-zinc-500">
@@ -4956,6 +4968,7 @@ function DealCard({
         }
         dealType={dealUiTypeForDeal(deal)}
         typeLabel={dealCardTypeLabel(deal)}
+        typeLabelIsAuthored={deal.type === "challenge" && Boolean(metadataString(metadataObject(deal.metadata), "challenge_name"))}
         expanded={false}
         onToggle={onEdit}
         title={`Benefit ${index + 1}`}
@@ -5628,7 +5641,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
       "Der Auslöserwert kann als Challenge-Ziel dienen",
     ],
     requiredFields: [
-      "Challenge-Name",
+      "Name der Challenge",
       "Belohnungsformat",
       "Auslöserwert bei Nutzung als Challenge-Ziel",
       "Anzahl, Artikel oder Rabattwert – abhängig vom Belohnungsformat",
@@ -6804,7 +6817,7 @@ export function DealFields({
           <FieldGrid compact>
             {config.visibleFields.has("challengeName") ? (
               <TextField
-                label="Challenge-Name"
+                label="Name der Challenge"
                 name={`${prefix}challenge_name`}
                 placeholder="3 Besuche diese Woche"
                 value={challengeName}
@@ -7337,9 +7350,9 @@ export function DealDropPreviewCard({
   const locked = audience === "premium" && viewer === "free"
   const unavailableAudience = audience === "free" && viewer === "premium"
   const available = status === "Aktiv" && !unavailableAudience
-  const formatDate = (instant: string) => instant ? new Intl.DateTimeFormat("de-DE", { timeZone: timezone, dateStyle: "medium", timeStyle: "short" }).format(new Date(instant)) : "Nicht festgelegt"
+  const formatDate = (instant: string) => instant ? new Intl.DateTimeFormat(language === "de" ? "de-DE" : "en-GB", { timeZone: timezone, dateStyle: "medium", timeStyle: "short" }).format(new Date(instant)) : "Nicht festgelegt"
   const expiryInfo = endInstant ? `${formatDate(endInstant)} (${timezone})` : expiryDays ? `${expiryDays} Tage nach Auswahl` : "Nicht festgelegt"
-  const savings = estimatedSavings !== null && estimatedSavings > 0 ? new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(estimatedSavings) : null
+  const savings = estimatedSavings !== null && estimatedSavings > 0 ? new Intl.NumberFormat(language === "de" ? "de-DE" : "en-GB", { style: "currency", currency: "EUR" }).format(estimatedSavings) : null
 
   return (
     <FormSection title="Live-Vorschau" defaultOpen={false} compact>
@@ -7362,8 +7375,8 @@ export function DealDropPreviewCard({
             {imageUrl ? <PartnerPreviewImage src={imageUrl} className="absolute inset-0 h-full w-full object-cover object-right" /> : <div className="absolute inset-0 bg-gradient-to-br from-[#153b50] to-[#091322]" />}
             <div className="absolute inset-0" style={{ background: "linear-gradient(90deg,rgba(0,0,0,.84) 0%,rgba(0,0,0,.50) 28%,rgba(0,0,0,.12) 54%,transparent 76%)" }} />
             <div className="absolute bottom-[14px] left-[18px] w-[60%] max-w-[220px] text-white">
-              <div title={title} className="truncate text-[28px] leading-[30px] font-black tracking-normal">{title}</div>
-              <div className="mt-[2px] truncate text-[17px] leading-[21px] font-bold">{partnerName || "Partnername"}</div>
+              <div data-admin-i18n-ignore={Boolean(publicTitle)} title={title} className="truncate text-[28px] leading-[30px] font-black tracking-normal">{title}</div>
+              <div data-admin-i18n-ignore={Boolean(partnerName)} className="mt-[2px] truncate text-[17px] leading-[21px] font-bold">{partnerName || "Partnername"}</div>
               {savings ? <div className="mt-[5px] w-fit rounded-full border border-[#b9deff] bg-[#e7f3ff] px-[11px] py-[7px] text-[12.5px] leading-[1.1] font-extrabold text-[#0a6fcb]">{language === "de" ? "Spare" : "Save"} {savings}</div> : null}
               <span className={`mt-[6px] inline-flex min-h-9 items-center justify-center gap-2 rounded-full py-2 leading-4 font-extrabold ${locked ? "min-w-[86px] border border-white/70 bg-white/30 px-[10px] text-[11.5px] backdrop-blur-lg" : "min-w-[118px] bg-gradient-to-r from-[#118cff] to-[#17d4d7] px-[13px] text-[12px]"} ${available || locked ? "" : "opacity-45"}`}>
                 {locked ? <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2ZM10 6a2 2 0 0 1 4 0v2h-4V6Z" /></svg> : null}
@@ -7372,7 +7385,7 @@ export function DealDropPreviewCard({
             </div>
           </div>
         </div>
-        <p className="text-xs leading-5 text-zinc-500">{description}</p>
+        <p data-admin-i18n-ignore={Boolean(publicSubtitle || rewardText)} className="text-xs leading-5 text-zinc-500">{description}</p>
         {dateError ? <WarningNote>{dateError}</WarningNote> : null}
         <div className="grid gap-2 text-sm text-zinc-700 sm:grid-cols-2">
           <Info label="Status" value={status} />
@@ -7485,7 +7498,7 @@ function MilestoneCard({
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 text-left">
-          <span className="block truncate text-sm font-semibold text-zinc-800">
+          <span data-admin-i18n-ignore={Boolean(milestone.title || milestone.reward_item)} className="block truncate text-sm font-semibold text-zinc-800">
             {milestone.title || milestone.reward_item || "Milestone reward"}
           </span>
           <span className="mt-1 block text-xs text-zinc-500">
@@ -7880,7 +7893,7 @@ function PartnerStaffCard({
             {staffName.slice(0, 2)}
           </span>
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-zinc-950">
+            <h3 data-admin-i18n-ignore={Boolean(staff.user_name || staff.user_email || staff.user_id)} className="truncate text-sm font-semibold text-zinc-950">
               {staffName}
             </h3>
             <span className="mt-1 inline-flex rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-600">
@@ -7944,7 +7957,7 @@ function PartnerStaffForm({
       <input type="hidden" name="partner_id" value={partner.id ?? ""} />
       <FieldGrid>
         {staff ? (
-          <div><p className="text-sm font-medium">{staff.user_name || staff.user_email || "Teammitglied"}</p><input type="hidden" name="user_id" value={staff.user_id ?? ""}/></div>
+          <div><p data-admin-i18n-ignore={Boolean(staff.user_name || staff.user_email)} className="text-sm font-medium">{staff.user_name || staff.user_email || "Teammitglied"}</p><input type="hidden" name="user_id" value={staff.user_id ?? ""}/></div>
         ) : userOptions.length ? (
           <SelectField label="User" name="user_id" options={userOptions} required />
         ) : (
@@ -8115,6 +8128,7 @@ function WeeklyHoursFields({
   holidays?: PartnerHoliday[]
   hoursByWeekday?: Map<number | null, PartnerOpeningHour[]>
 }) {
+  const locale = useAdminLocale()
   const fieldName = (name: string) => (embedded ? undefined : name)
   const fieldDataName = (name: string) =>
     embedded ? { "data-opening-hours-name": name } : {}
@@ -8350,11 +8364,11 @@ function WeeklyHoursFields({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-zinc-900">
-                      {holiday.label || formatHolidayDateLabel(holiday.date)}
+                    <p data-admin-i18n-ignore="true" className="truncate text-sm font-semibold text-zinc-900">
+                      {holiday.label || formatHolidayDateLabel(holiday.date, locale)}
                     </p>
                     <p className="mt-1 text-xs text-zinc-500">
-                      {formatHolidayDateLabel(holiday.date)} · {holiday.kind === "hours" ? `${holiday.opensAt}–${holiday.closesAt}` : "Closed all day"}
+                      {formatHolidayDateLabel(holiday.date, locale)} · {holiday.kind === "hours" ? `${holiday.opensAt}–${holiday.closesAt}` : "Closed all day"}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
@@ -8369,7 +8383,7 @@ function WeeklyHoursFields({
                           current.filter((row) => row.id !== holiday.id),
                         )
                       }
-                      aria-label={`Remove ${holiday.label || formatHolidayDateLabel(holiday.date)}`}
+                      aria-label={`Remove ${holiday.label || formatHolidayDateLabel(holiday.date, locale)}`}
                       className="h-8 shrink-0 rounded-md border border-zinc-300 bg-white px-2.5 text-xs font-semibold text-zinc-700 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
                     >
                       Remove
@@ -9450,7 +9464,7 @@ function MenuForm({
               </div>
               <ul className="mt-2 max-h-24 space-y-1 overflow-y-auto text-xs text-zinc-600">
                 {selectedMenuFiles.map((file, index) => (
-                  <li key={`${file.name}:${file.size}:${file.lastModified}:${index}`} className="truncate">
+                  <li data-admin-i18n-ignore={Boolean(file.name)} key={`${file.name}:${file.size}:${file.lastModified}:${index}`} className="truncate">
                     {file.name}
                   </li>
                 ))}
@@ -9770,7 +9784,7 @@ function MenuImportDialog({
                   </div>
                   <ul className="mt-2 max-h-24 space-y-1 overflow-y-auto text-xs text-zinc-600">
                     {selectedFiles.map((file, index) => (
-                      <li key={`${file.name}:${file.size}:${file.lastModified}:${index}`} className="truncate">
+                      <li data-admin-i18n-ignore={Boolean(file.name)} key={`${file.name}:${file.size}:${file.lastModified}:${index}`} className="truncate">
                         {file.name}
                       </li>
                     ))}
@@ -9867,7 +9881,7 @@ function MenuCategoryCard({
         />
         <span className="absolute inset-0 bg-gradient-to-t from-[#061829]/95 via-[#061829]/15 to-transparent" />
         <span className="absolute inset-x-0 bottom-0 block p-3 text-white">
-          <span className="block truncate text-sm font-bold">
+          <span data-admin-i18n-ignore={Boolean(category.name)} className="block truncate text-sm font-bold">
             {category.name || "Untitled category"}
           </span>
           <span className="mt-1 block text-[11px] font-semibold text-white/75">
@@ -10158,7 +10172,7 @@ function MenuItemCard({
         />
         <span className="absolute inset-0 bg-gradient-to-t from-[#061829]/95 via-[#061829]/12 to-transparent" />
         <span className="absolute inset-x-0 bottom-0 block p-2.5 text-white">
-          <span className="block truncate text-sm font-bold">
+          <span data-admin-i18n-ignore={Boolean(item.name)} className="block truncate text-sm font-bold">
             {item.name || "Untitled item"}
           </span>
           <span className="mt-1 flex items-center justify-between gap-2 text-[11px] font-semibold text-white/80">
@@ -10716,7 +10730,7 @@ function StampProgressPanel({
               <tbody className="divide-y divide-zinc-100">
                 {visibleProgress.map((row) => (
                   <tr key={`${row.user_id}-${row.partner_id}`}>
-                    <td className="py-3 pr-4 pl-3 text-zinc-700">
+                    <td data-admin-i18n-ignore="true" className="py-3 pr-4 pl-3 text-zinc-700">
                       {row.user_name || row.user_email || shortId(row.user_id)}
                     </td>
                     <td className="py-3 pr-4 font-medium text-zinc-950">
@@ -10791,9 +10805,9 @@ function RedemptionHistoryPanel({
                           {`Visit ${shortId(visit.id)}`}
                         </h3>
                         <p className="mt-1 text-sm text-zinc-600">
-                          {visit.user_name ||
+                          <span data-admin-i18n-ignore="true">{visit.user_name ||
                             visit.user_email ||
-                            shortId(visit.user_id)}
+                            shortId(visit.user_id)}</span>
                           {" - "}
                           {formatDateTime(visit.visited_at)}
                         </p>
@@ -10803,10 +10817,12 @@ function RedemptionHistoryPanel({
                     <div className="mt-4 grid gap-2 text-sm text-zinc-600 sm:grid-cols-2 xl:grid-cols-3">
                       <Info
                         label="Partner"
+                        authored
                         value={partner.name || shortId(visit.partner_id)}
                       />
                       <Info
                         label="Scanned by"
+                        authored
                         value={
                           visit.staff_user_name ||
                           visit.staff_user_email ||
@@ -10881,6 +10897,7 @@ function RedemptionHistoryPanel({
                                 />
                                 <Info
                                   label="Artikelname"
+                                  authored={Boolean(benefit.reward_item)}
                                   value={benefit.reward_item || "Not set"}
                                 />
                                 <Info
@@ -11090,10 +11107,10 @@ function ComebackCandidatesSection({
                     <tr key={candidate.userId}>
                       <td className="py-3 pr-4 pl-3 text-zinc-700">
                         <span className="block font-medium text-zinc-950">
-                          {candidate.userLabel}
+                          <span data-admin-i18n-ignore="true">{candidate.userLabel}</span>
                         </span>
                         <span className="block text-xs text-zinc-500">
-                          {candidate.userEmail || shortId(candidate.userId)}
+                          <span data-admin-i18n-ignore="true">{candidate.userEmail || shortId(candidate.userId)}</span>
                         </span>
                       </td>
                       <td className="py-3 pr-4 text-zinc-700">
@@ -12178,7 +12195,7 @@ function MediaUploadField({
       ) : null}
       <div className={dense ? "min-h-0" : "min-h-9"}>
         {selectedPreview ? (
-          <p className="truncate text-xs font-medium text-zinc-600">
+          <p data-admin-i18n-ignore={Boolean(selectedPreview.name)} className="truncate text-xs font-medium text-zinc-600">
             {selectedPreview.name}
           </p>
         ) : null}
@@ -13769,10 +13786,11 @@ function ResultLimitNote({
   totalCount: number
   visibleCount: number
 }) {
+  const { language, tr } = useAdminLanguage()
   const hiddenCount = Math.max(totalCount - visibleCount, 0)
-  const message = hiddenCount
-    ? `Showing ${visibleCount} of ${totalCount} ${itemLabel}; ${hiddenCount} more are loaded but hidden here.`
-    : `Showing ${visibleCount} of ${totalCount} ${itemLabel}.`
+  const message = language === "de"
+    ? `${visibleCount} von ${totalCount} ${tr(itemLabel)} werden angezeigt.${hiddenCount ? ` ${hiddenCount} weitere sind geladen, aber hier ausgeblendet.` : ""}`
+    : `Showing ${visibleCount} of ${totalCount} ${tr(itemLabel)}${hiddenCount ? `; ${hiddenCount} more are loaded but hidden here.` : "."}`
 
   return (
     <p className="text-xs font-medium text-zinc-500">
@@ -13781,10 +13799,10 @@ function ResultLimitNote({
   )
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ label, value, authored = false }: { label: string; value: string; authored?: boolean }) {
   return (
     <p>
-      <span className="font-medium text-zinc-800">{label}:</span> {value}
+      <span className="font-medium text-zinc-800">{label}:</span> <span data-admin-i18n-ignore={authored}>{value}</span>
     </p>
   )
 }
@@ -14411,7 +14429,7 @@ function normalizeHolidayDateInput(value?: string | null) {
   return parsed.toISOString().slice(0, 10) === trimmed ? trimmed : ""
 }
 
-function formatHolidayDateLabel(value: string) {
+function formatHolidayDateLabel(value: string, locale: string) {
   const normalized = normalizeHolidayDateInput(value)
 
   if (!normalized) {
@@ -14422,7 +14440,7 @@ function formatHolidayDateLabel(value: string) {
 
   return Number.isNaN(parsed.getTime())
     ? normalized
-    : parsed.toLocaleDateString("en-GB", {
+    : parsed.toLocaleDateString(locale, {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -14748,10 +14766,7 @@ function formatDateTime(value?: string | null) {
     return value
   }
 
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date)
+  return <AdminDate value={value} options={{ dateStyle: "medium", timeStyle: "short" }} />
 }
 
 function formatMetadataInput(value: unknown) {

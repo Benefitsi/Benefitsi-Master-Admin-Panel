@@ -1,3 +1,4 @@
+import { AdminDate } from "@/components/admin-format"
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/admin'
 import { getCollectionOverview } from '@/lib/seo/collection-store'
@@ -40,7 +41,7 @@ const errorMessages: Record<string, string> = {
   storage: 'Speichern derzeit nicht möglich. Bitte erneut versuchen.',
 }
 const date = (value: string | null | undefined) => value && Number.isFinite(Date.parse(value))
-  ? new Intl.DateTimeFormat('de-DE', {dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin'}).format(new Date(value))
+  ? <AdminDate value={value} options={{ dateStyle: "medium", timeStyle: "short" }} />
   : 'Noch keine Daten'
 const field = 'mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-[#061829] focus:border-[#0b75d9] focus:outline-none'
 const button = 'rounded-md bg-[#0b75d9] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0867c1] disabled:cursor-not-allowed disabled:opacity-50'
@@ -50,7 +51,7 @@ function Check({name, label, defaultChecked, detail}: {name: string; label: stri
 }
 function GoogleConnection({provider, name, connectedAt, ready, targetId}: {provider: 'gsc'|'gbp'; name: string; connectedAt: string|null; ready: boolean; targetId: string}) {
   return <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 py-3 first:border-0 first:pt-0 last:pb-0">
-    <div><p className="font-medium">{name}</p><p className="text-sm text-zinc-600">{connectedAt ? `Verbunden am ${date(connectedAt)}` : ready ? 'Noch nicht verbunden' : 'OAuth-Einrichtung fehlt'}</p></div>
+    <div><p className="font-medium">{name}</p><p className="text-sm text-zinc-600">{connectedAt ? <>Verbunden am {date(connectedAt)}</> : ready ? 'Noch nicht verbunden' : 'OAuth-Einrichtung fehlt'}</p></div>
     <div className="flex flex-wrap gap-2">{ready && <form action="/api/seo/google/connect" method="post"><input type="hidden" name="provider" value={provider}/><button className={secondary}>{connectedAt ? 'Neu verbinden' : 'Verbinden'}</button></form>}
       {connectedAt && <form action={disconnectGoogleCollection}><input type="hidden" name="provider" value={provider}/><input type="hidden" name="target_id" value={targetId}/><button className={secondary}>Verbindung entfernen</button></form>}</div>
   </div>

@@ -1,3 +1,5 @@
+import { operationsStatusLabel, operationsFeedbackLabel } from "@/lib/admin-i18n/operations-labels"
+import { AdminDate } from "@/components/admin-format"
 import type { Metadata } from "next"
 import { AdminShell } from "@/app/admin-shell"
 import {
@@ -103,12 +105,12 @@ export default async function AutomationPage({
 
       {query.success ? (
         <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
-          Aktion gespeichert: {query.success}
+          Aktion gespeichert: {operationsFeedbackLabel(query.success)}
         </div>
       ) : null}
       {query.error ? (
         <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900">
-          Aktion blockiert: {query.error}
+          Aktion blockiert: {operationsFeedbackLabel(query.error)}
         </div>
       ) : null}
       {data.warnings.map((warning) => (
@@ -411,7 +413,7 @@ function AgentStatus({ status }: { status: string }) {
       : status === "succeeded" || status === "healthy" || status === "approved"
         ? "bg-emerald-100 text-emerald-800"
         : "bg-slate-100 text-slate-700"
-  return <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${tone}`}>{status.replaceAll("_", " ")}</span>
+  return <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${tone}`}>{operationsStatusLabel(status)}</span>
 }
 
 function JobRow({ job, auditCount }: { job: AutomationJob; auditCount: number }) {
@@ -523,14 +525,7 @@ function count(jobs: AutomationJob[], status: AutomationStatus) {
 }
 
 function formatDate(value: string | null) {
-  if (!value) return "ohne Zeit"
-  const date = new Date(value)
-  return Number.isNaN(date.getTime())
-    ? "ohne Zeit"
-    : new Intl.DateTimeFormat("de-DE", {
-        dateStyle: "short",
-        timeStyle: "short",
-      }).format(date)
+  return value && Number.isFinite(Date.parse(value)) ? <AdminDate value={value} options={{ dateStyle: "short", timeStyle: "short" }} /> : "ohne Zeit"
 }
 
 const inputClass =

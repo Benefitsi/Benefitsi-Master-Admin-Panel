@@ -1,3 +1,4 @@
+import { AdminDate, AdminNumber } from "@/components/admin-format"
 import type { ReactNode } from "react"
 import Link from "next/link"
 import {
@@ -18,9 +19,9 @@ import { EcosystemExplorer, PageDirectory } from "./ecosystem-explorer"
 import styles from "./ecosystem.module.css"
 
 const dateTime = (value: string | null) => value && Number.isFinite(Date.parse(value))
-  ? new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }).format(new Date(value))
+  ? <AdminDate value={value} options={{ day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }} />
   : "Kein Nachweis"
-const number = (value: number | null) => value === null ? "—" : value.toLocaleString("de-DE")
+const number = (value: number | null) => <AdminNumber value={value} />
 const roleIcons: Record<string, typeof Robot> = {
   ben: Brain, "benefitsi-content": FileText, "benefitsi-seo": ChartLineUp,
   "city-annweiler": MapPin, "stamp-curator": Scan, studio: Sparkle, "benefitsi-menu": Storefront,
@@ -105,7 +106,7 @@ export function EcosystemMetrics({ snapshot, agentData }: { snapshot: FounderSna
   const observed = agentData.runtime.snapshot?.profiles.length ?? null
   const metrics = [
     { label: "Partner", value: snapshot.activePartners.unavailable ? null : snapshot.activePartners.value, note: "Aktive Profile", source: "Partner mit Status active und is_active=true.", asOf: snapshot.checkedAt, href: "/partners", Icon: Storefront },
-    { label: "Agents", value: observed, note: "Beobachtete Profile", source: `M1-Laufzeitbeobachtung. ${agentData.runtime.state === "stale" ? "Älter als 90 Minuten; kein aktueller Betriebsnachweis." : observed === null ? "Kein gültiger Laufzeitnachweis verfügbar." : "Zusätzlich konfigurierte Rollen stehen unter Dein Team."}`, asOf: agentData.runtime.snapshot?.observedAt ?? null, href: "#agenten", Icon: Robot },
+    { label: "Agents", value: observed, note: "Beobachtete Profile", source: <>M1-Laufzeitbeobachtung. {agentData.runtime.state === "stale" ? "Älter als 90 Minuten; kein aktueller Betriebsnachweis." : observed === null ? "Kein gültiger Laufzeitnachweis verfügbar." : "Zusätzlich konfigurierte Rollen stehen unter Dein Team."}</>, asOf: agentData.runtime.snapshot?.observedAt ?? null, href: "#agenten", Icon: Robot },
     { label: "Prüfungen", value: snapshot.pendingReviews.unavailable ? null : snapshot.pendingReviews.value, note: "Offene Freigaben", source: "Aufträge mit Status needs_human.", asOf: snapshot.checkedAt, href: "/automation", Icon: ShieldCheck },
     { label: "Fehler", value: snapshot.failedJobs.unavailable ? null : snapshot.failedJobs.value, note: "Fehlgeschlagene Aufträge", source: "Aufträge mit Status failed. Dies ist kein Zähler aktuell ausgefallener Agenten.", asOf: snapshot.checkedAt, href: "/automation", Icon: WarningCircle },
   ]
@@ -149,7 +150,7 @@ export function EcosystemFocus({ snapshot }: { snapshot: FounderSnapshot }) {
 export function EcosystemGoals({ goals }: { goals: OverviewGoals }) {
   return <section id="ziele" className={`${styles.panel} ${styles.goalsPanel}`} aria-labelledby="goals-heading">
     <div className={styles.cardHead}><h2 id="goals-heading"><Target size={19} weight="duotone" aria-hidden="true" /> Ziele</h2><Link href="/analytics" aria-label="Kennzahlendefinitionen öffnen"><ArrowUpRight size={18} aria-hidden="true" /></Link></div>
-    {goals.items.length ? <div className={styles.goalList}>{goals.items.map(goal => <details key={goal.id}><summary><span>{goal.label} <small>· {goal.version}</small></span><strong>{goal.target}</strong></summary><p>Definition {goal.version} · Quelle: {goal.source || "Analytics-Kennzahlendefinition"}{goal.asOf ? ` · ${dateTime(goal.asOf)}` : " · Kein Ziel-Datenstand hinterlegt"}</p></details>)}</div>
+    {goals.items.length ? <div className={styles.goalList}>{goals.items.map(goal => <details key={goal.id}><summary><span>{goal.label} <small>· {goal.version}</small></span><strong>{goal.target}</strong></summary><p>Definition {goal.version} · Quelle: {goal.source || "Analytics-Kennzahlendefinition"}{goal.asOf ? <> · {dateTime(goal.asOf)}</> : " · Kein Ziel-Datenstand hinterlegt"}</p></details>)}</div>
       : <p className={styles.goalEmpty}>{goals.state === "forbidden" ? "Zielquelle nicht freigegeben." : goals.state === "empty" || goals.state === "ready" || goals.state === "partial" ? "Noch keine Zielwerte hinterlegt." : "Zielquelle derzeit nicht verfügbar."}</p>}
   </section>
 }
@@ -197,7 +198,7 @@ function AgentTile({ agent }: { agent: AgentSummary }) {
       <p>{agent.purpose}</p>
       <dl>
         <div><dt>Beobachtung</dt><dd>{dateTime(agent.observedAt)} · {agent.freshnessLabel}</dd></div>
-        <div><dt>Letzter belegter Lauf</dt><dd>{agent.lastRunLabel}{agent.lastRunAt ? ` · ${dateTime(agent.lastRunAt)}` : ""}</dd></div>
+        <div><dt>Letzter belegter Lauf</dt><dd>{agent.lastRunLabel}{agent.lastRunAt ? <> · {dateTime(agent.lastRunAt)}</> : ""}</dd></div>
         <div><dt>Arbeitsweise</dt><dd>{agent.mode} · {agent.cadence}</dd></div>
       </dl>
       <a href={agent.href}>Agent öffnen <ArrowUpRight size={13} aria-hidden="true" /></a>

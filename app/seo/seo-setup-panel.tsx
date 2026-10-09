@@ -1,5 +1,6 @@
 'use client'
 
+import { useAdminLocale } from "@/app/admin-language"
 import { useFormStatus } from 'react-dom'
 import {
   SEO_PROVIDERS,
@@ -53,12 +54,14 @@ function asRecord(value: unknown): Record<string, unknown> {
     ? (value as Record<string, unknown>)
     : {}
 }
-function metric(value: unknown, suffix = '') {
+function formatMetric(value: unknown, suffix: string, locale: string) {
   return typeof value === 'number' && Number.isFinite(value)
-    ? `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(value)}${suffix}`
+    ? `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(value)}${suffix}`
     : '—'
 }
 function EvidenceDetails({ evidence }: { evidence: Record<string, unknown> }) {
+  const locale = useAdminLocale()
+  const metric = (value: unknown, suffix = "") => formatMetric(value, suffix, locale)
   const data = asRecord(evidence.data)
   const period = asRecord(evidence.period)
   const totals = asRecord(data.totals)
@@ -99,7 +102,7 @@ function EvidenceDetails({ evidence }: { evidence: Record<string, unknown> }) {
             ].map(([label, value]) => (
               <div key={label}>
                 <dt className="text-zinc-500">{label}</dt>
-                <dd className="font-semibold">{value}</dd>
+                <dd data-admin-i18n-ignore="true" className="font-semibold">{value}</dd>
               </div>
             ))}
           </dl>
@@ -128,18 +131,18 @@ function EvidenceDetails({ evidence }: { evidence: Record<string, unknown> }) {
                 <tbody>
                   {queries.map((row, index) => (
                     <tr key={index} className="border-t border-zinc-100">
-                      <td className="p-2">
+                      <td data-admin-i18n-ignore="true" className="p-2">
                         {typeof row.query === 'string' ? row.query : '—'}
                       </td>
-                      <td className="p-2">{metric(row.clicks)}</td>
-                      <td className="p-2">{metric(row.impressions)}</td>
-                      <td className="p-2">
+                      <td data-admin-i18n-ignore="true" className="p-2">{metric(row.clicks)}</td>
+                      <td data-admin-i18n-ignore="true" className="p-2">{metric(row.impressions)}</td>
+                      <td data-admin-i18n-ignore="true" className="p-2">
                         {metric(
                           typeof row.ctr === 'number' ? row.ctr * 100 : null,
                           '%',
                         )}
                       </td>
-                      <td className="p-2">{metric(row.averagePosition)}</td>
+                      <td data-admin-i18n-ignore="true" className="p-2">{metric(row.averagePosition)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -170,7 +173,7 @@ function EvidenceDetails({ evidence }: { evidence: Record<string, unknown> }) {
             ].map(([label, value]) => (
               <div key={label}>
                 <dt className="text-zinc-500">{label}</dt>
-                <dd className="font-semibold">{value}</dd>
+                <dd data-admin-i18n-ignore="true" className="font-semibold">{value}</dd>
               </div>
             ))}
           </dl>

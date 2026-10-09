@@ -59,7 +59,7 @@ function toggleNavigation() {
 type AdminShellProps = {
   adminName: string
   title?: string
-  subtitle?: string
+  subtitle?: ReactNode
   micrositeCount?: ReactNode
   canAccessPartnerPanel?: boolean
   headerActions?: ReactNode
@@ -125,7 +125,6 @@ function AdminShellContent({
             <button
               type="button"
               onClick={toggleNavigation}
-              data-admin-i18n-ignore="true"
               aria-label={collapsed ? "Navigation ausklappen" : "Navigation einklappen"}
               aria-expanded={!collapsed}
               title={collapsed ? "Navigation ausklappen" : "Navigation einklappen"}
@@ -148,7 +147,7 @@ function AdminShellContent({
             </button>
           </div>
 
-          <nav aria-label="Admin-Navigation" data-admin-i18n-ignore="true" className="mt-4 lg:mt-8">
+          <nav aria-label="Admin-Navigation" className="mt-4 lg:mt-8">
             <ul className="space-y-1">
               {adminNavigation.map(entry => (
                 <li key={"items" in entry ? `${entry.id}:${pathname}` : entry.href}>
@@ -184,7 +183,7 @@ function AdminShellContent({
               <SystemSwitcher micrositeCount={micrositeCount} />
               {canAccessPartnerPanel ? <PartnerPanelLink /> : null}
               {headerActions}
-              <p className="max-w-full truncate text-sm font-medium text-[#526170]">
+              <p data-admin-i18n-ignore="true" className="max-w-full truncate text-sm font-medium text-[#526170]">
                 {adminName}
               </p>
               <form action={signOut}>

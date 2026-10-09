@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+import { AdminDate } from "@/components/admin-format"
 import { PlaceStoryControl } from "@/components/city-pages/place-story-control"
 import { GuideBlocksControl, GuideSourcesControl } from "@/components/city-pages/guide-content-fields"
 import type { Metadata } from "next"
@@ -304,7 +306,7 @@ function EditorFieldControl({
       <select {...common} defaultValue={stringValue(value)} className={inputClass}>
         <option value="">{field.required ? "Partner auswählen" : "Kein Partner"}</option>
         {partners.map((partner) => (
-          <option key={partner.id} value={partner.id}>
+          <option key={partner.id} value={partner.id} data-admin-i18n-ignore="true">
             {partner.name}
           </option>
         ))}
@@ -315,7 +317,7 @@ function EditorFieldControl({
       <select {...common} defaultValue={stringValue(value)} className={inputClass}>
         <option value="">Kein Vorteil</option>
         {deals.map((deal) => (
-          <option key={deal.id} value={deal.id}>
+          <option key={deal.id} value={deal.id} data-admin-i18n-ignore="true">
             {deal.title}
           </option>
         ))}
@@ -524,7 +526,7 @@ function WorkflowStep({ number, text }: { number: string; text: string }) {
   )
 }
 
-function Datum({ label, value }: { label: string; value: string | null }) {
+function Datum({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4 py-3">
       <dt className="font-semibold text-[#617080]">{label}</dt>
@@ -578,11 +580,11 @@ function formatDate(value: string | null) {
   const date = new Date(value)
   return Number.isNaN(date.getTime())
     ? value
-    : new Intl.DateTimeFormat("de-DE", {
+    : <AdminDate value={value} options={{
         dateStyle: "medium",
         timeStyle: "short",
         timeZone: "Europe/Berlin",
-      }).format(date)
+      }} />
 }
 
 function errorMessage(error: string) {

@@ -60,10 +60,7 @@ export function PartnerDashboard({
     crm: Users,
   };
   return (
-    <AdminLanguageProvider
-      initialLanguage="de"
-      storageKey="benefitsi-partner-language"
-    >
+    <AdminLanguageProvider initialLanguage="de">
       <main className="min-h-screen bg-[#f4f7fb] text-[#061829]">
         <PartnerRefreshOnReturn />
         <div className="border-b border-slate-200 bg-white">
@@ -90,7 +87,7 @@ export function PartnerDashboard({
                 <ul className="absolute right-0 z-20 mt-3 min-w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
                   {partners.map((p) => (
                     <li key={p.id}>
-                      <a
+                      <a data-admin-i18n-ignore={Boolean(p.name)}
                         className="block rounded-lg p-3 hover:bg-sky-50"
                         href={`/partner?partner=${encodeURIComponent(p.id)}`}
                       >

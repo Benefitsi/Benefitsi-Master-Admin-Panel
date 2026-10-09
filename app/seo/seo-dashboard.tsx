@@ -1,5 +1,6 @@
 "use client"
 
+import { AdminDate } from "@/components/admin-format"
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { SeoSetupPanel } from "./seo-setup-panel"
@@ -70,13 +71,7 @@ const scoreLabels: Array<{
 ]
 
 function formatDate(value: string | null | undefined) {
-  if (!value) return "—"
-  return new Intl.DateTimeFormat("de-DE", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value))
+  return <AdminDate value={value} options={{ day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }} />
 }
 
 function formatScore(value: number | null | undefined) {
@@ -457,7 +452,7 @@ function overallScoreDetail(score: SeoScoreSnapshot | undefined, auditJob: SeoAu
   return "Ranking Score · noch nicht gemessen"
 }
 
-function DataPoint({ label, value }: { label: string; value: string }) {
+function DataPoint({ label, value }: { label: string; value: React.ReactNode }) {
   return <div><p className="text-xs text-zinc-500">{label}</p><p className="mt-1 truncate text-sm font-medium text-zinc-800">{value}</p></div>
 }
 
