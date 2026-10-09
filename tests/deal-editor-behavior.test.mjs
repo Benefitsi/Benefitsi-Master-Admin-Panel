@@ -8,6 +8,10 @@ import ts from "typescript"
 
 const require = createRequire(import.meta.url)
 const { JSDOM } = require(process.env.BENEFITSI_TEST_JSDOM_PATH || "jsdom")
+const languageBoundary = {
+  useAdminLanguage: () => ({ language: "de", tr: value => value }),
+  useAdminLocale: require("../app/admin-language.tsx").useAdminLocale,
+}
 function loadEditor() {
   const boundaries = {
     react: React, "react/jsx-runtime": jsx, "react-dom": require("react-dom"),
@@ -16,8 +20,9 @@ function loadEditor() {
     "./partner-actions": {}, "./partner-enrichment-actions": {}, "./microsite-panel": {},
     "./partner-configuration-actions": {},
     "./use-partner-capabilities": {}, "./streak-rule-fields": require("../app/streak-rule-fields.tsx"),
-    "./admin-language": { useAdminLanguage: () => ({ language: "de" }) },
-    "@/app/admin-language": { useAdminLanguage: () => ({ language: "de" }) },
+    "./admin-language": languageBoundary,
+    "@/app/admin-language": languageBoundary,
+    "@/components/admin-format": require("../components/admin-format.tsx"),
     "@/components/loading-ui": { LoadingSpinner: () => null },
   }
   const source = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8") + "\nexport { DealFields };"

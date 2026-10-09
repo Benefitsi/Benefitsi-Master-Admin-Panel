@@ -8,6 +8,10 @@ import ts from "typescript"
 
 const require = createRequire(import.meta.url)
 const { JSDOM } = require(process.env.BENEFITSI_TEST_JSDOM_PATH || "jsdom")
+const languageBoundary = {
+  useAdminLanguage: () => ({ language: "de", tr: value => value }),
+  useAdminLocale: require("../app/admin-language.tsx").useAdminLocale,
+}
 const target = { ok: true, bucket: "menu-videos", path: "partner/menu/video.mp4", token: "signed-token", publicUrl: "https://storage.example.test/video.mp4" }
 function loadForm(actions, upload) {
   const boundaries = {
@@ -20,8 +24,9 @@ function loadForm(actions, upload) {
     "./partner-enrichment-actions": {}, "./microsite-panel": {},
     "./use-partner-capabilities": require("../app/use-partner-capabilities.ts"),
     "./streak-rule-fields": require("../app/streak-rule-fields.tsx"),
-    "./admin-language": { useAdminLanguage: () => ({ language: "de" }) },
-    "@/app/admin-language": { useAdminLanguage: () => ({ language: "de" }) },
+    "./admin-language": languageBoundary,
+    "@/app/admin-language": languageBoundary,
+    "@/components/admin-format": require("../components/admin-format.tsx"),
     "@/lib/supabase/client": { createClient: () => ({ storage: { from: bucket => {
       assert.equal(bucket, target.bucket)
       return { uploadToSignedUrl: upload }
