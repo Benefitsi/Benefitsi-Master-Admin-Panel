@@ -6,6 +6,7 @@ import { notFound } from "next/navigation"
 import { AdminShell } from "@/app/admin-shell"
 import { saveCityContent } from "@/app/city-pages/[citySlug]/content/[contentType]/[contentId]/actions"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
+import { isRetiredStreakDeal } from "@/lib/streak-retirement"
 import { requireAdmin } from "@/lib/admin"
 import {
   loadCityContentEditor,
@@ -73,11 +74,11 @@ export default async function CityContentEditorPage({
   const dealResult = partnerIds.length
     ? await supabase
         .from("deals")
-        .select("id,title,partner_id")
+        .select("id,title,partner_id,type,trigger_key,campaign_type,metadata")
         .in("partner_id", partnerIds)
         .order("title")
     : { data: [] }
-  const deals = (dealResult.data ?? []) as DealOption[]
+  const deals = (dealResult.data ?? []).filter((deal) => !isRetiredStreakDeal(deal)) as DealOption[]
   const isNew = route.contentId === "new"
   const definition = editor.definition
   const record = editor.record

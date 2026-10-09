@@ -3,6 +3,7 @@ import test from "node:test"
 import { readFileSync } from "node:fs"
 import { dashboardDetailRows, insight, safeBuckets } from "../lib/partners/insights.ts"
 import { resolveMicrositeConfig } from "../lib/microsites.ts"
+import { isRetiredStreakDeal } from "../lib/streak-retirement.ts"
 import { dealTypeOptions } from "../lib/reward-config.ts"
 
  test("statistics and exported detail rows exclude retired sections and series guest badges", () => {
@@ -18,4 +19,16 @@ import { dealTypeOptions } from "../lib/reward-config.ts"
  assert.equal(config.elementText["deals.benefit.1.text"], "Zeitbonus & Aktionen")
  assert.equal(config.elementText["content.ecosystem.streaks.title"], undefined)
  assert.equal(config.elementText["content.events.text"], "Eventserien entdecken")
+})
+
+test("retirement normalizes legacy separators across raw and public aliases", () => {
+  for (const dimension of ["type", "trigger_key", "campaign_type", "triggerKey", "campaignType"]) {
+    for (const value of ["streak_bonus", " Streak Bonus ", "streak-bonus", "STREAK   BONUS"]) {
+      assert.equal(isRetiredStreakDeal({ [dimension]: value }), true, `${dimension}:${value}`)
+    }
+  }
+  for (const value of ["calendar_frequency", " Calendar Frequency ", "calendar-frequency"]) {
+    assert.equal(isRetiredStreakDeal({ type: "happy_hour", metadata: { streak_mode: value } }), true, value)
+  }
+  for (const value of [null, { type: "happy_hour" }, { type: "challenge" }, { type: "stamp_card" }, { metadata: { streak_mode: "calendar_event" } }]) assert.equal(isRetiredStreakDeal(value), false)
 })

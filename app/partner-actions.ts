@@ -4438,7 +4438,7 @@ function parseDealPayload(
     campaign_type: stringValue(formData, `${prefix}campaign_type`),
     metadata: metadataRecord(jsonValue(formData, `${prefix}metadata`)),
   }
-  if (isRetiredStreakDeal(submittedDimensions) || isRetiredStreakDeal({ type: stringValue(formData, `${prefix}deal_concept`) }) || stringValue(formData, `${prefix}streak_mode`) === "calendar_frequency") {
+  if (isRetiredStreakDeal(submittedDimensions) || isRetiredStreakDeal({ type: stringValue(formData, `${prefix}deal_concept`) }) || isRetiredStreakDeal({ metadata: { streak_mode: stringValue(formData, `${prefix}streak_mode`) } })) {
     throw new Error("Besuchsserien sind nicht mehr verfügbar.")
   }
   const dealConcept = normalizeDealConcept(

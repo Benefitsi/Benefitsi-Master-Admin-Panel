@@ -85,6 +85,7 @@ import {
   partitionMicrositePublicDeals,
 } from "@/lib/microsite-deals"
 import type { MicrositeConfig, MicrositeElementStyle } from "@/lib/microsites"
+import { isRetiredStreakDeal } from "@/lib/streak-retirement"
 import { defaultMicrositeFaqItems } from "@/lib/microsite-seo"
 import {
   partnerSocialLabel,
@@ -2325,7 +2326,7 @@ function AppScreenShowcase({
       "Entdecke diesen Benefitsi Partner, seine aktuellen Vorteile und die Speisekarte.",
       "Discover this Benefitsi partner, current benefits, and the menu.",
     )
-  const activeDeals = partner.deals.filter((deal) => deal.active !== false)
+  const activeDeals = partner.deals.filter((deal) => deal.active !== false && !isRetiredStreakDeal(deal))
   const activeDeal = activeDeals[0]
   const dealName = activeDeal
     ? micrositeDealTitle(activeDeal, config.language)

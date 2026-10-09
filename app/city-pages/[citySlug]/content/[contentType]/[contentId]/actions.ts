@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { isRetiredStreakDeal } from "@/lib/streak-retirement"
 import { requireAdmin } from "@/lib/admin"
 import {
   cityContentEditorDefinitions,
@@ -349,12 +350,12 @@ export async function saveCityContent(formData: FormData) {
 
     const dealResult = await supabase
       .from("deals")
-      .select("id")
+      .select("id,type,trigger_key,campaign_type,metadata")
       .eq("id", dealId)
       .eq("partner_id", partnerId)
       .maybeSingle()
 
-    if (dealResult.error || !dealResult.data) {
+    if (dealResult.error || !dealResult.data || isRetiredStreakDeal(dealResult.data)) {
       redirect(`${targetPath}?error=invalid_deal`)
     }
   }

@@ -530,3 +530,27 @@ test("denied public projection cannot read retained raw configuration", async ()
  client.from=()=>{throw new Error('raw fallback forbidden')};
  assert.equal(await getPublishedMicrositePage(client,'public-shop'),null);
 });
+
+for (const legacy of [false, true]) {
+  test(`public reader filters raw retirement metadata before privacy sanitization (${legacy ? "legacy" : "canonical"} columns)`, async () => {
+    const { client } = createPublicMicrositeClient({ deals: [
+      { id: "retired-metadata", type: "reward", active: true, metadata: { streak_mode: "calendar_frequency" } },
+      { id: "retired-normalized", type: " Streak Bonus ", active: true },
+      { id: "ordinary", type: "happy_hour", active: true, metadata: { internal: "private" } },
+    ] })
+    if (legacy) {
+      const original = client.from.bind(client)
+      let first = true
+      client.from = table => {
+        if (table === "deals" && first) {
+          first = false
+          return createQuery({ data: null, error: { message: "column deals.public_title does not exist" } }, [])
+        }
+        return original(table)
+      }
+    }
+    const page = await getPublishedMicrositePage(client, "public-shop")
+    assert.deepEqual(page.partner.deals.map(deal => deal.id), ["ordinary"])
+    assert.equal(page.partner.deals[0].metadata, null, "remaining metadata is still private")
+  })
+}

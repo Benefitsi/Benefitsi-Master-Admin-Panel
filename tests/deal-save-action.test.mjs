@@ -216,7 +216,7 @@ test("older HH form submissions without a weekday selector preserve the legacy a
   assert.deepEqual([...rows.get(request).weekdays], [1,2,3,4,5,6,7])
 })
 test("forged retired deals are rejected before every write", async () => {
-  for (const values of [{ type: "streak" }, { type: " StReAk_BoNuS " }, { type: "bonus_stamp", trigger_key: "streak_bonus" }, { type: "happy_hour", campaign_type: "STREAK" }, { type: "free_item", metadata: JSON.stringify({ streak_mode: "calendar_frequency" }) }, { type: "free_item", deal_concept: "streak" }]) {
+  for (const values of [{ type: "streak" }, { type: " StReAk_BoNuS " }, { type: "bonus_stamp", trigger_key: "streak_bonus" }, { type: "happy_hour", campaign_type: "STREAK" }, { type: "free_item", metadata: JSON.stringify({ streak_mode: "calendar_frequency" }) }, { type: "free_item", deal_concept: "streak" }, { type: "Streak Bonus" }, { trigger_key: "streak-bonus" }, { campaign_type: " Streak   Bonus " }, { metadata: JSON.stringify({ streak_mode: " Calendar-Frequency " }) }, { streak_mode: " Calendar Frequency " }]) {
     const { actions, writes } = fixture()
     const result = await actions.saveDeal({}, form({ discount_type: "bonus_stamp", benefit_count: 1, trigger_value: 4, ...values }))
     assert.equal(result.ok, false, JSON.stringify(values))
