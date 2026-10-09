@@ -10,8 +10,7 @@ import { partnerMediaLibrary, type PartnerMediaChoice } from "@/lib/partner-medi
 import { normalizePartnerTypeValue, partnerTypeSupportsMenu } from "@/lib/partners/management"
 
 import { usePartnerCapabilities } from "./use-partner-capabilities"
-import { StreakRuleFields } from "./streak-rule-fields"
-import { describeCalendarStreak } from "@/lib/streak-config"
+import { isRetiredStreakDeal } from "@/lib/streak-retirement"
 import { formDataSignature } from "@/lib/partner-form-signature"
 import { MenuItemVideoField } from "@/components/menu-item-video-field"
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client"
@@ -4492,8 +4491,9 @@ function DealsPanel({
     initialCreate ? { mode: "create" } : null,
   )
   const partnerId = partner.id ?? ""
-  const hasDealRows = partner.deals.length > 0
-  const dealCount = partner.deals.length
+  const activeDeals = useMemo(() => partner.deals.filter(deal => !isRetiredStreakDeal(deal)), [partner.deals])
+  const hasDealRows = activeDeals.length > 0
+  const dealCount = activeDeals.length
   const dealStatus: SectionStatusValue = hasDealRows
     ? [
         { label: "Recommended", tone: "recommended" },
@@ -4515,13 +4515,13 @@ function DealsPanel({
   const [orderPending, startOrderTransition] = useTransition()
   const orderingRef = useRef(false)
   const [draggedDealId, setDraggedDealId] = useState("")
-  const displayDeals = sortDealsForDisplay(partner.deals.map(deal => orderState?.source === partner.deals && deal.id && orderState.values.has(deal.id) ? { ...deal, display_order: orderState.values.get(deal.id) } : deal), new Date(asOf))
+  const displayDeals = sortDealsForDisplay(activeDeals.map(deal => orderState?.source === partner.deals && deal.id && orderState.values.has(deal.id) ? { ...deal, display_order: orderState.values.get(deal.id) } : deal), new Date(asOf))
   function persistDealOrder(id: string, targetId: string) {
     if (orderingRef.current || !id || id === targetId) return
     const moving = displayDeals.find(deal => deal.id === id), target = displayDeals.find(deal => deal.id === targetId)
     if (!moving || !target || isActiveDisplayDrop(moving, new Date(asOf)) || isActiveDisplayDrop(target, new Date(asOf))) return
     const ids = displayDeals.map(deal => deal.id).filter((value): value is string => Boolean(value))
-    if (ids.length !== partner.deals.length) return
+    if (ids.length !== activeDeals.length) return
     const from = ids.indexOf(id), to = ids.indexOf(targetId)
     ids.splice(from, 1); ids.splice(to, 0, id)
     orderingRef.current = true
@@ -4980,9 +4980,6 @@ function DealCard({
           </WarningNote>
         </div>
       ) : null}
-      {deal.type === "streak" && describeCalendarStreak(metadataObject(deal.metadata)) ? (
-        <p className="mt-2 text-xs leading-5 text-zinc-600">{describeCalendarStreak(metadataObject(deal.metadata))}. Belohnung einmal nach Serienabschluss.</p>
-      ) : null}
 
     </div>
   )
@@ -5154,6 +5151,8 @@ function DealForm({
   const [confirmingSave, setConfirmingSave] = useState(false)
   const confirmedSubmitRef = useRef(false)
 
+  if (isRetiredStreakDeal(deal)) return null
+
   return (
     <form
       ref={formRef}
@@ -5277,7 +5276,7 @@ type DealFormConfig = {
 
 const dealFieldHelp = {
   dealType:
-    "Legt Auslöser oder Kampagne fest, zum Beispiel Happy Hour, Willkommen, Comeback oder Streak.",
+    "Legt Auslöser oder Kampagne fest, zum Beispiel Happy Hour, Willkommen, Comeback oder Challenge.",
   discountType:
     "Legt fest, was Nutzer erhalten: Prozent- oder €-Rabatt, Gratisartikel, Bonusstempel oder 2 für 1.",
   benefitCategory:
@@ -5295,7 +5294,7 @@ const dealFieldHelp = {
     "Geschätzter Geldwert für Ersparnisstatistik und Animation nach dem Scan.",
   expiryDays: "So viele Tage bleibt eine verdiente Belohnung gültig.",
   triggerValue:
-    "Schwellenwert für den Auslöser, zum Beispiel Streak-Tage oder Challenge-Ziel.",
+    "Schwellenwert für den Auslöser, zum Beispiel Challenge-Ziel.",
   challengeName:
     "Interner Name zur Unterscheidung mehrerer Challenges.",
   durationValue:
@@ -6345,9 +6344,8 @@ export function DealFields({
   const selectedBackendDealType = backendDealTypeForUi(selectedDealType)
   const selectedDealTypeLabel =
     labelForValue(dealUiTypeOptions, selectedDealType) || "Benefit"
-  const preservesStoredStreakReward = Boolean(deal && dealUiTypeForDeal(deal) === "streak" && selectedBackendDealType === "streak" && selectedDiscountType === normalizeDiscountTypeForUi("streak", deal.discount_type))
-  const benefitCategory = preservesStoredStreakReward && deal?.benefit_category ? deal.benefit_category : config.autoValues.benefitCategory
-  const activationRequired = preservesStoredStreakReward && typeof deal?.activation_required === "boolean" ? deal.activation_required : config.autoValues.activationRequired
+  const benefitCategory = config.autoValues.benefitCategory
+  const activationRequired = config.autoValues.activationRequired
   const isLimitedDrop = selectedBackendDealType === "limited_drop"
   const isWelcomeDeal = selectedBackendDealType === "welcome"
   const isHappyHour = selectedBackendDealType === "happy_hour"
@@ -6588,6 +6586,8 @@ export function DealFields({
     selectedDiscountType,
     rewardItem,
   )
+
+  if (isRetiredStreakDeal(deal) || isRetiredStreakDeal({ type: dealDraft?.dealConcept })) return null
 
   return (
     <div className="space-y-4">
@@ -6976,9 +6976,7 @@ export function DealFields({
                 />
               </>
             ) : null}
-            {selectedBackendDealType === "streak" ? (
-              <StreakRuleFields metadata={dealMetadata} prefix={prefix} legacy={Boolean(deal && dealUiTypeForDeal(deal) === "streak" && dealMetadata.streak_mode !== "calendar_frequency")} expiryDays={deal?.expiry_days} triggerValue={triggerValue} onTriggerChange={setTriggerValue} required={useBrowserValidation} errors={fieldErrors} />
-            ) : config.visibleFields.has("triggerValue") ? (
+            {config.visibleFields.has("triggerValue") ? (
               <TextField
                 label="Auslöserwert"
                 name={`${prefix}trigger_value`}

@@ -14,6 +14,10 @@ function compile(path, boundaries) {
   }, loadedModule, loadedModule.exports)
   return loadedModule.exports
 }
+function projectDeal(deal, columns) {
+  return Object.fromEntries(columns.split(",").map(key => [key, ({ id: content, ...deal })[key]]))
+}
+const retirement = compile("../lib/streak-retirement.ts", {})
 const guideEditor = compile("../lib/city-pages/guide-editor.ts", {})
 const placeEditor = compile("../lib/city-pages/place-editor.ts", { "@/lib/city-pages/guide-editor": guideEditor })
 const editor = compile("../lib/city-pages/content-editor.ts", {
@@ -25,7 +29,7 @@ const content = "b1000000-0000-4000-8000-000000000001"
 const actor = "c1000000-0000-4000-8000-000000000001"
 const revision = "2026-09-12T10:00:00.123456Z"
 
-async function save({ resultError = null, isNew = false, authorized = true, expected = revision, intent = "draft", kind = "places", recurring = false, fields = {} } = {}) {
+async function save({ resultError = null, isNew = false, authorized = true, expected = revision, intent = "draft", kind = "places", recurring = false, fields = {}, deal = {} } = {}) {
   const writes = [], rpcs = [], revalidated = []
   const db = {
     from(table) {
@@ -34,7 +38,8 @@ async function save({ resultError = null, isNew = false, authorized = true, expe
       for (const method of ["insert", "upsert", "update"]) query[method] = (payload) => {
         writes.push({ table, method, payload }); return query
       }
-      query.then = (resolve, reject) => Promise.resolve({ data: { id: table === "cities" ? city : content }, error: null }).then(resolve, reject)
+      query.select = columns => { query.columns = columns; return query }
+      query.then = (resolve, reject) => Promise.resolve({ data: table === "deals" ? projectDeal(deal, query.columns) : { id: table === "cities" ? city : content }, error: null }).then(resolve, reject)
       return query
     },
     async rpc(name, args) {
@@ -53,6 +58,7 @@ async function save({ resultError = null, isNew = false, authorized = true, expe
     "@/lib/city-pages/guide-editor": guideEditor,
     "@/lib/city-pages/place-editor": placeEditor,
     "@/lib/city-operations/contracts": contracts,
+    "@/lib/streak-retirement": retirement,
     "@/lib/supabase/admin": { createAdminClient: () => db },
   })
   const form = new FormData()
@@ -214,4 +220,24 @@ test("editor accepts a researched calendar date without inventing a check time",
   const meta = JSON.parse(guideFields.source_meta); meta.lastVerifiedAt = "2026-09-20"
   const result = await save({ kind: "guides", fields: { ...guideFields, source_meta: JSON.stringify(meta) } })
   assert.equal(result.rpcs[0]?.args.p_payload.source_meta.lastVerifiedAt, "2026-09-20")
+})
+
+for (const deal of [
+  { type: " StReAk " }, { type: "streak-bonus" }, { trigger_key: "Streak Bonus" },
+  { campaign_type: "STREAK" }, { metadata: { streak_mode: "calendar_frequency" } },
+  { metadata: { streak_mode: " Calendar Frequency " } },
+]) {
+  test(`city benefit cannot relink an archived retired deal: ${JSON.stringify(deal)}`, async () => {
+    const result = await save({ kind: "benefits", deal: { ...deal, active: false }, fields: { title: "Local benefit", type: "deal_drop", partner_id: actor, deal_id: content } })
+    assert.match(result.outcome, /error=invalid_deal$/)
+    assert.deepEqual(result.rpcs, [], "reject before save_city_content_draft_atomic")
+    assert.deepEqual(result.writes, [])
+  })
+}
+test("ordinary linked city benefits survive the retirement check", async () => {
+  for (const deal of [{ type: "happy_hour" }, { type: "stamp_card" }, { type: "challenge" }, { type: "reward", metadata: { streak_mode: "unrelated" } }]) {
+    const result = await save({ kind: "benefits", deal, fields: { title: "Local benefit", type: "deal_drop", partner_id: actor, deal_id: content } })
+    assert.equal(result.rpcs.length, 1, result.outcome)
+    assert.equal(result.rpcs[0].args.p_payload.deal_id, content)
+  }
 })

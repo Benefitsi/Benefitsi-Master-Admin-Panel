@@ -1,3 +1,4 @@
+import { isRetiredStreakDeal } from "@/lib/streak-retirement"
 // Explicit, aggregate-only projection shared with the native dashboard.
 import { chartBuckets } from '@/lib/partners/chart-data'
 import type { Dashboard } from '@/lib/partners/analytics'
@@ -9,8 +10,6 @@ export const insightNames: Record<string, string> = {
   loyalty: 'Stammgäste',
   visit_frequency: 'Besuchshäufigkeit',
   stamp_program: 'Stempelprogramm',
-  legacy_streaks: 'Gespeicherte Besuchsserien',
-  calendar_streaks: 'Kalenderserien',
   consumer_premium: 'Consumer-Premium',
   offers: 'Angebote',
   measurement_gaps: 'Messgrenzen',
@@ -27,14 +26,6 @@ export const insightMetricNames: Record<string, string> = {
   completed_lifetime_cycles: 'Abgeschlossene Kartenzyklen insgesamt',
   near_goal_cards: 'Karten nahe am Ziel',
   average_remaining_stamps: 'Fehlende Stempel je offener Karte',
-  recorded_active_guests: 'Gäste mit gespeicherter Serie',
-  recorded_consecutive_guests: 'Gäste mit mehr als einem Serienschritt',
-  mean_recorded_current_streak: 'Durchschnittliche gespeicherte Serie',
-  longest_recorded_streak: 'Längste gespeicherte Serie',
-  active_guests: 'Gäste mit aktiver Kalenderserie',
-  near_target_guests: 'Gäste vor dem Serienziel',
-  mean_current_streak: 'Durchschnittliche aktuelle Serie',
-  completed_current_runs: 'Abgeschlossene aktuelle Serien',
   premium_visits: 'Premium-Besuche',
   premium_visit_share: 'Premium-Anteil an Besuchen (0–1)',
   premium_redemptions: 'Premium-Einlösungen',
@@ -68,7 +59,6 @@ export const bucketNames: Record<string, string> = {
   P1: 'Platin I',
   first_visit: 'Erster Besuch',
   regular_guest: 'Stammgast',
-  series: 'Serie',
   zero: 'Ohne aktuellen Fortschritt',
   below_40_percent: 'Unter 40 %',
   '40_to_below_80_percent': '40 bis unter 80 %',
@@ -99,7 +89,6 @@ export const offerTypeNames: Record<string, string> = {
   deal_drop: 'Deal Drop',
   birthday: 'Geburtstag',
   comeback: 'Comeback',
-  streak: 'Besuchsserie',
   challenge: 'Challenge',
   free_item: 'Gratisartikel',
   bonus_stamp: 'Bonusstempel',
@@ -167,9 +156,17 @@ export function safeDimension(raw: Json): Json {
         target: raw.target,
       }
 }
+function activeInsightDimension(value: unknown): unknown {
+  if (Array.isArray(value)) return value.filter(item => {
+    const row = object(item)
+    return row.code !== "series" && !isRetiredStreakDeal({ ...row, type: row.type ?? row.code })
+  }).map(activeInsightDimension)
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, activeInsightDimension(child)]))
+  return value
+}
 export function insight(data: Dashboard, key: string): Json {
   const root = object(data.insights),
-    section = object(object(root.sections)[key])
+    section = object(activeInsightDimension(object(root.sections)[key]))
   if (
     root.definition_version !== insightVersion ||
     section.definition_version !== insightVersion
@@ -536,32 +533,6 @@ export function dashboardDetailRows(data: Dashboard): AggregateRow[] {
             }
           }
         }
-    }
-    for (const deal of objects(s.deals).map(safeDimension)) {
-      const title = `Kalenderserie · ${knownLabel(seriesUnits, deal.unit, 'Unbekannte Einheit')} · Ziel ${safeNumber(deal.target) ?? '–'}`
-      if (!released(deal.status)) {
-        row(key, title, deal.status, null, null, scope, from, to)
-        continue
-      }
-      for (const mk of [
-        'active_guests',
-        'near_target_guests',
-        'mean_current_streak',
-        'completed_current_runs',
-        'longest_recorded_streak',
-      ]) {
-        const m = object(object(deal.metrics)[mk])
-        row(
-          key,
-          `${title} · ${insightMetricNames[mk]}`,
-          m.status,
-          m.value,
-          m.sample_size,
-          scope,
-          from,
-          to,
-        )
-      }
     }
   }
   const feedback = data.metrics.feedback,

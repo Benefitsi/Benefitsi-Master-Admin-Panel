@@ -45,7 +45,7 @@ export const tierCatalog: TierCatalogEntry[] = [
     audience: 'Nutzer',
     name: 'Premium',
     description: 'Zusätzliche Vorteile und Premium-Meilensteine für App-Nutzer.',
-    features: ['Zusätzliche Stempelvorteile', 'Premium-Angebote und Deal Drops', 'Challenges, Streaks und anlassbezogene Vorteile'],
+    features: ['Zusätzliche Stempelvorteile', 'Premium-Angebote und Deal Drops', 'Challenges und anlassbezogene Vorteile'],
     note: 'Bezahlte Käufe sind im aktuellen App-Code deaktiviert. Der einmalige Testzugang umfasst 14 Tage und einen Premium-Vorteil. Premium ist kein Partner-Tarif.',
     href: 'https://benefitsi.de/premium',
   },
@@ -393,12 +393,6 @@ export const ecosystemCatalog: EcosystemEntry[] = [
     description: 'Einen Vorteil zum Geburtstag auslösen. Das Belohnungsformat bestimmt, ob er ausgewählt oder automatisch vergeben wird.',
     audience: 'Berechtigte Nutzer mit passendem Anlass', availability: 'Geburtstags-Auslöser und Angebotsbedingungen',
     href: '/partners', source: 'Admin: app/partner-admin.tsx (dealExplanations.birthday)',
-  },
-  {
-    id: 'deal-streak', title: 'Streak und Streak-Bonus', group: 'deals', benefitIcon: 'streak',
-    description: 'Eine konfigurierte Besuchsserie belohnen; Schwellenwert, Zielgruppe und Ausgabeformat gehören zur Regel.',
-    audience: 'Nutzer mit erfüllter Besuchsserie', availability: 'Regelbasierter Auslöser',
-    href: '/partners', source: 'Admin: lib/reward-config.ts; lib/benefit-taxonomy.ts; app/partner-admin.tsx',
   },
   {
     id: 'deal-challenge', title: 'Challenge und Challenge-Bonus', group: 'deals', benefitIcon: 'challenge',

@@ -1,3 +1,4 @@
+import { isRetiredStreakDeal } from "./streak-retirement"
 import { readPublicMicrositeSnapshot } from "./public-microsite-contract"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type {
@@ -171,7 +172,7 @@ export async function getPublishedMicrositePage(
   }
   const annotatedPartner: PartnerWithDeals = {
     ...partner,
-    deals: (publicDealsData ?? []) as Deal[],
+    deals: ((publicDealsData ?? []) as Deal[]).filter((deal) => !isRetiredStreakDeal(deal)),
     holidays: [],
     socials: (socialsResult.data ?? []) as PartnerSocial[],
     reward_milestones:

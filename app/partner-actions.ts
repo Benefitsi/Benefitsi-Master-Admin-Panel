@@ -82,6 +82,7 @@ import type { AiMenuDraft } from "@/lib/menu-ai-types"
 import { readEntitlements, setEntitlementOverride } from "@/lib/partners/entitlements"
 import { runMeteredImport } from "@/lib/partners/menu-quota"
 import { prepareDealCreate, recoverDealCreate } from "@/lib/deal-save-guard"
+import { isRetiredStreakDeal } from "@/lib/streak-retirement"
 import { buildStreakMetadata, describeCalendarStreak, streakFieldErrors } from "@/lib/streak-config"
 import { prepareMilestoneCreate, recoverMilestoneCreate } from "@/lib/milestone-save-guard"
 
@@ -1324,6 +1325,7 @@ async function saveDealRequest(formData: FormData): Promise<PartnerActionState> 
     const stored = await supabase.from("deals").select("*").eq("id", id).eq("partner_id", access.partnerId).single()
     if (stored.error || !stored.data) return dealSaveFailure(formData, "Der vorhandene Vorteil konnte nicht geladen werden. Deine Eingaben bleiben erhalten.")
     storedDeal = stored.data as Partial<ParsedDeal>
+    if (isRetiredStreakDeal(storedDeal)) return dealSaveFailure(formData, "Besuchsserien sind nicht mehr verfügbar.")
     const preservationMessage = preserveExistingDealCopy(
       storedDeal,
       formData,
@@ -4430,6 +4432,15 @@ function parseDealPayload(
   partnerId = stringValue(formData, `${prefix}partner_id`),
 ): ParsedDeal {
   const submittedType = stringValue(formData, `${prefix}type`)
+  const submittedDimensions = {
+    type: submittedType,
+    trigger_key: stringValue(formData, `${prefix}trigger_key`),
+    campaign_type: stringValue(formData, `${prefix}campaign_type`),
+    metadata: metadataRecord(jsonValue(formData, `${prefix}metadata`)),
+  }
+  if (isRetiredStreakDeal(submittedDimensions) || isRetiredStreakDeal({ type: stringValue(formData, `${prefix}deal_concept`) }) || isRetiredStreakDeal({ metadata: { streak_mode: stringValue(formData, `${prefix}streak_mode`) } })) {
+    throw new Error("Besuchsserien sind nicht mehr verfügbar.")
+  }
   const dealConcept = normalizeDealConcept(
     stringValue(formData, `${prefix}deal_concept`),
     submittedType,
@@ -4807,6 +4818,7 @@ function preserveExistingDealCopy(
     if (current.starts_at) payload.starts_at = formData.has(`${prefix}valid_from`) ? payload.valid_from : current.starts_at
     if (current.ends_at) payload.ends_at = formData.has(`${prefix}valid_until`) ? payload.valid_until : current.ends_at
   }
+  if (isRetiredStreakDeal(current)) return "Besuchsserien sind nicht mehr verfügbar."
   if (isStreakDeal(payload) && isStreakDeal(current)) {
     if (current.type && current.type !== "streak") {
       payload.type = ["discount", "free_item", "two_for_one", "bonus_stamp"].includes(current.type)
@@ -4924,6 +4936,7 @@ function isStreakDeal(deal: { type?: string | null; campaign_type?: string | nul
 }
 
 function validateDealPayload(payload: ParsedDeal) {
+  if (isRetiredStreakDeal(payload)) return "Besuchsserien sind nicht mehr verfügbar."
   const isHappyHour = isHappyHourDeal(payload)
   const isStreak = isStreakDeal(payload)
   if (!payload.partner_id) {

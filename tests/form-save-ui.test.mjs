@@ -197,19 +197,14 @@ test("Happy Hour weekdays show blue checks and red exclusions without changing o
     }
   })
 })
-test("canonical streak triggers open the calendar editor while a Happy Hour campaign keeps priority", async () => {
+test("retired canonical series never open an editor, including a forged Happy Hour wrapper", async () => {
   const { DealForm } = loadUi(async () => ({ ok: true, message: "Gespeichert" }))
   await withDom(async root => {
     const metadata = { streak_mode: "calendar_frequency", required_visits_per_period: 2, period_unit: "weeks", required_consecutive_periods: 4 }
-    const deal = { id: "synthetic-series", type: "free_item", trigger_key: "streak", discount_type: "item", reward_item: "Kaffee", trigger_value: 4, metadata, audience: "both", active: true }
-    await act(async () => root.render(React.createElement(DealForm, { partnerId: "synthetic-partner", mode: "edit", deal })))
-    assert.equal(document.querySelector("form").elements.type.value, "streak")
-    assert.equal(document.querySelector("form").elements.required_visits_per_period.value, "2")
-    assert.equal(document.querySelector("form").elements.required_consecutive_periods.value, "4")
-    for (const hh of [{ campaign_type: "happy_hour" }, { type: "happy_hour" }]) {
-      await act(async () => root.render(React.createElement(DealForm, { key: JSON.stringify(hh), partnerId: "synthetic-partner", mode: "edit", deal: { ...deal, ...hh, happy_hour_start: "15:00", happy_hour_end: "17:00" } })))
-      assert.equal(document.querySelector("form").elements.type.value, "happy_hour")
-      assert.equal(document.querySelector("form").elements.required_visits_per_period, undefined)
+    const deal = { id: "synthetic-series", type: "free_item", trigger_key: "streak", discount_type: "item", reward_item: "Kaffee", metadata, audience: "both", active: true }
+    for (const hh of [{}, { campaign_type: "happy_hour" }, { type: "happy_hour" }]) {
+      await act(async () => root.render(React.createElement(DealForm, { key: JSON.stringify(hh), partnerId: "synthetic-partner", mode: "edit", deal: { ...deal, ...hh } })))
+      assert.equal(document.querySelector("form"), null)
     }
   })
 })
@@ -284,5 +279,20 @@ test("drag and drop uses the same persisted full-list order", async () => {
     await act(async () => a.dispatchEvent(new window.Event("drop", { bubbles: true, cancelable: true })))
     assert.deepEqual(calls, [["b", "a"]])
     assert.deepEqual([...document.querySelectorAll("[data-partner-offer] h3")].map(el => el.textContent), ["B", "A"])
+  })
+})
+
+test("cached raw deal panels discard active and paused retired variants before offering list actions", async () => {
+  const { DealsPanel } = loadUi(async () => ({ ok: false }))
+  const retired = [{ type: "streak" }, { type: "streak_bonus", active: false }, { type: "free_item", trigger_key: " StReAk " }, { type: "bonus_stamp", campaign_type: "streak_bonus" }, { type: "discount", metadata: { streak_mode: "calendar_frequency" } }]
+  const partner = { id: "partner-test", name: "Cafe", visits: [], deals: [
+    { id: "ordinary", type: "discount", active: true, discount_type: "percent", discount_value: 15, display_title: "Mittag", audience: "both" },
+    ...retired.map((deal, i) => ({ id: `retired-${i}`, active: true, discount_type: "item", reward_item: "Kaffee", audience: "both", ...deal })),
+  ] }
+  await withDom(async root => {
+    await act(async () => root.render(React.createElement(DealsPanel, { partner, embedded: true, portalMode: true })))
+    assert.equal(document.querySelectorAll("[data-partner-offer]").length, 1)
+    assert.match(document.querySelector("[data-partner-offer]").textContent, /Mittag/)
+    assert.doesNotMatch(document.body.textContent, /Streak|Besuchsserie|Kalenderserie/)
   })
 })

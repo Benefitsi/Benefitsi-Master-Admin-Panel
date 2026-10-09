@@ -1,3 +1,4 @@
+import { reconcileRetiredStreakCopy, reconcileMicrositeElementText } from "./streak-retirement"
 import {validateRichMedia,approvedRichMedia,type RichMedia} from './microsite-rich-media'
 /** Public contract v1. Kept byte-identical in Admin and Web; the optional
  * two-app verification checks this as well as the actual producer/consumer.
@@ -29,7 +30,7 @@ export type PublicMicrositeConfig = {
 }
 export const PUBLIC_MICROSITE_SERVICE_ICONS = ["bag", "leaf", "card", "people", "gift", "heart", "star", "phone", "clock", "check", "pin", "sparkles", "basket", "scooter", "route"] as const
 const record = (v: unknown): Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : {}
-const text = (v: unknown) => typeof v === "string" ? v.trim().slice(0, 12000) : ""
+const text = (v: unknown) => typeof v === "string" ? reconcileRetiredStreakCopy(v.trim().slice(0, 12000)) : ""
 export const PUBLIC_MICROSITE_ANCHORS = ["deals", "stempelkarte", "speisekarte", "ueber-uns", "app", "kontakt"] as const
 const extraText = new Set([
   "branding.partnerName", "branding.logo", "contact.logo", "footer.benefitsiLogo",
@@ -140,7 +141,7 @@ export function createPublicMicrositeSnapshot(value: unknown): PublicMicrositeCo
     deals: { ...projectGroup(input, "deals"), topDealBullets: (Array.isArray(deals.topDealBullets) ? deals.topDealBullets : []).slice(0, 20).map((v, i) => elementText[`deals.topDealBullets.${i}`] || text(v)) },
     stamps: projectGroup(input, "stamps"), content: projectGroup(input, "content"),
     seo: { ...projectGroup(input, "seo"), noIndex: seo.noIndex === true, keywords: (Array.isArray(seo.keywords) ? seo.keywords : []).slice(0, 40).map(text).filter(Boolean) },
-    elementText, elementStyles,
+    elementText: reconcileMicrositeElementText(elementText), elementStyles,
   }
 }
 export function readPublicMicrositeSnapshot(value: unknown): PublicMicrositeConfig | null {

@@ -9,7 +9,6 @@ export const dealTypeOptions = [
   { value: "free_item", label: "Gratisartikel" },
   { value: "discount", label: "Rabatt" },
   { value: "bonus_stamp", label: "Bonusstempel" },
-  { value: "streak", label: "Streak" },
   { value: "challenge", label: "Challenge" },
 ] as const
 

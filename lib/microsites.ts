@@ -1,3 +1,4 @@
+import { reconcileMicrositeElementText } from "./streak-retirement"
 import {validateRichMedia,type RichMedia} from './microsite-rich-media'
 import { categoryMicrositeThemes } from "./microsite-category-themes"
 import {
@@ -791,7 +792,7 @@ function normalizeElementText(value: Record<string, unknown>) {
 }
 
 function normalizeElementTextOverrides(value: Record<string, unknown>) {
-  return normalizeElementText(value)
+  return reconcileMicrositeElementText(normalizeElementText(value))
 }
 
 function safeFontFamily(value: unknown) {

@@ -1,3 +1,4 @@
+import { isRetiredStreakDeal } from "@/lib/streak-retirement"
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PartnerWithDeals, City } from '@/lib/admin-data'
 import { canManageProfile, readEntitlements } from './entitlements'
@@ -75,7 +76,7 @@ export async function readPartnerWorkspace(
     throw new Error('Menüdaten konnten nicht geladen werden.')
   const record = {
     ...partner.data,
-    deals: deals.data ?? [],
+    deals: (deals.data ?? []).filter(deal => !isRetiredStreakDeal(deal)),
     holidays: holidays.data ?? [],
     socials: socials.data ?? [],
     reward_milestones: rewards.data ?? [],

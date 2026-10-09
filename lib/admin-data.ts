@@ -1,3 +1,4 @@
+import { isRetiredStreakDeal } from "./streak-retirement"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { MicrositeVersion, PartnerMicrosite } from "./microsites"
 import { readEntitlements } from "./partners/entitlements"
@@ -555,7 +556,7 @@ export async function getDashboardData(
   const partnersWithDeals = partners.map((partner) => ({
     ...partner,
     ...(partner.id === entitlementPartner?.id ? capabilityFlags : {}),
-    deals: partner.id ? dealsByPartner.get(partner.id) ?? [] : [],
+    deals: partner.id ? (dealsByPartner.get(partner.id) ?? []).filter(deal => !isRetiredStreakDeal(deal)) : [],
     holidays: partner.id ? holidaysByPartner.get(partner.id) ?? [] : [],
     socials: partner.id ? socialsByPartner.get(partner.id) ?? [] : [],
     reward_milestones: partner.id
