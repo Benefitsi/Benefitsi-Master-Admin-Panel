@@ -33,6 +33,7 @@ function loadShell(code = source) {
 
 async function withDom(run) {
   const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: "http://localhost" })
+  dom.window.localStorage.setItem("benefitsi-admin-language", "de")
   const names = ["window", "self", "document", "Element", "Text", "Node", "NodeFilter", "HTMLElement", "MutationObserver", "IS_REACT_ACT_ENVIRONMENT"]
   const previous = Object.fromEntries(names.map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]))
   for (const name of names) Object.defineProperty(globalThis, name, {
@@ -65,6 +66,24 @@ async function withDom(run) {
 const toggle = () => document.querySelector("aside button[aria-expanded]")
 const expanded = () => toggle().getAttribute("aria-expanded") === "true"
 const click = async element => act(async () => element.click())
+
+test("navigation labels and changing accessible hints follow both language selections", async () => {
+  const { Shell } = loadShell()
+  await withDom(async ({ render }) => {
+    await render(React.createElement(Shell, { adminName: "Partner management" }, "Page"))
+    const choose = async language => click([...document.querySelectorAll("button[aria-pressed]")].find(button => button.textContent === language))
+    await choose("EN")
+    assert.equal(document.querySelector('nav a[href="/city-operations"]').textContent, "Review & approvals")
+    assert.equal(document.querySelector('nav a[href="/wissen"]').textContent, "Knowledge")
+    assert.equal(toggle().getAttribute("aria-label"), "Expand navigation")
+    await click(toggle())
+    assert.equal(toggle().getAttribute("aria-label"), "Collapse navigation")
+    await choose("DE")
+    assert.equal(document.querySelector('nav a[href="/city-operations"]').textContent, "Prüfung & Freigaben")
+    assert.equal(toggle().getAttribute("aria-label"), "Navigation einklappen")
+    assert.ok(document.querySelector("header").textContent.includes("Partner management"), "The account display name remains unchanged")
+  })
+})
 
 test("both manual sidebar positions survive shell remounts and can be toggled again", async () => {
   const { Shell, setPath } = loadShell()

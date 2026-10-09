@@ -1,3 +1,4 @@
+import { AdminLanguageProvider } from "@/app/admin-language"
 import { loadMicrositeCommerceActions } from "@/lib/commerce/microsite"
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
@@ -48,7 +49,7 @@ export default async function MicrositePreviewPage({
 
   return (
     <>
-    {!capabilities && <MicrositeCapabilitiesNotice />}
+    {!capabilities && <AdminLanguageProvider><MicrositeCapabilitiesNotice /></AdminLanguageProvider>}
     <MicrositePreviewShell
       commerceActions={await loadMicrositeCommerceActions(partner.id)}
       partner={partner}

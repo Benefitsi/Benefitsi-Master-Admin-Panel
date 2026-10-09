@@ -1,4 +1,5 @@
 'use client';
+import { useAdminLocale } from "@/app/admin-language";
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from 'react';
 import { Users, RotateCcw, Gift, BookOpen, Mic, ArrowUpRight, FilePenLine } from 'lucide-react';
@@ -23,8 +24,8 @@ const box = 'rounded-2xl border border-slate-200 bg-white p-5 sm:p-6';
 const field = 'mt-2 block min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm focus:outline-2 focus:outline-[#0874d1] disabled:bg-slate-50';
 const button = 'min-h-11 rounded-xl bg-[#0874d1] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#065da9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 disabled:opacity-50';
 const secondary = 'min-h-11 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-[#0874d1] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-sky-600 disabled:opacity-50';
-export function audienceValue(a: CrmAudience) {
-  return a.status === 'ok' ? new Intl.NumberFormat('de-DE').format(a.value as number) : a.status === 'empty' ? '0' : a.status === 'suppressed' ? 'Aus Datenschutzgründen verborgen' : 'Noch nicht ermittelbar';
+export function audienceValue(a: CrmAudience, locale = 'de-DE') {
+  return a.status === 'ok' ? new Intl.NumberFormat(locale).format(a.value as number) : a.status === 'empty' ? '0' : a.status === 'suppressed' ? 'Aus Datenschutzgründen verborgen' : 'Noch nicht ermittelbar';
 }
 function newDraft(kind: CrmKind): CampaignInput {
   return {
@@ -52,7 +53,7 @@ function editDraft(c: CrmCampaign): CampaignInput {
     status: c.status
   };
 }
-const date = (v: string) => new Intl.DateTimeFormat('de-DE', {
+const date = (v: string, locale: string) => new Intl.DateTimeFormat(locale, {
   timeZone: 'Europe/Berlin',
   day: '2-digit',
   month: '2-digit',
@@ -99,6 +100,7 @@ function ReadyCrmWorkspace({
   deals: CrmDeals;
   onAccessLost?: () => void;
 }) {
+  const locale = useAdminLocale();
   const [campaigns, setCampaigns] = useState(initial.dashboard.campaigns),
     [previousCampaigns, setPreviousCampaigns] = useState(initial.dashboard.campaigns),
     [editor, setEditor] = useState<CampaignInput>(() => newDraft('second_visit')),
@@ -200,7 +202,7 @@ function ReadyCrmWorkspace({
       <p className="text-sm font-bold text-[#17d4d7]">Besuche verbinden</p>
       <h2 className="mt-2 text-2xl font-bold sm:text-3xl">Aus einem Besuch kann mehr werden</h2>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-200">Prüfe potenzielle Besuchsgruppen und bereite deinen nächsten Impuls vor. Nachrichtenversand wird vorbereitet. Du kannst Zielgruppen prüfen und Entwürfe speichern.</p>
-      <p className="mt-4 text-xs leading-6 text-slate-300">365 abgeschlossene Berliner Kalendertage: {date(dashboard.window.from)} bis {date(dashboard.window.to)} (Ende nicht eingeschlossen). Stand {date(dashboard.as_of)}. Potenzielle Gruppen sind keine erreichbaren oder eingewilligten Marketingempfänger und können sich überschneiden.</p>
+      <p className="mt-4 text-xs leading-6 text-slate-300">365 abgeschlossene Berliner Kalendertage: <span data-admin-i18n-ignore="true">{date(dashboard.window.from, locale)}</span> bis <span data-admin-i18n-ignore="true">{date(dashboard.window.to, locale)}</span> (Ende nicht eingeschlossen). Stand <span data-admin-i18n-ignore="true">{date(dashboard.as_of, locale)}</span>. Potenzielle Gruppen sind keine erreichbaren oder eingewilligten Marketingempfänger und können sich überschneiden.</p>
     </section>
     <div className="grid gap-4 md:grid-cols-3">
       {crmKinds.map(kind => {
@@ -213,8 +215,8 @@ function ReadyCrmWorkspace({
             </h3>
             <Icon size={24} className={kind === 'comeback' ? 'text-amber-600' : kind === 'reward_reminder' ? 'text-teal-600' : 'text-[#0874d1]'} aria-hidden="true" />
           </div>
-          <p className={`mt-5 font-bold ${a.status === 'ok' || a.status === 'empty' ? 'text-4xl' : 'text-lg'}`}>
-            {audienceValue(a)}
+          <p data-admin-i18n-ignore={a.status === 'ok' || a.status === 'empty'} className={`mt-5 font-bold ${a.status === 'ok' || a.status === 'empty' ? 'text-4xl' : 'text-lg'}`}>
+            {audienceValue(a, locale)}
           </p>
           <p className="mt-2 text-xs text-slate-500">Potenzielle Besuchsgruppe</p>
           <p className="mt-4 flex-1 text-sm leading-6 text-slate-600">
@@ -282,7 +284,7 @@ function ReadyCrmWorkspace({
               </label>
               <label className="block text-sm font-semibold">Eigener aktiver Vorteil (optional)<select name="deal_id" disabled={deals.status === 'unavailable'} className={field} defaultValue={editor.deal_id ?? ''}>
                 <option value="">Ohne Vorteilsverknüpfung</option>
-                {deals.status === 'ready' && deals.deals.map(deal => <option key={deal.id} value={deal.id}>
+                {deals.status === 'ready' && deals.deals.map(deal => <option data-admin-i18n-ignore={Boolean(deal.title)} key={deal.id} value={deal.id}>
                   {deal.title}
                 </option>)}
                 {(missingDeal || deals.status === 'unavailable' && editor.deal_id) && <option value={editor.deal_id!}>Gespeicherter Vorteil · Gültigkeit prüfen</option>}
@@ -325,13 +327,13 @@ function ReadyCrmWorkspace({
         </div>
         {!campaigns.length ? <p className="mt-5 text-sm leading-6 text-slate-500">Noch kein Entwurf gespeichert. Wähle eine Besuchsgruppe und halte deine Idee fest.</p> : <ul className="mt-4 divide-y divide-slate-100">
           {campaigns.map(c => <li key={c.id} className="py-4">
-            <p className="break-words font-semibold">
+            <p data-admin-i18n-ignore={Boolean(c.title)} className="break-words font-semibold">
               {c.title}
             </p>
             <p className="mt-1 text-xs text-slate-500">
               {crmAudienceLabels[c.kind]} · {c.status === 'archived' ? 'Archiviert' : 'Entwurf'} · Version {c.revision}
             </p>
-            <p className="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">
+            <p data-admin-i18n-ignore={Boolean(c.body)} className="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">
               {c.body}
             </p>
             <button type="button" className={`${secondary} mt-3`} disabled={!initial.writable || pending} onClick={() => choose(editDraft(c))}>Bearbeiten</button>
@@ -356,6 +358,7 @@ function CrmAudienceCheck({ actorId, partnerId, draftId, kind, config, onAccessL
   config: Record<string, number>;
   onAccessLost?: () => void;
 }) {
+  const locale = useAdminLocale();
   // This instance is keyed by actor, partner, draft and canonical selection. A changed selection unmounts it immediately.
   const [scope] = useState(() => Object.freeze({ actorId, partnerId, draftId, kind, config: Object.freeze({ ...config }) }));
   const [state, setState] = useState<{ status: 'unchecked' | 'loading' | 'error'; message?: string } | { status: 'ready'; preview: CrmAudiencePreview }>({ status: 'unchecked' });
@@ -400,15 +403,15 @@ function CrmAudienceCheck({ actorId, partnerId, draftId, kind, config, onAccessL
       }
     });
   }
-  const checkedAt = state.status === 'ready' ? new Intl.DateTimeFormat('de-DE', {
+  const checkedAt = state.status === 'ready' ? new Intl.DateTimeFormat(locale, {
     timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
   }).format(new Date(state.preview.as_of)) : '';
   return <aside data-recipient-preview className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6">
     <div role="status" aria-live="polite">
       {state.status === 'ready' ? <>
-        <strong>Potenzielle Besuchsgruppe: {audienceValue(state.preview.audience)}</strong>
+        <strong>Potenzielle Besuchsgruppe: <span data-admin-i18n-ignore={state.preview.audience.status === 'ok' || state.preview.audience.status === 'empty'}>{audienceValue(state.preview.audience, locale)}</span></strong>
         <p className="mt-1">{scope.kind === 'comeback' ? `Letzter bestätigter Besuch im Zeitfenster liegt mindestens ${scope.config.inactivity_days} Berliner Tage zurück.` : scope.kind === 'reward_reminder' ? scope.config.remaining_stamps === 1 ? 'Ein Stempel bis zur nächsten tatsächlich berechtigten Basisbelohnung; aktueller Kartenstand.' : 'Ein oder zwei Stempel bis zur nächsten tatsächlich berechtigten Basisbelohnung; aktueller Kartenstand.' : 'Genau ein bestätigter Besuch im Zeitfenster.'}</p>
-        <p className="mt-1 text-slate-500">Servergeprüft · Stand {checkedAt} (Europe/Berlin). 365 abgeschlossene Berliner Kalendertage: {date(state.preview.window.from)} bis {date(state.preview.window.to)} (Ende nicht eingeschlossen).</p>
+        <p className="mt-1 text-slate-500">Servergeprüft · Stand <span data-admin-i18n-ignore="true">{checkedAt}</span> (Europe/Berlin). 365 abgeschlossene Berliner Kalendertage: <span data-admin-i18n-ignore="true">{date(state.preview.window.from, locale)}</span> bis <span data-admin-i18n-ignore="true">{date(state.preview.window.to, locale)}</span> (Ende nicht eingeschlossen).</p>
       </> : <strong>{state.status === 'loading' ? 'Zielgruppe wird geprüft …' : 'Zielgruppe noch nicht geprüft'}</strong>}
     </div>
     {state.status === 'error' && <p role="alert" className="mt-2 text-amber-900">{state.message}</p>}
@@ -425,6 +428,7 @@ function EditorialCard({
   initial: EditorialRequest;
   onAccessLost?: () => void;
 }) {
+  const locale = useAdminLocale();
   const [saved, setSaved] = useState(initial),
     [previousInitial, setPreviousInitial] = useState(initial),
     [error, setError] = useState(''),
@@ -484,7 +488,7 @@ function EditorialCard({
         {pending ? 'Wird angefragt …' : 'Leistung anfragen'}
       </button>
     </form> : <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm leading-6">
-      <p>Anfrage vom {date(saved.requested_at!)}
+      <p>Anfrage vom <span data-admin-i18n-ignore="true">{date(saved.requested_at!, locale)}</span>
       </p>
       {saved.partner_note && <p className="mt-2 whitespace-pre-wrap break-words">
         {saved.partner_note}

@@ -139,12 +139,12 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
         </div>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate font-semibold text-[#061829]">
+            <h3 data-admin-i18n-ignore={Boolean(partner.name)} className="truncate font-semibold text-[#061829]">
               {partner.name || "Unnamed partner"}
             </h3>
             <StatusBadge state={state} />
           </div>
-          <p className="mt-1 truncate text-sm text-zinc-500">
+          <p data-admin-i18n-ignore={Boolean(partner.city_name || partner.address)} className="mt-1 truncate text-sm text-zinc-500">
             {partner.city_name || partner.address || identifier}
           </p>
           {versions.editable ? <p className="mt-1 text-xs text-zinc-500">Gespeichert: Version {versions.editable.version_number ?? "–"}{versions.published ? ` · Online: Version ${versions.published.version_number ?? "–"}` : " · Noch nicht veröffentlicht"}</p> : null}

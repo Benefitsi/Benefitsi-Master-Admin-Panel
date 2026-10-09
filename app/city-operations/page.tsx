@@ -138,7 +138,7 @@ export default async function CityOperationsPage({
             <FilterSelect name="city" label="Ort" value={params.city}>
               <option value="">Alle Orte</option>
               {cities.map((city) => (
-                <option key={city.slug} value={city.slug}>
+                <option key={city.slug} value={city.slug} data-admin-i18n-ignore="true">
                   {city.name}
                 </option>
               ))}
@@ -146,7 +146,7 @@ export default async function CityOperationsPage({
             <FilterSelect name="region" label="Region" value={params.region}>
               <option value="">Alle Regionen</option>
               {data.geoAreas.map((area) => (
-                <option key={area.id} value={area.id}>
+                <option key={area.id} value={area.id} data-admin-i18n-ignore="true">
                   {area.name}
                 </option>
               ))}

@@ -1,3 +1,5 @@
+import { AdminDate } from "@/components/admin-format"
+import type { ReactNode } from "react"
 import {
   classifyBaseline,
   rankLabel,
@@ -20,12 +22,7 @@ const baselineLabels = {
   since_measurement: 'Ab Messbeginn · kein belegter Vorher-Stand',
 }
 function date(value: string | null) {
-  return value
-    ? new Intl.DateTimeFormat('de-DE', {
-        dateStyle: 'medium',
-        timeZone: 'UTC',
-      }).format(new Date(value))
-    : 'Noch nicht dokumentiert'
+  return value ? <AdminDate value={value} options={{ dateStyle: "medium", timeZone: "UTC" }} /> : "Noch nicht dokumentiert"
 }
 function Hidden({
   targetId,
@@ -111,7 +108,7 @@ export function ComparisonReport({
                 ? 'Google Maps'
                 : 'Google-Suche · Organisch'}
             </p>
-            <h2 className="mt-1 text-xl font-semibold">{partnerName}</h2>
+            <h2 className="mt-1 text-xl font-semibold">{<span data-admin-i18n-ignore="true">{partnerName}</span>}</h2>
             <a
               href={config.subjectUrl}
               target="_blank"
@@ -129,7 +126,7 @@ export function ComparisonReport({
           </a>
         </div>
         <p className="mt-4 text-sm text-zinc-600">
-          {config.keywords.length} Keywords · {config.location} ·{' '}
+          {config.keywords.length} Keywords · {<span data-admin-i18n-ignore="true">{config.location}</span>} ·{' '}
           {config.device === 'mobile' ? 'Mobil' : 'Desktop'} · {config.locale}
           {config.channel === 'maps'
             ? ` · Suchpunkt ${config.latitude}, ${config.longitude}`
@@ -170,7 +167,7 @@ export function ComparisonReport({
           <h3 className="font-semibold">Ausgangsmessung festschreiben</h3>
           <p className="mt-2 text-sm leading-6 text-zinc-700">
             {earliest
-              ? `Die früheste belegte Messung vom ${date(earliest.observedOn)} wird dauerhaft als Ausgangsstand gespeichert. Spätere Importe ersetzen sie nicht.`
+              ? <>Die früheste belegte Messung vom {date(earliest.observedOn)} wird dauerhaft als Ausgangsstand gespeichert. Spätere Importe ersetzen sie nicht.</>
               : 'Noch keine belegte Position vorhanden. Ein vollständiger Ranking-Export oder passende Daten eines eingerichteten Ranktrackers bilden die Grundlage. Fehlende Rankings werden nicht geschätzt.'}
           </p>
           <form action={freezeComparisonAction} className="mt-4">
@@ -251,7 +248,7 @@ export function ComparisonReport({
             <tbody className="divide-y divide-zinc-100">
               {report.rows.map((row) => (
                 <tr key={row.keyword}>
-                  <td className="py-3 pr-3 font-medium">{row.keyword}</td>
+                  <td className="py-3 pr-3 font-medium">{<span data-admin-i18n-ignore="true">{row.keyword}</span>}</td>
                   <td className="px-3 py-3 tabular-nums">
                     {rankLabel(row.before, baseline?.depth ?? null)}
                   </td>
@@ -467,7 +464,7 @@ export function ComparisonReport({
         <ol className="mt-4 space-y-3 border-l-2 border-[#b8dcff] pl-4 text-sm">
           {timeline.map((e) => (
             <li key={e.id}>
-              <strong>{date(e.occurredOn)}</strong> · {e.note}
+              <strong>{date(e.occurredOn)}</strong> · {e.id === "partnership" || e.id === "package" ? e.note : <span data-admin-i18n-ignore="true">{e.note}</span>}
             </li>
           ))}
         </ol>
@@ -518,7 +515,7 @@ export function ComparisonReport({
     </>
   )
 }
-function Milestone({ title, value }: { title: string; value: string }) {
+function Milestone({ title, value }: { title: string; value: ReactNode }) {
   return (
     <div className="rounded-md bg-[#f3f8ff] p-3">
       <p className="text-xs text-[#0b75d9]">{title}</p>

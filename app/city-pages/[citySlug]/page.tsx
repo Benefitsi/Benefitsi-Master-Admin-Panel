@@ -1,3 +1,4 @@
+import { AdminDate } from "@/components/admin-format"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -426,9 +427,9 @@ export default async function CityPageDetail({
                   </p>
                 </div>
                 <div className="min-w-0">
-                  <h3 className="truncate font-black">{record.title}</h3>
+                  <h3 className="truncate font-black"><span data-admin-i18n-ignore="true">{record.title}</span></h3>
                   <p className="mt-1 line-clamp-2 text-sm leading-6 text-[#617080]">
-                    {record.description}
+                    <span data-admin-i18n-ignore="true">{record.description}</span>
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">
@@ -540,10 +541,10 @@ function formatDate(value: string | null) {
   const date = new Date(value)
   return Number.isNaN(date.getTime())
     ? "unbekannt"
-    : new Intl.DateTimeFormat("de-DE", {
+    : <AdminDate value={value} options={{
         dateStyle: "medium",
         timeStyle: "short",
-      }).format(date)
+      }} />
 }
 
 function BackIcon({ className }: { className?: string }) {

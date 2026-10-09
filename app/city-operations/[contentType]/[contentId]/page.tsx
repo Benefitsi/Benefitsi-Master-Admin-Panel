@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+import { AdminDate } from "@/components/admin-format"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { AdminShell } from "@/app/admin-shell"
@@ -117,14 +119,14 @@ export default async function CityReviewDetailPage({
               <ReviewStatus record={record} />
             </div>
             <p className="mt-5 whitespace-pre-line text-[15px] leading-7 text-[#334454]">
-              {record.description}
+              <span data-admin-i18n-ignore="true">{record.description}</span>
             </p>
             <dl className="mt-6 grid gap-4 border-t border-[#061829]/10 pt-5 text-sm sm:grid-cols-2">
               <Datum label="Kategorie" value={record.category} />
               <Datum label="Inhaltsstatus" value={record.contentStatus} />
               <Datum label="Beginn" value={formatDate(record.startsAt)} />
               <Datum label="Verifiziertes Ende" value={formatDate(record.endsAt)} />
-              <Datum label="Ablauf" value={formatDate(record.expiresAt)} />
+              <Datum label="Ablaufdatum" value={formatDate(record.expiresAt)} />
               <Datum label="Agent-Profil" value={record.agentProfile} />
             </dl>
           </section>
@@ -151,7 +153,7 @@ export default async function CityReviewDetailPage({
             <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-xl font-black tracking-[-0.025em]">
-                  {record.sourceName || "Quelle ohne Bezeichnung"}
+                  {record.sourceName ? <span data-admin-i18n-ignore="true">{record.sourceName}</span> : "Quelle ohne Bezeichnung"}
                 </h2>
                 <p className="mt-2 text-sm text-[#526170]">
                   Status: {record.sourceStatus} · zuletzt geprüft:{" "}
@@ -278,7 +280,7 @@ export default async function CityReviewDetailPage({
                     </p>
                     {typeof entry.details.note === "string" ? (
                       <p className="mt-1 text-sm leading-6 text-[#334454]">
-                        {entry.details.note}
+                        <span data-admin-i18n-ignore="true">{entry.details.note}</span>
                       </p>
                     ) : null}
                   </li>
@@ -348,7 +350,7 @@ function HiddenReviewFields({
   )
 }
 
-function Datum({ label, value }: { label: string; value: string | null }) {
+function Datum({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
       <dt className="text-xs font-bold text-[#617080]">{label}</dt>
@@ -362,11 +364,11 @@ function formatDate(value: string | null) {
   const date = new Date(value)
   return Number.isNaN(date.getTime())
     ? value
-    : new Intl.DateTimeFormat("de-DE", {
+    : <AdminDate value={value} options={{
         dateStyle: "medium",
         timeStyle: "short",
         timeZone: "Europe/Berlin",
-      }).format(date)
+      }} />
 }
 
 function auditLabel(action: string) {

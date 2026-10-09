@@ -1,14 +1,15 @@
+import { AdminDate, AdminNumber } from "@/components/admin-format"
 import type { StoredObservation } from '@/lib/seo/collection-store'
 import { collectionLabels, collectionStateLabels, type CollectionKind } from '@/lib/seo/collection-config'
 import { retryCollectionRun } from './actions'
 
-const number = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? new Intl.NumberFormat('de-DE').format(value) : 'Noch keine Daten'
+const number = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? <AdminNumber value={value} /> : 'Noch keine Daten'
 const text = (value: unknown) => typeof value === 'string' && value ? value : 'Noch keine Daten'
 const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
 const list = (value: unknown): unknown[] => Array.isArray(value) ? value : []
 const date = (value: unknown) => {
   if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) return 'Noch keine Daten'
-  return new Intl.DateTimeFormat('de-DE', {day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'}).format(new Date(value))
+  return <AdminDate value={value} options={{ day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }} />
 }
 export function WebLink({value}: {value: unknown}) {
   if (typeof value !== 'string') return <span>Noch keine Daten</span>
@@ -17,7 +18,7 @@ export function WebLink({value}: {value: unknown}) {
     const url = new URL(value)
     if (['https:', 'http:'].includes(url.protocol) && !url.username && !url.password) safeHref = url.href
   } catch { /* Display the text without a link. */ }
-  return safeHref ? <a className="break-all text-[#0b75d9] underline" href={safeHref} target="_blank" rel="noopener noreferrer">{value}</a> : <span>{value}</span>
+  return safeHref ? <a data-admin-i18n-ignore="true" className="break-all text-[#0b75d9] underline" href={safeHref} target="_blank" rel="noopener noreferrer">{value}</a> : <span data-admin-i18n-ignore="true">{value}</span>
 }
 const findingLabels: Record<string, string> = {
   missing_title: 'Seitentitel fehlt', noindex: 'Noindex beobachtet', broken_link: 'Defekter Link',
@@ -38,8 +39,8 @@ function Gsc({data}: {data: Record<string, unknown>}) {
     const period = record(raw), totals = record(period.totals), queries = list(period.queries)
     return <div key={index} className="border-l-2 border-[#b8dcff] pl-3">
       <p className="font-medium">{text(period.startDate)}–{text(period.endDate)} · 28 Tage</p>
-      <p>Klicks {number(totals.clicks)} · Impressionen {number(totals.impressions)} · CTR {typeof totals.ctr === 'number' ? `${(totals.ctr * 100).toLocaleString('de-DE', {maximumFractionDigits: 1})} %` : 'Noch keine Daten'} · Durchschnittsposition {number(totals.averagePosition)} (kein Keyword-Rang)</p>
-      {queries.length > 0 && <details className="mt-1"><summary className="cursor-pointer text-[#0b75d9]">Top-Suchanfragen · Stichprobe bis 100</summary><ul className="mt-1 list-disc pl-5">{queries.slice(0, 100).map((item, rowIndex) => {const query = record(item); return <li key={rowIndex}>{text(query.query)} · {number(query.clicks)} Klicks · Durchschnittsposition {number(query.averagePosition)}</li>})}</ul></details>}
+      <p>Klicks {number(totals.clicks)} · Impressionen {number(totals.impressions)} · CTR {typeof totals.ctr === 'number' ? <><AdminNumber value={totals.ctr * 100} options={{ maximumFractionDigits: 1 }} /> %</> : 'Noch keine Daten'} · Durchschnittsposition {number(totals.averagePosition)} (kein Keyword-Rang)</p>
+      {queries.length > 0 && <details className="mt-1"><summary className="cursor-pointer text-[#0b75d9]">Top-Suchanfragen · Stichprobe bis 100</summary><ul className="mt-1 list-disc pl-5">{queries.slice(0, 100).map((item, rowIndex) => {const query = record(item); return <li key={rowIndex}><span data-admin-i18n-ignore="true">{text(query.query)}</span> · {number(query.clicks)} Klicks · Durchschnittsposition {number(query.averagePosition)}</li>})}</ul></details>}
     </div>
   })}<p className="text-xs text-zinc-500">Anonymisierte Suchanfragen können in der Stichprobe fehlen. Die beiden Zeiträume bleiben getrennt.</p></div>
 }
@@ -67,13 +68,13 @@ const metricLabels: Record<string, string> = {lcpMs: 'LCP', fcpMs: 'FCP', tbtMs:
 function Psi({data}: {data: Record<string, unknown>}) {
   if (!Object.keys(data).length) return <p>Noch keine Daten</p>
   const categories = record(data.categories), metrics = record(data.metrics)
-  return <div><p>Mobile Labormessung · <WebLink value={data.finalUrl}/></p><p>{Object.entries(psiLabels).map(([key, label]) => `${label}: ${number(categories[key])}`).join(' · ')}</p><p>{Object.entries(metricLabels).map(([key, label]) => `${label}: ${number(metrics[key])}${key === 'cls' || metrics[key] == null ? '' : ' ms'}`).join(' · ')}</p></div>
+  return <div><p>Mobile Labormessung · <WebLink value={data.finalUrl}/></p><p>{Object.entries(psiLabels).map(([key, label], index) => <span key={key}>{index ? ' · ' : ''}{label}: {number(categories[key])}</span>)}</p><p>{Object.entries(metricLabels).map(([key, label], index) => <span key={key}>{index ? ' · ' : ''}{label}: {number(metrics[key])}{key === 'cls' || metrics[key] == null ? '' : ' ms'}</span>)}</p></div>
 }
 function Rank({data}: {data: Record<string, unknown>}) {
   const results = list(data.results)
   if (!results.length) return <p>Noch keine Daten</p>
   return <div><p>{number(data.known)} von {number(data.total)} Keywords mit auswertbarem Zustand · organische Top 10</p>
-    <ul className="mt-1 list-disc pl-5">{results.map((raw, index) => {const row = record(raw); return <li key={index}>{text(row.keyword)}: {row.state === 'ranked' ? `Platz ${number(row.position)}` : row.state === 'outside' ? 'außerhalb Top 10' : 'unbekannt'}{row.state === 'ranked' && row.rankingUrl ? <> · <WebLink value={row.rankingUrl}/></> : null}</li>})}</ul>
+    <ul className="mt-1 list-disc pl-5">{results.map((raw, index) => {const row = record(raw); return <li key={index}><span data-admin-i18n-ignore="true">{text(row.keyword)}</span>: {row.state === 'ranked' ? <>Suchposition {number(row.position)}</> : row.state === 'outside' ? 'außerhalb Top 10' : 'unbekannt'}{row.state === 'ranked' && row.rankingUrl ? <> · <WebLink value={row.rankingUrl}/></> : null}</li>})}</ul>
     <p className="mt-1 text-xs text-zinc-500">Eine Veränderung kann erst mit einem ausdrücklich festgeschriebenen Ausgangsstand bewertet werden.</p>
   </div>
 }

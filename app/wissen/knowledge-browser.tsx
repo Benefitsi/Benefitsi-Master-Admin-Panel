@@ -1,3 +1,5 @@
+import { AdminDate } from "@/components/admin-format"
+import type { ReactNode } from "react"
 import Link from "next/link"
 import type {
   BenefitsiKnowledgeStatus,
@@ -99,8 +101,8 @@ export function KnowledgeBrowser({
               <tbody className="divide-y divide-[#061829]/8">
                 {search.items.map((item) => (
                   <tr key={item.id} className="transition hover:bg-[#f7fbff]">
-                    <td className="px-5 py-4 font-bold text-[#061829]">{item.title}</td>
-                    <td className="px-5 py-4 font-mono text-xs text-[#526170]">{item.relativePath}</td>
+                    <td data-admin-i18n-ignore="true" className="px-5 py-4 font-bold text-[#061829]">{item.title}</td>
+                    <td data-admin-i18n-ignore="true" className="px-5 py-4 font-mono text-xs text-[#526170]">{item.relativePath}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-[#617080]">{formatDate(item.sourceModifiedAt)}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-[#617080]">{formatDate(item.syncedAt)}</td>
                     <td className="px-5 py-4">
@@ -160,7 +162,7 @@ export function KnowledgeBrowser({
               Schreibgeschützte Detailansicht
             </p>
             <h2 className="mt-1 text-xl font-black tracking-[-0.025em]">
-              {detail ? detail.title : "Dokument öffnen"}
+              {detail ? <span data-admin-i18n-ignore="true">{detail.title}</span> : "Dokument öffnen"}
             </h2>
           </div>
           {detail ? (
@@ -172,12 +174,12 @@ export function KnowledgeBrowser({
         {detail ? (
           <div className="mt-5 space-y-4" aria-readonly="true">
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-[#617080]">
-              <span><strong className="text-[#526170]">Relativer Pfad:</strong> {detail.relativePath}</span>
+              <span><strong className="text-[#526170]">Relativer Pfad:</strong> <span data-admin-i18n-ignore="true">{detail.relativePath}</span></span>
               <span><strong className="text-[#526170]">Geändert:</strong> {formatDate(detail.sourceModifiedAt)}</span>
               <span><strong className="text-[#526170]">Synchronisiert:</strong> {formatDate(detail.syncedAt)}</span>
               <span><strong className="text-[#526170]">Gelöscht:</strong> {detail.isDeleted ? "Ja" : "Nein"}</span>
             </div>
-            <pre className="max-h-[42rem] overflow-auto whitespace-pre-wrap rounded-2xl border border-[#061829]/10 bg-[#f7f8fa] p-5 font-mono text-xs leading-6 text-[#263849]">
+            <pre data-admin-i18n-ignore="true" className="max-h-[42rem] overflow-auto whitespace-pre-wrap rounded-2xl border border-[#061829]/10 bg-[#f7f8fa] p-5 font-mono text-xs leading-6 text-[#263849]">
               {detail.content}
             </pre>
           </div>
@@ -191,7 +193,7 @@ export function KnowledgeBrowser({
   )
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="bg-[#061829] px-4 py-4 sm:px-5">
       <p className="text-xs font-black uppercase tracking-[0.1em] text-white/50">{label}</p>
@@ -219,15 +221,9 @@ function StatusPill({ status }: { status: string }) {
 }
 
 function formatDate(value: string | null) {
-  if (!value) return "Nicht verfügbar"
-  try {
-    return new Intl.DateTimeFormat("de-DE", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value))
-  } catch {
-    return "Nicht verfügbar"
-  }
+  return value && Number.isFinite(Date.parse(value))
+    ? <AdminDate value={value} options={{ dateStyle: "medium", timeStyle: "short" }} />
+    : "Nicht verfügbar"
 }
 
 function pageHref(query: string, page: number) {

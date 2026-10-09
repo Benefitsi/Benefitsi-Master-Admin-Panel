@@ -8,6 +8,7 @@ import {
 } from "@/lib/microsites"
 import { MicrositeIntegrationProvider, type MicrositeCommerceAction } from "@/components/microsite/microsite-integration"
 import { MicrositeRenderer } from "@/components/microsite/microsite-renderer"
+import { AdminLanguageControl, AdminLanguageProvider } from "@/app/admin-language"
 import { micrositeVersions } from "@/lib/microsite-workflow"
 
 export function MicrositePreviewShell({
@@ -99,13 +100,14 @@ export function MicrositePreviewShell({
   }, [partner.microsite, previewSource, useBuilderDraft])
 
   return (
-    <main className="min-h-screen min-w-0 overflow-x-clip bg-[#f7f6f3] px-2 py-3 sm:px-5 sm:py-5">
+    <AdminLanguageProvider initialLanguage={previewBasePath.startsWith("/partner/") ? "de" : "en"}><main className="min-h-screen min-w-0 overflow-x-clip bg-[#f7f6f3] px-2 py-3 sm:px-5 sm:py-5">
       <div className="mx-auto mb-3 flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs font-semibold">
         <div className="space-y-2">
           <span className="inline-flex rounded-full border border-sky-200 bg-white px-3 py-2 text-sky-900">{statusLabel}</span>
           <p className="max-w-xl font-normal text-zinc-600">{useBuilderDraft ? "Hier siehst du deine aktuellen Änderungen. Mit Speichern sicherst du sie; mit Veröffentlichen werden sie öffentlich." : "Diese Vorschau zeigt den gespeicherten Stand. Deine Änderungen bearbeitest du im Builder."}</p>
         </div>
         <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+          <AdminLanguageControl />
           <a className="rounded-md bg-teal-700 px-3 py-2 text-center text-white" href={builderHref}>Bearbeiten</a>
           {versions.published ? <a className="rounded-md border border-emerald-200 bg-white px-3 py-2 text-center text-emerald-800" href={liveHref} target="_blank" rel="noreferrer">Live-Seite · Version {versions.published.version_number ?? "–"}</a> : null}
           <a
@@ -124,7 +126,7 @@ export function MicrositePreviewShell({
           </details>
         </div>
       </div>
-      <div className={isMobile ? "mx-auto w-full min-w-0 max-w-[390px]" : "min-w-0"}>
+      <div data-admin-i18n-ignore="true" className={isMobile ? "mx-auto w-full min-w-0 max-w-[390px]" : "min-w-0"}>
         <MicrositeIntegrationProvider value={{ commerceActions }}>
         <MicrositeRenderer
           partner={partner}
@@ -137,7 +139,7 @@ export function MicrositePreviewShell({
         />
         </MicrositeIntegrationProvider>
       </div>
-    </main>
+    </main></AdminLanguageProvider>
   )
 }
 

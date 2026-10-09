@@ -696,7 +696,7 @@ const builderTranslations: Record<string, string> = {
   "Prozent": "Percent",
   "Stern": "Star",
   "Uhr": "Clock",
-  "Haken": "Check",
+  "Haken": "Check mark",
   "Standort": "Location",
   "Schild": "Shield",
   "Datenschutz": "Privacy",
@@ -3593,7 +3593,7 @@ function MenuImagesEditor({
           className="h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
         >
           {allItems.map((item) => (
-            <option key={micrositeMenuItemKey(item)} value={micrositeMenuItemKey(item)}>
+            <option key={micrositeMenuItemKey(item)} value={micrositeMenuItemKey(item)} data-admin-i18n-ignore={Boolean(item.name)}>
               {micrositeMenuItemDisplayName(item.name) || tr(sectionLabel === "Speisekarte" ? "Gericht" : "Eintrag")}
             </option>
           ))}
@@ -3623,7 +3623,7 @@ function MenuImagesEditor({
         </div>
         <div className="space-y-3 p-3">
           <div className="flex min-h-10 items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3">
-            <span className="min-w-0 truncate text-xs font-black text-zinc-900">
+            <span data-admin-i18n-ignore={Boolean(featuredItem.name)} className="min-w-0 truncate text-xs font-black text-zinc-900">
               {micrositeMenuItemDisplayName(featuredItem.name) || tr(sectionLabel === "Speisekarte" ? "Gericht" : "Eintrag")}
             </span>
             <label className="flex shrink-0 items-center gap-2 text-xs font-bold text-zinc-700">
@@ -3715,7 +3715,7 @@ function MenuImagesEditor({
                   </span>
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs font-black text-zinc-900">
+                  <span data-admin-i18n-ignore={Boolean(item.name)} className="block truncate text-xs font-black text-zinc-900">
                     {micrositeMenuItemDisplayName(item.name) || tr(sectionLabel === "Speisekarte" ? "Gericht" : "Eintrag")}
                   </span>
                   <span className="mt-0.5 block text-xs font-medium text-zinc-500">

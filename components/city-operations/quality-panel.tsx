@@ -1,3 +1,4 @@
+import { AdminDate } from "@/components/admin-format"
 import type { DirectoryQualityData } from "@/lib/city-operations/quality-data"
 import type { PlaceQualityIssue, SourceQualityIssue, SourceSchedule } from "@/lib/city-operations/quality"
 
@@ -19,7 +20,7 @@ const comparisonLabels: Record<string, string> = { baseline: "Erster Quellenabgl
 const linkStyle = "inline-flex min-h-10 items-center text-sm font-bold text-[#0b75d9] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
 
 function date(value: string | null) {
-  return value ? new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(value)) : "Kein gültiger Beleg"
+  return value ? <AdminDate value={value} options={{ dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }} /> : "Kein gültiger Beleg"
 }
 
 export function DirectoryQualityPanel({ data }: { data: DirectoryQualityData }) {
@@ -48,8 +49,8 @@ export function DirectoryQualityPanel({ data }: { data: DirectoryQualityData }) 
             <p className="mt-1 text-xs text-[#617080]">{counts.missingFields} fehlende Angaben · {counts.unverifiedPlaces} ohne Prüfdatum · {counts.stalePlaces} erneut fällig</p>
             <ul className="mt-3 max-h-[34rem] divide-y divide-[#061829]/10 overflow-y-auto">
               {quality.places.map((place) => <li key={place.id} className="py-3 first:pt-0">
-                <p className="break-words text-sm font-bold">{place.title} <span className="font-normal text-[#617080]">· {place.cityName}</span></p>
-                <p className="mt-1 text-sm text-amber-900">{place.issues.map((issue) => placeLabels[issue]).join(" · ")}</p>
+                <p className="break-words text-sm font-bold"><span data-admin-i18n-ignore="true">{place.title}</span> <span className="font-normal text-[#617080]">· <span data-admin-i18n-ignore="true">{place.cityName}</span></span></p>
+                <p className="mt-1 text-sm text-amber-900">{place.issues.map((issue, index) => <span key={issue}>{index ? " · " : ""}{placeLabels[issue]}</span>)}</p>
                 <p className="mt-1 text-xs leading-5 text-[#617080]">Letzte redaktionelle Prüfung: {date(place.lastVerifiedAt)}<br />Fällig: {place.dueAt ? date(place.dueAt) : "Jetzt Beleg prüfen"}</p>
                 <div className="flex flex-wrap gap-x-4">
                   {place.editorHref && <a href={place.editorHref} className={linkStyle}>Eintrag bearbeiten</a>}
@@ -66,10 +67,10 @@ export function DirectoryQualityPanel({ data }: { data: DirectoryQualityData }) 
             {!data.checksAvailable && <p role="status" className="mt-3 text-sm font-semibold text-amber-900">Prüfbelege unvollständig: letzter Stand und Fälligkeit können nicht abschließend beurteilt werden.</p>}
             <ul className="mt-3 max-h-[34rem] divide-y divide-[#061829]/10 overflow-y-auto">
               {quality.sources.map((source) => <li key={source.id} className="py-3 first:pt-0">
-                <p className="break-words text-sm font-bold">{source.title} <span className="font-normal text-[#617080]">· {source.cityName}</span></p>
-                <p className="mt-1 break-words text-xs text-[#617080]">Zuständig: {source.owner} · Ablauf: {source.cadenceOwner}</p>
-                <p className="mt-1 text-sm font-semibold">{scheduleLabels[source.schedule]}{source.dueAt && ` · Fällig: ${date(source.dueAt)}`}</p>
-                {!!source.issues.length && <p className="mt-1 text-sm text-amber-900">{source.issues.map((issue) => sourceLabels[issue]).join(" · ")}</p>}
+                <p className="break-words text-sm font-bold"><span data-admin-i18n-ignore="true">{source.title}</span> <span className="font-normal text-[#617080]">· <span data-admin-i18n-ignore="true">{source.cityName}</span></span></p>
+                <p className="mt-1 break-words text-xs text-[#617080]">Zuständig: <span data-admin-i18n-ignore="true">{source.owner}</span> · Ablauf: <span data-admin-i18n-ignore="true">{source.cadenceOwner}</span></p>
+                <p className="mt-1 text-sm font-semibold">{scheduleLabels[source.schedule]}{source.dueAt && <> · Fällig: {date(source.dueAt)}</>}</p>
+                {!!source.issues.length && <p className="mt-1 text-sm text-amber-900">{source.issues.map((issue, index) => <span key={issue}>{index ? " · " : ""}{sourceLabels[issue]}</span>)}</p>}
                 {source.latestCheck ? <details className="mt-2 text-xs text-[#617080]">
                   <summary className="cursor-pointer leading-5">Letzter passender Beleg: {date(source.latestCheck.checkedAt)} · {comparisonLabels[source.latestCheck.comparison] ?? "Unbekannt"}{source.latestCheck.httpStatus !== null && ` · HTTP ${source.latestCheck.httpStatus}`}</summary>
                   <dl className="mt-2 grid gap-1 break-all leading-5">

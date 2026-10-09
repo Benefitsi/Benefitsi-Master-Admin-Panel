@@ -1,3 +1,6 @@
+"use client";
+import { useAdminLocale } from "@/app/admin-language";
+import { AdminNumber } from '@/components/admin-format'
 import type { ReactNode } from 'react'
 import {
   VisitChart,
@@ -32,23 +35,23 @@ import {
   type AggregateRow,
   type Json,
 } from '@/lib/partners/insights'
-const number = (value: number) =>
-  new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(value)
-const percent = (value: number) =>
-  new Intl.NumberFormat('de-DE', {
+const number = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(value)
+const percent = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale, {
     style: 'percent',
     maximumFractionDigits: 1,
   }).format(value)
 const status = (value: unknown) =>
   statusLabels[safeStatus(value)] ?? 'Nicht verfügbar'
-function valueLabel(key: string, metric?: Metric) {
+function valueLabel(key: string, metric: Metric | undefined, locale: string) {
   const value = metricNumber(metric)
   return value === null ||
     (['return_30d', 'returning_guest_share'].includes(key) && value > 1)
     ? '—'
     : ['return_30d', 'returning_guest_share'].includes(key)
-      ? percent(value)
-      : number(value)
+      ? percent(value, locale)
+      : number(value, locale)
 }
 const panel = 'min-w-0 rounded-3xl border border-slate-200 bg-white p-5 sm:p-6'
 export const statisticsTopics = [
@@ -85,6 +88,7 @@ function Topic({
 // The v1 aggregate has counts but no publishable catalogue names. Keep this
 // UI-only fallback separate from the shared additive CSV projection.
 function LegacyOffers({ data }: { data: Dashboard }) {
+  const locale = useAdminLocale();
   const root = object(data.breakdowns)
   const rootStatus =
     data.definition_version === 'partner-dashboard-v1'
@@ -105,7 +109,7 @@ function LegacyOffers({ data }: { data: Dashboard }) {
         typeof week.to === 'string' &&
         Number.isFinite(Date.parse(week.from)) &&
         Number.isFinite(Date.parse(week.to))
-          ? formatBerlinRange(week.from, week.to)
+          ? formatBerlinRange(week.from, week.to, locale)
           : 'Bezugszeitraum nicht verfügbar'
       return [
         {
@@ -133,7 +137,7 @@ function LegacyOffers({ data }: { data: Dashboard }) {
           />
           {row.sample !== null && (
             <p className="mt-1 text-xs text-slate-500">
-              Datengrundlage: {number(row.sample)}
+              Datengrundlage: <span data-admin-i18n-ignore="true">{number(row.sample, locale)}</span>
             </p>
           )}
         </div>
@@ -149,10 +153,11 @@ function LegacyOffers({ data }: { data: Dashboard }) {
   )
 }
 function Scope({ section }: { section: Json }) {
+  const locale = useAdminLocale();
   const p = object(section.period)
   const validDate = (value: unknown): value is string =>
     typeof value === 'string' && Number.isFinite(Date.parse(value))
-  const date = validDate(section.as_of) ? formatBerlin(section.as_of) : null
+  const date = validDate(section.as_of) ? formatBerlin(section.as_of, locale) : null
   let caption = 'Bezugszeitraum nicht verfügbar'
   switch (section.scope) {
     case 'selected_period':
@@ -161,7 +166,7 @@ function Scope({ section }: { section: Json }) {
         validDate(p.to) &&
         Date.parse(p.from) < Date.parse(p.to)
       ) {
-        caption = formatBerlinRange(p.from, p.to)
+        caption = formatBerlinRange(p.from, p.to, locale)
       }
       break
     case 'whole_completed_iso_weeks':
@@ -188,6 +193,7 @@ function Rows({
   title?: string
   open?: boolean
 }) {
+  const locale = useAdminLocale();
   if (!rows.length)
     return (
       <p className="mt-3 text-sm text-slate-500">
@@ -224,22 +230,22 @@ function Rows({
                 <th className="min-w-40 border-b border-slate-100 p-2 font-medium">
                   {r.label}
                 </th>
-                <td className="border-b border-slate-100 p-2 tabular-nums">
-                  {r.value === null ? '—' : number(r.value)}
+                <td data-admin-i18n-ignore="true" className="border-b border-slate-100 p-2 tabular-nums">
+                  {r.value === null ? '—' : number(r.value, locale)}
                 </td>
                 <td className="border-b border-slate-100 p-2">
                   {status(r.status)}
                 </td>
-                <td className="border-b border-slate-100 p-2">
-                  {r.sample === null ? '—' : number(r.sample)}
+                <td data-admin-i18n-ignore="true" className="border-b border-slate-100 p-2">
+                  {r.sample === null ? '—' : number(r.sample, locale)}
                 </td>
                 <td className="min-w-48 border-b border-slate-100 p-2">
                   {scopeLabel(r.scope)}
                   {typeof r.from === 'string' && typeof r.to === 'string' ? (
-                    <small className="block">
+                    <small data-admin-i18n-ignore="true" className="block">
                       {r.from === r.to
-                        ? formatBerlin(r.from)
-                        : formatBerlinRange(r.from, r.to)}
+                        ? formatBerlin(r.from, locale)
+                        : formatBerlinRange(r.from, r.to, locale)}
                     </small>
                   ) : null}
                 </td>
@@ -267,13 +273,14 @@ function scopeLabel(scope: string) {
   )
 }
 function CoreMetrics({ data, keys }: { data: Dashboard; keys: string[] }) {
+  const locale = useAdminLocale();
   return (
     <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {keys.map((key) => (
         <div key={key} className="rounded-2xl bg-slate-50 p-4">
           <dt className="text-sm text-slate-600">{metricLabels[key]}</dt>
-          <dd className="mt-2 text-2xl font-bold">
-            {valueLabel(key, data.metrics[key])}
+          <dd data-admin-i18n-ignore="true" className="mt-2 text-2xl font-bold">
+            {valueLabel(key, data.metrics[key], locale)}
           </dd>
           <p className="mt-1 text-xs text-slate-500">
             {status(data.metrics[key]?.status)}
@@ -295,6 +302,7 @@ function InsightMetrics({
   rows: AggregateRow[]
   note?: string
 }) {
+  const locale = useAdminLocale();
   const section = insight(data, sectionKey),
     metricRows = rows.filter((r) => r.section === sectionKey),
     weekly = sectionKey === 'consumer_premium',
@@ -333,8 +341,8 @@ function InsightMetrics({
               .map((r, i) => (
                 <div key={i} className="rounded-2xl bg-slate-50 p-4">
                   <dt className="text-sm text-slate-600">{r.label}</dt>
-                  <dd className="mt-1 text-2xl font-bold">
-                    {r.value === null ? '—' : number(r.value)}
+                  <dd data-admin-i18n-ignore="true" className="mt-1 text-2xl font-bold">
+                    {r.value === null ? '—' : number(r.value, locale)}
                   </dd>
                   <p className="mt-1 text-xs text-slate-500">
                     {status(r.status)} · {scopeLabel(r.scope)}
@@ -345,7 +353,7 @@ function InsightMetrics({
           {sectionKey === 'stamp_program' && (
             <p className="mt-4 text-sm">
               Stempelziel:{' '}
-              {safeNumber(section.stamp_target) ?? 'Nicht verfügbar'} ·
+              {safeNumber(section.stamp_target) !== null ? <AdminNumber value={safeNumber(section.stamp_target)} /> : 'Nicht verfügbar'} ·
               Kartenzyklen sind keine Prämieneinlösungen.
             </p>
           )}
@@ -362,6 +370,7 @@ function Buckets({
   section: Json
   keyName?: string
 }) {
+  const locale = useAdminLocale();
   const buckets = safeBuckets(section, keyName),
     max = Math.max(1, ...buckets.map((b) => safeNumber(b.count) ?? 0))
   if (!released(section.status))
@@ -378,13 +387,13 @@ function Buckets({
         <div key={i}>
           <div className="flex items-start justify-between gap-3 text-sm">
             <span>{knownLabel(bucketNames, b.code, 'Unbekannte Gruppe')}</span>
-            <strong className="tabular-nums">
+            <strong data-admin-i18n-ignore="true" className="tabular-nums">
               {released(b.status) && safeNumber(b.count) !== null
-                ? number(Number(b.count))
+                ? number(Number(b.count), locale)
                 : '—'}
               {released(b.status) && safeNumber(b.share) !== null ? (
-                <small className="ml-2 font-normal text-slate-500">
-                  {percent(Number(b.share))}
+                <small data-admin-i18n-ignore="true" className="ml-2 font-normal text-slate-500">
+                  {percent(Number(b.share), locale)}
                 </small>
               ) : null}
             </strong>
@@ -407,6 +416,7 @@ function Buckets({
   )
 }
 function Peaks({ data }: { data: Dashboard }) {
+  const locale = useAdminLocale();
   const breakdown = data.breakdowns
   return (
     <div className={panel}>
@@ -432,7 +442,7 @@ function Peaks({ data }: { data: Dashboard }) {
           return (
             <details key={i} className="mt-4 border-t border-slate-100 pt-4">
               <summary className="cursor-pointer text-sm font-semibold">
-                {formatBerlinRange(String(week.from), String(week.to))} ·{' '}
+                <span data-admin-i18n-ignore="true">{formatBerlinRange(String(week.from), String(week.to), locale)}</span> ·{' '}
                 {(
                   {
                     weekday_hour: 'Wochentag & Stunde',
@@ -476,6 +486,7 @@ export function PartnerStatistics({
   data: Dashboard
   compact?: boolean
 }) {
+  const locale = useAdminLocale();
   const keys = ['visits', 'guests', 'returning_guest_share', 'redemptions'],
     icons = [Users, UserRound, History, Ticket],
     rows = compact ? [] : dashboardDetailRows(data)
@@ -492,7 +503,7 @@ export function PartnerStatistics({
     <div className="space-y-7">
       <p className="text-sm text-slate-500">
         {compact ? 'Letzte 7 Tage · ' : ''}
-        {formatBerlinRange(data.period.from, data.period.to)}
+        <span data-admin-i18n-ignore="true">{formatBerlinRange(data.period.from, data.period.to, locale)}</span>
       </p>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {keys.map((key, index) => {
@@ -507,8 +518,8 @@ export function PartnerStatistics({
               <h3 className="text-sm font-medium text-slate-600">
                 {metricLabels[key]}
               </h3>
-              <p className="mt-2 text-3xl font-bold tracking-tight xl:text-4xl">
-                {valueLabel(key, metric)}
+              <p data-admin-i18n-ignore="true" className="mt-2 text-3xl font-bold tracking-tight xl:text-4xl">
+                {valueLabel(key, metric, locale)}
               </p>
               <p className="mt-2 text-xs text-slate-500">
                 {status(metric?.status)}
@@ -519,12 +530,12 @@ export function PartnerStatistics({
                   metricNumber(metric) !== null &&
                   c.status !== 'no_comparison' &&
                   safeNumber(c.relative_change, true) !== null
-                    ? `${percent(c.relative_change!)} zum Vergleichszeitraum`
+                    ? `${percent(c.relative_change!, locale)} zum Vergleichszeitraum`
                     : 'Kein relativer Vergleich möglich'}
                   {validComparison &&
                   metricNumber(metric) !== null &&
                   safeNumber(c.previous) !== null
-                    ? ` · zuvor ${valueLabel(key, { status: 'ok', value: c.previous })}`
+                    ? ` · zuvor ${valueLabel(key, { status: 'ok', value: c.previous }, locale)}`
                     : ''}
                 </p>
               )}
@@ -609,7 +620,7 @@ export function PartnerStatistics({
                 Rückkehr innerhalb von 30 Tagen ein.
                 {data.metrics.return_30d?.coverage_from &&
                 data.metrics.return_30d?.coverage_to
-                  ? ` Abdeckung: ${formatBerlinRange(data.metrics.return_30d.coverage_from, data.metrics.return_30d.coverage_to)}.`
+                  ? ` Abdeckung: ${formatBerlinRange(data.metrics.return_30d.coverage_from, data.metrics.return_30d.coverage_to, locale)}.`
                   : ''}
               </p>
             </div>
@@ -718,7 +729,7 @@ export function PartnerStatistics({
                         <p className="text-xs text-slate-500">
                           {typeof r.from === 'string' &&
                           typeof r.to === 'string'
-                            ? formatBerlinRange(r.from, r.to)
+                            ? formatBerlinRange(r.from, r.to, locale)
                             : ''}
                         </p>
                         {r.value === null ? (
@@ -785,12 +796,13 @@ export function PartnerStatistics({
               {data.comparison_period?.from && data.comparison_period?.to && (
                 <p className="mt-2 text-sm text-slate-500">
                   Vorher:{' '}
-                  {formatBerlinRange(
+                  <span data-admin-i18n-ignore="true">{formatBerlinRange(
                     data.comparison_period.from,
                     data.comparison_period.to,
-                  )}{' '}
+                    locale,
+                  )}</span>{' '}
                   · Aktuell:{' '}
-                  {formatBerlinRange(data.period.from, data.period.to)}
+                  <span data-admin-i18n-ignore="true">{formatBerlinRange(data.period.from, data.period.to, locale)}</span>
                 </p>
               )}
               <p className="mt-3 text-sm text-slate-500">
@@ -814,13 +826,13 @@ export function PartnerStatistics({
                 Antworten erforderlich.
                 {typeof feedbackScope.from === 'string' &&
                 typeof feedbackScope.to === 'string'
-                  ? ` ${formatBerlinRange(feedbackScope.from, feedbackScope.to)}.`
+                  ? ` ${formatBerlinRange(feedbackScope.from, feedbackScope.to, locale)}.`
                   : ''}
               </p>
-              <p className="mt-4 text-4xl font-bold">
+              <p data-admin-i18n-ignore="true" className="mt-4 text-4xl font-bold">
                 {feedback?.status === 'ok' &&
                 safeRating(feedback.average_rating) !== null
-                  ? `${number(feedback.average_rating!)} / 5`
+                  ? `${number(feedback.average_rating!, locale)} / 5`
                   : '—'}
               </p>
               <p className="mt-2 text-sm text-slate-600">
@@ -829,7 +841,7 @@ export function PartnerStatistics({
                   : status(feedback?.status)}
                 {released(feedback?.status) &&
                 safeNumber(feedback?.response_count) !== null
-                  ? ` · ${number(feedback.response_count!)} Antworten`
+                  ? ` · ${number(feedback.response_count!, locale)} Antworten`
                   : ''}
               </p>
               {feedback?.status === 'ok' &&

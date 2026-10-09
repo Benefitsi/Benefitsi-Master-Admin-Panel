@@ -1,8 +1,10 @@
-import {readFileSync} from 'node:fs'
+import {existsSync,readFileSync} from 'node:fs'
 import {createRequire} from 'node:module'
+import {posix} from 'node:path'
 import ts from 'typescript'
 const require=createRequire(import.meta.url),cache=new Map()
 export function loadUi(relative) {
+ relative=['','.ts','.tsx','.js','.json'].map(suffix=>relative+suffix).find(candidate=>existsSync(new URL('../../'+candidate,import.meta.url)))??relative
  if(cache.has(relative))return cache.get(relative)
  if(relative.endsWith('.json'))return JSON.parse(readFileSync(new URL('../../'+relative,import.meta.url),'utf8'))
  const source=readFileSync(new URL('../../'+relative,import.meta.url),'utf8')
@@ -14,8 +16,8 @@ export function loadUi(relative) {
   if(id==='next/navigation')return {useRouter:()=>({refresh:()=>{}})}
   if(id==='@/app/partner/plan-actions')return {loadPartnerPlanPanel:async()=>{throw new Error('Synthetic preview has no server connection')},updatePartnerPlan:async()=>({ok:false,message:'Statische Vorschau – keine Änderung gespeichert.'})}
   if(id==='@/app/partner/crm-actions')return {updatePartnerEditorial:async()=>({ok:false,message:'No test server mutation'})}
-  if(id.endsWith('.json'))return loadUi(id.slice(2))
-  if(id.startsWith('@/')){const base=id.slice(2);return loadUi(base+(base.startsWith('components/')?'.tsx':'.ts'))}
+  if(id.startsWith('@/'))return loadUi(id.slice(2))
+  if(id.startsWith('.'))return loadUi(posix.join(posix.dirname(relative),id))
   return require(id)
  },m,m.exports)
  cache.set(relative,m.exports);return m.exports

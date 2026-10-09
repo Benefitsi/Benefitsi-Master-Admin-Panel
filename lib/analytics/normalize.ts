@@ -195,36 +195,37 @@ export function formatAnalyticsValue(
   value: number | null,
   unit: AnalyticsMetricUnit,
   formattedValue?: string | null,
+  locale = "de-DE",
 ) {
-  if (value === null || !Number.isFinite(value)) return "Noch nicht messbar"
+  if (value === null || !Number.isFinite(value)) return locale.startsWith("en") ? "Not yet measurable" : "Noch nicht messbar"
   if (formattedValue) return formattedValue
 
   switch (unit) {
     case "currency_eur":
-      return new Intl.NumberFormat("de-DE", {
+      return new Intl.NumberFormat(locale, {
         style: "currency",
         currency: "EUR",
         maximumFractionDigits: Math.abs(value) >= 100 ? 0 : 2,
       }).format(value)
     case "percent":
     case "percentage_points":
-      return `${formatNumber(value, 1)} %`
+      return `${formatNumber(value, 1, locale)} %`
     case "ratio":
-      return `${formatNumber(value, 2)}×`
+      return `${formatNumber(value, 2, locale)}×`
     case "score":
-      return `${formatNumber(value, 1)} / 100`
+      return `${formatNumber(value, 1, locale)} / 100`
     case "days":
-      return `${formatNumber(value, 1)} Tage`
+      return `${formatNumber(value, 1, locale)} ${locale.startsWith("en") ? "days" : "Tage"}`
     case "hours":
-      return `${formatNumber(value, 1)} Std.`
+      return `${formatNumber(value, 1, locale)} ${locale.startsWith("en") ? "hrs." : "Std."}`
     case "minutes":
-      return `${formatNumber(value, 1)} Min.`
+      return `${formatNumber(value, 1, locale)} ${locale.startsWith("en") ? "min." : "Min."}`
     case "seconds":
-      return `${formatNumber(value, 1)} Sek.`
+      return `${formatNumber(value, 1, locale)} ${locale.startsWith("en") ? "sec." : "Sek."}`
     case "text":
       return String(value)
     default:
-      return formatNumber(value, Math.abs(value) < 10 ? 1 : 0)
+      return formatNumber(value, Math.abs(value) < 10 ? 1 : 0, locale)
   }
 }
 
@@ -626,8 +627,8 @@ function finiteNumberOrNull(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null
 }
 
-function formatNumber(value: number, maximumFractionDigits: number) {
-  return new Intl.NumberFormat("de-DE", { maximumFractionDigits }).format(value)
+function formatNumber(value: number, maximumFractionDigits: number, locale = "de-DE") {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits }).format(value)
 }
 
 function isoTimestamp(value: unknown) {

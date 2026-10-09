@@ -45,9 +45,9 @@ export function ReviewQueueRow({ record }: { record: CityReviewRecord }) {
       className="grid gap-3 border-t border-[#061829]/10 px-4 py-4 transition hover:bg-[#f3f8ff] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#118cff] md:grid-cols-[minmax(0,1.5fr)_minmax(9rem,.6fr)_minmax(12rem,.8fr)_auto] md:items-center md:px-5"
     >
       <div className="min-w-0">
-        <p className="truncate font-black text-[#061829]">{record.title}</p>
+        <p className="truncate font-black text-[#061829]"><span data-admin-i18n-ignore="true">{record.title}</span></p>
         <p className="mt-1 line-clamp-1 text-sm text-[#617080]">
-          {record.description}
+          <span data-admin-i18n-ignore="true">{record.description}</span>
         </p>
       </div>
       <div>

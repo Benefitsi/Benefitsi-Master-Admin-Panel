@@ -1,3 +1,5 @@
+"use client";
+import { useAdminLocale } from "@/app/admin-language";
 import { useId } from "react";
 import {
   formatBerlin,
@@ -11,6 +13,7 @@ export function VisitChart({
 }: {
   series: Dashboard["series"][string];
 }) {
+  const locale = useAdminLocale();
   const id = useId(),
     buckets = chartBuckets(series);
   if (!buckets.length)
@@ -36,18 +39,18 @@ export function VisitChart({
           aria-label="Achse: Besuche"
         >
           {[1, 0.5, 0].map((n) => (
-            <span
+            <span data-admin-i18n-ignore="true"
               key={n}
               className="absolute right-0 -translate-y-1/2"
               style={{ top: `${(1 - n) * 100}%` }}
             >
-              {Math.round(max * n)}
+              {Math.round(max * n).toLocaleString(locale)}
             </span>
           ))}
         </div>
         <svg
           role="img"
-          aria-label={`Besuchsverlauf: ${buckets.length} Zeitwerte; exakte Werte in der Tabelle`}
+          aria-label={`Besuchsverlauf: ${buckets.length.toLocaleString(locale)} Zeitwerte; exakte Werte in der Tabelle`}
           viewBox="48 36 624 174"
           preserveAspectRatio="none"
           className="h-44 min-w-0 flex-1 overflow-visible sm:h-56"
@@ -90,7 +93,7 @@ export function VisitChart({
                 r="4"
                 fill="#118cff"
               >
-                <title>{`${formatBerlin(b.start)}: ${b.visits} Besuche`}</title>
+                <title>{`${formatBerlin(b.start, locale)}: ${b.visits.toLocaleString(locale)} Besuche`}</title>
               </circle>
             ))}
         </svg>
@@ -99,9 +102,9 @@ export function VisitChart({
         className="mt-3 flex flex-wrap justify-between gap-x-4 gap-y-1 pl-12 text-xs text-slate-500"
         aria-label="Zeitraum der Besuchswerte"
       >
-        <span>{formatBerlin(buckets[0].start)}</span>
+        <span data-admin-i18n-ignore="true">{formatBerlin(buckets[0].start, locale)}</span>
         {buckets.length > 1 && (
-          <span>{formatBerlin(buckets[buckets.length - 1].start)}</span>
+          <span data-admin-i18n-ignore="true">{formatBerlin(buckets[buckets.length - 1].start, locale)}</span>
         )}
       </div>
       <details className="mt-3 text-sm">
@@ -124,8 +127,8 @@ export function VisitChart({
             <tbody>
               {buckets.map((b) => (
                 <tr key={b.start} className="border-t border-slate-100">
-                  <td className="py-2">{formatBerlin(b.start)}</td>
-                  <td className="text-right">{b.visits}</td>
+                  <td data-admin-i18n-ignore="true" className="py-2">{formatBerlin(b.start, locale)}</td>
+                  <td data-admin-i18n-ignore="true" className="text-right">{b.visits.toLocaleString(locale)}</td>
                 </tr>
               ))}
             </tbody>
@@ -136,6 +139,7 @@ export function VisitChart({
   );
 }
 export function ReturningRing({ metric }: { metric?: Metric }) {
+  const locale = useAdminLocale();
   const raw = metricNumber(metric),
     value = raw !== null && raw <= 1 ? raw : null;
   return (
@@ -173,8 +177,8 @@ export function ReturningRing({ metric }: { metric?: Metric }) {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <strong className="text-3xl">
-              {new Intl.NumberFormat("de-DE", {
+            <strong data-admin-i18n-ignore="true" className="text-3xl">
+              {new Intl.NumberFormat(locale, {
                 style: "percent",
                 maximumFractionDigits: 1,
               }).format(value)}
@@ -201,13 +205,14 @@ export function DistributionBar({
   value: unknown;
   max: number;
 }) {
+  const locale = useAdminLocale();
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
     return null;
   return (
     <div className="mt-3">
       <dl className="mb-1 flex justify-between gap-3 text-sm">
         <dt>{label}</dt>
-        <dd className="font-bold">{value}</dd>
+        <dd data-admin-i18n-ignore="true" className="font-bold">{value.toLocaleString(locale)}</dd>
       </dl>
       <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
         <div

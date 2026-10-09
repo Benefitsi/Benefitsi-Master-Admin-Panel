@@ -2,16 +2,28 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react"
+import { getAdminLanguage, setAdminLanguage, subscribeAdminLanguage, type AdminLanguage } from "../lib/admin-i18n/preference"
+import { coreTranslations } from "../lib/admin-i18n/core"
+import { cityWorkspaceTranslations, cityWorkspaceTemplates } from "../lib/admin-i18n/city-workspace"
+import { operationsTranslations, operationsTemplates } from "../lib/admin-i18n/operations"
+import { partnerMicrositeTranslations, partnerMicrositeTemplates } from "../lib/admin-i18n/partner-microsite"
+import { compileTranslationTemplates, translateTemplate } from "../lib/admin-i18n/templates"
 
-export type AdminLanguage = "en" | "de"
+export type { AdminLanguage } from "../lib/admin-i18n/preference"
 
 const STORAGE_KEY = "benefitsi-admin-language"
+
+const reviewedTranslations = [...cityWorkspaceTranslations, ...operationsTranslations, ...partnerMicrositeTranslations, ...coreTranslations]
+const reviewedEnglishToGerman = new Map(reviewedTranslations)
+const reviewedGermanToEnglish = new Map(reviewedTranslations.map(([en, de]) => [de, en]))
+const reviewedTemplates = compileTranslationTemplates([...cityWorkspaceTemplates, ...operationsTemplates, ...partnerMicrositeTemplates])
 
 const translations = [
   ["Partner management", "Partnerverwaltung"],
@@ -995,14 +1007,27 @@ export function translateValue(value: string, language: AdminLanguage) {
   const leading = value.match(/^\s*/)?.[0] ?? ""
   const trailing = value.match(/\s*$/)?.[0] ?? ""
   const core = value.slice(leading.length, value.length - trailing.length)
+  const normalizedCore = core.replace(/\s+/g, " ")
+  const reviewed = (language === "de" ? reviewedEnglishToGerman : reviewedGermanToEnglish).get(normalizedCore)
+  if (reviewed) return `${leading}${reviewed}${trailing}`
+  // Reviewed copy already in the requested language must not be rewritten by
+  // legacy substring rules (for example, "Deal Drops" is a campaign name).
+  const targetDictionary = language === "de" ? reviewedGermanToEnglish : reviewedEnglishToGerman
+  if (targetDictionary.has(normalizedCore)) return value
   const dictionary = language === "de" ? englishToGerman : germanToEnglish
-  const exact = dictionary.get(core)
+  const exact = dictionary.get(normalizedCore)
 
   if (exact) {
     return `${leading}${canonicalizeBenefitSurfaceCopy(exact, language)}${trailing}`
   }
 
+  const template = translateTemplate(core, language, reviewedTemplates)
+  if (template !== undefined) return `${leading}${template}${trailing}`
+  if (translateTemplate(core, language === "de" ? "en" : "de", reviewedTemplates) !== undefined) return value
+
   if (core.endsWith(":")) {
+    const reviewedLabel = (language === "de" ? reviewedEnglishToGerman : reviewedGermanToEnglish).get(normalizedCore.slice(0, -1))
+    if (reviewedLabel) return `${leading}${reviewedLabel}:${trailing}`
     const translatedLabel = dictionary.get(core.slice(0, -1))
     if (translatedLabel) {
       return `${leading}${canonicalizeBenefitSurfaceCopy(translatedLabel, language)}:${trailing}`
@@ -1456,8 +1481,8 @@ function canonicalizeBenefitSurfaceCopy(value: string, language: AdminLanguage) 
     : [
         ["deal drops", "__BENEFIT_DEAL_DROPS__"],
         ["deal drop", "__BENEFIT_DEAL_DROP__"],
-        ["welcome deal", "__BENEFIT_WELCOME_TRIGGER__"],
-        ["comeback deal", "__BENEFIT_COMEBACK_TRIGGER__"],
+        ["welcome deal", "__BENEFIT_WELCOME_DEAL__"],
+        ["comeback deal", "__BENEFIT_COMEBACK_DEAL__"],
         ["birthday deal", "__BENEFIT_BIRTHDAY_TRIGGER__"],
       ]
 
@@ -1537,8 +1562,11 @@ export function isTranslationVariant(value: string, original: string) {
 }
 
 export function AdminLanguageProvider({ children, initialLanguage = "en", storageKey = STORAGE_KEY }: { children: ReactNode; initialLanguage?: AdminLanguage; storageKey?: string }) {
-  const [language, setLanguageState] = useState<AdminLanguage>(initialLanguage)
-  const [preferenceLoaded, setPreferenceLoaded] = useState(false)
+  const language = useSyncExternalStore(
+    useCallback(listener => subscribeAdminLanguage(storageKey, initialLanguage, listener), [storageKey, initialLanguage]),
+    useCallback(() => getAdminLanguage(storageKey, initialLanguage), [storageKey, initialLanguage]),
+    () => initialLanguage,
+  )
   const rootRef = useRef<HTMLDivElement>(null)
   const languageRef = useRef(language)
   const textOriginalsRef = useRef(new WeakMap<Text, string>())
@@ -1547,33 +1575,19 @@ export function AdminLanguageProvider({ children, initialLanguage = "en", storag
   )
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      const saved = window.localStorage.getItem(storageKey)
-      if (saved === "en" || saved === "de") {
-        setLanguageState(saved)
-      }
-      setPreferenceLoaded(true)
-    }, 0)
-
-    return () => window.clearTimeout(timeout)
-  }, [storageKey])
-
-  useEffect(() => {
-    if (!preferenceLoaded) return
-
     languageRef.current = language
-    window.localStorage.setItem(storageKey, language)
-    document.documentElement.lang = language
-
     const root = rootRef.current
     if (!root) return
+    root.lang = language
+    if (!root.parentElement?.closest("[data-admin-i18n-root]")) document.documentElement.lang = language
 
     const skipTranslation = (element: Element | null) => Boolean(
-      element?.closest('[data-admin-i18n-ignore="true"], [data-admin-i18n-pending="true"]'),
+      element?.closest('[data-admin-i18n-ignore="true"], [data-admin-i18n-pending="true"], [translate="no"], script, style, code, pre')
+      || element?.closest("[data-admin-i18n-root]") !== root,
     )
 
     const translateTextNode = (node: Text) => {
-      if (skipTranslation(node.parentElement)) return
+      if (skipTranslation(node.parentElement) || node.parentElement?.closest('textarea, [contenteditable]:not([contenteditable="false"])')) return
 
       const current = node.nodeValue ?? ""
       const originals = textOriginalsRef.current
@@ -1591,7 +1605,7 @@ export function AdminLanguageProvider({ children, initialLanguage = "en", storag
     const translateElement = (element: Element) => {
       if (skipTranslation(element)) return
 
-      const names = ["alt", "aria-label", "placeholder", "title"]
+      const names = ["alt", "aria-label", "aria-description", "placeholder", "title"]
       let originals = attributeOriginalsRef.current.get(element)
       if (!originals) {
         originals = new Map()
@@ -1617,6 +1631,7 @@ export function AdminLanguageProvider({ children, initialLanguage = "en", storag
         return
       }
       if (!(target instanceof Element)) return
+      if (skipTranslation(target)) return
       translateElement(target)
       const walker = document.createTreeWalker(
         target,
@@ -1634,28 +1649,31 @@ export function AdminLanguageProvider({ children, initialLanguage = "en", storag
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (mutation.type === "attributes") translateTree(mutation.target)
+        if (mutation.type === "attributes") {
+          if (mutation.attributeName?.startsWith("data-admin-i18n-")) translateTree(mutation.target)
+          else if (mutation.target instanceof Element) translateElement(mutation.target)
+        }
         if (mutation.type === "characterData") translateTree(mutation.target)
         mutation.addedNodes.forEach(translateTree)
       })
     })
     observer.observe(root, {
       childList: true, characterData: true, subtree: true,
-      attributes: true, attributeFilter: ["data-admin-i18n-pending"],
+      attributes: true, attributeFilter: ["data-admin-i18n-pending", "data-admin-i18n-ignore", "alt", "aria-label", "aria-description", "placeholder", "title"],
     })
 
     return () => observer.disconnect()
-  }, [language, preferenceLoaded, storageKey])
+  }, [language])
 
   const setLanguage = (nextLanguage: AdminLanguage) => {
-    setLanguageState(nextLanguage)
+    setAdminLanguage(storageKey, initialLanguage, nextLanguage)
   }
 
   const tr = (value: string) => translateValue(value, language)
 
   return (
     <AdminLanguageContext.Provider value={{ language, setLanguage, tr }}>
-      <div ref={rootRef} className="admin-ui contents">
+      <div ref={rootRef} data-admin-i18n-root="true" className="admin-ui contents">
         {children}
       </div>
     </AdminLanguageContext.Provider>
@@ -1666,6 +1684,12 @@ export function useAdminLanguage() {
   const context = useContext(AdminLanguageContext)
   if (!context) throw new Error("useAdminLanguage must be used inside AdminLanguageProvider")
   return context
+}
+
+/** Formatted leaves also occur in standalone previews without an admin shell. */
+export function useAdminLocale() {
+  const context = useContext(AdminLanguageContext)
+  return context?.language === "en" ? "en-GB" : "de-DE"
 }
 
 export function AdminLanguageControl({ className = "" }: { className?: string }) {

@@ -1,3 +1,4 @@
+import { AdminLanguageProvider } from "@/app/admin-language"
 import Link from "next/link"
 import { retrieveLegacyCheckout } from "@/lib/stripe/legacy-payments"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -28,7 +29,7 @@ export default async function BookingSuccessPage({
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#f7f6f1] px-5 text-[#061829]">
+    <AdminLanguageProvider><main className="grid min-h-screen place-items-center bg-[#f7f6f1] px-5 text-[#061829]">
       <section className="w-full max-w-xl rounded-3xl border border-[#061829]/10 bg-white p-7 text-center shadow-[0_20px_56px_rgba(6,24,41,.08)]">
         <div className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-100 text-2xl text-emerald-800">✓</div>
         <h1 className="mt-5 text-3xl font-black tracking-[-0.04em]">
@@ -42,6 +43,6 @@ export default async function BookingSuccessPage({
           Zum Booking Control
         </Link>
       </section>
-    </main>
+    </main></AdminLanguageProvider>
   )
 }

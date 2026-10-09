@@ -171,7 +171,7 @@ function CityCard({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="truncate text-2xl font-black tracking-[-0.035em]">
-                {city.name}
+                <span data-admin-i18n-ignore="true">{city.name}</span>
               </h3>
               <StatusBadge ready={city.profileComplete} />
               {city.possibleDuplicate ? (
@@ -198,8 +198,7 @@ function CityCard({
 
         {city.pendingCommunityCount > 0 ? (
           <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
-            {city.pendingCommunityCount} Community-
-            {city.pendingCommunityCount === 1 ? "Eintrag wartet" : "Einträge warten"} auf Prüfung.
+            {city.pendingCommunityCount === 1 ? "1 Community-Eintrag wartet auf Prüfung." : `${city.pendingCommunityCount} Community-Einträge warten auf Prüfung.`}
           </p>
         ) : null}
       </div>

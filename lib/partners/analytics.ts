@@ -154,8 +154,8 @@ export async function readDashboard(
     throw new Error(error?.message ?? 'Statistik konnte nicht geladen werden.')
   return data
 }
-export function formatBerlin(value: string) {
-  return new Intl.DateTimeFormat('de-DE', {
+export function formatBerlin(value: string, locale = 'de-DE') {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: dashboardTimezone,
     dateStyle: 'medium',
   }).format(new Date(value))
@@ -185,7 +185,7 @@ export const statusLabels: Record<string, string> = {
   no_comparison: 'Kein Vergleich möglich',
 }
 
-export function formatBerlinRange(from: string, to: string) {
+export function formatBerlinRange(from: string, to: string, locale = 'de-DE') {
   const end = new Date(to),
     p = berlinParts(end)
   const midnight =
@@ -194,11 +194,11 @@ export function formatBerlinRange(from: string, to: string) {
     p.second === '00' &&
     end.getUTCMilliseconds() === 0
   const endLabel = midnight
-    ? formatBerlin(new Date(end.getTime() - 1).toISOString())
-    : new Intl.DateTimeFormat('de-DE', {
+    ? formatBerlin(new Date(end.getTime() - 1).toISOString(), locale)
+    : new Intl.DateTimeFormat(locale, {
         timeZone: dashboardTimezone,
         dateStyle: 'medium',
         timeStyle: 'short',
       }).format(end)
-  return `${formatBerlin(from)} – ${endLabel}`
+  return `${formatBerlin(from, locale)} – ${endLabel}`
 }

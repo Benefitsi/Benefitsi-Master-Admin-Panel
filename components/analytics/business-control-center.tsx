@@ -1,3 +1,5 @@
+import { AdminDate } from "@/components/admin-format"
+import { AdminAnalyticsValue } from "./admin-analytics-value"
 import Link from "next/link"
 import type { ReactNode } from "react"
 import type {
@@ -14,8 +16,6 @@ import type {
   BusinessAnalyticsFilters,
   BusinessAnalyticsPayloadV1,
 } from "@/lib/analytics/contracts"
-import { periodLabel } from "@/lib/analytics/filters"
-import { formatAnalyticsValue } from "@/lib/analytics/normalize"
 
 const SECTION_META: Record<
   AnalyticsSectionKey,
@@ -277,7 +277,7 @@ function AnalyticsFilterBar({
         </div>
       </div>
       <p className="mt-3 text-xs font-medium text-[#6b7784]">
-        {periodLabel(filters)} · Zeitzone Europe/Berlin · Währung EUR
+        <AdminDate value={filters.dateFrom} options={{ dateStyle: "short", timeZone: "UTC" }} />–<AdminDate value={filters.dateTo} options={{ dateStyle: "short", timeZone: "UTC" }} /> · Vergleich <AdminDate value={filters.compareFrom} options={{ dateStyle: "short", timeZone: "UTC" }} />–<AdminDate value={filters.compareTo} options={{ dateStyle: "short", timeZone: "UTC" }} /> · Zeitzone Europe/Berlin · Währung EUR
       </p>
     </form>
   )
@@ -464,7 +464,7 @@ function KpiCard({ kpi }: { kpi: AnalyticsKpiCard }) {
           isMeasurable ? "text-[2rem]" : "text-xl"
         }`}
       >
-        {formatAnalyticsValue(kpi.value, kpi.unit, kpi.formattedValue)}
+        <AdminAnalyticsValue value={kpi.value} unit={kpi.unit} formattedValue={kpi.formattedValue} />
       </p>
       <p className="mt-1 min-h-5 text-xs font-bold text-[#526170]">
         {deltaLabel ?? "Vergleich noch nicht messbar"}
@@ -577,8 +577,8 @@ function TimeSeriesCard({ series }: { series: AnalyticsTimeSeries }) {
               {series.points.map((point, index) => (
                 <tr key={`${point.date}-${point.label ?? ""}-${index}`}>
                   <th>{point.label ?? point.date}</th>
-                  <td>{formatAnalyticsValue(point.value, series.unit)}</td>
-                  <td>{formatAnalyticsValue(point.comparisonValue, series.unit)}</td>
+                  <td><AdminAnalyticsValue value={point.value} unit={series.unit} /></td>
+                  <td><AdminAnalyticsValue value={point.comparisonValue} unit={series.unit} /></td>
                 </tr>
               ))}
             </tbody>
@@ -586,8 +586,8 @@ function TimeSeriesCard({ series }: { series: AnalyticsTimeSeries }) {
           <div className="mt-1 flex items-center justify-between gap-3 text-[11px] font-bold text-[#6b7784]">
             <span>{geometry.firstLabel}</span>
             <span>
-              {formatAnalyticsValue(geometry.min, series.unit)}–
-              {formatAnalyticsValue(geometry.max, series.unit)}
+              <AdminAnalyticsValue value={geometry.min} unit={series.unit} />–
+              <AdminAnalyticsValue value={geometry.max} unit={series.unit} />
             </span>
             <span>{geometry.lastLabel}</span>
           </div>
@@ -846,27 +846,20 @@ function FreshnessBadge({ status }: { status: AnalyticsFreshnessSource["status"]
 function formatDelta(kpi: AnalyticsKpiCard) {
   if (kpi.delta === null) return null
   const prefix = kpi.delta > 0 ? "+" : ""
-  const delta = `${prefix}${formatAnalyticsValue(kpi.delta, kpi.deltaUnit)}`
-  return `${delta} vs. vorheriger Zeitraum`
+  return <>{prefix}<AdminAnalyticsValue value={kpi.delta} unit={kpi.deltaUnit} /> vs. vorheriger Zeitraum</>
 }
 
 function formatTableValue(
   value: string | number | boolean | null,
   unit: AnalyticsMetricUnit,
 ) {
-  if (typeof value === "number") return formatAnalyticsValue(value, unit)
+  if (typeof value === "number") return <AdminAnalyticsValue value={value} unit={unit} />
   if (typeof value === "boolean") return value ? "Ja" : "Nein"
   return value ?? "—"
 }
 
 function formatTimestamp(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "Nicht verfügbar"
-  return new Intl.DateTimeFormat("de-DE", {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone: "Europe/Berlin",
-  }).format(date)
+  return Number.isFinite(Date.parse(value)) ? <AdminDate value={value} options={{ dateStyle: "short", timeStyle: "short" }} /> : "Nicht verfügbar"
 }
 
 function formatSla(minutes: number) {
@@ -936,11 +929,5 @@ function buildChartGeometry(series: AnalyticsTimeSeries) {
 
 function shortPointDate(value: string) {
   const date = new Date(`${value.slice(0, 10)}T00:00:00.000Z`)
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat("de-DE", {
-        day: "2-digit",
-        month: "2-digit",
-        timeZone: "UTC",
-      }).format(date)
+  return Number.isNaN(date.getTime()) ? value : <AdminDate value={date.getTime()} options={{ day: "2-digit", month: "2-digit", timeZone: "UTC" }} />
 }

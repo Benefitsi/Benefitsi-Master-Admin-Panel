@@ -1,11 +1,12 @@
 'use client'
 
+import { AdminDate } from "@/components/admin-format"
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import type { FinanceStatus, FinanceRun } from '@/lib/finance-agent'
 import { startFinanceCheck, refreshFinanceStatus } from './actions'
 
-const dateTime = (value: string) => new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin' }).format(new Date(value))
+const dateTime = (value: string) => <AdminDate value={value} options={{ dateStyle: "medium", timeStyle: "short" }} />
 const sourceLabel = { available: 'Vorhanden', missing: 'Fehlt', not_connected: 'Nicht angebunden' }
 const runLabel = { blocked: 'Unterlagen oder Einrichtung fehlen', needs_review: 'Vorbereitung erstellt · Prüfung offen', failed: 'Prüflauf fehlgeschlagen' }
 
@@ -35,7 +36,7 @@ export function FinanceWorkflow({ initial }: { initial: FinanceStatus | null }) 
   return <div className="space-y-6">
     <section className="rounded-2xl border border-slate-200 bg-white p-6">
       <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wide text-teal-700">Benefitsi-Agent · Auf Abruf</p><h2 className="mt-2 text-2xl font-bold">Ein geordneter Start für deine Finanzen</h2><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">Der Agent prüft freigegebene Belege und Zahlungsnachweise, meldet mögliche Dubletten und bereitet eine Übergabe vor. Steuerliche Entscheidungen und verbindliche Erklärungen benötigen qualifizierte Prüfung.</p></div><Link href="/agents" className="text-sm font-semibold text-teal-700 hover:underline">Alle Agenten</Link></div>
-      <p className="mt-4 text-sm font-semibold text-slate-700">{data ? `M1-Dienst erreichbar · beobachtet ${dateTime(data.observedAt)}` : 'Konfiguriert · M1-Dienst aktuell nicht bestätigt'}</p>
+      <p className="mt-4 text-sm font-semibold text-slate-700">{data ? <>M1-Dienst erreichbar · beobachtet {dateTime(data.observedAt)}</> : 'Konfiguriert · M1-Dienst aktuell nicht bestätigt'}</p>
       <div className="mt-5 flex flex-wrap gap-3"><button onClick={() => start('setup')} disabled={pending || !data} className="rounded-xl bg-teal-700 px-4 py-3 text-sm font-bold text-white hover:bg-teal-800 disabled:opacity-50">{pending ? 'Prüfung läuft …' : 'Einrichtungscheck starten'}</button><button onClick={() => start('review')} disabled={pending || !data} className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-bold hover:bg-slate-50 disabled:opacity-50">Belege prüfen</button><button onClick={refresh} disabled={pending} className="rounded-xl px-4 py-3 text-sm font-semibold text-teal-700 hover:bg-teal-50 disabled:opacity-50">Status aktualisieren</button></div>
       <p className="mt-3 text-xs leading-5 text-slate-500">Ein Aufruf verarbeitet höchstens 20 Belege aus dem privat bereitgestellten Eingang. Jeder Aufruf erhält eine Lauf-ID. Originale und bestehende Berichte bleiben erhalten.</p>
       {error ? <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-950">{error}</p> : null}

@@ -1,8 +1,9 @@
+import { AdminDate } from "@/components/admin-format"
 import Link from "next/link"
 import { cityRunHealth, founderActions, pipelineHealth, type FounderSnapshot } from "@/lib/founder-overview"
 
 const dateTime = (value: string | null) => value && Number.isFinite(Date.parse(value))
-  ? new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(value))
+  ? <AdminDate value={value} options={{ dateStyle: "short", timeStyle: "short" }} />
   : "Nicht nachgewiesen"
 const statusText = { ok: "Aktuell", failed: "Prüfung nötig", stale: "Veraltet", unknown: "Nicht nachgewiesen" }
 

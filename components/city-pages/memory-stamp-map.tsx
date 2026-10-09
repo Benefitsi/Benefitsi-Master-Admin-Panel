@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type * as Leaflet from 'leaflet'
 import { Check, LocateFixed, Map as MapIcon, Pentagon, Undo2, X } from 'lucide-react'
+import { translateValue, useAdminLocale } from '@/app/admin-language'
 import { memoryMapPreview, type MemoryMapPlace } from '@/lib/city-pages/memory-stamp-map'
 import type { MemoryZone } from '@/lib/city-pages/memory-stamps'
 import { maximumMemoryVertices, memoryPolygonFromVertices, type MemoryMapPoint, type MemoryPolygon } from '@/lib/city-pages/memory-polygon'
@@ -10,15 +11,18 @@ import styles from './memory-stamp-map.module.css'
 
 type Runtime = { L: typeof Leaflet; map: Leaflet.Map; layers: Leaflet.FeatureGroup }
 const coordinates = (point: [number, number]) => `${point[0]}, ${point[1]}`
-const metres = (n: number) => `${n.toLocaleString('de-DE', { maximumFractionDigits: 2 })} m`
 // Leaflet treats strings as HTML. All editor-supplied text must remain literal.
-function textLabel(text: string) { const label = document.createElement('span'); label.textContent = text; return label }
+function textLabel(text: string) { const label = document.createElement('span'); label.textContent = text; label.dataset.adminI18nIgnore = 'true'; return label }
 
 type Drawing = { key: string; vertices: MemoryMapPoint[] }
 type Props = { zones: MemoryZone[]; place?: MemoryMapPlace; disabled?: boolean; onAreaChange?: (key: string, geometry: MemoryPolygon) => void; onDrawingChange?: (active: boolean) => void }
 const control = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold disabled:opacity-50'
 
 export function MemoryStampMap({ zones, place, disabled = false, onAreaChange, onDrawingChange }: Props) {
+  const locale = useAdminLocale()
+  const language = locale === 'de-DE' ? 'de' : 'en'
+  const metres = useCallback((n: number) => `${n.toLocaleString(locale, { maximumFractionDigits: 2 })} m`, [locale])
+  const labelText = useCallback((template: string, values: (string | number)[] = []) => values.reduce<string>((text, value, index) => text.replaceAll(`{${index}}`, String(value)), translateValue(template, language)), [language])
   const container = useRef<HTMLDivElement>(null)
   const initializedMap = useRef<Leaflet.Map | null>(null)
   const fit = useRef<() => void>(() => {})
@@ -93,24 +97,24 @@ export function MemoryStampMap({ zones, place, disabled = false, onAreaChange, o
     }
     for (const zone of preview.circles) {
       const color = zone.active ? '#0b75d9' : '#64748b'
-      const description = `${zone.number}. ${zone.label}: ${metres(zone.radius)} Radius${zone.active ? '' : ' (inaktiv)'}`
+      const description = labelText('{0}. {1}: {2} Radius{3}', [zone.number, zone.label, metres(zone.radius), zone.active ? '' : labelText(' (inaktiv)')])
       L.circle(zone.center, { radius: zone.radius, color, weight: 2, fillOpacity: zone.active ? 0.13 : 0.04, dashArray: zone.active ? undefined : '6 6' }).bindTooltip(textLabel(description)).addTo(layers)
       L.circleMarker(zone.center, { radius: 8, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1 })
         .bindTooltip(textLabel(String(zone.number)), { permanent: true, direction: 'center', className: styles.number })
-        .bindPopup(textLabel(`${description}. Mittelpunkt: ${coordinates(zone.center)}`)).addTo(layers)
+        .bindPopup(textLabel(labelText('{0}. Mittelpunkt: {1}', [description, coordinates(zone.center)]))).addTo(layers)
     }
     for (const zone of preview.areas) {
       L.polygon(zone.rings, { color: zone.active ? '#0b75d9' : '#64748b', weight: 2, fillOpacity: zone.active ? 0.13 : 0.04, dashArray: zone.active ? undefined : '6 6' })
-        .bindTooltip(textLabel(`${zone.number}. ${zone.label}: Fläche, ${metres(zone.edgeTolerance)} Randtoleranz${zone.active ? '' : ' (inaktiv)'}`)).addTo(layers)
+        .bindTooltip(textLabel(labelText('{0}. {1}: Fläche, {2} Randtoleranz{3}', [zone.number, zone.label, metres(zone.edgeTolerance), zone.active ? '' : labelText(' (inaktiv)')]))).addTo(layers)
     }
     if (preview.place && hasSeparatePlace) {
       L.circleMarker(preview.place.center, { radius: 7, color: '#fff', weight: 2, fillColor: '#c25c0a', fillOpacity: 1 })
         .bindTooltip(textLabel(preview.place.name))
-        .bindPopup(textLabel(`${preview.place.name}. Koordinaten des Ortes: ${coordinates(preview.place.center)}`)).addTo(layers)
+        .bindPopup(textLabel(labelText('{0}. Koordinaten des Ortes: {1}', [preview.place.name, coordinates(preview.place.center)]))).addTo(layers)
     }
     fit.current = () => { const bounds = layers.getBounds(); if (!drawingActive.current && bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17, animate: false }) }
     fit.current()
-  }, [runtime, preview, hasSeparatePlace])
+  }, [runtime, preview, hasSeparatePlace, metres, labelText])
 
   useEffect(() => {
     if (!runtime || !drawing || disabled) return
@@ -120,7 +124,7 @@ export function MemoryStampMap({ zones, place, disabled = false, onAreaChange, o
     if (drawing.vertices.length >= 3) L.polygon(drawing.vertices, path).addTo(draft)
     else if (drawing.vertices.length === 2) L.polyline(drawing.vertices, path).addTo(draft)
     drawing.vertices.forEach((point, index) => {
-      const label = index === 0 ? 'Eckpunkt 1 – Fläche schließen' : `Eckpunkt ${index + 1} verschieben`
+      const label = labelText(index === 0 ? 'Eckpunkt 1 – Fläche schließen' : 'Eckpunkt {0} verschieben', [index + 1])
       const marker = L.marker(point, { draggable: true, keyboard: true, title: label, bubblingMouseEvents: false,
         icon: L.divIcon({ html: textLabel(String(index + 1)), className: styles.vertex, iconSize: [28, 28], iconAnchor: [14, 14] }),
       }).addTo(draft)
@@ -137,7 +141,7 @@ export function MemoryStampMap({ zones, place, disabled = false, onAreaChange, o
     map.doubleClickZoom.disable()
     map.on('click', click)
     return () => { map.off('click', click); draft.remove(); if (doubleClick) map.doubleClickZoom.enable() }
-  }, [runtime, drawing, disabled, addPoint, finishDrawing])
+  }, [runtime, drawing, disabled, addPoint, finishDrawing, labelText])
 
   return <section className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white" aria-label="Karte der Sammelbereiche">
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
@@ -146,7 +150,7 @@ export function MemoryStampMap({ zones, place, disabled = false, onAreaChange, o
     </div>
     {onAreaChange && <div className="space-y-3 border-b border-slate-200 bg-slate-50 p-4">
       {!drawing ? <div className="flex flex-wrap items-end gap-3">
-        <label className="min-w-0 flex-1 text-xs font-semibold">Sammelbereich<select aria-label="Sammelbereich zum Zeichnen" className="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedZone?.zone_key ?? ''} disabled={disabled || !zones.length} onChange={event => setSelectedKey(event.target.value)}>{!zones.length && <option value="">Zuerst einen Sammelbereich hinzufügen</option>}{zones.map((zone, index) => <option key={zone.zone_key} value={zone.zone_key}>{index + 1}. {zone.label}</option>)}</select></label>
+        <label className="min-w-0 flex-1 text-xs font-semibold">Sammelbereich<select aria-label="Sammelbereich zum Zeichnen" className="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedZone?.zone_key ?? ''} disabled={disabled || !zones.length} onChange={event => setSelectedKey(event.target.value)}>{!zones.length && <option value="">Zuerst einen Sammelbereich hinzufügen</option>}{zones.map((zone, index) => <option data-admin-i18n-ignore="true" key={zone.zone_key} value={zone.zone_key}>{index + 1}. {zone.label}</option>)}</select></label>
         <button type="button" className={control} disabled={disabled || !runtime || !hasLocation || !selectedZone || failed} onClick={startDrawing}><Pentagon size={17} aria-hidden />Freie Fläche zeichnen</button>
       </div> : <>
         <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold">Eckpunkte auf der Karte setzen</p><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-900" role="status">{drawing.vertices.length} Eckpunkte</span></div>
@@ -168,10 +172,10 @@ export function MemoryStampMap({ zones, place, disabled = false, onAreaChange, o
     <div className="space-y-3 border-t border-slate-200 p-4 text-xs leading-5">
       <div className="flex flex-wrap gap-x-5 gap-y-1 text-slate-600"><span><span className="mr-1 inline-block size-2 rounded-full bg-[#0b75d9]" />Aktiver Sammelbereich</span><span><span className="mr-1 inline-block size-2 rounded-full bg-slate-500" />Inaktiv</span>{hasSeparatePlace && <span><span className="mr-1 inline-block size-2 rounded-full bg-[#c25c0a]" />Verknüpfter Ort</span>}</div>
       <ul className="grid gap-2 sm:grid-cols-2" aria-label="Koordinaten und Radien">
-        {preview.circles.map(zone => <li key={zone.number} className="rounded-lg bg-slate-50 px-3 py-2"><p className="font-semibold text-slate-900">{zone.number}. {zone.label}{!zone.active && ' (inaktiv)'}</p><p>Radius: <strong>{metres(zone.radius)}</strong></p><p className="break-all font-mono text-[11px] text-slate-600">Breite, Länge: {coordinates(zone.center)}</p></li>)}
-        {preview.areas.map(zone => <li key={zone.number} className="rounded-lg bg-slate-50 px-3 py-2"><p className="font-semibold text-slate-900">{zone.number}. {zone.label}{!zone.active && ' (inaktiv)'}</p><p>{zone.custom ? `Freie Fläche · ${zone.rings[0].length - 1} Eckpunkte.` : 'Flächengrenze des Ortes.'} Randtoleranz: <strong>{metres(zone.edgeTolerance)}</strong> (nicht eingezeichnet).</p></li>)}
+        {preview.circles.map(zone => <li key={zone.number} className="rounded-lg bg-slate-50 px-3 py-2"><p className="font-semibold text-slate-900">{zone.number}. <span data-admin-i18n-ignore="true">{zone.label}</span>{!zone.active && ' (inaktiv)'}</p><p>Radius: <strong data-admin-i18n-ignore="true">{metres(zone.radius)}</strong></p><p className="break-all font-mono text-[11px] text-slate-600">Breite, Länge: {coordinates(zone.center)}</p></li>)}
+        {preview.areas.map(zone => <li key={zone.number} className="rounded-lg bg-slate-50 px-3 py-2"><p className="font-semibold text-slate-900">{zone.number}. <span data-admin-i18n-ignore="true">{zone.label}</span>{!zone.active && ' (inaktiv)'}</p><p>{zone.custom ? `Freie Fläche · ${zone.rings[0].length - 1} Eckpunkte.` : 'Flächengrenze des Ortes.'} Randtoleranz: <strong data-admin-i18n-ignore="true">{metres(zone.edgeTolerance)}</strong> (nicht eingezeichnet).</p></li>)}
       </ul>
-      {preview.place && <p className="break-words text-slate-600">Ort: <strong>{preview.place.name}</strong> <span className="break-all font-mono text-[11px]">({coordinates(preview.place.center)})</span></p>}
+      {preview.place && <p className="break-words text-slate-600">Ort: <strong><span data-admin-i18n-ignore="true">{preview.place.name}</span></strong> <span className="break-all font-mono text-[11px]">({coordinates(preview.place.center)})</span></p>}
       {!!preview.issues.length && <ul className="space-y-1 text-amber-800" aria-live="polite">{preview.issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>}
       {tileError && <p className="text-amber-800" role="status">Der Kartenhintergrund konnte nicht vollständig geladen werden. Die eingezeichneten Sammelbereiche und Koordinaten bleiben sichtbar.</p>}
     </div>

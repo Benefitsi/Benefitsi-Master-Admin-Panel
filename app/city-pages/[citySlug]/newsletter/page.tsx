@@ -1,3 +1,4 @@
+import { AdminDate } from "@/components/admin-format"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -142,7 +143,7 @@ function EditionCard({
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[#061829]/10 p-5 sm:p-6">
         <div>
           <p className="text-xs font-black uppercase tracking-[.14em] text-[#0b75d9]">{edition.editionKey}</p>
-          <h2 className="mt-2 text-2xl font-black">{edition.subject || "Noch ohne Betreff"}</h2>
+          <h2 className="mt-2 text-2xl font-black">{edition.subject ? <span data-admin-i18n-ignore="true">{edition.subject}</span> : "Noch ohne Betreff"}</h2>
         </div>
         <span className="rounded-full bg-[#edf2f4] px-3 py-1.5 text-xs font-black text-[#526170]">
           {statusLabels[edition.status] ?? edition.status}
@@ -202,18 +203,18 @@ function EditionCard({
         <div className="grid content-start gap-5 bg-[#f6f2e9] p-5 sm:p-6">
           <div className="overflow-hidden border border-[#d8d3c8] bg-white">
             <div className="bg-[#0b4b36] px-5 py-4 text-white">
-              <p className="text-xs font-black uppercase tracking-[.14em] text-[#efc869]">{cityName}</p>
-              <p className="mt-2 text-xl font-black">{edition.subject || "Newsletter-Vorschau"}</p>
-              {edition.preheader ? <p className="mt-1 text-xs text-white/65">{edition.preheader}</p> : null}
+              <p className="text-xs font-black uppercase tracking-[.14em] text-[#efc869]"><span data-admin-i18n-ignore="true">{cityName}</span></p>
+              <p className="mt-2 text-xl font-black">{edition.subject ? <span data-admin-i18n-ignore="true">{edition.subject}</span> : "Newsletter-Vorschau"}</p>
+              {edition.preheader ? <p className="mt-1 text-xs text-white/65"><span data-admin-i18n-ignore="true">{edition.preheader}</span></p> : null}
             </div>
             <div className="p-5">
-              <p className="text-sm leading-6 text-[#526170]">{edition.intro || "Die Einleitung erscheint hier."}</p>
+              <p className="text-sm leading-6 text-[#526170]">{edition.intro ? <span data-admin-i18n-ignore="true">{edition.intro}</span> : "Die Einleitung erscheint hier."}</p>
               <div className="mt-5 divide-y divide-[#e3e0d9] border-y border-[#e3e0d9]">
                 {edition.sections.map((section) => (
                   <section key={section.title} className="py-4">
-                    <h3 className="font-black">{section.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-[#617080]">{section.body}</p>
-                    {section.label ? <p className="mt-2 text-xs font-black text-[#0b75d9]">{section.label} →</p> : null}
+                    <h3 className="font-black"><span data-admin-i18n-ignore="true">{section.title}</span></h3>
+                    <p className="mt-2 text-sm leading-6 text-[#617080]"><span data-admin-i18n-ignore="true">{section.body}</span></p>
+                    {section.label ? <p className="mt-2 text-xs font-black text-[#0b75d9]"><span data-admin-i18n-ignore="true">{section.label}</span> →</p> : null}
                   </section>
                 ))}
               </div>
@@ -262,7 +263,7 @@ function Metric({ label, value }: { label: string; value: number }) {
 
 function formatDate(value: string) {
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "unbekannt" : new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(date)
+  return Number.isNaN(date.getTime()) ? "unbekannt" : <AdminDate value={value} options={{ dateStyle: "medium", timeStyle: "short" }} />
 }
 
 const inputClass =

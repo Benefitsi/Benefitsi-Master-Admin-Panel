@@ -124,7 +124,6 @@ jobs:
           tests/admin-navigation.test.mjs
           tests/admin-navigation-ui.test.mjs
           tests/ecosystem-streaming.test.mjs
-          tests/admin-language-hydration.test.mjs
           tests/ecosystem-overview.test.mjs
           tests/ecosystem-directory.test.mjs
           tests/ecosystem-analytics.test.mjs
@@ -133,6 +132,9 @@ jobs:
           tests/agent-summaries.test.mjs
           tests/founder-overview-data.test.mjs
           tests/agent-control-data.test.mjs
+
+      - name: Admin language, persisted preferences and bilingual UI regression tests
+        run: node --import tsx --test --test-concurrency=2 tests/admin-language*.test.mjs
 
       - name: Benefit form and dialog regression tests
         run: >-
