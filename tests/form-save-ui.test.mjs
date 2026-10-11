@@ -29,7 +29,7 @@ function loadUi(action, configurationActions = {}) {
     "@/components/menu-ai-import-dialog": {}, "@/components/partner/partner-plan-panel": {},
     "@/components/menu-item-video-field": require("../components/menu-item-video-field.tsx"),
   }
-  const source = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8") + "\nexport { DealForm, MilestoneForm, useActionSuccess, WeekdayChipField, DealsPanel };"
+  const source = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8") + "\nexport { DealForm, MilestoneForm, useActionSuccess, WeekdayChipField, DealsPanel, WeeklyHoursFields };"
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText
   const loaded = { exports: {} }
   new Function("require", "module", "exports", js)(id => {
@@ -51,6 +51,25 @@ async function withDom(run) {
     dom.window.close()
   }
 }
+
+test("saved midnight-to-midnight hours reopen as valid time inputs and submit unchanged", async () => {
+  const { WeeklyHoursFields } = loadUi(async () => ({ ok: true }))
+  const hoursByWeekday = new Map(Array.from({ length: 7 }, (_, index) => [index + 1, [{
+    weekday: index + 1, opens_at: "00:00:00", closes_at: "00:00:00", is_closed: false, sort_order: 0,
+  }]]))
+  await withDom(async root => {
+    await act(async () => root.render(React.createElement("form", {}, React.createElement(WeeklyHoursFields, { hoursByWeekday }))))
+    const form = document.querySelector("form")
+    assert.equal(form.checkValidity(), true)
+    const data = new FormData(form)
+    for (let day = 1; day <= 7; day++) {
+      assert.equal(data.get(`opens_at_${day}`), "00:00")
+      assert.equal(data.get(`closes_at_${day}`), "00:00")
+      assert.equal(data.get(`slot_count_${day}`), "1")
+      assert.equal(data.has(`is_closed_${day}`), false)
+    }
+  })
+})
 
 test("failed React form actions preserve text, numbers, textarea, select and checkbox drafts", async () => {
   const { useActionSuccess } = loadUi(async () => ({ ok: false, message: "Speichern fehlgeschlagen" }))

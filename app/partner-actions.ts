@@ -5963,7 +5963,9 @@ function validateOpeningHourRows(rows: ParsedOpeningHour[]) {
       !row.is_closed &&
       row.opens_at &&
       row.closes_at &&
-      row.closes_at <= row.opens_at
+      row.closes_at <= row.opens_at &&
+      // Midnight to midnight represents the full calendar day.
+      !(row.opens_at === "00:00" && row.closes_at === "00:00")
     ) {
       return `${weekdayName(row.weekday)} closing time must be after its opening time.`
     }
@@ -5979,6 +5981,13 @@ function validateOpeningHourRows(rows: ParsedOpeningHour[]) {
           row.closes_at,
       )
       .sort((first, second) => first.opens_at!.localeCompare(second.opens_at!))
+
+    if (
+      ranges.length > 1 &&
+      ranges.some((row) => row.opens_at === "00:00" && row.closes_at === "00:00")
+    ) {
+      return `${weekdayName(weekday)} time ranges must not overlap.`
+    }
 
     for (let index = 1; index < ranges.length; index += 1) {
       if (ranges[index].opens_at! < ranges[index - 1].closes_at!) {
