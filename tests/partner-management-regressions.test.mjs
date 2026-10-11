@@ -290,14 +290,17 @@ test("partner settings keep profile fixed with contact, then expanded media and 
   const code = await readFile(adminUrl, "utf8")
 
   assert.ok(
-    /<FormSection title="Profile" collapsible=\{false\}[\s\S]*?name="phone"[\s\S]*?name="coordinates"[\s\S]*?name="address"[\s\S]*?<\/FormSection>\s*<FormSection\s+title="Media"\s+defaultOpen=\{true\}[\s\S]*?<\/FormSection>\s*<FormSection title="Socials"[\s\S]*?<SocialHandlesSection[\s\S]*?<\/FormSection>\s*\{mode === "edit"[\s\S]*?<OpeningHoursPanel\s+partner=\{partner\}\s+embedded\s+withinPartnerForm/.test(code),
+    /<FormSection title="Profile" collapsible=\{false\}[\s\S]*?name="phone"[\s\S]*?name="coordinates"[\s\S]*?name="address"[\s\S]*?<\/FormSection>\s*<FormSection\s+title="Media"\s+defaultOpen=\{true\}[\s\S]*?<\/FormSection>\s*<FormSection title="Socials"[\s\S]*?<SocialHandlesSection[\s\S]*?<\/FormSection>\s*\{mode === "edit"[\s\S]*?<OpeningHoursPanel\s+partner=\{partner\}\s+defaultOpen=\{portalMode\}/.test(code),
     "Profile must stay visible with contact/location, followed by expanded media and separate socials above operating hours",
   )
   assert.ok(!code.includes('title="Contact, Location and Socials"'), "The combined contact/socials section must not return")
   assert.match(code, /<DealsPanel partner=\{partner\} embedded \/>/)
   assert.match(code, /<MilestonesPanel partner=\{partner\} embedded \/>/)
   assert.doesNotMatch(code, /\{ id: "rewards", label: "Operating Hours"/)
-  assert.match(code, /title="Operating hours" required="subtle" defaultOpen=\{false\}/)
+  assert.match(code, /function OpeningHoursPanel\(\{\s*partner,\s*defaultOpen = false,/)
+  assert.match(code, /title="Operating hours" required="subtle" defaultOpen=\{defaultOpen\}/)
+  assert.match(code, /Changes to this schedule are saved with Save partner/)
+  assert.doesNotMatch(code, /function WeeklyOpeningHoursForm|data-opening-hours-name|withinPartnerForm/)
   assert.match(code, /slot_count_\$\{day\.value\}/)
   assert.match(code, /Add another time range/)
 })
