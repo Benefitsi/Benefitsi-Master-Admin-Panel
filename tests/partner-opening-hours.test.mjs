@@ -16,6 +16,11 @@ function fixture({ denied = false } = {}) {
       then(resolve, reject) { return Promise.resolve({ error: null }).then(resolve, reject) },
     }
     return query
+  }, async rpc(name, args) {
+    assert.equal(name, "save_partner_related_details")
+    const rows = args.p_opening_hours.map((row, index) => ({ ...row, id: `hours-${index}`, partner_id: partner }))
+    writes.push({ table: "partner_opening_hours", operation: "insert", rows })
+    return { data: { partner_id: partner, opening_hours: rows, holidays: [], socials: [] }, error: null }
   } }
   const actions = loadTypescript("app/partner-actions.ts", {
     "next/cache": { revalidatePath() {} }, "next/server": { after() {} },

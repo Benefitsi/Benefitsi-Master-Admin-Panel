@@ -5,6 +5,7 @@ import test from "node:test"
 import React, { act, useActionState } from "react"
 import * as jsx from "react/jsx-runtime"
 import ts from "typescript"
+import { partnerSaveFixture, seedPartner, ownerId } from "./helpers/partner-save-fixture.mjs"
 
 const require = createRequire(import.meta.url)
 const { JSDOM } = require(process.env.BENEFITSI_TEST_JSDOM_PATH || "jsdom")
@@ -29,7 +30,7 @@ function loadUi(action, configurationActions = {}) {
     "@/components/menu-ai-import-dialog": {}, "@/components/partner/partner-plan-panel": {},
     "@/components/menu-item-video-field": require("../components/menu-item-video-field.tsx"),
   }
-  const source = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8") + "\nexport { DealForm, MilestoneForm, useActionSuccess, WeekdayChipField, DealsPanel, WeeklyHoursFields };"
+  const source = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8") + "\nexport { DealForm, MilestoneForm, useActionSuccess, WeekdayChipField, DealsPanel, WeeklyHoursFields, PartnerForm, HolidayEditorDialog };"
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText
   const loaded = { exports: {} }
   new Function("require", "module", "exports", js)(id => {
@@ -40,16 +41,72 @@ function loadUi(action, configurationActions = {}) {
   return loaded.exports
 }
 async function withDom(run) {
-  const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: "http://localhost" })
-  const names = ["window", "document", "HTMLElement", "HTMLFormElement", "FormData", "MutationObserver", "CustomEvent", "IS_REACT_ACT_ENVIRONMENT"]
+  const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: "http://localhost", pretendToBeVisual: true })
+  const names = ["window", "document", "HTMLElement", "HTMLFormElement", "HTMLInputElement", "HTMLSelectElement", "HTMLTextAreaElement", "HTMLDetailsElement", "FormData", "MutationObserver", "CustomEvent", "IS_REACT_ACT_ENVIRONMENT"]
   const previous = Object.fromEntries(names.map(name => [name, globalThis[name]]))
   Object.assign(globalThis, { window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, HTMLFormElement: dom.window.HTMLFormElement, FormData: dom.window.FormData, MutationObserver: dom.window.MutationObserver, CustomEvent: dom.window.CustomEvent, IS_REACT_ACT_ENVIRONMENT: true })
+  for (const name of ["HTMLInputElement", "HTMLSelectElement", "HTMLTextAreaElement", "HTMLDetailsElement"]) globalThis[name] = dom.window[name]
+  dom.window.HTMLElement.prototype.scrollIntoView = () => {}
   const root = require("react-dom/client").createRoot(document.getElementById("root"))
   try { await run(root, dom.window) } finally {
     await act(async () => root.unmount())
     Object.assign(globalThis, previous)
     dom.window.close()
   }
+}
+
+for (const [mode, portalMode] of [["edit", false], ["edit", true], ["create", false]]) {
+  test(`${portalMode ? "partner" : "admin"} ${mode} form submits social links and all weekly hours with the sections collapsed`, async () => {
+    const calls = []
+    const ServerFormData = globalThis.FormData
+    const f = partnerSaveFixture({ isAdmin: !portalMode })
+    const { PartnerForm } = loadUi(async (_, data) => {
+      // Convert browser FormData (including empty file controls) to the server contract.
+      const submitted = new ServerFormData()
+      for (const [key, value] of data) if (typeof value === "string") submitted.append(key, value)
+      const result = await f.actions.savePartner({}, submitted)
+      calls.push({ ...Object.fromEntries(submitted), result })
+      return result
+    })
+    await withDom(async (root, win) => {
+      const partner = { ...seedPartner, socials: [{ id: "youtube", platform: "youtube", handle: "UC-test", url: "https://www.youtube.com/channel/UC-test", sort_order: 0 }], opening_hours: Array.from({ length: 7 }, (_, index) => ({ weekday: index + 1, opens_at: "00:00:00", closes_at: "00:00:00", is_closed: false, sort_order: index })) }
+      await act(async () => root.render(React.createElement(PartnerForm, {
+        partner: mode === "edit" ? partner : undefined, mode, portalMode,
+        cities: [{ id: seedPartner.city_id, name: "Test city" }], owners: [{ id: ownerId, email: "owner@example.test" }],
+      })))
+      const form = document.querySelector("form")
+      assert.equal(document.querySelectorAll("form").length, 1, "all fields belong to the one partner save")
+      if (mode === "create") {
+        const addSocial = [...form.querySelectorAll("button")].find(button => button.textContent === "Add social handle")
+        await act(async () => addSocial.click())
+        const platform = form.elements.namedItem("social_0_platform")
+        platform.value = "youtube"
+        await act(async () => platform.dispatchEvent(new win.Event("change", { bubbles: true })))
+        for (const [key, value] of Object.entries({ name: "Test café", city_id: seedPartner.city_id, type: "Food & Drink", address: "Test street 1", coordinates: "49, 8", description: "Test café description", owner_id: ownerId, owner_selection: ownerId, initial_milestone_0_reward_item: "Coffee" })) {
+          const field = form.elements.namedItem(key)
+          if (field) field.value = value
+        }
+        form.elements.namedItem("social_0_handle").value = "https://www.youtube.com/channel/UC-test"
+        for (let day = 1; day <= 7; day++) { form.elements.namedItem(`opens_at_${day}`).value = "00:00"; form.elements.namedItem(`closes_at_${day}`).value = "00:00" }
+        // Category selection is represented by hidden fields while the menu is closed.
+        const category = win.document.createElement("input"); category.type = "hidden"; category.name = "category"; category.value = "Cafe"; form.append(category)
+      } else {
+        assert.equal(form.elements.namedItem("social_0_handle").value, "https://www.youtube.com/channel/UC-test")
+      }
+      for (const details of form.querySelectorAll("details")) details.open = false
+      await act(async () => form.dispatchEvent(new win.Event("submit", { bubbles: true, cancelable: true })))
+      assert.equal(calls.length, 1, document.body.textContent)
+      assert.equal(calls[0].social_count, "1")
+      assert.equal(calls[0].social_0_platform, "youtube")
+      assert.equal(calls[0].social_0_handle, "https://www.youtube.com/channel/UC-test")
+      assert.equal(calls[0].result.ok, true, calls[0].result.message)
+      assert.equal(calls[0].result.savedPartner.socials[0].url, "https://www.youtube.com/channel/UC-test")
+      for (let day = 1; day <= 7; day++) {
+        assert.equal(calls[0][`opens_at_${day}`], "00:00")
+        assert.equal(calls[0][`closes_at_${day}`], "00:00")
+      }
+    })
+  })
 }
 
 test("saved midnight-to-midnight hours reopen as valid time inputs and submit unchanged", async () => {
@@ -70,6 +127,24 @@ test("saved midnight-to-midnight hours reopen as valid time inputs and submit un
     }
   })
 })
+
+for (const time of ["00:00", "09:00"]) {
+  test(`holiday editor ${time === "00:00" ? "accepts midnight-to-midnight" : "rejects other equal opening and closing times"}`, async () => {
+    const { HolidayEditorDialog } = loadUi(async () => ({ ok: true }))
+    const saved = []
+    await withDom(async root => {
+      await act(async () => root.render(React.createElement(HolidayEditorDialog, {
+        editor: { mode: "edit", holiday: { id: "holiday", date: "2026-12-31", label: "", kind: "hours", opensAt: time, closesAt: time, repeatsYearly: false } },
+        existingHolidays: [], onClose() {}, onSave: holiday => saved.push(holiday),
+      })))
+      const apply = [...document.querySelectorAll("button")].find(button => button.textContent === "Apply changes")
+      await act(async () => apply.click())
+      assert.equal(saved.length, time === "00:00" ? 1 : 0)
+      if (time === "00:00") assert.equal(saved[0].closesAt, "00:00")
+      else assert.match(document.querySelector('[role="alert"]').textContent, /closing time after opening/)
+    })
+  })
+}
 
 test("failed React form actions preserve text, numbers, textarea, select and checkbox drafts", async () => {
   const { useActionSuccess } = loadUi(async () => ({ ok: false, message: "Speichern fehlgeschlagen" }))

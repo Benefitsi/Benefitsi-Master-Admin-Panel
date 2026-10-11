@@ -3,6 +3,8 @@
 import { partnerDateTimeToUtc } from "@/lib/deal-datetime"
 import { defaultDealAudience, partnerAudienceError } from "@/lib/deal-audience"
 import { partnerMediaLibrary } from "@/lib/partner-media-library"
+import { parsePartnerSocialProfile } from "@/lib/partner-social-profile"
+import { savePartnerRelatedDetails } from "@/lib/partner-related-save"
 
 import type { PartnerWithDeals, PartnerSocial } from "@/lib/admin-data"
 import { readPartnerWorkspace } from "@/lib/partners/workspace-data"
@@ -662,10 +664,10 @@ export async function savePartner(
     return { ok: false, message: validationError }
   }
 
-  const openingHoursToSave = isUpdate && formData.has("holiday_count")
+  const openingHoursToSave = !isUpdate || hasWeeklyOpeningHourFields(formData)
     ? parseWeeklyOpeningHourRows(formData, partnerId)
     : null
-  const holidaysToSave = openingHoursToSave
+  const holidaysToSave = !isUpdate || formData.has("holiday_count")
     ? parsePartnerHolidays(formData, partnerId)
     : null
   if (openingHoursToSave) {
@@ -678,11 +680,12 @@ export async function savePartner(
     }
     const hoursValidation = validateOpeningHourRows(openingHoursToSave)
     if (hoursValidation) return { ok: false, message: hoursValidation }
-    const holidayValidation = validatePartnerHolidays(holidaysToSave ?? [])
-    if (holidayValidation) return { ok: false, message: holidayValidation }
   }
+  const holidayValidation = validatePartnerHolidays(holidaysToSave ?? [])
+  if (holidayValidation) return { ok: false, message: holidayValidation }
 
   const partnerSocials = parsePartnerSocials(formData)
+  const socialsSubmitted = !isUpdate || formData.has("social_count")
   const partnerSocialValidation = validatePartnerSocials(partnerSocials)
   if (partnerSocialValidation) return { ok: false, message: partnerSocialValidation }
 
@@ -755,48 +758,26 @@ export async function savePartner(
       }
     }
 
-    const [socialSyncMessage, ownerWarning] = await Promise.all([
-      isUpdate && partnerSocialsEqual(existingSocials, partnerSocials)
-        ? Promise.resolve(null)
-        : replacePartnerSocials(supabase, partnerId, partnerSocials),
+    const [relatedSave, ownerWarning] = await Promise.all([
+      savePartnerRelatedDetails(
+        supabase, partnerId,
+        !socialsSubmitted || isUpdate && partnerSocialsEqual(existingSocials, partnerSocials) ? null : partnerSocials,
+        openingHoursToSave, holidaysToSave,
+      ),
       portalSession.isAdmin && (!isUpdate || existingPartner?.owner_id !== payload.owner_id)
         ? markOwnerAsPartner(supabase, payload.owner_id)
         : Promise.resolve(null),
     ])
 
-    if (socialSyncMessage) {
+    if (relatedSave.error) {
       if (!isUpdate) {
         await rollbackCreatedPartner(supabase, partnerId)
         await cleanupUploadedFiles(supabase, uploadedPaths)
       }
 
-      return { ok: false, message: socialSyncMessage }
-    }
-
-    if (openingHoursToSave && holidaysToSave) {
-      const deleteHoursResult = await supabase
-        .from("partner_opening_hours")
-        .delete()
-        .eq("partner_id", partnerId)
-      if (deleteHoursResult.error) {
-        return { ok: false, message: `Partner details were saved, but operating hours could not be updated: ${deleteHoursResult.error.message}` }
-      }
-
-      const insertHoursResult = await supabase
-        .from("partner_opening_hours")
-        .insert(openingHoursToSave)
-      if (insertHoursResult.error) {
-        return { ok: false, message: `Partner details were saved, but operating hours could not be updated: ${insertHoursResult.error.message}` }
-      }
-
-      const holidayMessage = await replacePartnerHolidays(
-        supabase,
-        partnerId,
-        holidaysToSave,
-      )
-      if (holidayMessage) {
-        return { ok: false, message: `Partner details and weekly hours were saved, but holiday exceptions could not be updated: ${holidayMessage}` }
-      }
+      return { ok: false, message: isUpdate
+        ? `Partner details were saved, but social links and operating hours could not be confirmed: ${relatedSave.error}`
+        : relatedSave.error }
     }
 
     const oldMediaUrls = [
@@ -846,56 +827,6 @@ export async function savePartner(
         return { ok: false, message: milestoneResult.error.message }
       }
 
-      const openingHours = parseWeeklyOpeningHourRows(formData, partnerId)
-      const openingHoursError = invalidWeeklyOpeningHourRow(openingHours)
-      const openingHoursValidation = validateOpeningHourRows(openingHours)
-
-      if (openingHoursError) {
-        await rollbackCreatedPartner(supabase, partnerId)
-        await cleanupUploadedFiles(supabase, uploadedPaths)
-        return {
-          ok: false,
-          message: `${weekdayName(openingHoursError.weekday)} needs opening and closing times, or mark it closed.`,
-        }
-      }
-
-      if (openingHoursValidation) {
-        await rollbackCreatedPartner(supabase, partnerId)
-        await cleanupUploadedFiles(supabase, uploadedPaths)
-        return { ok: false, message: openingHoursValidation }
-      }
-
-      const hoursResult = await supabase
-        .from("partner_opening_hours")
-        .insert(openingHours)
-
-      if (hoursResult.error) {
-        await rollbackCreatedPartner(supabase, partnerId)
-        await cleanupUploadedFiles(supabase, uploadedPaths)
-        return { ok: false, message: hoursResult.error.message }
-      }
-
-      const holidays = parsePartnerHolidays(formData, partnerId)
-      const holidayError = validatePartnerHolidays(holidays)
-
-      if (holidayError) {
-        warnings.push(`Partner was created, but holiday hour exceptions were skipped: ${holidayError}`)
-      } else if (holidays.length > 0) {
-        const holidayResult = await supabase.from("partner_holidays").insert(
-          holidays.map((holiday) => ({
-            ...holiday,
-            created_at: basePayload.updated_at,
-            updated_at: basePayload.updated_at,
-          })),
-        )
-
-        if (holidayResult.error) {
-          warnings.push(
-            `Partner was created, but holiday hour exceptions could not be added: ${holidayResult.error.message}`,
-          )
-        }
-      }
-
       if (
         partnerTypeSupportsMenu(stringValue(formData, "type")) &&
         checkboxValue(formData, "initial_menu_enabled")
@@ -941,10 +872,8 @@ export async function savePartner(
     // the current editor instead of revalidating and re-rendering the whole page.
     let savedPartner = {
       ...(result.data![0] as unknown as Partial<PartnerWithDeals>), id: partnerId,
-      socials: partnerSocialsEqual(existingSocials, partnerSocials) ? existingSocials
-        : partnerSocials.map(social => ({ ...social, partner_id: partnerId })),
-      ...(openingHoursToSave ? { opening_hours: openingHoursToSave } : {}),
-      ...(holidaysToSave ? { holidays: holidaysToSave } : {}),
+      socials: existingSocials,
+      ...relatedSave.details,
     } as Partial<PartnerWithDeals> & { id: string }
     if (!isUpdate) {
       try {
@@ -1778,34 +1707,11 @@ export async function saveWeeklyOpeningHours(
     return { ok: false, message: holidayValidation }
   }
 
-  const deleteResult = await supabase
-    .from("partner_opening_hours")
-    .delete()
-    .eq("partner_id", partnerId)
-
-  if (deleteResult.error) {
-    return { ok: false, message: deleteResult.error.message }
-  }
-
-  const insertResult = await supabase.from("partner_opening_hours").insert(rows)
-
-  if (insertResult.error) {
-    return { ok: false, message: insertResult.error.message }
-  }
-
-  const holidayMessage = await replacePartnerHolidays(
-    supabase,
-    partnerId,
-    holidays,
+  const relatedSave = await savePartnerRelatedDetails(
+    supabase, partnerId, null, rows,
+    formData.has("holiday_count") ? holidays : null,
   )
-
-  if (holidayMessage) {
-    revalidatePath("/")
-    return {
-      ok: false,
-      message: `Weekly hours saved, but holiday hour exceptions could not be updated: ${holidayMessage}`,
-    }
-  }
+  if (relatedSave.error) return { ok: false, message: relatedSave.error }
 
   revalidatePath("/")
 
@@ -5687,9 +5593,9 @@ function parsePartnerSocials(formData: FormData): ParsedPartnerSocial[] {
 
   for (let index = 0; index < count; index += 1) {
     const platform = stringValue(formData, `social_${index}_platform`)
-    const handle = normalizePartnerSocialHandle(
-      stringValue(formData, `social_${index}_handle`),
-    )
+    const input = stringValue(formData, `social_${index}_handle`)
+    const profile = parsePartnerSocialProfile(platform, input)
+    const handle = profile?.handle ?? input
 
     if (!platform && !handle) {
       continue
@@ -5699,7 +5605,7 @@ function parsePartnerSocials(formData: FormData): ParsedPartnerSocial[] {
       platform,
       handle,
       sort_order: socials.length,
-      url: platform && handle ? buildPartnerSocialUrl(platform, handle) : "",
+      url: profile?.url ?? "",
     })
   }
 
@@ -5722,6 +5628,10 @@ function validatePartnerSocials(socials: ParsedPartnerSocial[]) {
       return "Enter a social media handle or remove the empty row."
     }
 
+    if (!social.url) {
+      return "Enter a valid social handle or profile URL for the selected platform."
+    }
+
     const handleValidation = validateTextLength(
       "Social media handle",
       social.handle,
@@ -5740,67 +5650,6 @@ function validatePartnerSocials(socials: ParsedPartnerSocial[]) {
   }
 
   return null
-}
-
-async function replacePartnerSocials(
-  supabase: SupabaseClient,
-  partnerId: string,
-  socials: ParsedPartnerSocial[],
-) {
-  const deleteResult = await supabase
-    .from("partner_socials")
-    .delete()
-    .eq("partner_id", partnerId)
-
-  if (deleteResult.error) {
-    return deleteResult.error.message
-  }
-
-  if (!socials.length) {
-    return null
-  }
-
-  const insertResult = await supabase.from("partner_socials").insert(
-    socials.map((social) => ({
-      partner_id: partnerId,
-      platform: social.platform,
-      handle: social.handle,
-      sort_order: social.sort_order,
-      url: social.url,
-    })),
-  )
-
-  return insertResult.error?.message ?? null
-}
-
-async function replacePartnerHolidays(
-  supabase: SupabaseClient,
-  partnerId: string,
-  holidays: ParsedPartnerHoliday[],
-) {
-  const deleteResult = await supabase
-    .from("partner_holidays")
-    .delete()
-    .eq("partner_id", partnerId)
-
-  if (deleteResult.error) {
-    return deleteResult.error.message
-  }
-
-  if (!holidays.length) {
-    return null
-  }
-
-  const now = new Date().toISOString()
-  const insertResult = await supabase.from("partner_holidays").insert(
-    holidays.map((holiday) => ({
-      ...holiday,
-      created_at: now,
-      updated_at: now,
-    })),
-  )
-
-  return insertResult.error?.message ?? null
 }
 
 async function rollbackCreatedPartner(
@@ -6055,9 +5904,10 @@ function validatePartnerHolidays(holidays: ParsedPartnerHoliday[]) {
       !holiday.is_closed &&
       (!holiday.opens_at ||
         !holiday.closes_at ||
-        holiday.closes_at <= holiday.opens_at)
+        (holiday.closes_at <= holiday.opens_at &&
+          !(holiday.opens_at === "00:00" && holiday.closes_at === "00:00")))
     ) {
-      return "Holiday replacement hours need different opening and closing times."
+      return "Holiday replacement hours need a closing time after opening, or midnight to midnight for 24 hours."
     }
 
     const labelValidation = validateTextLength(
@@ -6687,61 +6537,6 @@ function isUploadPlaceholderUrl(value: string) {
     )
   } catch {
     return value === UPLOAD_PLACEHOLDER_PATH || value === "upload-image.jpg"
-  }
-}
-
-function normalizePartnerSocialHandle(value: string) {
-  const trimmed = value.trim()
-
-  if (!trimmed) {
-    return ""
-  }
-
-  try {
-    const parsed = new URL(trimmed)
-    const queryId = parsed.searchParams.get("id")
-
-    if (queryId) {
-      return sanitizePartnerSocialHandle(queryId)
-    }
-
-    const [firstSegment = ""] = parsed.pathname
-      .split("/")
-      .map((segment) => segment.trim())
-      .filter(Boolean)
-
-    return sanitizePartnerSocialHandle(firstSegment)
-  } catch {
-    return sanitizePartnerSocialHandle(trimmed)
-  }
-}
-
-function sanitizePartnerSocialHandle(value: string) {
-  const trimmed = value.trim().replace(/^@+/, "").replace(/^\/+/, "").replace(/\/+$/, "")
-
-  try {
-    return decodeURIComponent(trimmed)
-  } catch {
-    return trimmed
-  }
-}
-
-function buildPartnerSocialUrl(platform: string, handle: string) {
-  const normalizedHandle = sanitizePartnerSocialHandle(handle)
-
-  switch (platform) {
-    case "facebook":
-      return `https://www.facebook.com/${normalizedHandle}`
-    case "instagram":
-      return `https://www.instagram.com/${normalizedHandle}`
-    case "tiktok":
-      return `https://www.tiktok.com/@${normalizedHandle}`
-    case "x":
-      return `https://x.com/${normalizedHandle}`
-    case "youtube":
-      return `https://www.youtube.com/@${normalizedHandle}`
-    default:
-      return ""
   }
 }
 

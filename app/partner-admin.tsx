@@ -8430,9 +8430,10 @@ function HolidayEditorDialog({
 
     if (
       draft.kind === "hours" &&
-      (!draft.opensAt || !draft.closesAt || draft.opensAt === draft.closesAt)
+      (!draft.opensAt || !draft.closesAt ||
+        (draft.closesAt <= draft.opensAt && !(draft.opensAt === "00:00" && draft.closesAt === "00:00")))
     ) {
-      setError("Choose different opening and closing times.")
+      setError("Choose a closing time after opening, or midnight to midnight for 24 hours.")
       return
     }
 
@@ -14007,34 +14008,8 @@ function socialDraftsFromPartner(socials?: PartnerSocial[] | null) {
   return (socials ?? []).map((social) => ({
     id: social.id ?? crypto.randomUUID(),
     platform: social.platform ?? "",
-    handle: social.handle || socialHandleFromUrl(social.url),
+    handle: social.url || social.handle || "",
   }))
-}
-
-function socialHandleFromUrl(url?: string | null) {
-  const value = url?.trim()
-
-  if (!value) {
-    return ""
-  }
-
-  try {
-    const parsed = new URL(value)
-    const queryId = parsed.searchParams.get("id")
-
-    if (queryId) {
-      return queryId
-    }
-
-    const [firstSegment = ""] = parsed.pathname
-      .split("/")
-      .map((segment) => segment.trim())
-      .filter(Boolean)
-
-    return firstSegment.replace(/^@+/, "")
-  } catch {
-    return value
-  }
 }
 
 function CopyFromPartnerPanel({

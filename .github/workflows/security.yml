@@ -139,6 +139,8 @@ jobs:
           node --import tsx --test --test-concurrency=2
           tests/form-save-ui.test.mjs
           tests/partner-opening-hours.test.mjs
+          tests/partner-save-action.test.mjs
+          tests/partner-social-profile.test.mjs
           tests/partner-management-regressions.test.mjs
           tests/menu-ai-dialog.test.mjs
 
