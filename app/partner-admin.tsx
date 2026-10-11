@@ -6,6 +6,7 @@ import { PartnerInternalContact, PartnerBadgeManager, PartnerConfigurationHistor
 import { reorderPartnerDeals } from "./partner-configuration-actions"
 import { isActiveDisplayDrop, sortDealsForDisplay } from "@/lib/deal-display-order"
 import { partnerMediaLibrary, type PartnerMediaChoice } from "@/lib/partner-media-library"
+import { openingHourInterval } from "@/lib/partner-hours"
 
 import { normalizePartnerTypeValue, partnerTypeSupportsMenu } from "@/lib/partners/management"
 
@@ -8337,6 +8338,9 @@ function WeeklyHoursFields({
                             Remove
                           </button>
                         ) : null}
+                        {!hour.isClosed && range.closesAt && range.opensAt && range.closesAt < range.opensAt ? (
+                          <span className="w-full text-xs text-zinc-500">Closes next day</span>
+                        ) : null}
                       </div>
                     )
                   })}
@@ -8431,9 +8435,9 @@ function HolidayEditorDialog({
     if (
       draft.kind === "hours" &&
       (!draft.opensAt || !draft.closesAt ||
-        (draft.closesAt <= draft.opensAt && !(draft.opensAt === "00:00" && draft.closesAt === "00:00")))
+        !openingHourInterval(draft.opensAt, draft.closesAt))
     ) {
-      setError("Choose a closing time after opening, or midnight to midnight for 24 hours.")
+      setError("Choose valid, different opening and closing times, or midnight to midnight for 24 hours.")
       return
     }
 

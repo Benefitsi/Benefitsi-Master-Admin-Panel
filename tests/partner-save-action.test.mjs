@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { partnerSaveFixture, partnerForm, partnerId, ownerId } from "./helpers/partner-save-fixture.mjs"
+import { partnerSaveFixture, partnerForm, partnerId, ownerId, screenshotSchedule } from "./helpers/partner-save-fixture.mjs"
 
 for (const isAdmin of [true, false]) {
   test(`${isAdmin ? "admin" : "partner"} edit saves social links and 24-hour operating hours through Save partner`, async () => {
@@ -109,7 +109,7 @@ test("related save failures keep links and hours, report failure and allow a cor
 test("a holiday-only edit validates dates and hours before updating the partner", async () => {
   const f = partnerSaveFixture()
   const data = partnerForm({ hours: false })
-  for (const [key, value] of Object.entries({ holiday_count: "1", holiday_0_date: "2026-12-31", holiday_0_kind: "hours", holiday_0_opens_at: "18:00", holiday_0_closes_at: "09:00" })) data.set(key, value)
+  for (const [key, value] of Object.entries({ holiday_count: "1", holiday_0_date: "2026-12-31", holiday_0_kind: "hours", holiday_0_opens_at: "18:00", holiday_0_closes_at: "18:00" })) data.set(key, value)
   assert.equal((await f.actions.savePartner({}, data)).ok, false)
   assert.equal(f.writes.length, 0)
   assert.equal(f.rpcCalls.length, 0)
@@ -141,3 +141,24 @@ test("matching row counts cannot hide incorrect saved operating hours", async ()
   assert.equal(result.ok, false)
   assert.match(result.message, /operating hours could not be confirmed/)
 })
+
+for (const [isAdmin, create] of [[true, false], [false, false], [true, true]]) {
+  test(`${isAdmin ? "admin" : "partner"} ${create ? "add" : "edit"} saves the exact screenshot schedule and an overnight holiday`, async () => {
+    const f = partnerSaveFixture({ isAdmin })
+    const data = partnerForm({ create })
+    screenshotSchedule.forEach(([opens, closes], day) => {
+      data.set(`opens_at_${day + 1}`, opens)
+      data.set(`closes_at_${day + 1}`, closes)
+    })
+    for (const [key, value] of Object.entries({ holiday_count: "1", holiday_0_date: "2026-12-31", holiday_0_kind: "hours", holiday_0_opens_at: "14:00", holiday_0_closes_at: "01:00" })) data.set(key, value)
+    const result = await f.actions.savePartner({}, data)
+    assert.equal(result.ok, true, result.message)
+    result.savedPartner.opening_hours.forEach((row, day) => {
+      assert.equal(row.weekday, day + 1)
+      assert.equal(row.opens_at.slice(0, 5), screenshotSchedule[day][0])
+      assert.equal(row.closes_at.slice(0, 5), screenshotSchedule[day][1])
+    })
+    assert.equal(result.savedPartner.holidays[0].closes_at, "01:00:00")
+    assert.equal(result.savedPartner.socials.length, 2)
+  })
+}

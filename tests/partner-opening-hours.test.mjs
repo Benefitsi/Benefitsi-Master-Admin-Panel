@@ -90,13 +90,47 @@ test("a full-day range cannot overlap another slot or duplicate full-day range",
 
 test("invalid, missing and overlapping ordinary times are rejected before changing saved hours", async () => {
   for (const ranges of [
-    [["09:00", "09:00"]], [["18:00", "09:00"]], [["", "00:00"]],
+    [["09:00", "09:00"]], [["invalid", "09:00"]], [["", "00:00"]],
     [["09:00", "12:00"], ["11:00", "18:00"]],
   ]) {
     const { actions, writes } = fixture()
     assert.equal((await actions.saveWeeklyOpeningHours({}, schedule(ranges))).ok, false)
     assert.equal(writes.length, 0)
   }
+})
+
+test("overnight ranges save their next-morning closing time without splitting the operating day", async () => {
+  for (const ranges of [[["14:00", "01:00"]], [["12:00", "01:00"]], [["18:00", "00:00"]], [["09:00", "12:00"], ["14:00", "01:00"]]]) {
+    const { actions, writes } = fixture()
+    const result = await actions.saveWeeklyOpeningHours({}, schedule(ranges))
+    assert.equal(result.ok, true, result.message)
+    assert.equal(writes[0].rows[0].closes_at, ranges[0][1])
+  }
+})
+
+test("overnight overlaps are rejected within a day, across adjacent days and Sunday into Monday", async () => {
+  const forms = [schedule([["18:00", "02:00"], ["22:00", "01:00"]])]
+  for (const [overnightDay, followingDay] of [[5, 6], [7, 1]]) {
+    const form = schedule([["14:00", "22:00"]])
+    form.set(`closes_at_${overnightDay}`, "02:00")
+    form.set(`opens_at_${followingDay}`, "01:00")
+    forms.push(form)
+  }
+  for (const form of forms) {
+    const { actions, writes } = fixture()
+    const result = await actions.saveWeeklyOpeningHours({}, form)
+    assert.equal(result.ok, false)
+    assert.match(result.message, /must not overlap/)
+    assert.equal(writes.length, 0)
+  }
+})
+
+test("overnight hours may end exactly when the following day's first range begins", async () => {
+  const { actions } = fixture()
+  const form = schedule([["14:00", "22:00"]])
+  form.set("closes_at_5", "01:00")
+  form.set("opens_at_6", "01:00")
+  assert.equal((await actions.saveWeeklyOpeningHours({}, form)).ok, true)
 })
 
 test("ordinary split shifts still save and unauthorized full-day changes cannot write", async () => {

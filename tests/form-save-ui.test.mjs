@@ -5,7 +5,7 @@ import test from "node:test"
 import React, { act, useActionState } from "react"
 import * as jsx from "react/jsx-runtime"
 import ts from "typescript"
-import { partnerSaveFixture, seedPartner, ownerId } from "./helpers/partner-save-fixture.mjs"
+import { partnerSaveFixture, seedPartner, ownerId, screenshotSchedule } from "./helpers/partner-save-fixture.mjs"
 
 const require = createRequire(import.meta.url)
 const { JSDOM } = require(process.env.BENEFITSI_TEST_JSDOM_PATH || "jsdom")
@@ -55,8 +55,9 @@ async function withDom(run) {
   }
 }
 
-for (const [mode, portalMode] of [["edit", false], ["edit", true], ["create", false]]) {
-  test(`${portalMode ? "partner" : "admin"} ${mode} form submits social links and all weekly hours with the sections collapsed`, async () => {
+for (const [mode, portalMode, overnight] of [["edit", false, false], ["edit", true, false], ["create", false, false], ["edit", false, true], ["edit", true, true], ["create", false, true]]) {
+  test(`${portalMode ? "partner" : "admin"} ${mode} form submits social links and ${overnight ? "the screenshot overnight schedule" : "24-hour days"} with the sections collapsed`, async () => {
+    const schedule = overnight ? screenshotSchedule : Array.from({ length: 7 }, () => ["00:00", "00:00"])
     const calls = []
     const ServerFormData = globalThis.FormData
     const f = partnerSaveFixture({ isAdmin: !portalMode })
@@ -69,7 +70,7 @@ for (const [mode, portalMode] of [["edit", false], ["edit", true], ["create", fa
       return result
     })
     await withDom(async (root, win) => {
-      const partner = { ...seedPartner, socials: [{ id: "youtube", platform: "youtube", handle: "UC-test", url: "https://www.youtube.com/channel/UC-test", sort_order: 0 }], opening_hours: Array.from({ length: 7 }, (_, index) => ({ weekday: index + 1, opens_at: "00:00:00", closes_at: "00:00:00", is_closed: false, sort_order: index })) }
+      const partner = { ...seedPartner, socials: [{ id: "youtube", platform: "youtube", handle: "UC-test", url: "https://www.youtube.com/channel/UC-test", sort_order: 0 }], opening_hours: schedule.map(([opens, closes], index) => ({ weekday: index + 1, opens_at: `${opens}:00`, closes_at: `${closes}:00`, is_closed: false, sort_order: index })) }
       await act(async () => root.render(React.createElement(PartnerForm, {
         partner: mode === "edit" ? partner : undefined, mode, portalMode,
         cities: [{ id: seedPartner.city_id, name: "Test city" }], owners: [{ id: ownerId, email: "owner@example.test" }],
@@ -87,11 +88,12 @@ for (const [mode, portalMode] of [["edit", false], ["edit", true], ["create", fa
           if (field) field.value = value
         }
         form.elements.namedItem("social_0_handle").value = "https://www.youtube.com/channel/UC-test"
-        for (let day = 1; day <= 7; day++) { form.elements.namedItem(`opens_at_${day}`).value = "00:00"; form.elements.namedItem(`closes_at_${day}`).value = "00:00" }
+        for (let day = 1; day <= 7; day++) { form.elements.namedItem(`opens_at_${day}`).value = schedule[day - 1][0]; form.elements.namedItem(`closes_at_${day}`).value = schedule[day - 1][1] }
         // Category selection is represented by hidden fields while the menu is closed.
         const category = win.document.createElement("input"); category.type = "hidden"; category.name = "category"; category.value = "Cafe"; form.append(category)
       } else {
         assert.equal(form.elements.namedItem("social_0_handle").value, "https://www.youtube.com/channel/UC-test")
+        if (overnight) assert.equal([...form.querySelectorAll("span")].filter(span => span.textContent === "Closes next day").length, 2)
       }
       for (const details of form.querySelectorAll("details")) details.open = false
       await act(async () => form.dispatchEvent(new win.Event("submit", { bubbles: true, cancelable: true })))
@@ -102,8 +104,8 @@ for (const [mode, portalMode] of [["edit", false], ["edit", true], ["create", fa
       assert.equal(calls[0].result.ok, true, calls[0].result.message)
       assert.equal(calls[0].result.savedPartner.socials[0].url, "https://www.youtube.com/channel/UC-test")
       for (let day = 1; day <= 7; day++) {
-        assert.equal(calls[0][`opens_at_${day}`], "00:00")
-        assert.equal(calls[0][`closes_at_${day}`], "00:00")
+        assert.equal(calls[0][`opens_at_${day}`], schedule[day - 1][0])
+        assert.equal(calls[0][`closes_at_${day}`], schedule[day - 1][1])
       }
     })
   })
@@ -128,20 +130,20 @@ test("saved midnight-to-midnight hours reopen as valid time inputs and submit un
   })
 })
 
-for (const time of ["00:00", "09:00"]) {
-  test(`holiday editor ${time === "00:00" ? "accepts midnight-to-midnight" : "rejects other equal opening and closing times"}`, async () => {
+for (const [opens, closes, accepted] of [["00:00", "00:00", true], ["14:00", "01:00", true], ["09:00", "09:00", false]]) {
+  test(`holiday editor ${accepted ? "accepts" : "rejects"} ${opens} to ${closes}`, async () => {
     const { HolidayEditorDialog } = loadUi(async () => ({ ok: true }))
     const saved = []
     await withDom(async root => {
       await act(async () => root.render(React.createElement(HolidayEditorDialog, {
-        editor: { mode: "edit", holiday: { id: "holiday", date: "2026-12-31", label: "", kind: "hours", opensAt: time, closesAt: time, repeatsYearly: false } },
+        editor: { mode: "edit", holiday: { id: "holiday", date: "2026-12-31", label: "", kind: "hours", opensAt: opens, closesAt: closes, repeatsYearly: false } },
         existingHolidays: [], onClose() {}, onSave: holiday => saved.push(holiday),
       })))
       const apply = [...document.querySelectorAll("button")].find(button => button.textContent === "Apply changes")
       await act(async () => apply.click())
-      assert.equal(saved.length, time === "00:00" ? 1 : 0)
-      if (time === "00:00") assert.equal(saved[0].closesAt, "00:00")
-      else assert.match(document.querySelector('[role="alert"]').textContent, /closing time after opening/)
+      assert.equal(saved.length, accepted ? 1 : 0)
+      if (accepted) assert.equal(saved[0].closesAt, closes)
+      else assert.match(document.querySelector('[role="alert"]').textContent, /different opening and closing times/)
     })
   })
 }

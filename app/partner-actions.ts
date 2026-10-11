@@ -5,6 +5,7 @@ import { defaultDealAudience, partnerAudienceError } from "@/lib/deal-audience"
 import { partnerMediaLibrary } from "@/lib/partner-media-library"
 import { parsePartnerSocialProfile } from "@/lib/partner-social-profile"
 import { savePartnerRelatedDetails } from "@/lib/partner-related-save"
+import { openingHourInterval, overlappingOpeningHours } from "@/lib/partner-hours"
 
 import type { PartnerWithDeals, PartnerSocial } from "@/lib/admin-data"
 import { readPartnerWorkspace } from "@/lib/partners/workspace-data"
@@ -5812,38 +5813,14 @@ function validateOpeningHourRows(rows: ParsedOpeningHour[]) {
       !row.is_closed &&
       row.opens_at &&
       row.closes_at &&
-      row.closes_at <= row.opens_at &&
-      // Midnight to midnight represents the full calendar day.
-      !(row.opens_at === "00:00" && row.closes_at === "00:00")
+      !openingHourInterval(row.opens_at, row.closes_at)
     ) {
-      return `${weekdayName(row.weekday)} closing time must be after its opening time.`
+      return `${weekdayName(row.weekday)} needs valid, different opening and closing times, or midnight to midnight for 24 hours.`
     }
   }
 
-  for (const weekday of openingWeekdays) {
-    const ranges = rows
-      .filter(
-        (row) =>
-          row.weekday === weekday &&
-          !row.is_closed &&
-          row.opens_at &&
-          row.closes_at,
-      )
-      .sort((first, second) => first.opens_at!.localeCompare(second.opens_at!))
-
-    if (
-      ranges.length > 1 &&
-      ranges.some((row) => row.opens_at === "00:00" && row.closes_at === "00:00")
-    ) {
-      return `${weekdayName(weekday)} time ranges must not overlap.`
-    }
-
-    for (let index = 1; index < ranges.length; index += 1) {
-      if (ranges[index].opens_at! < ranges[index - 1].closes_at!) {
-        return `${weekdayName(weekday)} time ranges must not overlap.`
-      }
-    }
-  }
+  const overlappingWeekday = overlappingOpeningHours(rows)
+  if (overlappingWeekday !== null) return `${weekdayName(overlappingWeekday)} time ranges must not overlap.`
 
   return null
 }
@@ -5904,10 +5881,9 @@ function validatePartnerHolidays(holidays: ParsedPartnerHoliday[]) {
       !holiday.is_closed &&
       (!holiday.opens_at ||
         !holiday.closes_at ||
-        (holiday.closes_at <= holiday.opens_at &&
-          !(holiday.opens_at === "00:00" && holiday.closes_at === "00:00")))
+        !openingHourInterval(holiday.opens_at, holiday.closes_at))
     ) {
-      return "Holiday replacement hours need a closing time after opening, or midnight to midnight for 24 hours."
+      return "Holiday replacement hours need valid, different opening and closing times, or midnight to midnight for 24 hours."
     }
 
     const labelValidation = validateTextLength(

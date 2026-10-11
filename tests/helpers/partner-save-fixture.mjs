@@ -5,6 +5,7 @@ import { loadTypescript } from "./load-typescript.mjs"
 const require = createRequire(import.meta.url)
 export const partnerId = "11111111-1111-4111-8111-111111111111"
 export const ownerId = "22222222-2222-4222-8222-222222222222"
+export const screenshotSchedule = [["14:00", "22:00"], ["14:00", "22:00"], ["14:00", "22:00"], ["14:00", "22:00"], ["14:00", "01:00"], ["12:00", "01:00"], ["12:00", "22:00"]]
 export const seedPartner = {
   id: partnerId, owner_id: ownerId, name: "Test café", city_id: "33333333-3333-4333-8333-333333333333",
   type: "Food & Drink", category: ["Cafe"], address: "Test street 1", coordinates: '{"latitude":49,"longitude":8}',
