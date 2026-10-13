@@ -6,8 +6,9 @@ import { requireAdmin } from "@/lib/admin"
 import { canPublishBookingOffer } from "@/lib/bookings/contracts"
 import { loadBookingOperations } from "@/lib/bookings/data"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { isStripeTestConfigured } from "@/lib/stripe/config"
+import { assertBookingRealmBoundary, getBookingRealm, isBookingStripeConfigured } from "@/lib/stripe/booking-client"
 
+import { requireBookingObjectScope, requireBookingProviderScope } from "@/lib/stripe/booking-provider-scope"
 import { refundLegacyPayment } from "@/lib/stripe/legacy-payments"
 
 const UUID_PATTERN =
@@ -36,6 +37,8 @@ function finish(kind: "success" | "error", code: string): never {
 
 export async function createBookingProvider(formData: FormData) {
   const { adminSession } = await requireAdmin()
+  assertBookingRealmBoundary()
+  if (getBookingRealm() === "sandbox") finish("error", "sandbox_fixture_setup_only")
   const displayName = value(formData, "displayName", 160)
   const supportEmail = value(formData, "supportEmail", 254).toLowerCase()
   if (displayName.length < 2) finish("error", "provider_validation")
@@ -55,6 +58,7 @@ export async function createBookingProvider(formData: FormData) {
 
 export async function createBookingOffer(formData: FormData) {
   const { adminSession } = await requireAdmin()
+  assertBookingRealmBoundary()
   const providerId = value(formData, "providerId", 80)
   const cityId = value(formData, "cityId", 80)
   const title = value(formData, "title", 160)
@@ -87,6 +91,7 @@ export async function createBookingOffer(formData: FormData) {
 
   const admin = createAdminClient()
   const identity = actor(adminSession)
+  await requireBookingProviderScope(admin, providerId)
   const result = await admin.rpc("create_booking_offer_with_slot", {
     p_provider_id: providerId,
     p_city_id: cityId,
@@ -107,10 +112,12 @@ export async function createBookingOffer(formData: FormData) {
 
 export async function submitBookingOfferToBen(formData: FormData) {
   await requireAdmin()
+  assertBookingRealmBoundary()
   const offerId = value(formData, "offerId", 80)
   if (!UUID_PATTERN.test(offerId)) finish("error", "review_validation")
 
   const admin = createAdminClient()
+  await requireBookingObjectScope(admin, "booking_offers", offerId)
   const result = await admin.rpc("submit_booking_offer_agent_review", {
     p_offer_id: offerId,
     p_agent_profile: "ben",
@@ -125,6 +132,7 @@ export async function submitBookingOfferToBen(formData: FormData) {
 
 export async function publishBookingOffer(formData: FormData) {
   const { adminSession } = await requireAdmin()
+  assertBookingRealmBoundary()
   const offerId = value(formData, "offerId", 80)
   if (!UUID_PATTERN.test(offerId)) finish("error", "publish_validation")
 
@@ -139,6 +147,7 @@ export async function publishBookingOffer(formData: FormData) {
 
   const admin = createAdminClient()
   const identity = actor(adminSession)
+  await requireBookingProviderScope(admin, provider.id)
   const result = await admin.rpc("publish_reviewed_booking_offer", {
     p_offer_id: offerId,
     p_actor_id: identity.id,
@@ -150,6 +159,7 @@ export async function publishBookingOffer(formData: FormData) {
 
 export async function cancelOrRefundBooking(formData: FormData) {
   const { adminSession } = await requireAdmin()
+  assertBookingRealmBoundary()
   const bookingId = value(formData, "bookingId", 80)
   const reason = value(formData, "reason", 1000)
   const confirmed = formData.get("confirm") === "yes"
@@ -160,19 +170,20 @@ export async function cancelOrRefundBooking(formData: FormData) {
   const admin = createAdminClient()
   const bookingResult = await admin
     .from("bookings")
-    .select("id,state,stripe_account_id,total_amount,currency,stripe_checkout_session_id,stripe_payment_intent_id,stripe_refund_id")
+    .select("id,provider_id,state,stripe_account_id,total_amount,currency,stripe_checkout_session_id,stripe_payment_intent_id,stripe_refund_id")
     .eq("id", bookingId)
     .maybeSingle()
   if (bookingResult.error || !bookingResult.data) {
     finish("error", "booking_missing")
   }
   const booking = bookingResult.data
+  await requireBookingProviderScope(admin, booking.provider_id)
   const needsRefund = ["confirmed", "cancel_requested"].includes(
     booking.state,
   )
   if (
     needsRefund &&
-    (!booking.stripe_payment_intent_id || !isStripeTestConfigured())
+    (!booking.stripe_payment_intent_id || !isBookingStripeConfigured())
   ) {
     finish("error", "stripe_test_refund_unavailable")
   }

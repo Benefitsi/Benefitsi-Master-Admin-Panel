@@ -9,6 +9,9 @@ import {
 
 import { createDirectCheckout, retrieveDirectCheckout } from "@/lib/stripe/direct-payments"
 import { retrieveLegacyCheckout } from "@/lib/stripe/legacy-payments"
+import { assertBookingRealmBoundary, getBookingRealm } from "@/lib/stripe/booking-client"
+
+import { requireBookingObjectScope } from "@/lib/stripe/booking-provider-scope"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -70,7 +73,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    assertBookingRealmBoundary()
     const admin = createAdminClient()
+    await requireBookingObjectScope(admin, "booking_offers", offerId)
     const holdResult = await admin.rpc("create_booking_hold", {
       p_offer_id: offerId,
       p_slot_id: slotId,
@@ -99,6 +104,7 @@ export async function POST(request: Request) {
 
     if (existing.error || !existing.data) throw new Error("Buchung konnte nicht sicher geladen werden.")
     const booking = existing.data
+    if (getBookingRealm() === "sandbox") await requireBookingObjectScope(admin, "bookings", booking.id)
     if (booking.offer_id !== offerId || booking.slot_id !== slotId || booking.quantity !== quantity ||
         booking.customer_email !== customerEmail) {
       return NextResponse.json({ error: "Dieser Wiederholungsschlüssel gehört zu einer anderen Anfrage." }, { status: 409 })

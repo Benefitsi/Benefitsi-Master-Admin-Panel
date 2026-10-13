@@ -5,11 +5,15 @@ import { recoverableCheckout } from './checkout'
 import { record, parseBookingRequest, safeBookingResult, parseGuestAccess, uuid } from './requests'
 import { webOrigin } from './http'
 import { bookingCustomerIdentity } from './account-service'
+import { assertBookingRealmBoundary, getBookingRealm } from '@/lib/stripe/booking-client'
+
+import { requireBookingObjectScope, requireBookingProviderScope } from '@/lib/stripe/booking-provider-scope'
 
 export async function providerForPartner(partnerId:string) {
   const admin=createAdminClient()
   const result=await admin.from('booking_providers').select('id,partner_id,display_name').eq('partner_id',uuid(partnerId)).maybeSingle()
   if(result.error||!result.data) throw new Error('not_found')
+  await requireBookingProviderScope(admin,result.data.id)
   return {admin,provider:result.data}
 }
 export async function publicCatalog(partnerId:string) {
@@ -19,6 +23,7 @@ export async function publicCatalog(partnerId:string) {
   return result.data
 }
 export async function createCommerceBooking(value:unknown,sessionToken?:string|null) {
+  assertBookingRealmBoundary()
   const parsed=parseBookingRequest(value)
   const customerId=sessionToken?await bookingCustomerIdentity(sessionToken,parsed.partner_id):undefined
   if(parsed.deal_id&&!customerId)throw Error('account_login_required')
@@ -33,6 +38,7 @@ export async function createCommerceBooking(value:unknown,sessionToken?:string|n
 }
 async function expireElapsedHold(admin:ReturnType<typeof createAdminClient>,booking:Record<string,unknown>) {
   if(booking.state!=='payment_pending'||booking.payment_state!=='pending'||!booking.hold_expires_at||Date.parse(String(booking.hold_expires_at))>Date.now()) return
+  await requireBookingProviderScope(admin,String(booking.provider_id))
   const expired=await admin.rpc('commerce_apply_payment',{p_event:{event_id:`hold_expired_${booking.id}`,type:'expired',booking_id:booking.id,account_id:booking.stripe_account_id,amount_total:booking.total_amount,currency:booking.currency,livemode:false}})
   if(expired.error) throw new Error('checkout_cleanup_pending')
   Object.assign(booking,record(record(expired.data).booking))
@@ -61,7 +67,13 @@ async function checkoutResult(admin:ReturnType<typeof createAdminClient>,value:u
   return response
 }
 export async function guestBooking(value:unknown,cancel=false) {
+  assertBookingRealmBoundary()
   const {reference,token}=parseGuestAccess(value),admin=createAdminClient()
+  if(getBookingRealm()==='sandbox') {
+    const authorized=await admin.rpc('commerce_booking_status',{p_reference:reference,p_token:token})
+    if(authorized.error||!authorized.data) throw new Error('not_found')
+    await requireBookingObjectScope(admin,'commerce_bookings',uuid(record(record(authorized.data).booking).id))
+  }
   const result=await admin.rpc(cancel?'commerce_cancel_guest':'commerce_booking_status',{p_reference:reference,p_token:token})
   if(result.error||!result.data) throw new Error('not_found')
   if(cancel) {
@@ -81,19 +93,23 @@ export async function guestBooking(value:unknown,cancel=false) {
   return safeBookingResult(result.data)
 }
 export async function resumeGuestPayment(value:unknown) {
+  assertBookingRealmBoundary()
   const {reference,token}=parseGuestAccess(value),admin=createAdminClient()
   // Establish the capability before reading any private Stripe/customer snapshot.
   const authorized=await admin.rpc('commerce_booking_status',{p_reference:reference,p_token:token})
   if(authorized.error||!authorized.data) throw new Error('not_found')
   const id=uuid(record(record(authorized.data).booking).id)
+  await requireBookingObjectScope(admin,'commerce_bookings',id)
   const stored=await admin.from('commerce_bookings').select('*').eq('id',id).single()
   if(stored.error) throw new Error('not_found')
   return checkoutResult(admin,{ok:true,replayed:true,booking:{...stored.data,public_token:token}})
 }
 export async function settleCancellation(admin:ReturnType<typeof createAdminClient>,id:string) {
+  assertBookingRealmBoundary()
   const result=await admin.from('commerce_bookings').select('*').eq('id',uuid(id)).single()
   if(result.error) throw new Error(result.error.message === 'food_ordering_disabled' ? 'food_ordering_disabled' : 'booking_failed')
   const booking=result.data
+  await requireBookingProviderScope(admin,String(booking.provider_id))
   if(booking.payment_method!=='online') return
   if(booking.payment_state==='refund_pending'&&booking.stripe_payment_intent_id) {
     const refund=await refundDirectPayment({paymentIntentId:booking.stripe_payment_intent_id,accountId:booking.stripe_account_id,bookingId:id,idempotencyKey:`commerce-refund-${id}`})
