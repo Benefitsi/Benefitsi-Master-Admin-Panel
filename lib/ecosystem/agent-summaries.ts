@@ -99,7 +99,7 @@ export function buildAgentSummaries(data: AgentControlData): AgentSummary[] {
       const lastRun = lastObservedRun(profile, data)
       summaries.set(profile.id, {
         id: profile.id, name: details?.name ?? profile.id, purpose: configured?.purpose ?? profile.purpose,
-        scope: profile.scope, model: profile.model, ...profileState(profile, freshness, lastRun.lastRunStatus),
+        scope: profile.scope === "unknown" && configured ? configured.scope : profile.scope, model: profile.model, ...profileState(profile, freshness, lastRun.lastRunStatus),
         mode: profile.automation === "scheduled" ? "Automatisch geplant" : profile.automation === "manual" ? "Auf Abruf" : "Planung unbekannt",
         cadence: profileCadence(profile), evidence: "observed", observedAt: data.runtime.snapshot!.observedAt,
         freshness, freshnessLabel: freshnessLabel(freshness), ...lastRun,
@@ -109,6 +109,20 @@ export function buildAgentSummaries(data: AgentControlData): AgentSummary[] {
     }
   }
   return [...summaries.values()]
+}
+
+/** Only scoped observations count; configuration is never evidence of a live process. */
+export function benefitsiAgentInventory(data: AgentControlData) {
+  const state = runtimeFreshness(data)
+  const agents = buildAgentSummaries(data).filter(agent => agent.scope === "benefitsi")
+  const configuredCount = buildAgentSummaries({ ...data, runtime: { state: "unavailable", snapshot: null } })
+    .filter(agent => agent.scope === "benefitsi").length
+  return {
+    agents, configuredCount, state,
+    observedCount: state === "fresh" || state === "stale"
+      ? agents.filter(agent => agent.evidence === "observed").length : null,
+    observedAt: state === "fresh" || state === "stale" ? data.runtime.snapshot!.observedAt : null,
+  }
 }
 
 function runtimeFreshness(data: AgentControlData): Exclude<AgentSummary["freshness"], "unobserved"> {

@@ -1,6 +1,11 @@
+import { BenefitsiKnowledgeEntry } from "@/components/knowledge/benefitsi-knowledge-entry"
+import { AdminTranslationBoundary } from "@/components/admin-translation-boundary"
 import type { Metadata } from "next"
 
 import { AdminShell } from "@/app/admin-shell"
+import { ManagedNoteDetail, type ManagedNoteResult } from "@/components/knowledge/benefitsi-note-detail"
+import { KnowledgeControlError, parseKnowledgeNoteRead } from "@/lib/benefitsi-knowledge-controls"
+import { requestKnowledgeNote } from "@/lib/benefitsi-knowledge-controls-server"
 import { requireAdmin } from "@/lib/admin"
 import {
   getBenefitsiKnowledgeDocument,
@@ -32,9 +37,10 @@ export default async function WissenPage({
   const page = readPage(singleQueryValue(params.page))
   const documentId = singleQueryValue(params.document)
   const offset = page * PAGE_SIZE
-  const [status, search] = await Promise.all([
+  const [status, search, managedNote] = await Promise.all([
     getBenefitsiKnowledgeStatus(),
     searchBenefitsiKnowledge({ query, limit: PAGE_SIZE, offset }),
+    readManagedNote(params.note),
   ])
   const detail: KnowledgeDocumentDetail | null = documentId
     ? await getBenefitsiKnowledgeDocument(documentId)
@@ -51,6 +57,8 @@ export default async function WissenPage({
       title="Wissensspiegel"
       subtitle="Privater Benefitsi-Wissensstand – schreibgeschützte Ansicht"
     >
+      <AdminTranslationBoundary><details className="mb-5 rounded-2xl border border-slate-200 bg-white p-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">Aufgabe oder Wissen speichern</summary><BenefitsiKnowledgeEntry /></details></AdminTranslationBoundary>
+      {managedNote ? <AdminTranslationBoundary><ManagedNoteDetail result={managedNote} /></AdminTranslationBoundary> : null}
       <KnowledgeBrowser
         query={query}
         page={page}
@@ -70,4 +78,16 @@ function readPage(value: string) {
   const parsed = Number.parseInt(value, 10)
   if (!Number.isSafeInteger(parsed) || parsed < 0) return 0
   return Math.min(parsed, 10_000)
+}
+
+async function readManagedNote(value: string | string[] | undefined): Promise<ManagedNoteResult | null> {
+  if (value === undefined) return null
+  if (typeof value !== "string") return { state: "invalid" }
+  try {
+    const { id } = parseKnowledgeNoteRead({ id: value })
+    return { state: "ready", note: await requestKnowledgeNote(id) }
+  } catch (error) {
+    const code = error instanceof KnowledgeControlError ? error.code : "unavailable"
+    return { state: code === "permission_denied" ? "forbidden" : code === "invalid_request" || code === "invalid_response" ? "invalid" : "unavailable" }
+  }
 }

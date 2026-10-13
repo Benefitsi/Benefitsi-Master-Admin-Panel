@@ -1,6 +1,6 @@
 /**
- * Curated product inventory, checked against Admin, App, Web and Database
- * sources on 2026-10-02, with partner CRM updated on 2026-10-03.
+ * Curated product inventory: source review on 2026-10-13 against Admin, App,
+ * Web, Database and documented product decisions/releases through 2026-10-09.
  * These descriptions are not runtime health checks,
  * contractual price quotes, or evidence of a public/App Store release.
  * Paths in `source` are relative to the named repository.
@@ -54,7 +54,7 @@ export const tierCatalog: TierCatalogEntry[] = [
     audience: 'Partner',
     name: 'Free',
     description: 'Standardprofil innerhalb der Stadtseite mit Kontakt, Öffnungszeiten und Vorteilen.',
-    features: ['Normale Angebote und Happy Hour ohne Mengenlimit', '1 Deal Drop je Kalendermonat und Standort', '3 Teammitglieder · 30 Tage Auswertung'],
+    features: ['Normale Angebote und Happy Hour ohne Mengenlimit', '1 Deal Drop je Kalendermonat und Standort', '3 Teammitglieder einschließlich Inhaber · 30 Tage Auswertung', 'Profil, Menü und Öffnungszeiten manuell pflegen', 'Vorbereitetes digitales Setup und Onboardinggespräch'],
     note: 'Keine eigene Microsite und keine erweiterten Medien. Besucherzielgruppen und Einlösebedingungen werden pro Angebot festgelegt.',
     href: 'https://benefitsi.de/partner-werden#tarife',
   },
@@ -63,8 +63,8 @@ export const tierCatalog: TierCatalogEntry[] = [
     audience: 'Partner',
     name: 'Pro',
     description: 'Erweiterter Partnerumfang mit eigener Microsite und vertiefter Auswertung.',
-    features: ['Eigene Microsite und erweiterte Medien nach Freigabe', '10 Teammitglieder · 365 Tage Auswertung', 'Deal Drops vorläufig ohne Monatslimit', '2 KI-Menüimporte pro Abo-Monat, soweit freigegeben', 'Besuchsfeedback mit passendem Verwaltungsrecht', 'CRM-Entwürfe und redaktionelle Anfragen nach Freigabe'],
-    note: 'Standard und Founder sind Preisangebote für Pro. Zusatzmodule benötigen eigene Verträge und Freigaben. Nachrichtenversand ist noch nicht verfügbar.',
+    features: ['Eigene Microsite und erweiterte Medien nach Freigabe', '10 Teammitglieder einschließlich Inhaber · 365 Tage Auswertung', 'Erweiterte Partnerstatistik und aggregierter CSV-Export mit Berechtigung', 'Deal Drops vorläufig ohne Monatslimit', '2 KI-Menüimporte pro Abo-Monat, soweit freigegeben', 'Besuchsfeedback mit passendem Verwaltungsrecht', 'CRM-Entwürfe sowie Blogartikel und Inhaberinterview/Podcast anfragen', 'Vorbereitetes digitales Setup und Onboardinggespräch', 'Priorisierter Support in Geschäftszeiten'],
+    note: 'Standard und Founder sind Preisangebote für Pro. Medienumfang: ein freigegebenes Video und eine 360°-Ansicht oder virtuelle Tour; neue Produktion ist separat. Zusatzmodule benötigen eigene Verträge und Freigaben. Nachrichtenversand ist noch nicht verfügbar.',
     href: 'https://benefitsi.de/partner-werden#tarife',
   },
 ]
@@ -198,7 +198,7 @@ export const ecosystemCatalog: EcosystemEntry[] = [
   },
   {
     id: 'app-order-entry', title: 'Bestellen aus der App', group: 'app',
-    description: 'Vom Partnerdetail in den passenden Bestellablauf wechseln, wenn der veröffentlichte Katalog Bestellungen erlaubt.',
+    description: 'Vom Partnerdetail in Benefitsis internen Bestellablauf mit vorhandener Session-Brücke wechseln, wenn der veröffentlichte Katalog Bestellungen erlaubt.',
     audience: 'Nutzer und Gäste', availability: 'Globaler Schalter, Partnerfreigabe und Angebot nötig',
     href: '/commerce', source: 'App: lib/features/bookings/partner_booking_action.dart; docs/commerce-rollout.md',
   },
@@ -216,7 +216,7 @@ export const ecosystemCatalog: EcosystemEntry[] = [
   },
   {
     id: 'partner-team', title: 'Team und Scannerzugänge', group: 'partner',
-    description: 'Teamzugänge mit Verwaltungs- oder Scannerrolle zuordnen. Free umfasst 3, Pro 10 Teammitglieder.',
+    description: 'Teamzugänge mit Verwaltungs- oder Scannerrolle zuordnen. Free umfasst 3, Pro 10 Teammitglieder einschließlich Inhaber.',
     audience: 'Partner Free und Pro', availability: 'Rollenprüfung und Teamlimit',
     href: '/partners', source: 'Admin: lib/reward-config.ts; components/partner/partner-plan-panel.tsx',
   },
@@ -252,15 +252,15 @@ export const ecosystemCatalog: EcosystemEntry[] = [
   },
   {
     id: 'partner-rich-media', title: 'Videos und virtuelle Einblicke', group: 'partner',
-    description: 'Freigegebene erweiterte Medien in der eigenen Microsite einsetzen.',
+    description: 'Ein freigegebenes Video und eine 360°-Ansicht oder virtuelle Tour in der eigenen Microsite einbinden. Neue Aufnahme, Schnitt und Produktion sind separate Aufträge.',
     audience: 'Partner Pro', availability: 'Tarif- und Veröffentlichungsfreigabe',
     href: '/microsites', source: 'Admin: lib/microsite-rich-media.ts; lib/partners/entitlements.ts',
   },
   {
     id: 'partner-statistics', title: 'Partnerstatistik', group: 'partner',
-    description: 'Verfügbare Messdaten zu Partneraktivität und Vorteilen auswerten. Free betrachtet 30 Tage, Pro 365 Tage.',
+    description: 'Besuche, Wiederkehr, benannte Vorteile, Stempelkarten und Kundenstufen aus verfügbaren Messdaten auswerten. Free betrachtet 30 Tage, Pro 365 Tage.',
     audience: 'Partner Free und Pro', availability: 'Messdaten und Zugriffsrechte erforderlich',
-    href: '/analytics', source: 'Admin: lib/partners/analytics.ts; components/partner/partner-statistics.tsx',
+    href: '/analytics', source: 'Admin: lib/partners/analytics.ts; lib/partners/insights.ts; components/partner/partner-statistics.tsx',
   },
   {
     id: 'partner-statistics-export', title: 'Erweiterte Auswertung und Export', group: 'partner',
@@ -311,6 +311,18 @@ export const ecosystemCatalog: EcosystemEntry[] = [
     href: '/partner/crm', source: 'Admin: app/partner/crm/page.tsx; lib/partners/benefits-v1.json; components/partner/partner-crm-workspace.tsx',
   },
   {
+    id: 'partner-setup-onboarding', title: 'Digitales Setup und Onboarding', group: 'partner',
+    description: 'Benefitsi bereitet das digitale Setup vor und bespricht es beim Onboarding. Umfang und Termin werden gemeinsam abgestimmt.',
+    audience: 'Partner Free und Pro', availability: 'Bestätigter Leistungsumfang · Durchführung abstimmen',
+    href: '/partners', source: 'Admin: lib/partners/benefits-v1.json; components/partner/partner-benefit-groups.tsx',
+  },
+  {
+    id: 'partner-priority-support', title: 'Priorisierter Support in Geschäftszeiten', group: 'partner',
+    description: 'Pro umfasst priorisierten Support innerhalb der Geschäftszeiten. Umfang und Ablauf werden mit dem Benefitsi-Team abgestimmt.',
+    audience: 'Partner Pro', availability: 'Katalogisierte Leistung · organisatorische Erfüllung prüfen',
+    href: '/partners', source: 'Admin: lib/partners/benefits-v1.json; components/partner/partner-benefit-groups.tsx',
+  },
+  {
     id: 'partner-extra-ai-planned', title: 'Geplantes Zusatzmodul: weitere KI-Importe', group: 'partner',
     description: 'Zusätzliche Menüimporte sind im öffentlichen Katalog als künftige Erweiterung vorgesehen.',
     audience: 'Partner', availability: 'Geplant · noch nicht buchbar',
@@ -348,7 +360,7 @@ export const ecosystemCatalog: EcosystemEntry[] = [
   },
   {
     id: 'deal-bonus-stamps', title: 'Bonusstempel', group: 'deals', benefitIcon: 'bonus_stamp',
-    description: 'Zusätzliche Stempel beim berechtigten Scan automatisch auf den festgelegten Stempelkartenpfad anrechnen.',
+    description: 'Zusätzliche Stempel beim berechtigten Scan automatisch auf den festgelegten Stempelkartenpfad anrechnen. Angebotsbedingungen, Limits, Kontingente und Wartezeiten werden geprüft; Nullmenge und Offline-PIN vergeben keinen Hintergrundbonus.',
     audience: 'Zielgruppe und Stempelkartenpfad des Angebots', availability: 'Automatisch beim Scan',
     href: '/partners', source: 'Admin: lib/reward-config.ts (inferBenefitCategory, rewardTrackTargetOptions)',
   },
@@ -360,7 +372,7 @@ export const ecosystemCatalog: EcosystemEntry[] = [
   },
   {
     id: 'deal-time-bonus', title: 'Zeitbonus', group: 'deals', benefitIcon: 'time_bonus',
-    description: 'Eine Rückkehr innerhalb eines konfigurierten Zeitraums belohnen, etwa mit einem zusätzlichen Stempel.',
+    description: 'Eine Rückkehr innerhalb des konfigurierten Zeitfensters belohnen. Stundenboni zählen verstrichene Stunden; Tages-, Wochen- und Monatsfenster folgen ihrer jeweiligen Kalenderregel.',
     audience: 'Nutzer mit qualifizierender Rückkehr', availability: 'Zeitfenster und Belohnungsformat',
     href: '/partners', source: 'Admin: app/partner-admin.tsx (dealExplanations.comeback); lib/reward-config.ts (canonicalTriggerKey)',
   },

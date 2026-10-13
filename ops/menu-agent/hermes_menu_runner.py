@@ -58,19 +58,27 @@ def extract_draft(agent, document):
     return validate_draft(parse_result(result))
 
 
+def resolve_profile_runtime():
+    """Use the selected profile's native connection before entering disposable home."""
+    from hermes_cli.web_server_profiles import _config_profile_scope
+    from hermes_cli.config import load_config
+    from hermes_cli.runtime_provider import resolve_runtime_provider
+    with _config_profile_scope("benefitsi-menu"):
+        cfg = load_config()
+        model = cfg.get("model", {})
+        if (not isinstance(model, dict) or not isinstance(model.get("provider"), str)
+                or not model["provider"].strip() or not isinstance(model.get("default"), str)
+                or not model["default"].strip()):
+            raise RuntimeError("Menu profile model unavailable")
+        runtime = resolve_runtime_provider(requested=model["provider"], target_model=model["default"])
+        return {"provider": model["provider"], "default": model["default"]}, runtime
+
+
 def run(document):
     profile = Path(__file__).resolve().parent.parent
     hermes = Path.home() / ".hermes/hermes-agent"
     sys.path.insert(0, str(hermes))
-    from dotenv import dotenv_values
-
-    # Reuse only the existing model credential; do not import other agents'
-    # tools, histories, MCP settings or unrelated application credentials.
-    credentials = dotenv_values(Path.home() / ".hermes/.env")
-    key = os.environ.get("MINIMAX_API_KEY") or credentials.get("MINIMAX_API_KEY")
-    if not key:
-        raise RuntimeError("MiniMax credential unavailable")
-    os.environ["MINIMAX_API_KEY"] = key
+    model, runtime = resolve_profile_runtime()
     owned_scratch = os.environ.get("HERMES_MENU_SCRATCH")
     scratch_context = contextlib.nullcontext(owned_scratch) if owned_scratch else tempfile.TemporaryDirectory(prefix="benefitsi-menu-hermes-")
     with scratch_context as scratch:
@@ -81,13 +89,8 @@ def run(document):
         shutil.copyfile(profile / "SOUL.md", Path(scratch) / "SOUL.md")
         os.chdir(scratch)
         logging.disable(logging.CRITICAL)
-        from hermes_cli.config import load_config
-        from hermes_cli.runtime_provider import resolve_runtime_provider
         from run_agent import AIAgent
 
-        model = load_config()["model"]
-        runtime = resolve_runtime_provider(requested=model["provider"], target_model=model["default"],
-                                           explicit_api_key=key, explicit_base_url=model["base_url"])
         agent = AIAgent(model=model["default"], provider=runtime["provider"],
                         base_url=runtime["base_url"], api_key=runtime["api_key"], api_mode=runtime["api_mode"],
                         enabled_toolsets=[], max_iterations=2, max_tokens=24000,

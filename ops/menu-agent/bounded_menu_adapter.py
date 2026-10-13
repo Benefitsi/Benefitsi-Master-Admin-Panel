@@ -1,10 +1,13 @@
-"""Paid import v2: one pinned provider request, durable no-replay outcome journal.
+"""Paid import v2: one admitted selected-provider request, durable no-replay outcome journal.
 No Hermes history/tools/SDK retry loop. Configuration is private deployment input.
 """
 import hashlib
 import http.client
 import json
 import os
+import re
+import subprocess
+import sys
 import queue
 from pathlib import Path
 import sqlite3
@@ -107,7 +110,43 @@ def provider_draft(document, *, transport=post_json):
     return draft
 
 
-def extract_v2(data, *, rpc=db_rpc, extract=None, database=None):
+def read_selected_model():
+    """Read only the fixed menu profile's saved route; never borrow another profile."""
+    import yaml
+    profile = Path.home() / '.hermes/profiles/benefitsi-menu'
+    config = profile / 'config.yaml'
+    if profile.is_symlink() or config.is_symlink():
+        raise ValueError('menu_profile_unavailable')
+    try:
+        cfg = yaml.safe_load(config.read_text(encoding='utf-8'))
+        model = cfg.get('model', {}) if isinstance(cfg, dict) else {}
+        provider, ident = model.get('provider'), model.get('default')
+        pattern = r'[A-Za-z0-9][A-Za-z0-9._:/@+\-]{0,199}'
+        if not isinstance(provider, str) or not isinstance(ident, str) or not re.fullmatch(pattern, provider) or not re.fullmatch(pattern, ident):
+            raise ValueError('menu_profile_unavailable')
+        return {'provider': provider, 'model': ident}
+    except (OSError, AttributeError, yaml.YAMLError):
+        raise ValueError('menu_profile_unavailable') from None
+
+
+def native_profile_draft(document, selection, max_input_tokens):
+    python = Path.home() / '.hermes/hermes-agent/venv/bin/python'
+    runner = Path.home() / '.hermes/profiles/benefitsi-menu/runtime/hermes_menu_native.py'
+    request = {'selection': selection, 'document': document, 'maxInputTokens': max_input_tokens}
+    completed = subprocess.run([str(python), '-B', str(runner)], input=json.dumps(request),
+                               text=True, capture_output=True, timeout=90, check=False,
+                               env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})
+    if completed.returncode or len(completed.stdout.encode()) > MAX_RESPONSE:
+        raise RuntimeError('native_menu_outcome_unconfirmed')
+    result = json.loads(completed.stdout)
+    if result.get('errorCode'):
+        if result['errorCode'] in {'native_menu_model_changed', 'native_menu_request_rejected', 'native_menu_invalid_response','native_menu_unbounded_provider'}:
+            raise ValueError(result['errorCode'])
+        raise RuntimeError('native_menu_outcome_unconfirmed')
+    return result['draft']
+
+
+def extract_v2(data, *, rpc=db_rpc, extract=None, database=None, selection_reader=None, native_runner=None):
     """Journal written BEFORE possible dispatch; uncertain work is never repeated.
     Cached successful draft is written durably BEFORE DB finalization. Recovery
     only returns that stored draft; it never calls OCR or the provider.
@@ -152,16 +191,42 @@ def extract_v2(data, *, rpc=db_rpc, extract=None, database=None):
         if not _SLOT.acquire(blocking=False):
             raise MenuAgentBusy('Der Menü-Agent ist ausgelastet.')
         admitted = True
-        permit = rpc('begin_partner_menu_ai_attempt', {'p_reservation_id':operation})
-        if permit.get('dispatch') is not True or permit.get('model') != MODEL or permit.get('max_tokens') != MAX_OUTPUT or permit.get('max_body_bytes') != MAX_BODY or permit.get('service_tier') != 'standard':
+        selection = (selection_reader or read_selected_model)()
+        if (not isinstance(selection, dict) or set(selection) != {'provider', 'model'}
+                or any(not isinstance(selection[k], str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:/@+\-]{0,199}', selection[k]) for k in ('provider', 'model'))):
+            db.rollback()
+            raise ValueError('menu_profile_unavailable')
+        if selection['provider'] == 'openai-codex':
+            db.rollback()
+            raise ValueError('Der native ChatGPT/Codex-Endpunkt unterstützt das erforderliche Ausgabelimit für Menüimporte nicht. Bitte einen begrenzbaren Anbieter wählen.')
+        legacy = selection['provider'] == 'minimax' and selection['model'] in {'MiniMax-M3', 'MiniMax-M3.0'}
+        if legacy:
+            permit = rpc('begin_partner_menu_ai_attempt', {'p_reservation_id':operation})
+            valid = permit.get('model') == MODEL and permit.get('service_tier') == 'standard'
+            generate = provider_draft
+        else:
+            permit = rpc('begin_partner_menu_ai_native_attempt', {'p_reservation_id':operation,
+                         'p_provider':selection['provider'], 'p_model':selection['model']})
+            valid = (permit.get('provider') == selection['provider'] and permit.get('model') == selection['model']
+                     and permit.get('adapter') == 'hermes-native-bounded-v2' and permit.get('service_tier') == 'native-default'
+                     and type(permit.get('max_input_tokens')) is int and 0 < permit['max_input_tokens'] <= 10000000)
+            def generate(document):
+                return (native_runner(document, selection) if native_runner else
+                        native_profile_draft(document, selection, permit['max_input_tokens']))
+        if permit.get('code') == 'verified_provider_cost_required':
+            db.rollback()
+            raise ValueError('Die Kostenfreigabe für das ausgewählte Menümodell fehlt. Benefitsi muss die Anbietergrenzen prüfen.')
+        if permit.get('dispatch') is not True or not valid or permit.get('max_tokens') != MAX_OUTPUT or permit.get('max_body_bytes') != MAX_BODY:
             db.rollback()
             raise ValueError('operation_dispatch_not_permitted')
         db.execute('insert into operations(id,fingerprint,state,result) values(?,?,?,null)', (operation,fingerprint,'uncertain'))
         db.commit()
         try:
-            result = extract({**data,'schemaVersion':1}, agent=provider_draft) if extract else extract_menu({**data,'schemaVersion':1}, agent=provider_draft, _admitted=True)
+            result = extract({**data,'schemaVersion':1}, agent=generate) if extract else extract_menu({**data,'schemaVersion':1}, agent=generate, _admitted=True)
             result['schemaVersion'] = 2
-            result['adapter'] = 'minimax-m3-bounded-v2'
+            result['adapter'] = 'minimax-m3-bounded-v2' if legacy else 'hermes-native-bounded-v2'
+            if not legacy:
+                result['provider'], result['model'] = selection['provider'], selection['model']
         except ValueError:
             # A terminal local validation failure permits quota release. Worst
             # cost remains charged to the finite period budget regardless.

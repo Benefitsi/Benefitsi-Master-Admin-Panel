@@ -57,7 +57,11 @@ export async function extractMenuFromFiles(files: File[], options: ExtractOption
     throw new Error(await extractionErrorMessage(response))
   }
   const payload = await readProviderResponse(response)
-  if (payload.profile !== "benefitsi-menu" || payload.task !== "extract-menu" || payload.schemaVersion !== schemaVersion || (schemaVersion === 2 && payload.adapter !== "minimax-m3-bounded-v2") || payload.requestId !== requestId) {
+  const nativeRoute = payload.adapter === "hermes-native-bounded-v2"
+    && typeof payload.provider === "string" && /^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$/.test(payload.provider)
+    && typeof payload.model === "string" && /^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$/.test(payload.model)
+  const admittedAdapter = payload.adapter === "minimax-m3-bounded-v2" || nativeRoute
+  if (payload.profile !== "benefitsi-menu" || payload.task !== "extract-menu" || payload.schemaVersion !== schemaVersion || (schemaVersion === 2 && !admittedAdapter) || payload.requestId !== requestId) {
     throw new Error("Die Antwort des Hermes-Menü-Agenten passt nicht zu diesem Auftrag. Bitte erneut versuchen.")
   }
   return validateDraft(payload.draft, false)
@@ -75,6 +79,10 @@ async function extractionErrorMessage(response: Response): Promise<string> {
     return fallback
   }
   switch (payload.error) {
+    case "Die Kostenfreigabe für das ausgewählte Menümodell fehlt. Benefitsi muss die Anbietergrenzen prüfen.":
+      return "Für das ausgewählte Menümodell fehlt die geprüfte Kostenfreigabe. Benefitsi muss die Anbietergrenzen prüfen; es wurde kein Modellaufruf gestartet."
+    case "Der native ChatGPT/Codex-Endpunkt unterstützt das erforderliche Ausgabelimit für Menüimporte nicht. Bitte einen begrenzbaren Anbieter wählen.":
+      return "Der ChatGPT/Codex-Endpunkt kann das Ausgabelimit für Menüimporte nicht einhalten. Bitte einen begrenzbaren Anbieter wählen; es wurde kein Modellaufruf gestartet."
     case "Die Datei ist unlesbar, zu umfangreich oder hat mehr als acht Seiten.":
     case "Mindestens eine Seite ist unlesbar. Bitte erneut fotografieren.":
     case "Es wurde kein lesbarer Text gefunden.":

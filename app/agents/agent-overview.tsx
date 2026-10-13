@@ -1,58 +1,49 @@
 import Link from "next/link"
+import { AgentProfileControls } from "./agent-controls"
+import { BenefitsiKnowledgeEntry } from "@/components/knowledge/benefitsi-knowledge-entry"
+import { KNOWLEDGE_PROFILES, type KnowledgeProfile } from "@/lib/benefitsi-knowledge-controls"
+import { Brain, Calculator, CaretDown, ChartLineUp, FileText, MapPin, Robot, Storefront } from "@phosphor-icons/react/dist/ssr"
 import type { AgentControlData, CityControl } from "@/lib/agent-control-data"
 import type { AgentProfile } from "@/lib/agent-control"
-import { agentProfileAnchor, buildAgentSummaries, type AgentSummary } from "@/lib/ecosystem/agent-summaries"
+import { agentProfileAnchor, benefitsiAgentInventory, type AgentSummary } from "@/lib/ecosystem/agent-summaries"
 
 const dateTime = (value: string | null) => value && Number.isFinite(Date.parse(value))
   ? new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(value))
   : "Nicht nachgewiesen"
-
+const roles: Record<string, { name: string; role: string; Icon: typeof Robot; color: string }> = {
+  ben: { name: "Ben", role: "Koordination", Icon: Brain, color: "bg-[#061829] text-[#17d4d7]" },
+  "benefitsi-content": { name: "Content", role: "Redaktion", Icon: FileText, color: "bg-blue-50 text-blue-600" },
+  "benefitsi-finance": { name: "Finanzen", role: "Buchhaltung & Steuern", Icon: Calculator, color: "bg-amber-50 text-amber-700" },
+  "benefitsi-seo": { name: "SEO", role: "Sichtbarkeit", Icon: ChartLineUp, color: "bg-cyan-50 text-cyan-700" },
+  "city-annweiler": { name: "Annweiler", role: "Stadtinhalte", Icon: MapPin, color: "bg-sky-50 text-sky-700" },
+  "benefitsi-menu": { name: "Menü", role: "Menüimport", Icon: Storefront, color: "bg-teal-50 text-teal-700" },
+}
 const flow = ["Auftrag", "Recherche", "Prüfung", "Freigabe", "Veröffentlichung"]
 
 export function AgentOverview({ data, selectedAgentId }: { data: AgentControlData; selectedAgentId?: string }) {
-  const summaries = new Map(buildAgentSummaries(data).map(summary => [summary.id, summary]))
-  const selected = selectedAgentId ? summaries.get(selectedAgentId) : undefined
-  const profiles = (data.runtime.snapshot?.profiles ?? []).filter(profile => summaries.get(profile.id)?.evidence === "observed")
-  const benefitsi = profiles.filter(profile => profile.scope === "benefitsi")
-  const others = profiles.filter(profile => profile.scope !== "benefitsi")
-  const scheduled = profiles.filter(profile => profile.automation === "scheduled").length
-  const allUnavailable = data.runtime.state === "unavailable" && data.cities.state === "unavailable" && data.citySchedules.state === "unavailable" && data.pipeline.state === "unavailable"
-
-  return <div className="space-y-6">
-    <section className="overflow-hidden rounded-3xl bg-[#061829] p-6 text-white shadow-sm sm:p-8">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-3xl">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#17d4d7]">Beobachtete Konfiguration</p>
-          <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Agenten, Pläne und Freigaben</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/70">Diese Übersicht zeigt belegte Profile und Metadaten. Konfiguration, nicht gleichzeitig aktive Prozesse. Ein technischer Erfolg ersetzt keine menschliche Freigabe.</p>
-        </div>
-        <div className="space-y-1 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-xs text-white/70"><p>M1 beobachtet: {dateTime(data.runtime.snapshot?.observedAt ?? null)}</p><p>Admin abgefragt: {dateTime(data.checkedAt)} · Europe/Berlin</p></div>
-      </div>
+  const inventory = benefitsiAgentInventory(data)
+  const selected = inventory.agents.find(agent => agent.id === selectedAgentId)
+  const profiles = new Map((data.runtime.snapshot?.profiles ?? []).map(profile => [profile.id, profile]))
+  return <div className="space-y-5">
+    <section className="flex flex-col gap-4 rounded-3xl bg-[#061829] p-6 text-white sm:flex-row sm:items-center sm:justify-between">
+      <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#17d4d7]">Dein Benefitsi-Team</p><h2 className="mt-2 text-3xl font-bold tracking-tight">Dein Team im Überblick</h2><p className="mt-2 text-sm leading-6 text-white/70">Profile, letzte belegte Läufe und Freigaben.</p></div>
+      <div className="text-xs leading-6 text-white/70"><p>M1 beobachtet: {dateTime(inventory.observedAt)}</p><p>Admin abgefragt: {dateTime(data.checkedAt)} · Europe/Berlin</p></div>
     </section>
-
-    {data.runtime.state !== "fresh" ? <Notice state={data.runtime.state} /> : null}
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"><Link href="/agents/finance" className="font-bold text-teal-700 hover:underline">Buchhaltung &amp; Steuern öffnen</Link><p className="mt-2 text-sm leading-6 text-slate-600">Manueller Einrichtungscheck, Belegprüfung und geschützter Prüfexport. Der Arbeitsbereich prüft den aktuellen M1-Dienst und zeigt tatsächliche Läufe getrennt von diesem Profil-Snapshot.</p></section>
-    {allUnavailable ? <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-950"><h2 className="font-bold">Keine belastbaren Agentendaten verfügbar</h2><p className="mt-2 text-sm leading-6">Die privaten Beobachtungsquellen sind derzeit nicht lesbar. Aktuelle Lauf- und Gesundheitswerte sind deshalb nicht nachgewiesen. Konfigurierte Aufgaben sind kein Laufnachweis.</p></section> : null}
-    {selectedAgentId && !selected ? <p role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">Kein passendes Profil nachgewiesen. Die verfügbaren Beobachtungen stehen unten.</p> : null}
-    {selected?.evidence === "configured" ? <ConfiguredProfile summary={selected} /> : null}
-
-    <section aria-label="Zusammenfassung" className="grid gap-3 sm:grid-cols-3">
-      <Metric value={data.runtime.snapshot ? profiles.length : null} label="beobachtete Profile" />
-      <Metric value={data.runtime.snapshot ? benefitsi.length : null} label="Benefitsi zugeordnet" />
-      <Metric value={data.runtime.snapshot ? scheduled : null} label="automatisch geplant" />
+    {inventory.state !== "fresh" ? <Notice state={inventory.state} /> : null}
+    <section aria-label="Zusammenfassung" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <Metric value={inventory.configuredCount} label="Konfiguriert" />
+      <Metric value={inventory.observedCount} label="Beobachtete Benefitsi-Profile" />
+      <Metric value={null} label="Aktive Läufe" />
     </section>
-
-    <section aria-labelledby="workflow-heading" className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-      <h2 id="workflow-heading" className="text-lg font-bold">Vom Auftrag bis zur Veröffentlichung</h2>
-      <ol className="mt-5 grid gap-2 sm:grid-cols-5">
-        {flow.map((step, index) => <li key={step} className="relative rounded-xl bg-slate-50 p-4 text-sm font-semibold"><span className="mr-2 text-teal-700">{index + 1}.</span>{step}</li>)}
-      </ol>
-      <p className="mt-4 text-sm leading-6 text-slate-600">Recherche und technische Prüfung dürfen vorbereitet werden. Inhalte werden erst nach einer ausdrücklichen menschlichen Freigabe veröffentlicht.</p>
+    <p className="text-xs leading-5 text-slate-500">Die Profilbeobachtung weist keine aktuell laufenden Prozesse nach.</p>
+    {selectedAgentId && !selected ? <p role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">Kein passendes Benefitsi-Profil nachgewiesen.</p> : null}
+    <section aria-labelledby="benefitsi-profiles-heading"><h2 id="benefitsi-profiles-heading" className="sr-only">Benefitsi-Profile</h2><div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">{inventory.agents.map(summary => <ProfileCard key={summary.id} summary={summary} profile={summary.evidence === "observed" ? profiles.get(summary.id) : undefined} selected={summary.id === selectedAgentId} />)}</div></section>
+    <section aria-labelledby="workflow-heading" className="rounded-2xl border border-slate-200 bg-white p-5">
+      <h2 id="workflow-heading" className="text-base font-bold">Vom Auftrag bis zur Veröffentlichung</h2>
+      <ol className="mt-4 grid gap-2 sm:grid-cols-5">{flow.map((step, index) => <li key={step} className="rounded-xl bg-slate-50 px-3 py-3 text-xs font-semibold"><span className="mr-2 text-teal-700">{index + 1}.</span>{step}</li>)}</ol>
+      <p className="mt-3 text-xs leading-5 text-slate-600">Inhalte werden erst nach einer ausdrücklichen menschlichen Freigabe veröffentlicht.</p>
     </section>
-
-    {benefitsi.length > 0 ? <ProfileSection headingId="benefitsi-profiles-heading" title="Benefitsi-Profile" profiles={benefitsi} summaries={summaries} selectedAgentId={selectedAgentId} /> : null}
-    {others.length > 0 ? <ProfileSection headingId="other-profiles-heading" title="Weitere beobachtete Profile" profiles={others} summaries={summaries} selectedAgentId={selectedAgentId} /> : null}
-
+    <details className="rounded-2xl border border-slate-200 bg-white p-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">Statusübersicht und Datenstand</summary><dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">{([["ok", "Letzter Stand OK"], ["attention", "Prüfen"], ["stale", "Beobachtung veraltet"], ["unknown", "Unbestätigt"]] as const).map(([status,label]) => <div key={status} className="rounded-xl bg-slate-50 p-3"><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 text-xl font-bold">{inventory.agents.filter(agent => agent.status === status).length}</dd></div>)}</dl><p className="mt-3 text-xs leading-5 text-slate-500">Letzte beobachtete Ergebnisse; kein Nachweis aktuell laufender Prozesse.</p></details>
     <CityOperations data={data} />
   </div>
 }
@@ -63,36 +54,30 @@ function Notice({ state }: { state: AgentControlData["runtime"]["state"] }) {
 }
 
 function Metric({ value, label }: { value: number | null; label: string }) {
-  return <div className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-3xl font-black tabular-nums text-[#061829]">{value ?? "—"}</p><p className="mt-1 text-sm text-slate-600">{value === null ? `${label} · Quelle unbekannt` : label}</p></div>
+  return <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"><strong className="text-2xl font-bold tabular-nums text-[#061829]">{value ?? "—"}</strong><div><p className="text-xs font-semibold text-slate-600">{label}</p>{value === null ? <p className="mt-1 text-xs text-slate-500">Nicht nachgewiesen</p> : null}</div></div>
 }
 
-function ConfiguredProfile({ summary }: { summary: AgentSummary }) {
-  return <article id={agentProfileAnchor(summary.id) ?? undefined} data-selected="true" className="scroll-mt-24 rounded-2xl border border-teal-500 bg-white p-5 ring-2 ring-teal-500/20 sm:p-6">
-    <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Konfiguriert · ohne verfügbare Profilbeobachtung</p>
-    <h2 className="mt-2 text-xl font-bold">{summary.name}</h2>
-    <p className="mt-2 text-sm leading-6 text-slate-600">{summary.purpose}</p>
-    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><Info label="Ausführung" value={summary.mode} /><Info label="Takt" value={summary.cadence} /><Info label="Laufnachweis" value={summary.lastRunLabel} /><Info label="Beobachtung" value={summary.freshnessLabel} /></dl>
-    <p className="mt-4 text-sm leading-6 text-slate-600">Diese Aufgabe ist konfiguriert. Ein ausgeführter Auftrag und ein aktueller Betriebszustand sind dadurch nicht belegt.</p>
-    {summary.workspaceHref ? <Link href={summary.workspaceHref} className="mt-4 inline-block rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold hover:border-teal-500">{summary.id === "benefitsi-menu" ? "Menüimport in der Partnerverwaltung" : "Zugehörigen Arbeitsbereich öffnen"}</Link> : null}
-  </article>
-}
-
-function ProfileSection({ headingId, title, profiles, summaries, selectedAgentId }: { headingId: string; title: string; profiles: AgentProfile[]; summaries: Map<string, AgentSummary>; selectedAgentId?: string }) {
-  return <section aria-labelledby={headingId} className="space-y-3">
-    <h2 id={headingId} className="text-xl font-bold tracking-tight">{title}</h2>
-    <div className="grid gap-4 xl:grid-cols-2">{profiles.map(profile => <ProfileCard key={profile.id} profile={profile} summary={summaries.get(profile.id)!} selected={profile.id === selectedAgentId} />)}</div>
-  </section>
-}
-
-function ProfileCard({ profile, summary, selected }: { profile: AgentProfile; summary: AgentSummary; selected: boolean }) {
-  const contextText = profile.contextHealth === "over_limit" ? "Kontextlimit überschritten" : profile.contextHealth === "missing" ? "Kontextdatei fehlt" : profile.contextHealth === "ok" ? "Kontext vollständig beobachtet" : "Kontext unbekannt"
-  return <article id={agentProfileAnchor(profile.id) ?? undefined} data-selected={selected ? "true" : undefined} className={`min-w-0 scroll-mt-24 rounded-2xl border bg-white p-5 ${selected ? "border-teal-500 ring-2 ring-teal-500/20" : "border-slate-200"}`}>
-    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-lg font-bold">{profile.id === "benefitsi-finance" ? <Link href="/agents/finance" className="text-teal-700 hover:underline">{summary.name}</Link> : profile.id}</p><p className="mt-1 text-sm leading-6 text-slate-600">{summary.purpose}</p></div><span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-800">{automationLabel(profile.automation)}</span></div>
-    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><Info label="Provider" value={profile.provider} /><Info label="Modell" value={profile.model} /><Info label="Laufnachweis" value={summary.lastRunLabel} /><Info label="Letzter Lauf" value={dateTime(summary.lastRunAt)} /><Info label="Beobachtung" value={`${summary.freshnessLabel} · ${dateTime(summary.observedAt)}`} /><Info label="Kontext" value={contextText} /></dl>
-    <details open={selected} className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4"><summary className="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-teal-600">Technische Einzelheiten zu {profile.id}</summary><div className="mt-4 space-y-4 text-sm">
-      <div><h3 className="font-semibold">Zeitpläne</h3>{profile.schedules.length ? <ul className="mt-2 space-y-2">{profile.schedules.map(schedule => <li key={`${schedule.source}-${schedule.id}`} className="rounded-lg bg-white p-3"><span className="font-medium">{schedule.id}</span><span className="block text-slate-600">{schedule.cadence ?? "Takt unbekannt"} · {schedule.enabled === true ? "aktiviert" : schedule.enabled === false ? "deaktiviert" : "Aktivierung unbekannt"}</span><span className="block text-xs text-slate-500">Letzter Status: {schedule.lastStatus ?? "nicht nachgewiesen"} · {dateTime(schedule.lastRunAt)}</span></li>)}</ul> : <p className="mt-1 text-slate-500">Kein Zeitplan im Snapshot.</p>}</div>
-      <div><h3 className="font-semibold">Kontextdateien</h3>{profile.contextFiles.length ? <ul className="mt-2 space-y-2">{profile.contextFiles.map(file => <li key={file.path} className="rounded-lg bg-white p-3"><span className="break-all font-medium">{file.path}</span><span className="block text-slate-600">{file.exists ? sizeLabel(file.chars, file.limit) : "Fehlt"} · geladen: {loadedByLabel(file.loadedBy)}</span><span className="block text-xs text-slate-500">Geändert: {dateTime(file.modifiedAt)}</span></li>)}</ul> : <p className="mt-1 text-slate-500">Keine Kontextmetadaten beobachtet.</p>}</div>
-    </div></details>
+function ProfileCard({ profile, summary, selected }: { profile?: AgentProfile; summary: AgentSummary; selected: boolean }) {
+  const role = roles[summary.id]
+  const Icon = role?.Icon ?? Robot
+  const contextText = profile?.contextHealth === "over_limit" ? "Kontextlimit überschritten" : profile?.contextHealth === "missing" ? "Kontextdatei fehlt" : profile?.contextHealth === "ok" ? "Kontext vollständig beobachtet" : "Kontext unbekannt"
+  return <article id={agentProfileAnchor(summary.id) ?? undefined} data-selected={selected ? "true" : undefined} className={`min-w-0 scroll-mt-24 overflow-hidden rounded-2xl border bg-white transition-colors ${selected ? "border-teal-500 ring-2 ring-teal-500/20" : "border-slate-200 hover:border-blue-300"}`}>
+    <div className="p-5"><div className="flex items-center gap-3"><span data-agent-icon={summary.id} className={`grid size-11 shrink-0 place-items-center rounded-2xl ${role?.color ?? "bg-blue-50 text-blue-600"}`}><Icon size={25} weight="duotone" aria-hidden="true" /></span><div className="min-w-0"><h3 data-admin-i18n-ignore="true" className="break-words text-lg font-bold text-[#061829]">{role?.name ?? summary.name}</h3><p className="mt-0.5 text-xs text-slate-500">{role?.role ?? summary.purpose}</p></div></div>
+      <div className="mt-4 flex items-start gap-2 text-xs leading-5"><span aria-hidden="true" className={`mt-1.5 size-2 shrink-0 rounded-full ${summary.status === "attention" ? "bg-amber-500" : summary.status === "ok" ? "bg-blue-500" : "bg-slate-300"}`} /><p className="text-slate-600">{summary.mode === "Auf Abruf" && summary.lastRunAt === null ? "Auf Abruf · kein Laufnachweis" : summary.statusLabel}</p></div>
+    </div>
+    <details open={selected} className="group border-t border-slate-100">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-5 py-3 text-xs font-semibold text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600 [&::-webkit-details-marker]:hidden">Profil-Details <CaretDown size={14} aria-hidden="true" className="transition-transform group-open:rotate-180" /></summary>
+      <div className="space-y-5 border-t border-slate-100 bg-slate-50 p-5 text-sm">
+        <p className="text-sm leading-6 text-slate-600">{summary.purpose}</p>
+        {summary.mode === "Auf Abruf" ? <p className="text-xs leading-5 text-slate-500">Auf Abruf: startet durch einen passenden Auftrag im Admin.</p> : null}
+        <dl className="grid gap-3 text-sm sm:grid-cols-2"><Info label="Ausführung" value={summary.mode} /><Info label="Takt" value={summary.cadence} /><Info label="Laufnachweis" value={summary.lastRunLabel} /><Info label="Letzter Lauf" value={dateTime(summary.lastRunAt)} /><Info label="Beobachtung" value={`${summary.freshnessLabel} · ${dateTime(summary.observedAt)}`} /><Info opaque label="Provider" value={profile?.provider ?? null} /><Info opaque label="Modell" value={profile?.model ?? null} /><Info label="Kontext" value={contextText} /></dl>
+        {!profile ? <p className="text-xs leading-5 text-slate-500">Konfiguriert · ohne verfügbare Profilbeobachtung. Kein Laufnachweis.</p> : null}
+        <div><h4 className="font-semibold">Zeitpläne</h4>{profile?.schedules.length ? <ul className="mt-2 space-y-2">{profile.schedules.map(schedule => <li key={`${schedule.source}-${schedule.id}`} className="rounded-lg bg-white p-3"><span data-admin-i18n-ignore="true" className="break-words font-medium">{schedule.id}</span><span className="block text-slate-600">{schedule.cadence ?? "Takt unbekannt"} · {schedule.enabled === true ? "aktiviert" : schedule.enabled === false ? "deaktiviert" : "Aktivierung unbekannt"}</span><span className="block text-xs text-slate-500">Letzter Status: <span data-admin-i18n-ignore="true">{schedule.lastStatus ?? "—"}</span> · {dateTime(schedule.lastRunAt)}</span></li>)}</ul> : <p className="mt-1 text-xs text-slate-500">Kein Zeitplan im Snapshot.</p>}</div>
+        <div><h4 className="font-semibold">Kontextdateien</h4>{profile?.contextFiles.length ? <ul className="mt-2 space-y-2">{profile.contextFiles.map(file => <li key={file.path} className="rounded-lg bg-white p-3"><span data-admin-i18n-ignore="true" className="break-all font-medium">{file.path}</span><span className="block text-xs text-slate-600">{file.exists ? sizeLabel(file.chars, file.limit) : "Fehlt"} · geladen: {loadedByLabel(file.loadedBy)}</span><span className="block text-xs text-slate-500">Geändert: {dateTime(file.modifiedAt)}</span></li>)}</ul> : <p className="mt-1 text-xs text-slate-500">Keine Kontextmetadaten beobachtet.</p>}</div>
+        {(KNOWLEDGE_PROFILES as readonly string[]).includes(summary.id) ? <><AgentProfileControls profileId={summary.id} initialProvider={profile?.provider ?? null} initialModel={profile?.model ?? null} /><details className="rounded-xl border border-slate-200 bg-white p-3"><summary className="min-h-11 cursor-pointer text-xs font-semibold">Aufgabe oder Wissen speichern</summary><BenefitsiKnowledgeEntry profileId={summary.id as KnowledgeProfile} /></details></> : null}
+        {summary.workspaceHref ? <Link href={summary.workspaceHref} prefetch={false} className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-blue-700 hover:border-blue-300">{summary.id === "benefitsi-menu" ? "Menüimport in der Partnerverwaltung" : "Zugehörigen Arbeitsbereich öffnen"}</Link> : null}
+      </div>
+    </details>
   </article>
 }
 
@@ -108,11 +93,10 @@ function CityOperations({ data }: { data: AgentControlData }) {
 function CityCard({ city, data }: { city: CityControl; data: AgentControlData }) {
   const pipeline = data.pipeline.item?.cityId === city.cityId ? data.pipeline.item : null
   const schedules = data.citySchedules.items.filter(item => item.cityId === city.cityId)
-  return <article className="rounded-xl bg-slate-50 p-4"><h3 className="font-bold">{city.cityName ?? `Unbekannte Stadt · ${city.cityId}`}</h3><dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Info label="Technischer Status" value={cityTechnicalStatus(pipeline, data.checkedAt)} /><Info label="Veröffentlichungskonfiguration" value={publicationConfiguration(city.autoPublishEnabled)} /><Info label="Redaktionelle Prüfung" value={editorialReviewStatus(pipeline?.editorialReviewPending ?? null)} /><Info label="Letzte Recherche" value={dateTime(pipeline?.researchCheckedAt ?? null)} /><Info label="Beobachtete Pläne" value={data.citySchedules.state === "unavailable" ? null : String(schedules.length)} /></dl></article>
+  return <article className="rounded-xl bg-slate-50 p-4"><h3 data-admin-i18n-ignore="true" className="font-bold">{city.cityName ?? `Unbekannte Stadt · ${city.cityId}`}</h3><dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Info label="Technischer Status" value={cityTechnicalStatus(pipeline, data.checkedAt)} /><Info label="Veröffentlichungskonfiguration" value={publicationConfiguration(city.autoPublishEnabled)} /><Info label="Redaktionelle Prüfung" value={editorialReviewStatus(pipeline?.editorialReviewPending ?? null)} /><Info label="Letzte Recherche" value={dateTime(pipeline?.researchCheckedAt ?? null)} /><Info label="Beobachtete Pläne" value={data.citySchedules.state === "unavailable" ? null : String(schedules.length)} /></dl></article>
 }
 
-function Info({ label, value }: { label: string; value: string | null }) { return <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-1 break-words font-medium text-slate-800">{value ?? "Nicht nachgewiesen"}</dd></div> }
-function automationLabel(value: AgentProfile["automation"]) { return value === "scheduled" ? "Automatisch geplant" : value === "manual" ? "Manuell" : "Planung unbekannt" }
+function Info({ label, value, opaque = false }: { label: string; value: string | null; opaque?: boolean }) { return <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt><dd data-admin-i18n-ignore={opaque && value !== null ? "true" : undefined} className="mt-1 break-words font-medium text-slate-800">{value ?? "Nicht nachgewiesen"}</dd></div> }
 function loadedByLabel(value: AgentProfile["contextFiles"][number]["loadedBy"]) { return value === "system" ? "automatisch" : value === "reference" ? "bei Bedarf" : "unbekannt" }
 function sizeLabel(chars: number | null, limit: number | null) { return chars === null ? "Größe unbekannt" : `${chars.toLocaleString("de-DE")} Zeichen${limit === null ? "" : ` / Limit ${limit.toLocaleString("de-DE")}`}` }
 function publicationConfiguration(value: boolean | null) { return value === true ? "Automatische Veröffentlichung aktiviert" : value === false ? "Automatische Veröffentlichung deaktiviert" : "Nicht nachgewiesen" }

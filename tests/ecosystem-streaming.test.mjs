@@ -28,7 +28,7 @@ const dashboard = {
   partners: [{ id: "first", name: "First" }, { id: "selected", name: "Selected" }],
   cities: [], owners: [], errors: [],
 }
-const resolved = { dashboard, founder: snapshot, agents, analytics, publicPages: { data: [], error: null }, portal: { partnerIds: ["selected"] } }
+const resolved = { dashboard, founder: snapshot, agents, analytics, publicPages: { data: [], error: null }, portal: { partnerIds: ["selected"] }, knowledge: { status: "unavailable", documentCount: 0, lastSuccessfulSyncAt: null, lastErrorCode: null }, priorities: { checkedAt,items:[],unavailableSources:[],truncated:false,complete:true } }
 
 function deferred() {
   let resolve
@@ -46,17 +46,20 @@ function fixture(t, { admin = true } = {}) {
   const css = { __esModule: true, default: new Proxy({}, { get: (_, name) => name }) }
   const activity = loadTypescript("components/ecosystem/ecosystem-analytics.tsx", {
     "next/link": Link,
+    "@/app/admin-language": { useAdminLanguage: () => ({ tr: value => value }) },
     "@/lib/analytics/normalize": normalize,
     "./ecosystem.module.css": css,
     "./ecosystem-analytics.module.css": css,
   })
   const presentation = loadTypescript("components/ecosystem/ecosystem-overview.tsx", {
     "next/link": Link,
+    "@/components/admin-translation-boundary": { AdminTranslationBoundary: ({ children }) => h("div", { "data-admin-i18n-pending": "true" }, children) },
     "@/lib/ecosystem/overview": overviewData,
     "@/lib/ecosystem/catalog": catalog,
     "@/lib/analytics/normalize": normalize,
     "./ecosystem.module.css": css,
     "./ecosystem-analytics": activity,
+    "./ecosystem-product-hub": { EcosystemProductHub: ({ knowledge }) => h("section", null, "Produkt & Wissen", "Features und Vorteile", knowledge) },
     "./ecosystem-explorer": {
       EcosystemExplorer: () => h("section", null, "Features und Vorteile"),
       PageDirectory: ({ incomplete }) => h("section", null, incomplete ? "Seiten: Daten unvollständig" : "Seitenverzeichnis"),
@@ -72,7 +75,9 @@ function fixture(t, { admin = true } = {}) {
     "@/lib/partner-portal": { getPartnerPortalSession: source("portal") },
     "@/lib/admin-data": { getDashboardData: source("dashboard") },
     "@/lib/founder-overview-data": { loadFounderOverview: source("founder") },
+    "@/lib/ecosystem/priorities-data": { loadOverviewPriorities: source("priorities") },
     "@/lib/agent-control-data": { loadAgentControl: source("agents") },
+    "@/lib/knowledge/read": { getBenefitsiKnowledgeStatus: source("knowledge") },
     "@/lib/analytics/loader": { loadBusinessAnalytics: source("analytics") },
     "@/lib/analytics/filters": { parseBusinessAnalyticsFilters: () => ({}) },
     "@/lib/ecosystem/overview": overviewData,
@@ -145,13 +150,13 @@ test("authorized dashboard streams navigation and catalog before any optional da
   const page = await within(fixtureData.page({ searchParams: Promise.resolve({}) }), "Dashboard is blocked by optional data")
   const stream = await streamPage(t, page)
   assert.match(stream.html(), /Features und Vorteile/)
-  assert.match(stream.html(), /Vier Zugänge/)
+  assert.match(stream.html(), /Produkt &amp; Wissen/)
   assert.match(stream.html(), /Analytics werden geladen/)
-  assert.match(stream.html(), /Agent-Status wird geladen/)
+  assert.match(stream.html(), /Aufträge werden geladen/)
   assert.doesNotMatch(stream.html(), /Keine Daten|Kein Zeitverlauf|Partner bearbeiten/)
   assert.equal(fixtureData.refreshStarted(), false)
-  assert.equal(fixtureData.calls.length, 6)
-  assert.equal(new Set(fixtureData.calls.map(call => call.key)).size, 6)
+  assert.equal(fixtureData.calls.length, 8)
+  assert.equal(new Set(fixtureData.calls.map(call => call.key)).size, 8)
 })
 
 test("overview operations stream independently while analytics and publication checks are pending", async t => {
@@ -162,20 +167,23 @@ test("overview operations stream independently while analytics and publication c
   assert.equal(f.partnerProps.length, 0, "Partner management must not render on the overview")
   f.release("founder")
   f.release("agents")
-  await stream.waitFor("Dein Team")
-  await stream.waitFor("Aktive Profile")
+  await stream.waitFor("Benefitsi-Profile")
+  await stream.waitFor("Aktive Partnerprofile")
+  assert.doesNotMatch(stream.html(), /Dein Team|href="\#agenten"/)
   assert.doesNotMatch(stream.html(), /Kein Zeitverlauf|Seitenverzeichnis/)
   f.release("publicPages", { data: null, error: true })
   await stream.waitFor("Seiten: Daten unvollständig")
   assert.equal(f.refreshStarted(), false, "Do not refresh while initial sources are pending")
   f.release("analytics")
   await stream.waitFor("Kein Zeitverlauf")
+  f.release("priorities")
+  f.release("knowledge")
   f.release("portal")
   await stream.waitFor("Partner panel")
   await nextTurn()
   assert.equal(f.refreshStarted(), true)
   assert.deepEqual(stream.failures, [])
-  assert.equal(f.calls.length, 6, "Shared sections must not refetch their data")
+  assert.equal(f.calls.length, 8, "Shared sections must not refetch their data")
 })
 
 for (const admin of [false, null]) {

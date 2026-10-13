@@ -6,6 +6,7 @@ DRAFT={'name':'Synthetic','currency':'EUR','complete':True,'warnings':[],'catego
 class Adapter(unittest.TestCase):
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.db=self.tmp.name+'/journal.db';self.calls=[]
+  self.selection_patch=patch('bounded_menu_adapter.read_selected_model',return_value={'provider':'minimax','model':'MiniMax-M3.0'});self.selection_patch.start();self.addCleanup(self.selection_patch.stop)
   self.data=dict(action='menu-extract',profile='benefitsi-menu',task='extract-menu',schemaVersion=2,requestId=str(uuid.uuid4()),files=[])
  def rpc(self,name,data):
   self.calls.append(name)

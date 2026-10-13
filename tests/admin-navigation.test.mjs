@@ -5,7 +5,6 @@ import { adminNavigation, isAdminNavigationActive } from "../lib/admin-navigatio
 const destinations = [
   ["Übersicht", "Übersicht", "/"],
   ["Partner", "Partner", "/partners"],
-  ["Workspace", "Workspace", "/workspace"],
   ["Städte", "Stadtportale", "/city-pages"],
   ["Städte", "Prüfung & Freigaben", "/city-operations"],
   ["Inhalte", "Magazin", "/editorial"],
@@ -19,9 +18,9 @@ const destinations = [
   ["Auswertung", "SEO & Sichtbarkeit", "/seo"],
 ]
 
-test("keeps existing destinations and exposes the approved internal workspace", () => {
+test("keeps useful main destinations without the redundant workspace entry", () => {
   assert.deepEqual(adminNavigation.map(entry => entry.label), [
-    "Übersicht", "Partner", "Workspace", "Städte", "Inhalte", "Buchungen & Bestellungen", "Agenten", "Auswertung",
+    "Übersicht", "Partner", "Städte", "Inhalte", "Buchungen & Bestellungen", "Agenten", "Auswertung",
   ])
   assert.deepEqual(adminNavigation.flatMap(entry => "items" in entry
     ? entry.items.map(item => [entry.label, item.label, item.href])
@@ -32,7 +31,6 @@ test("marks the current page and its parent group on nested routes", () => {
   for (const [pathname, wantGroup, wantLink] of [
     ["/", "Übersicht", "Übersicht"],
     ["/partners", "Partner", "Partner"],
-    ["/workspace", "Workspace", "Workspace"],
     ["/partners/example", "Partner", "Partner"],
     ["/city-pages/annweiler/content/event/123", "Städte", "Stadtportale"],
     ["/city-operations/events/123", "Städte", "Prüfung & Freigaben"],
@@ -57,4 +55,12 @@ test("does not mistake similar route prefixes for admin destinations", () => {
   for (const pathname of ["/partner", "/partners-archive", "/city-pages-old", "/seo-tools", "/unknown"])
     assert.equal(adminNavigation.some(entry => ("items" in entry ? entry.items : [entry])
       .some(item => isAdminNavigationActive(pathname, item.href))), false, pathname)
+})
+
+test("workspace stays reachable in the selected partner without a redundant main link", async () => {
+  const { readFileSync, existsSync } = await import("node:fs")
+  assert.equal(adminNavigation.some(entry => "href" in entry && entry.href === "/workspace"), false)
+  const partner = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8")
+  assert.match(partner, /href=\{`\/workspace\?partner=\$\{encodeURIComponent\(partner\.id\)\}`\}/)
+  assert.ok(existsSync(new URL("../app/workspace/page.tsx", import.meta.url)))
 })
