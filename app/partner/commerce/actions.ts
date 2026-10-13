@@ -8,6 +8,8 @@ import { settleCancellation } from '@/lib/commerce/service'
 const tables:Record<string,string>={offering:'commerce_offerings',resource:'commerce_resources',menu:'commerce_menu_items',slot:'commerce_slots'}
 function value(form:FormData,name:string) {return String(form.get(name)||'')}
 function destination(provider:string,error?:string) {return `/partner/commerce?provider=${encodeURIComponent(provider)}${error?'&error='+error:''}`}
+import { getBookingRealm } from '@/lib/stripe/booking-client'
+
 export async function saveCommerceConfiguration(form:FormData) {
   let providerId=value(form,'provider_id')
   let failed=false
@@ -83,6 +85,7 @@ export async function transitionCommerceBooking(form:FormData) {
 }
 
 export async function openSoftwareBilling(form:FormData) {
+  if(getBookingRealm()==='sandbox') throw new Error('sandbox_software_billing_disabled')
   const providerId=value(form,'provider_id')
   const {provider}=await commercePartner(providerId)
   if(value(form,'billing_action')!=='portal') redirect(`/partner/billing?partner=${provider?.partner_id ?? ''}`)
@@ -95,6 +98,7 @@ export async function openSoftwareBilling(form:FormData) {
 
 
 export async function enablePartnerCommerce(form:FormData) {
+  if(getBookingRealm()==='sandbox') throw new Error('sandbox_fixture_setup_only')
   const context=await commercePartner(),partnerId=uuid(value(form,'partner_id'))
   const partner=context.partners.find(p=>p.id===partnerId)
   if(!partner) throw new Error('unauthorized')

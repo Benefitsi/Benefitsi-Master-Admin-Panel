@@ -83,6 +83,23 @@ jobs:
 
       # The cross-repository suite also requires a separate Benefitsi web checkout.
       # Keep these load, publication and authorization regressions self-contained.
+      - name: Stripe sandbox account, provider and webhook boundaries
+        run: >-
+          node --import tsx --test --test-concurrency=2
+          tests/stripe-sandbox-config.test.mjs
+          tests/stripe-sandbox-status.test.mjs
+          tests/stripe-sandbox-status-ui.test.mjs
+          tests/stripe-booking-client.test.mjs
+          tests/stripe-booking-provider-scope.test.mjs
+          tests/stripe-booking-routes.test.mjs
+          tests/stripe-booking-actions.test.mjs
+          tests/stripe-direct-sandbox.test.mjs
+          tests/stripe-direct.test.mjs
+          tests/stripe-legacy-payments.test.mjs
+          tests/stripe-legacy-webhook.test.mjs
+          tests/commerce-configuration-action.test.mjs
+          tests/commerce-visibility.test.mjs
+
       - name: Partner data and authorization regression tests
         run: >-
           node --import tsx --test --test-concurrency=2

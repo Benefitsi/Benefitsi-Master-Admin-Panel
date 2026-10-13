@@ -5,17 +5,19 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { uuid } from './requests'
 import { readPickupSlots } from './pickup-slots'
+import { assertBookingRealmBoundary, getBookingRealm, isBookingProviderAllowed } from '@/lib/stripe/booking-client'
 export async function commercePartner(providerId?:string) {
   if(process.env.BENEFITSI_COMMERCE_ENABLED!=='true') throw new Error('commerce_disabled')
   const session=await getPartnerPortalSession(await createClient())
   if(!session) redirect('/partner/login')
   if(!session.isAdmin&&!session.ownedPartnerIds.length) throw new Error('unauthorized')
+  assertBookingRealmBoundary()
   const admin=createAdminClient()
   let query=admin.from('booking_providers').select('id,partner_id,display_name,support_email,stripe_account_id,onboarding_status,charges_enabled,payouts_enabled,stripe_charge_model,test_mode,food_ordering_enabled')
   if(!session.isAdmin) query=query.in('partner_id',session.ownedPartnerIds)
   const result=await query
   if(result.error) throw new Error('providers_failed')
-  const providers=result.data||[]
+  const providers=(result.data||[]).filter(provider=>getBookingRealm()!=='sandbox'||isBookingProviderAllowed(provider.id,provider.stripe_account_id,provider.test_mode))
   const provider=providerId?providers.find(p=>p.id===uuid(providerId)):providers[0]
   if(providerId&&(!provider||(!session.isAdmin&&!canManagePartner(session,provider.partner_id)))) throw new Error('unauthorized')
   let partnerQuery=admin.from('partners').select('id,name,email').order('name')

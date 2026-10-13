@@ -11,6 +11,7 @@ const foreign='22222222-2222-4222-8222-222222222222'
 function load() {
  const authorized=[],writes=[]
  const imports={
+  '@/lib/stripe/booking-client':{getBookingRealm:()=>"legacy"},
   '@/lib/commerce/requests':requests,
   '@/lib/commerce/time':times, '@/lib/commerce/service':{},
   '@/lib/commerce/partner':{commercePartner:async id=>{

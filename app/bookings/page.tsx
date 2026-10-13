@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import type { InputHTMLAttributes, ReactNode } from "react"
 import Link from "next/link"
+import { AdminTranslationBoundary } from "@/components/admin-translation-boundary"
+import { getStripeSandboxStatus } from "@/lib/stripe/sandbox-status"
 import { AdminShell } from "@/app/admin-shell"
 import {
   createBookingOffer,
@@ -14,9 +16,11 @@ import { requireAdmin } from "@/lib/admin"
 import { bookingAlerts, canPublishBookingOffer } from "@/lib/bookings/contracts"
 import { loadBookingOperations } from "@/lib/bookings/data"
 import {
-  isStripeConnectPlatformReady,
+  isStripeSandboxConfigured,
   isStripeTestConfigured,
 } from "@/lib/stripe/config"
+
+import { getBookingRealm, isBookingConnectConfigured, isBookingProviderAllowed } from "@/lib/stripe/booking-client"
 
 export const dynamic = "force-dynamic"
 
@@ -38,13 +42,17 @@ export default async function BookingsPage({
 }) {
   const { adminSession } = await requireAdmin()
   const feedback = await searchParams
-  const data = await loadBookingOperations()
-  const stripeConfigured = isStripeTestConfigured()
-  const connectPlatformReady =
-    stripeConfigured && isStripeConnectPlatformReady()
+  const [data, sandbox] = await Promise.all([loadBookingOperations(), getStripeSandboxStatus()])
+  let realm: ReturnType<typeof getBookingRealm> | null = null
+  try { realm = getBookingRealm() } catch { /* Unknown realm stays blocked. */ }
+  const sandboxRealm = realm === "sandbox"
+  const stripeConfigured = sandboxRealm ? isStripeSandboxConfigured() : realm === "legacy" && isStripeTestConfigured()
+  const connectPlatformReady = realm !== null && isBookingConnectConfigured() && (!sandboxRealm || sandbox.state === "verified")
+  const scopedProviders = data.providers.filter(provider => realm !== null && isBookingProviderAllowed(provider.id, provider.stripeAccountId, provider.testMode))
+  const offerProviders = sandboxRealm ? scopedProviders : realm === "legacy" ? data.providers : []
   const feedbackError =
     feedback.error === "connect_platform_not_ready"
-      ? "Stripe Connect bleibt bis zur Verifizierung der Benefitsi UG gesperrt."
+      ? sandboxRealm ? "Sandbox-Testbuchungen benötigen eine bestätigte Verbindung und den freigegebenen Testanbieter." : "Stripe Connect bleibt bis zur Verifizierung der Benefitsi UG gesperrt."
       : feedback.error
   const adminName =
     adminSession.profile?.display_name ||
@@ -64,7 +72,7 @@ export default async function BookingsPage({
     <AdminShell
       adminName={adminName}
       title="Booking Control"
-      subtitle="Eigene Benefitsi-Buchungen mit Stripe Connect – ausschließlich Testmodus"
+      subtitle={sandboxRealm ? "Isolierte Sandbox-Testbuchungen mit ausgewählten Anbietern" : "Eigene Benefitsi-Buchungen mit Stripe Connect – ausschließlich Testmodus"}
     >
       {process.env.BENEFITSI_COMMERCE_ENABLED === "true" && (
         <Link href="/commerce" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-[#061829]">
@@ -72,7 +80,13 @@ export default async function BookingsPage({
           <span className="font-bold text-blue-700">Einstellungen öffnen →</span>
         </Link>
       )}
-      <section className="flex flex-col gap-3 rounded-3xl border border-[#061829]/10 bg-[#061829] p-5 text-white sm:flex-row sm:items-center sm:justify-between">
+      <AdminTranslationBoundary><section id="stripe-sandbox-status" aria-labelledby="stripe-sandbox-heading" className="space-y-3 rounded-3xl border border-blue-200 bg-blue-50 p-5 text-[#061829]">
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.12em] text-blue-700">Separate Stripe-Sandbox</p><h2 id="stripe-sandbox-heading" className="mt-1 text-lg font-black">{sandbox.state === "verified" ? "Sandbox bestätigt" : sandbox.state === "configured_unverified" ? "Sandbox konfiguriert · nicht bestätigt" : "Sandbox nicht konfiguriert"}</h2></div><code translate="no" data-admin-i18n-ignore="true" className="break-all rounded-lg bg-white px-2 py-1 text-xs">{sandbox.accountId}</code></div>
+        <p className="text-sm leading-6 text-slate-700">{sandbox.state === "verified" ? "Stripe-Konto und Testmodus wurden durch Konto- und Saldoabfrage bestätigt." : sandbox.state === "configured_unverified" ? "Konfiguration vorhanden. Stripe-Konto und Testmodus sind noch nicht bestätigt." : "Für diese freigegebene Sandbox fehlt die vollständige serverseitige Konfiguration."}</p>
+        <p className="text-sm leading-6 text-slate-700">Sandbox-Tests können vor der UG-Aktivierung vorbereitet werden.</p>
+        <p className="text-xs leading-5 text-slate-600">Diese Bestätigung schaltet keine Händler, Kunden oder Commerce-Entitlements frei. Die bestehenden Datenbankfreigaben bleiben erforderlich.</p>
+      </section></AdminTranslationBoundary>
+      <section aria-label={sandboxRealm ? "Sandbox-Buchungsstrecke" : "Bestehende Buchungsstrecke"} className="flex flex-col gap-3 rounded-3xl border border-[#061829]/10 bg-[#061829] p-5 text-white sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#17d4d7]">
             Sicherheitsmodus
@@ -89,7 +103,7 @@ export default async function BookingsPage({
               : "bg-amber-300/15 text-amber-100 ring-amber-200/25"
           }`}
         >
-          {connectPlatformReady
+          {realm === null ? "Buchungsbereich nicht freigegeben" : sandboxRealm ? connectPlatformReady ? "Sandbox-Testbuchungen vorbereitet" : "Sandbox-Testbuchungen gesperrt" : connectPlatformReady
             ? "Stripe Connect Test bereit"
             : stripeConfigured
               ? "Connect wartet auf UG"
@@ -99,9 +113,9 @@ export default async function BookingsPage({
 
       {!connectPlatformReady ? (
         <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950">
-          Anbieter-Onboarding bleibt technisch gesperrt, bis die Benefitsi UG
+          {realm === null ? "Der gewählte Buchungsbereich ist nicht freigegeben. Änderungen bleiben gesperrt." : sandboxRealm ? "Sandbox-Buchungen sind nur im isolierten Preview und für ausdrücklich ausgewählte Testanbieter vorbereitet. Die bestehenden Datenbankfreigaben bleiben erforderlich." : <>Anbieter-Onboarding bleibt technisch gesperrt, bis die Benefitsi UG
           gegründet und als Stripe-Connect-Plattform verifiziert ist. Die
-          Werbeagentur oder vorläufige Ersatzdaten werden nicht verwendet.
+          Werbeagentur oder vorläufige Ersatzdaten werden nicht verwendet.</>}
         </div>
       ) : null}
 
@@ -155,9 +169,10 @@ export default async function BookingsPage({
         <aside className="space-y-5">
           <section className="rounded-3xl border border-[#061829]/10 bg-white p-5 shadow-[0_18px_50px_rgba(6,24,41,.05)]">
             <Eyebrow>Anbieter</Eyebrow>
-            <h2 className="mt-1 text-xl font-black">Test-Anbieter anlegen</h2>
+            <h2 className="mt-1 text-xl font-black">{sandboxRealm ? "Vorbereiteter Testanbieter" : "Test-Anbieter anlegen"}</h2>
+            {sandboxRealm ? <p className="mt-2 text-xs leading-5 text-slate-600">Die Sandbox verwendet den ausdrücklich vorbereiteten Testanbieter. Neue Anbieter werden hier nicht angelegt.</p> : null}
             <form action={createBookingProvider} className="mt-5 space-y-3">
-              <fieldset disabled={!data.migrationReady} className="space-y-3 disabled:opacity-50">
+              <fieldset disabled={!data.migrationReady || realm !== "legacy"} className="space-y-3 disabled:opacity-50">
                 <Field name="displayName" label="Anbietername" required />
                 <Field name="supportEmail" label="Support-E-Mail" type="email" />
                 <PendingSubmitButton
@@ -173,7 +188,7 @@ export default async function BookingsPage({
           <section className="rounded-3xl border border-[#061829]/10 bg-white p-5">
             <Eyebrow>Automatisierter Ablauf</Eyebrow>
             <ol className="mt-4 space-y-3 text-sm leading-6 text-[#526170]">
-              <Step number="1">Anbieter anlegen und bei Stripe im Testmodus onboarden.</Step>
+              <Step number="1">{sandboxRealm ? "Vorbereiteten Testanbieter prüfen; nur freigegebene Sandbox-Konten verwenden." : "Anbieter anlegen und bei Stripe im Testmodus onboarden."}</Step>
               <Step number="2">Angebot, Preis, Termin und echte Kapazität erfassen.</Step>
               <Step number="3">Ben prüft den Entwurf; ein Mensch veröffentlicht.</Step>
               <Step number="4">Checkout reserviert Plätze atomar, Webhooks bestätigen exakt einmal.</Step>
@@ -189,17 +204,17 @@ export default async function BookingsPage({
               Das Angebot startet immer als Prüfentwurf. Der Preis wird bei der Reservierung unveränderbar gespeichert. Kundenzahlungen erfolgen direkt auf dem Händlerkonto.
             </p>
             <form action={createBookingOffer}>
-              <fieldset disabled={!data.migrationReady} className="mt-5 grid gap-3 disabled:opacity-50 sm:grid-cols-2">
+              <fieldset disabled={!data.migrationReady || realm === null || (sandboxRealm && !scopedProviders.length)} className="mt-5 grid gap-3 disabled:opacity-50 sm:grid-cols-2">
               <SelectField name="providerId" label="Anbieter" required>
                 <option value="">Bitte wählen</option>
-                {data.providers.map((provider) => (
-                  <option key={provider.id} value={provider.id}>{provider.displayName}</option>
+                {offerProviders.map((provider) => (
+                  <option key={provider.id} value={provider.id} translate="no" disabled={sandboxRealm && !isBookingProviderAllowed(provider.id, provider.stripeAccountId, provider.testMode)}>{provider.displayName}</option>
                 ))}
               </SelectField>
               <SelectField name="cityId" label="Stadt" required>
                 <option value="">Bitte wählen</option>
                 {data.cities.map((city) => (
-                  <option key={city.id} value={city.id}>{city.name}</option>
+                  <option key={city.id} value={city.id} translate="no">{city.name}</option>
                 ))}
               </SelectField>
               <Field name="title" label="Titel" required />
@@ -234,12 +249,13 @@ export default async function BookingsPage({
             ) : (
               <div className="divide-y divide-[#061829]/10">
                 {data.providers.map((provider) => {
+                  const providerScoped = realm !== null && isBookingProviderAllowed(provider.id, provider.stripeAccountId, provider.testMode)
                   const offers = data.offers.filter((offer) => offer.providerId === provider.id)
                   return (
                     <article key={provider.id} className="p-5">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
-                          <h3 className="font-black">{provider.displayName}</h3>
+                          <h3 data-admin-i18n-ignore="true" translate="no" className="font-black">{provider.displayName}</h3>
                           <p className="mt-1 text-sm text-[#617080]">
                             Connect: {provider.onboardingStatus} · Zahlungen: {provider.chargesEnabled ? "bereit" : "gesperrt"}
                           </p>
@@ -247,28 +263,29 @@ export default async function BookingsPage({
                         {stripeConfigured ? (
                           <ConnectOnboardingButton
                             providerId={provider.id}
-                            enabled={connectPlatformReady}
-                            disabledReason="Freischaltung erst nach Gründung und Stripe-Verifizierung der Benefitsi UG."
+                            enabled={connectPlatformReady && isBookingProviderAllowed(provider.id, provider.stripeAccountId, provider.testMode)}
+                            disabledReason={sandboxRealm ? "Sandbox-Onboarding ist nur für den freigegebenen Testanbieter verfügbar." : "Freischaltung erst nach Gründung und Stripe-Verifizierung der Benefitsi UG."}
                           />
                         ) : null}
                       </div>
                       <div className="mt-4 space-y-3">
                         {offers.map((offer) => {
-                          const publishable = canPublishBookingOffer(offer, provider)
+                          const offerProviderScoped = providerScoped && offer.providerId === provider.id
+                          const publishable = offerProviderScoped && canPublishBookingOffer(offer, provider)
                           return (
                             <div key={offer.id} className="rounded-2xl border border-[#061829]/10 bg-[#f8fafb] p-4">
                               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
-                                  <p className="font-black">{offer.title}</p>
+                                  <p data-admin-i18n-ignore="true" translate="no" className="font-black">{offer.title}</p>
                                   <p className="mt-1 text-sm text-[#617080]">
-                                    {money(offer.unitAmount)} · {offer.cityName}
+                                    <span translate="no">{money(offer.unitAmount)} · {offer.cityName}</span>
                                   </p>
                                   <p className="mt-1 text-xs font-semibold text-[#526170]">
-                                    {offer.status} · {offer.reviewStage} · {offer.canonicalPath}
+                                    {offer.status} · {offer.reviewStage} · <span translate="no">{offer.canonicalPath}</span>
                                   </p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                  {offer.reviewStage === "agent_draft" ? (
+                                  {offerProviderScoped && offer.reviewStage === "agent_draft" ? (
                                     <form action={submitBookingOfferToBen}>
                                       <input type="hidden" name="offerId" value={offer.id} />
                                       <SmallSubmit label="Ben prüfen lassen" pending="Ben prüft …" />
@@ -320,14 +337,14 @@ export default async function BookingsPage({
                   <tbody className="divide-y divide-[#061829]/10">
                     {data.bookings.map((booking) => (
                       <tr key={booking.id}>
-                        <td className="px-5 py-4 font-black">
+                        <td data-admin-i18n-ignore="true" translate="no" className="px-5 py-4 font-black">
                           <Link href={`/bookings/${booking.id}`} className="text-[#0b75d9] hover:underline">
                             {booking.publicReference}
                           </Link>
                         </td>
-                        <td className="px-5 py-4">{booking.offerTitle}</td>
+                        <td data-admin-i18n-ignore="true" translate="no" className="px-5 py-4">{booking.offerTitle}</td>
                         <td className="px-5 py-4">{booking.state}</td>
-                        <td className="px-5 py-4">{money(booking.totalAmount)}</td>
+                        <td translate="no" className="px-5 py-4">{money(booking.totalAmount)}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -2,11 +2,13 @@ import { createHash } from "node:crypto"
 import { NextResponse } from "next/server"
 import type Stripe from "stripe"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { verifyBookingWebhook } from "@/lib/stripe/config"
+import { assertBookingRealmBoundary, verifyBookingPaymentWebhook } from "@/lib/stripe/booking-client"
 import { settleCommercePayment } from "@/lib/stripe/commerce-event"
 import { settleCancellation } from "@/lib/commerce/service"
 import { validateDirectBookingEvent } from "@/lib/stripe/direct-contracts"
 import { validateHistoricalBookingEvent } from "@/lib/stripe/legacy-payments"
+
+import { requireBookingObjectScope, requireBookingMerchantProviderScope } from "@/lib/stripe/booking-provider-scope"
 
 const allowedBookingEvents = new Set([
   "checkout.session.completed", "checkout.session.async_payment_succeeded",
@@ -28,7 +30,8 @@ export async function POST(request: Request) {
   const payload = await request.text()
   let event: Stripe.Event
   try {
-    event = verifyBookingWebhook(payload, signature)
+    assertBookingRealmBoundary()
+    event = await verifyBookingPaymentWebhook(payload, signature)
   } catch {
     return NextResponse.json({ error: "Ungültige Signatur." }, { status: 400 })
   }
@@ -43,6 +46,7 @@ export async function POST(request: Request) {
     if (event.type === "account.updated") {
       const account = event.data.object
       if (!event.account || account.id !== event.account) return NextResponse.json({ error: "Händlerkonto stimmt nicht überein." }, { status: 400 })
+      if (!await requireBookingMerchantProviderScope(admin, account.id)) return NextResponse.json({ received: true, ignored: true })
       const compatible = account.controller?.fees?.payer === "account" &&
         account.controller?.losses?.payments === "stripe" &&
         account.controller?.stripe_dashboard?.type === "full"
@@ -109,6 +113,7 @@ export async function POST(request: Request) {
       // The connected account can accept unrelated payments through its own Dashboard.
       return NextResponse.json({ received: true, ignored: true })
     }
+    await requireBookingObjectScope(admin, commerce ? "commerce_bookings" : "bookings", booking.id)
     const disposition = validateDirectBookingEvent(event, {
       accountId: booking.stripe_account_id, totalAmount: booking.total_amount,
       currency: booking.currency, checkoutSessionId: booking.stripe_checkout_session_id,

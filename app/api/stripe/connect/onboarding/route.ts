@@ -2,10 +2,9 @@ import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/admin"
 import { createAdminClient } from "@/lib/supabase/admin"
 import {
-  getStripeTestClient,
-  isStripeConnectPlatformReady,
   requireBookingBaseUrl,
 } from "@/lib/stripe/config"
+import { assertBookingRealmBoundary, getBookingConnectClient, isBookingConnectConfigured } from "@/lib/stripe/booking-client"
 import {
   createMerchantOnboardingLink,
   createTestMerchantAccount,
@@ -26,11 +25,14 @@ export async function POST(request: Request) {
   if (!UUID_PATTERN.test(providerId)) {
     return NextResponse.json({ error: "Ungültiger Anbieter." }, { status: 400 })
   }
-  if (!isStripeConnectPlatformReady()) {
+  try { assertBookingRealmBoundary() } catch {
+    return NextResponse.json({ error: "Die Stripe-Testumgebung ist nicht freigegeben." }, { status: 503 })
+  }
+  if (!isBookingConnectConfigured()) {
     return NextResponse.json(
       {
         error:
-          "Stripe Connect bleibt bis zur Verifizierung der Benefitsi UG gesperrt.",
+          "Stripe Connect ist in dieser Umgebung nicht freigegeben.",
       },
       { status: 503 },
     )
@@ -56,7 +58,9 @@ export async function POST(request: Request) {
       )
     }
 
-    const stripe = getStripeTestClient()
+    const stripe = await getBookingConnectClient({
+      providerId, testMode: providerResult.data.test_mode, accountId: providerResult.data.stripe_account_id,
+    })
     let accountId = providerResult.data.stripe_account_id
     if (!accountId) {
       accountId = await createTestMerchantAccount(stripe, {

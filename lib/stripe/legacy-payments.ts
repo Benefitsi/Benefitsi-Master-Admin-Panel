@@ -1,6 +1,7 @@
 import "server-only"
 import type Stripe from "stripe"
 import { getStripeTestClient } from "@/lib/stripe/config"
+import { getBookingRealm, getBookingStripeClient } from "@/lib/stripe/booking-client"
 import { requireConnectedAccountId, validateBookingEventObject } from "@/lib/stripe/direct-contracts"
 
 export type LegacyPaymentSnapshot = {
@@ -38,15 +39,15 @@ function validateSession(session: Stripe.Checkout.Session, booking: LegacyPaymen
 
 /** Read-only scope discovery. Never retry a mutation on another account. */
 export async function retrieveLegacyCheckout(booking: LegacyPaymentSnapshot) {
-  const stripe = getStripeTestClient()
   const accountId = requireConnectedAccountId(booking.stripe_account_id)
+  const stripe = await getBookingStripeClient(accountId)
   if (!/^cs_test_[A-Za-z0-9_]+$/.test(booking.stripe_checkout_session_id || "")) throw new Error("Testcheckout fehlt.")
   let scope: Scope = "direct"
   let session: Stripe.Checkout.Session
   try {
     session = await stripe.checkout.sessions.retrieve(booking.stripe_checkout_session_id!, {}, { stripeAccount: accountId })
   } catch (error) {
-    if (!missing(error)) throw error
+    if (!missing(error) || getBookingRealm() !== "legacy") throw error
     scope = "historical_platform"
     session = await stripe.checkout.sessions.retrieve(booking.stripe_checkout_session_id!)
   }
@@ -60,15 +61,15 @@ export async function retrieveLegacyCheckout(booking: LegacyPaymentSnapshot) {
 
 /** Existing legacy bookings only; every new Checkout is created by direct-payments. */
 export async function refundLegacyPayment(booking: LegacyPaymentSnapshot) {
-  const stripe = getStripeTestClient()
   const accountId = requireConnectedAccountId(booking.stripe_account_id)
+  const stripe = await getBookingStripeClient(accountId)
   if (!/^pi_[A-Za-z0-9_]+$/.test(booking.stripe_payment_intent_id || "")) throw new Error("Zahlung fehlt.")
   let scope: Scope = "direct"
   let intent: Stripe.PaymentIntent
   try {
     intent = await stripe.paymentIntents.retrieve(booking.stripe_payment_intent_id!, {}, { stripeAccount: accountId })
   } catch (error) {
-    if (!missing(error)) throw error
+    if (!missing(error) || getBookingRealm() !== "legacy") throw error
     scope = "historical_platform"
     intent = await stripe.paymentIntents.retrieve(booking.stripe_payment_intent_id!)
   }
