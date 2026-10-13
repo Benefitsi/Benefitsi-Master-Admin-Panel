@@ -1,5 +1,5 @@
 import registry from "../../ops/agent-runtime/profile-registry.json"
-import { contractTimestampMs, type AgentProfile, type AgentScope } from "../agent-control"
+import { contractTimestampMs, isRetiredAgentProfile, type AgentProfile, type AgentScope } from "../agent-control"
 import type { AgentControlData } from "../agent-control-data"
 
 export type AgentSummary = {
@@ -32,8 +32,6 @@ const agentDetails: Record<string, { name: string; workspaceHref: string }> = {
   "benefitsi-content": { name: "Content-Agent", workspaceHref: "/partners" },
   "benefitsi-seo": { name: "SEO-Agent", workspaceHref: "/seo" },
   "city-annweiler": { name: "Stadt-Agent Annweiler", workspaceHref: "/city-operations" },
-  "stamp-curator": { name: "Stempel-Kurator", workspaceHref: "/city-pages" },
-  studio: { name: "Studio", workspaceHref: "/agents" },
   "benefitsi-menu": { name: "Menü-Agent", workspaceHref: "/partners" },
   "benefitsi-finance": { name: "Buchhaltung & Steuern", workspaceHref: "/agents/finance" },
 }
@@ -84,7 +82,7 @@ export function buildAgentSummaries(data: AgentControlData): AgentSummary[] {
         [city.cityProfile, `Bereitet Quellen und Inhalte für ${city.cityName ?? "die zugeordnete Stadt"} vor.`],
         [city.orchestratorProfile, "Koordiniert die konfigurierten Stadtaufträge und deren Prüfung."],
       ]) {
-        if (id && isProfileId(id) && !summaries.has(id)) {
+        if (id && isProfileId(id) && !isRetiredAgentProfile(id) && !summaries.has(id)) {
           const summary = configuredAgent(id, purpose ?? "Konfiguriertes Stadtprofil.", configuredFreshness)
           summary.workspaceHref = "/city-operations"
           summaries.set(id, summary)
@@ -95,7 +93,7 @@ export function buildAgentSummaries(data: AgentControlData): AgentSummary[] {
 
   if (freshness === "fresh" || freshness === "stale") {
     for (const profile of data.runtime.snapshot?.profiles ?? []) {
-      if (!isProfileId(profile.id)) continue
+      if (!isProfileId(profile.id) || isRetiredAgentProfile(profile.id)) continue
       const configured = summaries.get(profile.id)
       const details = agentDetails[profile.id]
       const lastRun = lastObservedRun(profile, data)
