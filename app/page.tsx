@@ -1,19 +1,21 @@
 import { Suspense } from "react"
 import { AdminTranslationBoundary } from "@/components/admin-translation-boundary"
 import {
-  EcosystemActivity, EcosystemAgents, EcosystemDirectory, EcosystemFleet,
-  EcosystemFocus, EcosystemGoals, EcosystemMetrics, EcosystemOverviewLayout,
-  EcosystemSectionLoading, EcosystemTimestamp,
+  EcosystemActivity, EcosystemDirectory,
+  EcosystemPriorities, EcosystemGoals, EcosystemMetrics, EcosystemOverviewLayout,
+  EcosystemSectionLoading, EcosystemTimestamp, EcosystemKnowledgeStatus,
 } from "@/components/ecosystem/ecosystem-overview"
+import { getBenefitsiKnowledgeStatus } from "@/lib/knowledge/read"
 import { loadAgentControl } from "@/lib/agent-control-data"
 import { loadBusinessAnalytics } from "@/lib/analytics/loader"
 import { parseBusinessAnalyticsFilters } from "@/lib/analytics/filters"
 import { selectOverviewAnalytics } from "@/lib/ecosystem/overview"
-import { buildAgentSummaries } from "@/lib/ecosystem/overview"
+import { benefitsiAgentInventory } from "@/lib/ecosystem/overview"
 import { selectOverviewGoals } from "@/lib/ecosystem/analytics"
 import { agentSearchEntries, pageSearchEntries } from "@/lib/ecosystem/search"
 import { EcosystemSearch, EcosystemSearchProvider, EcosystemSearchRegistration } from "@/components/ecosystem/ecosystem-search"
 import { buildPageDirectory, parsePublicMicrositeDirectory } from "@/lib/ecosystem/directory"
+import { loadOverviewPriorities } from "@/lib/ecosystem/priorities-data"
 import { loadFounderOverview } from "@/lib/founder-overview-data"
 import { redirect } from "next/navigation"
 import { getAdminSession } from "@/lib/admin"
@@ -59,12 +61,14 @@ export default async function DashboardPage({
     dashboard: getDashboardData(supabase),
     founder: loadFounderOverview(supabase),
     agents: loadAgentControl(supabase),
+    priorities: loadOverviewPriorities(supabase),
     analytics: loadBusinessAnalytics(supabase, parseBusinessAnalyticsFilters({})),
     publicMicrosites: Promise.resolve(supabase.rpc("get_public_microsites_v1", {
       p_partner_ids: null, p_slug: null, p_include_config: false,
     })).then(result => parsePublicMicrositeDirectory(result.data, result.error),
       () => parsePublicMicrositeDirectory(null, true)),
     portal: getPartnerPortalSession(supabase, adminSession).catch(() => null),
+    knowledge: getBenefitsiKnowledgeStatus().catch(() => ({ status: "unavailable", documentCount: 0, lastSuccessfulSyncAt: null, lastErrorCode: "knowledge_status_unavailable" })),
   }
   const adminName =
     adminSession.profile?.display_name ||
@@ -83,15 +87,15 @@ export default async function DashboardPage({
       headerActions={<Suspense fallback={null}><DashboardPartnerLink data={sources.portal} /></Suspense>}
     >
       <Suspense fallback={null}><DashboardRefreshWhenReady sources={sources} /></Suspense>
+      <Suspense fallback={null}><DashboardAgentSearch data={sources.agents} /></Suspense>
       <EcosystemOverviewLayout
         timestamp={<Suspense fallback={null}><DashboardTimestamp data={sources.founder} /></Suspense>}
-        metrics={<Suspense fallback={<EcosystemSectionLoading label="Kennzahlen werden geladen" variant="metrics" />}><DashboardMetrics sources={sources} /></Suspense>}
-        activity={<Suspense fallback={<EcosystemSectionLoading label="Analytics werden geladen" variant="activity" />}><DashboardActivity data={sources.analytics} /></Suspense>}
-        fleet={<Suspense fallback={<EcosystemSectionLoading label="Agent-Status wird geladen" />}><DashboardFleet data={sources.agents} /></Suspense>}
-        focus={<Suspense fallback={<EcosystemSectionLoading label="Aufträge werden geladen" />}><DashboardFocus data={sources.founder} /></Suspense>}
-        goals={<Suspense fallback={<EcosystemSectionLoading label="Ziele werden geladen" />}><DashboardGoals data={sources.analytics} /></Suspense>}
-        agents={<Suspense fallback={<EcosystemSectionLoading label="Agents werden geladen" variant="agents" />}><DashboardAgents data={sources.agents} /></Suspense>}
-        directory={<Suspense fallback={<EcosystemSectionLoading label="Seiten werden geladen" variant="directory" />}><DashboardDirectory sources={sources} /></Suspense>}
+        metrics={<Suspense fallback={<AdminTranslationBoundary><EcosystemSectionLoading label="Kennzahlen werden geladen" variant="metrics" /></AdminTranslationBoundary>}><DashboardMetrics sources={sources} /></Suspense>}
+        activity={<Suspense fallback={<AdminTranslationBoundary><EcosystemSectionLoading label="Analytics werden geladen" variant="activity" /></AdminTranslationBoundary>}><DashboardActivity data={sources.analytics} /></Suspense>}
+        focus={<Suspense fallback={<AdminTranslationBoundary><EcosystemSectionLoading label="Aufträge werden geladen" /></AdminTranslationBoundary>}><DashboardPriorities data={sources.priorities} /></Suspense>}
+        goals={<Suspense fallback={<AdminTranslationBoundary><EcosystemSectionLoading label="Ziele werden geladen" /></AdminTranslationBoundary>}><DashboardGoals data={sources.analytics} /></Suspense>}
+        knowledge={<Suspense fallback={<AdminTranslationBoundary><p role="status">Wissensstatus wird geladen</p></AdminTranslationBoundary>}><DashboardKnowledge data={sources.knowledge} /></Suspense>}
+        directory={<Suspense fallback={<AdminTranslationBoundary><EcosystemSectionLoading label="Seiten werden geladen" variant="directory" /></AdminTranslationBoundary>}><DashboardDirectory sources={sources} /></Suspense>}
       />
 
     </AdminShell>
@@ -102,10 +106,12 @@ export default async function DashboardPage({
 type DashboardSources = {
   dashboard: ReturnType<typeof getDashboardData>
   founder: ReturnType<typeof loadFounderOverview>
+  priorities: ReturnType<typeof loadOverviewPriorities>
   agents: ReturnType<typeof loadAgentControl>
   analytics: ReturnType<typeof loadBusinessAnalytics>
   publicMicrosites: Promise<ReturnType<typeof parsePublicMicrositeDirectory>>
   portal: ReturnType<typeof getPartnerPortalSession>
+  knowledge: ReturnType<typeof getBenefitsiKnowledgeStatus>
 }
 
 async function DashboardPartnerCount({ data }: { data: DashboardSources["dashboard"] }) {
@@ -135,23 +141,22 @@ async function DashboardActivity({ data }: { data: DashboardSources["analytics"]
   return <AdminTranslationBoundary><EcosystemActivity analytics={selectOverviewAnalytics(await data)} /></AdminTranslationBoundary>
 }
 
-async function DashboardFleet({ data }: { data: DashboardSources["agents"] }) {
-  return <AdminTranslationBoundary><EcosystemFleet agentData={await data} /></AdminTranslationBoundary>
-}
-
-async function DashboardFocus({ data }: { data: DashboardSources["founder"] }) {
-  return <AdminTranslationBoundary><EcosystemFocus snapshot={await data} /></AdminTranslationBoundary>
+async function DashboardPriorities({ data }: { data: DashboardSources["priorities"] }) {
+  return <AdminTranslationBoundary><EcosystemPriorities data={await data} /></AdminTranslationBoundary>
 }
 
 async function DashboardGoals({ data }: { data: DashboardSources["analytics"] }) {
   return <AdminTranslationBoundary><EcosystemGoals goals={selectOverviewGoals(await data)} /></AdminTranslationBoundary>
 }
 
-async function DashboardAgents({ data }: { data: DashboardSources["agents"] }) {
+async function DashboardKnowledge({ data }: { data: DashboardSources["knowledge"] }) {
+  return <AdminTranslationBoundary><EcosystemKnowledgeStatus status={await data} /></AdminTranslationBoundary>
+}
+
+async function DashboardAgentSearch({ data }: { data: DashboardSources["agents"] }) {
   const agentData = await data
   return <AdminTranslationBoundary>
-    <EcosystemSearchRegistration source="agents" entries={agentSearchEntries(buildAgentSummaries(agentData))} state={agentData.runtime.state === "fresh" ? "ready" : "partial"} />
-    <EcosystemAgents agentData={agentData} />
+    <EcosystemSearchRegistration source="agents" entries={agentSearchEntries(benefitsiAgentInventory(agentData).agents)} state={agentData.runtime.state === "fresh" ? "ready" : "partial"} />
   </AdminTranslationBoundary>
 }
 

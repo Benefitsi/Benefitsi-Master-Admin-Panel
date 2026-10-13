@@ -171,6 +171,7 @@ async function ui(t, initial) {
   })
   const { EcosystemActivity } = loadTypescript("components/ecosystem/ecosystem-analytics.tsx", {
     "./ecosystem.module.css": {}, "./ecosystem-analytics.module.css": {},
+    "@/app/admin-language": { useAdminLanguage: () => ({ language: "de", tr: text => text }) },
   })
   const render = value => act(async () => root.render(h(EcosystemActivity, { analytics: value })))
   await render(initial)

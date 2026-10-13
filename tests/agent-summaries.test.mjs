@@ -3,10 +3,12 @@ import test from "node:test"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { JSDOM } from "jsdom"
-import { buildAgentSummaries } from "../lib/ecosystem/agent-summaries.ts"
+import { benefitsiAgentInventory, buildAgentSummaries, agentProfileAnchor } from "../lib/ecosystem/agent-summaries.ts"
 import { normalizeRuntimeSnapshot } from "../lib/agent-control.ts"
-import { AgentOverview } from "../app/agents/agent-overview.tsx"
+
 import { loadTypescript } from "./helpers/load-typescript.mjs"
+
+const { AgentOverview } = loadTypescript("app/agents/agent-overview.tsx", { "./agent-controls": { AgentProfileControls: ()=>null }, "@/components/knowledge/benefitsi-knowledge-entry": { BenefitsiKnowledgeEntry: ()=>null }, "next/link": ({href,children})=>createElement("a",{href},children), "@/components/ecosystem/ecosystem-overview": { EcosystemFleet: ()=>null }, "@/lib/ecosystem/agent-summaries": { buildAgentSummaries, agentProfileAnchor, benefitsiAgentInventory } })
 
 const checkedAt = "2026-10-04T18:00:00Z"
 const observedAt = "2026-10-02T12:27:54Z"
@@ -175,7 +177,7 @@ test("specific observed profile entry highlights it, opens evidence and never ca
 test("unknown requested profiles do not create invented agent cards", () => {
   const document = documentFor(control(), "unknown-profile")
   assert.equal(document.getElementById("agent-unknown-profile"), null)
-  assert.match(document.body.textContent, /Kein passendes Profil nachgewiesen/)
+  assert.match(document.body.textContent, /Kein passendes Benefitsi-Profil nachgewiesen/)
 })
 
 test("server route forwards a single requested agent after its admin authorization", async () => {
@@ -183,6 +185,7 @@ test("server route forwards a single requested agent after its admin authorizati
   const data = control()
   const page = loadTypescript("app/agents/page.tsx", {
     "@/app/admin-shell": { AdminShell: ({ children }) => children },
+    "@/components/admin-translation-boundary": { AdminTranslationBoundary: ({ children }) => children },
     "@/lib/admin": { requireAdmin: async () => {
       calls.push("authorize")
       return { supabase: {}, adminSession: { profile: null, user: { email: "admin@example.test" } } }

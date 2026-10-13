@@ -1,20 +1,23 @@
 import type { ReactNode } from "react"
 import Link from "next/link"
+import { AdminTranslationBoundary } from "@/components/admin-translation-boundary"
 import {
   ArrowRight, ArrowUpRight, ArrowsClockwise, Brain, Calculator, ChartLineUp,
-  Check, CheckCircle, Clock, Crown, FileText, GlobeHemisphereWest, Info, Target,
-  MapPin, Robot, Scan, ShieldCheck, Sparkle, Stack, Storefront,
-  Users, Warning, WarningCircle,
+  CheckCircle, Clock, FileText, GlobeHemisphereWest, Info, Target,
+  MapPin, Robot, ShieldCheck, Stack, Storefront,
+  Warning, WarningCircle,
 } from "@phosphor-icons/react/dist/ssr"
+import type { BenefitsiKnowledgeStatus } from "@/lib/knowledge/read-projection"
 import type { AgentControlData } from "@/lib/agent-control-data"
 import { founderActions, type FounderSnapshot } from "@/lib/founder-overview"
-import { buildAgentSummaries, type AgentSummary, type OverviewAnalytics } from "@/lib/ecosystem/overview"
+import { benefitsiAgentInventory, buildAgentSummaries, type AgentSummary, type OverviewAnalytics } from "@/lib/ecosystem/overview"
+import type { OverviewPriorities } from "@/lib/ecosystem/priorities"
 import type { OverviewGoals } from "@/lib/ecosystem/analytics"
 import { EcosystemActivity } from "./ecosystem-analytics"
 export { EcosystemActivity } from "./ecosystem-analytics"
-import { tierCatalog } from "@/lib/ecosystem/catalog"
+import { EcosystemProductHub } from "./ecosystem-product-hub"
 import type { EcosystemPage } from "@/lib/ecosystem/directory"
-import { EcosystemExplorer, PageDirectory } from "./ecosystem-explorer"
+import { PageDirectory } from "./ecosystem-explorer"
 import styles from "./ecosystem.module.css"
 
 const dateTime = (value: string | null) => value && Number.isFinite(Date.parse(value))
@@ -23,15 +26,15 @@ const dateTime = (value: string | null) => value && Number.isFinite(Date.parse(v
 const number = (value: number | null) => value === null ? "—" : value.toLocaleString("de-DE")
 const roleIcons: Record<string, typeof Robot> = {
   ben: Brain, "benefitsi-content": FileText, "benefitsi-seo": ChartLineUp,
-  "city-annweiler": MapPin, "stamp-curator": Scan, studio: Sparkle, "benefitsi-menu": Storefront,
+  "city-annweiler": MapPin, "benefitsi-menu": Storefront,
   "benefitsi-finance": Calculator,
 }
 const shortRoles: Record<string, string> = {
   ben: "Koordination", "benefitsi-content": "Redaktion", "benefitsi-seo": "Sichtbarkeit",
-  "city-annweiler": "Stadtinhalte", "stamp-curator": "Entdeckerstempel", studio: "Design", "benefitsi-menu": "Menüimport",
+  "city-annweiler": "Stadtinhalte", "benefitsi-menu": "Menüimport",
   "benefitsi-finance": "Buchhaltung & Steuern",
 }
-const shortNames: Record<string, string> = { "benefitsi-content": "Content", "benefitsi-seo": "SEO", "city-annweiler": "Annweiler", "stamp-curator": "Stempel", "benefitsi-menu": "Menü", "benefitsi-finance": "Finanzen" }
+const shortNames: Record<string, string> = { "benefitsi-content": "Content", "benefitsi-seo": "SEO", "city-annweiler": "Annweiler", "benefitsi-menu": "Menü", "benefitsi-finance": "Finanzen" }
 const statusLabels = { ok: "Letzter Stand: OK", attention: "Prüfen", stale: "Alter Datenstand", unknown: "Status unbestätigt" }
 
 export function EcosystemOverview({ snapshot, agentData, analytics, pages, incomplete }: {
@@ -45,24 +48,21 @@ export function EcosystemOverview({ snapshot, agentData, analytics, pages, incom
     timestamp={<EcosystemTimestamp checkedAt={snapshot.checkedAt} />}
     metrics={<EcosystemMetrics snapshot={snapshot} agentData={agentData} />}
     activity={<EcosystemActivity analytics={analytics} />}
-    fleet={<EcosystemFleet agentData={agentData} />}
     focus={<EcosystemFocus snapshot={snapshot} />}
-    agents={<EcosystemAgents agentData={agentData} />}
     directory={<PageDirectory pages={pages} incomplete={incomplete} />}
   />
 }
 
-export function EcosystemOverviewLayout({ timestamp, metrics, activity, fleet, focus, goals, agents, directory }: {
+export function EcosystemOverviewLayout({ timestamp, metrics, activity, focus, goals, knowledge, directory }: {
   timestamp: ReactNode
   metrics: ReactNode
   activity: ReactNode
-  fleet: ReactNode
   focus: ReactNode
   goals?: ReactNode
-  agents: ReactNode
+  knowledge?: ReactNode
   directory: ReactNode
 }) {
-  return <div className={styles.overview} id="overview">
+  return <AdminTranslationBoundary><div className={styles.overview} id="overview">
     <div className={styles.topline}>
       <span className={styles.overline}>DEIN BETRIEB AUF EINEN BLICK</span>
       {timestamp}
@@ -74,27 +74,25 @@ export function EcosystemOverviewLayout({ timestamp, metrics, activity, fleet, f
       {activity}
 
       <div className={styles.statusColumn}>
-        {fleet}
         {focus}
         {goals}
       </div>
     </div>
 
-    {agents}
-
-    <section id="tarife" className={styles.tiersSection} aria-labelledby="tiers-heading"><div className={styles.sectionHead}><h2 id="tiers-heading">Vier Zugänge<span>.</span></h2><span className={styles.smallCaption}>Nutzer & Partner</span></div><div className={styles.tierGrid}>{tierCatalog.map(tier => {
-      const paid = tier.name === "Pro" || tier.name === "Premium"
-      const Icon = tier.audience === "Partner" ? Storefront : Users
-      return <details key={tier.id} className={styles.tierCard} data-premium={paid}>
-        <summary><div className={styles.tierSymbol}><Icon size={24} weight="duotone" aria-hidden="true" />{paid ? <Crown size={14} weight="fill" aria-hidden="true" /> : null}</div><span className={styles.tierAudience}>{tier.audience}</span><h3>{tier.name}</h3><span className={styles.tierTeaser}>{tier.id === "consumer-free" ? "Entdecken & sammeln" : tier.id === "consumer-premium" ? "Mehr Vorteile · Testzugang" : tier.id === "partner-free" ? "Profil & Basisstatistik" : "Microsite & mehr"}</span><span className={styles.expandLink} aria-label="Umfang anzeigen"><span>+</span></span></summary>
-        <div className={styles.tierContent}><p>{tier.description}</p><ul>{tier.features.map(feature => <li key={feature}><Check size={14} aria-hidden="true" />{feature}</li>)}</ul><p>{tier.note}</p><Link href={tier.href} prefetch={false}>Ansehen <ArrowUpRight size={14} aria-hidden="true" /></Link></div>
-      </details>
-    })}</div></section>
-
-    <EcosystemExplorer />
+    <EcosystemProductHub knowledge={knowledge} />
     {directory}
     <nav className={styles.destinationDock} aria-label="Zentrale Zugänge"><a href="https://benefitsi.de" target="_blank" rel="noreferrer"><GlobeHemisphereWest size={22} weight="duotone" aria-hidden="true" /><span>Website</span><ArrowUpRight size={14} aria-hidden="true" /></a><a href="https://partner.benefitsi.de" target="_blank" rel="noreferrer"><Storefront size={22} weight="duotone" aria-hidden="true" /><span>Partner-Portal</span><ArrowUpRight size={14} aria-hidden="true" /></a><Link href="/wissen"><Stack size={22} weight="duotone" aria-hidden="true" /><span>Wissen</span><ArrowUpRight size={14} aria-hidden="true" /></Link><Link href="/system"><ArrowsClockwise size={22} weight="duotone" aria-hidden="true" /><span>System</span><ArrowUpRight size={14} aria-hidden="true" /></Link></nav>
-  </div>
+  </div></AdminTranslationBoundary>
+}
+
+export function EcosystemKnowledgeStatus({ status }: { status: BenefitsiKnowledgeStatus }) {
+  const available = ["healthy", "syncing", "failed"].includes(status.status)
+  const label = status.status === "healthy" ? "Synchronisiert" : status.status === "syncing" ? "Synchronisierung läuft" : status.status === "failed" ? "Fehler gemeldet" : status.status === "unavailable" ? "Daten fehlen" : "Status unbekannt"
+  return <dl className={styles.knowledgeSummary}>
+    <div><dt>Spiegelstatus</dt><dd>{label}</dd></div>
+    <div><dt>Dokumente im Spiegel</dt><dd>{available ? number(status.documentCount) : "—"}</dd></div>
+    <div><dt>Letzte erfolgreiche Synchronisierung</dt><dd>{dateTime(status.lastSuccessfulSyncAt)}</dd></div>
+  </dl>
 }
 
 export function EcosystemTimestamp({ checkedAt }: { checkedAt: string }) {
@@ -102,31 +100,45 @@ export function EcosystemTimestamp({ checkedAt }: { checkedAt: string }) {
 }
 
 export function EcosystemMetrics({ snapshot, agentData }: { snapshot: FounderSnapshot; agentData: AgentControlData }) {
-  const observed = agentData.runtime.snapshot?.profiles.length ?? null
+  const inventory = benefitsiAgentInventory(agentData)
   const metrics = [
-    { label: "Partner", value: snapshot.activePartners.unavailable ? null : snapshot.activePartners.value, note: "Aktive Profile", source: "Partner mit Status active und is_active=true.", asOf: snapshot.checkedAt, href: "/partners", Icon: Storefront },
-    { label: "Agents", value: observed, note: "Beobachtete Profile", source: `M1-Laufzeitbeobachtung. ${agentData.runtime.state === "stale" ? "Älter als 90 Minuten; kein aktueller Betriebsnachweis." : observed === null ? "Kein gültiger Laufzeitnachweis verfügbar." : "Zusätzlich konfigurierte Rollen stehen unter Dein Team."}`, asOf: agentData.runtime.snapshot?.observedAt ?? null, href: "#agenten", Icon: Robot },
-    { label: "Prüfungen", value: snapshot.pendingReviews.unavailable ? null : snapshot.pendingReviews.value, note: "Offene Freigaben", source: "Aufträge mit Status needs_human.", asOf: snapshot.checkedAt, href: "/automation", Icon: ShieldCheck },
-    { label: "Fehler", value: snapshot.failedJobs.unavailable ? null : snapshot.failedJobs.value, note: "Fehlgeschlagene Aufträge", source: "Aufträge mit Status failed. Dies ist kein Zähler aktuell ausgefallener Agenten.", asOf: snapshot.checkedAt, href: "/automation", Icon: WarningCircle },
+    { label: "Partner", value: snapshot.activePartners.unavailable ? null : snapshot.activePartners.value, note: "Aktive Partnerprofile", href: "/partners", Icon: Storefront },
+    { label: "Benefitsi-Profile", value: inventory.observedCount, note: inventory.state === "stale" ? `Veraltet · ${dateTime(inventory.observedAt)}` : inventory.observedAt ? `M1 · ${dateTime(inventory.observedAt)}` : "Laufzeitdaten fehlen", href: "/agents", Icon: Robot },
+    { label: "Offene Freigaben", value: snapshot.pendingReviews.unavailable ? null : snapshot.pendingReviews.value, note: "Aufträge zur Prüfung", href: "/automation?status=needs_human", Icon: ShieldCheck },
+    { label: "Fehlgeschlagen", value: snapshot.failedJobs.unavailable ? null : snapshot.failedJobs.value, note: "Aufträge", href: "/automation?status=failed", Icon: WarningCircle },
+    { label: "Städte", value: null, note: "Stadtseiten verwalten", href: "/city-pages", Icon: MapPin, navigation: true },
+    { label: "Microsites", value: null, note: "Partnerseiten verwalten", href: "/microsites", Icon: Storefront, navigation: true },
   ]
-  return <section className={styles.metrics} aria-label="Betriebskennzahlen" id="zahlen">
-    {metrics.map(({ Icon, ...metric }, index) => <article className={styles.metric} key={metric.label}>
+  return <section aria-label="Betriebskennzahlen" id="zahlen">
+    <div className={styles.metrics}>{metrics.map(({ Icon, ...metric }, index) => <article className={styles.metric} key={metric.label}>
       <Link href={metric.href} prefetch={false} className={styles.metricLink}>
-        <span className={styles.metricIcon} data-accent={index === 3 && (metric.value ?? 0) > 0 ? "gold" : "blue"}><Icon size={22} weight="duotone" aria-hidden="true" /></span>
-        <div><strong className={styles.metricValue}>{number(metric.value)}</strong><h2>{metric.label}</h2></div>
+        <span className={styles.metricTop}><span className={styles.metricIcon} data-accent={index === 3 && (metric.value ?? 0) > 0 ? "gold" : "blue"}><Icon size={20} weight="duotone" aria-hidden="true" /></span><strong className={metric.navigation ? styles.metricAction : styles.metricValue}>{metric.navigation ? "Öffnen" : number(metric.value)}</strong></span>
+        <h2>{metric.label}</h2><p>{!metric.navigation && metric.value === null && index !== 1 ? "Daten fehlen" : metric.note}</p>
       </Link>
-      <details className={styles.metricDetail}><summary aria-label={`${metric.label}: Herkunft und Datenstand`}><Info size={16} aria-hidden="true" /></summary><div><strong>{metric.note}</strong><p>{metric.value === null ? "Keine Daten. " : ""}{metric.source}</p><p>Stand: {dateTime(metric.asOf)}</p></div></details>
-    </article>)}
+    </article>)}</div>
+    <p className={styles.metricCaption}>Beobachtete Profile sind kein Nachweis aktiver Läufe. Auftragsdaten: {dateTime(snapshot.checkedAt)}.</p>
   </section>
 }
 
 export function EcosystemFleet({ agentData }: { agentData: AgentControlData }) {
-  const agents = buildAgentSummaries(agentData).filter(agent => agent.scope === "benefitsi")
-  const observation = agentData.runtime.snapshot?.observedAt ?? null
+  const inventory = benefitsiAgentInventory(agentData)
+  const agents = inventory.agents
+  const observation = inventory.observedAt
   return <section className={`${styles.panel} ${styles.fleetPanel}`} aria-labelledby="fleet-heading">
-    <div className={styles.cardHead}><h2 id="fleet-heading"><Robot size={20} weight="duotone" aria-hidden="true" /> Agent-Status</h2><a href="#agenten" aria-label="Zur Agentenübersicht"><ArrowUpRight size={18} aria-hidden="true" /></a></div>
+    <div className={styles.cardHead}><h2 id="fleet-heading"><Robot size={20} weight="duotone" aria-hidden="true" /> Agent-Status</h2><Link href="/agents" prefetch={false} aria-label="Zur Agentenübersicht"><ArrowUpRight size={18} aria-hidden="true" /></Link></div>
     <AgentRing agents={agents} />
-    <details className={styles.evidenceDisclosure}><summary><Clock size={12} aria-hidden="true" />{agentData.runtime.state === "fresh" ? "Beobachtung aktuell" : agentData.runtime.state === "stale" ? "Beobachtung älter als 90 Min." : "Laufzeitdaten fehlen"}<Info size={13} aria-hidden="true" /></summary><div><p>Beobachtet: {dateTime(observation)}</p><p>Der Ring zeigt Benefitsi-Profile inklusive konfigurierter Rollen. Ein alter Datenstand beweist keinen aktuellen Ausfall. Letzte beobachtete Läufe stehen in den Agentendetails.</p></div></details>
+    <details className={styles.evidenceDisclosure}><summary><Clock size={12} aria-hidden="true" />{inventory.state === "fresh" ? "Beobachtung aktuell" : inventory.state === "stale" ? "Beobachtung älter als 90 Min." : "Laufzeitdaten fehlen"}<Info size={13} aria-hidden="true" /></summary><div><p>Beobachtet: {dateTime(observation)}</p><p>Der Ring zeigt Benefitsi-Profile inklusive konfigurierter Rollen. Ein alter Datenstand beweist keinen aktuellen Ausfall. Letzte beobachtete Läufe stehen in den Agentendetails.</p></div></details>
+  </section>
+}
+
+export function EcosystemPriorities({ data }: { data: OverviewPriorities }) {
+  return <section className={`${styles.panel} ${styles.prioritiesPanel}`} aria-labelledby="priorities-heading">
+    <div className={styles.cardHead}><h2 id="priorities-heading"><Target size={19} weight="duotone" aria-hidden="true" /> Nächste Schritte</h2></div>
+    <ol className={styles.priorityList}>{data.items.map(item => <li key={item.id}><div><span>{item.source}</span><h3 data-admin-i18n-ignore={item.titleAuthored ? "true" : undefined}>{item.title}</h3><p data-admin-i18n-ignore={item.contextAuthored ? "true" : undefined}>{item.context}</p>{item.reference ? <small data-admin-i18n-ignore="true">{item.reference}</small> : null}{item.dueDate ? <small>Termin: {item.dueDate}</small> : null}</div><Link href={item.href} prefetch={false}>{item.action}<ArrowUpRight size={13} aria-hidden="true" /></Link></li>)}</ol>
+    {!data.items.length ? <p className={styles.focusEmpty}>{data.complete ? "Keine offenen Aufgaben in den geprüften Quellen." : "Offene Aufgaben derzeit nicht vollständig nachgewiesen."}</p> : null}
+    {data.unavailableSources.length ? <p className={styles.hubNote}>Quellen nicht verfügbar: {data.unavailableSources.map((source,index) => <span key={source}>{index ? " · " : ""}<span>{source}</span></span>)}</p> : null}
+    {data.truncated ? <p className={styles.hubNote}>Auswahl der geladenen Aufgaben; weitere Einträge stehen in den jeweiligen Arbeitsbereichen.</p> : null}
+    <p className={styles.metricCaption}>Abgefragt: {dateTime(data.checkedAt)}</p>
   </section>
 }
 
@@ -175,7 +187,7 @@ export function EcosystemSectionLoading({ label, variant = "panel" }: {
 }) {
   if (variant === "metrics") return <section className={styles.metrics} aria-busy="true" aria-label={label}>
     <span className={styles.srOnly} role="status">{label}</span>
-    {[0, 1, 2, 3].map(index => <div key={index} className={`${styles.metric} ${styles.loadingMetric}`} aria-hidden="true"><div className={styles.loadingBar} /><div className={styles.loadingBar} /></div>)}
+    {[0, 1, 2, 3, 4, 5].map(index => <div key={index} className={`${styles.metric} ${styles.loadingMetric}`} aria-hidden="true"><div className={styles.loadingBar} /><div className={styles.loadingBar} /></div>)}
   </section>
   return <section className={`${styles.loadingPanel} ${variant === "activity" ? styles.activityStage : styles.panel}`} data-variant={variant} aria-busy="true" aria-label={label}>
     <span role="status">{label}</span>
@@ -188,12 +200,12 @@ function AgentTile({ agent }: { agent: AgentSummary }) {
   return <details className={styles.agentTile} data-status={agent.status} data-agent={agent.id}>
     <summary>
       <span className={styles.agentGlyph}><Icon size={25} weight="duotone" aria-hidden="true" /></span>
-      <div className={styles.agentIdentity}><h3 title={agent.name}>{shortNames[agent.id] ?? agent.name}</h3><p>{shortRoles[agent.id] ?? agent.scope}</p></div>
+      <div className={styles.agentIdentity}><h3 data-admin-i18n-ignore="true" title={agent.name}>{shortNames[agent.id] ?? agent.name}</h3><p>{shortRoles[agent.id] ?? agent.scope}</p></div>
       <span className={styles.agentStatusMark} title={agent.statusLabel}>{agent.status === "ok" ? <CheckCircle size={14} weight="fill" aria-hidden="true" /> : agent.status === "attention" ? <WarningCircle size={14} weight="fill" aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}</span>
       <span className={styles.agentStatus}>{agent.status === "unknown" && !agent.lastRunAt ? "Ohne Laufnachweis" : statusLabels[agent.status]}</span><span className={styles.srOnly}>Details öffnen</span>
     </summary>
     <div className={styles.agentExpanded}>
-      <strong>{agent.name}</strong>
+      <strong data-admin-i18n-ignore="true">{agent.name}</strong>
       <p>{agent.purpose}</p>
       <dl>
         <div><dt>Beobachtung</dt><dd>{dateTime(agent.observedAt)} · {agent.freshnessLabel}</dd></div>

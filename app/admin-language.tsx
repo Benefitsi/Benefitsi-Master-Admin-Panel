@@ -9,9 +9,19 @@ import {
   type ReactNode,
 } from "react"
 
+import { overviewTranslations, overviewTemplates } from "../lib/admin-i18n/overview"
+import { compileTranslationTemplates, translateTemplate } from "../lib/admin-i18n/templates"
+
 export type AdminLanguage = "en" | "de"
 
 const STORAGE_KEY = "benefitsi-admin-language"
+
+const reviewedEnglishToGerman = new Map<string, string>()
+for (const [en, de] of overviewTranslations) {
+  if (!reviewedEnglishToGerman.has(en)) reviewedEnglishToGerman.set(en, de)
+}
+const reviewedGermanToEnglish = new Map(overviewTranslations.map(([en, de]) => [de, en]))
+const reviewedTemplates = compileTranslationTemplates(overviewTemplates)
 
 const translations = [
   ["Partner management", "Partnerverwaltung"],
@@ -995,6 +1005,15 @@ export function translateValue(value: string, language: AdminLanguage) {
   const leading = value.match(/^\s*/)?.[0] ?? ""
   const trailing = value.match(/\s*$/)?.[0] ?? ""
   const core = value.slice(leading.length, value.length - trailing.length)
+  const normalizedCore = core.replace(/\s+/g, " ")
+  const reviewedDictionary = language === "de" ? reviewedEnglishToGerman : reviewedGermanToEnglish
+  const reviewed = reviewedDictionary.get(normalizedCore)
+  if (reviewed) return `${leading}${reviewed}${trailing}`
+  const targetDictionary = language === "de" ? reviewedGermanToEnglish : reviewedEnglishToGerman
+  if (targetDictionary.has(normalizedCore)) return value
+  const template = translateTemplate(core, language, reviewedTemplates)
+  if (template !== undefined) return `${leading}${template}${trailing}`
+  if (translateTemplate(core, language === "de" ? "en" : "de", reviewedTemplates) !== undefined) return value
   const dictionary = language === "de" ? englishToGerman : germanToEnglish
   const exact = dictionary.get(core)
 
@@ -1003,7 +1022,7 @@ export function translateValue(value: string, language: AdminLanguage) {
   }
 
   if (core.endsWith(":")) {
-    const translatedLabel = dictionary.get(core.slice(0, -1))
+    const translatedLabel = reviewedDictionary.get(normalizedCore.slice(0, -1)) ?? dictionary.get(core.slice(0, -1))
     if (translatedLabel) {
       return `${leading}${canonicalizeBenefitSurfaceCopy(translatedLabel, language)}:${trailing}`
     }
@@ -1569,11 +1588,11 @@ export function AdminLanguageProvider({ children, initialLanguage = "en", storag
     if (!root) return
 
     const skipTranslation = (element: Element | null) => Boolean(
-      element?.closest('[data-admin-i18n-ignore="true"], [data-admin-i18n-pending="true"]'),
+      element?.closest('[data-admin-i18n-ignore="true"], [data-admin-i18n-pending="true"], [translate="no"], script, style, code, pre'),
     )
 
     const translateTextNode = (node: Text) => {
-      if (skipTranslation(node.parentElement)) return
+      if (skipTranslation(node.parentElement) || node.parentElement?.closest('textarea, [contenteditable]:not([contenteditable="false"])')) return
 
       const current = node.nodeValue ?? ""
       const originals = textOriginalsRef.current
@@ -1591,7 +1610,7 @@ export function AdminLanguageProvider({ children, initialLanguage = "en", storag
     const translateElement = (element: Element) => {
       if (skipTranslation(element)) return
 
-      const names = ["alt", "aria-label", "placeholder", "title"]
+      const names = ["alt", "aria-label", "aria-description", "placeholder", "title"]
       let originals = attributeOriginalsRef.current.get(element)
       if (!originals) {
         originals = new Map()
@@ -1634,14 +1653,17 @@ export function AdminLanguageProvider({ children, initialLanguage = "en", storag
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (mutation.type === "attributes") translateTree(mutation.target)
+        if (mutation.type === "attributes") {
+          if (mutation.attributeName?.startsWith("data-admin-i18n-") || mutation.attributeName === "translate") translateTree(mutation.target)
+          else if (mutation.target instanceof Element) translateElement(mutation.target)
+        }
         if (mutation.type === "characterData") translateTree(mutation.target)
         mutation.addedNodes.forEach(translateTree)
       })
     })
     observer.observe(root, {
       childList: true, characterData: true, subtree: true,
-      attributes: true, attributeFilter: ["data-admin-i18n-pending"],
+      attributes: true, attributeFilter: ["data-admin-i18n-pending", "data-admin-i18n-ignore", "translate", "alt", "aria-label", "aria-description", "placeholder", "title"],
     })
 
     return () => observer.disconnect()

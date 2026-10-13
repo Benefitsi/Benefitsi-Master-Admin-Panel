@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react"
 import Link from "next/link"
+import { useAdminLanguage } from "@/app/admin-language"
 import { ArrowUpRight, ChartLineUp, DotsThree, LockSimple } from "@phosphor-icons/react"
 import type { AnalyticsBreakdownTable, AnalyticsDataQuality, AnalyticsMetricUnit, AnalyticsSectionKey, AnalyticsTimeSeries } from "@/lib/analytics/contracts"
 import { formatAnalyticsValue } from "@/lib/analytics/normalize"
@@ -101,6 +102,7 @@ function emptyLabel(state: OverviewAnalytics["state"], view: OverviewAnalyticsVi
 }
 
 function ActivityChart({ series }: { series: AnalyticsTimeSeries }) {
+  const { tr } = useAdminLanguage()
   const id = useId()
   const finite = series.points.flatMap(point => point.value !== null && Number.isFinite(point.value) ? [point.value] : [])
   if (!finite.length) return <div className={styles.emptyChart}><ChartLineUp size={44} weight="light" aria-hidden="true" /><span>Noch keine Messwerte im Verlauf</span></div>
@@ -132,7 +134,7 @@ function ActivityChart({ series }: { series: AnalyticsTimeSeries }) {
 
   return <figure className={styles.chart}>
     <figcaption><span>{series.title}</span><span>{qualityLabels[series.quality]}</span></figcaption>
-    <svg viewBox="0 0 772 210" role="img" aria-label={`${series.title}, ${series.points.length} Zeitpunkte. Fehlende Daten unterbrechen den Verlauf.`}>
+    <svg viewBox="0 0 772 210" role="img" aria-label={tr(`${tr(series.title)}, ${series.points.length} Zeitpunkte. Fehlende Daten unterbrechen den Verlauf.`)}>
       <defs>
         <linearGradient id={`${id}-line`} x1="0" y1="0" x2="1" y2="0"><stop stopColor="#118CFF" /><stop offset="1" stopColor="#17D4D7" /></linearGradient>
         <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop stopColor="#118CFF" stopOpacity=".27" /><stop offset="1" stopColor="#118CFF" stopOpacity="0" /></linearGradient>

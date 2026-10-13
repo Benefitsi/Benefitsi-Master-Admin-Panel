@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { AdminTranslationBoundary } from "@/components/admin-translation-boundary"
 import { AdminShell } from "@/app/admin-shell"
 import { requireAdmin } from "@/lib/admin"
 import { loadAgentControl } from "@/lib/agent-control-data"
@@ -16,5 +17,5 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
   const query = await searchParams
   const selectedAgentId = typeof query.agent === "string" ? query.agent : undefined
   const adminName = adminSession.profile?.display_name || adminSession.profile?.email || adminSession.user.email || "Admin"
-  return <AdminShell adminName={adminName} title="Agenten" subtitle="Profile, Zeitpläne, Kontext und Freigaben"><AgentOverview data={data} selectedAgentId={selectedAgentId} /></AdminShell>
+  return <AdminShell adminName={adminName} title="Agenten" subtitle="Profile, Zeitpläne, Kontext und Freigaben"><AdminTranslationBoundary><AgentOverview data={data} selectedAgentId={selectedAgentId} /></AdminTranslationBoundary></AdminShell>
 }

@@ -416,7 +416,7 @@ function AgentStatus({ status }: { status: string }) {
 
 function JobRow({ job, auditCount }: { job: AutomationJob; auditCount: number }) {
   return (
-    <article className="p-5">
+    <article id={`job-${job.id}`} className="scroll-mt-24 p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">

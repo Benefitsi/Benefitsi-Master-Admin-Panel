@@ -125,6 +125,18 @@ jobs:
           tests/admin-navigation-ui.test.mjs
           tests/ecosystem-streaming.test.mjs
           tests/admin-language-hydration.test.mjs
+          tests/admin-language.test.mjs
+          tests/admin-language-overview-ui.test.mjs
+          tests/ecosystem-metrics.test.mjs
+          tests/overview-priorities.test.mjs
+          tests/agent-profile-controls.test.mjs
+          tests/agent-profile-http.test.mjs
+          tests/agent-profile-controls-ui.test.mjs
+          tests/admin-language-controls-ui.test.mjs
+          tests/benefitsi-knowledge-controls.test.mjs
+          tests/benefitsi-knowledge-controls-server.test.mjs
+          tests/benefitsi-knowledge-controls-ui.test.mjs
+          tests/benefitsi-knowledge-page-ui.test.mjs
           tests/ecosystem-overview.test.mjs
           tests/ecosystem-directory.test.mjs
           tests/ecosystem-analytics.test.mjs
@@ -143,6 +155,7 @@ jobs:
           tests/partner-social-profile.test.mjs
           tests/partner-management-regressions.test.mjs
           tests/menu-ai-dialog.test.mjs
+          tests/menu-native-adapter-dto.test.mjs
 
       - name: Partner configuration and microsite editor regression tests
         run: >-
@@ -172,6 +185,17 @@ jobs:
           tests/menu-video-actions.test.mjs
           tests/menu-item-video-field.test.mjs
           tests/menu-item-video-form.test.mjs
+
+      - name: Bounded M1 context and knowledge regressions
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 ops/agent-controls/test_agent_context.py
+          PYTHONDONTWRITEBYTECODE=1 python3 ops/agent-controls/test_benefitsi_knowledge.py
+          PYTHONDONTWRITEBYTECODE=1 python3 ops/agent-controls/test_benefitsi_agent_models.py
+          PYTHONDONTWRITEBYTECODE=1 python3 ops/agent-controls/test_control_http.py
+          PYTHONDONTWRITEBYTECODE=1 python3 ops/menu-agent/test_bounded_adapter.py
+          PYTHONDONTWRITEBYTECODE=1 python3 ops/menu-agent/test_menu_native_routing.py
+          PYTHONDONTWRITEBYTECODE=1 python3 ops/menu-agent/test_menu_native_completion.py
+          PYTHONDONTWRITEBYTECODE=1 python3 ops/menu-agent/test_menu_http.py
 
       - name: Type-check
         run: npm exec -- tsc --noEmit
