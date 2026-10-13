@@ -97,11 +97,14 @@ export function buildAgentSummaries(data: AgentControlData): AgentSummary[] {
       const configured = summaries.get(profile.id)
       const details = agentDetails[profile.id]
       const lastRun = lastObservedRun(profile, data)
+      const mode = profile.automation === "scheduled" ? "Automatisch geplant"
+        : profile.automation === "manual" || (configured?.mode === "Auf Abruf" && profile.schedules.length === 0) ? "Auf Abruf"
+          : "Planung unbekannt"
       summaries.set(profile.id, {
         id: profile.id, name: details?.name ?? profile.id, purpose: configured?.purpose ?? profile.purpose,
         scope: profile.scope === "unknown" && configured ? configured.scope : profile.scope, model: profile.model, ...profileState(profile, freshness, lastRun.lastRunStatus),
-        mode: profile.automation === "scheduled" ? "Automatisch geplant" : profile.automation === "manual" ? "Auf Abruf" : "Planung unbekannt",
-        cadence: profileCadence(profile), evidence: "observed", observedAt: data.runtime.snapshot!.observedAt,
+        mode,
+        cadence: mode === "Auf Abruf" && profile.schedules.length === 0 ? "Bei Bedarf" : profileCadence(profile), evidence: "observed", observedAt: data.runtime.snapshot!.observedAt,
         freshness, freshnessLabel: freshnessLabel(freshness), ...lastRun,
         href: agentProfileHref(profile.id),
         workspaceHref: configured?.workspaceHref ?? details?.workspaceHref ?? (profile.citySlug ? "/city-operations" : null),
