@@ -1,3 +1,11 @@
+import registry from "../ops/agent-runtime/profile-registry.json"
+
+const retiredProfileIds = new Set<string>(registry.retiredProfileIds)
+
+export function isRetiredAgentProfile(id: string): boolean {
+  return retiredProfileIds.has(id)
+}
+
 export type AgentScope = "benefitsi" | "general" | "other" | "unknown"
 export type AgentAutomation = "scheduled" | "manual" | "unknown"
 export type RuntimeSource = "hermes" | "launchd"
@@ -98,7 +106,7 @@ export function normalizeRuntimeSnapshot(input: unknown, now = new Date()): Runt
     const profile = normalizeProfile(raw, nowMs)
     if (!profile || profileIds.has(profile.id)) return invalid()
     profileIds.add(profile.id)
-    profiles.push(profile)
+    if (!isRetiredAgentProfile(profile.id)) profiles.push(profile)
   }
 
   return {

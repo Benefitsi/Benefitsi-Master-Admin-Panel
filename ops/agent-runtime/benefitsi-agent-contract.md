@@ -16,8 +16,6 @@ Vor Beginn müssen Auftrag, erlaubte Umgebung, Quellen, gewünschtes Ergebnis un
 | `city-annweiler` | Annweiler-Quellen und zugeordnete Stadtdaten aktuell halten | Quelle/Datum, konkrete Änderung, Datenprüfung und gesonderter Publikationsstatus | Auf die belegte Stadt beschränkt; technischer Erfolg ersetzt keine redaktionelle Freigabe |
 | `benefitsi-seo` | Suchleistung und technische SEO anhand zugänglicher Belege prüfen | Datierter Messbericht, konkrete Ursache und priorisierte Verbesserung | Bestehende Auth-Sperre erhalten; kein Retry-/Providerwechsel als Umgehung; noindex bleibt bis ausdrücklicher Freigabe |
 | `benefitsi-content` | Nützliche Stadt- und Partnerinhalte vorbereiten | Such-/Nutzungsabsicht, belastbare Quellen, Entwurf, Rechte-/Faktenlücken | Keine erfundene Erfahrung, Partnerschaft oder Öffnungszeit; Entwurf ist keine Veröffentlichung |
-| `stamp-curator` | Orts- und Stempelmaterial kuratieren | Eindeutige Ortszuordnung, Motiv-/Rechtenachweis, kontrollierte Vorschau und offene Prüfung | Nicht aus einem Datenbankeintrag auf Bildrechte, GPS-Nachweis oder erfüllte Belohnung schließen |
-| `studio` | Freigegebene Gestaltung mit bestehenden Produktstandards umsetzen | Tatsächliche Desktop-/Mobilansicht, Lesbarkeit, Tastaturbedienung, funktionierende betroffene Interaktion | Kein neues Designsystem oder Medienkauf auf Verdacht; nur belegte Inhalte als reale Angebote darstellen |
 
 Entwicklung und QA liegen derzeit bei dieser Codex-Arbeit und konkret zugewiesenen Reyan-Aufgaben. Finanzvorbereitung nutzt den vorhandenen Finanz-SOP im Wissenseinstieg: bereitgestellte Belege ordnen, Dubletten/fehlende Angaben melden; keine autonome Buchung, Zahlung oder Steuerabgabe. Partnerverifikation und redaktionelle Freigaben haben menschliche Verantwortliche. Zusätzliche Agentennamen ohne klaren Auftrag sind kein Fortschritt.
 
@@ -45,3 +43,5 @@ Zustände unterscheiden: **bereit**, **bearbeitet**, **Prüfung nötig**, **bele
 Lange Anleitungen bleiben hier als Referenz; die Kurzmemory trägt nur einen knappen Einstieg und geprüfte Regeln innerhalb des tatsächlichen Profil-Limits. Der [Lernablauf](learning-workflow.md) verlangt Belege und Tests. Eine [neue Stadt](city-template.md) beginnt mit gesperrter Veröffentlichung und eigenen Quellen; keine Sessions oder Secrets kopieren.
 
 Technische Grundlage: lokale Hermes-Version 0.21.0, `agent/prompt_builder.py` und `tools/memory_tool.py`, lesend geprüft am 21.09.2026. Bei einem späteren Runtime-Upgrade das Ladeverhalten erneut prüfen, nicht unbemerkt diese Versionsannahme fortschreiben.
+
+Am 13.10.2026 auf ausdrücklichen Nutzerauftrag entfernt: `stamp-curator` und `studio`. Gesicherte historische Arbeitsstände gehören nicht zur aktiven Agentenflotte.

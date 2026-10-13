@@ -38,7 +38,9 @@
       "scope": "benefitsi",
       "purpose": "Misst SEO-, Local-, Maps- und KI-Sichtbarkeit; Ergebnisse bleiben freigabepflichtig.",
       "citySlug": null,
-      "hermesJobIds": ["944f1a0e360b"],
+      "hermesJobIds": [
+        "944f1a0e360b"
+      ],
       "launchdSchedules": []
     },
     {
@@ -63,22 +65,6 @@
           }
         }
       ]
-    },
-    {
-      "id": "stamp-curator",
-      "scope": "benefitsi",
-      "purpose": "Kuriert quellengestützte Ortsstempel-Konzepte für die manuelle Prüfung.",
-      "citySlug": null,
-      "hermesJobIds": [],
-      "launchdSchedules": []
-    },
-    {
-      "id": "studio",
-      "scope": "benefitsi",
-      "purpose": "Setzt Benefitsi-Design, Frontend und visuelle Qualitätssicherung um.",
-      "citySlug": null,
-      "hermesJobIds": [],
-      "launchdSchedules": []
     },
     {
       "id": "alexhormozi",
@@ -144,5 +130,9 @@
       "hermesJobIds": [],
       "launchdSchedules": []
     }
+  ],
+  "retiredProfileIds": [
+    "stamp-curator",
+    "studio"
   ]
 }
