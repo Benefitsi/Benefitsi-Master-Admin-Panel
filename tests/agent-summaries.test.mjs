@@ -196,3 +196,14 @@ test("server route forwards a single requested agent after its admin authorizati
   renderToStaticMarkup(await page({ searchParams: Promise.resolve({ agent: "benefitsi-menu" }) }))
   assert.deepEqual(calls, ["authorize", "load", "benefitsi-menu"])
 })
+
+test("known on-demand entry survives an unknown observation without inventing a run or hiding schedules", () => {
+  const menu = profile({ id: "benefitsi-menu", scope: "unknown", automation: "unknown", schedules: [] })
+  const item = buildAgentSummaries(control([menu])).find(x => x.id === "benefitsi-menu")
+  assert.equal(item.mode,"Auf Abruf");assert.equal(item.cadence,"Bei Bedarf")
+  assert.equal(item.lastRunAt,null);assert.equal(item.lastRunStatus,"unknown");assert.equal(item.status,"stale")
+  const scheduled = buildAgentSummaries(control([profile({id:"benefitsi-menu",automation:"scheduled"})])).find(x=>x.id==="benefitsi-menu")
+  assert.equal(scheduled.mode,"Automatisch geplant")
+  const unknownWithSchedule = buildAgentSummaries(control([profile({id:"benefitsi-menu",automation:"unknown"})])).find(x=>x.id==="benefitsi-menu")
+  assert.equal(unknownWithSchedule.mode,"Planung unbekannt")
+})
