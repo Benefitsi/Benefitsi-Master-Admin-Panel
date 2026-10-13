@@ -1,4 +1,5 @@
-import {readFileSync} from 'node:fs'
+import {readFileSync,existsSync} from 'node:fs'
+import {posix} from 'node:path'
 import {createRequire} from 'node:module'
 import ts from 'typescript'
 const require=createRequire(import.meta.url),cache=new Map()
@@ -16,6 +17,12 @@ export function loadUi(relative) {
   if(id==='@/app/partner/crm-actions')return {updatePartnerEditorial:async()=>({ok:false,message:'No test server mutation'})}
   if(id.endsWith('.json'))return loadUi(id.slice(2))
   if(id.startsWith('@/')){const base=id.slice(2);return loadUi(base+(base.startsWith('components/')?'.tsx':'.ts'))}
+  if(id.startsWith('.')){
+   const base=posix.normalize(posix.join(posix.dirname(relative),id))
+   for(const candidate of [base,base+'.ts',base+'.tsx']){
+    if(existsSync(new URL('../../'+candidate,import.meta.url)))return loadUi(candidate)
+   }
+  }
   return require(id)
  },m,m.exports)
  cache.set(relative,m.exports);return m.exports
