@@ -14,6 +14,47 @@ alter table partner_configuration_private.history
     ])
   );
 
+-- Fingerprints correlate changed draft/private sources without retaining URLs,
+-- credentials, query tokens, data URIs or base64 in the append-only table.
+-- A clear URL means only that it matches the production project's public
+-- object path syntax; it is not an existence/rights/publication assertion.
+create or replace function partner_configuration_private.media_ref(p_value text)
+returns jsonb language plpgsql immutable set search_path = ''
+as $$
+declare raw_value text; base_url text; object_path text; fingerprint text;
+        uuid_pattern constant text :=
+          '[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
+begin
+  raw_value := pg_catalog.btrim(p_value);
+  if raw_value is null or raw_value = '' then return null; end if;
+  fingerprint := pg_catalog.encode(
+    pg_catalog.sha256(pg_catalog.convert_to(raw_value, 'UTF8')), 'hex');
+  base_url := pg_catalog.split_part(pg_catalog.split_part(raw_value, '?', 1), '#', 1);
+  if pg_catalog.length(base_url) <= 2048 and
+     base_url ~ '^https://slscoqdhbxftcournvut[.]supabase[.]co/storage/v1/object/public/(partner-assets|city-media|menu-videos)/[A-Za-z0-9._~/-]+$'
+  then
+    object_path := pg_catalog.substr(base_url,
+      pg_catalog.length('https://slscoqdhbxftcournvut.supabase.co/storage/v1/object/public/') + 1);
+    if object_path !~ '(^|/)[.]{1,2}(/|$)' and
+       pg_catalog.strpos(object_path, '//') = 0 and (
+         object_path ~ ('^partner-assets/microsites/' || uuid_pattern ||
+           '/staging/' || uuid_pattern || '[.](png|jpe?g|webp)$')
+         or object_path ~ ('^partner-assets/microsites/' || uuid_pattern ||
+           '/(image|logo|badge|hero|deals_illustration|top_deal|about_hero|about_ingredient|about_location|about_prep|contact_location_icon|reward_5_image|reward_10_image|app_phone_screenshot|footer_benefitsi_logo)-' || uuid_pattern ||
+           '-[0-9]{1,5}x[0-9]{1,5}[.]webp$')
+         or object_path ~ ('^menu-videos/' || uuid_pattern || '/' ||
+           uuid_pattern || '/' || uuid_pattern || '[.]mp4$')
+       )
+    then
+      return pg_catalog.jsonb_build_object(
+        'url', base_url, 'fingerprint', fingerprint,
+        'suffix_redacted', base_url <> raw_value);
+    end if;
+  end if;
+  return pg_catalog.jsonb_build_object('redacted', true, 'fingerprint', fingerprint);
+end;
+$$;
+
 -- Keep the original configuration fields and add only public media references.
 create or replace function partner_configuration_private.configuration(p_table text, p_row jsonb)
 returns jsonb language sql immutable set search_path = ''
@@ -25,10 +66,15 @@ as $$
       'reward_text_primary', p_row->'reward_text_primary',
       'reward_text_secondary', p_row->'reward_text_secondary',
       'external_ordering_url', p_row->'external_ordering_url',
-      'logo_url', p_row->'logo_url',
-      'feature_card_url', p_row->'feature_card_url',
-      'discover_card_image_url', p_row->'discover_card_image_url',
-      'cover_urls', p_row->'cover_urls'
+      'logo_url', partner_configuration_private.media_ref(p_row->>'logo_url'),
+      'feature_card_url', partner_configuration_private.media_ref(p_row->>'feature_card_url'),
+      'discover_card_image_url', partner_configuration_private.media_ref(p_row->>'discover_card_image_url'),
+      'cover_urls', coalesce((
+        select jsonb_agg(partner_configuration_private.media_ref(x.value) order by x.ordinality)
+        from jsonb_array_elements_text(case when jsonb_typeof(p_row->'cover_urls') = 'array'
+          then p_row->'cover_urls' else '[]'::jsonb end)
+          with ordinality as x(value, ordinality)
+      ), '[]'::jsonb)
     )
   else p_row-'updated_at'-'stock_remaining' end;
 $$;
@@ -70,31 +116,65 @@ begin
 end;
 $$;
 
--- Contains URLs and slot names only; avoids copying private microsite text.
+-- Explicit image/video slots only. Unknown draft keys are never copied.
 create or replace function partner_configuration_private.microsite_media_refs(p_config jsonb)
 returns jsonb language sql immutable set search_path = ''
 as $$
   select case when p_config is null then null else jsonb_build_object(
-    'branding.logoUrl', p_config #>> '{branding,logoUrl}',
-    'branding.partnerBadgeUrl', p_config #>> '{branding,partnerBadgeUrl}',
-    'hero.backgroundImageUrl', p_config #>> '{hero,backgroundImageUrl}',
-    'deals.illustrationUrl', p_config #>> '{deals,illustrationUrl}',
-    'deals.topDealImageUrl', p_config #>> '{deals,topDealImageUrl}',
-    'seo.ogImageUrl', p_config #>> '{seo,ogImageUrl}',
-    'richMedia.url', p_config #>> '{richMedia,url}',
-    'richMedia.poster', p_config #>> '{richMedia,poster}',
-    'richMediaTour.url', p_config #>> '{richMediaTour,url}',
-    'richMediaTour.poster', p_config #>> '{richMediaTour,poster}',
+    'branding.logoUrl', partner_configuration_private.media_ref(p_config #>> '{branding,logoUrl}'),
+    'branding.partnerBadgeUrl', partner_configuration_private.media_ref(p_config #>> '{branding,partnerBadgeUrl}'),
+    'hero.backgroundImageUrl', partner_configuration_private.media_ref(p_config #>> '{hero,backgroundImageUrl}'),
+    'deals.illustrationUrl', partner_configuration_private.media_ref(p_config #>> '{deals,illustrationUrl}'),
+    'deals.topDealImageUrl', partner_configuration_private.media_ref(p_config #>> '{deals,topDealImageUrl}'),
+    'seo.ogImageUrl', partner_configuration_private.media_ref(p_config #>> '{seo,ogImageUrl}'),
+    'richMedia.url', partner_configuration_private.media_ref(p_config #>> '{richMedia,url}'),
+    'richMedia.poster', partner_configuration_private.media_ref(p_config #>> '{richMedia,poster}'),
+    'richMediaTour.url', partner_configuration_private.media_ref(p_config #>> '{richMediaTour,url}'),
+    'richMediaTour.poster', partner_configuration_private.media_ref(p_config #>> '{richMediaTour,poster}'),
     'elementText', coalesce((
-      select jsonb_object_agg(e.key, e.value)
+      select jsonb_object_agg(
+        case when e.key ~ '^content[.]menuItem[.][a-z0-9_-]+[.]imageUrl$'
+          then 'content.menuItem.sha256:' ||
+            pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(e.key, 'UTF8')), 'hex') ||
+            '.imageUrl'
+          else e.key end,
+        partner_configuration_private.media_ref(e.value))
       from jsonb_each_text(case when jsonb_typeof(p_config->'elementText') = 'object'
         then p_config->'elementText' else '{}'::jsonb end) e
-      where e.key ~ '(Url|\.logo)$' or e.key = 'footer.benefitsiLogo'
+      where e.key in (
+        'branding.logo', 'contact.logo', 'footer.benefitsiLogo',
+        'content.aboutHeroImageUrl', 'content.aboutIngredientImageUrl',
+        'content.aboutLocationImageUrl', 'content.aboutPrepImageUrl',
+        'content.appPhoneScreenshotUrl'
+      ) or e.key ~ '^content[.]menuItem[.][a-z0-9_-]+[.]imageUrl$'
+        or e.key ~ '^social[.](instagram|facebook|tiktok|youtube|whatsapp|website|google|linkedin)[.]iconUrl$'
+        or e.key ~ '^stamps[.](number|reward)[.][0-9]+[.]image$'
     ), '{}'::jsonb),
     'assetLibrary', coalesce((
-      select jsonb_agg(jsonb_build_object('url', a.value->>'url', 'slot', a.value->>'slot'))
+      select jsonb_agg(jsonb_build_object(
+        'index', a.ordinality,
+        'url', partner_configuration_private.media_ref(a.value->>'url'),
+        'slot', case when a.value->>'slot' in (
+          'branding.logoUrl', 'branding.partnerBadgeUrl', 'hero.backgroundImageUrl',
+          'deals.illustrationUrl', 'deals.topDealImageUrl', 'seo.ogImageUrl',
+          'content.aboutHeroImageUrl', 'content.aboutIngredientImageUrl',
+          'content.aboutLocationImageUrl', 'content.aboutPrepImageUrl',
+          'content.appPhoneScreenshotUrl'
+        ) then a.value->>'slot' else null end,
+        'slot_fingerprint', case when a.value->>'slot' is not null and
+          a.value->>'slot' not in (
+            'branding.logoUrl', 'branding.partnerBadgeUrl', 'hero.backgroundImageUrl',
+            'deals.illustrationUrl', 'deals.topDealImageUrl', 'seo.ogImageUrl',
+            'content.aboutHeroImageUrl', 'content.aboutIngredientImageUrl',
+            'content.aboutLocationImageUrl', 'content.aboutPrepImageUrl',
+            'content.appPhoneScreenshotUrl'
+          ) then pg_catalog.encode(
+            pg_catalog.sha256(pg_catalog.convert_to(a.value->>'slot', 'UTF8')), 'hex')
+          else null end
+      ) order by a.ordinality)
       from jsonb_array_elements(case when jsonb_typeof(p_config #> '{assets,library}') = 'array'
-        then p_config #> '{assets,library}' else '[]'::jsonb end) a
+        then p_config #> '{assets,library}' else '[]'::jsonb end)
+        with ordinality as a(value, ordinality)
       where a.value->>'url' is not null
     ), '[]'::jsonb)
   ) end;
@@ -106,22 +186,28 @@ as $$
 declare row_data jsonb; before_refs jsonb; after_refs jsonb; pid uuid;
 begin
   if tg_op <> 'INSERT' then
-    before_refs := jsonb_build_object('menu_id', old.menu_id, 'image_url', old.image_url);
+    before_refs := jsonb_build_object(
+      'menu_id', old.menu_id,
+      'image_url', partner_configuration_private.media_ref(old.image_url));
     if tg_table_name = 'menu_items' then
-      before_refs := before_refs || jsonb_build_object('video_url', old.video_url);
+      before_refs := before_refs || jsonb_build_object(
+        'video_url', partner_configuration_private.media_ref(old.video_url));
     end if;
   end if;
   if tg_op <> 'DELETE' then
-    after_refs := jsonb_build_object('menu_id', new.menu_id, 'image_url', new.image_url);
+    after_refs := jsonb_build_object(
+      'menu_id', new.menu_id,
+      'image_url', partner_configuration_private.media_ref(new.image_url));
     if tg_table_name = 'menu_items' then
-      after_refs := after_refs || jsonb_build_object('video_url', new.video_url);
+      after_refs := after_refs || jsonb_build_object(
+        'video_url', partner_configuration_private.media_ref(new.video_url));
     end if;
   end if;
   if before_refs is not distinct from after_refs or
-    (nullif(before_refs->>'image_url', '') is null
-      and nullif(before_refs->>'video_url', '') is null
-      and nullif(after_refs->>'image_url', '') is null
-      and nullif(after_refs->>'video_url', '') is null)
+    (coalesce(before_refs->'image_url', 'null'::jsonb) = 'null'::jsonb
+      and coalesce(before_refs->'video_url', 'null'::jsonb) = 'null'::jsonb
+      and coalesce(after_refs->'image_url', 'null'::jsonb) = 'null'::jsonb
+      and coalesce(after_refs->'video_url', 'null'::jsonb) = 'null'::jsonb)
   then
     if tg_op = 'DELETE' then return old; else return new; end if;
   end if;
@@ -157,11 +243,14 @@ declare media_refs jsonb;
 begin
   select jsonb_build_object(
     'items', coalesce((select jsonb_agg(jsonb_build_object(
-      'id', i.id, 'image_url', i.image_url, 'video_url', i.video_url))
+      'id', i.id,
+      'image_url', partner_configuration_private.media_ref(i.image_url),
+      'video_url', partner_configuration_private.media_ref(i.video_url)))
       from public.menu_items i where i.menu_id = old.id
         and (nullif(i.image_url, '') is not null or nullif(i.video_url, '') is not null)), '[]'::jsonb),
     'categories', coalesce((select jsonb_agg(jsonb_build_object(
-      'id', c.id, 'image_url', c.image_url))
+      'id', c.id,
+      'image_url', partner_configuration_private.media_ref(c.image_url)))
       from public.menu_categories c where c.menu_id = old.id
         and nullif(c.image_url, '') is not null), '[]'::jsonb)
   ) into media_refs;
@@ -290,7 +379,9 @@ drop trigger if exists partner_media_parent_history on public.microsites;
 create trigger partner_media_parent_history before delete on public.microsites
 for each row execute function partner_configuration_private.capture_microsite_publication();
 
--- Trigger functions and the URL-only helper are private implementation details.
+-- Trigger functions and reference-sanitizing helpers are private details.
+revoke all on function partner_configuration_private.media_ref(text)
+  from public, anon, authenticated;
 revoke all on function partner_configuration_private.microsite_media_refs(jsonb)
   from public, anon, authenticated;
 revoke all on function partner_configuration_private.capture_menu_media()
