@@ -1,5 +1,19 @@
 /** Public schedule only. Weekdays follow ISO 8601: Monday=1, Sunday=7. */
-export type OpeningInterval = {
+export type ManagedOpeningProof = {
+  source_id?: string | null
+  last_verified_at?: string | null
+  verification_status?: string | null
+  freshness_ttl_days?: number | null
+}
+/** Legacy partner-entered rows retain their contract; automated rows require current proof. */
+export function publicPartnerOpeningHour(row: ManagedOpeningProof, now = new Date()) {
+  if (!row.source_id) return true
+  const checked = Date.parse(row.last_verified_at ?? '')
+  const age = now.getTime() - checked
+  return row.verification_status === 'VERIFIED' && Number.isFinite(age) && age >= 0 &&
+    (row.freshness_ttl_days ?? 0) > 0 && age < (row.freshness_ttl_days ?? 0) * 86_400_000
+}
+export type OpeningInterval = ManagedOpeningProof & {
   weekday: number | null
   opens_at: string | null
   closes_at: string | null
@@ -51,6 +65,7 @@ export function openingExceptionsForDate(exceptions: OpeningException[], date: s
 export function micrositeOpeningStatus(hours: OpeningInterval[], exceptions: OpeningException[] | null | undefined, now = new Date()): OpeningStatus {
   const unknown: OpeningStatus = { state: 'unknown', nextChange: null }
   if (!exceptions || !Number.isFinite(now.getTime())) return unknown
+  hours = hours.filter(row => publicPartnerOpeningHour(row, now))
   const validDate = (value: string | null): value is string => Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T12:00:00Z`)) && new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) === value)
   if (exceptions.some(row => !validDate(row.holiday_date))) return unknown
   const today = wall(now.getTime()).date
@@ -61,7 +76,11 @@ export function micrositeOpeningStatus(hours: OpeningInterval[], exceptions: Ope
   for (const exception of exceptions) {
     const date = exception.holiday_date!
     const candidates = exception.repeats_yearly ? [Number(today.slice(0, 4)), Number(today.slice(0, 4)) + 1].map(year => `${year}${date.slice(4)}`) : [date]
-    for (const candidate of candidates) if (validDate(candidate) && candidate >= today) dates.add(candidate)
+    for (const candidate of candidates) if (validDate(candidate) && candidate >= today) {
+      // Cover the return to ordinary weekly hours after each exception, including
+      // chains longer than a week and an overnight tail before the exception.
+      for (let offset = -1; offset <= 8; offset++) dates.add(shift(candidate, offset))
+    }
   }
   for (const date of dates) {
     const weekday = new Date(`${date}T12:00:00Z`).getUTCDay() || 7
@@ -99,7 +118,7 @@ export function micrositeOpeningStatus(hours: OpeningInterval[], exceptions: Ope
     else merged.push([...span])
   }
   const current = merged.find(([start, end]) => start <= now.getTime() && now.getTime() < end)
-  if (current) return { state: 'open', nextChange: wall(current[1]).date >= shift(today, 8) ? null : new Date(current[1]).toISOString() }
+  if (current) return { state: 'open', nextChange: known.has(wall(current[1]).date) ? new Date(current[1]).toISOString() : null }
   if (!known.get(today)) return unknown
   const next = merged.find(([start]) => start > now.getTime())
   return { state: 'closed', nextChange: next ? new Date(next[0]).toISOString() : null }

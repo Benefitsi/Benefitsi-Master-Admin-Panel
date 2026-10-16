@@ -86,7 +86,7 @@ export async function getPublishedMicrositePage(
         .order("sort_order", { ascending: true, nullsFirst: false }),
       supabase
         .from("partner_opening_hours")
-        .select("id,partner_id,weekday,opens_at,closes_at,label,is_closed,sort_order")
+        .select("id,partner_id,weekday,opens_at,closes_at,label,is_closed,sort_order,source_id,last_verified_at,verification_status,freshness_ttl_days")
         .eq("partner_id", microsite.partner_id)
         .order("sort_order", { ascending: true, nullsFirst: false }),
       supabase.from("partner_holidays")

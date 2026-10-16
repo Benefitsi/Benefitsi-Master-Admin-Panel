@@ -152,6 +152,10 @@ export type PartnerStaff = {
 }
 
 export type PartnerOpeningHour = {
+  source_id?: string | null
+  last_verified_at?: string | null
+  verification_status?: string | null
+  freshness_ttl_days?: number | null
   id?: string
   partner_id: string | null
   weekday: number | null
@@ -557,6 +561,7 @@ export async function getDashboardData(
   const partnersWithDeals = partners.map((partner) => ({
     ...partner,
     ...(partner.id === entitlementPartner?.id ? capabilityFlags : {}),
+    opening_status_unavailable: Boolean(openingHoursResult.error || holidaysResult.error),
     deals: partner.id ? (dealsByPartner.get(partner.id) ?? []).filter(deal => !isRetiredStreakDeal(deal)) : [],
     holidays: partner.id ? holidaysByPartner.get(partner.id) ?? [] : [],
     socials: partner.id ? socialsByPartner.get(partner.id) ?? [] : [],

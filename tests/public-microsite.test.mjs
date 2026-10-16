@@ -569,3 +569,12 @@ test("failed exception read cannot publish a falsely ordinary opening day", asyn
   const page = await getPublishedMicrositePage(client, "public-shop")
   assert.equal(page.partner.opening_status_unavailable, true)
 })
+
+test('public Admin reader projects managed provenance so stale hours cannot become open', async () => {
+  const { micrositeOpeningStatus } = await import('../lib/microsite-opening-hours.ts')
+  const proof = {source_id:'source-1', last_verified_at:'2026-01-01T00:00:00Z', verification_status:'VERIFIED', freshness_ttl_days:30}
+  const {client} = createPublicMicrositeClient({hours:[{weekday:5,opens_at:'09:00',closes_at:'18:00',is_closed:false,...proof}]})
+  const page = await getPublishedMicrositePage(client, 'public-shop')
+  for (const [field,value] of Object.entries(proof)) assert.equal(page.partner.opening_hours[0][field], value)
+  assert.equal(micrositeOpeningStatus(page.partner.opening_hours, page.partner.holidays, new Date('2026-10-16T08:00:00Z')).state, 'unknown')
+})

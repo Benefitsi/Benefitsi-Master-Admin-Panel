@@ -68,3 +68,21 @@ test('a known future special opening is reported even beyond the weekly horizon'
 test('malformed exception dates cannot silently restore the ordinary weekly schedule', () => {
   assert.equal(status(week(), '2026-10-16T08:00:00Z', [{holiday_date: null, is_closed: true}]).state, 'unknown')
 })
+test('normal opening resumes after a ten-day special closure chain', () => {
+  const closures = Array.from({length: 10}, (_, index) => ({holiday_date: `2026-10-${16 + index}`, is_closed: true}))
+  assert.equal(status(week(), '2026-10-16T08:00:00Z', closures).nextChange, '2026-10-26T08:00:00.000Z')
+})
+test('managed rows require the same current verification as the public directory', () => {
+  const managed = { source_id: 'source-1', verification_status: 'VERIFIED', last_verified_at: '2026-10-15T08:00:00Z', freshness_ttl_days: 1 }
+  for (const proof of [managed, {...managed, last_verified_at:'2026-01-01T00:00:00Z'}, {...managed, verification_status:'UNVERIFIED'}, {...managed, last_verified_at:'2026-10-17T08:00:00Z'}, {...managed, freshness_ttl_days:0}]) {
+    assert.equal(status(week().map(row => ({...row, ...proof})), '2026-10-16T08:00:00Z').state, 'unknown')
+  }
+  assert.equal(status(week().map(row => ({...row, ...managed, freshness_ttl_days:2})), '2026-10-16T08:00:00Z').state, 'open')
+})
+test('24-hour operation resumes after vacation without a fictitious search-boundary closing', () => {
+  const closures = Array.from({length:10}, (_, index) => ({holiday_date:`2026-10-${16+index}`,is_closed:true}))
+  assert.equal(status(week('00:00','00:00'), '2026-10-16T08:00:00Z', closures).nextChange, '2026-10-25T23:00:00.000Z')
+  const resumed = status(week('00:00','00:00'), '2026-10-26T08:00:00Z', closures)
+  assert.equal(resumed.state, 'open')
+  assert.equal(resumed.nextChange, null)
+})
