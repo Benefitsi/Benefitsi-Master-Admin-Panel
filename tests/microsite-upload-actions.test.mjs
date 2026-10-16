@@ -50,7 +50,7 @@ test("signed uploads are scoped to an authorized partner and validate file metad
   assert.equal(denied.calls.length, 0)
 })
 
-test("completion decodes and optimizes the actual image, then removes only staging", async () => {
+test("completion decodes and optimizes the actual image while retaining its public staging URL", async () => {
   const bytes = await sharp({ create: { width: 24, height: 16, channels: 3, background: "blue" } }).png().toBuffer()
   const f = fixture({ bytes, size: bytes.length })
   const result = await f.completeMicrositeImageUpload(partnerId, staged)
@@ -59,17 +59,17 @@ test("completion decodes and optimizes the actual image, then removes only stagi
   const uploaded = f.calls.find(c => c[0] === "upload")
   assert.equal((await sharp(uploaded[2]).metadata()).format, "webp")
   assert.deepEqual(uploaded[3], { contentType: "image/webp", upsert: false })
-  assert.deepEqual(f.calls.at(-1), ["remove", [staged]])
+  assert.equal(f.calls.some(c => c[0] === "remove"), false)
 })
 
-test("oversized, invalid and failed uploads cannot produce saved URLs and clean staging", async () => {
+test("oversized, invalid and failed uploads cannot produce saved URLs or delete a public staging URL", async () => {
   const bytes = await sharp({ create: { width: 8, height: 8, channels: 3, background: "blue" } }).png().toBuffer()
   for (const options of [{ size: 11 * 1024 * 1024 }, { type: "text/html" }, {}, { bytes, uploadError: true }]) {
     const f = fixture(options)
     const result = await f.completeMicrositeImageUpload(partnerId, staged)
     assert.equal(result.ok, false)
     assert.equal(result.url, undefined)
-    assert.deepEqual(f.calls.at(-1), ["remove", [staged]])
+    assert.equal(f.calls.some(c => c[0] === "remove"), false)
     if (options.size || options.type) assert.ok(!f.calls.some(c => c[0] === "download"))
   }
 })
@@ -83,5 +83,5 @@ test("completion and discard reject foreign, final, traversal and URL paths with
   }
   const f = fixture()
   assert.equal((await f.discardMicrositeImageUpload(partnerId, staged)).ok, true)
-  assert.deepEqual(f.calls, [["remove", [staged]]])
+  assert.deepEqual(f.calls, [])
 })

@@ -18,20 +18,3 @@ export async function verifyMenuVideoUpload(
     size: data.size ?? 0,
   })
 }
-
-export async function removeUnusedMenuVideos(
-  supabase: SupabaseClient,
-  urls: string[],
-  origin: string,
-  partnerId: string,
-  menuId: string,
-): Promise<void> {
-  for (const url of new Set(urls)) {
-    const path = menuVideoStoragePath(url, origin, partnerId, menuId)
-    if (!path) continue
-    const { data, error } = await supabase.from("menu_items")
-      .select("id").eq("video_url", url).limit(1)
-    if (error || !data || data.length) continue
-    await supabase.storage.from(MENU_VIDEO_BUCKET).remove([path])
-  }
-}

@@ -33,6 +33,7 @@ const record = (v: unknown): Record<string, unknown> => v !== null && typeof v =
 const text = (v: unknown) => typeof v === "string" ? reconcileRetiredStreakCopy(v.trim().slice(0, 12000)) : ""
 export const PUBLIC_MICROSITE_ANCHORS = ["deals", "stempelkarte", "speisekarte", "ueber-uns", "app", "kontakt"] as const
 const extraText = new Set([
+  "content.aboutLocationImageAlt",
   "branding.partnerName", "branding.logo", "contact.logo", "footer.benefitsiLogo",
   "content.aboutHeroImageUrl", "content.aboutIngredientImageUrl", "content.aboutLocationImageUrl", "content.aboutPrepImageUrl",
   "content.aboutSlogan", "content.aboutTextSecond", "content.aboutThanks", "content.aboutSignature",

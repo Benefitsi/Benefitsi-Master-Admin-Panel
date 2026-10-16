@@ -23,6 +23,8 @@ export type PublishedMicrositeBenefits = {
 }
 
 export type MicrositeIntegration = {
+  /** Host URL for the real Flutter bundle; partnerId is the only context parameter. */
+  appPartnerBaseUrl?: string
   commerceActions?: MicrositeCommerceAction[]
   hideEmptySections?: boolean
   publishedBenefits?: PublishedMicrositeBenefits

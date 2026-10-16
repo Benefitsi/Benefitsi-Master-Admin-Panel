@@ -8,6 +8,7 @@ import type {
   PartnerMenu,
   Partner,
   PartnerOpeningHour,
+  PartnerHoliday,
   PartnerRewardMilestone,
   PartnerSocial,
   PartnerWithDeals,
@@ -55,6 +56,7 @@ export async function getPublishedMicrositePage(
     milestonesResult,
     socialsResult,
     hoursResult,
+    holidaysResult,
     menusResult,
   ] = await Promise.all([
       supabase
@@ -84,9 +86,12 @@ export async function getPublishedMicrositePage(
         .order("sort_order", { ascending: true, nullsFirst: false }),
       supabase
         .from("partner_opening_hours")
-        .select("id,partner_id,weekday,opens_at,closes_at,label,is_closed,sort_order")
+        .select("id,partner_id,weekday,opens_at,closes_at,label,is_closed,sort_order,source_id,last_verified_at,verification_status,freshness_ttl_days")
         .eq("partner_id", microsite.partner_id)
         .order("sort_order", { ascending: true, nullsFirst: false }),
+      supabase.from("partner_holidays")
+        .select("holiday_date,label,is_closed,opens_at,closes_at,repeats_yearly")
+        .eq("partner_id", microsite.partner_id),
       supabase
         .from("menus")
         .select("id,partner_id,name,description,status,created_at,updated_at")
@@ -173,7 +178,8 @@ export async function getPublishedMicrositePage(
   const annotatedPartner: PartnerWithDeals = {
     ...partner,
     deals: ((publicDealsData ?? []) as Deal[]).filter((deal) => !isRetiredStreakDeal(deal)),
-    holidays: [],
+    holidays: (holidaysResult.data ?? []) as PartnerHoliday[],
+    opening_status_unavailable: Boolean(holidaysResult.error || hoursResult.error),
     socials: (socialsResult.data ?? []) as PartnerSocial[],
     reward_milestones:
       (milestonesResult.data ?? []) as PartnerRewardMilestone[],
