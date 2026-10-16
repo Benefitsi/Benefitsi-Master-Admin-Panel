@@ -169,7 +169,8 @@ function createPublicMicrositeClient(options = {}) {
       ],
       error: null,
     },
-    partner_opening_hours: { data: [], error: null },
+    partner_opening_hours: { data: options.hours || [], error: null },
+    partner_holidays: { data: options.holidays || [], error: options.holidayError || null },
     menus: { data: [], error: null },
     menu_categories: { data: [], error: null },
     menu_items: { data: [], error: null },
@@ -554,3 +555,17 @@ for (const legacy of [false, true]) {
     assert.equal(page.partner.deals[0].metadata, null, "remaining metadata is still private")
   })
 }
+
+test("public reader retains ISO intervals and public exceptions without private holiday metadata", async () => {
+  const {client} = createPublicMicrositeClient({ hours: [{weekday: 7, opens_at: "22:00", closes_at: "02:00", is_closed: false}], holidays: [{holiday_date: "2026-12-25", is_closed: true, repeats_yearly: true, internal_note: "secret", created_at: "private"}] })
+  const page = await getPublishedMicrositePage(client, "public-shop")
+  assert.equal(page.partner.opening_hours[0].weekday, 7)
+  assert.equal(page.partner.opening_hours[0].opens_at, "22:00")
+  assert.equal(page.partner.holidays[0].holiday_date, "2026-12-25")
+  assert.doesNotMatch(JSON.stringify(page.partner.holidays), /secret|private/)
+})
+test("failed exception read cannot publish a falsely ordinary opening day", async () => {
+  const {client} = createPublicMicrositeClient({holidayError: {message: "unavailable"}})
+  const page = await getPublishedMicrositePage(client, "public-shop")
+  assert.equal(page.partner.opening_status_unavailable, true)
+})

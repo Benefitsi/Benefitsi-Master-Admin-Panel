@@ -321,6 +321,7 @@ export type FraudEvent = {
 }
 
 export type PartnerWithDeals = Partner & {
+  opening_status_unavailable?: boolean
   media_rich_enabled?: boolean | null
   menu_ai_import_enabled?: boolean | null
   team_manage_enabled?: boolean

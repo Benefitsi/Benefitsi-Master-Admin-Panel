@@ -137,3 +137,9 @@ test('enabled populated embedded feed is a concrete publish blocker; unused or d
   c.elementText['content.socialFeed.enabled'] = 'false'
   assert.equal((await f.save('publish', { existing_config: JSON.stringify(c) })).ok, true)
 })
+
+ test('public snapshot preserves explicitly authored image alternative text', () => {
+  const c = config()
+  c.elementText['content.aboutLocationImageAlt'] = 'Speisenmotiv im BABA-Partnerprofil'
+  assert.equal(createPublicMicrositeSnapshot(c).elementText['content.aboutLocationImageAlt'], 'Speisenmotiv im BABA-Partnerprofil')
+})
