@@ -88,29 +88,72 @@ remove_object() {
 expect_success() {
   [[ "$1" =~ ^2[0-9][0-9]$ ]] || { echo "Expected HTTP success; got $1" >&2; head -c 300 "$scratch/response" >&2; exit 1; }
 }
-expect_rejection() {
-  [[ "$1" =~ ^[45][0-9][0-9]$ ]] || { echo "Expected HTTP rejection; got $1" >&2; head -c 300 "$scratch/response" >&2; exit 1; }
+expect_rls_denial() {
+  local status=$1
+  [[ "$status" == 400 || "$status" == 403 ]] || {
+    echo "Expected RLS denial (HTTP 400/403); got $status" >&2
+    head -c 300 "$scratch/response" >&2
+    exit 1
+  }
+  node -e '
+    const fs = require("node:fs");
+    const body = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    if (String(body.statusCode) !== "403" || body.error !== "Unauthorized" ||
+        !/row-level security policy|access denied/i.test(body.message || "")) {
+      console.error("Expected Storage RLS Unauthorized response; got", body);
+      process.exit(1);
+    }
+  ' "$scratch/response"
+}
+expect_empty_delete() {
+  local status=$1
+  if [[ "$status" == 200 ]]; then
+    node -e '
+      const body = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+      if (!Array.isArray(body) || body.length !== 0) {
+        console.error("Blocked DELETE must return no deleted objects; got", body);
+        process.exit(1);
+      }
+    ' "$scratch/response"
+  else
+    expect_rls_denial "$status"
+  fi
 }
 
 printf 'original partner bytes' > "$scratch/original"
 printf 'replacement partner bytes' > "$scratch/replacement"
 for bucket in partner-assets menu-videos; do
+  printf 'Storage HTTP %s: fresh x-upsert upload and readback\n' "$bucket"
   expect_success "$(upload "$bucket" ci/immutable.txt "$scratch/original")"
   download "$bucket" ci/immutable.txt "$scratch/readback"
   cmp "$scratch/original" "$scratch/readback"
 
-  expect_rejection "$(upload "$bucket" ci/immutable.txt "$scratch/replacement")"
+  printf 'Storage HTTP %s: existing-object overwrite denied by RLS\n' "$bucket"
+  expect_rls_denial "$(upload "$bucket" ci/immutable.txt "$scratch/replacement")"
   download "$bucket" ci/immutable.txt "$scratch/readback"
   cmp "$scratch/original" "$scratch/readback"
 
-  expect_rejection "$(remove_object "$bucket" ci/immutable.txt)"
+  printf 'Storage HTTP %s: DELETE returns no deleted object\n' "$bucket"
+  expect_empty_delete "$(remove_object "$bucket" ci/immutable.txt)"
   download "$bucket" ci/immutable.txt "$scratch/readback"
   cmp "$scratch/original" "$scratch/readback"
 done
 
+printf 'Storage HTTP other bucket: overwrite and actual DELETE remain allowed\n'
 expect_success "$(upload ci-other-media ci/mutable.txt "$scratch/original")"
 expect_success "$(upload ci-other-media ci/mutable.txt "$scratch/replacement")"
 download ci-other-media ci/mutable.txt "$scratch/readback"
 cmp "$scratch/replacement" "$scratch/readback"
-expect_success "$(remove_object ci-other-media ci/mutable.txt)"
+delete_status=$(remove_object ci-other-media ci/mutable.txt)
+expect_success "$delete_status"
+node -e '
+  const body = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+  if (!Array.isArray(body) || body.length !== 1 || body[0].name !== "ci/mutable.txt") {
+    console.error("Expected one actually deleted object; got", body);
+    process.exit(1);
+  }
+' "$scratch/response"
+missing_status=$(curl -sS --max-time 15 -o "$scratch/response" -w '%{http_code}' \
+  http://127.0.0.1:5000/object/public/ci-other-media/ci/mutable.txt)
+[[ "$missing_status" == 404 ]] || { echo "Deleted other-bucket object still responds HTTP $missing_status" >&2; exit 1; }
 printf 'PASS: Storage HTTP new upsert, immutable partner/menu bytes and unaffected other bucket\n'
