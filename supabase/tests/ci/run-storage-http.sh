@@ -155,5 +155,25 @@ node -e '
 ' "$scratch/response"
 missing_status=$(curl -sS --max-time 15 -o "$scratch/response" -w '%{http_code}' \
   http://127.0.0.1:5000/object/public/ci-other-media/ci/mutable.txt)
-[[ "$missing_status" == 404 ]] || { echo "Deleted other-bucket object still responds HTTP $missing_status" >&2; exit 1; }
+if [[ "$missing_status" == 400 ]]; then
+  # Storage v1.81.0 can transport NoSuchKey as HTTP 400 while retaining
+  # statusCode 404 in its JSON response. Reject all other 400s.
+  if ! node -e '
+    const fs = require("node:fs");
+    try {
+      const body = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+      if (String(body.statusCode) !== "404" || body.error !== "not_found" ||
+          body.message !== "Object not found" ||
+          (body.code !== undefined && body.code !== "NoSuchKey")) process.exit(1);
+    } catch { process.exit(1); }
+  ' "$scratch/response"; then
+    echo 'Deleted other-bucket object did not return the official NoSuchKey response' >&2
+    head -c 300 "$scratch/response" >&2
+    exit 1
+  fi
+elif [[ "$missing_status" != 404 ]]; then
+  echo "Deleted other-bucket object still responds HTTP $missing_status" >&2
+  head -c 300 "$scratch/response" >&2
+  exit 1
+fi
 printf 'PASS: Storage HTTP new upsert, immutable partner/menu bytes and unaffected other bucket\n'
