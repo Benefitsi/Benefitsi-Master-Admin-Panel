@@ -53,28 +53,24 @@ export async function completeMicrositeImageUpload(partnerId: string, path: stri
     const supabase = await access(partnerId)
     if (!supabase) return { ok: false, message: "Bitte mit einem berechtigten Zugang erneut anmelden." }
     const storage = supabase.storage.from(BUCKET)
-    try {
-      // Validate the stored object, not just the browser's declared file size.
-      const info = await storage.info(path)
-      if (info.error || !info.data) return { ok: false, message: "Das hochgeladene Bild konnte nicht gelesen werden. Bitte erneut versuchen." }
-      if (!Object.hasOwn(EXTENSIONS, info.data.contentType ?? "")) return { ok: false, message: "Dieser Bildtyp wird nicht unterstützt." }
-      if (!Number.isSafeInteger(info.data.size) || !info.data.size || info.data.size > MAX_BYTES) return { ok: false, message: "Das Bild darf maximal 10 MB groß sein." }
-      const downloaded = await storage.download(path)
-      if (downloaded.error || !downloaded.data || downloaded.data.size > MAX_BYTES) return { ok: false, message: "Das Bild konnte nicht vollständig geladen werden. Bitte erneut versuchen." }
-      const result = await sharp(Buffer.from(await downloaded.data.arrayBuffer()), { limitInputPixels: 40_000_000 })
-        .rotate()
-        .resize({ width: 2880, height: 2880, fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 90, effort: 5 })
-        .toBuffer({ resolveWithObject: true })
-      const finalPath = `microsites/${partnerId}/image-${randomUUID()}-${result.info.width}x${result.info.height}.webp`
-      const uploaded = await storage.upload(finalPath, result.data, { contentType: "image/webp", upsert: false })
-      if (uploaded.error) return { ok: false, message: "Das Bild konnte nicht dauerhaft gespeichert werden. Bitte erneut versuchen." }
-      return { ok: true, url: storage.getPublicUrl(finalPath).data.publicUrl }
-    } finally {
-      // Completed public images are immutable. Never delete one here, even when
-      // the user selected another image while this request was running.
-      await storage.remove([path]).catch(() => undefined)
-    }
+    // Validate the stored object, not just the browser's declared file size.
+    const info = await storage.info(path)
+    if (info.error || !info.data) return { ok: false, message: "Das hochgeladene Bild konnte nicht gelesen werden. Bitte erneut versuchen." }
+    if (!Object.hasOwn(EXTENSIONS, info.data.contentType ?? "")) return { ok: false, message: "Dieser Bildtyp wird nicht unterstützt." }
+    if (!Number.isSafeInteger(info.data.size) || !info.data.size || info.data.size > MAX_BYTES) return { ok: false, message: "Das Bild darf maximal 10 MB groß sein." }
+    const downloaded = await storage.download(path)
+    if (downloaded.error || !downloaded.data || downloaded.data.size > MAX_BYTES) return { ok: false, message: "Das Bild konnte nicht vollständig geladen werden. Bitte erneut versuchen." }
+    const result = await sharp(Buffer.from(await downloaded.data.arrayBuffer()), { limitInputPixels: 40_000_000 })
+      .rotate()
+      .resize({ width: 2880, height: 2880, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 90, effort: 5 })
+      .toBuffer({ resolveWithObject: true })
+    const finalPath = `microsites/${partnerId}/image-${randomUUID()}-${result.info.width}x${result.info.height}.webp`
+    const uploaded = await storage.upload(finalPath, result.data, { contentType: "image/webp", upsert: false })
+    if (uploaded.error) return { ok: false, message: "Das Bild konnte nicht dauerhaft gespeichert werden. Bitte erneut versuchen." }
+    // Staging URLs are public and can already be saved in a draft/version.
+    // Their path prefix alone cannot authorize physical deletion.
+    return { ok: true, url: storage.getPublicUrl(finalPath).data.publicUrl }
   } catch {
     return { ok: false, message: "Das Bild konnte nicht verarbeitet werden. Bitte erneut versuchen oder ein anderes Bild auswählen." }
   }
@@ -85,8 +81,8 @@ export async function discardMicrositeImageUpload(partnerId: string, path: strin
   try {
     const supabase = await access(partnerId)
     if (!supabase) return { ok: false, message: "Keine Berechtigung für diesen Bildupload." }
-    const result = await supabase.storage.from(BUCKET).remove([path])
-    return { ok: !result.error }
+    // The public staging URL may have been retained by a saved version.
+    return { ok: true }
   } catch {
     return { ok: false, message: "Der angefangene Bildupload konnte nicht entfernt werden." }
   }

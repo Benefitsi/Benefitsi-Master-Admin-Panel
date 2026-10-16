@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { createClient } from "@supabase/supabase-js"
-import { verifyMenuVideoUpload, removeUnusedMenuVideos } from "../lib/menu-video-storage.ts"
+import { verifyMenuVideoUpload } from "../lib/menu-video-storage.ts"
 
 const origin = "https://example.supabase.co"
 const partner = "11111111-1111-4111-8111-111111111111"
@@ -43,40 +43,4 @@ test("missing, oversized and non-video Storage objects cannot be saved", async (
     const supabase = client(async () => response)
     assert.equal(typeof await verifyMenuVideoUpload(supabase, url, origin, partner, menu), "string")
   }
-})
-
-test("removal preserves a video referenced by a duplicated menu item", async () => {
-  const supabase = client(async (input, init) => {
-    const requestUrl = new URL(String(input))
-    assert.equal(init.method, "GET")
-    assert.equal(requestUrl.pathname, "/rest/v1/menu_items")
-    assert.equal(requestUrl.searchParams.get("video_url"), `eq.${url}`)
-    return Response.json([{ id: "another-item" }])
-  })
-  await removeUnusedMenuVideos(supabase, [url], origin, partner, menu)
-})
-
-test("removal only deletes an unreferenced object from the authorized menu", async () => {
-  const methods = []
-  const supabase = client(async (input, init) => {
-    methods.push(init.method)
-    const requestUrl = new URL(String(input))
-    if (init.method === "GET") {
-      assert.equal(requestUrl.pathname, "/rest/v1/menu_items")
-      return Response.json([])
-    }
-    assert.equal(requestUrl.pathname, "/storage/v1/object/menu-videos")
-    assert.deepEqual(JSON.parse(init.body), { prefixes: [path] })
-    return Response.json([])
-  })
-  await removeUnusedMenuVideos(supabase, [url, url.replace(partner, menu)], origin, partner, menu)
-  assert.deepEqual(methods, ["GET", "DELETE"])
-})
-
-test("a failed reference lookup preserves the object", async () => {
-  const supabase = client(async (_input, init) => {
-    assert.equal(init.method, "GET")
-    return Response.json({ message: "offline", code: "offline" }, { status: 503 })
-  })
-  await removeUnusedMenuVideos(supabase, [url], origin, partner, menu)
 })
