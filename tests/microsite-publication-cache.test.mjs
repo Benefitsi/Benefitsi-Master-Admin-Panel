@@ -102,6 +102,28 @@ test("publish fails closed if own media cannot be inspected", async () => {
   assert.match(result.message, /hero\.backgroundImageUrl/)
   assert.equal(f.writes.length, 0)
 })
+
+test("publish ignores a hidden menu-item image override that the public renderer does not use", async () => {
+  const path = "staged-covers/hidden-missing.png"
+  const c = resolveMicrositeConfig({}, { name: "Synthetic restaurant", slug: "test-partner" })
+  c.elementText["content.menuItem.synthetic-item.imageUrl"] = `https://example.supabase.co/storage/v1/object/public/partner-assets/${path}`
+  c.elementText["content.menuItem.synthetic-item.showImage"] = "false"
+  const f = publicationFixture({ missingMediaPaths: [path] })
+  const result = await f.save("publish", { existing_config: JSON.stringify(c) })
+  assert.equal(result.ok, true, result.message)
+  assert.deepEqual(f.mediaInfoRequests, [])
+})
+
+test("publish rejects an image on the own Supabase origin outside approved Storage paths", async () => {
+  const c = resolveMicrositeConfig({}, { name: "Synthetic restaurant", slug: "test-partner" })
+  c.hero.backgroundImageUrl = "https://example.supabase.co/missing.png"
+  const f = publicationFixture()
+  const result = await f.save("publish", { existing_config: JSON.stringify(c) })
+  assert.equal(result.ok, false)
+  assert.match(result.message, /hero\.backgroundImageUrl.*ungültiger eigener Storagepfad/)
+  assert.deepEqual(f.mediaInfoRequests, [])
+  assert.equal(f.writes.length, 0)
+})
 test("draft/review/approval preserve an existing live publication and do not invalidate", async () => {
   for (const intent of ["draft", "review", "approve"]) {
     const f = publicationFixture()

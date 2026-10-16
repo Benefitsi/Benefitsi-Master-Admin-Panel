@@ -22,6 +22,8 @@ function selectedImages(snapshot: PublicMicrositeConfig): ImageReference[] {
     }
   }
   for (const [slot, url] of Object.entries(snapshot.elementText)) {
+    if (slot.startsWith("content.menuItem.") && slot.endsWith(".imageUrl") &&
+        snapshot.elementText[`${slot.slice(0, -"imageUrl".length)}showImage`] === "false") continue
     if ((/(?:Url|\.logo)$/.test(slot) || slot === "footer.benefitsiLogo") && url) {
       slots.push({ slot, url })
     }
@@ -33,9 +35,7 @@ function ownStorageImage(value: string, origin: string): StorageImage | "invalid
   let url: URL
   try { url = new URL(value) } catch { return null }
   if (url.origin !== origin) return null
-  if (!url.pathname.startsWith(PUBLIC_OBJECT_PREFIX)) {
-    return url.pathname.startsWith("/storage/v1/") ? "invalid" : null
-  }
+  if (!url.pathname.startsWith(PUBLIC_OBJECT_PREFIX)) return "invalid"
   const [bucket, ...encodedSegments] = url.pathname.slice(PUBLIC_OBJECT_PREFIX.length).split("/")
   if (!IMAGE_BUCKETS.has(bucket) || !encodedSegments.length) return "invalid"
   try {
