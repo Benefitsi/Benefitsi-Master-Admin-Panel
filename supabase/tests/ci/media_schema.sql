@@ -1,8 +1,19 @@
 -- Disposable PostgreSQL 17 CI scaffold. Synthetic rows only; no Supabase
 -- project connection, Storage API or production credentials are involved.
-create role anon nologin;
-create role authenticated nologin;
-create role service_role nologin bypassrls;
+-- Roles are cluster-wide, while this fixture is loaded into three databases.
+do $$
+begin
+  if not exists (select 1 from pg_catalog.pg_roles where rolname = 'anon') then
+    create role anon nologin;
+  end if;
+  if not exists (select 1 from pg_catalog.pg_roles where rolname = 'authenticated') then
+    create role authenticated nologin;
+  end if;
+  if not exists (select 1 from pg_catalog.pg_roles where rolname = 'service_role') then
+    create role service_role nologin bypassrls;
+  end if;
+end;
+$$;
 create schema auth;
 create schema storage;
 create schema private;
