@@ -15,6 +15,7 @@ const {createRoot}=await import('react-dom/client')
 const require=createRequire(import.meta.url),serverOnly=require.resolve('server-only'),prior=require.cache[serverOnly]
 require.cache[serverOnly]={exports:{}}
 const {AcquisitionApp}=await import('../components/acquisition/acquisition-app.tsx')
+const {retainAcquisitionDraftRecovery}=await import('../components/acquisition/draft-recovery.ts')
 test.after(()=>{dom.window.close();for(const n of names){if(previous[n])Object.defineProperty(globalThis,n,previous[n]);else delete globalThis[n]}if(prior)require.cache[serverOnly]=prior;else delete require.cache[serverOnly]})
 const button=name=>[...document.querySelectorAll('button')].find(el=>(el.getAttribute('aria-label')??el.textContent).trim()===name)
 const field=name=>document.querySelector(`[aria-label="${name}"]`)
@@ -25,7 +26,7 @@ async function withApp(seed,overrides,run){
  const fixture=acquisitionFixture(seed),real=createAcquisitionData(fixture.client,{saveWorkspace:fixture.services.saveWorkspace,saveWorkspacePage:fixture.services.saveWorkspacePage})
  const services={...real,...overrides},root=createRoot(document.getElementById('root'))
  const render=async()=>{const initial=await real.loadAcquisitionIndex();await act(async()=>root.render(React.createElement(AcquisitionApp,{initial,services,today:'2026-10-17'})))}
- try{await render();await run({fixture,real,services,remount:async()=>{await act(async()=>root.render(null));await render()}})}finally{await act(async()=>root.unmount());window.confirm=()=>true}
+ try{await render();await run({fixture,real,services,render,leave:async()=>{await act(async()=>root.render(null))},remount:async()=>{await act(async()=>root.render(null));await render()}})}finally{await act(async()=>root.unmount());retainAcquisitionDraftRecovery(null);window.confirm=()=>true}
 }
 
 test('existing unrecorded partner saves fields and actual contact through remount',async()=>{
@@ -150,4 +151,72 @@ test('new document uses explicitly selected active workspace',async()=>{
   await fill('Arbeitsbereich',second.id);await click(button('Interessent anlegen'));await fill('Betrieb','Zweite Akte');await click(button('Speichern'))
   assert.equal([...fixture.pages.values()][0].workspace_id,second.id)
  })
+})
+
+test('new contacts after an acknowledged save remain pending until their own save',async()=>{
+ await withApp({}, {},async()=>{
+  await click(button('Hotel'));await fill('Kontaktnotiz','Erster Kontakt');await click(button('Kontakt hinzufügen'));await click(button('Speichern'))
+  await fill('Kontaktnotiz','Zweiter Kontakt');await click(button('Kontakt hinzufügen'))
+  const entries=[...document.querySelectorAll('[aria-label="Kontaktverlauf"] li')]
+  assert.doesNotMatch(entries[0].textContent,/Noch nicht gespeichert/)
+  assert.match(entries[1].textContent,/Noch nicht gespeichert/)
+  await click(button('Speichern'));assert.doesNotMatch(document.querySelector('[aria-label="Kontaktverlauf"]').textContent,/Noch nicht gespeichert/)
+ })
+})
+
+test('cancelable native same-document traversal confirms before allowing history to leave',async()=>{
+ const previous=Object.getOwnPropertyDescriptor(window,'navigation'),navigation=new window.EventTarget()
+ Object.defineProperty(window,'navigation',{configurable:true,value:navigation})
+ try{await withApp({}, {},async({remount})=>{
+  await click(button('Hotel'));await fill('Nächster Schritt','Vor Zurück schützen')
+  let prompts=0;window.confirm=()=>{prompts++;return false}
+  const traversal=new window.Event('navigate',{cancelable:true})
+  Object.assign(traversal,{navigationType:'traverse',destination:{sameDocument:true,url:'http://localhost/partners'}})
+  await act(async()=>navigation.dispatchEvent(traversal))
+  assert.equal(traversal.defaultPrevented,true);assert.equal(prompts,1);assert.equal(field('Nächster Schritt').value,'Vor Zurück schützen')
+  window.confirm=()=>true
+  const forward=new window.Event('navigate',{cancelable:true})
+  Object.assign(forward,{navigationType:'traverse',destination:{sameDocument:true,url:'http://localhost/partners/example'}})
+  await act(async()=>navigation.dispatchEvent(forward));assert.equal(forward.defaultPrevented,false)
+  await remount();assert.equal(button('Entwurf wiederherstellen'),undefined)
+ })}finally{if(previous)Object.defineProperty(window,'navigation',previous);else delete window.navigation}
+})
+
+test('unsupported same-document Back retains recoverable fields composer contacts and acknowledged baseline',async()=>{
+ await withApp({}, {},async({leave,render,remount})=>{
+  window.history.replaceState({},'','/partners');window.history.pushState({},'','/partners/acquisition')
+  await click(button('Hotel'));await fill('Kontaktnotiz','Gespeichert');await click(button('Kontakt hinzufügen'));await click(button('Speichern'))
+  await fill('Nächster Schritt','Entwurf nach Browser-Zurück');await fill('Kontaktnotiz','Zweiter Protokolleintrag');await click(button('Kontakt hinzufügen'))
+  await fill('Kontaktkanal','phone');await fill('Kontaktnotiz','Unfertiger Kontakt')
+  const back=new Promise(resolve=>window.addEventListener('popstate',resolve,{once:true}))
+  await act(async()=>{window.history.back();await back;await leave()})
+  assert.equal(window.location.pathname,'/partners')
+  window.history.forward();await new Promise(resolve=>window.addEventListener('popstate',resolve,{once:true}))
+  await render();assert.ok(button('Entwurf wiederherstellen'))
+  await click(button('Entwurf wiederherstellen'))
+  assert.equal(field('Nächster Schritt').value,'Entwurf nach Browser-Zurück');assert.equal(field('Kontaktnotiz').value,'Unfertiger Kontakt');assert.equal(field('Kontaktkanal').value,'phone')
+  const entries=[...document.querySelectorAll('[aria-label="Kontaktverlauf"] li')]
+  assert.doesNotMatch(entries[0].textContent,/Noch nicht gespeichert/);assert.match(entries[1].textContent,/Noch nicht gespeichert/)
+  await click(button('Kontakt hinzufügen'));await click(button('Speichern'));await remount()
+  assert.equal(button('Entwurf wiederherstellen'),undefined);await click(button('Hotel'))
+  assert.equal(document.querySelectorAll('[aria-label="Kontaktverlauf"] li').length,3)
+  assert.doesNotMatch(document.querySelector('[aria-label="Kontaktverlauf"]').textContent,/Noch nicht gespeichert/)
+ })
+})
+
+
+test('noncancelable native traversal retains recovery and confirmed discard does not resurrect it',async()=>{
+ const previous=Object.getOwnPropertyDescriptor(window,'navigation'),navigation=new window.EventTarget()
+ Object.defineProperty(window,'navigation',{configurable:true,value:navigation})
+ try{await withApp({}, {},async({leave,render,remount})=>{
+  await click(button('Hotel'));await fill('Notizen','Nur im Arbeitsspeicher')
+  let prompts=0;window.confirm=()=>{prompts++;return false}
+  const traversal=new window.Event('navigate',{cancelable:false})
+  Object.assign(traversal,{navigationType:'traverse',destination:{sameDocument:true,url:'http://localhost/partners'}})
+  await act(async()=>navigation.dispatchEvent(traversal));assert.equal(prompts,0);assert.equal(traversal.defaultPrevented,false)
+  await leave();await render();assert.ok(button('Entwurf wiederherstellen'))
+  await click(button('Entwurf verwerfen'));assert.ok(button('Entwurf wiederherstellen'))
+  window.confirm=()=>true;await click(button('Entwurf verwerfen'));await remount()
+  assert.equal(button('Entwurf wiederherstellen'),undefined);assert.ok(button('Hotel'))
+ })}finally{if(previous)Object.defineProperty(window,'navigation',previous);else delete window.navigation}
 })

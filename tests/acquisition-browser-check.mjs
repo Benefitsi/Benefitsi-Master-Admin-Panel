@@ -14,7 +14,7 @@ const {Scanner}=tailwindRequire('@tailwindcss/oxide')
 const adapters={
  'next/link':`import React from 'react';export default function Link({href,children,prefetch,...props}){return <a {...props} href={href}>{children}</a>}`,
  'next/image':`import React from 'react';export default function Image({priority,...props}){return <img {...props}/>} `,
- 'next/navigation':`export function usePathname(){return location.pathname}`,
+ 'next/navigation':`import {useSyncExternalStore} from 'react';const subscribe=listener=>{window.addEventListener('popstate',listener);window.addEventListener('fixture-route',listener);return()=>{window.removeEventListener('popstate',listener);window.removeEventListener('fixture-route',listener)}};export function usePathname(){return useSyncExternalStore(subscribe,()=>location.pathname,()=>'/partners/acquisition')}`,
  'shell-actions':`export async function signOut(){}`,
  'acquisition-actions':`export async function loadAcquisitionIndex(){throw Error('Inject fixture services')}export const loadAcquisitionDocument=loadAcquisitionIndex,saveAcquisitionDocument=loadAcquisitionIndex,createAcquisitionWorkspace=loadAcquisitionIndex;`,
 }
@@ -22,6 +22,7 @@ const entry=`
 import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {AdminShell} from '${repo}/app/admin-shell.tsx';
+import {usePathname} from 'next/navigation';
 import {AcquisitionApp} from '${repo}/components/acquisition/acquisition-app.tsx';
 import {acquisitionFixture,partner,workspace} from '${repo}/tests/helpers/acquisition-fixture.mjs';
 import {createAcquisitionData} from '${repo}/lib/acquisition/data.ts';
@@ -64,14 +65,19 @@ const services={...transport,async saveAcquisitionDocument(doc){
 const initial=await services.loadAcquisitionIndex();
 function App(){
  const [mode,setMode]=useState('normal');
+ const path=usePathname();
  React.useEffect(()=>{const update=()=>setMode(nextSave);window.addEventListener('fixture-mode',update);return()=>window.removeEventListener('fixture-mode',update)},[]);
  return <AdminShell adminName="Synthetische Browserprüfung" title="Akquise & Kontakte" subtitle="Partner · Gespräche und Wiedervorlagen">
   <aside aria-label="Prüfsteuerung" className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
    <strong>Nur synthetische Daten</strong>
    <label className="grid min-w-0 gap-1">Nächster Speicherversuch<select aria-label="Nächster Speicherversuch" className="min-h-11 max-w-full rounded-lg border bg-white px-2" value={mode} onChange={event=>{nextSave=event.target.value;setMode(nextSave)}}><option value="normal">Erfolgreich</option><option value="error">Speicherfehler</option><option value="conflict">Versionskonflikt</option><option value="lost">Antwort nach Speicherung verlieren</option></select></label>
+   <button className="min-h-11 rounded-lg border px-3" onClick={()=>{history.pushState({},'','/partners');history.pushState({},'','/partners/acquisition');window.dispatchEvent(new Event('fixture-route'))}}>Verlauf vorbereiten</button>
+   <button className="min-h-11 rounded-lg border px-3" onClick={()=>history.back()}>Browser-Zurück</button>
+   <button className="min-h-11 rounded-lg border px-3" onClick={()=>history.forward()}>Browser-Vorwärts</button>
+   <span className="w-full text-xs">Verlaufsprüfung mit echten Browserereignissen; die Seitenumschaltung hier ersetzt keinen vollständigen Next-Router-Test.</span>
    <button className="min-h-11 rounded-lg border px-3" onClick={()=>{if(confirm('Synthetische Prüfdaten zurücksetzen?')){localStorage.removeItem(key);location.href='/partners/acquisition'}}}>Prüfdaten zurücksetzen</button>
   </aside>
-  <AcquisitionApp initial={initial} services={services} today="2026-10-17"/>
+  {path==='/partners/acquisition' ? <AcquisitionApp initial={initial} services={services} today="2026-10-17"/> : <section aria-label="Synthetische vorherige Seite" className="rounded-xl border bg-white p-5"><h2 className="font-bold">Synthetische Partnerübersicht</h2><p className="mt-2 text-sm">Der Editor wurde nach einem echten Browser-Verlaufwechsel ausgehängt. Browser-Vorwärts kehrt zur Akquise zurück.</p></section>}
  </AdminShell>
 }
 createRoot(document.getElementById('root')).render(<App/>);

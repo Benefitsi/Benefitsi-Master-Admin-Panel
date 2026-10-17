@@ -6,6 +6,7 @@ import {
   type AcquisitionDocument, type AcquisitionFields, type ContactChannel,
 } from '../../lib/acquisition/model'
 import type {AcquisitionServices} from './services'
+import {retainAcquisitionDraftRecovery, type AcquisitionDraftRecovery} from './draft-recovery'
 
 export const acquisitionInput = 'min-h-11 w-full min-w-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-[#061829] focus:outline-2 focus:outline-[#118cff] disabled:bg-zinc-100'
 const buttonBase = 'min-h-11 rounded-xl border px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[#118cff] disabled:cursor-wait disabled:opacity-50'
@@ -14,41 +15,77 @@ export const acquisitionPrimaryButton = `${buttonBase} border-[#118cff] bg-[#118
 const snapshot = (doc: AcquisitionDocument) => JSON.stringify([doc.fields, doc.contacts])
 const discardMessage = 'Ungespeicherte Änderungen verwerfen?'
 
-export function AcquisitionEditor({document: initial, services, today, onBack, onSaved}: {
+export function AcquisitionEditor({document: initial, recovery, services, today, onBack, onSaved}: {
   document: AcquisitionDocument
+  recovery?: AcquisitionDraftRecovery | null
   services: AcquisitionServices
   today: string
   onBack(): void
   onSaved(document: AcquisitionDocument): void
 }) {
   const [draft, setDraft] = useState(initial)
-  const [saved, setSaved] = useState(() => snapshot(initial))
+  const [saved, setSaved] = useState(() => recovery?.acknowledgedSnapshot ?? snapshot(initial))
+  const [acknowledgedContacts, setAcknowledgedContacts] = useState(() => new Set(recovery?.acknowledgedContactIds ?? initial.contacts.map(entry=>entry.id)))
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [conflict, setConflict] = useState(false)
   const [notice, setNotice] = useState('')
-  const [contact, setContact] = useState({date: today, channel: 'email' as ContactChannel, note: ''})
+  const [contact, setContact] = useState(recovery?.contact ?? {date: today, channel: 'email' as ContactChannel, note: ''})
   const busy = useRef(false)
   const alive = useRef(true)
+  const approvedExit = useRef(false)
+  const latestRecovery = useRef<AcquisitionDraftRecovery | null>(null)
   const dirty = snapshot(draft) !== saved || !!contact.note.trim()
 
   useEffect(() => {
     alive.current = true
-    return () => { alive.current = false }
+    return () => {
+      alive.current = false
+      if (!approvedExit.current && latestRecovery.current) retainAcquisitionDraftRecovery(latestRecovery.current)
+    }
   }, [])
   useEffect(() => {
+    approvedExit.current = false
+    latestRecovery.current = dirty ? {document: draft, acknowledgedSnapshot: saved, acknowledgedContactIds: [...acknowledgedContacts], contact} : null
+    if (!dirty) retainAcquisitionDraftRecovery(null)
+  }, [draft, saved, acknowledgedContacts, contact, dirty])
+  useEffect(() => {
+    function confirmExit() {
+      const approved = window.confirm(discardMessage)
+      approvedExit.current = approved
+      if (approved) retainAcquisitionDraftRecovery(null)
+      return approved
+    }
     function beforeUnload(event: BeforeUnloadEvent) {
       if (dirty || busy.current) { event.preventDefault(); event.returnValue = '' }
     }
     function followLink(event: MouseEvent) {
       const target = event.target instanceof Element ? event.target.closest('a[href]') : null
-      if (target && (dirty || busy.current) && !window.confirm(discardMessage)) {
+      if (target && !event.metaKey && !event.ctrlKey && !event.shiftKey && target.getAttribute('target') !== '_blank' && (dirty || busy.current) && !confirmExit()) {
         event.preventDefault(); event.stopPropagation()
       }
     }
+    // Unlike popstate, a cancelable native traversal fires before URL commit
+    // and before Next's popstate listener. Never rewrite the router's history.
+    type TraverseEvent = Event & {navigationType?: string; destination?: {sameDocument?: boolean}}
+    const navigation = (window as Window & {navigation?: EventTarget}).navigation
+    function traverse(event: TraverseEvent) {
+      if (event.navigationType !== 'traverse' || !event.destination?.sameDocument || !(dirty || busy.current)) return
+      if (event.cancelable) {
+        if (!confirmExit()) event.preventDefault()
+      } else if (latestRecovery.current) retainAcquisitionDraftRecovery(latestRecovery.current)
+    }
+    function canceledNavigation() { approvedExit.current = false }
+    navigation?.addEventListener('navigate', traverse)
+    navigation?.addEventListener('navigateerror', canceledNavigation)
     window.addEventListener('beforeunload', beforeUnload)
     window.document.addEventListener('click', followLink, true)
-    return () => { window.removeEventListener('beforeunload', beforeUnload); window.document.removeEventListener('click', followLink, true) }
+    return () => {
+      navigation?.removeEventListener('navigate', traverse)
+      navigation?.removeEventListener('navigateerror', canceledNavigation)
+      window.removeEventListener('beforeunload', beforeUnload)
+      window.document.removeEventListener('click', followLink, true)
+    }
   }, [dirty])
 
   function update<K extends keyof AcquisitionFields>(key: K, value: AcquisitionFields[K]) {
@@ -73,7 +110,7 @@ export function AcquisitionEditor({document: initial, services, today, onBack, o
       const result = await services.saveAcquisitionDocument(structuredClone(draft))
       if (!alive.current) return
       if (!result.ok) { setError(result.error); setConflict(!!result.conflict); return }
-      setDraft(result.value); setSaved(snapshot(result.value)); setConflict(false); setNotice('Gespeichert.'); onSaved(result.value)
+      setDraft(result.value); setSaved(snapshot(result.value)); setAcknowledgedContacts(new Set(result.value.contacts.map(entry=>entry.id))); setConflict(false); setNotice('Gespeichert.'); onSaved(result.value)
     } catch { if (alive.current) setError('Speichern fehlgeschlagen. Deine Eingaben bleiben erhalten. Bitte erneut versuchen.') }
     finally { busy.current = false; if (alive.current) setPending(false) }
   }
@@ -84,13 +121,17 @@ export function AcquisitionEditor({document: initial, services, today, onBack, o
       const result = await services.loadAcquisitionDocument({pageId: draft.page.id})
       if (!alive.current) return
       if (!result.ok) { setError(result.error); return }
-      setDraft(result.value); setSaved(snapshot(result.value)); setContact(current => ({...current, note: ''})); setConflict(false); setNotice('Aktueller Stand geladen.')
+      setDraft(result.value); setSaved(snapshot(result.value)); setAcknowledgedContacts(new Set(result.value.contacts.map(entry=>entry.id))); setContact(current => ({...current, note: ''})); setConflict(false); setNotice('Aktueller Stand geladen.')
     } catch { if (alive.current) setError('Aktueller Stand konnte nicht geladen werden. Der Entwurf bleibt erhalten.') }
     finally { busy.current = false; if (alive.current) setPending(false) }
   }
   function back() {
     if (busy.current) return
-    if (!dirty || window.confirm(discardMessage)) onBack()
+    if (!dirty || window.confirm(discardMessage)) {
+      approvedExit.current = true
+      retainAcquisitionDraftRecovery(null)
+      onBack()
+    }
   }
   const textFields: {key: keyof AcquisitionFields; label: string; type?: string; max: number}[] = [
     {key:'name',label:'Betrieb',max:200},{key:'city',label:'Stadt',max:200},{key:'industry',label:'Branche',max:200},
@@ -136,7 +177,7 @@ export function AcquisitionEditor({document: initial, services, today, onBack, o
     <section className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-6" aria-label="Kontaktverlauf">
       <h3 className="text-lg font-bold">Kontaktverlauf</h3>
       <p className="mt-1 text-sm text-zinc-500">Tatsächliche Kontakte mit Datum erfassen. Übernommene Einträge bleiben unverändert; neue Einträge werden mit der Akte gespeichert.</p>
-      {draft.contacts.length ? <ol className="mt-4 space-y-3">{draft.contacts.map((entry,index)=><li key={entry.id} className="break-words rounded-xl border border-zinc-200 p-3 text-sm"><p className="font-semibold"><time dateTime={entry.date}>{entry.date}</time> · {contactChannels[entry.channel]}{index>=initial.contacts.length && draft.page.revision===initial.page.revision ? ' · Noch nicht gespeichert' : ''}</p><p className="mt-1 whitespace-pre-wrap">{entry.note}</p></li>)}</ol> : <p className="mt-4 text-sm text-zinc-500">Noch kein tatsächlicher Kontakt erfasst.</p>}
+      {draft.contacts.length ? <ol className="mt-4 space-y-3">{draft.contacts.map(entry=><li key={entry.id} className="break-words rounded-xl border border-zinc-200 p-3 text-sm"><p className="font-semibold"><time dateTime={entry.date}>{entry.date}</time> · {contactChannels[entry.channel]}{!acknowledgedContacts.has(entry.id) ? ' · Noch nicht gespeichert' : ''}</p><p className="mt-1 whitespace-pre-wrap">{entry.note}</p></li>)}</ol> : <p className="mt-4 text-sm text-zinc-500">Noch kein tatsächlicher Kontakt erfasst.</p>}
     </section>
     <fieldset disabled={pending} className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 sm:p-6">
       <legend className="px-1 font-bold">Kontakt ergänzen</legend>

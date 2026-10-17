@@ -1,12 +1,13 @@
 'use client'
 
-import {useEffect, useRef, useState} from 'react'
+import {useEffect, useRef, useState, useSyncExternalStore} from 'react'
 import {
   acquisitionStatuses, acquisitionMetrics, filterAcquisitionRows, berlinDate, lastContactDate,
   type AcquisitionIndex, type AcquisitionDocument, type AcquisitionTarget,
 } from '../../lib/acquisition/model'
 import type {ActionResult} from '../../lib/workspace/model'
 import {acquisitionServices, type AcquisitionServices} from './services'
+import {readAcquisitionDraftRecovery, serverAcquisitionDraftRecovery, subscribeAcquisitionDraftRecovery, retainAcquisitionDraftRecovery, type AcquisitionDraftRecovery} from './draft-recovery'
 import {AcquisitionEditor, acquisitionButton, acquisitionPrimaryButton, acquisitionInput} from './acquisition-editor'
 
 export function AcquisitionApp({initial, services = acquisitionServices, today = berlinDate()}: {
@@ -14,6 +15,8 @@ export function AcquisitionApp({initial, services = acquisitionServices, today =
   services?: AcquisitionServices
   today?: string
 }) {
+  const retainedDraft = useSyncExternalStore(subscribeAcquisitionDraftRecovery, readAcquisitionDraftRecovery, serverAcquisitionDraftRecovery)
+  const [restoredDraft, setRestoredDraft] = useState<AcquisitionDraftRecovery | null>(null)
   const [index, setIndex] = useState<AcquisitionIndex>(initial.ok ? initial.value : {rows:[],workspaces:[]})
   const [error, setError] = useState(initial.ok ? '' : initial.error)
   const [loading, setLoading] = useState(false)
@@ -40,7 +43,7 @@ export function AcquisitionApp({initial, services = acquisitionServices, today =
       const result = await services.loadAcquisitionDocument(target)
       if (!mounted.current || token!==request.current) return
       if (!result.ok) {setError(result.error); return}
-      setDocument(result.value)
+      setRestoredDraft(null); setDocument(result.value)
     } catch { if (mounted.current && token===request.current) setError('Die Akquiseakte konnte nicht geladen werden. Bitte erneut versuchen.') }
     finally { if (mounted.current && token===request.current) setLoading(false) }
   }
@@ -78,7 +81,17 @@ export function AcquisitionApp({initial, services = acquisitionServices, today =
       return {...current,rows:previous ? current.rows.map(item=>item===previous ? row : item) : [...current.rows,row]}
     })
   }
-  if (document) return <AcquisitionEditor key={document.page.id} document={document} services={services} today={today} onBack={()=>{request.current++;setDocument(null);setError('')}} onSaved={saved}/>
+  if (document) return <AcquisitionEditor key={document.page.id} document={document} recovery={restoredDraft} services={services} today={today} onBack={()=>{request.current++;setDocument(null);setRestoredDraft(null);setError('')}} onSaved={saved}/>
+
+  if (retainedDraft) return <section className="space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-5" aria-label="Entwurf wiederherstellen">
+    <h2 className="text-lg font-bold">Ungespeicherter Akquiseentwurf</h2>
+    <p className="break-words text-sm">Für {retainedDraft.document.fields.name || 'einen neuen Interessenten'} ist in diesem Tab noch ein Entwurf vorhanden. Beim Verlaufwechsel konnte dieser Browser die Navigation nicht anhalten.</p>
+    <p className="text-sm">Du kannst Felder, übernommene Kontakte und die unfertige Kontaktnotiz wiederherstellen. Der Entwurf bleibt nur bis zum vollständigen Neuladen oder Schließen dieses Dokuments im Arbeitsspeicher.</p>
+    <div className="flex flex-wrap gap-3">
+      <button type="button" className={acquisitionPrimaryButton} onClick={()=>{setRestoredDraft(retainedDraft);setDocument(retainedDraft.document)}}>Entwurf wiederherstellen</button>
+      <button type="button" className={acquisitionButton} onClick={()=>{if(window.confirm('Ungespeicherten Entwurf endgültig verwerfen?')) retainAcquisitionDraftRecovery(null)}}>Entwurf verwerfen</button>
+    </div>
+  </section>
 
   return <div className="min-w-0 space-y-5">
     <section className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-6">
