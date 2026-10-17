@@ -131,3 +131,39 @@ test('partners with an unknown stored name can receive an explicit acquisition n
  const saved=await s.saveAcquisitionDocument(loaded.value);assert.equal(saved.ok,true)
  assert.equal(saved.value.fields.name,'Name aus Kontaktgespräch')
 })
+
+test('reordered field and contact properties save successfully and retry without another revision',async()=>{
+ const f=acquisitionFixture(),s=service(f),doc=draft(f)
+ doc.fields=Object.fromEntries(Object.entries({...doc.fields,nextStep:'Zurückrufen',food:'interested'}).reverse())
+ doc.contacts=[{note:'Tatsächlich gesprochen',channel:'phone',date:'2026-10-10',id:partnerId}]
+ const before=structuredClone(doc),saved=await s.saveAcquisitionDocument(doc)
+ assert.equal(saved.ok,true);assert.deepEqual(saved.value.fields,doc.fields);assert.deepEqual(saved.value.contacts,doc.contacts)
+ const retried=await s.saveAcquisitionDocument(doc)
+ assert.equal(retried.ok,true);assert.equal(retried.value.page.revision,1);assert.equal(f.pages.size,1);assert.equal(f.versions.get(doc.page.id).length,1)
+ assert.deepEqual(doc,before)
+})
+test('uppercase contact UUIDs save as canonical UUIDs and identical retries remain idempotent',async()=>{
+ const f=acquisitionFixture(),s=service(f),doc=draft(f)
+ doc.contacts=[{id:'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA',date:'2026-10-10',channel:'email',note:'Anfrage gesendet'}]
+ const before=structuredClone(doc),saved=await s.saveAcquisitionDocument(doc)
+ assert.equal(saved.ok,true);assert.equal(saved.value.contacts[0].id,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+ const retried=await s.saveAcquisitionDocument(doc)
+ assert.equal(retried.ok,true);assert.equal(retried.value.contacts[0].id,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');assert.equal(retried.value.page.revision,1)
+ assert.equal(f.pages.size,1);assert.equal(f.versions.get(doc.page.id).length,1);assert.deepEqual(doc,before)
+})
+for(const [label,alter] of [
+ ['field',page=>{page.content.questions.find(q=>q.id==='acq:nextStep').answer='Andere Aufgabe'}],
+ ['contact',page=>{page.content.blocks.find(b=>b.id.startsWith('acq-contact:')).text='Andere Kontaktnotiz'}],
+ ['missing contact',page=>{page.content.blocks=page.content.blocks.filter(b=>!b.id.startsWith('acq-contact:'))}],
+ ['identity',page=>{page.id=partnerId}],
+])test(`an altered ${label} acknowledgment is rejected despite a successful transport save`,async()=>{
+ const f=acquisitionFixture(),doc=draft(f)
+ doc.fields.nextStep='Anrufen';doc.contacts=[{id:partnerId,date:'2026-10-10',channel:'phone',note:'Gesprochen'}]
+ const before=structuredClone(doc),s=createAcquisitionData(f.client,{...f.services,saveWorkspacePage:async page=>{
+  const saved=await f.services.saveWorkspacePage(page)
+  assert.equal(saved.ok,true);alter(saved.value);return saved
+ }})
+ const result=await s.saveAcquisitionDocument(doc)
+ assert.equal(result.ok,false);assert.match(result.error,/Speicherantwort/);assert.equal('value' in result,false)
+ assert.equal(f.pages.size,1);assert.equal(f.versions.get(doc.page.id).length,1);assert.deepEqual(doc,before)
+})

@@ -93,10 +93,18 @@ export function createAcquisitionData(client:SupabaseClient,writers:WorkspaceWri
     page={...submitted,title:input.fields.name}
    }
    await activeWorkspace(page.workspace_id)
+   const expected=decodeAcquisitionDocument(page)
    const saved=await writers.saveWorkspacePage(page)
    if(!saved.ok)return saved
    const document=decodeAcquisitionDocument(saved.value)
-   if(saved.value.id!==page.id||saved.value.workspace_id!==page.workspace_id||saved.value.partner_id!==page.partner_id||JSON.stringify(document.fields)!==JSON.stringify(input.fields)||JSON.stringify(document.contacts)!==JSON.stringify(input.contacts))throw new Error('Die Speicherantwort bestätigt deinen Entwurf nicht vollständig. Bitte neu laden und vergleichen.')
+   // The codec canonicalizes accepted inputs (including UUID case). Compare their
+   // values, not caller property order, while still rejecting changed acknowledgments.
+   const fieldsMatch=(Object.keys(expected.fields) as (keyof typeof expected.fields)[]).every(key=>document.fields[key]===expected.fields[key])
+   const contactsMatch=document.contacts.length===expected.contacts.length&&document.contacts.every((contact,index)=>{
+    const wanted=expected.contacts[index]
+    return contact.id===wanted.id&&contact.date===wanted.date&&contact.channel===wanted.channel&&contact.note===wanted.note
+   })
+   if(saved.value.id!==page.id||saved.value.workspace_id!==page.workspace_id||saved.value.partner_id!==page.partner_id||!fieldsMatch||!contactsMatch)throw new Error('Die Speicherantwort bestätigt deinen Entwurf nicht vollständig. Bitte neu laden und vergleichen.')
    return {ok:true,value:document}
   })},
   createAcquisitionWorkspace(input:string):Promise<ActionResult<Workspace>>{return resultOf(async()=>{
