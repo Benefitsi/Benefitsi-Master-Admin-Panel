@@ -13,6 +13,7 @@ import {
 } from "react"
 import {
   adminNavigation,
+  activeAdminNavigationHref,
   isAdminNavigationActive,
   type AdminNavigationGroup as NavigationGroup,
   type AdminNavigationIcon as NavigationIcon,
@@ -209,7 +210,8 @@ function AdminNavigationGroup({ group, pathname, collapsed }: {
   pathname: string
   collapsed: boolean
 }) {
-  const active = group.items.some(item => isAdminNavigationActive(pathname, item.href))
+  const activeHref = activeAdminNavigationHref(pathname, group.items)
+  const active = !!activeHref
   // The parent keys groups by pathname, so the active group opens on navigation.
   const [open, setOpen] = useState(active)
   const listId = `admin-navigation-${group.id}`
@@ -239,7 +241,7 @@ function AdminNavigationGroup({ group, pathname, collapsed }: {
             <AdminNavigationLink
               href={item.href}
               label={item.label}
-              active={isAdminNavigationActive(pathname, item.href)}
+              active={activeHref === item.href}
               collapsed={collapsed}
               nested
               icon={<AdminNavigationIcon name={item.icon} />}

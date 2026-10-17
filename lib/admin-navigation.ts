@@ -18,7 +18,10 @@ export type AdminNavigationGroup = {
 
 export const adminNavigation: readonly (AdminNavigationLink | AdminNavigationGroup)[] = [
   { label: "Übersicht", href: "/", icon: "overview" },
-  { label: "Partner", href: "/partners", icon: "partner" },
+  { id: "partners", label: "Partner", icon: "partner", items: [
+    { label: "Partnerübersicht", href: "/partners", icon: "partner" },
+    { label: "Akquise & Kontakte", href: "/partners/acquisition", icon: "partner" },
+  ] },
   { id: "cities", label: "Städte", icon: "cities", items: [
     { label: "Stadtportale", href: "/city-pages", icon: "cities" },
     { label: "Prüfung & Freigaben", href: "/city-operations", icon: "review" },
@@ -44,4 +47,9 @@ export const adminNavigation: readonly (AdminNavigationLink | AdminNavigationGro
 
 export function isAdminNavigationActive(pathname: string, href: string) {
   return pathname === href || (href !== "/" && pathname.startsWith(`${href}/`))
+}
+
+export function activeAdminNavigationHref(pathname: string, links: readonly AdminNavigationLink[]) {
+  return links.filter(link => isAdminNavigationActive(pathname, link.href))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href
 }
