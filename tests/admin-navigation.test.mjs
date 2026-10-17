@@ -1,10 +1,11 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { adminNavigation, isAdminNavigationActive } from "../lib/admin-navigation.ts"
+import { adminNavigation, isAdminNavigationActive, activeAdminNavigationHref } from "../lib/admin-navigation.ts"
 
 const destinations = [
   ["Übersicht", "Übersicht", "/"],
-  ["Partner", "Partner", "/partners"],
+  ["Partner", "Partnerübersicht", "/partners"],
+  ["Partner", "Akquise & Kontakte", "/partners/acquisition"],
   ["Städte", "Stadtportale", "/city-pages"],
   ["Städte", "Prüfung & Freigaben", "/city-operations"],
   ["Inhalte", "Magazin", "/editorial"],
@@ -30,8 +31,11 @@ test("keeps useful main destinations without the redundant workspace entry", () 
 test("marks the current page and its parent group on nested routes", () => {
   for (const [pathname, wantGroup, wantLink] of [
     ["/", "Übersicht", "Übersicht"],
-    ["/partners", "Partner", "Partner"],
-    ["/partners/example", "Partner", "Partner"],
+    ["/partners", "Partner", "Partnerübersicht"],
+    ["/partners/acquisition", "Partner", "Akquise & Kontakte"],
+    ["/partners/acquisition/deep", "Partner", "Akquise & Kontakte"],
+    ["/partners/visit-levels", "Partner", "Partnerübersicht"],
+    ["/partners/example", "Partner", "Partnerübersicht"],
     ["/city-pages/annweiler/content/event/123", "Städte", "Stadtportale"],
     ["/city-operations/events/123", "Städte", "Prüfung & Freigaben"],
     ["/editorial/new", "Inhalte", "Magazin"],
@@ -45,7 +49,7 @@ test("marks the current page and its parent group on nested routes", () => {
     ["/seo/audit", "Auswertung", "SEO & Sichtbarkeit"],
   ]) {
     const matches = adminNavigation.flatMap(entry => ("items" in entry ? entry.items : [entry])
-      .filter(item => isAdminNavigationActive(pathname, item.href))
+      .filter(item => activeAdminNavigationHref(pathname, "items" in entry ? entry.items : [entry]) === item.href)
       .map(item => [entry.label, item.label]))
     assert.deepEqual(matches, [[wantGroup, wantLink]], pathname)
   }

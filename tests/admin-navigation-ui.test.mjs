@@ -142,3 +142,22 @@ test("the active nested page stays visible and opens its group even in the compa
     assert.equal(expanded(), false)
   })
 })
+
+
+test("Partner routes expose exactly one active child in both sidebar positions", async () => {
+  const {Shell,setPath}=loadShell()
+  await withDom(async ({render}) => {
+    for (const position of [false,true]) {
+      await render(React.createElement(Shell,{adminName:"Test"},"Page"))
+      if(expanded()!==position) await click(toggle())
+      for(const [path,href] of [["/partners/acquisition","/partners/acquisition"],["/partners/example","/partners"],["/partners/acquisition/deep","/partners/acquisition"]]) {
+        setPath(path); await render(React.createElement(Shell,{adminName:"Test"},"Page"))
+        const links=document.querySelectorAll('nav a[aria-current="page"]')
+        assert.equal(links.length,1)
+        assert.equal(links[0].getAttribute("href"),href)
+        assert.equal(links[0].closest("ul").hidden,false)
+        assert.equal(document.querySelectorAll("nav > ul > li").length,7)
+      }
+    }
+  })
+})
