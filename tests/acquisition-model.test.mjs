@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {makePage,emptyContent} from '../lib/workspace/model.ts'
-import {blankFields,encodeAcquisitionDocument,decodeAcquisitionDocument,lastContactDate,berlinDate,acquisitionMetrics,filterAcquisitionRows,buildAcquisitionRows,existingPartnerPageId} from '../lib/acquisition/model.ts'
+import {blankFields,encodeAcquisitionDocument,decodeAcquisitionDocument,lastContactDate,berlinDate,acquisitionMetrics,filterAcquisitionRows,buildAcquisitionRows,existingPartnerPageId,makeAcquisitionDocument} from '../lib/acquisition/model.ts'
 const ws='00000000-0000-4000-8000-000000000001', partner='00000000-0000-4000-8000-000000000002'
 const contact={id:'00000000-0000-4000-8000-000000000003',date:'2026-10-10',channel:'email',note:'Anfrage tatsächlich versendet'}
 const document=()=>({page:makePage(ws,'partner'),fields:{...blankFields(),name:'Testhotel',status:'contacted'},contacts:[{...contact}]})
@@ -54,4 +54,15 @@ test('codec rejects invalid IDs, undated contacts, changed reserved data and ove
   doc.contacts=[contact];const stored=encodeAcquisitionDocument(doc)
   stored.content.questions.find(q=>q.id==='acq:status').answer='fake';assert.throws(()=>decodeAcquisitionDocument(stored))
   const big=document();big.page.content.blocks=Array.from({length:40},(_,i)=>({id:`note-${i}`,type:'paragraph',text:'x'.repeat(18000),checked:false}));assert.throws(()=>encodeAcquisitionDocument(big),/groß/)
+})
+
+test('source ownership comes from partner values while completion survives the unchanged codec',()=>{
+ const doc=makeAcquisitionDocument(ws,{id:partner,name:'',city:'Berlin',industry:''})
+ doc.fields.name='Aus dem Kontakt';doc.fields.industry='Gastronomie'
+ assert.deepEqual(doc.sourceOwnedFields,['city'])
+ const stored=encodeAcquisitionDocument(doc),reloaded=decodeAcquisitionDocument(stored)
+ assert.equal(reloaded.fields.name,'Aus dem Kontakt');assert.equal(reloaded.fields.industry,'Gastronomie')
+ assert.equal('sourceOwnedFields' in reloaded,false);assert.equal('sourceOwnedFields' in stored,false)
+ const withoutHint={...doc};delete withoutHint.sourceOwnedFields
+ assert.deepEqual(stored,encodeAcquisitionDocument(withoutHint))
 })

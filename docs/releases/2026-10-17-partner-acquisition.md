@@ -10,9 +10,16 @@ Die Partnernavigation enthält Partnerübersicht und Akquise & Kontakte. Die sie
 
 Die vier Server Actions prüfen Admin-Rechte und verwenden die vorhandenen Workspace-Speicherfunktionen mit Revision und Historie. Dafür ist keine neue Tabelle oder Migration erforderlich. Normale Notizen, Ressourcen, Aufgaben und andere Workspace-Inhalte bleiben erhalten. Kontakte werden über diese Oberfläche nur ergänzt.
 
+Bei verknüpften Partnern sind bekannte Angaben zu Betrieb, Stadt und Branche schreibgeschützt und mit der Partnerverwaltung verlinkt. Fehlende Quellwerte können gezielt für die Akquiseakte ergänzt und auch nach erneutem Öffnen weiter bearbeitet werden. Der Server leitet diese Zuordnung aus den aktuellen Partnerdaten ab und weist direkte Änderungen bekannter Stammdaten vor dem Schreiben zurück. Interessenten bleiben vollständig bearbeitbar. Der ergänzte optionale Transporthinweis ändert weder die vier Action-Signaturen noch das gespeicherte Workspace-Format.
+
+Ein zwischenzeitlich ergänzter Kontakt führt bei einem älteren Entwurf jetzt ausdrücklich zum Versionskonflikt mit erhaltenen Eingaben und „Aktuellen Stand laden“. Erst eine Bestätigung verwirft den Entwurf. Identitätsprüfung, identischer Revision-0/Revision-1-Neuanlage-Retry und das Änderungs-/Lösch-/Umordnungsverbot für Kontakte bei gleicher Revision bleiben erhalten.
+
 ## Prüfung
 
-- Abschließender kombinierter lokaler Lauf: **77 gezielte Tests erfolgreich** (Akquisemodell, Datenanbindung, tatsächliche Oberfläche, Navigation und Workspace-Modell/Pagination). Geänderte Dateien bestehen ESLint; der In-Memory-Browserfixture kompiliert.
+- Finale Review-Korrektur: **65 betroffene Modell-, Daten- und UI-Tests erfolgreich**, einschließlich Stammdaten-Sperre ohne Schreibaufruf, fehlender Namenergänzung durch Speichern/Neuladen, weiterhin bearbeitbarer Interessenten und zweier Bearbeiter mit konkurrierendem Kontakteintrag. Die neuen Regressionen wurden vor dem Fix fehlschlagend beobachtet. Gezieltes ESLint erfolgreich; erneuter Typecheck meldet ausschließlich die drei unten genannten bestehenden Leaflet-/ONNX-Diagnosen.
+- Secret-Scan-Fund im historischen synthetischen Browserfixture: der lokale Speicherschlüssel ist kein Zugangsschlüssel. `.gitleaksignore` ergänzt ausschließlich dessen exakten Commit/Datei/Regel/Zeilen-Fingerprint, ohne Datei, Regel oder Historie pauschal auszunehmen. Der nachfolgende Cloud-Lauf bleibt die Freigabeprüfung; kein lokaler Gitleaks-Lauf behauptet.
+
+- Kombinierter lokaler Lauf vor der finalen Review-Korrektur: **77 gezielte Tests erfolgreich** (Akquisemodell, Datenanbindung, tatsächliche Oberfläche, Navigation und Workspace-Modell/Pagination). Geänderte Dateien bestehen ESLint; der In-Memory-Browserfixture kompiliert.
 - Reale React-Komponenten über die tatsächliche Modell-/Datenanbindung mit synthetischer externer Speichergrenze geprüft: Speichern/Neuladen, neue Interessenten, kombinierte Filter, Fehler, Konflikte, doppelte Klicks, verspätete Antworten und verlorene Setup-Antworten.
 - Chrome-Prüfung mit tatsächlichen Komponenten/CSS: Desktop und 390 Pixel, genau ein aktiver Navigationslink, kein horizontaler Seitenüberlauf, Kontakt/Medieninteresse/Wiedervorlage nach vollständigem Neuladen vorhanden; ein Speicherfehler erhält den Entwurf.
 - Native Browser-Verlaufsprüfung: Abbrechen der Rückwärtsnavigation erhält Seite und Eingaben. Bestätigtes Verlassen sowie Vorwärtsnavigation funktionieren. Die Testseite verwendet einen Seitenumschaltungsadapter; ein vollständiger Next-Router-Integrationstest ist dadurch nicht belegt.

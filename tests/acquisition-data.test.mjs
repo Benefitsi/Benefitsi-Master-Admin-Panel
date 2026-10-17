@@ -63,7 +63,7 @@ test('a retry after an acknowledged-late create returns one saved page and one h
  const different=structuredClone(doc);different.fields.nextStep='Änderung';assert.equal((await s.saveAcquisitionDocument(different)).ok,false)
 })
 test('existing linked documents are found first and duplicate historical records require explicit choice',async()=>{
- const f=acquisitionFixture(),s=service(f),doc=draft(f);doc.page.partner_id=partnerId;doc.page.id=existingPartnerPageId(partnerId)
+ const f=acquisitionFixture(),s=service(f),loaded=await s.loadAcquisitionDocument({partnerId,workspaceId}),doc=loaded.value
  const saved=await s.saveAcquisitionDocument(doc);assert.equal(saved.ok,true)
  const found=await s.loadAcquisitionDocument({partnerId});assert.equal(found.ok,true);assert.equal(found.value.page.id,doc.page.id)
  const historic=encodeAcquisitionDocument({...draft(f),page:{...f.newPage(),partner_id:partnerId,revision:1}});f.pages.set(historic.id,historic)
@@ -130,6 +130,11 @@ test('partners with an unknown stored name can receive an explicit acquisition n
  loaded.value.fields.name='Name aus Kontaktgespräch'
  const saved=await s.saveAcquisitionDocument(loaded.value);assert.equal(saved.ok,true)
  assert.equal(saved.value.fields.name,'Name aus Kontaktgespräch')
+ const reloaded=await s.loadAcquisitionDocument({pageId:saved.value.page.id})
+ assert.equal(reloaded.ok,true);assert.equal(reloaded.value.fields.name,'Name aus Kontaktgespräch')
+ assert.deepEqual(reloaded.value.sourceOwnedFields,['city','industry'])
+ reloaded.value.fields.name='Ergänzter Name';assert.equal((await s.saveAcquisitionDocument(reloaded.value)).ok,true)
+ const index=await s.loadAcquisitionIndex();assert.equal(index.value.rows[0].fields.name,'Ergänzter Name')
 })
 
 test('reordered field and contact properties save successfully and retry without another revision',async()=>{
@@ -166,4 +171,32 @@ for(const [label,alter] of [
  const result=await s.saveAcquisitionDocument(doc)
  assert.equal(result.ok,false);assert.match(result.error,/Speicherantwort/);assert.equal('value' in result,false)
  assert.equal(f.pages.size,1);assert.equal(f.versions.get(doc.page.id).length,1);assert.deepEqual(doc,before)
+})
+
+for(const key of ['name','city','industry'])test(`known partner ${key} rejects direct edits and forged source hints before any write`,async()=>{
+ const f=acquisitionFixture(),s=service(f),loaded=await s.loadAcquisitionDocument({partnerId,workspaceId})
+ assert.equal(loaded.ok,true)
+ const changed=structuredClone(loaded.value);changed.fields[key]='Geändert';changed.sourceOwnedFields=[]
+ const rejected=await s.saveAcquisitionDocument(changed)
+ assert.equal(rejected.ok,false);assert.match(rejected.error,/Partnerverwaltung/);assert.equal(f.pages.size,0)
+ const saved=await s.saveAcquisitionDocument(loaded.value);assert.equal(saved.ok,true)
+ const edited=structuredClone(saved.value);edited.fields[key]='Geändert';delete edited.sourceOwnedFields
+ assert.equal((await s.saveAcquisitionDocument(edited)).ok,false);assert.equal(f.versions.get(edited.page.id).length,1)
+ const reopened=await s.loadAcquisitionDocument({pageId:edited.page.id})
+ assert.deepEqual(reopened.value.fields,saved.value.fields)
+ assert.deepEqual(reopened.value.sourceOwnedFields,['name','city','industry'])
+})
+test('a concurrent contact append returns the current conflict before interpreting stale contacts as tampering',async()=>{
+ const f=acquisitionFixture(),s=service(f),saved=await s.saveAcquisitionDocument(draft(f))
+ const a=structuredClone(saved.value),b=structuredClone(saved.value)
+ a.contacts.push({id:partnerId,date:'2026-10-17',channel:'phone',note:'Admin A hat angerufen'})
+ const newer=await s.saveAcquisitionDocument(a);assert.equal(newer.ok,true)
+ b.fields.nextStep='Mein lokaler nächster Schritt';const before=structuredClone(b)
+ const result=await s.saveAcquisitionDocument(b)
+ assert.equal(result.ok,false);assert.deepEqual(result.conflict,newer.value.page);assert.deepEqual(b,before)
+ assert.equal(f.versions.get(b.page.id).length,2)
+ // A forged identity is never a legitimate stale revision.
+ const forged={...b,page:{...b.page,partner_id:partnerId}}
+ const invalid=await s.saveAcquisitionDocument(forged)
+ assert.equal(invalid.ok,false);assert.equal(invalid.conflict,undefined);assert.match(invalid.error,/Identität/)
 })

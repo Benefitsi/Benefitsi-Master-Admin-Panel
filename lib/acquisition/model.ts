@@ -8,7 +8,7 @@ export type MediaStatus=keyof typeof mediaStatuses
 export type ContactChannel=keyof typeof contactChannels
 export type AcquisitionFields={name:string;city:string;industry:string;contactName:string;email:string;phone:string;website:string;status:AcquisitionStatus;nextStep:string;followUpDate:string;meetingDate:string;panorama:MediaStatus;food:MediaStatus;drone:MediaStatus;notes:string}
 export type AcquisitionContact={id:string;date:string;channel:ContactChannel;note:string}
-export type AcquisitionDocument={page:WorkspacePage;fields:AcquisitionFields;contacts:AcquisitionContact[]}
+export type AcquisitionDocument={page:WorkspacePage;fields:AcquisitionFields;contacts:AcquisitionContact[];sourceOwnedFields?:('name'|'city'|'industry')[]}
 export type AcquisitionRow={key:string;pageId:string|null;partnerId:string|null;fields:AcquisitionFields;lastContactDate:string}
 export type AcquisitionIndex={rows:AcquisitionRow[];workspaces:Workspace[]}
 export type AcquisitionTarget={pageId?:string;partnerId?:string;workspaceId?:string}
@@ -65,9 +65,12 @@ export function decodeAcquisitionDocument(input:WorkspacePage):AcquisitionDocume
  })
  return {page:structuredClone(input),fields:validateAcquisitionFields(fields),contacts:validateAcquisitionContacts(contacts)}
 }
+export function validateAcquisitionIdentity(input:AcquisitionDocument,current:WorkspacePage):void{
+ if(input.page.id!==current.id||input.page.workspace_id!==current.workspace_id||input.page.partner_id!==current.partner_id)throw new Error('Die Identität der Akquiseakte darf nicht geändert werden.')
+}
 export function mergeAcquisitionDocument(input:AcquisitionDocument,current:WorkspacePage):AcquisitionDocument{
  const previous=decodeAcquisitionDocument(current)
- if(input.page.id!==current.id||input.page.workspace_id!==current.workspace_id||input.page.partner_id!==current.partner_id)throw new Error('Die Identität der Akquiseakte darf nicht geändert werden.')
+ validateAcquisitionIdentity(input,current)
  const contacts=validateAcquisitionContacts(input.contacts)
  for(const [index,contact] of previous.contacts.entries()){
   const next=contacts[index]
@@ -99,7 +102,15 @@ export function existingPartnerPageId(partnerId:string):string{
  const digest=h.flatMap(n=>[(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255]).slice(0,16);digest[6]=(digest[6]&15)|80;digest[8]=(digest[8]&63)|128
  const hex=digest.map(n=>n.toString(16).padStart(2,'0')).join('');return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`
 }
-export function makeAcquisitionDocument(workspaceId:string,partner?:AcquisitionPartner):AcquisitionDocument{const page=makePage(workspaceId,'partner');if(partner){page.id=existingPartnerPageId(partner.id);page.partner_id=partner.id;page.title=partner.name||page.title}return {page,fields:partner?partnerFields(partner):blankFields(),contacts:[]}}
+// This hint is derived from the current partner projection, never acquisition values.
+// It is transport-only: the Workspace codec neither stores nor trusts it.
+export function withAcquisitionPartner(document:AcquisitionDocument,partner:AcquisitionPartner):AcquisitionDocument{
+ const sourceOwnedFields=(['name','city','industry'] as const).filter(key=>!!partner[key])
+ const fields={...document.fields}
+ for(const key of sourceOwnedFields)fields[key]=partner[key]
+ return {...document,fields,sourceOwnedFields}
+}
+export function makeAcquisitionDocument(workspaceId:string,partner?:AcquisitionPartner):AcquisitionDocument{const page=makePage(workspaceId,'partner');if(partner){page.id=existingPartnerPageId(partner.id);page.partner_id=partner.id;page.title=partner.name||page.title}const document={page,fields:partner?partnerFields(partner):blankFields(),contacts:[]};return partner?withAcquisitionPartner(document,partner):document}
 export function validateAcquisitionTarget(input:unknown):AcquisitionTarget{
  const target=record(input,'Auswahl'),result:AcquisitionTarget={}
  for(const key of ['pageId','partnerId','workspaceId'] as const)if(target[key]!==undefined){if(!validId(target[key]))throw new Error('Ungültige Akquiseauswahl.');result[key]=target[key] as string}

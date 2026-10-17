@@ -54,9 +54,10 @@ test('city industry status and search combine on real table with filtered metric
 
 test('new unlinked prospect is explicitly saved in selected workspace',async()=>{
  await withApp({}, {},async({remount,fixture})=>{
-  await click(button('Interessent anlegen'));await fill('Betrieb','Neues Bistro');await fill('Kontaktstatus','new');await click(button('Speichern'))
+  await click(button('Interessent anlegen'));for(const label of ['Betrieb','Stadt','Branche'])assert.equal(field(label).readOnly,false)
+  await fill('Betrieb','Neues Bistro');await fill('Stadt','München');await fill('Branche','Gastronomie');await fill('Kontaktstatus','new');await click(button('Speichern'))
   assert.equal([...fixture.pages.values()][0].partner_id,null)
-  await remount();assert.ok(button('Neues Bistro'))
+  await remount();await click(button('Neues Bistro'));assert.equal(field('Stadt').value,'München');assert.equal(field('Branche').value,'Gastronomie')
  })
 })
 
@@ -219,4 +220,45 @@ test('noncancelable native traversal retains recovery and confirmed discard does
   window.confirm=()=>true;await click(button('Entwurf verwerfen'));await remount()
   assert.equal(button('Entwurf wiederherstellen'),undefined);assert.ok(button('Hotel'))
  })}finally{if(previous)Object.defineProperty(window,'navigation',previous);else delete window.navigation}
+})
+
+
+test('known linked display fields stay read-only across save and reopen with a Partnerverwaltung link',async()=>{
+ await withApp({}, {},async({remount})=>{
+  await click(button('Hotel'))
+  for(const label of ['Betrieb','Stadt','Branche'])assert.equal(field(label).readOnly,true)
+  const help=document.getElementById(field('Betrieb').getAttribute('aria-describedby'))
+  assert.match(help.textContent,/Partnerverwaltung/)
+  assert.equal(help.querySelector('a').getAttribute('href'),`/partners?partner=${partner.id}`)
+  await fill('Nächster Schritt','Anrufen');await click(button('Speichern'));await remount();await click(button('Hotel'))
+  assert.equal(field('Betrieb').value,'Hotel');assert.equal(field('Stadt').value,'Berlin');assert.equal(field('Branche').value,'Hotel')
+  for(const label of ['Betrieb','Stadt','Branche'])assert.equal(field(label).readOnly,true)
+ })
+})
+test('unknown linked name can be deliberately completed and edited again after save and reopen',async()=>{
+ await withApp({partners:[{...partner,name:null}]}, {},async({remount})=>{
+  await click(button('Unbenannter Betrieb'))
+  assert.equal(field('Betrieb').readOnly,false);assert.equal(field('Stadt').readOnly,true)
+  await fill('Betrieb','Name aus Kontaktgespräch');await click(button('Speichern'))
+  assert.match(document.body.textContent,/Gespeichert/);assert.equal(field('Betrieb').readOnly,false)
+  await remount();await click(button('Name aus Kontaktgespräch'))
+  assert.equal(field('Betrieb').readOnly,false);assert.equal(field('Betrieb').value,'Name aus Kontaktgespräch')
+  await fill('Betrieb','Ergänzter Name');await click(button('Speichern'));await remount();assert.ok(button('Ergänzter Name'))
+ })
+})
+test('editor B keeps its draft after editor A appends a contact and reloads only with confirmation',async()=>{
+ await withApp({}, {},async({real,fixture})=>{
+  await click(button('Hotel'));await click(button('Speichern'))
+  const pageId=[...fixture.pages.keys()][0],a=await real.loadAcquisitionDocument({pageId})
+  a.value.contacts.push({id:workspace.id,date:'2026-10-17',channel:'phone',note:'Admin A hat angerufen'})
+  assert.equal((await real.saveAcquisitionDocument(a.value)).ok,true)
+  await fill('Nächster Schritt','Entwurf von B');await click(button('Speichern'))
+  assert.match(document.querySelector('[role="alert"]').textContent,/Versionskonflikt/)
+  assert.equal(field('Nächster Schritt').value,'Entwurf von B');assert.ok(button('Aktuellen Stand laden'))
+  window.confirm=()=>false;await click(button('Aktuellen Stand laden'))
+  assert.equal(field('Nächster Schritt').value,'Entwurf von B');assert.doesNotMatch(document.querySelector('[aria-label="Kontaktverlauf"]').textContent,/Admin A/)
+  window.confirm=()=>true;await click(button('Aktuellen Stand laden'))
+  assert.equal(field('Nächster Schritt').value,'');assert.match(document.querySelector('[aria-label="Kontaktverlauf"]').textContent,/Admin A hat angerufen/)
+  assert.equal(fixture.versions.get(pageId).length,2)
+ })
 })

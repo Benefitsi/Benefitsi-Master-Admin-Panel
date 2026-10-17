@@ -89,6 +89,7 @@ export function AcquisitionEditor({document: initial, recovery, services, today,
   }, [dirty])
 
   function update<K extends keyof AcquisitionFields>(key: K, value: AcquisitionFields[K]) {
+    if (draft.sourceOwnedFields?.some(field=>field===key)) return
     setDraft(current => ({...current, fields: {...current.fields, [key]: value}}))
     setNotice('')
   }
@@ -149,8 +150,9 @@ export function AcquisitionEditor({document: initial, recovery, services, today,
       <form className="mt-5 space-y-6" onSubmit={event => {event.preventDefault(); void save()}}>
         <fieldset disabled={pending} className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <legend className="mb-3 font-semibold">Betrieb & Kontakt</legend>
+          {draft.page.partner_id && <p id="acquisition-partner-source" className="text-sm font-normal text-zinc-600 sm:col-span-2 xl:col-span-3">Bekannte Angaben zu Betrieb, Stadt und Branche werden in der <a className="font-semibold text-[#0879df] underline" href={`/partners?partner=${encodeURIComponent(draft.page.partner_id)}`}>Partnerverwaltung</a> gepflegt und sind hier schreibgeschützt. Fehlende Angaben kannst du für diese Akquiseakte ergänzen.</p>}
           {textFields.map(({key,label,type,max}) => <label key={key} className="grid min-w-0 gap-1 text-sm font-medium"><span>{label}</span>
-            <input aria-label={label} className={acquisitionInput} type={type || 'text'} required={key==='name'} maxLength={max} value={draft.fields[key]} onChange={event=>update(key,event.target.value)} />
+            <input aria-label={label} readOnly={draft.sourceOwnedFields?.some(field=>field===key) ?? false} aria-describedby={draft.page.partner_id && ['name','city','industry'].includes(key) ? 'acquisition-partner-source' : undefined} className={`${acquisitionInput} read-only:bg-zinc-100`} type={type || 'text'} required={key==='name'} maxLength={max} value={draft.fields[key]} onChange={event=>update(key,event.target.value)} />
           </label>)}
         </fieldset>
         <fieldset disabled={pending} className="grid min-w-0 gap-4 sm:grid-cols-2">
