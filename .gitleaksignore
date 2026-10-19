@@ -2,3 +2,6 @@
 
 # Synthetic browser fixture localStorage namespace, not a credential. Exact historical finding only.
 c17a1ce21569360cdad9a3e949b9bd56f76bc5f1:tests/acquisition-browser-check.mjs:generic-api-key:29
+
+# Same synthetic localStorage namespace after squash merge; not a credential.
+2f04d127f889b43f4294c28a6bd2a3feed040f89:tests/acquisition-browser-check.mjs:generic-api-key:30
