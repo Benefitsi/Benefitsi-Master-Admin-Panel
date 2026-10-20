@@ -7999,8 +7999,7 @@ function WeeklyHoursFields({
   holidays?: PartnerHoliday[]
   hoursByWeekday?: Map<number | null, PartnerOpeningHour[]>
 }) {
-  const [bulkOpenTime, setBulkOpenTime] = useState("09:00")
-  const [bulkCloseTime, setBulkCloseTime] = useState("18:00")
+  const [bulkRanges, setBulkRanges] = useState([{ opensAt: "09:00", closesAt: "18:00" }])
   const [bulkApplied, setBulkApplied] = useState(false)
   const [holidayEditor, setHolidayEditor] = useState<HolidayEditorState | null>(null)
   const [holidayRows, setHolidayRows] = useState<HolidayDraft[]>(() =>
@@ -8046,6 +8045,22 @@ function WeeklyHoursFields({
       }),
     ),
   )
+  const scheduleBeforeClosure = useRef<typeof weeklyHours | null>(null)
+  const temporarilyClosed = Object.values(weeklyHours).every((hour) => hour.isClosed)
+  const setTemporarilyClosed = (closed: boolean) => {
+    setBulkApplied(false)
+    if (closed) {
+      scheduleBeforeClosure.current = weeklyHours
+      setWeeklyHours(Object.fromEntries(
+        Object.entries(weeklyHours).map(([weekday, hour]) => [weekday, { ...hour, isClosed: true }]),
+      ))
+    } else {
+      setWeeklyHours(scheduleBeforeClosure.current ?? Object.fromEntries(
+        Object.entries(weeklyHours).map(([weekday, hour]) => [weekday, { ...hour, isClosed: false }]),
+      ))
+      scheduleBeforeClosure.current = null
+    }
+  }
   const updateWeeklyHour = (
     weekday: string,
     update: Partial<(typeof weeklyHours)[string]>,
@@ -8082,7 +8097,7 @@ function WeeklyHoursFields({
             ? hour
             : {
                 ...hour,
-                ranges: [{ closesAt: bulkCloseTime, opensAt: bulkOpenTime }],
+                ranges: bulkRanges.map((range) => ({ ...range })),
               },
         ]),
       ),
@@ -8110,38 +8125,92 @@ function WeeklyHoursFields({
 
   return (
     <div className="flex flex-col gap-4">
+      <label className="order-1 flex items-start gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm">
+        <input
+          type="checkbox"
+          checked={temporarilyClosed}
+          onChange={(event) => setTemporarilyClosed(event.target.checked)}
+          className="mt-0.5 size-4 shrink-0 rounded border-zinc-300 accent-teal-700"
+        />
+        <span>
+          <span className="block font-semibold text-zinc-900">Temporarily closed</span>
+          <span className="mt-1 block text-xs leading-5 text-zinc-600">
+            Marks every weekday as closed. Save the partner to apply this change.
+          </span>
+        </span>
+      </label>
       <div className="order-1 rounded-md border border-zinc-200 bg-zinc-50 p-3">
-        <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-          <label className="space-y-2 text-sm">
-            <span className="font-medium text-zinc-700">Open</span>
-            <input
-              type="time"
-              value={bulkOpenTime}
-              onChange={(event) => setBulkOpenTime(event.target.value)}
-              className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-            />
-          </label>
-          <label className="space-y-2 text-sm">
-            <span className="font-medium text-zinc-700">Close</span>
-            <input
-              type="time"
-              value={bulkCloseTime}
-              onChange={(event) => setBulkCloseTime(event.target.value)}
-              className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={applyBulkTime}
-            className={`self-end rounded-md px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98] ${
-              bulkApplied
-                ? "bg-emerald-700 ring-2 ring-emerald-100"
-                : "bg-teal-700 hover:bg-teal-800"
-            }`}
-            aria-live="polite"
-          >
-            {bulkApplied ? "Applied" : "Apply to all open days"}
-          </button>
+        <div className="space-y-3">
+          {bulkRanges.map((range, rangeIndex) => (
+            <div key={rangeIndex} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+              <label className="space-y-2 text-sm">
+                <span className="font-medium text-zinc-700">Open</span>
+                <input
+                  type="time"
+                  aria-label={`Bulk opening time ${rangeIndex + 1}`}
+                  value={range.opensAt}
+                  onChange={(event) => {
+                    setBulkApplied(false)
+                    setBulkRanges((current) => current.map((item, index) => index === rangeIndex ? { ...item, opensAt: event.target.value } : item))
+                  }}
+                  className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                />
+              </label>
+              <label className="space-y-2 text-sm">
+                <span className="font-medium text-zinc-700">Close</span>
+                <input
+                  type="time"
+                  aria-label={`Bulk closing time ${rangeIndex + 1}`}
+                  value={range.closesAt}
+                  onChange={(event) => {
+                    setBulkApplied(false)
+                    setBulkRanges((current) => current.map((item, index) => index === rangeIndex ? { ...item, closesAt: event.target.value } : item))
+                  }}
+                  className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                />
+              </label>
+              {rangeIndex > 0 ? (
+                <button
+                  type="button"
+                  aria-label={`Remove bulk time range ${rangeIndex + 1}`}
+                  onClick={() => {
+                    setBulkRanges((current) => current.filter((_, index) => index !== rangeIndex))
+                    setBulkApplied(false)
+                  }}
+                  className="self-end rounded-md border border-zinc-300 px-3 py-2.5 text-sm font-semibold text-zinc-600 hover:border-rose-300 hover:text-rose-700"
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+          ))}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {bulkRanges.length < 3 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkRanges((current) => [...current, { opensAt: "", closesAt: "" }])
+                  setBulkApplied(false)
+                }}
+                className="text-xs font-semibold text-teal-700 hover:text-teal-900"
+              >
+                Add another time range for all open days
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={applyBulkTime}
+              disabled={temporarilyClosed || bulkRanges.some((range) => !openingHourInterval(range.opensAt, range.closesAt))}
+              className={`rounded-md px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${
+                bulkApplied
+                  ? "bg-emerald-700 ring-2 ring-emerald-100"
+                  : "bg-teal-700 hover:bg-teal-800"
+              }`}
+              aria-live="polite"
+            >
+              {bulkApplied ? "Applied" : "Apply to all open days"}
+            </button>
+          </div>
         </div>
       </div>
       <section className="order-3 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">

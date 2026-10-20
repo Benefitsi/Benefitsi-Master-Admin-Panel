@@ -2,7 +2,35 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { partnerSaveFixture, partnerForm, partnerId, ownerId, screenshotSchedule } from "./helpers/partner-save-fixture.mjs"
 
+test("admin add saves temporary closure as seven closed days", async () => {
+  const f = partnerSaveFixture()
+  const data = partnerForm({ create: true })
+  for (let day = 1; day <= 7; day++) {
+    data.set(`is_closed_${day}`, "on")
+    data.delete(`opens_at_${day}`)
+    data.delete(`closes_at_${day}`)
+  }
+  const result = await f.actions.savePartner({}, data)
+  assert.equal(result.ok, true, result.message)
+  assert.equal(result.savedPartner.opening_hours.length, 7)
+  assert.ok(result.savedPartner.opening_hours.every(row => row.is_closed && row.opens_at === null && row.closes_at === null))
+})
+
 for (const isAdmin of [true, false]) {
+  test(`${isAdmin ? "admin" : "partner"} saves temporary closure as seven closed days`, async () => {
+    const f = partnerSaveFixture({ isAdmin })
+    const data = partnerForm()
+    for (let day = 1; day <= 7; day++) {
+      data.set(`is_closed_${day}`, "on")
+      data.delete(`opens_at_${day}`)
+      data.delete(`closes_at_${day}`)
+    }
+    const result = await f.actions.savePartner({}, data)
+    assert.equal(result.ok, true, result.message)
+    assert.equal(result.savedPartner.opening_hours.length, 7)
+    assert.ok(result.savedPartner.opening_hours.every(row => row.is_closed && row.opens_at === null && row.closes_at === null))
+  })
+
   test(`${isAdmin ? "admin" : "partner"} edit saves social links and 24-hour operating hours through Save partner`, async () => {
     const f = partnerSaveFixture({ isAdmin })
     const result = await f.actions.savePartner({}, partnerForm())

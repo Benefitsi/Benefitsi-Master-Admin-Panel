@@ -153,14 +153,19 @@ Purpose:
 Fields:
 
 - Weekly opening and closing times per weekday
+- Up to three bulk time ranges for open weekdays
+- `Temporarily closed` checkbox
 - Optional weekday note/label
 - Holiday closures
 - Optional holiday label
 
 Logic:
 
-- Bulk time application can fill all open weekdays quickly.
+- The shared admin and partner add/edit editor applies up to three bulk time ranges only to weekdays currently marked open.
+- `Temporarily closed` marks all seven weekdays closed. Clearing it before saving restores the previous draft schedule; after reloading a saved closure, clearing it reopens all days with default hours (`09:00`–`18:00`).
+- Weekly-hour changes persist with `Save partner`.
 - A weekday must either be marked closed or have both opening and closing times.
+- Date-specific exceptions retain precedence over the weekly schedule, including temporary closure.
 - Holiday closures support multiple dates.
 - Holiday labels are optional and help explain special closures such as public holidays or private events.
 
