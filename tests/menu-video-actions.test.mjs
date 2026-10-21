@@ -1,19 +1,22 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { createClient } from "@supabase/supabase-js"
+import sharp from "sharp"
 import { loadTypescript } from "./helpers/load-typescript.mjs"
 
 const origin = "https://example.supabase.co"
 const partner = "11111111-1111-4111-8111-111111111111"
 const menu = "22222222-2222-4222-8222-222222222222"
 const item = "33333333-3333-4333-8333-333333333333"
+const category = "77777777-7777-4777-8777-777777777777"
 const foreign = "44444444-4444-4444-8444-444444444444"
 const video = `${origin}/storage/v1/object/public/menu-videos/${partner}/${menu}/55555555-5555-4555-8555-555555555555.mp4`
 const oldVideo = video.replace("55555555-5555-4555-8555-555555555555", "66666666-6666-4666-8666-666666666666")
 const actualCanManage = loadTypescript("lib/partner-portal.ts", { "./admin": {}, "./supabase/server": {} }).canManagePartner
 
-function fixture({ session = { user: { id: "owner" }, isAdmin: false, managedPartnerIds: [partner] }, existingVideo = null, invalidObject = false, saveError = false, sharedVideo = false } = {}) {
-  const requests = [], writes = [], cleanup = [], rows = [{ id: item, menu_id: menu, video_url: existingVideo, sort_order: 0 }]
+function fixture({ session = { user: { id: "owner" }, isAdmin: false, managedPartnerIds: [partner] }, existingVideo = null, invalidObject = false, saveError = false, sharedVideo = false, revalidateFailure = false } = {}) {
+  const requests = [], writes = [], cleanup = [], rows = [{ id: item, menu_id: menu, video_url: existingVideo, image_url: null, sort_order: 0 }]
+  const categories = [{ id: category, menu_id: menu, image_url: null, sort_order: 0 }]
   if (sharedVideo) rows.push({ id: "duplicate", menu_id: menu, video_url: oldVideo, sort_order: 1 })
   const supabase = createClient(origin, "test-publishable-key", { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: async (input, init) => {
     const url = new URL(String(input)), method = init.method ?? "GET"
@@ -30,13 +33,23 @@ function fixture({ session = { user: { id: "owner" }, isAdmin: false, managedPar
       cleanup.push(...JSON.parse(init.body).prefixes)
       return Response.json([])
     }
+    if (url.pathname.startsWith("/storage/v1/object/partner-assets/")) {
+      if (method === "DELETE") cleanup.push(...JSON.parse(init.body).prefixes)
+      return Response.json(method === "POST" ? { Key: url.pathname.slice("/storage/v1/object/".length) } : [])
+    }
+    if (url.pathname === "/storage/v1/object/partner-assets") {
+      assert.equal(method, "DELETE")
+      cleanup.push(...JSON.parse(init.body).prefixes)
+      return Response.json([])
+    }
     let result
     if (url.pathname === "/rest/v1/menus") {
       const selected = url.searchParams.get("id")
       result = selected === `eq.${menu}` ? [{ id: menu, partner_id: partner }] : selected === `eq.${foreign}` ? [{ id: foreign, partner_id: foreign }] : []
     } else {
-      assert.equal(url.pathname, "/rest/v1/menu_items")
-      result = rows.filter(row => [...url.searchParams].every(([key, value]) => {
+      assert.ok(["/rest/v1/menu_items", "/rest/v1/menu_categories"].includes(url.pathname))
+      const selectedRows = url.pathname.endsWith("menu_items") ? rows : categories
+      result = selectedRows.filter(row => [...url.searchParams].every(([key, value]) => {
         if (["select", "order", "limit", "category_id"].includes(key)) return true
         if (value.startsWith("eq.")) return row[key] === value.slice(3)
         if (value.startsWith("neq.")) return row[key] !== value.slice(4)
@@ -46,11 +59,11 @@ function fixture({ session = { user: { id: "owner" }, isAdmin: false, managedPar
         const payload = JSON.parse(init.body)
         writes.push(payload)
         if (saveError) return Response.json({ code: "23514", message: "Item rejected" }, { status: 400 })
-        if (method === "POST") { const created = { id: "created", ...payload }; rows.push(created); result = [created] }
+        if (method === "POST") { const created = { id: "created", ...payload }; selectedRows.push(created); result = [created] }
         else result.forEach(row => Object.assign(row, payload))
       }
       if (method === "DELETE") {
-        for (const row of result) rows.splice(rows.indexOf(row), 1)
+        for (const row of result) selectedRows.splice(selectedRows.indexOf(row), 1)
         result = []
       }
     }
@@ -59,7 +72,7 @@ function fixture({ session = { user: { id: "owner" }, isAdmin: false, managedPar
   } } })
   const deferred = []
   const actions = loadTypescript("app/partner-actions.ts", {
-    "next/cache": { revalidatePath() {} }, "next/server": { after: callback => deferred.push(callback) },
+    "next/cache": { revalidatePath() { if (revalidateFailure) throw Error("cache unavailable") } }, "next/server": { after: callback => deferred.push(callback) },
     "@/lib/partner-portal": { getPartnerPortalSession: async () => session, canManagePartner: actualCanManage },
     "@/lib/supabase/server": { createClient: async () => supabase },
     "@/lib/supabase/config": { getSupabaseConfig: () => ({ isConfigured: true, url: origin }) },
@@ -68,7 +81,7 @@ function fixture({ session = { user: { id: "owner" }, isAdmin: false, managedPar
     "@/lib/menu-import.js": {}, "@/lib/menu-zip-import.js": {}, "@/lib/menu-ai-import": {},
     "@/lib/partners/entitlements": {}, "@/lib/partners/menu-quota": {},
   }, { FormData, File })
-  return { actions, requests, writes, cleanup, rows, flush: async () => { for (const callback of deferred) await callback() } }
+  return { actions, requests, writes, cleanup, rows, categories, flush: async () => { for (const callback of deferred) await callback() } }
 }
 function form(values = {}) {
   const data = new FormData()
@@ -122,14 +135,14 @@ test("saving returns the video URL with item data, and older forms preserve an e
   assert.equal(legacy.requests.some(request => request[1].includes("/info/")), false)
 })
 
-test("replace/remove cleanup happens after success and preserves duplicated references", async () => {
+test("replace/remove preserves previous video objects for other consumers", async () => {
   for (const sharedVideo of [false, true]) {
     const state = fixture({ existingVideo: oldVideo, sharedVideo })
     assert.equal((await state.actions.saveMenuItem({}, form({ video_url: "" }))).ok, true)
     assert.equal(state.rows[0].video_url, null)
     assert.equal(state.cleanup.length, 0)
     await state.flush()
-    assert.equal(state.cleanup.length, sharedVideo ? 0 : 1)
+    assert.equal(state.cleanup.length, 0)
   }
   const rejected = fixture({ existingVideo: oldVideo, saveError: true })
   assert.equal((await rejected.actions.saveMenuItem({}, form({ video_url: video }))).ok, false)
@@ -138,12 +151,47 @@ test("replace/remove cleanup happens after success and preserves duplicated refe
   assert.equal(rejected.cleanup.length, 0)
 })
 
-test("deleting an item only removes the video after its final duplicate reference is gone", async () => {
+test("deleting an item preserves its video object even without another visible item", async () => {
   for (const sharedVideo of [false, true]) {
     const state = fixture({ existingVideo: oldVideo, sharedVideo })
     assert.equal((await state.actions.deleteMenuItem({}, form())).ok, true)
     assert.equal(state.rows.some(row => row.id === item), false)
     await state.flush()
-    assert.equal(state.cleanup.length, sharedVideo ? 0 : 1)
+    assert.equal(state.cleanup.length, 0)
   }
+})
+
+test("discarding a signed video selection never deletes a public object", async () => {
+  const state = fixture()
+  assert.equal((await state.actions.discardMenuItemVideoUpload(menu, video)).ok, true)
+  assert.deepEqual(state.cleanup, [])
+})
+
+test("a saved menu image remains in Storage if cache refresh fails after the database write", async () => {
+  const state = fixture({ revalidateFailure: true })
+  const bytes = await sharp({ create: { width: 16, height: 16, channels: 3, background: "blue" } }).png().toBuffer()
+  const imageForm = form({ image_file: new File([bytes], "coffee.png", { type: "image/png" }) })
+  const result = await state.actions.saveMenuItemImage({}, imageForm)
+  assert.equal(state.rows[0].image_url?.includes("/partner-assets/"), true)
+  assert.equal(result.ok, true)
+  assert.deepEqual(state.cleanup, [])
+})
+
+test("an ambiguous item write failure does not remove a newly uploaded public image", async () => {
+  const state = fixture({ saveError: true })
+  const bytes = await sharp({ create: { width: 16, height: 16, channels: 3, background: "blue" } }).png().toBuffer()
+  const imageForm = form({ image_file: new File([bytes], "coffee.png", { type: "image/png" }) })
+  const result = await state.actions.saveMenuItem({}, imageForm)
+  assert.equal(result.ok, false)
+  assert.deepEqual(state.cleanup, [])
+})
+
+test("a saved category image remains in Storage if cache refresh fails", async () => {
+  const state = fixture({ revalidateFailure: true })
+  const bytes = await sharp({ create: { width: 16, height: 16, channels: 3, background: "blue" } }).png().toBuffer()
+  const imageForm = form({ id: category, image_file: new File([bytes], "category.png", { type: "image/png" }) })
+  const result = await state.actions.saveMenuCategoryImage({}, imageForm)
+  assert.equal(state.categories[0].image_url?.includes("/partner-assets/"), true)
+  assert.equal(result.ok, true)
+  assert.deepEqual(state.cleanup, [])
 })

@@ -1,0 +1,39 @@
+name: Partner media SQL regressions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-media:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_PASSWORD: disposable-ci-only
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out SQL and CI fixtures
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Confirm disposable PostgreSQL version
+        run: docker exec -u postgres '${{ job.services.postgres.id }}' psql -X -U postgres -d postgres -Atqc 'show server_version'
+      - name: Unapplied baselines and real migration regressions
+        shell: bash
+        run: bash supabase/tests/ci/run-media-sql.sh '${{ job.services.postgres.id }}'
+      - name: Stop disposable PostgreSQL service
+        if: always()
+        run: docker stop '${{ job.services.postgres.id }}' || true

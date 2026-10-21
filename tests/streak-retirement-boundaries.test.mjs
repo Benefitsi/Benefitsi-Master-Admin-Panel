@@ -38,10 +38,10 @@ const retired = [
   { type: "reward", metadata: { streak_mode: " Calendar-Frequency " } },
 ]
 
-test("phone showcase skips raw retired rows before choosing its displayed benefit", () => {
+test("phone showcase delegates live benefits to Flutter instead of copying raw deal rows", () => {
   const load = applicationLoader()
   const { AppScreenShowcase } = load("components/microsite/restaurant-premium-microsite.tsx")
-  const partner = { name: "Synthetic partner", deals: [], menus: [], reward_milestones: [], opening_hours: [], cover_urls: [], category: [] }
+  const partner = { id: "22000000-0000-4000-8000-000000000001", name: "Synthetic partner", deals: [], menus: [], reward_milestones: [], opening_hours: [], cover_urls: [], category: [] }
   const config = load("lib/microsites.ts").resolveMicrositeConfig({}, partner)
   for (const deal of retired) {
     partner.deals = [
@@ -50,8 +50,8 @@ test("phone showcase skips raw retired rows before choosing its displayed benefi
     ]
     const html = renderToStaticMarkup(React.createElement(AppScreenShowcase, { partner, config, screenshotUrl: "" }))
     assert.doesNotMatch(html, /Retired (?:title|description) SENTINEL/)
-    assert.match(html, /Ordinary benefit SENTINEL/)
-    assert.match(html, /Ordinary conditions SENTINEL/)
+    assert.doesNotMatch(html, /Ordinary benefit SENTINEL|Ordinary conditions SENTINEL/)
+    assert.match(html, /<iframe[^>]*partnerId=22000000-0000-4000-8000-000000000001/)
   }
 })
 

@@ -1,9 +1,10 @@
 /* eslint-disable @next/next/no-img-element -- Partner-selected assets can use arbitrary storage hosts. */
 "use client"
 
+import { MicrositeOpeningStatus, MicrositeOpeningHours } from "./microsite-opening-hours"
 import { MicrositeLink, useMicrositeIntegration } from "./microsite-integration"
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react"
+import { useMemo, useState, type CSSProperties } from "react"
 import {
   ArrowRight,
   BedDouble,
@@ -468,7 +469,7 @@ function ServicesHero({ context, familyText }: { context: MicrositeContext; fami
         <div className={styles.servicesHeroMedia} data-template={context.template}><HeroImage context={context} className={styles.servicesHeroImage} /><span aria-hidden="true">{copy.label}</span></div>
         <div className={styles.servicesHeroFacts}>
           <div><MapPin size={16} aria-hidden="true" /><span>{address || t("Lokal erreichbar", "Available locally")}</span></div>
-          <div><Clock3 size={16} aria-hidden="true" /><span {...editable("hero.openingText", "text", "Öffnungszeiten")} style={textStyleFor(config, "hero.openingText")}>{normalizeCategoryText(config.hero.openingText) || t("Direkt beim Team anfragen", "Ask the team directly")}</span></div>
+          <div><Clock3 size={16} aria-hidden="true" /><MicrositeOpeningStatus partner={context.partner} language={config.language} /></div>
           <div><Icon size={16} aria-hidden="true" /><span>{copy.note}</span></div>
         </div>
       </div>
@@ -727,25 +728,11 @@ function CategoryAppPrompt({ context, familyText }: { context: MicrositeContext;
   return <section id="app" className={styles.appPrompt} data-family={family}><div><p>Benefitsi App</p><EditableCopy config={config} id="content.appHeadline" as="h2">{config.content.appHeadline || familyText.appTitle}</EditableCopy><EditableCopy config={config} id="content.appText">{config.content.appText || familyText.appBody}</EditableCopy><p className={styles.appStampMessage}><Gift size={18} strokeWidth={1.5} aria-hidden="true" /><span>{stampMessage}</span></p><MicrositeLink href={appUrl}>{english ? "Open the app" : "App öffnen"}<ArrowRight size={16} aria-hidden="true" /></MicrositeLink></div><div className={styles.appToken}><img src="/Benefitsi_Icon_FullColor_RGB_512.png" alt="Benefitsi" width={42} height={42} /><span>{english ? "Your benefits, ready when you are." : "Deine Vorteile, wenn du sie brauchst."}</span><Gift size={44} strokeWidth={1} aria-hidden="true" /></div></section>
 }
 
-function CategoryContact({ context, familyText }: { context: MicrositeContext; familyText: Record<string, string> }) { const { partner, config, family, address, phone, website, mapUrl } = context; return <section id="kontakt" className={styles.contact} data-family={family}><div><EditableCopy config={config} id="content.contactLabel">{config.content.contactLabel || familyText.contactTitle}</EditableCopy><EditableCopy config={config} id="content.contactHeadline" as="h2">{config.content.contactHeadline}</EditableCopy><div className={styles.contactLinks}>{address ? <span><MapPin size={17} aria-hidden="true" />{address}</span> : null}{phone ? <MicrositeLink href={`tel:${phone}`}><Phone size={17} aria-hidden="true" />{partner.phone}</MicrositeLink> : null}{partner.email ? <MicrositeLink href={`mailto:${partner.email}`}>{partner.email}</MicrositeLink> : null}{website ? <MicrositeLink href={website}>{config.language === "en" ? "Visit website" : "Website besuchen"}<ArrowRight size={15} aria-hidden="true" /></MicrositeLink> : null}{mapUrl ? <MicrositeLink href={mapUrl} target="_blank" rel="noreferrer"><Route size={17} aria-hidden="true" />{config.language === "en" ? "Get directions" : "Route planen"}</MicrositeLink> : null}</div></div><div className={styles.hours}><h3><Clock3 size={19} aria-hidden="true" />{config.language === "en" ? "Opening hours" : "Öffnungszeiten"}</h3>{context.integration.openingHours !== undefined ? context.integration.openingHours : <OpeningHours partner={partner} language={config.language} />}</div></section> }
+function CategoryContact({ context, familyText }: { context: MicrositeContext; familyText: Record<string, string> }) { const { partner, config, family, address, phone, website, mapUrl } = context; return <section id="kontakt" className={styles.contact} data-family={family}><div><EditableCopy config={config} id="content.contactLabel">{config.content.contactLabel || familyText.contactTitle}</EditableCopy><EditableCopy config={config} id="content.contactHeadline" as="h2">{config.content.contactHeadline}</EditableCopy><div className={styles.contactLinks}>{address ? <span><MapPin size={17} aria-hidden="true" />{address}</span> : null}{phone ? <MicrositeLink href={`tel:${phone}`}><Phone size={17} aria-hidden="true" />{partner.phone}</MicrositeLink> : null}{partner.email ? <MicrositeLink href={`mailto:${partner.email}`}>{partner.email}</MicrositeLink> : null}{website ? <MicrositeLink href={website}>{config.language === "en" ? "Visit website" : "Website besuchen"}<ArrowRight size={15} aria-hidden="true" /></MicrositeLink> : null}{mapUrl ? <MicrositeLink href={mapUrl} target="_blank" rel="noreferrer"><Route size={17} aria-hidden="true" />{config.language === "en" ? "Get directions" : "Route planen"}</MicrositeLink> : null}</div></div><div className={styles.hours}><h3><Clock3 size={19} aria-hidden="true" />{config.language === "en" ? "Opening hours" : "Öffnungszeiten"}</h3><MicrositeOpeningHours partner={partner} language={config.language} /></div></section> }
 
 function CategoryFaq({ context }: { context: MicrositeContext }) { if (context.integration.faq !== undefined) return <>{context.integration.faq}</>; const { partner, config, family } = context; return <section id="faq" className={styles.faq} data-family={family}><EditableCopy config={config} id="category.faqHeadline" as="h2">{textValue(config, "category.faqHeadline", config.language === "en" ? "Before you visit" : "Vor deinem Besuch")}</EditableCopy><div>{micrositeFaqItemsForPartner(partner, config).slice(0, 4).map((item) => <details key={item.question}><summary>{item.question}</summary><p>{item.answer}</p></details>)}</div></section> }
 
 function CategoryFooter({ context }: { context: MicrositeContext }) { const { config, family, name, copy } = context; return <footer className={styles.footer} data-family={family}><div><strong>{name}</strong><p>{normalizeCategoryText(config.content.footerText)}</p></div><nav aria-label={config.language === "en" ? "Footer navigation" : "Footer-Navigation"}>{(approvedRichMedia(config.richMedia,config.mediaPermitted) || approvedRichMedia(config.richMediaTour,config.mediaPermitted)) ? <MicrositeLink href="#einblicke">Einblicke</MicrositeLink> : null}<MicrositeLink href="#speisekarte">{copy.label}</MicrositeLink><MicrositeLink href="#kontakt">{config.language === "en" ? "Contact" : "Kontakt"}</MicrositeLink><MicrositeLink href="https://benefitsi.de/impressum">{config.language === "en" ? "Legal notice" : "Impressum"}</MicrositeLink><MicrositeLink href="https://benefitsi.de/datenschutz">{config.language === "en" ? "Privacy" : "Datenschutz"}</MicrositeLink></nav><span>Powered by Benefitsi</span></footer> }
-
-function OpeningHours({ partner, language }: { partner: PartnerWithDeals; language: MicrositeConfig["language"] }) {
-  const en = language === "en"
-  const days = en ? ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] : ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"]
-  const hours = partner.opening_hours.filter((row) => row.weekday !== null)
-  if (!hours.length) return <p>{en ? "Please ask the team about current opening and appointment times." : "Aktuelle Öffnungs- und Terminzeiten erfährst du direkt beim Team."}</p>
-  const rows: ReactNode[] = [1, 2, 3, 4, 5, 6, 0].map((day) => {
-    const entries = hours.filter((row) => row.weekday === day).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-    const times = entries.filter((row) => !row.is_closed && row.opens_at && row.closes_at).map((row) => `${row.opens_at!.slice(0, 5)}-${row.closes_at!.slice(0, 5)}`)
-    const label = times.length ? times.join(" / ") : entries.some((row) => row.is_closed) ? (en ? "Closed" : "Geschlossen") : (en ? "Please enquire" : "Auf Anfrage")
-    return <div key={day}><dt>{days[day]}</dt><dd>{label}</dd></div>
-  })
-  return <><dl>{rows}</dl><p className={styles.hoursNote}>{en ? "Holiday hours and appointment availability may vary. Please confirm with the venue." : "Feiertagszeiten und Terminverfügbarkeit können abweichen. Bitte direkt beim Anbieter prüfen."}</p></>
-}
 
 function formatOfferingPrice(value: number | string | null, currency: string | null, language: MicrositeConfig["language"]) {
   if (value == null || value === "") return language === "en" ? "On request" : "Auf Anfrage"

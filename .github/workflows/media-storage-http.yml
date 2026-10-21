@@ -1,0 +1,37 @@
+name: Partner media Storage HTTP regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  storage-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_PASSWORD: disposable-ci-only
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out SQL and HTTP fixture
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Exercise the real Storage API against disposable PostgreSQL
+        shell: bash
+        run: bash supabase/tests/ci/run-storage-http.sh '${{ job.services.postgres.id }}'
+      - name: Stop disposable PostgreSQL service
+        if: always()
+        run: docker stop '${{ job.services.postgres.id }}' || true

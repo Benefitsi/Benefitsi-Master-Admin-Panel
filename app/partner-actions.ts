@@ -11,7 +11,7 @@ import type { PartnerWithDeals, PartnerSocial } from "@/lib/admin-data"
 import { readPartnerWorkspace } from "@/lib/partners/workspace-data"
 import { createHash, randomInt, randomUUID } from "node:crypto"
 import { MENU_VIDEO_BUCKET, validateMenuVideoFile } from "@/lib/menu-video"
-import { verifyMenuVideoUpload, removeUnusedMenuVideos } from "@/lib/menu-video-storage"
+import { verifyMenuVideoUpload } from "@/lib/menu-video-storage"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import sharp from "sharp"
@@ -2150,9 +2150,9 @@ export async function createMenuItemVideoUpload(
 export async function discardMenuItemVideoUpload(menuId: string, videoUrl: string): Promise<PartnerActionState> {
   const access = await authorizeMenuMutation(null, null, menuId)
   if (!access.ok) return { ok: false, message: access.message }
-  const config = getSupabaseConfig()
-  if (!config.isConfigured) return { ok: false, message: "Medienspeicher ist nicht konfiguriert." }
-  await removeUnusedMenuVideos(access.supabase, [videoUrl], config.url, access.partnerId!, access.menuId!)
+  // A signed video URL can already be used by another saved consumer. Discard
+  // only clears the editor's selection; it cannot authorize a Storage delete.
+  void videoUrl
   return { ok: true, message: "" }
 }
 
@@ -2330,7 +2330,7 @@ export async function saveMenuCategoryImage(
     if (previousImageUrl) {
       after(() => cleanupPublicMediaUrls(supabase, [previousImageUrl]))
     }
-    revalidatePath("/")
+    try { revalidatePath("/") } catch { /* The image write is already committed. */ }
     return {
       ok: true,
       message: "Menu category image uploaded.",
@@ -2396,7 +2396,7 @@ export async function saveMenuItemImage(
     if (previousImageUrl) {
       after(() => cleanupPublicMediaUrls(supabase, [previousImageUrl]))
     }
-    revalidatePath("/")
+    try { revalidatePath("/") } catch { /* The image write is already committed. */ }
     return {
       ok: true,
       message: "Menu item image uploaded.",
@@ -3832,34 +3832,20 @@ async function cleanupUploadedFiles(
   supabase: SupabaseClient,
   uploadedPaths: UploadedStoragePath[],
 ) {
-  await Promise.all(
-    uploadedPaths.map(({ bucket, path }) =>
-      supabase.storage.from(bucket).remove([path]),
-    ),
-  )
+  // A failed action is not proof that its database write did not commit. Some
+  // actions insert several rows before reporting a later failure, and a lost
+  // response can leave a successful write looking like an error. Keep public
+  // uploads until an explicit, globally reference-safe retention flow exists.
+  void supabase
+  void uploadedPaths
 }
 
 async function cleanupPublicMediaUrls(supabase: SupabaseClient, urls: string[]) {
-  for (const url of urls) {
-    const storagePath = parsePublicStorageUrl(url)
-
-    if (!storagePath) {
-      continue
-    }
-
-    if (storagePath.bucket === MENU_VIDEO_BUCKET) {
-      const [partnerId, menuId] = storagePath.path.split("/")
-      const config = getSupabaseConfig()
-      if (config.isConfigured && partnerId && menuId) {
-        await removeUnusedMenuVideos(supabase, [url], config.url, partnerId, menuId)
-      }
-      continue
-    }
-
-    // Persisted images remain reusable and may be referenced by immutable
-    // published/history versions or another partner. An editor's RLS view cannot
-    // prove global exclusivity. Only uncommitted uploads use cleanupUploadedFiles.
-  }
+  // Removing a URL from one editable row does not remove references in drafts,
+  // published versions, history, or another partner. This action's RLS view
+  // cannot prove global exclusivity for either images or menu videos.
+  void supabase
+  void urls
 }
 
 async function loadPartnerMediaLibrary(supabase: SupabaseClient, partnerId: string) {

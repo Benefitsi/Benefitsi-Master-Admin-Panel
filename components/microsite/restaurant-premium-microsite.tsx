@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- Microsite assets are admin-selected storage URLs and may use partner-specific hosts. */
 "use client"
+import { MicrositeOpeningStatus, MicrositeOpeningHours } from "./microsite-opening-hours"
 import {MicrositeRichMedia} from "./microsite-rich-media"
 import {approvedRichMedia,mediaNavigation} from "@/lib/microsite-rich-media"
 
@@ -13,7 +14,6 @@ import {
   BellRing,
   Check,
   Circle,
-  ChevronLeft,
   ChevronDown,
   Clock3,
   CreditCard,
@@ -24,7 +24,6 @@ import {
   House,
   Leaf,
   LockKeyhole,
-  Mail,
   MapPin,
   MapPinned,
   Menu as MenuIcon,
@@ -85,7 +84,6 @@ import {
   partitionMicrositePublicDeals,
 } from "@/lib/microsite-deals"
 import type { MicrositeConfig, MicrositeElementStyle } from "@/lib/microsites"
-import { isRetiredStreakDeal } from "@/lib/streak-retirement"
 import { defaultMicrositeFaqItems } from "@/lib/microsite-seo"
 import {
   partnerSocialLabel,
@@ -139,7 +137,6 @@ const BENEFITSI_ICON_SRC = "/Benefitsi_Icon_FullColor_RGB_512.png"
 const BENEFITSI_APP_QR_SRC =
   process.env.NEXT_PUBLIC_BENEFITSI_APP_QR_URL ||
   "/benefitsi-app-qr-placeholder.png"
-const PARTNER_DETAIL_SCREEN_SRC = "/partner-details-page.jpg"
 const SOCIAL_FEED_POST_INDICES = [0, 1, 2, 3, 4, 5] as const
 
 function micrositeThemeVars(config: MicrositeConfig): CSSProperties {
@@ -209,8 +206,7 @@ function restaurantSectionClass(
   section: "deals" | "menu" | "about",
 ) {
   void template
-  void section
-  return "bg-[var(--site-bg)]"
+  return section === "menu" ? "bg-[#f3f8ff] border-y border-slate-200/60" : "bg-white"
 }
 
 function siteCopy(config: MicrositeConfig, german: string, english: string) {
@@ -1505,14 +1501,7 @@ function HeroSection({
               text={config.hero.locationText}
               config={config}
             />
-            <MetaLine
-              id="hero.openingText"
-              iconId="hero.openingIcon"
-              iconName="status"
-              text={config.hero.openingText}
-              accent
-              config={config}
-            />
+            <MicrositeOpeningStatus partner={partner} language={config.language} />
           </div>
 
           <div className="mt-6 flex flex-col flex-wrap gap-2.5 @min-[520px]:flex-row @min-[1024px]:gap-3">
@@ -1741,9 +1730,9 @@ function DealsSection({
   if (!featuredDeal && !hasLoyaltyContent && !published) return null
 
   return (
-    <section id="deals" className={`${restaurantSectionClass(template, "deals")} scroll-mt-24 px-5 pb-10 @min-[640px]:px-8 @min-[1024px]:px-10`}>
+    <section id="deals" className={`${restaurantSectionClass(template, "deals")} scroll-mt-24 px-5 py-12 @min-[640px]:px-8 @min-[1024px]:px-10`}>
       <div className="mx-auto flex max-w-6xl flex-col gap-8 @min-[900px]:gap-10">
-        <div className="premium-reveal pb-2 pt-12 @min-[640px]:pt-16">
+        <div className="premium-reveal pb-2">
           <div className="max-w-3xl">
             <h2
               {...editable("deals.headline", "text", "Vorteils-Überschrift")}
@@ -2156,11 +2145,6 @@ function BenefitsEcosystemSection({
   config: MicrositeConfig
 }) {
   const appUrl = textValue(config, "content.appDownloadUrl", appDownloadUrlForPartner(partner))
-  const screenshotUrl = textValue(
-    config,
-    "content.appPhoneScreenshotUrl",
-    PARTNER_DETAIL_SCREEN_SRC,
-  )
   const ecosystemKicker = textValue(
     config,
     "content.ecosystemKicker",
@@ -2249,7 +2233,7 @@ function BenefitsEcosystemSection({
         </div>
 
         <div className="order-1 @min-[900px]:order-2">
-          <AppScreenShowcase partner={partner} config={config} screenshotUrl={screenshotUrl} />
+          <AppScreenShowcase partner={partner} config={config} />
         </div>
 
         <div className="order-3 grid min-w-0 grid-cols-3 gap-2 @min-[900px]:grid-cols-1">
@@ -2304,389 +2288,28 @@ function EcosystemFeatureCard({
   )
 }
 
-function AppScreenShowcase({
-  partner,
-  config,
-  screenshotUrl,
-}: {
-  partner: PartnerWithDeals
-  config: MicrositeConfig
-  screenshotUrl: string
-}) {
-  const published = useMicrositeIntegration().publishedBenefits
-  const partnerName = partner.short_name || partner.name || siteCopy(config, "Partner", "Partner")
-  const partnerCategory =
-    partner.category?.filter(Boolean).slice(0, 2).join(" · ") ||
-    partner.type ||
-    siteCopy(config, "Gastronomie", "Hospitality")
-  const partnerDescription =
-    partner.description ||
-    siteCopy(
-      config,
-      "Entdecke diesen Benefitsi Partner, seine aktuellen Vorteile und die Speisekarte.",
-      "Discover this Benefitsi partner, current benefits, and the menu.",
-    )
-  const activeDeals = partner.deals.filter((deal) => deal.active !== false && !isRetiredStreakDeal(deal))
-  const activeDeal = activeDeals[0]
-  const dealName = activeDeal
-    ? micrositeDealTitle(activeDeal, config.language)
-    : config.deals.topDealHeadline ||
-      siteCopy(config, "Aktueller Vorteil", "Current benefit")
-  const dealDescription = activeDeal
-    ? micrositeDealDescription(activeDeal, config.language)
-    : config.deals.topDealDescription ||
-      siteCopy(
-        config,
-        "Details zum aktuellen Vorteil findest du in der Benefitsi-App.",
-        "Find the current benefit details in the Benefitsi app.",
-      )
-  const savingsLabel = published ? siteCopy(config, "Vorteilsvorschau", "Benefit preview") : activeDeal?.estimated_savings
-    ? siteCopy(config, "ca. " + formatPrice(activeDeal.estimated_savings, "EUR") + " sparen", "save about " + formatPrice(activeDeal.estimated_savings, "EUR"))
-    : siteCopy(config, "Direkt sparen", "Save instantly")
-  const stampTarget = published ? published.loyalty?.targetCount || 0 : Math.max(
-    10,
-    partner.stamp_target || 0,
-    ...partner.reward_milestones.map((milestone) => milestone.required_stamps || 0),
-  )
-  const previewStamps = published ? 0 : Math.min(4, Math.max(1, stampTarget - 1))
-  const customPreview = screenshotUrl && screenshotUrl !== PARTNER_DETAIL_SCREEN_SRC ? screenshotUrl : null
-  const heroImages = Array.from(
-    new Set(
-      [
-        customPreview,
-        ...(partner.cover_urls || []),
-        partner.discover_card_image_url,
-        partner.feature_card_url,
-        ...(!published ? [screenshotUrl, PARTNER_DETAIL_SCREEN_SRC] : []),
-      ].filter((value): value is string => Boolean(value)),
-    ),
-  ).slice(0, 5)
-  const menuItems = partner.menus
-    .flatMap((menu) => [...menu.items, ...menu.categories.flatMap((category) => category.items)])
-    .filter((item) => Boolean(item.name))
-    .slice(0, 4)
-  const openingHours = partner.opening_hours
-    .filter((row) => row.is_closed !== true && row.opens_at && row.closes_at)
-    .sort((first, second) => (first.weekday || 0) - (second.weekday || 0))
-    .slice(0, 4)
-  const weekdayLabels = config.language === "de"
-    ? ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"]
-    : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-  const fallbackMenuItems = published ? [] : [
-    [siteCopy(config, "Lieblingsgericht", "Signature dish"), "12,90 €"],
-    [siteCopy(config, "Hausgemachtes Getränk", "House drink"), "4,50 €"],
-    [siteCopy(config, "Dessert des Hauses", "House dessert"), "6,90 €"],
-  ] as const
-
-  const [activeCover, setActiveCover] = useState(0)
-  const [favorite, setFavorite] = useState(false)
-  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [dealSelected, setDealSelected] = useState(false)
-  const [openingExpanded, setOpeningExpanded] = useState(false)
-  const [toastMessage, setToastMessage] = useState("")
-  const phoneScrollRef = useRef<HTMLDivElement | null>(null)
-
+function AppScreenShowcase({ partner, config }: { partner: PartnerWithDeals; config: MicrositeConfig }) {
+  const integration = useMicrositeIntegration()
+  const viewport = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(212 / 390)
   useEffect(() => {
-    if (heroImages.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
-    const carouselTimer = window.setInterval(
-      () => setActiveCover((current) => (current + 1) % heroImages.length),
-      8400,
-    )
-    return () => window.clearInterval(carouselTimer)
-  }, [heroImages.length])
-
-  useEffect(() => {
-    if (!toastMessage) return
-    const toastTimer = window.setTimeout(() => setToastMessage(""), 1800)
-    return () => window.clearTimeout(toastTimer)
-  }, [toastMessage])
-
-  const showPhoneToast = (german: string, english: string) => {
-    setToastMessage(siteCopy(config, german, english))
-  }
-
+    const node = viewport.current
+    if (!node) return
+    const observer = new ResizeObserver(([entry]) => setScale(entry.contentRect.width / 390))
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+  const baseUrl = integration.appPartnerBaseUrl || "https://benefitsi.de/app-partner/index.html"
+  const src = `${baseUrl}?partnerId=${encodeURIComponent(partner.id || "")}`
   return (
     <div className="relative mx-auto flex min-h-[520px] max-w-[330px] flex-col items-center justify-center px-4 py-3 @min-[900px]:min-h-[545px] @min-[900px]:px-2">
-      {published ? <p className="relative z-[1] mb-3 text-xs font-semibold text-[var(--site-muted)]">{siteCopy(config, "App-Vorschau · Beispielansicht", "App preview · sample view")}</p> : null}
       <div className="pointer-events-none absolute left-1/2 top-1/2 h-[78%] w-[82%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color-mix(in_srgb,var(--site-accent)_16%,transparent)] blur-3xl" />
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[72%] w-[68%] -translate-x-1/2 -translate-y-1/2 rounded-[48%] border border-[color-mix(in_srgb,var(--site-accent)_16%,transparent)]" />
-
       <div className="premium-app-screen relative z-[1] w-[224px] rounded-[2.45rem] bg-[#070708] p-[6px] shadow-[0_34px_70px_-28px_rgba(20,18,16,.68),inset_0_0_0_1px_rgba(255,255,255,.15)] @min-[560px]:w-[232px] @min-[900px]:w-[240px]">
         <span className="absolute -left-[3px] top-24 h-12 w-[3px] rounded-l-full bg-[#202024]" aria-hidden="true" />
         <span className="absolute -left-[3px] top-40 h-9 w-[3px] rounded-l-full bg-[#202024]" aria-hidden="true" />
         <span className="absolute -right-[3px] top-32 h-16 w-[3px] rounded-r-full bg-[#202024]" aria-hidden="true" />
-
-        <div className="relative aspect-[738/1600] overflow-hidden rounded-[2.08rem] bg-[#f6f7f9] text-[#172033] ring-1 ring-white/10">
-          <span className="pointer-events-none absolute left-1/2 top-1.5 z-[30] h-[14px] w-[31%] -translate-x-1/2 rounded-full bg-[#070708]" aria-hidden="true" />
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-[29] flex h-6 items-center justify-between px-3 pt-1 text-[7px] font-black text-white [text-shadow:0_1px_4px_rgba(0,0,0,.55)]">
-            <span>09:41</span>
-            <span className="tracking-[.08em]">● ◒ ▰</span>
-          </div>
-
-          <div ref={phoneScrollRef} className="premium-phone-scroll absolute inset-0 min-w-0 overflow-x-hidden overflow-y-auto bg-[#f6f7f9] pb-7">
-            <div className="relative h-[176px] overflow-hidden bg-[#d8dee7]">
-              <BrandedImage
-                src={heroImages[activeCover] || (published ? undefined : PARTNER_DETAIL_SCREEN_SRC)}
-                alt={siteCopy(config, "Titelbild von " + partnerName, "Cover image for " + partnerName)}
-                editableId="content.appPhoneScreenshotUrl"
-                editableLabel="Partner-Titelbild im Telefon"
-                className="absolute inset-0 h-full w-full object-cover"
-                style={imageStyleFor(config, "content.appPhoneScreenshotUrl")}
-              />
-              <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,12,22,.28),transparent_42%,rgba(5,12,22,.35))]" />
-              <button
-                type="button"
-                onClick={() => phoneScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
-                className="absolute left-2 top-7 z-[2] grid size-6 cursor-pointer place-items-center rounded-full bg-[#777]/80 text-white shadow-sm transition hover:bg-[#666]/90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                aria-label={siteCopy(config, "Zurück nach oben", "Back to top")}
-              >
-                <ChevronLeft className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
-              </button>
-              <span className="absolute right-2 top-7 z-[2] rounded-full bg-[#0a9fe1] px-2 py-1 text-[5.5px] font-black uppercase tracking-[.06em] text-white shadow-sm">
-                {published ? siteCopy(config, "Vorschau", "Preview") : siteCopy(config, "Offen", "Open")}
-              </span>
-              {heroImages.length > 1 ? (
-                <div className="absolute inset-x-0 bottom-2 z-[2] flex justify-center gap-1" aria-label={siteCopy(config, "Titelbilder", "Cover images")}>
-                  {heroImages.map((image, index) => (
-                    <button
-                      key={image}
-                      type="button"
-                      onClick={() => setActiveCover(index)}
-                      aria-label={siteCopy(config, "Bild " + (index + 1), "Image " + (index + 1))}
-                      aria-pressed={activeCover === index}
-                      className={"h-1.5 cursor-pointer rounded-full shadow-sm transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white " + (activeCover === index ? "w-3.5 bg-white" : "w-1.5 bg-white/55")}
-                    />
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="px-2.5 pb-4 pt-2.5">
-              <div className="flex items-start gap-1.5">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-[13px] font-black leading-[1.08] tracking-[-.035em] text-[#182136]">{partnerName}</h3>
-                  <p className="mt-1 text-[7px] font-medium text-[#7a8492]">{partnerCategory}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFavorite((current) => !current)}
-                  aria-label={favorite ? siteCopy(config, "Aus Favoriten entfernen", "Remove from favorites") : siteCopy(config, "Zu Favoriten hinzufügen", "Add to favorites")}
-                  aria-pressed={favorite}
-                  className={"grid size-6 shrink-0 cursor-pointer place-items-center rounded-full border bg-white shadow-[0_3px_8px_rgba(20,29,43,.1)] transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1] " + (favorite ? "border-[#ffccd5] bg-[#ee6686] text-white" : "border-[#e5e8ed] text-[#687486]")}
-                >
-                  <Heart className={"size-3 " + (favorite ? "fill-current" : "")} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => showPhoneToast("Teilen geöffnet", "Share opened")}
-                  aria-label={siteCopy(config, "Partner teilen", "Share partner")}
-                  className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-full border border-[#e5e8ed] bg-white text-[#687486] shadow-[0_3px_8px_rgba(20,29,43,.1)] transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]"
-                >
-                  <Share2 className="size-3" aria-hidden="true" />
-                </button>
-              </div>
-
-              <div className="mt-2 flex items-center gap-1.5">
-                <span className="inline-flex h-6 items-center gap-1 rounded-full bg-[#eaf8fb] px-1.5 text-[6px] font-black text-[#078d98]">
-                  <Award className="size-2.5" aria-hidden="true" />
-                  {siteCopy(config, "Neu hier", "New here")}
-                </span>
-                {!published || menuItems.length ? <button
-                  type="button"
-                  onClick={() => setMenuOpen(true)}
-                  className="premium-phone-compact-label inline-flex h-6 cursor-pointer items-center gap-1 rounded-full border border-[#9adbe5] bg-white px-2 text-[#182136] transition hover:bg-[#f5fbfc] active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]"
-                >
-                  <Utensils className="size-2.5" aria-hidden="true" />
-                  {siteCopy(config, "Speisekarte", "Menu")}
-                </button> : null}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setDescriptionExpanded((current) => !current)}
-                aria-expanded={descriptionExpanded}
-                className="mt-3 flex w-full cursor-pointer items-center justify-between text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]"
-              >
-                <span className="text-[8px] font-black text-[#202a3c]">{siteCopy(config, "Beschreibung", "Description")}</span>
-                <ChevronDown className={"size-3 text-[#718096] transition-transform " + (descriptionExpanded ? "rotate-180" : "")} aria-hidden="true" />
-              </button>
-              <p className={"mt-1 text-[6.5px] leading-[1.55] text-[#707b8a] " + (descriptionExpanded ? "" : "line-clamp-2")}>
-                {partnerDescription}
-              </p>
-
-              {!published || activeDeal ? <><div className="mt-3.5 flex items-center gap-1.5">
-                <h4 className="text-[10.5px] font-black tracking-[-.025em] text-[#152033]">{siteCopy(config, "Deine Vorteile", "Your benefits")}</h4>
-                <Circle className="size-3 text-[#657184]" strokeWidth={2} aria-hidden="true" />
-              </div>
-
-              <div className="mt-2 rounded-[1rem] border border-[#e1e5eb] bg-white p-2.5 shadow-[0_5px_14px_rgba(23,32,51,.08)]">
-                <div className="flex items-start gap-2">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#dff2ff] text-[#0a9fe1]">
-                    <Utensils className="size-4" strokeWidth={2.2} aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[9.5px] font-black leading-tight text-[#202a3c]">{dealName}</span>
-                    <span className="mt-1 inline-flex rounded-full bg-[#eef8ff] px-1.5 py-1 text-[5.5px] font-black text-[#078dcc]">{savingsLabel}</span>
-                  </span>
-                </div>
-                <p className="mt-2 line-clamp-2 text-[6.5px] leading-[1.45] text-[#687486]">{dealDescription}</p>
-                <div className="mt-1.5 flex items-center justify-between text-[5.5px] font-semibold text-[#7a8492]">
-                  <span>{published ? siteCopy(config, "Details und Bedingungen beachten", "See details and conditions") : siteCopy(config, "Bei jedem Besuch", "On every visit")}</span>
-                  <button type="button" onClick={() => showPhoneToast("Vorteilsdetails geöffnet", "Benefit details opened")} className="cursor-pointer text-[5px] font-black text-[#078dcc] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
-                    {siteCopy(config, "Details", "Details")}
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDealSelected((current) => !current)}
-                  aria-pressed={dealSelected}
-                  className={"premium-phone-compact-label mt-2 flex h-6 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full px-3 transition active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1] " + (dealSelected ? "bg-[#e7faf5] text-[#087c68] ring-1 ring-[#9ee3d2]" : "bg-[linear-gradient(90deg,#13c5d1,#0a9fe1)] text-white")}
-                >
-                  {dealSelected ? <Check className="size-2.5" strokeWidth={2.8} aria-hidden="true" /> : null}
-                  {dealSelected ? siteCopy(config, "Ausgewählt", "Selected") : siteCopy(config, "Vorteil auswählen", "Select benefit")}
-                </button>
-              </div>
-
-              {activeDeals.length > 1 ? (
-                <button type="button" onClick={() => showPhoneToast("Alle Vorteile angezeigt", "All benefits shown")} className="premium-phone-compact-label mt-1.5 w-full cursor-pointer py-1 text-center text-[#078dcc] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
-                  {siteCopy(config, "Alle Vorteile anzeigen", "Show all benefits")}
-                </button>
-              ) : null}
-              </> : null}
-
-              {!published || published.loyalty ? <><h4 className="mt-4 text-[10.5px] font-black tracking-[-.025em] text-[#152033]">{siteCopy(config, "Stempelkarte", "Stamp card")}</h4>
-              <div className="mt-2 rounded-[1rem] border border-[#e1e5eb] bg-white p-2.5 shadow-[0_5px_14px_rgba(23,32,51,.07)]">
-                <div className="flex items-end justify-between">
-                  <span>
-                    <span className="block text-[8px] font-black text-[#202a3c]">{stampTarget > 0 ? `${previewStamps}/${stampTarget} ${siteCopy(config, "Stempel", "stamps")}` : siteCopy(config, "Belohnungen entdecken", "Discover rewards")}</span>
-                    <span className="mt-0.5 block text-[5.5px] text-[#7b8696]">{siteCopy(config, "Weiter sammeln und Belohnung sichern", "Keep collecting toward your reward")}</span>
-                  </span>
-                  <BadgeCheck className="size-4 text-[#13aa92]" aria-hidden="true" />
-                </div>
-                <div className="mt-2 grid grid-cols-10 gap-1">
-                  {Array.from({ length: Math.min(stampTarget, 10) }, (_, index) => (
-                    <span key={index} className={"grid aspect-square place-items-center rounded-full border text-[5px] font-black tabular-nums " + (index < previewStamps ? "border-[#14aa91] bg-white text-[#087c68]" : "border-[#dce2e9] bg-white text-[#8792a1]")}>{index + 1}</span>
-                  ))}
-                </div>
-                <button type="button" onClick={() => showPhoneToast("Scanner geöffnet", "Scanner opened")} className="premium-phone-compact-label mt-2 flex h-[26px] w-full cursor-pointer items-center justify-center gap-1 rounded-full bg-[#0a9fe1] text-white transition active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]">
-                  <QrCode className="size-2.5" aria-hidden="true" />
-                  {siteCopy(config, "Stempel sammeln", "Collect stamps")}
-                </button>
-              </div>
-              </> : null}
-
-              <h4 className="mt-4 text-[10.5px] font-black tracking-[-.025em] text-[#152033]">{siteCopy(config, "Deine Badges", "Your badges")}</h4>
-              <div className="mt-2 grid grid-cols-3 gap-1.5">
-                {[
-                  [Award, siteCopy(config, "Entdecker", "Explorer")],
-                  [Flame, siteCopy(config, "Stammgast", "Regular")],
-                  [Heart, siteCopy(config, "Favorit", "Favorite")],
-                ].map(([Icon, label]) => {
-                  const BadgeIcon = Icon as LucideIcon
-                  return (
-                    <button key={String(label)} type="button" onClick={() => showPhoneToast(String(label), String(label))} className="flex min-h-13 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-[#e4e8ee] bg-white px-1 text-center shadow-[0_4px_12px_rgba(23,32,51,.06)] transition active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]">
-                      <BadgeIcon className="size-3.5 text-[#0a9fe1]" aria-hidden="true" />
-                      <span className="text-[5px] font-black text-[#4f5c6d]">{String(label)}</span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              <h4 className="mt-4 text-[10.5px] font-black tracking-[-.025em] text-[#152033]">{siteCopy(config, "Kontakt & Öffnungszeiten", "Contact & opening hours")}</h4>
-              <div className="mt-2 overflow-hidden rounded-[1rem] border border-[#e1e5eb] bg-white shadow-[0_5px_14px_rgba(23,32,51,.08)]">
-                <button type="button" onClick={() => showPhoneToast("Karte geöffnet", "Map opened")} className="relative block h-24 w-full cursor-pointer overflow-hidden bg-[#e9f0f2] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#13c5d1]">
-                  <span className="absolute inset-0 opacity-55 [background-image:linear-gradient(28deg,transparent_46%,rgba(255,255,255,.9)_47%,rgba(255,255,255,.9)_52%,transparent_53%),linear-gradient(112deg,transparent_43%,rgba(255,255,255,.8)_44%,rgba(255,255,255,.8)_48%,transparent_49%)] [background-size:62px_42px,74px_58px]" />
-                  <span className="absolute left-[54%] top-[43%] grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#0a9fe1] text-white shadow-[0_5px_12px_rgba(10,159,225,.35)]">
-                    <MapPin className="size-3.5" aria-hidden="true" />
-                  </span>
-                  <span className="absolute inset-x-2 bottom-2 truncate rounded-md bg-white/90 px-2 py-1 text-[5px] font-black text-[#435064] shadow-sm backdrop-blur-sm">{partner.address || partner.city_name || siteCopy(config, "Standort", "Location")}</span>
-                </button>
-                <div className="space-y-2 p-2.5">
-                  {partner.address ? (
-                    <button type="button" onClick={() => showPhoneToast("Karten geöffnet", "Maps opened")} className="flex w-full cursor-pointer items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
-                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#eef8ff] text-[#0a9fe1]"><MapPin className="size-3.5" aria-hidden="true" /></span>
-                      <span className="min-w-0 flex-1"><span className="block truncate text-[5.75px] font-black text-[#354154]">{partner.address}</span><span className="block text-[4.5px] font-black uppercase tracking-[.05em] text-[#0a9fe1]">{siteCopy(config, "In Karten öffnen", "Open in maps")}</span></span>
-                    </button>
-                  ) : null}
-                  {partner.phone ? (
-                    <button type="button" onClick={() => showPhoneToast("Anruf vorbereitet", "Call prepared")} className="flex w-full cursor-pointer items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
-                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#eef8ff] text-[#0a9fe1]"><Phone className="size-3.5" aria-hidden="true" /></span>
-                      <span className="min-w-0 flex-1"><span className="block truncate text-[5.75px] font-black text-[#354154]">{partner.phone}</span><span className="block text-[4.5px] font-black uppercase tracking-[.05em] text-[#0a9fe1]">{siteCopy(config, "Jetzt anrufen", "Call now")}</span></span>
-                    </button>
-                  ) : null}
-                  {partner.email ? (
-                    <button type="button" onClick={() => showPhoneToast("E-Mail vorbereitet", "Email prepared")} className="flex w-full cursor-pointer items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
-                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#eef8ff] text-[#0a9fe1]"><Mail className="size-3.5" aria-hidden="true" /></span>
-                      <span className="min-w-0 flex-1"><span className="block truncate text-[5.75px] font-black text-[#354154]">{partner.email}</span><span className="block text-[4.5px] font-black uppercase tracking-[.05em] text-[#0a9fe1]">{siteCopy(config, "E-Mail senden", "Send email")}</span></span>
-                    </button>
-                  ) : null}
-                  {partner.website ? (
-                    <button type="button" onClick={() => showPhoneToast("Website geöffnet", "Website opened")} className="flex w-full cursor-pointer items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
-                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#eef8ff] text-[#0a9fe1]"><Globe2 className="size-3.5" aria-hidden="true" /></span>
-                      <span className="min-w-0 flex-1"><span className="block truncate text-[5.75px] font-black text-[#354154]">{partner.website.replace(/^https?:\/\//, "")}</span><span className="block text-[4.5px] font-black uppercase tracking-[.05em] text-[#0a9fe1]">{siteCopy(config, "Website öffnen", "Open website")}</span></span>
-                    </button>
-                  ) : null}
-                  <button type="button" onClick={() => setOpeningExpanded((current) => !current)} aria-expanded={openingExpanded} className="flex w-full cursor-pointer items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#13c5d1]">
-                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#eef8ff] text-[#0a9fe1]"><Clock3 className="size-3.5" aria-hidden="true" /></span>
-                    <span className="min-w-0 flex-1"><span className="block text-[5.75px] font-black text-[#354154]">{siteCopy(config, "Öffnungszeiten", "Opening hours")}</span><span className="block truncate text-[4.5px] font-semibold text-[#7b8696]">{config.hero.openingText}</span></span>
-                    <ChevronDown className={"size-3 text-[#788394] transition-transform " + (openingExpanded ? "rotate-180" : "")} aria-hidden="true" />
-                  </button>
-                  {openingExpanded ? (
-                    <div className="rounded-lg bg-[#f6f8fa] px-2 py-1.5">
-                      {(openingHours.length ? openingHours : [null]).map((row, index) => (
-                        <div key={row?.id || index} className="flex items-center justify-between py-1 text-[5.5px] text-[#647084]">
-                          <span className="font-black">{row ? weekdayLabels[row.weekday || 0] : siteCopy(config, "Heute", "Today")}</span>
-                          <span>{row ? (row.label || row.opens_at + " – " + row.closes_at) : config.hero.openingText}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {menuOpen ? (
-            <div className="absolute inset-0 z-[40] flex items-end bg-[#101826]/45 backdrop-blur-[1px]" role="dialog" aria-modal="true" aria-label={siteCopy(config, "Speisekarte", "Menu")}>
-              <button type="button" onClick={() => setMenuOpen(false)} className="absolute inset-0 cursor-default" aria-label={siteCopy(config, "Speisekarte schließen", "Close menu")} />
-              <div className="premium-phone-view relative z-[1] w-full rounded-t-[1.5rem] bg-[#f8fafc] px-3 pb-5 pt-2.5 shadow-[0_-16px_36px_rgba(20,29,43,.2)]">
-                <span className="mx-auto block h-1 w-9 rounded-full bg-[#cbd3de]" aria-hidden="true" />
-                <div className="mt-2 flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] font-black tracking-[-.03em]">{siteCopy(config, "Speisekarte", "Menu")}</p>
-                    <p className="mt-0.5 text-[6px] text-[#7b8797]">{partnerName}</p>
-                  </div>
-                  <button type="button" onClick={() => setMenuOpen(false)} className="grid size-6 cursor-pointer place-items-center rounded-full bg-white text-[#4f5d70] shadow-sm transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13c5d1]" aria-label={siteCopy(config, "Schließen", "Close")}>
-                    <X className="size-3" aria-hidden="true" />
-                  </button>
-                </div>
-                <div className="mt-2.5 space-y-1.5">
-                  {(menuItems.length
-                    ? menuItems.map((item) => [item.name || "", formatPrice(item.price ?? "", item.currency)] as const)
-                    : fallbackMenuItems
-                  ).map(([name, price], index) => (
-                    <div key={name + index} className="flex min-h-10 items-center gap-2 rounded-xl border border-[#e8edf2] bg-white p-2 shadow-sm">
-                      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#fff5e8] text-[#f08d1c]"><Utensils className="size-3" aria-hidden="true" /></span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[7px] font-black text-[#202a3c]">{name}</span>
-                        <span className="mt-0.5 block text-[5.5px] text-[#8993a1]">{siteCopy(config, "Direkt beim Partner erhältlich", "Available at the partner")}</span>
-                      </span>
-                      <span className="shrink-0 text-[6.5px] font-black text-[#f07818]">{price}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {toastMessage ? (
-            <div aria-live="polite" className="premium-phone-view absolute left-1/2 top-9 z-[50] flex -translate-x-1/2 items-center gap-1 rounded-full bg-[#172033]/92 px-2.5 py-1.5 text-[6.5px] font-black text-white shadow-lg backdrop-blur-md">
-              <Check className="size-2.5 text-[#69e5c5]" strokeWidth={2.8} aria-hidden="true" />
-              {toastMessage}
-            </div>
-          ) : null}
-          <div className="pointer-events-none absolute inset-0 z-[60] bg-[linear-gradient(112deg,rgba(255,255,255,.1),transparent_20%,transparent_78%,rgba(255,255,255,.04))]" />
+        <div ref={viewport} className="relative aspect-[738/1600] overflow-hidden rounded-[2.08rem] bg-[#f6f7f9] ring-1 ring-white/10">
+          <iframe src={src} title={siteCopy(config, `Benefitsi App – ${partner.name || "Partner"}`, `Benefitsi app – ${partner.name || "Partner"}`)} loading="lazy" className="absolute left-0 top-0 origin-top-left border-0" style={{ width: 390, height: 390 * 1600 / 738, transform: `scale(${scale})` }} referrerPolicy="strict-origin-when-cross-origin" />
         </div>
       </div>
     </div>
@@ -3039,7 +2662,7 @@ function AboutContactSection({
   )
 
   return (
-    <section className={`${restaurantSectionClass(template, "about")} px-5 pb-14 pt-8 @min-[640px]:px-8 @min-[640px]:pb-16 @min-[1024px]:px-10`}>
+    <section className={`${restaurantSectionClass(template, "about")} px-5 py-12 @min-[640px]:px-8 @min-[1024px]:px-10`}>
       <div
         id="ueber-uns"
         className="premium-reveal relative mx-auto max-w-6xl scroll-mt-24 overflow-hidden rounded-[1.85rem] border border-white/80 bg-white shadow-[0_30px_85px_rgba(15,23,42,.10)]"
@@ -3164,7 +2787,7 @@ function AboutContactSection({
             >
               <BrandedImage
                 src={aboutLocationImage}
-                alt={siteCopy(config, "Bild zum Standort", "Location image")}
+                alt={textValue(config, "content.aboutLocationImageAlt", siteCopy(config, "Bild zum Standort", "Location image"))}
                 editableId="content.aboutLocationImageUrl"
                 editableLabel="Über uns rechtes Kartenbild"
                 className="aspect-[4/5] w-full rounded-xl object-cover"
@@ -3197,14 +2820,6 @@ function CompactContactSection({
   const integration = useMicrositeIntegration()
   const address = contactAddressFor(partner, config)
   const phone = partner.phone || siteCopy(config, "Telefon im Admin ergänzen", "Add phone number in admin")
-  const opening = textValue(
-    config,
-    "content.contactOpening",
-    config.hero.openingText.replace(
-      config.language === "en" ? "Open today ·" : "Heute geöffnet ·",
-      config.language === "en" ? "Daily" : "Täglich",
-    ),
-  )
   const mapsQuery = mapsQueryForPartner(partner, address)
   const mapsEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(mapsQuery)}&output=embed`
   const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapsQuery)}`
@@ -3250,7 +2865,7 @@ function CompactContactSection({
           <div className="mt-4 space-y-3 text-sm text-zinc-200">
             <ContactInfoLine id="content.contact.address" icon="pin" label={siteCopy(config, "Adresse", "Address")} value={address} config={config} />
             <ContactInfoLine id="content.contact.phone" icon="phone" label={siteCopy(config, "Telefon", "Phone")} value={phone} config={config} />
-            <ContactInfoLine id="content.contact.opening" icon="clock" label={siteCopy(config, "Öffnungszeiten", "Opening hours")} value={opening} config={config} />
+            <MicrositeOpeningHours partner={partner} language={config.language} />
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2 @min-[760px]:hidden">

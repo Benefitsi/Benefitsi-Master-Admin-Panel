@@ -82,3 +82,49 @@ test('a failed rights request retains profiles and reports unavailable rights wi
   assert.notEqual(dashboard.partners[42].media_rich_enabled, true)
   assert.equal(dashboard.errors.length, 1)
 })
+
+// Exercise the actual preview loader and the same status helper as the client.
+import { micrositeOpeningStatus } from '../lib/microsite-opening-hours.ts'
+function previewDatabase({ failedTable = '', proof = {} } = {}) {
+  const rows = { partners: [{id:'preview-partner', name:'Preview'}], partner_opening_hours: [{partner_id:'preview-partner', weekday:5, opens_at:'09:00', closes_at:'18:00', is_closed:false, ...proof}] }
+  return { from(table) {
+    const q = { select(){return q}, order(){return q}, limit(){return q}, eq(){return q}, then(resolve,reject){return Promise.resolve({data:table===failedTable?null:rows[table]||[], error:table===failedTable?{message:'schedule read failed'}:null}).then(resolve,reject)} }
+    return q
+  } }
+}
+for (const failedTable of ['partner_holidays', 'partner_opening_hours']) test(`preview keeps ${failedTable} failure through to unknown status`, async () => {
+  const dashboard = await getDashboardData(previewDatabase({failedTable}), {includeActivity:false})
+  const partner = dashboard.partners[0]
+  assert.ok(dashboard.errors.includes('schedule read failed'))
+  const result = micrositeOpeningStatus(partner.opening_hours, partner.opening_status_unavailable ? null : partner.holidays, new Date('2026-10-16T08:00:00Z'))
+  assert.equal(result.state, 'unknown')
+  assert.equal(partner.opening_status_unavailable, true)
+})
+test('preview keeps managed raw hours editable while live status rejects stale proof', async () => {
+  const proof = {source_id:'managed-source',verification_status:'VERIFIED',last_verified_at:'2026-01-01T00:00:00Z',freshness_ttl_days:30}
+  const dashboard = await getDashboardData(previewDatabase({proof}), {includeActivity:false})
+  const partner = dashboard.partners[0]
+  assert.equal(partner.opening_hours[0].opens_at, '09:00')
+  assert.equal(partner.opening_hours[0].source_id, 'managed-source')
+  assert.equal(micrositeOpeningStatus(partner.opening_hours, partner.holidays, new Date('2026-10-16T08:00:00Z')).state, 'unknown')
+})
+
+import { publicPartnerOpeningHour } from '../lib/microsite-opening-hours.ts'
+test('preview and public freshness projection produce identical states for the same managed rows', async () => {
+  const now = new Date('2026-10-16T08:00:00Z')
+  const managed = {source_id:'managed-source',last_verified_at:'2026-10-15T08:00:00Z',verification_status:'VERIFIED',freshness_ttl_days:2}
+  for (const [proof, expected] of [
+    [{}, 'open'], [managed, 'open'], [{...managed, freshness_ttl_days:1}, 'unknown'],
+    [{...managed, verification_status:'NEEDS_REVIEW'}, 'unknown'],
+    [{...managed, last_verified_at:'2026-01-01T00:00:00Z'}, 'unknown'],
+    [{...managed, last_verified_at:null}, 'unknown'],
+  ]) {
+    const dashboard = await getDashboardData(previewDatabase({proof}), {includeActivity:false})
+    const partner = dashboard.partners[0]
+    const preview = micrositeOpeningStatus(partner.opening_hours, partner.holidays, now)
+    const publicProjection = partner.opening_hours.filter(row => publicPartnerOpeningHour(row, now))
+    assert.equal(preview.state, expected)
+    assert.deepEqual(preview, micrositeOpeningStatus(publicProjection, partner.holidays, now))
+    assert.equal(partner.opening_hours.length, 1, 'editing retains even rejected raw rows')
+  }
+})

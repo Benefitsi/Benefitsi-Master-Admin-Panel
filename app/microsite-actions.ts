@@ -16,6 +16,8 @@ import { createMicrositeReadinessReport } from "@/lib/microsite-readiness"
 import { canEditPartnerMicrosite, getPartnerPortalSession } from "@/lib/partner-portal"
 import { createClient } from "@/lib/supabase/server"
 import { createPublicMicrositeSnapshot, publicMicrositePublishBlockers } from "@/lib/public-microsite-contract"
+import { unavailablePublishedImages } from "@/lib/microsite-publish-media"
+import { getSupabaseConfig } from "@/lib/supabase/config"
 import { invalidatePublicPartner } from "@/lib/public-web-revalidation"
 
 export type MicrositeActionState = {
@@ -245,6 +247,15 @@ async function persistMicrositeVersion(
   const publicSnapshot = intent === "publish" ? createPublicMicrositeSnapshot(config) : null
   if (intent === "publish" && (!publicSnapshot || publicMicrositePublishBlockers(config).length)) {
     return { ok: false, config, message: "Veröffentlichung blockiert: Die hochgeladenen Medien benötigen sichere öffentliche URLs ohne Zugangsdaten." }
+  }
+  if (intent === "publish" && publicSnapshot) {
+    const storageConfig = getSupabaseConfig()
+    if (!storageConfig.isConfigured) return { ok: false, config, message: "Veröffentlichung blockiert: Medienspeicher nicht konfiguriert." }
+    const unavailableImages = await unavailablePublishedImages(supabase, publicSnapshot, storageConfig.url)
+    if (unavailableImages.length) return {
+      ok: false, config,
+      message: `Veröffentlichung blockiert: ${unavailableImages.join("; ")}. Bitte Bildquelle prüfen oder ein vorhandenes Bild auswählen.`,
+    }
   }
   const storedConfig = publicSnapshot ? { ...config, publicSnapshot } : config
   if (intent === "publish" && !fitsPublicMicrositeDatabaseLimit(storedConfig)) {
