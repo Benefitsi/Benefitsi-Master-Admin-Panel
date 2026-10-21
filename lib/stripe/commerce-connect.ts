@@ -1,12 +1,14 @@
 import "server-only"
 
 import { commercePartner } from "@/lib/commerce/partner"
-import { getStripeTestClient, isStripeConnectPlatformReady, requirePartnerBaseUrl } from "@/lib/stripe/config"
+import { requirePartnerBaseUrl } from "@/lib/stripe/config"
+import { assertBookingRealmBoundary, getBookingConnectClient, isBookingConnectConfigured } from "@/lib/stripe/booking-client"
 import { createTestMerchantAccount, createMerchantOnboardingLink, retrieveMerchantAccountStatus } from "@/lib/stripe/connect"
 
 async function requireMerchantOwner(providerId: string) {
+  assertBookingRealmBoundary()
   const context = await commercePartner(providerId)
-  if (!isStripeConnectPlatformReady()) throw new Error("Stripe Connect bleibt bis zur Verifizierung der Benefitsi UG gesperrt.")
+  if (!isBookingConnectConfigured()) throw new Error("Stripe Connect ist in dieser Umgebung nicht freigegeben.")
   if (!context.provider?.test_mode) throw new Error("Live-Anbieter sind nicht freigegeben.")
   return context
 }
@@ -14,7 +16,7 @@ async function requireMerchantOwner(providerId: string) {
 export async function beginCommerceOnboarding(providerId: string): Promise<string> {
   const { admin, provider, session } = await requireMerchantOwner(providerId)
   if (!provider) throw new Error("Anbieter fehlt.")
-  const stripe = getStripeTestClient()
+  const stripe = await getBookingConnectClient({ providerId, testMode: provider.test_mode, accountId: provider.stripe_account_id })
   let accountId = provider.stripe_account_id
   if (!accountId) {
     accountId = await createTestMerchantAccount(stripe, {
@@ -45,7 +47,8 @@ export async function beginCommerceOnboarding(providerId: string): Promise<strin
 export async function syncCommerceMerchant(providerId: string) {
   const { admin, provider } = await requireMerchantOwner(providerId)
   if (!provider?.stripe_account_id) throw new Error("Händlerkonto fehlt.")
-  const status = await retrieveMerchantAccountStatus(getStripeTestClient(), provider.stripe_account_id)
+  const stripe = await getBookingConnectClient({ providerId, testMode: provider.test_mode, accountId: provider.stripe_account_id })
+  const status = await retrieveMerchantAccountStatus(stripe, provider.stripe_account_id)
   const saved = await admin.from("booking_providers").update({
     stripe_charge_model: "direct_merchant", onboarding_status: status.onboardingStatus,
     charges_enabled: status.chargesEnabled, payouts_enabled: status.payoutsEnabled,

@@ -55,7 +55,7 @@ test("webhook verifies the raw signed payload and rejects live events", async ()
     new URL("../app/api/stripe/webhook/route.ts", import.meta.url),
     "utf8",
   )
-  assert.ok(source.indexOf("await request.text()") < source.indexOf("event = verifyBookingWebhook("))
+  assert.ok(source.indexOf("await request.text()") < source.indexOf("event = await verifyBookingPaymentWebhook("))
   assert.match(source, /request\.headers\.get\("stripe-signature"\)/)
   assert.match(source, /if \(event\.livemode\)/)
   assert.match(source, /\.rpc\("apply_stripe_booking_event"/)
@@ -90,19 +90,19 @@ test("Stripe client refuses any non-test secret and Connect onboarding rechecks 
     ),
     "utf8",
   )
-  assert.match(config, /!secret\.startsWith\("sk_test_"\)/)
+  assert.match(config, /!TEST_SECRET_PATTERN\.test\(secret\)/)
   assert.match(
     config,
     /BENEFITSI_STRIPE_CONNECT_PLATFORM_READY\?\.trim\(\)\.toLowerCase\(\) ===\s*"true"/,
   )
   assert.ok(connect.indexOf("await requireAdmin()") < connect.indexOf("createAdminClient()"))
   assert.ok(
-    connect.indexOf("isStripeConnectPlatformReady()") <
+    connect.indexOf("isBookingConnectConfigured()") <
       connect.indexOf("createAdminClient()"),
   )
   assert.match(
     connect,
-    /Stripe Connect bleibt bis zur Verifizierung der Benefitsi UG gesperrt/,
+    /Stripe Connect ist in dieser Umgebung nicht freigegeben/,
   )
   assert.match(connect, /createTestMerchantAccount/)
   assert.doesNotMatch(connect, /stripe\.accounts\.create/)
@@ -121,7 +121,7 @@ test("Stripe client refuses any non-test secret and Connect onboarding rechecks 
   )
   assert.match(connectStatus, /mode === "refresh"/)
   assert.ok(
-    connectStatus.indexOf("isStripeConnectPlatformReady()") <
+    connectStatus.indexOf("isBookingConnectConfigured()") <
       connectStatus.indexOf("createAdminClient()"),
   )
   assert.match(connectStatus, /connect_platform_not_ready/)

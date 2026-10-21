@@ -6,9 +6,11 @@ import ts from 'typescript'
 import { uuid } from '../lib/commerce/requests.ts'
 const partner='44444444-4444-4444-8444-444444444444'
 const provider='11111111-1111-4111-8111-111111111111'
-function load({authorized=true,globalEnabled=true,saveError=false}={}) {
+function load({authorized=true,globalEnabled=true,saveError=false,boundaryAllowed=true,providerAllowed=true}={}) {
  const writes=[],filters=[],paths=[]
  const imports={
+  '@/lib/stripe/booking-client':{assertBookingRealmBoundary:()=>{if(!boundaryAllowed)throw Error('sandbox_context_denied')}},
+  '@/lib/stripe/booking-provider-scope':{requireBookingProviderScope:async()=>{if(!providerAllowed)throw Error('sandbox_provider_denied')}},
   '@/lib/admin':{requireAdmin:async()=>{if(!authorized)throw Error('login_required')}},
   '@/lib/supabase/admin':{createAdminClient:()=>({from:table=>({update:values=>{
    writes.push({table,values});const q={eq:(key,value)=>{filters.push([key,value]);return q},select:()=>q,single:async()=>({data:{id:provider},error:saveError?{message:'private database failure'}:null})};return q
@@ -43,4 +45,10 @@ test('admin can enable and disable exactly the selected provider and partner',as
 })
 test('failed saves never announce successful activation or expose SQL details',async()=>{
  const d=load({saveError:true});await assert.rejects(d.action(form()),e=>e.path==='/commerce?error=save')
+})
+
+test('sandbox ordering cannot mutate a wrong database or unapproved provider',async()=>{
+ for(const options of [{boundaryAllowed:false},{providerAllowed:false}]){
+  const d=load(options);await assert.rejects(d.action(form()));assert.equal(d.writes.length,0)
+ }
 })

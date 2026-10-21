@@ -5,7 +5,7 @@ import { cancelOrRefundBooking } from "@/app/bookings/actions"
 import { PendingSubmitButton } from "@/components/pending-submit-button"
 import { requireAdmin } from "@/lib/admin"
 import { loadBookingDetail } from "@/lib/bookings/data"
-import { isStripeTestConfigured } from "@/lib/stripe/config"
+import { getBookingRealm, isBookingProviderAllowed, isBookingStripeConfigured } from "@/lib/stripe/booking-client"
 
 export const dynamic = "force-dynamic"
 
@@ -39,10 +39,14 @@ export default async function BookingDetailPage({
     adminSession.profile?.display_name ||
     adminSession.user.email ||
     "Admin"
-  const cancellable = ["hold", "payment_pending", "confirmed", "cancel_requested"].includes(
+  let realm: ReturnType<typeof getBookingRealm> | null = null
+  try { realm = getBookingRealm() } catch { /* Unknown realm stays blocked. */ }
+  const providerScoped = realm !== null && Boolean(provider && isBookingProviderAllowed(provider.id, provider.stripeAccountId, provider.testMode))
+  const cancellable = providerScoped && ["hold", "payment_pending", "confirmed", "cancel_requested"].includes(
     booking.state,
   )
   const refundNeedsStripe = ["confirmed", "cancel_requested"].includes(booking.state)
+  const refundReady = !refundNeedsStripe || (realm !== null && isBookingStripeConfigured())
 
   return (
     <AdminShell
@@ -92,10 +96,10 @@ export default async function BookingDetailPage({
                   <li key={entry.id}>
                     <p className="font-black">{entry.action}</p>
                     <p className="mt-1 text-xs text-[#617080]">
-                      {entry.actorProfile || entry.actorType} · {date(entry.createdAt)}
+                      <span translate="no" data-admin-i18n-ignore="true">{entry.actorProfile || entry.actorType}</span> · {date(entry.createdAt)}
                     </p>
                     {typeof entry.details.reason === "string" ? (
-                      <p className="mt-2 text-sm text-[#334454]">{entry.details.reason}</p>
+                      <p translate="no" data-admin-i18n-ignore="true" className="mt-2 text-sm text-[#334454]">{entry.details.reason}</p>
                     ) : null}
                   </li>
                 ))}
@@ -113,12 +117,12 @@ export default async function BookingDetailPage({
             <p className="mt-2 text-sm leading-6 text-white/65">
               Bezahlte Buchungen erzeugen ausschließlich einen Stripe-Test-Refund. Jede Aktion ist idempotent und auditiert.
             </p>
-            {refundNeedsStripe && !isStripeTestConfigured() ? (
+            {cancellable && !refundReady ? (
               <p className="mt-4 rounded-2xl bg-amber-300/15 p-3 text-sm text-amber-100">
-                Refund gesperrt: `STRIPE_SECRET_KEY` im Testmodus fehlt.
+                Refund für den gewählten Testbereich derzeit nicht freigegeben.
               </p>
             ) : null}
-            {cancellable ? (
+            {cancellable && refundReady ? (
               <form action={cancelOrRefundBooking} className="mt-5">
                 <input type="hidden" name="bookingId" value={booking.id} />
                 <label className="grid gap-1.5 text-xs font-bold text-white/70">
@@ -137,7 +141,7 @@ export default async function BookingDetailPage({
                 </PendingSubmitButton>
               </form>
             ) : (
-              <p className="mt-4 text-sm text-white/60">Für diesen Zustand ist keine Stornoaktion offen.</p>
+              <p className="mt-4 text-sm text-white/60">{!providerScoped ? "Aktion gesperrt: Die gespeicherte Anbieterzuordnung ist in diesem Buchungsbereich nicht freigegeben." : !refundReady ? "Die Refund-Verbindung muss vor dieser Aktion bestätigt werden." : "Für diesen Zustand ist keine Stornoaktion offen."}</p>
             )}
           </section>
         </aside>
@@ -150,7 +154,7 @@ function Datum({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-xs font-bold text-[#617080]">{label}</dt>
-      <dd className="mt-1 break-all text-sm font-semibold text-[#061829]">{value}</dd>
+      <dd translate="no" data-admin-i18n-ignore="true" className="mt-1 break-all text-sm font-semibold text-[#061829]">{value}</dd>
     </div>
   )
 }

@@ -2,10 +2,9 @@ import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/admin"
 import { createAdminClient } from "@/lib/supabase/admin"
 import {
-  getStripeTestClient,
-  isStripeConnectPlatformReady,
   requireBookingBaseUrl,
 } from "@/lib/stripe/config"
+import { assertBookingRealmBoundary, getBookingConnectClient, isBookingConnectConfigured } from "@/lib/stripe/booking-client"
 import {
   createMerchantOnboardingLink,
   retrieveMerchantAccountStatus,
@@ -26,7 +25,10 @@ export async function GET(request: Request) {
       new URL("/bookings?error=connect_callback_invalid", baseUrl),
     )
   }
-  if (!isStripeConnectPlatformReady()) {
+  try { assertBookingRealmBoundary() } catch {
+    return NextResponse.redirect(new URL("/bookings?error=connect_platform_not_ready", baseUrl))
+  }
+  if (!isBookingConnectConfigured()) {
     return NextResponse.redirect(
       new URL("/bookings?error=connect_platform_not_ready", baseUrl),
     )
@@ -51,7 +53,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const stripe = getStripeTestClient()
+    const stripe = await getBookingConnectClient({
+      providerId, testMode: provider.test_mode, accountId: provider.stripe_account_id,
+    })
     const status = await retrieveMerchantAccountStatus(
       stripe,
       provider.stripe_account_id,

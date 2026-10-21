@@ -6,9 +6,13 @@ import { requireAdmin } from '@/lib/admin'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { uuid } from '@/lib/commerce/requests'
 
+import { assertBookingRealmBoundary } from '@/lib/stripe/booking-client'
+import { requireBookingProviderScope } from '@/lib/stripe/booking-provider-scope'
+
 /** This entitlement belongs to Benefitsi admins, not to a partner's menu form. */
 export async function setPartnerOrdering(form: FormData) {
   await requireAdmin()
+  assertBookingRealmBoundary()
   let failed = false
   try {
     if (process.env.BENEFITSI_COMMERCE_ENABLED !== 'true') throw new Error('disabled')
@@ -16,7 +20,9 @@ export async function setPartnerOrdering(form: FormData) {
     const partnerId = uuid(form.get('partner_id'))
     const enabled = form.get('enabled')
     if (enabled !== 'true' && enabled !== 'false') throw new Error('invalid_setting')
-    const result = await createAdminClient().from('booking_providers')
+    const admin = createAdminClient()
+    await requireBookingProviderScope(admin, providerId)
+    const result = await admin.from('booking_providers')
       .update({ food_ordering_enabled: enabled === 'true' })
       .eq('id', providerId).eq('partner_id', partnerId).select('id').single()
     if (result.error || !result.data) throw new Error('save_failed')
