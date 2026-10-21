@@ -101,6 +101,18 @@ jobs:
           tests/partner-dashboard-insights.test.mjs
           tests/partner-dashboard-rich-ui.test.mjs
 
+      - name: AIEO measurement, source imports and authorization
+        run: >-
+          node --import tsx --test --test-concurrency=2
+          tests/aieo-measurement.test.mjs
+          tests/aieo-measurement-loader.test.mjs
+          tests/aieo-measurement-render.test.mjs
+          tests/seo-ai-report-import.test.mjs
+          tests/seo-ai-report-action.test.mjs
+          tests/city-measurement-contracts.test.mjs
+          tests/city-measurement-loader.test.mjs
+          tests/city-measurement-render.test.mjs
+
       - name: Partner visit-level reference, data boundaries and App contract
         run: >-
           node --import tsx --test --test-concurrency=2

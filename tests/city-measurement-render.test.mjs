@@ -8,6 +8,7 @@ import ts from "typescript"
 import * as jsx from "react/jsx-runtime"
 import { BusinessControlCenter, AnalyticsAccessState } from "../components/analytics/business-control-center.tsx"
 import { createEmptyBusinessAnalyticsPayload } from "../lib/analytics/normalize.ts"
+import { AieoMeasurementPanel } from "../components/analytics/aieo-measurement-panel.tsx"
 import { CityMeasurementDashboard } from "../components/analytics/city-measurement-dashboard.tsx"
 import { normalizeCityConversion, normalizeCityWebOperations } from "../lib/analytics/city-measurement-normalize.ts"
 import { city, filters, scope, conversionFixture, operationsFixture, emptyOperationsFixture } from "./helpers/city-measurement-fixtures.mjs"
@@ -82,8 +83,9 @@ test("unselected city and unsupported scope provide usable GET filters rather th
 test("Google property links disclose that no API statistics were imported into this dashboard", () => {
   const document = render(ready())
   const panel = document.querySelector("#google-measurement")
-  assert.match(panel.textContent, /verknüpft/)
-  assert.match(panel.textContent, /nicht verbunden/)
+  assert.match(panel.textContent, /Providerstatus und Messbelege/)
+  assert.match(panel.textContent, /getrennt.*Nutzungsbeobachtungen/)
+  assert.ok(panel.querySelector('a[href="/seo/aieo"]'))
   assert.equal(panel.querySelectorAll("dt").length, 0)
   assert.equal([...panel.querySelectorAll("a")].some(link => link.href.includes("p516005474")), true)
   assert.equal([...panel.querySelectorAll("a")].some(link => new URL(link.href).searchParams.get("resource_id") === "https://benefitsi.de/"), true)
@@ -103,6 +105,8 @@ function pageRuntime(businessState, auth = async () => ({ supabase: {}, adminSes
     "react/jsx-runtime": jsx,
     "@/app/admin-shell": { AdminShell: ({ children }) => createElement("main", null, children) },
     "@/components/analytics/business-control-center": { BusinessControlCenter, AnalyticsAccessState },
+    "@/components/analytics/aieo-measurement-panel": { AieoMeasurementPanel },
+    "@/lib/analytics/aieo-measurement-loader": { loadAieoMeasurement: async () => { calls.push("aieo"); return { state: "setup_required" } } },
     "@/components/analytics/city-measurement-dashboard": { CityMeasurementDashboard },
     "@/lib/admin": { requireAdmin: async () => { calls.push("auth"); return await auth() } },
     "@/lib/analytics/filters": { parseBusinessAnalyticsFilters: () => filters },
@@ -128,8 +132,9 @@ test("analytics page mounts the real city dashboard under shared filters and pre
     const check = pageRuntime(state)
     const document = new JSDOM(renderToStaticMarkup(await check.run())).window.document
     assert.ok(document.querySelector("#city-measurement"))
+    assert.ok(document.querySelector("#aieo-measurement"))
     assert.equal(metricValue(document, "Beobachtete Stadtaufrufe"), "3")
-    assert.deepEqual(check.calls, ["auth", "business", "city"])
+    assert.deepEqual(check.calls, ["auth", "business", "city", "aieo"])
     if (state === "unavailable") assert.ok(document.querySelector('#city-measurement form select[name="city"]'))
   }
 })

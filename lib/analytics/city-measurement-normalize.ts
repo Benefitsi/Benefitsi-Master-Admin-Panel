@@ -1,8 +1,8 @@
 import type { CityConversion, CityMeasurementScope, CityObservationRow, CityVital, CityWebOperations, ObservationCoverage } from "./city-measurement-contracts"
 import { CITY_WEB_ERROR_CODES, CITY_WEB_ROUTE_KINDS } from "./city-measurement-contracts"
 
-const STAGES = ["city_page_views", "partner_form_views", "partner_submissions_observed", "app_entry_clicks", "today_selections", "newsletter_confirmations_observed", "other_city_ctas", "benefit_views", "benefit_selections", "partner_views", "searches", "newsletter_signups_observed", "other_web_observations"]
-const CHANNELS = ["direct", "organic_search", "organic_social", "paid_search", "paid_social", "referral", "email", "other", "unknown"]
+const STAGES = ["public_web_page_views", "app_handoff_attempts", "city_page_views", "partner_form_views", "partner_submissions_observed", "app_entry_clicks", "today_selections", "newsletter_confirmations_observed", "other_city_ctas", "benefit_views", "benefit_selections", "partner_views", "searches", "newsletter_signups_observed", "other_web_observations"]
+const CHANNELS = ["direct", "organic_search", "organic_social", "paid_search", "paid_social", "ai_referral", "referral", "email", "other", "unknown"]
 
 export function normalizeCityConversion(input: unknown, scope: CityMeasurementScope): CityConversion {
   const value = record(input)

@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createClient } from "@/lib/supabase/server"
@@ -38,6 +39,7 @@ export default async function SeoOperationsPage({
     >
       {params.setup === "1" && <p role="status" className="rounded-md bg-[#f3f8ff] p-3 text-sm text-[#061829]">Profilvorbereitung gespeichert.</p>}
       {params.measurement === "1" && <p role="status" className="rounded-md bg-[#f3f8ff] p-3 text-sm text-[#061829]">Messversuch gespeichert. Den Zustand findest du bei den Messbelegen.</p>}
+      <Link href="/seo/aieo" className="mb-4 inline-flex text-sm font-semibold text-[#0b75d9]">Offizielle KI-Berichtswerte ansehen oder importieren</Link>
       <SeoDashboard
         data={{...data, targets:data.targets.map(publicSeoTarget)}}
         initialTargetId={params.target}
