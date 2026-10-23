@@ -1,4 +1,4 @@
-import { isTimestamp } from "@/lib/corporate/requests"
+import { isRecord, isTimestamp } from "@/lib/corporate/requests"
 import { domainFailure, isCompanyRole, isCompanyStatus, isDate, isUuid, mutationFailure, type CompanyMutationState, type CorporateClient } from "@/lib/corporate/companies"
 
 function field(data: FormData, key: string): string | null { const value = data.get(key); return data.getAll(key).length === 1 && typeof value === "string" ? value : null }
@@ -53,4 +53,16 @@ export async function removeMember(client: CorporateClient, data: FormData): Pro
   const id = field(data, "companyId"), userId = field(data, "userId"), expected = field(data, "expectedUpdatedAt"), role = field(data, "role")
   if (!isUuid(id) || !isUuid(userId) || !isTimestamp(expected) || !isCompanyRole(role)) return invalid()
   return mutate(client, "remove_corporate_member", { p_company_id: id, p_user_id: userId, p_role: role, p_expected_updated_at: expected }, "removed")
+}
+
+export async function setEmployeeAdmission(client: CorporateClient, data: FormData): Promise<CompanyMutationState> {
+  const company = field(data, "companyId"), expected = field(data, "expectedUpdatedAt"), open = field(data, "employeeAdmissionOpen")
+  if (!isUuid(company) || !isTimestamp(expected) || (open !== "true" && open !== "false")) return invalid()
+  try {
+    const { data: result, error } = await client.rpc("set_corporate_employee_admission", { p_company_id: company, p_expected_updated_at: expected, p_open: open === "true" })
+    if (error || !isRecord(result)) return mutationFailure
+    if (result.status !== "updated") return domainFailure(result.status)
+    if (!isTimestamp(result.updated_at) || result.employee_admission_open !== (open === "true")) return mutationFailure
+    return { status: "updated", updatedAt: result.updated_at, message: open === "true" ? "Mitarbeiteraufnahme geöffnet. Bestehendes bezahltes Premium bleibt unverändert." : "Mitarbeiteraufnahme geschlossen. Bestehendes bezahltes Premium bleibt unverändert." }
+  } catch { return mutationFailure }
 }

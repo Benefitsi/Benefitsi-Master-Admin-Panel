@@ -9,7 +9,7 @@ test('Corporate navigation, annual actions and payment states use the current Ad
   ['Zahlung bestätigt · Plätze freigegeben', 'Payment confirmed · Seats activated'], ['Nettoangebot speichern', 'Save net quote'],
   ['Zahlung bestätigen und Plätze freigeben', 'Confirm payment and activate seats'], ['Privaten Rechnungsbeleg abrufen', 'Retrieve private invoice'],
   ['Rechnungsbeleg unveränderlich zuordnen', 'Attach immutable invoice document'], ['Vom Ansprechpartner angenommen:', 'Accepted by company owner:'],
-  ['Nicht freigegeben', 'Not enabled'], ['Teamaufnahme freigegeben', 'Enrollment enabled'], ['Teamaufnahme pausiert', 'Enrollment paused'],
+  ['Nicht freigegeben', 'Not enabled'], ['Firma freigegeben', 'Company approved'], ['Firma unterbrochen (inkl. Firmen-Premium)', 'Company suspended (including company Premium)'],
  ]) {
   assert.equal(translateValue(de, 'en'), en)
   assert.equal(translateValue(en, 'de'), de)

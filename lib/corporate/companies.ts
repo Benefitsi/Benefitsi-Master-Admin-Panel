@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { isRecord, isTimestamp, uuidPattern } from "@/lib/corporate/requests"
 
 export type CorporateClient = Pick<SupabaseClient, "rpc">
-export const companyStatusLabels = { preparing: "In Vorbereitung", enrolling: "Teamaufnahme freigegeben", paused: "Teamaufnahme pausiert" } as const
+export const companyStatusLabels = { preparing: "In Vorbereitung", enrolling: "Firma freigegeben", paused: "Firma unterbrochen (inkl. Firmen-Premium)" } as const
 export type CompanyStatus = keyof typeof companyStatusLabels
 export type CompanyRole = "owner" | "employee"
 export const entitlementStatusLabels = { not_enabled: "Nicht freigegeben", scheduled: "Geplant", active: "Aktiv", suspended: "Gesperrt", expired: "Abgelaufen" } as const
@@ -14,7 +14,7 @@ export type CorporateCatalog = {
 }
 export type CorporateCompany = {
   company_id: string; source_request_id: string; company_name: string; city: string; contact_name: string; contact_email: string
-  capacity_seats: number; annual_accepted_at: string | null; annual_accepted_by: string | null; annual_snapshot: Record<string, unknown> | null; invoice_document: InvoiceDocument | null
+  employee_admission_open: boolean; capacity_seats: number; annual_accepted_at: string | null; annual_accepted_by: string | null; annual_snapshot: Record<string, unknown> | null; invoice_document: InvoiceDocument | null
   seats: number; starts_on: string; ends_on: string; catalog_version: string; unit_amount_cents: number; total_amount_cents: number
   currency: "EUR"; tax_mode: "net_reference"; status: CompanyStatus; invoice_reference: string; updated_at: string
   employee_count: number; reserved_count: number; available_seats: number; entitlement_status: keyof typeof entitlementStatusLabels
@@ -104,6 +104,7 @@ function isCompany(value: unknown): value is CorporateCompany {
     && (value.annual_accepted_at == null ? value.annual_accepted_by == null && value.annual_snapshot == null
       : isTimestamp(value.annual_accepted_at) && isUuid(value.annual_accepted_by) && isRecord(value.annual_snapshot))
     && (value.invoice_document == null || isInvoiceDocument(value.invoice_document, value.company_id, String(value.invoice_reference)))
+    && (value.employee_admission_open === undefined || typeof value.employee_admission_open === "boolean")
     && value.currency === "EUR" && value.tax_mode === "net_reference"
     && typeof value.entitlement_status === "string" && Object.hasOwn(entitlementStatusLabels, value.entitlement_status)
     && typeof value.premium_enabled === "boolean" && typeof value.premium_payment_reference === "string"
@@ -111,7 +112,7 @@ function isCompany(value: unknown): value is CorporateCompany {
 }
 export function parseCorporateCompany(value: unknown): CorporateCompany | null {
   if (!isCompany(value)) return null
-  return { ...value, capacity_seats: value.capacity_seats ?? value.seats, annual_accepted_at: value.annual_accepted_at ?? null, annual_accepted_by: value.annual_accepted_by ?? null, annual_snapshot: value.annual_snapshot ?? null, invoice_document: value.invoice_document ?? null, branding: parseCorporateBranding(value.branding, value.company_id) }
+  return { ...value, employee_admission_open: value.employee_admission_open ?? true, capacity_seats: value.capacity_seats ?? value.seats, annual_accepted_at: value.annual_accepted_at ?? null, annual_accepted_by: value.annual_accepted_by ?? null, annual_snapshot: value.annual_snapshot ?? null, invoice_document: value.invoice_document ?? null, branding: parseCorporateBranding(value.branding, value.company_id) }
 }
 function isRosterRow(value: unknown): value is RosterRow {
   return isRecord(value) && isUuid(value.id) && isCompanyRole(value.role) && typeof value.email === "string" && isTimestamp(value.updated_at)

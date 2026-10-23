@@ -1,7 +1,7 @@
 "use server"
 
 import { quoteCorporateSeatExtension, confirmCorporateSeatExtension, attachCorporateInvoiceDocument, readCorporateInvoiceDocument } from "@/lib/corporate/annual-mutations"
-import { createCompany, updateCompany, setCompanyPremium, issueInvitation, revokeInvitation, removeMember } from "@/lib/corporate/company-mutations"
+import { setEmployeeAdmission, createCompany, updateCompany, setCompanyPremium, issueInvitation, revokeInvitation, removeMember } from "@/lib/corporate/company-mutations"
 import { saveCorporateBranding, readCorporateLogo, type BrandingMutation } from "@/lib/corporate/branding"
 import { loadCorporateCompany, isUuid, type CompanyMutationState } from "@/lib/corporate/companies"
 import { revalidatePath, refresh } from "next/cache"
@@ -98,4 +98,11 @@ export async function attachCorporateInvoice(formData: FormData) {
 export async function readCorporateInvoice(companyId: string, extensionId: string | null) {
   const { supabase } = await requireAdmin()
   return readCorporateInvoiceDocument(supabase, companyId, extensionId)
+}
+
+export async function setCorporateEmployeeAdmission(formData: FormData): Promise<CompanyMutationState> {
+  const { supabase } = await requireAdmin()
+  const result = await setEmployeeAdmission(supabase, formData)
+  if (result.status === "updated") { refreshCompany(formData); refresh() }
+  return result
 }

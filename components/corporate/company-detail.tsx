@@ -1,6 +1,6 @@
 "use client"
 import { useRef, useState, useTransition } from "react"
-import { updateCorporateCompany, revokeCorporateInvitation, removeCorporateMember } from "@/app/companies/actions"
+import { setCorporateEmployeeAdmission, updateCorporateCompany, revokeCorporateInvitation, removeCorporateMember } from "@/app/companies/actions"
 import { companyStatusLabels, companyRoleLabels, entitlementStatusLabels, euro, period, mutationInitial, mutationFailure, type CorporateCompany, type CompanyStatus, type CompanyMutationState, type CompanyDetailResult, type RosterRow } from "@/lib/corporate/companies"
 import { CompanyFeedback, CompanyPagination, corporateInputClass, corporateButtonClass, corporatePanelClass, mustReload } from "@/components/corporate/company-ui"
 
@@ -40,13 +40,13 @@ export function CorporateCompanyEditor({ company }: { company: CorporateCompany 
       catch { setState(mutationFailure) } finally { busy.current = false }
     })
   }}>
-    <h2 className="text-lg font-black">Firmenaufnahme und externer Beleg</h2>
+    <h2 className="text-lg font-black">Firmenfreigabe und externer Beleg</h2>
     <fieldset disabled={blocked} className="grid gap-3 disabled:opacity-70 sm:grid-cols-2">
       <legend className="sr-only">Status und Rechnungsreferenz</legend>
       <label className="grid gap-1.5 text-xs font-bold">Firmenstatus<select name="status" value={status} onChange={e => setStatus(e.target.value as CompanyStatus)} className={corporateInputClass}>{Object.entries(companyStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label className="grid gap-1.5 text-xs font-bold">Externe Rechnungsreferenz (optional)<input name="invoiceReference" maxLength={160} value={reference} onChange={e => setReference(e.target.value)} className={corporateInputClass} /></label>
     </fieldset>
-    <p className="text-xs text-[#617080]">Referenz eines separat erstellten Belegs. Keine Rechnungserzeugung oder Aussage über einen Zahlungseingang. Bei „pausiert“ sind Ausgabe und Annahme aller Einladungen gesperrt.</p>
+    <p className="text-xs text-[#617080]">Referenz eines separat erstellten Belegs. Keine Rechnungserzeugung oder Aussage über einen Zahlungseingang. Bei „pausiert“ werden alle Einladungen und bestehendes Firmen-Premium unterbrochen. Für einen reinen Aufnahmestopp bitte nur die Mitarbeiteraufnahme schließen.</p>
     <CompanyFeedback state={state} href={`/companies/${company.company_id}`} />
     <button type="submit" className={corporateButtonClass} disabled={blocked}>{pending ? "Speichert …" : "Firmenangaben speichern"}</button>
   </form>
@@ -93,4 +93,31 @@ function CorporateRosterRow({ row, companyId, href }: { row: RosterRow; companyI
       <CompanyFeedback state={state} href={href} />
     </td>
   </tr>
+}
+
+export function CorporateEmployeeAdmission({ company, adminIdentity }: { company: CorporateCompany; adminIdentity: string }) {
+  return <EmployeeAdmissionForm key={`${adminIdentity}:${company.company_id}`} company={company} />
+}
+function EmployeeAdmissionForm({ company }: { company: CorporateCompany }) {
+  const [open, setOpen] = useState(company.employee_admission_open !== false)
+  const [expected, setExpected] = useState(company.updated_at)
+  const [state, setState] = useState<CompanyMutationState>(mutationInitial)
+  const [pending, startTransition] = useTransition()
+  const busy = useRef(false)
+  const blocked = pending || mustReload(state)
+  return <form className={`${corporatePanelClass} space-y-4`} aria-label="Mitarbeiteraufnahme" aria-busy={pending} onSubmit={event => {
+    event.preventDefault(); if (busy.current || blocked) return
+    const data = new FormData(); data.set("companyId", company.company_id); data.set("expectedUpdatedAt", expected); data.set("employeeAdmissionOpen", String(open))
+    busy.current = true
+    startTransition(async () => {
+      try { const result = await setCorporateEmployeeAdmission(data); if (result.status === "updated" && result.updatedAt) setExpected(result.updatedAt); setState(result) }
+      catch { setState(mutationFailure) } finally { busy.current = false }
+    })
+  }}>
+    <h2 className="text-lg font-black">Mitarbeiteraufnahme</h2>
+    <p className="text-sm text-[#617080]">Diese Einstellung stoppt neue Mitarbeiter-Einladungen und deren erstmalige Annahme. Bestehende bezahlte Premium-Freigaben bleiben unverändert. Ansprechpartner-Einladungen bleiben nach Firmenstatus und Laufzeit möglich.</p>
+    <label className="flex min-h-11 items-center gap-3 text-sm font-bold"><input type="checkbox" name="employeeAdmissionOpen" checked={open} disabled={blocked} onChange={event => setOpen(event.target.checked)} />{open ? "Mitarbeiteraufnahme offen" : "Mitarbeiteraufnahme geschlossen"}</label>
+    <CompanyFeedback state={state} href={`/companies/${company.company_id}`} />
+    <button className={corporateButtonClass} type="submit" disabled={blocked}>{pending ? "Speichert …" : "Mitarbeiteraufnahme speichern"}</button>
+  </form>
 }
