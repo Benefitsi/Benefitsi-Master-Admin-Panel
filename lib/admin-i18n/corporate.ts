@@ -159,7 +159,7 @@ export const corporateTranslations: readonly (readonly [string, string])[] = [
   ["Offer reference:", "Angebotsreferenz:"],
   ["Current paid capacity:", "Aktuelle bezahlte Kapazität:"],
   ["Current booked capacity · Unpaid:", "Aktuelle gebuchte Kapazität · nicht bezahlt:"],
-  ["Booked capacity · Unpaid:", "Gebuchte Kapazität · nicht bezahlt:"],
+  ["Booked capacity:", "Gebuchte Kapazität:"],
   ["Common end date (exclusive boundary):", "Gemeinsames Ende (exklusive Grenze):"],
   ["Paid capacity:", "Bezahlte Kapazität:"],
   ["Paid capacity", "Bezahlte Kapazität"],

@@ -10,7 +10,7 @@ test('Corporate navigation, annual actions and payment states use the current Ad
   ['Zahlung bestätigen und Plätze freigeben', 'Confirm payment and activate seats'], ['Privaten Rechnungsbeleg abrufen', 'Retrieve private invoice'],
   ['Rechnungsbeleg unveränderlich zuordnen', 'Attach immutable invoice document'], ['Vom Ansprechpartner angenommen:', 'Accepted by company owner:'],
   ['Aktuelle bezahlte Kapazität:', 'Current paid capacity:'], ['Aktuelle gebuchte Kapazität · nicht bezahlt:', 'Current booked capacity · Unpaid:'],
-  ['Gebuchte Kapazität · nicht bezahlt:', 'Booked capacity · Unpaid:'], ['Gemeinsames Ende (exklusive Grenze):', 'Common end date (exclusive boundary):'],
+  ['Gebuchte Kapazität:', 'Booked capacity:'], ['Gemeinsames Ende (exklusive Grenze):', 'Common end date (exclusive boundary):'],
   ['Nicht freigegeben', 'Not enabled'], ['Firma freigegeben', 'Company approved'], ['Firma unterbrochen (inkl. Firmen-Premium)', 'Company suspended (including company Premium)'],
  ]) {
   assert.equal(translateValue(de, 'en'), en)

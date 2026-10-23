@@ -131,7 +131,7 @@ test('annual panel preserves legacy funded capacity and exact DE EN labels opaqu
  for (const [de, en] of [
   ['Aktuelle bezahlte Kapazität:', 'Current paid capacity:'],
   ['Aktuelle gebuchte Kapazität · nicht bezahlt:', 'Current booked capacity · Unpaid:'],
-  ['Gebuchte Kapazität · nicht bezahlt:', 'Booked capacity · Unpaid:'],
+  ['Gebuchte Kapazität:', 'Booked capacity:'],
   ['Gemeinsames Ende (exklusive Grenze):', 'Common end date (exclusive boundary):'],
  ]) { assert.equal(translateValue(de, 'en'), en); assert.equal(translateValue(en, 'de'), de) }
  const legacy = {...company, current_period: null, capacity_seats: 27, available_seats: 27 - company.employee_count - company.reserved_count, premium_enabled: true, invoice_reference: 'Wissen', invoice_document: null}
@@ -147,6 +147,16 @@ test('annual panel preserves legacy funded capacity and exact DE EN labels opaqu
  assert.equal(JSON.stringify(billing), before)
  const unfunded = await acceptedAnnualBilling({...legacy, premium_enabled: false, premium_payment_reference: ''})
  const unfundedHtml = render(annualBillingComponent(), {billing: unfunded, adminIdentity: 'admin'})
- assert.match(unfundedHtml, /Gebuchte Kapazität · nicht bezahlt:.*27 Plätze/)
+ assert.match(unfundedHtml, /Gebuchte Kapazität:.*27 Plätze/)
  assert.doesNotMatch(unfundedHtml, /Bezahlte Kapazität:/)
+})
+
+test('annual panel keeps disabled legacy capacity neutral when a genuine earlier payment reference remains', async () => {
+ const disabled = {...company, current_period: null, premium_enabled: false, premium_payment_reference: 'PAY-EXAMPLE-42', entitlement_status: 'not_enabled'}
+ const billing = await acceptedAnnualBilling(disabled)
+ const before = JSON.stringify(billing)
+ const html = render(annualBillingComponent(), {billing, adminIdentity: 'admin'})
+ assert.match(html, /Gebuchte Kapazität:.*25 Plätze/)
+ assert.doesNotMatch(html, /nicht bezahlt|Bezahlte Kapazität:/)
+ assert.equal(JSON.stringify(billing), before)
 })

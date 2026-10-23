@@ -19,7 +19,7 @@ export function CorporateAnnualBilling({ billing, adminIdentity }: { billing: Co
   const company = billing.agreement
   const capacityLabel = company.current_period
     ? company.current_period.funding_confirmed ? "Aktuelle bezahlte Kapazität:" : "Aktuelle gebuchte Kapazität · nicht bezahlt:"
-    : company.premium_enabled ? "Bezahlte Kapazität:" : "Gebuchte Kapazität · nicht bezahlt:"
+    : company.premium_enabled ? "Bezahlte Kapazität:" : "Gebuchte Kapazität:"
   return <section className={`${corporatePanelClass} space-y-5`} aria-label="Jahresabrechnung">
     <h2 className="text-xl font-black">Jahresabrechnung</h2>
     <p><strong>Ursprüngliche Vereinbarung: {company.seats} Plätze · {euro(company.total_amount_cents)} netto/Jahr · zzgl. MwSt.</strong><br />Jahreszeitraum: {period(company.starts_on, company.ends_on)}<br />Angebotsreferenz: <span translate="no">{company.source_request_id}</span></p>
