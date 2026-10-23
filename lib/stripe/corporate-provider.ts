@@ -13,11 +13,17 @@ export class CorporateProvider {
     const balance = await this.stripe.balance.retrieve({}, this.options())
     ensure(account.id === this.config.account && balance.livemode === false, 'provider_account_mismatch')
   }
-  async customer(intent: BillingIntent) {
+  /** Binding-only read for explicit Setup recipient repair; financial reads stay strict. */
+  async customerBinding(intent: BillingIntent) {
     ensure(intent.customer_ref)
     const c = await this.stripe.customers.retrieve(intent.customer_ref, {}, this.options())
     ensure(!c.deleted && c.livemode === false && c.id === intent.customer_ref)
-    assertMetadata(c.metadata, intent, false); assertRecipient(c.name, c.address, intent)
+    assertMetadata(c.metadata, intent, false)
+    return c
+  }
+  async customer(intent: BillingIntent) {
+    const c = await this.customerBinding(intent)
+    assertRecipient(c.name, c.address, intent)
     return c
   }
   async tax(intent: BillingIntent) {

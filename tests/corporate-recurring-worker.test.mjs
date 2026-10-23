@@ -53,3 +53,84 @@ test('timeout after draft creation replays same key without second invoice',asyn
 test('changed immutable authorization hash and lost lease after read stop provider writes',async()=>{
  for(const change of [{status:'conflict'},{status:'authorized',request_hash:'9'.repeat(64),intent}]){let auth=0;const t=transport({'/v1/invoices/in_synthetic':{...invoice,status:'draft'},'/v1/invoices/in_synthetic/finalize':{...invoice,status:'open'}}),{w}=worker(t,op('finalize_invoice'),{rpc:async name=>name==='authorize_corporate_billing_step'&&++auth>1?change:null});await w.run(id);assert.equal(t.calls.filter(c=>c.method==='POST').length,0)}
 })
+
+const revisedIntent = { ...intent, recipient_id: '44444444-4444-4444-8444-444444444444', recipient_hash: '6'.repeat(64), recipient_snapshot: { ...intent.recipient_snapshot, legal_name: 'Revised Synthetic Employer', address_line1: 'New Street 42', address_line2: 'Office 2', postal_code: '10117' } }
+const setupOperation = kind => ({ ...op(kind), period_id: null, provider_object_ref: null, intent: { ...revisedIntent, period_id: null, invoice_ref: null } })
+const completedSetup = {
+ '/v1/checkout/sessions/cs_test_synthetic': { id: 'cs_test_synthetic', object: 'checkout.session', livemode: false, mode: 'setup', customer: customer.id, status: 'complete', setup_intent: 'seti_synthetic', metadata: customer.metadata },
+ '/v1/setup_intents/seti_synthetic': { id: 'seti_synthetic', object: 'setup_intent', livemode: false, customer: customer.id, status: 'succeeded', usage: 'off_session', payment_method: 'pm_synthetic', metadata: customer.metadata },
+ '/v1/payment_methods/pm_synthetic': { id: 'pm_synthetic', object: 'payment_method', livemode: false, customer: customer.id },
+}
+for (const kind of ['setup_session', 'verify_setup']) test(`recipient revision repairs existing Customer during ${kind}, allows future invoice and preserves finalized history`, async () => {
+ let current = structuredClone(customer), draft = null, hasLine = false, admissions = 0, admissionsAtCustomerRead = 0
+ const historical = structuredClone(invoice)
+ const t = transport({ ...completedSetup,
+  '/v1/customers/cus_synthetic': call => {
+   if (call.method === 'POST') {
+    assert.ok(admissions > admissionsAtCustomerRead, 'fresh admission after Customer read')
+    if (call.body.has('name')) {
+     assert.equal(call.body.get('name'), 'Revised Synthetic Employer'); assert.equal(call.body.get('address[line1]'), 'New Street 42'); assert.equal(call.body.get('address[line2]'), 'Office 2'); assert.equal(call.body.get('address[postal_code]'), '10117'); assert.equal(call.body.get('address[city]'), 'Berlin'); assert.equal(call.body.get('address[country]'), 'DE'); assert.equal(call.body.get('email'), 'owner@example.test')
+     current = { ...current, name: call.body.get('name'), address: { ...current.address, line1: call.body.get('address[line1]'), line2: call.body.get('address[line2]'), postal_code: call.body.get('address[postal_code]') } }
+    }
+   } else admissionsAtCustomerRead = admissions
+   return current
+  },
+  '/v1/checkout/sessions': call => {
+   assert.equal(call.body.has('customer_update[address]'), false); assert.equal(call.body.has('customer_update[name]'), false)
+   return { id: 'cs_test_synthetic', object: 'checkout.session', livemode: false, mode: 'setup', status: 'open', customer: customer.id, expires_at: now / 1000 + 3600, metadata: customer.metadata, url: 'https://checkout.stripe.com/c/pay/test' }
+  },
+  '/v1/invoices': call => {
+   if (call.method === 'GET') { assert.equal(call.query.get('customer'), customer.id); assert.equal(call.query.get('status'), 'draft'); return { object: 'list', has_more: false, data: [] } }
+   draft = { ...invoice, id: 'in_future', status: 'draft', customer_name: current.name, customer_address: structuredClone(current.address), metadata: { ...invoice.metadata, recipient_hash: revisedIntent.recipient_hash }, amount_paid: 0, amount_remaining: 49750, attempted: false, attempt_count: 0, status_transitions: { paid_at: null } }; return draft
+  },
+  '/v1/invoices/in_future': () => draft,
+  '/v1/invoices/in_future/lines': () => ({ object: 'list', has_more: false, data: hasLine ? [{ ...line, invoice: 'in_future', metadata: { ...line.metadata, recipient_hash: revisedIntent.recipient_hash } }] : [] }),
+  '/v1/invoiceitems': () => { hasLine = true; return { id: 'ii_future', object: 'invoiceitem' } },
+  '/v1/invoices/in_synthetic': historical,
+ })
+ const rpc = async name => { if (name === 'authorize_corporate_billing_step') admissions++; return null }
+ const setup = worker(t, setupOperation(kind), { rpc }); await setup.w.run(id)
+ assert.equal(setup.records.at(-1).type, kind === 'verify_setup' ? 'setup_verified' : 'provider_bound')
+ assert.equal(current.name, 'Revised Synthetic Employer'); assert.equal(current.address.line1, 'New Street 42')
+ // The same fixture is read through the real validator, including original metadata and address.
+ const old = await provider(t).invoice(intent); assert.deepEqual(old.invoice, historical)
+ const future = worker(t, { ...op('create_invoice'), intent: { ...revisedIntent, invoice_ref: null }, provider_object_ref: null }, { rpc }); await future.w.run(id)
+ assert.equal(future.records.at(-1).type, 'provider_bound'); assert.equal(future.records.at(-1).object_ref, 'in_future')
+ assert.equal(draft.customer_address.line1, 'New Street 42')
+ assert.equal(t.calls.filter(c => c.path === '/v1/invoices/in_synthetic' && c.method !== 'GET').length, 0)
+ assert.deepEqual((await provider(t).invoice(intent)).invoice, historical)
+})
+test('recipient synchronization rejects revoked/stale admission and foreign Customer binding before any write', async () => {
+ for (const mode of ['revoked', 'stale', 'foreign']) {
+  let admissions = 0
+  const operation = setupOperation('setup_session')
+  const t = transport({ '/v1/customers/cus_synthetic': { ...customer, metadata: mode === 'foreign' ? { ...customer.metadata, company_id: 'foreign' } : customer.metadata }, '/v1/invoices': { object: 'list', has_more: false, data: [] } })
+  const { w, records } = worker(t, operation, { rpc: async name => {
+   if (name === 'authorize_corporate_billing_step' && ++admissions > 1) return mode === 'revoked' ? { status: 'review_required' } : mode === 'stale' ? { status: 'authorized', request_hash: '8'.repeat(64), intent: operation.intent } : null
+   return null
+  } })
+  const result = await w.run(id)
+  assert.equal(t.calls.filter(c => c.method === 'POST').length, 0)
+  if (mode === 'revoked') assert.equal(result.status, 'review_required'); else assert.equal(records.at(-1).type, 'requires_review')
+ }
+})
+test('recipient synchronization requires actual readback before Checkout and keeps bound stale draft in review', async () => {
+ for (const mode of ['readback_drift', 'stale_draft']) {
+  const draft = { ...invoice, status: 'draft' }
+  const t = transport({ '/v1/invoices': { object: 'list', has_more: false, data: mode === 'stale_draft' ? [draft] : [] } })
+  const { w, records } = worker(t, setupOperation('setup_session')); await w.run(id)
+  assert.equal(records.at(-1).type, 'requires_review'); assert.equal(t.calls.filter(c => c.path === '/v1/checkout/sessions').length, 0)
+  assert.equal(t.calls.filter(c => c.method === 'POST').length, mode === 'stale_draft' ? 0 : 1)
+  assert.equal(draft.customer_address.line1, 'Example 1')
+ }
+})
+test('recipient synchronization fails closed on incomplete draft lookup and stale bound financial intent', async () => {
+ for (const data of [[], [{ ...invoice, status: 'draft' }]]) {
+  const t = transport({ '/v1/invoices': { object: 'list', has_more: true, data } })
+  const { w, records } = worker(t, setupOperation('setup_session')); await w.run(id)
+  assert.equal(records.at(-1).type, 'requires_review'); assert.equal(t.calls.filter(c => c.method === 'POST').length, 0)
+ }
+ const t = transport({ '/v1/invoices/in_synthetic': { ...invoice, status: 'draft' } })
+ const { w, records } = worker(t, { ...op('finalize_invoice'), intent: revisedIntent }); await w.run(id)
+ assert.equal(records.at(-1).type, 'requires_review'); assert.equal(t.calls.filter(c => c.method === 'POST').length, 0)
+})

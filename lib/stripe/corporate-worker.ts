@@ -1,6 +1,6 @@
 import type Stripe from 'stripe'
 import { CorporateProvider } from '@/lib/stripe/corporate-provider'
-import { assertMetadata, ensure, hash, metadata, periodSeconds, providerUrl, recipientAddress, ref, withinWindow, type BillingIntent, type Operation, type Row, type Rpc } from '@/lib/stripe/corporate-contracts'
+import { assertMetadata, assertRecipient, ensure, hash, metadata, periodSeconds, providerUrl, recipientAddress, ref, withinWindow, type BillingIntent, type Operation, type Row, type Rpc } from '@/lib/stripe/corporate-contracts'
 
 class Admission extends Error { constructor(readonly result: Row) { super(String(result.status)) } }
 /** One claim at a time. Every write uses the same immutable operation and fresh SQL admission. */
@@ -65,8 +65,17 @@ export class CorporateWorker {
         return await record(bound('customer', current.id, current, { billing_contact: contact(), customer_email: current.email }))
       }
       if (['setup_session', 'verify_setup'].includes(op.kind)) {
-        let c = await this.provider.customer(intent)
-        if (c.email !== contact().email) {
+        let c = await this.provider.customerBinding(intent)
+        let recipientChanged = false
+        try { assertRecipient(c.name, c.address, intent) } catch { recipientChanged = true }
+        if (recipientChanged) {
+          // Stripe drafts follow Customer identity. Never implicitly rewrite a stale draft.
+          // A complete empty lookup is required; finalized historical invoices remain frozen.
+          const drafts = await this.provider.pages(cursor => s.invoices.list({ customer: c.id, status: 'draft', limit: 100, ...(cursor ? { starting_after: cursor } : {}) }, this.provider.options()), 100)
+          ensure(drafts.length === 0, 'recipient_revision_has_draft')
+          await write('recipient', options => s.customers.update(c.id, { name: intent.recipient_snapshot.legal_name, address: recipientAddress(intent.recipient_snapshot), email: contact().email }, options))
+          c = await this.provider.customer(intent); ensure(c.email === contact().email)
+        } else if (c.email !== contact().email) {
           await write('contact', options => s.customers.update(c.id, { email: contact().email }, options))
           c = await this.provider.customer(intent); ensure(c.email === contact().email)
         }
