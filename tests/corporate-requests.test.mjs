@@ -154,16 +154,31 @@ test('the deployed page authorizes before reading inquiry data', async () => {
   assert.equal(reads, 0)
 })
 
-test('the page queries only the client returned by requireAdmin and rejects invalid filters without RPC', async () => {
+test('the page queries only the guarded client and rejects invalid inquiry filters without an inquiry RPC', async () => {
   const db = database({ body: { requests: [] } })
+  let guards = 0
+  function Workspace() {}
+  function findWorkspace(element) {
+    if (Array.isArray(element)) return element.map(findWorkspace).find(Boolean)
+    if (!element || typeof element !== 'object') return undefined
+    return element.type === Workspace ? element : findWorkspace(element.props?.children)
+  }
   const code = loadTypescript('app/companies/page.tsx', {
-    '@/lib/corporate/companies': { loadCorporateCatalog: async () => null, loadCorporateCompanies: async () => ({ status: 'loaded', companies: [], total: 0, offset: 0, page_size: 50 }), parseOffset: () => 0 },
-    '@/lib/admin': { requireAdmin: async () => ({ supabase: db.supabase, adminSession: { profile: null, user: { email: 'admin@example.test' } } }) },
-    '@/app/admin-shell': {}, '@/components/corporate/request-workspace': {},
+    '@/lib/corporate/companies': {
+      loadCorporateCatalog: async client => { assert.equal(client, db.supabase); return null },
+      loadCorporateCompanies: async client => { assert.equal(client, db.supabase); return { status: 'loaded', companies: [], total: 0, offset: 0, page_size: 50 } },
+      parseOffset: () => 0,
+    },
+    '@/lib/admin': { requireAdmin: async () => { guards++; return { supabase: db.supabase, adminSession: { profile: null, user: { id: 'current-admin', email: 'admin@example.test' } } } } },
+    '@/app/admin-shell': {}, '@/components/corporate/request-workspace': { CorporateRequestWorkspace: Workspace },
   })
-  await code.default({ searchParams: Promise.resolve({ status: 'closed' }) })
+  const loaded = findWorkspace(await code.default({ searchParams: Promise.resolve({ status: 'closed' }) }))
+  assert.ok(loaded, 'the guarded workspace remains inside the real translation boundary')
+  assert.equal(loaded.props.result.status, 'loaded'); assert.equal(loaded.props.selectedStatus, 'closed'); assert.equal(loaded.key, 'current-admin')
   assert.deepEqual(db.calls, [{ path: '/rest/v1/rpc/admin_list_corporate_benefits_requests', body: { p_status: 'closed', p_limit: 50 } }])
-  const invalid = await code.default({ searchParams: Promise.resolve({ status: 'active_membership' }) })
-  assert.equal(db.calls.length, 1)
-  assert.equal(invalid.props.children.props.result.status, 'error')
+  const invalid = findWorkspace(await code.default({ searchParams: Promise.resolve({ status: 'active_membership' }) }))
+  assert.ok(invalid, 'the invalid-filter state must still reach the actual workspace')
+  assert.equal(guards, 2); assert.equal(db.calls.length, 1)
+  assert.equal(invalid.props.result.status, 'error'); assert.match(invalid.props.result.message, /Unbekannter Statusfilter/)
+  assert.equal(invalid.props.selectedStatus, null); assert.equal(invalid.key, 'current-admin')
 })
