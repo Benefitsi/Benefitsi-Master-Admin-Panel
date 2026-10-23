@@ -101,6 +101,9 @@ jobs:
           tests/partner-dashboard-insights.test.mjs
           tests/partner-dashboard-rich-ui.test.mjs
 
+      - name: Corporate annual contracts, actions and administration regressions
+        run: node --import tsx --test --test-concurrency=2 tests/corporate-*.test.mjs
+
       - name: Partner visit-level reference, data boundaries and App contract
         run: >-
           node --import tsx --test --test-concurrency=2
