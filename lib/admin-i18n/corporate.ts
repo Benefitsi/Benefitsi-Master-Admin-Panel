@@ -273,3 +273,21 @@ export const corporateTemplates: readonly (readonly [string, string])[] = [
   ["Company logo: {0}", "Firmenlogo: {0}"],
   ["Welcome to {0}!", "Willkommen bei {0}!"],
 ]
+
+/** Exact whole date ranges only; company names and arbitrary "bis/to" copy stay opaque. */
+export function translateCorporatePeriod(value: string, language: "en" | "de"): string | undefined {
+  const german = /^(\d{2})\.(\d{2})\.(\d{4}) bis (\d{2})\.(\d{2})\.(\d{4})$/.exec(value)
+  const english = /^(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec) (\d{4}) to (\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec) (\d{4})$/.exec(value)
+  const match = language === "en" ? german : english
+  if (!match) return undefined
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec"]
+  const dates = [1, 4].map(offset => {
+    const day = Number(match[offset]), year = Number(match[offset + 2])
+    const month = language === "en" ? Number(match[offset + 1]) : months.indexOf(match[offset + 1].replace(/^Sep$/, "Sept")) + 1
+    const date = new Date(`${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00Z`)
+    return year > 0 && date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day ? date : null
+  })
+  if (!dates[0] || !dates[1]) return undefined
+  const formatter = new Intl.DateTimeFormat(language === "en" ? "en-GB" : "de-DE", { dateStyle: "medium", timeZone: "UTC" })
+  return `${formatter.format(dates[0])} ${language === "en" ? "to" : "bis"} ${formatter.format(dates[1])}`
+}

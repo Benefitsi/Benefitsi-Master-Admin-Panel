@@ -69,3 +69,48 @@ test('actual annual component renders native original agreement, separate paid a
  assert.equal((markup.match(/Privaten Rechnungsbeleg abrufen/g) ?? []).length, 2)
  assert.doesNotMatch(markup, /https?:\/\/[^"\s]*invoice|\/storage\/v1\/object\/public|Geburtstagsprogramm|Dienstjubiläum|Geschenkbudget/)
 })
+
+const admissionUrl = new URL('./fixtures/corporate/admission-contract.json', import.meta.url)
+function nativeAdmission() { return JSON.parse(readFileSync(admissionUrl, 'utf8')) }
+test('native admission fixture is bound to the 95-test successful source and artifact', () => {
+ const provenance = JSON.parse(readFileSync(new URL('./fixtures/corporate/admission-contract.provenance.json', import.meta.url), 'utf8'))
+ assert.equal(createHash('sha256').update(readFileSync(admissionUrl)).digest('hex'), provenance.sha256)
+ assert.equal(provenance.sha256, '1344d03d74a52e97c8996950fa21fcac38cf3e27d2a1a197e101420f6a3d90f1')
+ assert.equal(provenance.source_commit, 'ac2b176a7129ea971f622f1a44c8c092f7e45a82')
+ assert.equal(provenance.run_id, '39983356208'); assert.equal(provenance.job_id, '120516093772'); assert.equal(provenance.native_tests_passed, 95)
+})
+test('production parser consumes native closed/reopened intake without suspending existing paid Premium', () => {
+ const fixture = nativeAdmission(), { parseCorporateCompany } = loadTypescript('lib/corporate/companies.ts')
+ const before = parseCorporateCompany(fixture.before), closed = parseCorporateCompany(fixture.closed), reopened = parseCorporateCompany(fixture.reopened)
+ assert.ok(before); assert.ok(closed); assert.ok(reopened)
+ assert.equal(before.employee_admission_open, true); assert.equal(closed.employee_admission_open, false); assert.equal(reopened.employee_admission_open, true)
+ for (const company of [closed, reopened]) {
+  for (const field of ['company_id', 'seats', 'unit_amount_cents', 'total_amount_cents', 'starts_on', 'ends_on', 'capacity_seats', 'status', 'premium_enabled', 'premium_payment_reference', 'entitlement_status']) assert.equal(company[field], before[field], field)
+  assert.deepEqual(company.annual_snapshot, before.annual_snapshot)
+  assert.equal(company.entitlement_status, 'active'); assert.equal(company.premium_enabled, true)
+  assert.equal(company.employee_count + company.reserved_count + company.available_seats, company.capacity_seats)
+ }
+})
+test('guarded production action consumes the native intake switch result with full timestamp and exact RPC fields', async () => {
+ const fixture = nativeAdmission(), api = transport(fixture.switch_result), paths = []
+ let guards = 0
+ const actions = loadTypescript('app/companies/actions.ts', { '@/lib/admin': { requireAdmin: async () => { guards++; return { supabase: api.client } } }, 'next/cache': { revalidatePath: path => paths.push(path), refresh: () => {} } })
+ const form = new FormData(); form.set('companyId', fixture.before.company_id); form.set('expectedUpdatedAt', fixture.before.updated_at); form.set('employeeAdmissionOpen', 'false')
+ const result = await actions.setCorporateEmployeeAdmission(form)
+ assert.equal(guards, 1); assert.equal(result.status, 'updated'); assert.equal(result.updatedAt, fixture.switch_result.updated_at)
+ assert.deepEqual(api.calls, [{ name: 'set_corporate_employee_admission', body: { p_company_id: fixture.before.company_id, p_expected_updated_at: fixture.before.updated_at, p_open: false } }])
+ assert.deepEqual(paths, ['/companies', `/companies/${fixture.before.company_id}`])
+})
+
+test('actual intake component reflects native closed/reopened state without offering paid-access suspension', () => {
+ const fixture = nativeAdmission()
+ const { CorporateEmployeeAdmission: Admission } = loadTypescript('components/corporate/company-detail.tsx', { '@/app/companies/actions': {} })
+ for (const [company, open] of [[fixture.closed, false], [fixture.reopened, true]]) {
+  const markup = renderToStaticMarkup(React.createElement(Admission, { company, adminIdentity: 'synthetic-admin' }))
+  const checkbox = /<input[^>]*name="employeeAdmissionOpen"[^>]*>/.exec(markup)?.[0]
+  assert.ok(checkbox); assert.equal(/\bchecked=""/.test(checkbox), open)
+  assert.match(markup, open ? /Mitarbeiteraufnahme offen/ : /Mitarbeiteraufnahme geschlossen/)
+  assert.match(markup, /bezahlte Premium-Freigaben bleiben unverändert/)
+  assert.doesNotMatch(markup, /Premium sperren|Firmen-Premium sperren/)
+ }
+})

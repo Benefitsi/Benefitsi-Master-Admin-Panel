@@ -41,10 +41,13 @@ test('rendered annual billing toggles through the existing provider and hydratio
   await act(async () => { root.render(React.createElement(language.AdminLanguageProvider, { initialLanguage: 'de', storageKey: 'synthetic-corporate-language' }, React.createElement(Switch), React.createElement(AdminTranslationBoundary, null, React.createElement(Billing, { billing: { status: 'ok', agreement: company, extensions: [] }, adminIdentity: 'admin' })))); await settle() })
   await act(settle)
   assert.match(document.body.textContent, /Jahresabrechnung/)
+  assert.match(document.body.textContent, /05\.10\.2026 bis 04\.10\.2027/)
   for (const next of ['en', 'de', 'en']) {
    await act(async () => { changeLanguage(next); await settle() })
    assert.match(document.body.textContent, next === 'en' ? /Annual billing/ : /Jahresabrechnung/)
    assert.match(document.body.textContent, next === 'en' ? /Additional employee seats/ : /Zusätzliche Mitarbeiterplätze/)
+   assert.match(document.body.textContent, next === 'en' ? /5 Oct 2026 to 4 Oct 2027/ : /05\.10\.2026 bis 04\.10\.2027/)
+   if (next === 'en') assert.doesNotMatch(document.body.textContent, /2026 bis/)
    assert.match(document.body.textContent, /Wissen/)
    assert.doesNotMatch(document.body.textContent, /Knowledge/)
    assert.equal(document.querySelector('input[type="file"]').getAttribute('accept'), 'application/pdf,.pdf')
@@ -54,4 +57,16 @@ test('rendered annual billing toggles through the existing provider and hydratio
   for (const name of names) { if (previous[name]) Object.defineProperty(globalThis, name, previous[name]); else delete globalThis[name] }
   dom.window.close()
  }
+})
+
+test('only exact valid Corporate date ranges translate and the exclusive end stays subtracted', async () => {
+ const { loadTypescript } = await import('./helpers/load-typescript.mjs')
+ const { period } = loadTypescript('lib/corporate/companies.ts')
+ const range = period('2024-02-28', '2024-03-01')
+ assert.equal(range, '28.02.2024 bis 29.02.2024')
+ assert.equal(translateValue(range, 'en'), '28 Feb 2024 to 29 Feb 2024')
+ assert.equal(translateValue('28 Feb 2024 to 29 Feb 2024', 'de'), range)
+ assert.equal(translateValue('01.09.2026 bis 02.09.2026', 'en'), '1 Sept 2026 to 2 Sept 2026')
+ assert.equal(translateValue('1 Sept 2026 to 2 Sept 2026', 'de'), '01.09.2026 bis 02.09.2026')
+ for (const opaque of ['Firma bis Angebot', 'Offer to Company', '31.02.2026 bis 04.10.2027']) assert.equal(translateValue(opaque, 'en'), opaque)
 })

@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react"
 
-import { corporateTranslations, corporateTemplates } from "../lib/admin-i18n/corporate"
+import { corporateTranslations, corporateTemplates, translateCorporatePeriod } from "../lib/admin-i18n/corporate"
 import { overviewTranslations, overviewTemplates } from "../lib/admin-i18n/overview"
 import { compileTranslationTemplates, translateTemplate } from "../lib/admin-i18n/templates"
 
@@ -1010,6 +1010,8 @@ export function translateValue(value: string, language: AdminLanguage) {
   const trailing = value.match(/\s*$/)?.[0] ?? ""
   const core = value.slice(leading.length, value.length - trailing.length)
   const normalizedCore = core.replace(/\s+/g, " ")
+  const corporatePeriod = translateCorporatePeriod(core, language)
+  if (corporatePeriod !== undefined) return `${leading}${corporatePeriod}${trailing}`
   const reviewedDictionary = language === "de" ? reviewedEnglishToGerman : reviewedGermanToEnglish
   const reviewed = reviewedDictionary.get(normalizedCore)
   if (reviewed) return `${leading}${reviewed}${trailing}`
