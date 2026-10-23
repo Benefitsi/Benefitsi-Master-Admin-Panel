@@ -43,14 +43,14 @@ export class CorporateProvider {
     throw Error('provider_pagination_limit')
   }
   lines(invoiceId: string) { return this.pages(cursor => this.stripe.invoices.listLineItems(invoiceId, { limit: 100, ...(cursor ? { starting_after: cursor } : {}) }, this.options()), 100) }
-  async invoice(intent: BillingIntent, allowEmpty = false) {
+  async invoice(intent: BillingIntent, allowEmpty = false, allowPostPaymentCredit = false) {
     ensure(intent.invoice_ref)
     const i = await this.stripe.invoices.retrieve(intent.invoice_ref, {}, this.options())
     ensure(i.id === intent.invoice_ref && i.livemode === false && ref(i.customer) === intent.customer_ref && !i.parent?.subscription_details && !i.on_behalf_of && i.issuer.type === 'self' && i.account_name === intent.billing_profile.operator_name)
     ensure(intent.billing_contact && i.customer_email === intent.billing_contact.email && typeof i.auto_advance === 'boolean', 'billing_contact_mismatch')
     assertMetadata(i.metadata, intent); assertRecipient(i.customer_name, i.customer_address, intent)
     ensure(i.currency === 'eur' && i.collection_method === 'charge_automatically' && !i.default_payment_method && !i.default_source && !i.automatic_tax.enabled)
-    ensure(!('paid_out_of_band' in i && i.paid_out_of_band) && i.starting_balance === 0 && (i.ending_balance === 0 || i.ending_balance === null) && i.pre_payment_credit_notes_amount === 0 && i.post_payment_credit_notes_amount === 0 && !i.discounts.length && !(i.total_discount_amounts?.length) && !(i.total_pretax_credit_amounts?.length))
+    ensure(!('paid_out_of_band' in i && i.paid_out_of_band) && i.starting_balance === 0 && (i.ending_balance === 0 || i.ending_balance === null) && i.pre_payment_credit_notes_amount === 0 && Number.isSafeInteger(i.post_payment_credit_notes_amount) && i.post_payment_credit_notes_amount >= 0 && (allowPostPaymentCredit || i.post_payment_credit_notes_amount === 0) && !i.discounts.length && !(i.total_discount_amounts?.length) && !(i.total_pretax_credit_amounts?.length))
     const lines = await this.lines(i.id)
     if (allowEmpty && !lines.length && i.status === 'draft') return { invoice: i, lines }
     ensure(lines.length === 1)
@@ -68,7 +68,9 @@ export class CorporateProvider {
   }
   async evidence(intent: BillingIntent, documentRefs: string[], eventRef: string) {
     await this.account(intent); await this.tax(intent)
-    const { invoice: i, lines } = await this.invoice(intent)
+    // Only reconciliation may carry an actual bound invoice credit as negative evidence.
+    // Financial writes and original-document validation keep the default zero-credit guard.
+    const { invoice: i, lines } = await this.invoice(intent, false, true)
     const entries = await this.pages(cursor => this.stripe.invoicePayments.list({ invoice: i.id, limit: 100, ...(cursor ? { starting_after: cursor } : {}) }, this.options()), 20)
     const payments: { payment_ref: string; charge_ref: string; amount_cents: number; currency: 'EUR'; succeeded: boolean; refunded_cents: number; disputed: boolean }[] = []
     const observations: unknown[] = [], chargeIds = new Set<string>(); let collection: CollectionState = 'not_attempted'; let paidAt = 0, processing = false, requiresAction = false, failed = false
@@ -109,7 +111,7 @@ export class CorporateProvider {
     if (i.status === 'paid') { ensure(paid === i.total && paid > 0 && i.amount_remaining === 0 && paidAt > 0); collection = 'succeeded' }
     const snapshotHash = hash({ invoice: i, lines, entries, observations }), observedAt = new Date(this.now()).toISOString()
     ensure(eventRef.length <= 120 && i.status)
-    return { invoice_auto_advance: i.auto_advance, customer_email: i.customer_email, schema_version: 1, environment: 'test', provider_account_ref: intent.provider_account_ref, customer_ref: intent.customer_ref, invoice_ref: i.id, invoice_number: i.number || i.id, period_id: intent.period_id, operation_id: intent.operation_id, event_ref: `${eventRef}:${hash({ snapshotHash, observedAt })}`, event_hash: snapshotHash, observed_at: observedAt, invoice_status: i.status, currency: 'EUR', quantity: intent.quantity, unit_net_cents: intent.unit_net_cents, net_total_cents: intent.net_total_cents, tax_total_cents: i.total - intent.net_total_cents, gross_total_cents: i.total, amount_remaining_cents: i.amount_remaining, service_starts_on: intent.starts_on, service_ends_on: intent.ends_on, paid_out_of_band: false, paid_at: i.status === 'paid' ? new Date(paidAt * 1000).toISOString() : null, collection_state: collection, payments, document_refs: documentRefs, invoice_hash: hash({ invoice: i, lines }), recipient_id: intent.recipient_id, recipient_hash: intent.recipient_hash, recipient_snapshot: intent.recipient_snapshot }
+    return { post_payment_credit_cents: i.post_payment_credit_notes_amount, invoice_auto_advance: i.auto_advance, customer_email: i.customer_email, schema_version: 1, environment: 'test', provider_account_ref: intent.provider_account_ref, customer_ref: intent.customer_ref, invoice_ref: i.id, invoice_number: i.number || i.id, period_id: intent.period_id, operation_id: intent.operation_id, event_ref: `${eventRef}:${hash({ snapshotHash, observedAt })}`, event_hash: snapshotHash, observed_at: observedAt, invoice_status: i.status, currency: 'EUR', quantity: intent.quantity, unit_net_cents: intent.unit_net_cents, net_total_cents: intent.net_total_cents, tax_total_cents: i.total - intent.net_total_cents, gross_total_cents: i.total, amount_remaining_cents: i.amount_remaining, service_starts_on: intent.starts_on, service_ends_on: intent.ends_on, paid_out_of_band: false, paid_at: i.status === 'paid' ? new Date(paidAt * 1000).toISOString() : null, collection_state: collection, payments, document_refs: documentRefs, invoice_hash: hash({ invoice: i, lines }), recipient_id: intent.recipient_id, recipient_hash: intent.recipient_hash, recipient_snapshot: intent.recipient_snapshot }
   }
   async setupSession(intent: BillingIntent) {
     ensure(intent.setup_session_ref)

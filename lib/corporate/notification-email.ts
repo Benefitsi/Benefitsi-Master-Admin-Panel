@@ -51,7 +51,7 @@ export async function sendCorporateNotification(rpc: Rpc, config: CorporateEmail
     const email = buildCorporateEmail(notice, config)
     const authorized = await rpc('authorize_corporate_notification', args)
     if (authorized.status !== 'authorized') return 0
-    ensure(authorized.notification_id === notice.notification_id && authorized.recipient_email === notice.recipient_email && authorized.payload_hash === notice.payload_hash && hash(authorized.payload) === hash(notice.payload), 'notification_authority_changed')
+    ensure(authorized.created_at === notice.created_at && authorized.notification_id === notice.notification_id && authorized.recipient_email === notice.recipient_email && authorized.payload_hash === notice.payload_hash && hash(authorized.payload) === hash(notice.payload), 'notification_authority_changed')
     ensure(Date.parse(notice.lease_expires_at) - now() > 10000 && withinWindow(notice.first_attempt_at, now()), 'notification_window_expired')
     const response = await fetcher('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json', 'Idempotency-Key': email.idempotencyKey }, body: JSON.stringify(email.body), redirect: 'error', signal: AbortSignal.timeout(8000) })
     if (!response.ok) { await record(response.status === 409 ? { type: 'requires_review', error_code: 'notification_content_conflict' } : { type: 'retryable_failure', error_code: 'notification_transport_failed', retry_after_seconds: 300 }); return 0 }

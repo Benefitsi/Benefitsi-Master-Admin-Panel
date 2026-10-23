@@ -99,7 +99,8 @@ export async function corporateWebhook(request: Request, deps: { secret: string;
   try { await deps.receive(event); return billingResponse({ status: 'received' }) } catch { return billingResponse({ status: 'unavailable' }, 503) }
 }
 export async function corporateDispatch(request: Request, secret: string, tick: () => Promise<Row>) {
-  if (!secretMatches(secret, request.headers.get('authorization')?.replace(/^Bearer /, '') || null)) return billingResponse({ status: 'unauthenticated' }, 401)
+  const bearer = /^Bearer ([^\s]+)$/.exec(request.headers.get('authorization') || '')
+  if (!bearer || !secretMatches(secret, bearer[1])) return billingResponse({ status: 'unauthenticated' }, 401)
   try { const body = row(JSON.parse(await bodyText(request, 64))); if (Object.keys(body).length) return billingResponse({ status: 'invalid' }, 400) } catch { return billingResponse({ status: 'invalid' }, 400) }
   try { return billingResponse(await tick()) } catch { return billingResponse({ status: 'unavailable' }, 503) }
 }

@@ -33,7 +33,9 @@ structured documents can still participate in read-only reconciliation.
 Optional notifications require `BENEFITSI_CORPORATE_NOTIFICATION_PROVIDER=resend`,
 `RESEND_API_KEY`, and authorized `BENEFITSI_CORPORATE_FROM_EMAIL`. Disabled transport
 makes no claim and sends nothing. Immutable DE/EN messages use the DB created_at
-as issued time, a notification-ID idempotency key and current-recipient admission.
+as the time the notification intent was inserted, a notification-ID idempotency
+key and current-recipient admission. created_at is immutable and included in fresh
+authorization; lease updated_at is never used in the email fingerprint.
 Ambiguous requests remain bounded to23hours; Resend409 requires review. `sent`
 means provider accepted, never delivered. Portal receipts remain independent.
 
@@ -47,7 +49,11 @@ context are reread after provider waits before a Checkout/Invoice URL is exposed
 
 The exact consumer HTTP body/status protocol is in the workspace's shared
 `work/corporate-annual-20261023/recurring-contract.md`, Task2-owned section.
-POST `/worker` uses its own bearer secret and body `{}`. It materializes/sweeps at
+The outer proxy admits only the five exact Corporate billing endpoints to their
+own authentication and denies them on the partner host. It grants no Admin role.
+POST `/worker` requires the exact `Authorization: Bearer <secret>` scheme and body
+`{}`. The SQL dispatcher uses this same `/api/corporate/billing/worker` path,
+header and body; missing configuration performs no dispatch work. It materializes/sweeps at
 most one candidate, reconciles known provider references, claims one operation,
 and sends at most one authorized notification. Provider reads failing do not
 prevent an already queued protective pause from being attempted.
@@ -83,3 +89,16 @@ Our own annual clock does not inherit native Subscription reminders. Required
 Mastercard annual notices7–30days before renewal need actual verified delivery
 policy; a staged outbox row or portal receipt is not that proof. The operative
 issuer/tax/structured-invoice/legal release gate remains separate.
+
+## Negative credit evidence
+
+Read-only reconciliation may carry the current bound Invoice's verified
+`post_payment_credit_notes_amount` as `post_payment_credit_cents`. It remains
+distinct from charge refunds. A nonzero value puts the affected period under
+review, including a credit-only adjustment with no refund. Financial writes and
+new document validation retain the strict zero-credit rule. Full current
+InvoicePayment/PaymentIntent/Charge/refund/dispute binding checks still run; a
+stale paid event triggers current-object retrieval and cannot supply its own
+credit/payment facts. Native SQL requires this field and will not grant positive
+funding for credited evidence. This is controlled component/native proof, not
+hosted payment or legal acceptance.
