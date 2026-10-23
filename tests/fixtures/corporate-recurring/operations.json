@@ -1,0 +1,344 @@
+{
+  "limited": {
+    "counts": {
+      "due": 3,
+      "total": 11,
+      "by_state": {
+        "pending": 2,
+        "cancelled": 1,
+        "succeeded": 1,
+        "processing": 3,
+        "retry_wait": 2,
+        "awaiting_setup": 1,
+        "review_required": 1
+      },
+      "review_required": 1
+    },
+    "status": "ok",
+    "has_more": true,
+    "company_id": "bff8a78b-ae3b-4be2-9c8f-275dc23a44d5",
+    "operations": [
+      {
+        "kind": "sync_payment",
+        "state": "succeeded",
+        "attempts": 10,
+        "period_id": "45f01ba3-d319-42de-a39b-a444049f02c3",
+        "created_at": "2026-01-01T10:00:00+00:00",
+        "updated_at": "2026-01-01T10:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "9d0fc080-5818-4d09-b928-337e5aada329",
+        "next_attempt_at": "2026-10-22T22:57:14.719535+00:00",
+        "lease_expires_at": null
+      }
+    ],
+    "snapshot_at": "2026-10-23T22:57:14.750864+00:00"
+  },
+  "full": {
+    "counts": {
+      "due": 3,
+      "total": 11,
+      "by_state": {
+        "pending": 2,
+        "cancelled": 1,
+        "succeeded": 1,
+        "processing": 3,
+        "retry_wait": 2,
+        "awaiting_setup": 1,
+        "review_required": 1
+      },
+      "review_required": 1
+    },
+    "status": "ok",
+    "has_more": false,
+    "company_id": "bff8a78b-ae3b-4be2-9c8f-275dc23a44d5",
+    "operations": [
+      {
+        "kind": "sync_payment",
+        "state": "succeeded",
+        "attempts": 10,
+        "period_id": "45f01ba3-d319-42de-a39b-a444049f02c3",
+        "created_at": "2026-01-01T10:00:00+00:00",
+        "updated_at": "2026-01-01T10:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "9d0fc080-5818-4d09-b928-337e5aada329",
+        "next_attempt_at": "2026-10-22T22:57:14.719535+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "cancel_invoice",
+        "state": "cancelled",
+        "attempts": 9,
+        "period_id": "45f01ba3-d319-42de-a39b-a444049f02c3",
+        "created_at": "2026-01-01T09:00:00+00:00",
+        "updated_at": "2026-01-01T09:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "c39deeaf-bc98-42ca-b3da-e2b606f3c5aa",
+        "next_attempt_at": "2026-10-22T22:57:14.71165+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "setup_customer",
+        "state": "retry_wait",
+        "attempts": 8,
+        "period_id": null,
+        "created_at": "2026-01-01T08:00:00+00:00",
+        "updated_at": "2026-01-01T08:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "c909c1e6-ff3f-4ef5-9d90-1d579e810809",
+        "next_attempt_at": "2026-10-24T22:57:14.703588+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "finalize_invoice",
+        "state": "retry_wait",
+        "attempts": 7,
+        "period_id": "45f01ba3-d319-42de-a39b-a444049f02c3",
+        "created_at": "2026-01-01T07:00:00+00:00",
+        "updated_at": "2026-01-01T07:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "ae5b8638-c5af-4880-a2e4-fb88685b6d1d",
+        "next_attempt_at": "2026-10-22T22:57:14.695745+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "setup_customer",
+        "state": "processing",
+        "attempts": 6,
+        "period_id": null,
+        "created_at": "2026-01-01T06:00:00+00:00",
+        "updated_at": "2026-01-01T06:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "441600a9-0f24-40d0-8005-f35d0fa6ca90",
+        "next_attempt_at": "2026-10-22T22:57:14.687385+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "setup_session",
+        "state": "processing",
+        "attempts": 5,
+        "period_id": null,
+        "created_at": "2026-01-01T05:00:00+00:00",
+        "updated_at": "2026-01-01T05:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "75ee1db0-0971-40de-8987-f1b8a0906a53",
+        "next_attempt_at": "2026-10-24T22:57:14.679613+00:00",
+        "lease_expires_at": "2026-10-24T22:57:14.679612+00:00"
+      },
+      {
+        "kind": "verify_setup",
+        "state": "processing",
+        "attempts": 4,
+        "period_id": null,
+        "created_at": "2026-01-01T04:00:00+00:00",
+        "updated_at": "2026-01-01T04:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "d745a4f6-215c-47c4-b8f1-b738346d8e6a",
+        "next_attempt_at": "2026-10-22T22:57:14.671588+00:00",
+        "lease_expires_at": "2026-10-22T22:57:14.671587+00:00"
+      },
+      {
+        "kind": "setup_session",
+        "state": "pending",
+        "attempts": 3,
+        "period_id": null,
+        "created_at": "2026-01-01T03:00:00+00:00",
+        "updated_at": "2026-01-01T03:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "fa855785-1230-4aca-922a-55bf78ae3b0d",
+        "next_attempt_at": "2026-10-24T22:57:14.663515+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "setup_customer",
+        "state": "pending",
+        "attempts": 2,
+        "period_id": null,
+        "created_at": "2026-01-01T02:00:00+00:00",
+        "updated_at": "2026-01-01T02:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "62c550cd-9ea6-4203-8e93-a915d14b6a15",
+        "next_attempt_at": "2026-10-22T22:57:14.655672+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "create_invoice",
+        "state": "awaiting_setup",
+        "attempts": 1,
+        "period_id": "45f01ba3-d319-42de-a39b-a444049f02c3",
+        "created_at": "2026-01-01T01:00:00+00:00",
+        "updated_at": "2026-01-01T01:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "3e32dcb5-7fcf-43c1-aac0-0cd47e3e830a",
+        "next_attempt_at": "2026-10-22T22:57:14.647571+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "collect_invoice",
+        "state": "review_required",
+        "attempts": 0,
+        "period_id": "45f01ba3-d319-42de-a39b-a444049f02c3",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "updated_at": "2026-01-01T00:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "12e957d5-b852-4589-bb1b-f87d948b4ad4",
+        "next_attempt_at": "2026-10-22T22:57:14.639105+00:00",
+        "lease_expires_at": null
+      }
+    ],
+    "snapshot_at": "2026-10-23T22:57:14.762166+00:00"
+  },
+  "after_termination_readiness_loss": {
+    "counts": {
+      "due": 3,
+      "total": 11,
+      "by_state": {
+        "pending": 2,
+        "cancelled": 1,
+        "succeeded": 1,
+        "processing": 3,
+        "retry_wait": 2,
+        "awaiting_setup": 1,
+        "review_required": 1
+      },
+      "review_required": 1
+    },
+    "status": "ok",
+    "has_more": false,
+    "company_id": "bff8a78b-ae3b-4be2-9c8f-275dc23a44d5",
+    "operations": [
+      {
+        "kind": "sync_payment",
+        "state": "succeeded",
+        "attempts": 10,
+        "period_id": "45f01ba3-d319-42de-a39b-a444049f02c3",
+        "created_at": "2026-01-01T10:00:00+00:00",
+        "updated_at": "2026-01-01T10:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "9d0fc080-5818-4d09-b928-337e5aada329",
+        "next_attempt_at": "2026-10-22T22:57:14.719535+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "cancel_invoice",
+        "state": "cancelled",
+        "attempts": 9,
+        "period_id": "45f01ba3-d319-42de-a39b-a444049f02c3",
+        "created_at": "2026-01-01T09:00:00+00:00",
+        "updated_at": "2026-01-01T09:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "c39deeaf-bc98-42ca-b3da-e2b606f3c5aa",
+        "next_attempt_at": "2026-10-22T22:57:14.71165+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "setup_customer",
+        "state": "retry_wait",
+        "attempts": 8,
+        "period_id": null,
+        "created_at": "2026-01-01T08:00:00+00:00",
+        "updated_at": "2026-01-01T08:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "c909c1e6-ff3f-4ef5-9d90-1d579e810809",
+        "next_attempt_at": "2026-10-24T22:57:14.703588+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "finalize_invoice",
+        "state": "retry_wait",
+        "attempts": 7,
+        "period_id": "45f01ba3-d319-42de-a39b-a444049f02c3",
+        "created_at": "2026-01-01T07:00:00+00:00",
+        "updated_at": "2026-01-01T07:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "ae5b8638-c5af-4880-a2e4-fb88685b6d1d",
+        "next_attempt_at": "2026-10-22T22:57:14.695745+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "setup_customer",
+        "state": "processing",
+        "attempts": 6,
+        "period_id": null,
+        "created_at": "2026-01-01T06:00:00+00:00",
+        "updated_at": "2026-01-01T06:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "441600a9-0f24-40d0-8005-f35d0fa6ca90",
+        "next_attempt_at": "2026-10-22T22:57:14.687385+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "setup_session",
+        "state": "processing",
+        "attempts": 5,
+        "period_id": null,
+        "created_at": "2026-01-01T05:00:00+00:00",
+        "updated_at": "2026-01-01T05:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "75ee1db0-0971-40de-8987-f1b8a0906a53",
+        "next_attempt_at": "2026-10-24T22:57:14.679613+00:00",
+        "lease_expires_at": "2026-10-24T22:57:14.679612+00:00"
+      },
+      {
+        "kind": "verify_setup",
+        "state": "processing",
+        "attempts": 4,
+        "period_id": null,
+        "created_at": "2026-01-01T04:00:00+00:00",
+        "updated_at": "2026-01-01T04:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "d745a4f6-215c-47c4-b8f1-b738346d8e6a",
+        "next_attempt_at": "2026-10-22T22:57:14.671588+00:00",
+        "lease_expires_at": "2026-10-22T22:57:14.671587+00:00"
+      },
+      {
+        "kind": "setup_session",
+        "state": "pending",
+        "attempts": 3,
+        "period_id": null,
+        "created_at": "2026-01-01T03:00:00+00:00",
+        "updated_at": "2026-01-01T03:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "fa855785-1230-4aca-922a-55bf78ae3b0d",
+        "next_attempt_at": "2026-10-24T22:57:14.663515+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "setup_customer",
+        "state": "pending",
+        "attempts": 2,
+        "period_id": null,
+        "created_at": "2026-01-01T02:00:00+00:00",
+        "updated_at": "2026-01-01T02:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "62c550cd-9ea6-4203-8e93-a915d14b6a15",
+        "next_attempt_at": "2026-10-22T22:57:14.655672+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "create_invoice",
+        "state": "awaiting_setup",
+        "attempts": 1,
+        "period_id": "45f01ba3-d319-42de-a39b-a444049f02c3",
+        "created_at": "2026-01-01T01:00:00+00:00",
+        "updated_at": "2026-01-01T01:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "3e32dcb5-7fcf-43c1-aac0-0cd47e3e830a",
+        "next_attempt_at": "2026-10-22T22:57:14.647571+00:00",
+        "lease_expires_at": null
+      },
+      {
+        "kind": "collect_invoice",
+        "state": "review_required",
+        "attempts": 0,
+        "period_id": "45f01ba3-d319-42de-a39b-a444049f02c3",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "updated_at": "2026-01-01T00:00:00+00:00",
+        "contract_id": "bd04d92d-ba32-41e9-abda-560e7daf4e40",
+        "operation_id": "12e957d5-b852-4589-bb1b-f87d948b4ad4",
+        "next_attempt_at": "2026-10-22T22:57:14.639105+00:00",
+        "lease_expires_at": null
+      }
+    ],
+    "snapshot_at": "2026-10-23T22:57:14.898182+00:00"
+  }
+}

@@ -92,7 +92,7 @@ test('executed five-state DTOs are accepted and malformed premium data fail clos
   }
 })
 
-test('guarded detail route binds the payment form and all existing draft editors to the current admin identity', async () => {
+test('guarded legacy detail route binds the payment form and draft editors to current admin identity after confirming no recurring contract', async () => {
   const api = actions([{ status: 'ok', company: fixture.active, roster: [], roster_total: 0, offset: 0, page_size: 50 }])
   function Premium() {}
   function Editor() {}
@@ -100,6 +100,7 @@ test('guarded detail route binds the payment form and all existing draft editors
   function Roster() {}
   const page = loadTypescript('app/companies/[id]/page.tsx', {
     '@/lib/admin': { requireAdmin: async () => ({ supabase: api.supabase, adminSession: { user: { id: 'admin-b' }, profile: null } }) },
+    '@/lib/corporate/recurring': {loadRecurringContract:async()=>({contract:null}),loadInvoiceIndex:async()=>null,loadAdminOperations:async()=>null},
     '@/app/admin-shell': {},
     '@/components/corporate/company-premium': { CorporateCompanyPremium: Premium },
     '@/components/corporate/company-detail': { CorporateCompanySummary: () => {}, CorporateCompanyEditor: Editor, CorporateRoster: Roster },

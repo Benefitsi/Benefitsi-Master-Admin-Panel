@@ -106,3 +106,35 @@ export async function setCorporateEmployeeAdmission(formData: FormData): Promise
   if (result.status === "updated") { refreshCompany(formData); refresh() }
   return result
 }
+
+export async function recordCorporateExternalCancellation(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const { recordExternalCancellation } = await import('@/lib/corporate/recurring-admin-mutations')
+  const result = await recordExternalCancellation(supabase, formData)
+  if (result.status === 'cancelled' || result.status === 'received_pending_review') refreshCompany(formData)
+  return result
+}
+export async function publishCorporateRecurringProfile(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const { publishRecurringProfile } = await import('@/lib/corporate/recurring-admin-mutations')
+  return publishRecurringProfile(supabase, formData)
+}
+export async function publishCorporateRecurringTerms(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const { publishRecurringTerms } = await import('@/lib/corporate/recurring-admin-mutations')
+  const result = await publishRecurringTerms(supabase, formData)
+  if (result.status === 'published') refreshCompany(formData)
+  return result
+}
+export async function attachCorporatePeriodDocument(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const { attachAdminPeriodDocument } = await import('@/lib/corporate/recurring-admin-documents')
+  const result = await attachAdminPeriodDocument(supabase, formData)
+  if (result.status === 'attached') refreshCompany(formData)
+  return result
+}
+export async function readCorporatePeriodDocument(companyId: string, periodId: string, documentId: string, before: string | null) {
+  const { supabase } = await requireAdmin()
+  const { readAdminPeriodDocument } = await import('@/lib/corporate/recurring-admin-documents')
+  return readAdminPeriodDocument(supabase, companyId, periodId, documentId, before)
+}

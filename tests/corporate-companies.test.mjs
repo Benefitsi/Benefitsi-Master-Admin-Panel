@@ -156,9 +156,9 @@ test('detail route transmits UUID and page token only through the guarded sessio
     '@/app/admin-shell': {}, '@/components/corporate/company-detail': {}, '@/components/corporate/company-invitation': {},
   })
   await code.default({ params: Promise.resolve({ id }), searchParams: Promise.resolve({ offset: '50' }) })
-  assert.deepEqual(db.calls, [{ name: 'get_corporate_company', body: { p_company_id: id, p_offset: 50 } }, { name: 'get_corporate_billing', body: { p_company_id: id } }])
+  assert.deepEqual(db.calls, [{ name: 'get_corporate_company', body: { p_company_id: id, p_offset: 50 } }, { name: 'get_corporate_billing', body: { p_company_id: id } }, { name: 'get_corporate_contract', body: { p_company_id: id } }])
   await code.default({ params: Promise.resolve({ id }), searchParams: Promise.resolve({ offset: ['0', '50'] }) })
-  assert.equal(db.calls.length, 2)
+  assert.equal(db.calls.length, 3)
 })
 test('invalid invite identity, token, role and email never reach an authenticated RPC', async () => {
   const db = database([]), api = actions(db)

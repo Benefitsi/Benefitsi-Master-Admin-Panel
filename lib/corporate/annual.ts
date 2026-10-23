@@ -3,6 +3,7 @@ import { isDate, isInvoiceDocument, isUuid, parseCorporateCompany } from "@/lib/
 import { isRecord, isTimestamp } from "@/lib/corporate/requests"
 
 export type CorporateExtension = {
+  period_id?: string | null; renewal_preview?: { seats: number; unit_amount_cents: number; total_amount_cents: number; currency: "EUR" };
   extension_id: string; company_id: string; requested_by: string; additional_seats: number
   status: "requested" | "quoted" | "accepted" | "activated"; net_amount_cents: number | null; currency: "EUR"
   starts_on: string | null; ends_on: string; invoice_reference: string; invoice_document: InvoiceDocument | null
@@ -16,11 +17,13 @@ export function boundedReference(value: unknown): value is string { return typeo
 export function positiveInteger(value: unknown, maximum: number): value is number { return typeof value === "number" && Number.isSafeInteger(value) && value > 0 && value <= maximum }
 function parseExtension(value: unknown, company: CorporateCompany): CorporateExtension | null {
   if (!isRecord(value) || !isUuid(value.extension_id) || value.company_id !== company.company_id || !isUuid(value.requested_by)
-    || !positiveInteger(value.additional_seats, 10000) || value.currency !== "EUR" || value.ends_on !== company.ends_on
+    || !positiveInteger(value.additional_seats, 10000) || value.currency !== "EUR" || (value.period_id == null ? value.ends_on !== company.ends_on : !isUuid(value.period_id) || !isDate(value.ends_on))
     || typeof value.status !== "string" || !Object.hasOwn(extensionStatusLabels, value.status)
     || !isTimestamp(value.created_at) || !isTimestamp(value.updated_at) || !boundedReference(value.invoice_reference) || !boundedReference(value.payment_reference)) return null
+  if (value.period_id && company.current_period?.period_id === value.period_id && value.ends_on !== company.current_period.ends_on) return null
+  if (value.renewal_preview !== undefined && (!isRecord(value.renewal_preview) || !positiveInteger(value.renewal_preview.seats, 10000) || !positiveInteger(value.renewal_preview.unit_amount_cents, 2147483647) || value.renewal_preview.total_amount_cents !== value.renewal_preview.seats * value.renewal_preview.unit_amount_cents || value.renewal_preview.currency !== "EUR")) return null
   const quoted = value.status !== "requested", accepted = value.status === "accepted" || value.status === "activated"
-  if (quoted ? !positiveInteger(value.net_amount_cents, 2147483647) || !isDate(value.starts_on) || value.starts_on >= company.ends_on || !value.invoice_reference.trim()
+  if (quoted ? !positiveInteger(value.net_amount_cents, 2147483647) || !isDate(value.starts_on) || value.starts_on >= String(value.ends_on) || !value.invoice_reference.trim()
     : value.net_amount_cents !== null || value.starts_on !== null || value.invoice_reference !== "") return null
   if (accepted ? !isTimestamp(value.accepted_at) || !isUuid(value.accepted_by) || !isRecord(value.accepted_snapshot)
     : value.accepted_at !== null || value.accepted_by !== null || value.accepted_snapshot !== null) return null

@@ -14,6 +14,7 @@ export type CorporateCatalog = {
 }
 export type CorporateCompany = {
   company_id: string; source_request_id: string; company_name: string; city: string; contact_name: string; contact_email: string
+  current_period?: { period_id: string; starts_on: string; ends_on: string; capacity_seats: number; funding_confirmed: boolean } | null; current_starts_on?: string | null; current_ends_on?: string | null; current_capacity_seats?: number; current_funding_confirmed?: boolean;
   employee_admission_open: boolean; capacity_seats: number; annual_accepted_at: string | null; annual_accepted_by: string | null; annual_snapshot: Record<string, unknown> | null; invoice_document: InvoiceDocument | null
   seats: number; starts_on: string; ends_on: string; catalog_version: string; unit_amount_cents: number; total_amount_cents: number
   currency: "EUR"; tax_mode: "net_reference"; status: CompanyStatus; invoice_reference: string; updated_at: string
@@ -105,6 +106,7 @@ function isCompany(value: unknown): value is CorporateCompany {
       : isTimestamp(value.annual_accepted_at) && isUuid(value.annual_accepted_by) && isRecord(value.annual_snapshot))
     && (value.invoice_document == null || isInvoiceDocument(value.invoice_document, value.company_id, String(value.invoice_reference)))
     && (value.employee_admission_open === undefined || typeof value.employee_admission_open === "boolean")
+    && (value.current_period == null || isRecord(value.current_period) && isUuid(value.current_period.period_id) && isDate(value.current_period.starts_on) && isDate(value.current_period.ends_on) && value.current_period.starts_on < value.current_period.ends_on && count(value.current_period.capacity_seats) && typeof value.current_period.funding_confirmed === "boolean")
     && value.currency === "EUR" && value.tax_mode === "net_reference"
     && typeof value.entitlement_status === "string" && Object.hasOwn(entitlementStatusLabels, value.entitlement_status)
     && typeof value.premium_enabled === "boolean" && typeof value.premium_payment_reference === "string"
