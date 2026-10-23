@@ -126,7 +126,7 @@ test("the active nested page stays visible and opens its group even in the compa
   await withDom(async ({ render }) => {
     const shell = () => React.createElement(Shell, { adminName: "Test" }, "Page")
     await render(shell())
-    assert.equal(document.querySelectorAll("nav > ul > li").length, 7)
+    assert.equal(document.querySelectorAll("nav > ul > li").length, 8)
     for (const [path, label] of [["/city-operations/events/123", "Review & approvals"], ["/wissen/123", "Knowledge"]]) {
       setPath(path); await render(shell())
       const link = document.querySelector('nav a[aria-current="page"]')
@@ -156,7 +156,7 @@ test("Partner routes expose exactly one active child in both sidebar positions",
         assert.equal(links.length,1)
         assert.equal(links[0].getAttribute("href"),href)
         assert.equal(links[0].closest("ul").hidden,false)
-        assert.equal(document.querySelectorAll("nav > ul > li").length,7)
+        assert.equal(document.querySelectorAll("nav > ul > li").length,8)
       }
     }
   })

@@ -1,0 +1,16 @@
+{
+  "fixture": "annual-contract.json",
+  "sha256": "5b45b9daf0efaf5978ce728eeabb911e38a1f71bf44b7b8fbefdc23b19588127",
+  "source_repository": "Benefitsi/benefitsi-database",
+  "source_commit": "6335f154f13bc2db78c588d681605878c2a8cac9",
+  "tested_merge_commit": "8761208f9e940f92273e55f1a0b35d4193d2a7e7",
+  "run_id": "39980170414",
+  "job_id": "120505090591",
+  "native_tests_passed": 89,
+  "artifact_id": "12512519213",
+  "artifact_name": "corporate-company-contract",
+  "artifact_zip_sha256": "6a74f6718c480229d6e8ddd16def39db936515a4c5b63f2a81370ff5af0a3ce6",
+  "source_export": "work/corporate-annual-contract.json",
+  "run_url": "https://github.com/Benefitsi/benefitsi-database/actions/runs/39980170414",
+  "data_scope": "Synthetic accounts and company data produced by native SQL RPC tests; no production records."
+}
