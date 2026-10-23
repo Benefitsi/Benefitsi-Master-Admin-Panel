@@ -69,16 +69,16 @@ function RequestCard({ request, catalog, today, latestStart, retainedOnly, selec
       </div>}
       <header className="flex flex-col gap-3 border-b border-[#061829]/10 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
         <div className="min-w-0">
-          <h3 className="break-words text-lg font-black">{request.company_name}</h3>
-          <p className="mt-1 break-words text-sm text-[#617080]">{request.city} · {request.seats.toLocaleString("de-DE")} geplante Plätze</p>
+          <h3 translate="no" className="break-words text-lg font-black">{request.company_name}</h3>
+          <p className="mt-1 break-words text-sm text-[#617080]"><span translate="no">{request.city}</span> · {request.seats.toLocaleString("de-DE")} geplante Plätze</p>
         </div>
         <span className="self-start rounded-full bg-[#e6f2ff] px-3 py-1.5 text-xs font-black text-[#0b75d9]">{retainedOnly && companyId ? `Bei Vorbereitung: ${corporateStatusLabels.proposal}` : `${retainedOnly ? "Zuletzt geladen: " : ""}${corporateStatusLabels[request.status]}`}</span>
       </header>
       <div className="grid gap-6 p-5 sm:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
         <div className="min-w-0 space-y-5">
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
-            <div><dt className="text-xs font-bold text-[#617080]">Kontakt</dt><dd className="mt-1 break-words font-semibold">{request.contact_name}</dd></div>
-            <div><dt className="text-xs font-bold text-[#617080]">E-Mail</dt><dd className="mt-1 break-all font-semibold">{request.email}</dd></div>
+            <div><dt className="text-xs font-bold text-[#617080]">Kontakt</dt><dd translate="no" className="mt-1 break-words font-semibold">{request.contact_name}</dd></div>
+            <div><dt className="text-xs font-bold text-[#617080]">E-Mail</dt><dd translate="no" className="mt-1 break-all font-semibold">{request.email}</dd></div>
             <div className="sm:col-span-2"><dt className="text-xs font-bold text-[#617080]">Angebot</dt><dd className="mt-2 flex flex-wrap gap-2">
               Jahreszugang für Mitarbeiter
             </dd></div>

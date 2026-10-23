@@ -118,7 +118,7 @@ function BrandingForm({ company: initialCompany }: { company: CorporateCompany }
     {(fileError || invalidText) && <p role="alert" className="text-sm text-amber-950">{fileError || "Bitte maximal 500 Zeichen ohne Steuerzeichen eingeben."}</p>}
     <div aria-label="Vorschau des Firmenauftritts" className="flex items-start gap-4 rounded-2xl bg-[#f4f8fc] p-4">
       <BrandingLogo key={previewKey} companyId={company.company_id} companyName={company.company_name} path={fileError || checkingFile ? null : path} file={file} />
-      <div className="min-w-0"><h3 className="font-bold">{company.company_name}</h3><p className="whitespace-pre-wrap break-words text-sm">{welcome.trim() || `Willkommen bei ${company.company_name}!`}</p></div>
+      <div className="min-w-0"><h3 translate="no" className="font-bold">{company.company_name}</h3><p translate={welcome.trim() ? "no" : undefined} className="whitespace-pre-wrap break-words text-sm">{welcome.trim() || `Willkommen bei ${company.company_name}!`}</p></div>
     </div>
     {state.message && <p role={state.status === "updated" || state.status === "idle" ? "status" : "alert"} className="rounded-xl border p-3 text-sm">{state.message}</p>}
     {state.cleanupWarning && <p className="text-sm text-amber-950">{state.cleanupWarning}</p>}

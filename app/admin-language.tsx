@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react"
 
+import { corporateTranslations, corporateTemplates } from "../lib/admin-i18n/corporate"
 import { overviewTranslations, overviewTemplates } from "../lib/admin-i18n/overview"
 import { compileTranslationTemplates, translateTemplate } from "../lib/admin-i18n/templates"
 
@@ -17,11 +18,11 @@ export type AdminLanguage = "en" | "de"
 const STORAGE_KEY = "benefitsi-admin-language"
 
 const reviewedEnglishToGerman = new Map<string, string>()
-for (const [en, de] of overviewTranslations) {
+for (const [en, de] of [...overviewTranslations, ...corporateTranslations]) {
   if (!reviewedEnglishToGerman.has(en)) reviewedEnglishToGerman.set(en, de)
 }
-const reviewedGermanToEnglish = new Map(overviewTranslations.map(([en, de]) => [de, en]))
-const reviewedTemplates = compileTranslationTemplates(overviewTemplates)
+const reviewedGermanToEnglish = new Map([...overviewTranslations, ...corporateTranslations].map(([en, de]) => [de, en]))
+const reviewedTemplates = compileTranslationTemplates([...overviewTemplates, ...corporateTemplates])
 
 const translations = [
   ["Partner management", "Partnerverwaltung"],

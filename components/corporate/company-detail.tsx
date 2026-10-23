@@ -6,8 +6,8 @@ import { CompanyFeedback, CompanyPagination, corporateInputClass, corporateButto
 
 export function CorporateCompanySummary({ company }: { company: CorporateCompany }) {
   return <section className={corporatePanelClass}>
-    <h2 className="text-xl font-black">{company.company_name}</h2>
-    <p className="mt-1 text-sm text-[#617080]">{company.city} · {companyStatusLabels[company.status]}</p>
+    <h2 translate="no" className="text-xl font-black">{company.company_name}</h2>
+    <p className="mt-1 text-sm text-[#617080]"><span translate="no">{company.city}</span> · {companyStatusLabels[company.status]}</p>
     <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
       <div><dt className="text-xs font-bold text-[#617080]">Ursprüngliches Jahreskontingent</dt><dd className="mt-1 font-bold">{company.seats} Mitarbeiterplätze</dd></div>
       <div><dt className="text-xs font-bold text-[#617080]">Bezahlte Kapazität</dt><dd className="mt-1">{company.capacity_seats ?? company.seats} Mitarbeiterplätze</dd></div>
@@ -15,10 +15,10 @@ export function CorporateCompanySummary({ company }: { company: CorporateCompany
       <div><dt className="text-xs font-bold text-[#617080]">Zeitraum (einschließlich)</dt><dd className="mt-1">{period(company.starts_on, company.ends_on)}</dd></div>
       <div><dt className="text-xs font-bold text-[#617080]">Feste Jahresnettosumme</dt><dd className="mt-1 font-bold">{euro(company.total_amount_cents)} netto pro Jahr</dd><dd className="mt-1">{euro(company.unit_amount_cents)} je Mitarbeiter/Jahr · zzgl. MwSt.</dd></div>
       <div><dt className="text-xs font-bold text-[#617080]">Preisversion bei Vereinbarung</dt><dd className="mt-1">{company.catalog_version}</dd></div>
-      <div><dt className="text-xs font-bold text-[#617080]">Kontakt aus Anfrage</dt><dd className="mt-1 break-words">{company.contact_name}<br />{company.contact_email}</dd></div>
+      <div><dt className="text-xs font-bold text-[#617080]">Kontakt aus Anfrage</dt><dd translate="no" className="mt-1 break-words">{company.contact_name}<br />{company.contact_email}</dd></div>
       <div><dt className="text-xs font-bold text-[#617080]">Firmen-Premium</dt><dd className="mt-1 font-bold">{entitlementStatusLabels[company.entitlement_status]}</dd></div>
-      <div><dt className="text-xs font-bold text-[#617080]">Externe Rechnungsreferenz</dt><dd className="mt-1 break-words">{company.invoice_reference || "Noch nicht hinterlegt"}</dd></div>
-      <div><dt className="text-xs font-bold text-[#617080]">Letzte Zahlungsreferenz</dt><dd className="mt-1 break-words">{company.premium_payment_reference || "Noch nicht hinterlegt"}</dd></div>
+      <div><dt className="text-xs font-bold text-[#617080]">Externe Rechnungsreferenz</dt><dd className="mt-1 break-words">{company.invoice_reference ? <span translate="no">{company.invoice_reference}</span> : "Noch nicht hinterlegt"}</dd></div>
+      <div><dt className="text-xs font-bold text-[#617080]">Letzte Zahlungsreferenz</dt><dd className="mt-1 break-words">{company.premium_payment_reference ? <span translate="no">{company.premium_payment_reference}</span> : "Noch nicht hinterlegt"}</dd></div>
     </dl>
     <p className="mt-4 text-sm text-[#617080]">Diese Verwaltung erfasst die manuelle Bestätigung einer extern geprüften Zahlung. Sie erzeugt keine Rechnung und löst keine Zahlung oder automatische Verlängerung aus. Plätze, Jahresbetrag und Zeitraum bleiben bei Austritt, Entfernung oder Ablauf einer Einladung unverändert.</p>
   </section>
@@ -72,7 +72,7 @@ function CorporateRosterRow({ row, companyId, href }: { row: RosterRow; companyI
   const blocked = pending || mustReload(state) || state.status === "revoked" || state.status === "removed"
   const invitation = row.kind === "invitation"
   return <tr className="border-b border-[#061829]/10 align-top">
-    <td className="break-all p-3">{row.email}</td><td className="p-3">{companyRoleLabels[row.role]}</td>
+    <td translate="no" className="break-all p-3">{row.email}</td><td className="p-3">{companyRoleLabels[row.role]}</td>
     <td className="p-3">{invitation ? <>Offene Einladung<br /><span className="text-xs">Gültig bis {row.expires_at && new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(row.expires_at))}</span></> : "Zugeordnet"}</td>
     <td className="min-w-56 space-y-2 p-3">
       {confirm ? <div className="space-y-2">

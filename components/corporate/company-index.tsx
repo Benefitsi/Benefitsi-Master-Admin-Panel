@@ -8,8 +8,8 @@ export function CorporateCompanyIndex({ result, selectedStatus }: { result: Comp
     {result.status === "error" ? <p role="alert" className="text-sm text-amber-900">{result.message} <a href="/companies" className="font-bold underline">Neu laden</a></p> : <>
       <CompanyPagination offset={result.offset} total={result.total} href={offset => `/companies?companyOffset=${offset}${selectedStatus ? `&status=${selectedStatus}` : ""}`} />
       {result.companies.length === 0 ? <p className="text-sm">Keine Firmenkonten auf dieser Seite.</p> : <ul className="grid gap-3 lg:grid-cols-2">{result.companies.map(company => <li key={company.company_id} className="space-y-2 rounded-2xl border border-[#061829]/10 p-4">
-        <a href={`/companies/${company.company_id}`} className="inline-flex min-h-11 items-center break-words font-black text-[#0b75d9] underline">{company.company_name}</a>
-        <p className="text-xs">{companyStatusLabels[company.status]} · {company.city}</p>
+        <a translate="no" href={`/companies/${company.company_id}`} className="inline-flex min-h-11 items-center break-words font-black text-[#0b75d9] underline">{company.company_name}</a>
+        <p className="text-xs">{companyStatusLabels[company.status]} · <span translate="no">{company.city}</span></p>
         <p className="text-sm font-bold">Firmen-Premium: {entitlementStatusLabels[company.entitlement_status]}</p>
         <p className="text-sm">{company.seats} ursprüngliche Jahresplätze · {company.capacity_seats ?? company.seats} bezahlte Plätze · {company.employee_count} zugeordnet · {company.reserved_count} reserviert · {company.available_seats} frei</p>
         <p className="text-sm font-bold">{euro(company.total_amount_cents)} netto/Jahr · zzgl. MwSt.</p>

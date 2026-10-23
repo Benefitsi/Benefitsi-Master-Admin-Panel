@@ -143,9 +143,9 @@ test('deployed list uses live session catalog and bounded company pagination ind
     '@/app/admin-shell': {}, '@/components/corporate/request-workspace': {},
   })
   const result = await code.default({ searchParams: Promise.resolve({ companyOffset: '50', status: 'proposal' }) })
-  assert.equal(result.props.children.key, 'synthetic-admin-identity', 'switching the authenticated Admin must discard the prior in-memory workspace')
-  assert.equal(result.props.children.props.companies.offset, 50)
-  assert.equal(result.props.children.props.catalog.version, '2026-10-04.2')
+  assert.equal(result.props.children.props.children.key, 'synthetic-admin-identity', 'switching the authenticated Admin must discard the prior in-memory workspace')
+  assert.equal(result.props.children.props.children.props.companies.offset, 50)
+  assert.equal(result.props.children.props.children.props.catalog.version, '2026-10-04.2')
   assert.deepEqual(db.calls.map(c => c.name), ['get_corporate_benefits_catalog', 'admin_list_corporate_companies', 'admin_list_corporate_benefits_requests'])
   assert.equal(db.calls[1].body.p_offset, 50); assert.equal(db.calls[2].body.p_status, 'proposal')
 })

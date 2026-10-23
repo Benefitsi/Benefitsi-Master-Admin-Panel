@@ -43,7 +43,7 @@ function PremiumForm({ company: latestCompany }: { company: CorporateCompany }) 
     })
   }}>
     <h2 className="text-lg font-black">{enabled ? "Extern bezahltes Firmen-Premium freigeben" : "Firmen-Premium sperren"}</h2>
-    <p className="text-sm"><strong>{company.seats} Mitarbeiterplätze · {euro(company.total_amount_cents)} netto pro Jahr · zzgl. MwSt.</strong><br />{period(company.starts_on, company.ends_on)} · Tagesgrenzen in Europe/Berlin<br />Rechnungsreferenz: {company.invoice_reference || "Noch nicht hinterlegt"}</p>
+    <p className="text-sm"><strong>{company.seats} Mitarbeiterplätze · {euro(company.total_amount_cents)} netto pro Jahr · zzgl. MwSt.</strong><br />{period(company.starts_on, company.ends_on)} · Tagesgrenzen in Europe/Berlin<br />Rechnungsreferenz: {company.invoice_reference ? <span translate="no">{company.invoice_reference}</span> : "Noch nicht hinterlegt"}</p>
     <fieldset disabled={blocked} className="space-y-3 disabled:opacity-70">
       <legend className="sr-only">{enabled ? "Zahlungsprüfung bestätigen" : "Sperre bestätigen"}</legend>
       {enabled ? <>

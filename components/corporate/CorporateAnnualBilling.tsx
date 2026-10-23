@@ -19,7 +19,7 @@ export function CorporateAnnualBilling({ billing, adminIdentity }: { billing: Co
   const company = billing.agreement
   return <section className={`${corporatePanelClass} space-y-5`} aria-label="Jahresabrechnung">
     <h2 className="text-xl font-black">Jahresabrechnung</h2>
-    <p><strong>Ursprüngliche Vereinbarung: {company.seats} Plätze · {euro(company.total_amount_cents)} netto/Jahr · zzgl. MwSt.</strong><br />Jahreszeitraum: {period(company.starts_on, company.ends_on)}<br />Angebotsreferenz: {company.source_request_id}</p>
+    <p><strong>Ursprüngliche Vereinbarung: {company.seats} Plätze · {euro(company.total_amount_cents)} netto/Jahr · zzgl. MwSt.</strong><br />Jahreszeitraum: {period(company.starts_on, company.ends_on)}<br />Angebotsreferenz: <span translate="no">{company.source_request_id}</span></p>
     <p>Vom Ansprechpartner angenommen: {company.annual_accepted_at ? new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(company.annual_accepted_at)) : "Noch offen – Bestätigung im Firmenportal erforderlich"}</p>
     <p>Bezahlte Kapazität: {company.capacity_seats ?? company.seats} Plätze. Ein offenes Erweiterungsangebot verändert das bisherige Kontingent nicht.</p>
     <Invoice key={`${adminIdentity}:${company.company_id}:original:${company.invoice_document?.storage_path ?? ""}`} companyId={company.company_id} extensionId={null} reference={company.invoice_reference} document={company.invoice_document} />
@@ -37,7 +37,7 @@ function Invoice({ companyId, extensionId, reference, document }: { companyId: s
   const attached = !!document || state.status === "attached"
   const blocked = pending || annualMustReload(state) || state.status === "attached"
   return <div className="space-y-3 rounded-2xl border border-[#061829]/10 p-4">
-    <p className="text-sm font-bold">Rechnung: {reference || "Rechnungsreferenz fehlt"}</p>
+    <p className="text-sm font-bold">Rechnung: {reference ? <span translate="no">{reference}</span> : "Rechnungsreferenz fehlt"}</p>
     {attached ? <>
       <button type="button" disabled={pending} className={corporateButtonClass} onClick={() => {
         if (busy.current) return
@@ -81,7 +81,7 @@ function Extension({ company, extension: latest }: { company: CorporateCompany; 
   const accepted = extension.status === "accepted" || extension.status === "activated"
   return <article className="space-y-4 rounded-2xl border border-[#061829]/10 p-4">
     <h4 className="font-black">{extension.additional_seats} zusätzliche Plätze · {extensionStatusLabels[extension.status]}</h4>
-    <p className="text-sm">Referenz: {extension.extension_id}<br />{quoted ? <>Konkretes Angebot: {euro(extension.net_amount_cents!)} netto · zzgl. MwSt.<br />Verbleibende Laufzeit: {period(extension.starts_on!, extension.ends_on)}</> : <>Gemeinsames Ende: {period(company.starts_on, extension.ends_on)} (Firmenjahr)</>}<br />Vom Ansprechpartner angenommen: {accepted ? "Ja" : "Noch offen"}</p>
+    <p className="text-sm">Referenz: <span translate="no">{extension.extension_id}</span><br />{quoted ? <>Konkretes Angebot: {euro(extension.net_amount_cents!)} netto · zzgl. MwSt.<br />Verbleibende Laufzeit: {period(extension.starts_on!, extension.ends_on)}</> : <>Gemeinsames Ende: {period(company.starts_on, extension.ends_on)} (Firmenjahr)</>}<br />Vom Ansprechpartner angenommen: {accepted ? "Ja" : "Noch offen"}</p>
     {!accepted && <form aria-label="Erweiterungsangebot" className="space-y-3" onSubmit={event => {
       event.preventDefault(); if (busy.current || blocked) return
       const data = new FormData(); data.set("companyId", company.company_id); data.set("extensionId", extension.extension_id); data.set("expectedUpdatedAt", extension.updated_at); data.set("additionalSeats", quantity); data.set("netAmountCents", amount); data.set("invoiceReference", reference)
@@ -112,7 +112,7 @@ function Extension({ company, extension: latest }: { company: CorporateCompany; 
       {!extension.invoice_document && <p className="text-sm">Vor Zahlungsbestätigung den tatsächlichen Rechnungsbeleg zuordnen und aktuelle Angaben neu laden.</p>}
       <button type="submit" className={corporateButtonClass} disabled={blocked || !extension.invoice_document || !confirmed || !payment.trim()}>{pending ? "Bestätigt …" : "Zahlung bestätigen und Plätze freigeben"}</button>
     </form>}
-    {extension.status === "activated" && <p className="text-sm">Zahlungsreferenz: {extension.payment_reference}. Die ursprüngliche Jahresvereinbarung und das Firmenende bleiben unverändert.</p>}
+    {extension.status === "activated" && <p className="text-sm">Zahlungsreferenz: <span translate="no">{extension.payment_reference}</span>. Die ursprüngliche Jahresvereinbarung und das Firmenende bleiben unverändert.</p>}
     <Feedback state={state} companyId={company.company_id} />
   </article>
 }

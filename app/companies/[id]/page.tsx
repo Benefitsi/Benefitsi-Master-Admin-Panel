@@ -1,6 +1,7 @@
 import { loadCorporateBilling } from "@/lib/corporate/annual"
 import { CorporateAnnualBilling } from "@/components/corporate/CorporateAnnualBilling"
 import Link from "next/link"
+import { AdminTranslationBoundary } from "@/components/admin-translation-boundary"
 import type { Metadata } from "next"
 import { AdminShell } from "@/app/admin-shell"
 import { requireAdmin } from "@/lib/admin"
@@ -19,7 +20,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
   const billing = result.status === "ok" ? await loadCorporateBilling(supabase, id) : null
   const adminName = adminSession.profile?.display_name || adminSession.profile?.email || adminSession.user.email || "Admin"
   return <AdminShell adminName={adminName} title="Firmenkonto" subtitle="Corporate Benefits · Jahreskontingent und persönliche Teamaufnahme">
-    <div className="space-y-5">
+    <AdminTranslationBoundary><div className="space-y-5">
       <Link href="/companies" className="inline-flex min-h-11 items-center text-sm font-bold text-[#0b75d9] underline">Zur Firmenliste und den Anfragen</Link>
       {result.status !== "ok" ? <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm">{result.message}</div> : <>
         <CorporateCompanySummary company={result.company} />
@@ -30,6 +31,6 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
         <CorporateCompanyInvitation key={`${adminSession.user.id}:${result.company.company_id}`} company={result.company} />
         <CorporateRoster key={`${adminSession.user.id}:${result.company.company_id}`} detail={result} />
       </>}
-    </div>
+    </div></AdminTranslationBoundary>
   </AdminShell>
 }
