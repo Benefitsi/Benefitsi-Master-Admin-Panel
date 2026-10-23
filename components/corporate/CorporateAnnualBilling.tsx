@@ -52,13 +52,13 @@ function Invoice({ companyId, extensionId, reference, document }: { companyId: s
       event.preventDefault(); if (busy.current || blocked || !reference.trim()) return
       const file = event.currentTarget.elements.namedItem("invoice") as HTMLInputElement | null
       const pdf = file?.files?.[0]
-      if (!pdf || pdf.size > MAX_INVOICE_BYTES || pdf.type !== "application/pdf") { setState({ status: "invalid", message: "Bitte eine vorhandene PDF-Rechnung bis 10 MiB auswählen." }); return }
-      const data = new FormData(); data.set("companyId", companyId); data.set("extensionId", extensionId ?? ""); data.set("invoiceReference", reference); data.set("documentId", documentId); data.set("invoice", pdf)
+      if (!pdf || pdf.size > MAX_INVOICE_BYTES || pdf.type !== "application/pdf") { setState({ status: "invalid", message: "Bitte eine vorhandene PDF-Rechnung bis 4 MiB auswählen." }); return }
+      const data = new FormData(); data.set("companyId", companyId); data.set("extensionId", extensionId ?? ""); data.set("invoiceReference", reference); data.set("documentId", documentId); data.set("invoice", pdf, "invoice.pdf")
       busy.current = true
       startTransition(async () => { try { setState(await attachCorporateInvoice(data)) } catch { setState(annualFailure) } finally { busy.current = false } })
     }}>
-      <label className="grid gap-2 text-sm font-bold">Vorhandene Rechnung als PDF (max. 10 MiB)<input className={corporateInputClass} name="invoice" type="file" accept="application/pdf,.pdf" required disabled={blocked || !reference.trim()} /></label>
-      <p className="text-xs text-[#617080]">Privater Beleg. Die Zuordnung ist unveränderlich. Aussteller, Steuer und Bruttobetrag stammen aus der tatsächlichen Rechnung.</p>
+      <label className="grid gap-2 text-sm font-bold">Vorhandene Rechnung als PDF (max. 4 MiB)<input className={corporateInputClass} name="invoice" type="file" accept="application/pdf,.pdf" required disabled={blocked || !reference.trim()} /></label>
+      <p className="text-xs text-[#617080]">Größere PDFs bitte vor dem Hochladen auf höchstens 4 MiB reduzieren. Privater Beleg. Die Zuordnung ist unveränderlich. Aussteller, Steuer und Bruttobetrag stammen aus der tatsächlichen Rechnung.</p>
       <button className={corporateButtonClass} type="submit" disabled={blocked || !reference.trim()}>{pending ? "Ordnet zu …" : "Rechnungsbeleg unveränderlich zuordnen"}</button>
     </form>}
     <Feedback state={state} companyId={companyId} />

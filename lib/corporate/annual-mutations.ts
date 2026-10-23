@@ -36,7 +36,7 @@ export async function confirmCorporateSeatExtension(client: Pick<Client, "rpc">,
   if (!isUuid(company) || !isUuid(id) || !isTimestamp(expected) || field(data, "paymentConfirmed") !== "true" || !boundedReference(reference) || !reference.trim()) return invalid
   return mutate(client, "admin_confirm_corporate_seat_extension", { p_extension_id: id, p_expected_updated_at: expected, p_payment_reference: reference.trim() }, id, "activated")
 }
-export const MAX_INVOICE_BYTES = 10 * 1024 * 1024
+export const MAX_INVOICE_BYTES = 4 * 1024 * 1024
 function validPdf(bytes: Uint8Array) { return bytes.length >= 8 && bytes.length <= MAX_INVOICE_BYTES && [37, 80, 68, 70, 45].every((b, i) => bytes[i] === b) }
 export async function attachCorporateInvoiceDocument(client: Client, data: FormData): Promise<AnnualMutation> {
   const company = field(data, "companyId"), extension = field(data, "extensionId"), reference = field(data, "invoiceReference"), documentId = field(data, "documentId"), file = data.get("invoice")

@@ -177,3 +177,18 @@ test('company index displays paid capacity beside original seats after a paid am
  const html = renderToStaticMarkup(React.createElement(Index, { result: { status: 'loaded', companies: [company], total: 1, offset: 0, page_size: 50 } }))
  assert.ok(html.includes(`${company.capacity_seats} bezahlte Plätze`)); assert.ok(html.includes(`${company.seats} ursprüngliche Jahresplätze`)); assert.match(html, /497,50/)
 })
+
+test('invoice 4 MiB boundary fits serialized Server Action transport; one extra byte is rejected before any write', async () => {
+ for (const size of [4194305, 4194304]) {
+  const bytes = new Uint8Array(size); bytes.set(new TextEncoder().encode('%PDF-1.7'));
+  const input = invoiceForm(); input.set('invoice', new Blob([bytes], { type: 'application/pdf' }), 'invoice.pdf');
+  input.set('invoiceReference', 'R'.repeat(160));
+  const encoded = await require("next/dist/compiled/react-server-dom-webpack/client.node").encodeReply([input]);
+  const serialized = await new Response(encoded).arrayBuffer();
+  console.log(`actual Server Action multipart bytes for ${size}: ${serialized.byteLength}`);
+  assert.ok(serialized.byteLength < 4500000, `multipart body ${serialized.byteLength}`);
+  const transport = api([{ status: 'ok', agreement: { ...company, invoice_reference: 'R'.repeat(160), invoice_document: null }, extensions: [] }, { Key: `corporate-invoices/${path}` }, { status: 'attached', document: { ...document, invoice_reference: 'R'.repeat(160) }, replayed: false }]);
+  assert.equal((await transport.actions().attachCorporateInvoice(input)).status, size === 4194304 ? 'attached' : 'invalid');
+  assert.equal(transport.calls.length, size === 4194304 ? 3 : 0);
+ }
+})
