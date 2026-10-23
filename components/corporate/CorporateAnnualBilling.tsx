@@ -17,11 +17,14 @@ function Feedback({ state, companyId }: { state: AnnualMutation; companyId: stri
 export function CorporateAnnualBilling({ billing, adminIdentity }: { billing: CorporateBilling; adminIdentity: string }) {
   if (billing.status !== "ok") return <section className={corporatePanelClass} role="alert">{billing.message}</section>
   const company = billing.agreement
+  const capacityLabel = company.current_period
+    ? company.current_period.funding_confirmed ? "Aktuelle bezahlte Kapazität:" : "Aktuelle gebuchte Kapazität · nicht bezahlt:"
+    : company.premium_enabled ? "Bezahlte Kapazität:" : "Gebuchte Kapazität · nicht bezahlt:"
   return <section className={`${corporatePanelClass} space-y-5`} aria-label="Jahresabrechnung">
     <h2 className="text-xl font-black">Jahresabrechnung</h2>
     <p><strong>Ursprüngliche Vereinbarung: {company.seats} Plätze · {euro(company.total_amount_cents)} netto/Jahr · zzgl. MwSt.</strong><br />Jahreszeitraum: {period(company.starts_on, company.ends_on)}<br />Angebotsreferenz: <span translate="no">{company.source_request_id}</span></p>
     <p>Vom Ansprechpartner angenommen: {company.annual_accepted_at ? new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(company.annual_accepted_at)) : "Noch offen – Bestätigung im Firmenportal erforderlich"}</p>
-    <p>Bezahlte Kapazität: {company.capacity_seats ?? company.seats} Plätze. Ein offenes Erweiterungsangebot verändert das bisherige Kontingent nicht.</p>
+    <p>{capacityLabel} {company.current_period?.capacity_seats ?? company.capacity_seats ?? company.seats} Plätze. Ein offenes Erweiterungsangebot verändert das bisherige Kontingent nicht.</p>
     <Invoice key={`${adminIdentity}:${company.company_id}:original:${company.invoice_document?.storage_path ?? ""}`} companyId={company.company_id} extensionId={null} reference={company.invoice_reference} document={company.invoice_document} />
     <h3 className="text-lg font-black">Zusätzliche Mitarbeiterplätze</h3>
     <p className="text-sm text-[#617080]">Anfrage im Firmenportal → konkretes Nettoangebot → Annahme durch den Ansprechpartner → belegte Zahlung. Das Ende des Firmenjahrs bleibt unverändert. Keine automatische Preisberechnung oder Verlängerung.</p>
@@ -79,10 +82,15 @@ function Extension({ company, extension: latest }: { company: CorporateCompany; 
   const blocked = pending || annualMustReload(state) || ["quoted", "activated"].includes(state.status)
   const quoted = extension.status !== "requested"
   const accepted = extension.status === "accepted" || extension.status === "activated"
+  // Only the current bound period or the legacy agreement supplies a known start.
+  // A requested older renewal has no start in this DTO; retain its exact end only.
+  const requestedStart = extension.period_id
+    ? company.current_period?.period_id === extension.period_id ? company.current_period.starts_on : null
+    : company.starts_on
   return <article className="space-y-4 rounded-2xl border border-[#061829]/10 p-4">
     <h4 className="font-black">{extension.additional_seats} zusätzliche Plätze · {extensionStatusLabels[extension.status]}</h4>
     {extension.renewal_preview && <p>Verlängerung nach Aktivierung: {extension.renewal_preview.seats} Plätze · {euro(extension.renewal_preview.total_amount_cents)} netto/Jahr</p>}
-    <p className="text-sm">Referenz: <span translate="no">{extension.extension_id}</span><br />{quoted ? <>Konkretes Angebot: {euro(extension.net_amount_cents!)} netto · zzgl. MwSt.<br />Verbleibende Laufzeit: {period(extension.starts_on!, extension.ends_on)}</> : <>Gemeinsames Ende: {period(extension.period_id && company.current_period?.period_id === extension.period_id ? company.current_period.starts_on : company.starts_on, extension.ends_on)} (Firmenjahr)</>}<br />Vom Ansprechpartner angenommen: {accepted ? "Ja" : "Noch offen"}</p>
+    <p className="text-sm">Referenz: <span translate="no">{extension.extension_id}</span><br />{quoted ? <>Konkretes Angebot: {euro(extension.net_amount_cents!)} netto · zzgl. MwSt.<br />Verbleibende Laufzeit: {period(extension.starts_on!, extension.ends_on)}</> : <>{requestedStart ? <>Gemeinsames Ende: {period(requestedStart, extension.ends_on)} (Firmenjahr)</> : <>Gemeinsames Ende (exklusive Grenze): <time translate="no" dateTime={extension.ends_on}>{extension.ends_on}</time></>}</>}<br />Vom Ansprechpartner angenommen: {accepted ? "Ja" : "Noch offen"}</p>
     {!accepted && <form aria-label="Erweiterungsangebot" className="space-y-3" onSubmit={event => {
       event.preventDefault(); if (busy.current || blocked) return
       const data = new FormData(); data.set("companyId", company.company_id); data.set("extensionId", extension.extension_id); data.set("expectedUpdatedAt", extension.updated_at); data.set("additionalSeats", quantity); data.set("netAmountCents", amount); data.set("invoiceReference", reference)

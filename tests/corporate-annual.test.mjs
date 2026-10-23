@@ -85,6 +85,7 @@ test('real annual billing component separates quote, original amount, paid capac
  const { CorporateAnnualBilling: Billing } = billing()
  const html = renderToStaticMarkup(React.createElement(Billing, { billing: { status: 'ok', agreement: company, extensions: [{ ...extension, status: 'quoted', net_amount_cents: 1800, starts_on: company.starts_on, invoice_reference: 'EXT-42' }] }, adminIdentity: 'admin' }))
  assert.match(html, /Zusätzliche Mitarbeiterplätze/); assert.match(html, /Jahreszeitraum/); assert.match(html, /497,50/); assert.match(html, /18,00/); assert.match(html, /Vom Ansprechpartner angenommen/)
+ assert.match(html, /Bezahlte Kapazität:.*27 Plätze/)
  assert.doesNotMatch(html, /Geburtstagsprogramm|Dienstjubiläum|Geschenkbudget/)
 })
 test('quote conflict retains draft and original version across refresh, identity change clears it', async () => {

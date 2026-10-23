@@ -85,3 +85,68 @@ test('every nonpaid actual period shows exact payment/review state without provi
  const html=render(CorporateRecurringContract,{state:{...state,contract:{...state.contract,review_required:true},current_period:{...state.current_period,payment_state:payment,funding_confirmed:false,access_status:'not_enabled',paid_at:null}}});assert.match(html,new RegExp(label));assert.match(html,/Keine bezahlte Freigabe/);assert.match(html,/Prüfung erforderlich/)
  }
 })
+
+const annualTestId = '11111111-1111-4111-8111-111111111111'
+const annualBillingComponent = () => loadTypescript('components/corporate/CorporateAnnualBilling.tsx', {'@/app/companies/actions': {}}, {crypto: {randomUUID: () => annualTestId}}).CorporateAnnualBilling
+async function acceptedAnnualBilling(agreement, extensions = []) {
+ const {loadCorporateBilling} = loadTypescript('lib/corporate/annual.ts')
+ const billing = await loadCorporateBilling({rpc: async () => ({data: {status: 'ok', agreement, extensions}, error: null})}, agreement.company_id)
+ assert.equal(billing.status, 'ok')
+ return billing
+}
+function requestedAnnualExtension(overrides = {}) {
+ return {extension_id: annualTestId, company_id: company.company_id, requested_by: annualTestId, additional_seats: 2, status: 'requested', net_amount_cents: null, currency: 'EUR', starts_on: null, ends_on: state.current_period.ends_on, invoice_reference: '', invoice_document: null, payment_reference: '', accepted_at: null, accepted_by: null, accepted_snapshot: null, activated_at: null, created_at: state.version, updated_at: state.version, period_id: state.current_period.period_id, ...overrides}
+}
+test('annual panel labels an unpaid current renewal as booked and a funded renewal as paid without changing historical agreement', async () => {
+ for (const funded of [false, true]) {
+  const agreement = {...company, capacity_seats: 25, current_period: {...state.current_period, capacity_seats: 25, funding_confirmed: funded}}
+  const billing = await acceptedAnnualBilling(agreement)
+  const before = JSON.stringify(billing)
+  const html = render(annualBillingComponent(), {billing, adminIdentity: 'admin'})
+  assert.match(html, /Ursprüngliche Vereinbarung:/)
+  assert.match(html, funded ? /Aktuelle bezahlte Kapazität:.*25 Plätze/ : /Aktuelle gebuchte Kapazität · nicht bezahlt:.*25 Plätze/)
+  if (!funded) assert.doesNotMatch(html, /[Bb]ezahlte Kapazität:/)
+  assert.equal(JSON.stringify(billing), before)
+ }
+})
+test('annual panel keeps only the exact known end for a prior renewal request after a later period becomes current', async () => {
+ const prior = requestedAnnualExtension()
+ const later = {...company, current_period: {...state.current_period, period_id: '22222222-2222-4222-8222-222222222222', starts_on: '2027-10-23', ends_on: '2028-10-23'}}
+ const billing = await acceptedAnnualBilling(later, [prior])
+ const before = JSON.stringify(billing)
+ const html = render(annualBillingComponent(), {billing, adminIdentity: 'admin'})
+ const article = html.match(/<article[^>]*>([\s\S]*?)<\/article>/)[1]
+ assert.match(article, /Gemeinsames Ende \(exklusive Grenze\):/)
+ assert.ok(article.includes(`<time translate="no" dateTime="${prior.ends_on}">${prior.ends_on}</time>`))
+ assert.doesNotMatch(article, /23\.10\.2025|23\.10\.2026|23\.10\.2027|\d{2}\.\d{2}\.\d{4} bis|Firmenjahr/)
+ assert.equal(JSON.stringify(billing), before)
+ const current = await acceptedAnnualBilling(company, [prior])
+ assert.match(render(annualBillingComponent(), {billing: current, adminIdentity: 'admin'}), /Gemeinsames Ende:.*23\.10\.2026 bis 22\.10\.2027/)
+ const quoted = {...prior, status: 'quoted', starts_on: '2027-03-04', net_amount_cents: 1800, invoice_reference: 'Wissen'}
+ const known = await acceptedAnnualBilling(later, [quoted])
+ assert.match(render(annualBillingComponent(), {billing: known, adminIdentity: 'admin'}), /Verbleibende Laufzeit:.*04\.03\.2027 bis 22\.10\.2027/)
+})
+test('annual panel preserves legacy funded capacity and exact DE EN labels opaque references and raw period boundaries', async () => {
+ const {translateValue} = await import('../app/admin-language.tsx')
+ for (const [de, en] of [
+  ['Aktuelle bezahlte Kapazität:', 'Current paid capacity:'],
+  ['Aktuelle gebuchte Kapazität · nicht bezahlt:', 'Current booked capacity · Unpaid:'],
+  ['Gebuchte Kapazität · nicht bezahlt:', 'Booked capacity · Unpaid:'],
+  ['Gemeinsames Ende (exklusive Grenze):', 'Common end date (exclusive boundary):'],
+ ]) { assert.equal(translateValue(de, 'en'), en); assert.equal(translateValue(en, 'de'), de) }
+ const legacy = {...company, current_period: null, capacity_seats: 27, available_seats: 27 - company.employee_count - company.reserved_count, premium_enabled: true, invoice_reference: 'Wissen', invoice_document: null}
+ const extension = requestedAnnualExtension({period_id: undefined, ends_on: legacy.ends_on})
+ const billing = await acceptedAnnualBilling(legacy, [extension])
+ const before = JSON.stringify(billing)
+ const html = render(annualBillingComponent(), {billing, adminIdentity: 'admin'})
+ assert.match(html, /Bezahlte Kapazität:.*27 Plätze/)
+ assert.match(html, /Gemeinsames Ende:.*23\.10\.2025 bis 22\.10\.2026/)
+ assert.match(html, /<span translate="no">Wissen<\/span>/)
+ assert.ok(html.includes(`<span translate="no">${extension.extension_id}</span>`))
+ for (const value of [legacy.starts_on, legacy.ends_on, extension.updated_at]) for (const language of ['en', 'de']) assert.equal(translateValue(value, language), value)
+ assert.equal(JSON.stringify(billing), before)
+ const unfunded = await acceptedAnnualBilling({...legacy, premium_enabled: false, premium_payment_reference: ''})
+ const unfundedHtml = render(annualBillingComponent(), {billing: unfunded, adminIdentity: 'admin'})
+ assert.match(unfundedHtml, /Gebuchte Kapazität · nicht bezahlt:.*27 Plätze/)
+ assert.doesNotMatch(unfundedHtml, /Bezahlte Kapazität:/)
+})
