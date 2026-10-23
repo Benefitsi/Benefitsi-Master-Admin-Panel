@@ -6,6 +6,7 @@ const destinations = [
   ["Übersicht", "Übersicht", "/"],
   ["Partner", "Partnerübersicht", "/partners"],
   ["Partner", "Akquise & Kontakte", "/partners/acquisition"],
+  ["Unternehmen", "Unternehmen", "/companies"],
   ["Städte", "Stadtportale", "/city-pages"],
   ["Städte", "Prüfung & Freigaben", "/city-operations"],
   ["Inhalte", "Magazin", "/editorial"],
@@ -21,7 +22,7 @@ const destinations = [
 
 test("keeps useful main destinations without the redundant workspace entry", () => {
   assert.deepEqual(adminNavigation.map(entry => entry.label), [
-    "Übersicht", "Partner", "Städte", "Inhalte", "Buchungen & Bestellungen", "Agenten", "Auswertung",
+    "Übersicht", "Partner", "Unternehmen", "Städte", "Inhalte", "Buchungen & Bestellungen", "Agenten", "Auswertung",
   ])
   assert.deepEqual(adminNavigation.flatMap(entry => "items" in entry
     ? entry.items.map(item => [entry.label, item.label, item.href])
@@ -36,6 +37,7 @@ test("marks the current page and its parent group on nested routes", () => {
     ["/partners/acquisition/deep", "Partner", "Akquise & Kontakte"],
     ["/partners/visit-levels", "Partner", "Partnerübersicht"],
     ["/partners/example", "Partner", "Partnerübersicht"],
+    ["/companies/example", "Unternehmen", "Unternehmen"],
     ["/city-pages/annweiler/content/event/123", "Städte", "Stadtportale"],
     ["/city-operations/events/123", "Städte", "Prüfung & Freigaben"],
     ["/editorial/new", "Inhalte", "Magazin"],
