@@ -2952,9 +2952,7 @@ function PartnerForm({
           <div className="mb-3 space-y-0.5">
             <p className="text-sm font-semibold text-zinc-900">Social media</p>
             <p className="text-xs leading-5 text-zinc-500">
-              Optional. Add up to {MAX_PARTNER_SOCIALS} social profiles. Enter a
-              handle or full profile URL and the partner record will store the
-              canonical link automatically.
+              {`Optional. Add up to ${MAX_PARTNER_SOCIALS} social profiles. Enter a handle or full profile URL and the partner record will store the canonical link automatically.`}
             </p>
           </div>
           <SocialHandlesSection
@@ -12325,6 +12323,11 @@ function CoverUploadField({
   })
 
   useEffect(() => {
+    // Notify after React commits the ordered hidden inputs, including drag/drop.
+    fileInputRef.current?.dispatchEvent(new CustomEvent("partner-form-value-change", { bubbles: true }))
+  }, [coverOrder, removedUrls, selectedCovers, isProcessing])
+
+  useEffect(() => {
     selectedPreviewsRef.current = selectedCovers.map((cover) => cover.preview)
   }, [selectedCovers])
 
@@ -12336,7 +12339,8 @@ function CoverUploadField({
 
   const syncFileInput = () => {
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+      // Cancelling or rejecting a new selection must retain earlier uploads.
+      replaceFileInputFiles(fileInputRef.current, selectedCovers.map((cover) => cover.file))
     }
   }
 
@@ -12425,12 +12429,10 @@ function CoverUploadField({
         <span className="text-xs font-medium text-zinc-500">Drag previews to rearrange</span>
       </div>
       <p className="text-xs text-zinc-500">
-        {sizeHint}. Images are resized automatically before upload. Max{" "}
-        {maxCoverPhotos} cover photos, 10 MB each.
+        {sizeHint}{`. Images are resized automatically before upload. Max ${maxCoverPhotos} cover photos, 10 MB each.`}
       </p>
       <p className="text-xs font-medium text-zinc-500">
-        {visibleCovers.length} of {maxCoverPhotos} cover photos saved
-        {remainingCoverSlots ? `; ${remainingCoverSlots} slot${remainingCoverSlots === 1 ? "" : "s"} available.` : "."}
+        {`${visibleCovers.length} of ${maxCoverPhotos} cover photos saved${remainingCoverSlots ? `; ${remainingCoverSlots} slot${remainingCoverSlots === 1 ? "" : "s"} available.` : "."}`}
       </p>
       <input type="hidden" name="cover_processing" value={isProcessing ? "true" : "false"} />
       {visibleCovers.map((coverUrl) => (

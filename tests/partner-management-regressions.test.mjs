@@ -14,6 +14,37 @@ const actionsUrl = new URL("../app/partner-actions.ts", import.meta.url)
 const adminUrl = new URL("../app/partner-admin.tsx", import.meta.url)
 const configUrl = new URL("../lib/partner-config.ts", import.meta.url)
 
+test("partner signatures preserve repeated image order, allow reverts, and ignore field layout", () => {
+  const original = new FormData()
+  original.append("name", "Café")
+  original.append("cover_order", "existing:0")
+  original.append("cover_order", "existing:1")
+  const reordered = new FormData()
+  reordered.append("cover_order", "existing:1")
+  reordered.append("name", "Café")
+  reordered.append("cover_order", "existing:0")
+  assert.notEqual(formDataSignature(original), formDataSignature(reordered))
+  reordered.delete("cover_order")
+  reordered.append("cover_order", "existing:0")
+  reordered.append("cover_order", "existing:1")
+  assert.equal(formDataSignature(original), formDataSignature(reordered))
+  reordered.set("cover_processing", "true")
+  assert.equal(formDataSignature(original), formDataSignature(reordered))
+})
+
+test("partner signatures cannot confuse text containing field separators with other fields or files", () => {
+  const single = new FormData()
+  single.set("description", "text\u001fname=other")
+  const separate = new FormData()
+  separate.set("description", "text")
+  separate.set("name", "other")
+  assert.notEqual(formDataSignature(single), formDataSignature(separate))
+  const file = new FormData()
+  file.set("logo_file", new File([], "logo.png", { type: "image/png", lastModified: 1 }))
+  separate.set("logo_file", "file:logo.png:image/png:0:1")
+  assert.notEqual(formDataSignature(file), formDataSignature(separate))
+})
+
 test("an unchanged partner form stays clean across empty file placeholder timestamps", async (t) => {
   const dom = new JSDOM('<form><input name="name" value="Cafe"><input type="file" name="logo_file"></form>')
   t.after(() => dom.window.close())
@@ -282,7 +313,7 @@ test("partner socials support YouTube and five profiles", async () => {
   assert.match(config, /MAX_PARTNER_SOCIALS\s*=\s*5/)
   assert.match(
     admin,
-    /Add up to \{MAX_PARTNER_SOCIALS\} social profiles/,
+    /Add up to \$\{MAX_PARTNER_SOCIALS\} social profiles/,
   )
 })
 

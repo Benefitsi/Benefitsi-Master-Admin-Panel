@@ -6,10 +6,11 @@ import React, { act, useActionState } from "react"
 import * as jsx from "react/jsx-runtime"
 import ts from "typescript"
 import { partnerSaveFixture, seedPartner, ownerId, screenshotSchedule } from "./helpers/partner-save-fixture.mjs"
+import * as adminLanguage from "../app/admin-language.tsx"
 
 const require = createRequire(import.meta.url)
 const { JSDOM } = require(process.env.BENEFITSI_TEST_JSDOM_PATH || "jsdom")
-function loadUi(action, configurationActions = {}) {
+function loadUi(action, configurationActions = {}, extraBoundaries = {}) {
   const actions = new Proxy({}, { get: () => action })
   const boundaries = {
     react: React, "react/jsx-runtime": jsx, "react-dom": require("react-dom"),
@@ -29,8 +30,9 @@ function loadUi(action, configurationActions = {}) {
     "@/components/microsite-read-only-notice": {},
     "@/components/menu-ai-import-dialog": {}, "@/components/partner/partner-plan-panel": {},
     "@/components/menu-item-video-field": require("../components/menu-item-video-field.tsx"),
+    ...extraBoundaries,
   }
-  const source = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8") + "\nexport { DealForm, MilestoneForm, useActionSuccess, WeekdayChipField, DealsPanel, WeeklyHoursFields, PartnerForm, HolidayEditorDialog };"
+  const source = readFileSync(new URL("../app/partner-admin.tsx", import.meta.url), "utf8") + "\nexport { DealForm, MilestoneForm, useActionSuccess, WeekdayChipField, DealsPanel, WeeklyHoursFields, PartnerForm, HolidayEditorDialog, CoverUploadField };"
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText
   const loaded = { exports: {} }
   new Function("require", "module", "exports", js)(id => {
@@ -42,10 +44,10 @@ function loadUi(action, configurationActions = {}) {
 }
 async function withDom(run) {
   const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: "http://localhost", pretendToBeVisual: true })
-  const names = ["window", "document", "HTMLElement", "HTMLFormElement", "HTMLInputElement", "HTMLSelectElement", "HTMLTextAreaElement", "HTMLDetailsElement", "FormData", "MutationObserver", "CustomEvent", "IS_REACT_ACT_ENVIRONMENT"]
+  const names = ["window", "document", "Element", "Text", "NodeFilter", "Event", "HTMLElement", "HTMLFormElement", "HTMLInputElement", "HTMLSelectElement", "HTMLTextAreaElement", "HTMLDetailsElement", "FormData", "MutationObserver", "CustomEvent", "IS_REACT_ACT_ENVIRONMENT"]
   const previous = Object.fromEntries(names.map(name => [name, globalThis[name]]))
   Object.assign(globalThis, { window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, HTMLFormElement: dom.window.HTMLFormElement, FormData: dom.window.FormData, MutationObserver: dom.window.MutationObserver, CustomEvent: dom.window.CustomEvent, IS_REACT_ACT_ENVIRONMENT: true })
-  for (const name of ["HTMLInputElement", "HTMLSelectElement", "HTMLTextAreaElement", "HTMLDetailsElement"]) globalThis[name] = dom.window[name]
+  for (const name of ["Element", "Text", "NodeFilter", "Event", "HTMLInputElement", "HTMLSelectElement", "HTMLTextAreaElement", "HTMLDetailsElement"]) globalThis[name] = dom.window[name]
   dom.window.HTMLElement.prototype.scrollIntoView = () => {}
   const root = require("react-dom/client").createRoot(document.getElementById("root"))
   try { await run(root, dom.window) } finally {
@@ -53,6 +55,127 @@ async function withDom(run) {
     Object.assign(globalThis, previous)
     dom.window.close()
   }
+}
+
+test("partner editor language switching translates live image controls and counts without changing data or marking the form dirty", async () => {
+  const { PartnerForm } = loadUi(async () => ({ ok: false }), {}, { "./admin-language": adminLanguage })
+  await withDom(async (root, win) => {
+    const settle = () => act(async () => { await new Promise(resolve => win.requestAnimationFrame(() => win.requestAnimationFrame(resolve))) })
+    await act(async () => root.render(React.createElement(adminLanguage.AdminLanguageProvider, null,
+      React.createElement(adminLanguage.AdminLanguageControl),
+      React.createElement(PartnerForm, {
+        mode: "edit", partner: { ...seedPartner, name: "Wissen Café", cover_urls: ["https://example.test/first.webp"] },
+        cities: [{ id: seedPartner.city_id, name: "Test city" }], owners: [{ id: ownerId, email: "owner@example.test" }],
+      }))))
+    await settle()
+    const form = document.querySelector("form")
+    const original = [...new FormData(form)].filter(([, value]) => typeof value === "string")
+    for (const language of ["DE", "EN", "DE", "EN"]) {
+      await act(async () => [...document.querySelectorAll("button")].find(button => button.textContent === language).click())
+      await settle()
+      const german = language === "DE"
+      assert.match(form.textContent, german ? /1 von 5 Titelbildern gespeichert; 4 Plätze verfügbar/ : /1 of 5 cover photos saved; 4 slots available/)
+      assert.match(form.textContent, german ? /Füge bis zu 5 Social-Media-Profile hinzu/ : /Add up to 5 social profiles/)
+      assert.match(form.textContent, german ? /Titelbildgröße: 1800px × 1800px/ : /Cover size: 1800px × 1800px/)
+      assert.ok(form.querySelector(`[aria-label="${german ? "Titelbild 1 zum Umsortieren ziehen" : "Drag to reorder cover photo 1"}"]`))
+      assert.deepEqual([...new FormData(form)].filter(([, value]) => typeof value === "string"), original)
+      assert.equal(form.querySelector('button[type="submit"]').disabled, true)
+    }
+  })
+})
+
+test("cancelling or rejecting a new cover selection preserves previously prepared files", async () => {
+  const { CoverUploadField } = loadUi(async () => ({ ok: false }), {}, {
+    "@/lib/partner-image-upscaler": { upscalePartnerMediaFile: async file => file },
+  })
+  const previous = { Image: globalThis.Image, DataTransfer: globalThis.DataTransfer }
+  globalThis.Image = class {
+    naturalWidth = 1800; naturalHeight = 1800
+    set src(value) { queueMicrotask(() => this.onload()) }
+  }
+  globalThis.DataTransfer = class {
+    files = []
+    items = { add: file => this.files.push(file) }
+  }
+  try {
+    await withDom(async (root, win) => {
+      win.HTMLCanvasElement.prototype.getContext = () => ({ fillRect() {}, drawImage() {} })
+      win.HTMLCanvasElement.prototype.toBlob = callback => callback(new Blob(["image"], { type: "image/webp" }))
+      await act(async () => root.render(React.createElement("form", null, React.createElement(CoverUploadField))))
+      const input = document.querySelector('input[type="file"]')
+      let files = []
+      Object.defineProperty(input, "files", { configurable: true, get: () => files, set: value => { files = value } })
+      const select = async nextFiles => {
+        files = nextFiles
+        await act(async () => input.dispatchEvent(new win.Event("change", { bubbles: true })))
+      }
+      await select([new File(["image"], "photo.png", { type: "image/png" })])
+      const prepared = [...input.files]
+      assert.equal(prepared.length, 1)
+      assert.match(prepared[0].name, /1800x1800\.webp$/)
+      assert.equal(document.querySelectorAll("[data-cover-id]").length, 1)
+      await select([])
+      assert.deepEqual(input.files, prepared, "cancel preserves the prepared upload")
+      await select(Array.from({ length: 5 }, (_, index) => new File(["image"], `${index}.png`, { type: "image/png" })))
+      assert.deepEqual(input.files, prepared, "too many new covers preserves the prepared upload")
+      assert.match(document.body.textContent, /Select up to 4 more cover photos/)
+      assert.equal(document.querySelectorAll("[data-cover-id]").length, 1)
+    })
+  } finally { Object.assign(globalThis, previous) }
+})
+
+for (const portalMode of [false, true]) {
+  test(`${portalMode ? "partner" : "admin"} cover arrows and drag/drop enable saving and persist the exact image order`, async () => {
+    const covers = ["https://example.test/first.webp", "https://example.test/second.webp", "https://example.test/third.webp"]
+    const ServerFormData = globalThis.FormData
+    const f = partnerSaveFixture({ isAdmin: !portalMode })
+    f.tables.get("partners")[0].cover_urls = covers
+    const calls = []
+    let fail = true
+    const { PartnerForm } = loadUi(async (_, data) => {
+      const submitted = new ServerFormData()
+      for (const [key, value] of data) if (typeof value === "string") submitted.append(key, value)
+      calls.push(submitted.getAll("cover_order"))
+      if (fail) return { ok: false, message: "Unable to save the partner." }
+      return f.actions.savePartner({}, submitted)
+    })
+    await withDom(async (root, win) => {
+      const settle = () => act(async () => { await new Promise(resolve => win.requestAnimationFrame(() => win.requestAnimationFrame(resolve))) })
+      await act(async () => root.render(React.createElement(PartnerForm, {
+        mode: "edit", portalMode, partner: { ...seedPartner, cover_urls: covers },
+        cities: [{ id: seedPartner.city_id, name: "Test city" }], owners: [{ id: ownerId, email: "owner@example.test" }],
+      })))
+      await settle()
+      const form = document.querySelector("form")
+      const save = form.querySelector('button[type="submit"]')
+      const order = () => new FormData(form).getAll("cover_order")
+      assert.equal(save.disabled, true, "unchanged form stays clean")
+      await act(async () => form.querySelector('[data-cover-id="existing:2"] [aria-label="Move cover photo earlier"]').click())
+      await settle()
+      assert.equal(save.disabled, false, "moving just an image is a savable edit")
+      assert.deepEqual(order(), ["existing:0", "existing:2", "existing:1"])
+      await act(async () => form.querySelector('[data-cover-id="existing:2"] [aria-label="Move cover photo later"]').click())
+      await settle()
+      assert.equal(save.disabled, true, "restoring the original order removes the edit")
+      const drag = new win.Event("dragstart", { bubbles: true })
+      Object.defineProperty(drag, "dataTransfer", { value: { setData() {} } })
+      await act(async () => form.querySelector('[data-cover-id="existing:2"] [draggable]').dispatchEvent(drag))
+      await act(async () => form.querySelector('[data-cover-id="existing:0"]').dispatchEvent(new win.Event("drop", { bubbles: true, cancelable: true })))
+      await settle()
+      assert.equal(save.disabled, false, "dropping an image triggers change detection without another click")
+      assert.deepEqual(order(), ["existing:2", "existing:0", "existing:1"])
+      await act(async () => form.requestSubmit(save))
+      await settle()
+      assert.equal(save.disabled, false, "a failed save keeps the draft available for retry")
+      assert.deepEqual(order(), ["existing:2", "existing:0", "existing:1"])
+      fail = false
+      await act(async () => form.requestSubmit(save))
+      await settle()
+      assert.deepEqual(calls, [["existing:2", "existing:0", "existing:1"], ["existing:2", "existing:0", "existing:1"]])
+      assert.deepEqual(f.tables.get("partners")[0].cover_urls, [covers[2], covers[0], covers[1]])
+      assert.equal(save.disabled, true, "successful save establishes the new clean order")
+    })
+  })
 }
 
 for (const [mode, portalMode, overnight] of [["edit", false, false], ["edit", true, false], ["create", false, false], ["edit", false, true], ["edit", true, true], ["create", false, true]]) {
