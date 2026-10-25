@@ -294,13 +294,14 @@ const redemptionHistoryDisplayLimit = 20
 const comebackCandidateDisplayLimit = 20
 
 const openingWeekdayOptions = [
+  // Display Sunday first; retain the stored ISO weekday values (Monday=1).
+  { value: "7", label: "Sunday" },
   { value: "1", label: "Monday" },
   { value: "2", label: "Tuesday" },
   { value: "3", label: "Wednesday" },
   { value: "4", label: "Thursday" },
   { value: "5", label: "Friday" },
   { value: "6", label: "Saturday" },
-  { value: "7", label: "Sunday" },
 ] as const
 
 const DURATION_BONUS_DEAL = "duration_bonus"
@@ -11694,6 +11695,10 @@ function SelectField({
   warning?: string
   onChange?: (value: string) => void
 }) {
+  const commitValue = (nextValue: string) => {
+    if (value === undefined || nextValue !== value) onChange?.(nextValue)
+  }
+
   return (
     <label className="block min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
@@ -11703,7 +11708,10 @@ function SelectField({
         aria-invalid={Boolean(warning) || undefined}
         value={value}
         defaultValue={value === undefined ? defaultValue ?? "" : undefined}
-        onChange={(event) => onChange?.(event.target.value)}
+        // Commit controlled selections before an ancestor input handler redraws
+        // the form. Some browsers emit input before the select's change event.
+        onInput={value === undefined ? undefined : (event) => commitValue(event.currentTarget.value)}
+        onChange={(event) => commitValue(event.currentTarget.value)}
         className="h-9 w-full rounded-lg border border-zinc-300 bg-white px-2.5 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
       >
         <option value="">Select...</option>

@@ -10,6 +10,32 @@ import * as adminLanguage from "../app/admin-language.tsx"
 
 const require = createRequire(import.meta.url)
 const { JSDOM } = require(process.env.BENEFITSI_TEST_JSDOM_PATH || "jsdom")
+
+for (const portalMode of [false, true]) {
+  test(`${portalMode ? "partner" : "admin"} social selection survives native input before change after a validation error`, async () => {
+    const { PartnerForm } = loadUi(async () => ({ ok: false }))
+    await withDom(async (root, win) => {
+      await act(async () => root.render(React.createElement(PartnerForm, {
+        mode: "edit", portalMode,
+        partner: { ...seedPartner, socials: [{ id: "social", platform: "instagram", handle: "", url: "", sort_order: 0 }] },
+        cities: [{ id: seedPartner.city_id, name: "Test city" }], owners: [{ id: ownerId, email: "owner@example.test" }],
+      })))
+      const form = document.querySelector("form")
+      await act(async () => form.dispatchEvent(new win.Event("submit", { bubbles: true, cancelable: true })))
+      assert.ok(form.querySelector('[role="alert"]'), "show a required-field validation error first")
+      const platform = form.elements.namedItem("social_0_platform")
+      for (const value of ["youtube", "facebook", "tiktok", "x", "instagram"]) {
+        platform.value = value
+        await act(async () => platform.dispatchEvent(new win.Event("input", { bubbles: true })))
+        assert.equal(platform.value, value, "input must commit the selected platform before ancestor updates")
+        await act(async () => platform.dispatchEvent(new win.Event("change", { bubbles: true })))
+        assert.equal(platform.value, value)
+        assert.equal(new FormData(form).get("social_0_platform"), value)
+      }
+    })
+  })
+}
+
 function loadUi(action, configurationActions = {}, extraBoundaries = {}) {
   const actions = new Proxy({}, { get: () => action })
   const boundaries = {
@@ -250,6 +276,22 @@ test("saved midnight-to-midnight hours reopen as valid time inputs and submit un
       assert.equal(data.get(`slot_count_${day}`), "1")
       assert.equal(data.has(`is_closed_${day}`), false)
     }
+  })
+})
+
+test("operating hours display Sunday first while each day's saved ranges retain their ISO weekday", async () => {
+  const { WeeklyHoursFields } = loadUi(async () => ({ ok: true }))
+  const hoursByWeekday = new Map(Array.from({ length: 7 }, (_, index) => [index + 1, [{
+    weekday: index + 1, opens_at: `0${index + 1}:00:00`, closes_at: "18:00:00", is_closed: false, sort_order: 0,
+  }]]))
+  await withDom(async root => {
+    await act(async () => root.render(React.createElement("form", null, React.createElement(WeeklyHoursFields, { hoursByWeekday }))))
+    const form = document.querySelector("form")
+    const dayLabels = [...form.querySelectorAll('input[name^="is_closed_"]')].map(input => input.closest("label").previousElementSibling.textContent)
+    assert.deepEqual(dayLabels, ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"])
+    const data = new FormData(form)
+    assert.deepEqual([...data.keys()].filter(key => /^opens_at_\d$/.test(key)), ["opens_at_7", "opens_at_1", "opens_at_2", "opens_at_3", "opens_at_4", "opens_at_5", "opens_at_6"])
+    for (let day = 1; day <= 7; day++) assert.equal(data.get(`opens_at_${day}`), `0${day}:00`)
   })
 })
 
