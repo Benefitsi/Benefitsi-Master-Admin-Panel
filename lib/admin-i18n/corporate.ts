@@ -9,7 +9,7 @@ export const corporateTranslations: readonly (readonly [string, string])[] = [
   ["Not configured", "Nicht konfiguriert"],
   ["Not started", "Noch nicht begonnen"],
   ["Verified", "Verifiziert"],
-  ["Unknown status", "Status unbekannt"],
+  ["Status unknown", "Status unbekannt"],
   ["Billing operations", "Abrechnungsvorgänge"],
   ["No statement about worker operation. Time-due does not establish authorization to execute. Unknown provider outcomes require actual evidence and review.", "Keine Aussage über Worker-Betrieb. Zeitlich fällig bedeutet noch keine Berechtigung zur Ausführung. Unklare Provider-Ergebnisse verlangen tatsächliche Evidenz und Prüfung."],
   ["Operation status unavailable.", "Vorgangsstatus nicht verfügbar."],

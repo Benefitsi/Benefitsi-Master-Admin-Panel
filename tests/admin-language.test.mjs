@@ -6,6 +6,18 @@ import {
   translateValue,
 } from "../app/admin-language.tsx"
 
+test("keeps the shared unknown-status fallback canonical across language switches", () => {
+  assert.equal(translateValue("Status unbekannt", "en"), "Status unknown")
+  assert.equal(translateValue("Status unknown", "de"), "Status unbekannt")
+  assert.equal(isTranslationVariant("Status unknown", "Status unbekannt"), true)
+
+  let status = "Status unbekannt"
+  for (const language of ["en", "de", "en", "de"]) {
+    status = translateValue(status, language)
+    assert.equal(status, language === "en" ? "Status unknown" : "Status unbekannt")
+  }
+})
+
 test("uses natural German terms for reward types", () => {
   assert.equal(translateValue("Reward type", "de"), "Belohnungstyp")
   assert.equal(translateValue("Item", "de"), "Artikel")
