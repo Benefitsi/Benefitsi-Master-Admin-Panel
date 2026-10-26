@@ -20,6 +20,8 @@ test("source adapter is bounded, allowlisted and redirect-validated", async () =
   assert.match(code, /orchestratorProfile/);
   assert.match(code, /reviewCityAgentProposalsThroughHermes/);
   assert.match(code, /CITY_AGENT_HERMES_REQUIRED/);
+  assert.match(code, /BridgeUnreachableError/);
+  assert.match(code, /bridgeStatusFailure/);
   assert.match(code, /createSourceResearchProvider/);
   assert.match(code, /Hermes-Fakten enthalten nicht exakt/);
   assert.doesNotMatch(code, /raw_html|raw_body|response_body/i);
@@ -35,6 +37,9 @@ test("runner claims, snapshots, proposes and completes only through the existing
   assert.match(code, /complete_automation_job/);
   assert.match(code, /fail_automation_job/);
   assert.match(code, /if \(status === "failed"\)/);
+  assert.match(code, /bridge_unreachable/);
+  assert.match(code, /isBridgeUnreachableError/);
+  assert.match(code, /sourceUpdateAfterFetchFailure/);
   assert.match(code, /provider\.fetchSource\(source\)/);
   assert.match(code, /protected_action_executed: false/);
   assert.doesNotMatch(code, /status:\s*"published"/);

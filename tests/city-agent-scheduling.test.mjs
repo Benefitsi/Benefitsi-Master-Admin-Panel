@@ -11,10 +11,14 @@ test("cron tick schedules, recovers stale runs and processes a bounded number of
   assert.match(source, /CRON_SECRET/);
   assert.match(source, /schedule_due_city_scans/);
   assert.match(source, /recoverStaleCityAgentRuns/);
+  assert.match(source, /cityAgentTickMode/);
+  assert.match(source, /CITY_AGENT_TICK_MODE/);
+  assert.match(source, /mode === "push"/);
   assert.match(source, /runNextCityAgentJob/);
   assert.match(source, /CITY_AGENT_TICK_MAX_JOBS/);
   assert.match(source, /Math\.min\([^\n]+, [23]\)/);
   assert.match(source, /dryRun:\s*false/);
+  assert.match(source, /schedulerRun/);
   assert.doesNotMatch(source, /publish_reviewed_city_content|status:\s*["']published/);
 });
 
@@ -25,6 +29,8 @@ test("stale-run recovery is conditional, audited and retried through the queue",
   assert.match(source, /error_code: "stale_run"/);
   assert.match(source, /city_agent_run_audit/);
   assert.match(source, /fail_automation_job/);
+  assert.match(source, /p_claimed_before/);
+  assert.match(source, /staleJobDisposition/);
   assert.match(source, /protected_action_executed: false/);
 });
 

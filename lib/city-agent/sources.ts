@@ -7,6 +7,7 @@ import {
   type CityAgentSourceFacts,
   type CityAgentSourceRow,
 } from "./contracts"
+import { BridgeUnreachableError, bridgeStatusFailure, describeFetchFailure, isBridgeUnreachableError } from "./fetch-failure"
 
 const DEFAULT_APPROVED_HOSTS = [
   "annweiler.de",
@@ -257,10 +258,11 @@ function hermesFacts(value: unknown, source: CityAgentSourceRow, now: Date): Cit
   }
 }
 
-async function fetchCitySourceThroughHermes(
-  source: CityAgentSourceRow,
+async function postHermesBridge(
   options: SourceFetchOptions,
-): Promise<CityAgentSourceFacts> {
+  body: Record<string, unknown>,
+  timeoutMs: number,
+) {
   const bridgeUrl = process.env.M1_BRIDGE_URL?.trim()
   const bridgeSecret = process.env.M1_BRIDGE_SECRET?.trim()
   if (!bridgeUrl || !bridgeSecret) throw new Error("Hermes/M1-Bridge ist nicht konfiguriert.")
@@ -268,24 +270,38 @@ async function fetchCitySourceThroughHermes(
   if (endpoint.protocol !== "https:" && endpoint.hostname !== "localhost" && endpoint.hostname !== "127.0.0.1") {
     throw new Error("Hermes/M1-Bridge muss HTTPS verwenden.")
   }
-  const response = await (options.fetchImpl ?? fetch)(endpoint, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${bridgeSecret}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      action: "city-source",
-      orchestratorProfile: options.orchestratorProfile?.trim() || "ben",
-      cityProfile: options.cityProfile?.trim() || process.env.CITY_AGENT_HERMES_PROFILE?.trim() || "city-annweiler",
-      citySlug: options.citySlug?.trim() || source.slug.split("-")[0] || "annweiler",
-      sourceUrl: source.url,
-      contentScope: source.content_scope,
-    }),
-    signal: AbortSignal.timeout(Math.max(5_000, Math.min(options.hermesTimeoutMs ?? 120_000, 240_000))),
-  })
+  let response: Response
+  try {
+    response = await (options.fetchImpl ?? fetch)(endpoint, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${bridgeSecret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(Math.max(5_000, Math.min(timeoutMs, 240_000))),
+    })
+  } catch (error) {
+    throw new BridgeUnreachableError(describeFetchFailure(error, "bridge"))
+  }
+  const gatewayFailure = bridgeStatusFailure(response.status)
+  if (gatewayFailure) throw new BridgeUnreachableError(gatewayFailure)
   if (!response.ok) throw new Error(`Hermes/M1-Bridge antwortet mit HTTP ${response.status}.`)
-  const body = (await response.json().catch(() => null)) as Record<string, unknown> | null
+  return (await response.json().catch(() => null)) as Record<string, unknown> | null
+}
+
+async function fetchCitySourceThroughHermes(
+  source: CityAgentSourceRow,
+  options: SourceFetchOptions,
+): Promise<CityAgentSourceFacts> {
+  const body = await postHermesBridge(options, {
+    action: "city-source",
+    orchestratorProfile: options.orchestratorProfile?.trim() || "ben",
+    cityProfile: options.cityProfile?.trim() || process.env.CITY_AGENT_HERMES_PROFILE?.trim() || "city-annweiler",
+    citySlug: options.citySlug?.trim() || source.slug.split("-")[0] || "annweiler",
+    sourceUrl: source.url,
+    contentScope: source.content_scope,
+  }, options.hermesTimeoutMs ?? 120_000)
   const raw = typeof body?.response === "string" ? body.response : ""
   const jsonBlock = raw.match(/```json\s*([\s\S]*?)```/i)?.[1] ?? raw.match(/\{[\s\S]*\}/)?.[0]
   if (!jsonBlock) throw new Error("Hermes hat kein parsebares Fakten-JSON geliefert.")
@@ -301,31 +317,14 @@ function parseHermesJson(raw: string) {
 export async function reviewCityAgentProposalsThroughHermes(
   options: SourceFetchOptions & { proposals: Array<Record<string, unknown>>; autoPublishAllowed?: boolean },
 ): Promise<CityAgentReviewResult> {
-  const bridgeUrl = process.env.M1_BRIDGE_URL?.trim()
-  const bridgeSecret = process.env.M1_BRIDGE_SECRET?.trim()
-  if (!bridgeUrl || !bridgeSecret) throw new Error("Hermes/M1-Bridge ist nicht konfiguriert.")
-  const endpoint = new URL("/hermes", bridgeUrl)
-  if (endpoint.protocol !== "https:" && endpoint.hostname !== "localhost" && endpoint.hostname !== "127.0.0.1") {
-    throw new Error("Hermes/M1-Bridge muss HTTPS verwenden.")
-  }
-  const response = await (options.fetchImpl ?? fetch)(endpoint, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${bridgeSecret}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      action: "city-review",
-      orchestratorProfile: options.orchestratorProfile?.trim() || "ben",
-      cityProfile: options.cityProfile?.trim() || process.env.CITY_AGENT_HERMES_PROFILE?.trim() || "city-annweiler",
-      citySlug: options.citySlug?.trim() || "annweiler",
-      autoPublishAllowed: options.autoPublishAllowed === true,
-      proposals: options.proposals.slice(0, 30),
-    }),
-    signal: AbortSignal.timeout(Math.max(5_000, Math.min(options.timeoutMs ?? 120_000, 240_000))),
-  })
-  if (!response.ok) throw new Error(`Hermes/M1-Bridge antwortet mit HTTP ${response.status}.`)
-  const body = (await response.json().catch(() => null)) as Record<string, unknown> | null
+  const body = await postHermesBridge(options, {
+    action: "city-review",
+    orchestratorProfile: options.orchestratorProfile?.trim() || "ben",
+    cityProfile: options.cityProfile?.trim() || process.env.CITY_AGENT_HERMES_PROFILE?.trim() || "city-annweiler",
+    citySlug: options.citySlug?.trim() || "annweiler",
+    autoPublishAllowed: options.autoPublishAllowed === true,
+    proposals: options.proposals.slice(0, 30),
+  }, options.timeoutMs ?? 120_000)
   const raw = typeof body?.response === "string" ? body.response : ""
   const payload = parseHermesJson(raw) as Record<string, unknown>
   const decisions: CityAgentReviewDecision[] = Array.isArray(payload.decisions)
@@ -370,12 +369,19 @@ export function createSourceResearchProvider(options: SourceFetchOptions = {}): 
   }
 
   const required = process.env.CITY_AGENT_HERMES_REQUIRED === "true"
+  let bridgeDown = false
   return {
     name: required ? "hermes_required" : "hermes_city_agent",
     fetchSource: async (source) => {
+      if (bridgeDown) return fetchCitySource(source, options)
       try {
         return await fetchCitySourceThroughHermes(source, options)
       } catch (error) {
+        if (isBridgeUnreachableError(error)) {
+          if (required) throw error
+          bridgeDown = true
+          return fetchCitySource(source, options)
+        }
         if (required) throw error
         return fetchCitySource(source, options)
       }

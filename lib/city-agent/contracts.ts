@@ -84,6 +84,7 @@ export type CityAgentRunSummary = {
   errorCount: number
   status: "succeeded" | "partial" | "failed" | "idle"
   errors: string[]
+  errorCode?: string | null
 }
 
 export function isCityAgentContentType(value: unknown): value is CityAgentContentType {

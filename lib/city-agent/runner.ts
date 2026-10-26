@@ -7,6 +7,8 @@ import {
   type CityAgentSourceFacts,
   type CityAgentSourceRow,
 } from "./contracts"
+import { isBridgeUnreachableError, describeFetchFailure, type FetchFailure } from "./fetch-failure"
+import { sourceUpdateAfterFetchFailure } from "./source-schedule"
 import {
   createSourceResearchProvider,
   diffSourceFacts,
@@ -102,11 +104,14 @@ async function failJob(
   agentProfile: string,
   errorCode: string,
 ) {
-  await supabase.rpc("fail_automation_job", {
+  const response = await supabase.rpc("fail_automation_job", {
     p_job_id: jobId,
     p_agent_profile: agentProfile,
     p_error_code: errorCode.slice(0, 160),
   })
+  if (response.error) {
+    throw new Error(`Automation-Job konnte nicht als fehlgeschlagen markiert werden: ${response.error.message}`)
+  }
 }
 
 function proposalPayload(facts: CityAgentSourceFacts) {
@@ -252,6 +257,7 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
   let staleCount = 0
   let unknownSourceFreshnessCount = 0
   let autoPublishedCount = 0
+  let bridgeFailure: FetchFailure | null = null
   const reviewCandidates: Array<Record<string, unknown>> = []
 
   for (const source of dueSources) {
@@ -343,17 +349,30 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
         await addAudit(supabase, runId, "proposal_created", { sourceId: source.id, operation, deduplicationKey }, agentProfile)
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unbekannter Quellenfehler"
+      if (isBridgeUnreachableError(error)) {
+        bridgeFailure = error.failure
+        break
+      }
+      const failure = describeFetchFailure(error, "source")
+      const message = failure.infrastructure
+        ? failure.message
+        : error instanceof Error ? error.message : "Unbekannter Quellenfehler"
       errors.push(`${source.slug}: ${message}`.slice(0, 500))
-      await supabase.from("city_agent_sources").update({ last_checked_at: now.toISOString(), last_status: "error", next_check_at: nextSourceCheckAt(source, now), updated_at: now.toISOString() }).eq("id", source.id)
-      await addAudit(supabase, runId, "source_checked", { sourceId: source.id, error: message.slice(0, 300) }, agentProfile)
+      const schedule = sourceUpdateAfterFetchFailure(source, now, failure)
+      await supabase.from("city_agent_sources").update(schedule.patch).eq("id", source.id)
+      await addAudit(supabase, runId, "source_checked", {
+        sourceId: source.id,
+        error: message.slice(0, 300),
+        failureCategory: failure.category,
+        scheduleAdvanced: schedule.advanceSchedule,
+      }, agentProfile)
     }
     staleCount += Number(sourceFreshness === "stale")
     unknownSourceFreshnessCount += Number(sourceFreshness === "unknown")
   }
 
   const autoPublishAllowed = options.dryRun === false && process.env.CITY_AGENT_AUTO_PUBLISH === "true"
-  if ((provider.name === "hermes_city_agent" || provider.name === "hermes_required") && reviewCandidates.length > 0) {
+  if (!bridgeFailure && (provider.name === "hermes_city_agent" || provider.name === "hermes_required") && reviewCandidates.length > 0) {
     try {
       const review = await reviewCityAgentProposalsThroughHermes({
         now,
@@ -398,22 +417,47 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
         protected_action_executed: autoPublishedCount > 0,
       }, agentProfile)
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Ben-Review fehlgeschlagen"
+      if (isBridgeUnreachableError(error)) bridgeFailure = error.failure
+      const message = bridgeFailure?.message ?? (error instanceof Error ? error.message : "Ben-Review fehlgeschlagen")
       errors.push(`ben-review: ${message}`.slice(0, 500))
       await addAudit(supabase, runId, "review_linked", {
         reviewer: agentProfile,
         error: message.slice(0, 300),
+        failureCategory: bridgeFailure?.category ?? null,
         protected_action_executed: false,
       }, agentProfile)
     }
   }
 
-  const status = errors.length ? (snapshotCount ? "partial" : "failed") : "succeeded"
+  const bridgeFailureMessage = bridgeFailure?.message ?? null
+  if (bridgeFailureMessage && !errors.length) errors.push(bridgeFailureMessage)
+  const runErrorCode = bridgeFailure ? "bridge_unreachable" : errors.length ? "source_errors" : null
+  const status = runErrorCode ? (snapshotCount ? "partial" : "failed") : "succeeded"
+  const errorSummary = bridgeFailureMessage
+    ? [bridgeFailureMessage, ...errors.filter((item) => item !== bridgeFailureMessage)].join(" | ").slice(0, 2_000)
+    : errors.length ? errors.join(" | ").slice(0, 2_000) : null
   const finishedAt = new Date().toISOString()
-  await supabase.from("city_agent_runs").update({ status, source_count: dueSources.length, snapshot_count: snapshotCount, proposal_count: proposalCount, stale_count: staleCount, error_code: errors.length ? "source_errors" : null, error_summary: errors.length ? errors.join(" | ").slice(0, 2_000) : null, metadata: { autoPublishedCount, reviewCandidateCount: reviewCandidates.length, freshnessScope: "source_checks", unknownSourceFreshnessCount }, finished_at: finishedAt, updated_at: finishedAt }).eq("id", runId)
-  await addAudit(supabase, runId, status === "failed" ? "failed" : "completed", { sourceCount: dueSources.length, snapshotCount, proposalCount, errors: errors.length, autoPublishedCount, protected_action_executed: autoPublishedCount > 0 }, agentProfile)
+  await supabase.from("city_agent_runs").update({
+    status,
+    source_count: dueSources.length,
+    snapshot_count: snapshotCount,
+    proposal_count: proposalCount,
+    stale_count: staleCount,
+    error_code: runErrorCode,
+    error_summary: errorSummary,
+    metadata: {
+      autoPublishedCount,
+      reviewCandidateCount: reviewCandidates.length,
+      freshnessScope: "source_checks",
+      unknownSourceFreshnessCount,
+      ...(bridgeFailure ? { bridgeFailureCategory: bridgeFailure.category } : {}),
+    },
+    finished_at: finishedAt,
+    updated_at: finishedAt,
+  }).eq("id", runId)
+  await addAudit(supabase, runId, status === "failed" ? "failed" : "completed", { sourceCount: dueSources.length, snapshotCount, proposalCount, errors: errors.length, errorCode: runErrorCode, autoPublishedCount, protected_action_executed: autoPublishedCount > 0 }, agentProfile)
   if (status === "failed") {
-    await failJob(supabase, job.id, agentProfile, "all_sources_failed")
+    await failJob(supabase, job.id, agentProfile, runErrorCode ?? "all_sources_failed")
   } else {
     await completeJob(
       supabase,
@@ -424,5 +468,5 @@ export async function runNextCityAgentJob(options: RunnerOptions = {}): Promise<
     )
   }
 
-  return { claimed: true, jobId: job.id, runId, cityId, citySlug, provider: provider.name, sourceCount: dueSources.length, snapshotCount, proposalCount, autoPublishedCount, staleCount, errorCount: errors.length, status, errors }
+  return { claimed: true, jobId: job.id, runId, cityId, citySlug, provider: provider.name, sourceCount: dueSources.length, snapshotCount, proposalCount, autoPublishedCount, staleCount, errorCount: errors.length, status, errorCode: runErrorCode, errors }
 }
