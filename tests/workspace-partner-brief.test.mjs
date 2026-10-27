@@ -12,7 +12,7 @@ test('prepared facts use the selected partner, retain inactive status and never 
     rewards:[{partner_id:partnerId,title:'Kaffee',required_stamps:5,active:true}],hours:[],holidays:[],socials:[],menus:[],staff:[],owner:null,microsite:null})
   assert.ok(brief.facts.A01.some(f=>f.value==='Bistro Beispiel'))
   assert.ok(!brief.facts.A02?.some(f=>f.value.includes('Bistro Beispiel')))
-  assert.ok(brief.facts.D01.some(f=>f.label.includes('Pausiert')&&f.value.includes('10 %')))
+  assert.ok(brief.facts.D01.some(f=>f.label.includes('Pausiert')&&f.value.includes('10%')))
   assert.ok(!JSON.stringify(brief).includes('Nicht dieser Partner'))
   assert.ok(brief.facts.C01.some(f=>f.label.includes('5')&&f.value.includes('Kaffee')))
   assert.ok(!JSON.stringify(brief).includes('undefined'))

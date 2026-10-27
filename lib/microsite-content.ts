@@ -4,6 +4,7 @@ import {
   isMicrositeTopDeal,
 } from "./microsite-deals"
 import {
+  benefitPresentation,
   benefitTaxonomyLabel,
   formatBenefitTitle,
   isForbiddenPublicDisplayText,
@@ -42,10 +43,12 @@ export function normalizeMicrositePublicText(value: string | null | undefined) {
     .replace(/\b(?:gratis|free)[- ]?rewards?\s*[:\-–]?\s*/gi, "Gratis ")
     .replace(/\b(?:stamp|stempel)[- ]?rewards?\b/gi, "Stempelbelohnung")
     .replace(/\bstempel[- ]?belohnung\b/gi, "Stempelbelohnung")
-    .replace(/\bwillkommens(?:vorteile?|deals?)\b/gi, "Willkommensdeal")
-    .replace(/\bwillkommen(?=\s*:)/giu, "Willkommensdeal")
-    .replace(/\bcomeback[- ]?(?:vorteile?|deals?)\b/gi, "Comeback-Deal")
-    .replace(/\bcomeback[- ]?bonus\b/gi, "Comeback-Bonus")
+    .replace(/\bwillkommens(?:vorteile?|deals?)\b/gi, "Erster Besuch")
+    .replace(/\bwillkommen(?=\s*:)/giu, "Erster Besuch")
+    .replace(/\bcomeback[- ]?(?:vorteile?|deals?)\b/gi, "Schnell zurück")
+    .replace(/\bcomeback[- ]?bonus\b/gi, "Schnell zurück")
+    .replace(/\bzeit[- ]?bonus\b/gi, "Schnell zurück")
+    .replace(/(\d)\s+%(?=\s|$)/gu, "$1%")
     .replace(/\bgeburtstags(?:deal|vorteile?)\b/gi, "Geburtstag")
     .replace(/\bstreak[- ]?(?:boni|bonus)\b/gi, "Streak-Bonus")
     .replace(/\bchallenge[- ]?(?:boni|bonus)\b/gi, "Challenge-Bonus")
@@ -58,10 +61,11 @@ export function normalizeMicrositePublicText(value: string | null | undefined) {
     .trim()
 
   return normalized
-    .replaceAll("__BENEFIT_WELCOME_BONUS__", "Willkommensbonus")
-    .replaceAll("__BENEFIT_WELCOME_DEAL__", "Willkommensdeal")
-    .replaceAll("__BENEFIT_COMEBACK_BONUS__", "Comeback-Bonus")
-    .replaceAll("__BENEFIT_COMEBACK_DEAL__", "Comeback-Deal")
+    // Brand Guide 2.1 occasion labels replace the retired campaign names.
+    .replaceAll("__BENEFIT_WELCOME_BONUS__", "Erster Besuch")
+    .replaceAll("__BENEFIT_WELCOME_DEAL__", "Erster Besuch")
+    .replaceAll("__BENEFIT_COMEBACK_BONUS__", "Schnell zurück")
+    .replaceAll("__BENEFIT_COMEBACK_DEAL__", "Schnell zurück")
     .replaceAll("__BENEFIT_DEAL_DROP__", "Deal Drop")
     .replaceAll("__BENEFIT_STREAK_BONUS__", "Streak-Bonus")
     .replaceAll("__BENEFIT_CHALLENGE_BONUS__", "Challenge-Bonus")
@@ -132,6 +136,14 @@ export function micrositeDealTypeLabel(
   language: MicrositeContentLanguage = "de",
 ) {
   return benefitTaxonomyLabel(toTaxonomyInput(deal), language)
+}
+
+/** Value kind and occasion chips, coloured as in the app. */
+export function micrositeDealPresentation(
+  deal: Partial<Pick<Deal, "type" | "discount_type" | "reward_format" | "metadata" | "trigger_key" | "campaign_type" | "activation_mode" | "benefit_category">>,
+  language: MicrositeContentLanguage = "de",
+) {
+  return benefitPresentation(toTaxonomyInput(deal), language)
 }
 
 export function getMicrositeStampRewards(

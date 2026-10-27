@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  benefitPresentation,
   benefitTaxonomyLabel,
   formatBenefitTitle,
 } from "../lib/benefit-taxonomy.ts"
@@ -28,7 +29,7 @@ test("formats every reward format as a concrete German public title", () => {
   )
   assert.equal(
     formatBenefitTitle({ type: "discount", discount_type: "percent", discount_value: 10 }, "de"),
-    "10 % Rabatt",
+    "10% Rabatt",
   )
   assert.equal(
     formatBenefitTitle({ type: "free_item", reward_item: "Ayran" }, "de"),
@@ -45,23 +46,43 @@ test("does not invent a default item for a two-for-one benefit", () => {
   assert.doesNotMatch(formatBenefitTitle({ type: "two_for_one" }, "de"), /döner/i)
 })
 
-test("separates welcome and comeback deals from automatic stamp bonuses", () => {
+test("uses the Brand Guide 2.1 occasion labels and keeps the title concrete", () => {
   assert.equal(
     benefitTaxonomyLabel({ type: "welcome", discount_type: "percent" }, "de"),
-    "Willkommensdeal",
+    "Erster Besuch",
   )
   assert.equal(
     formatBenefitTitle({ type: "welcome", discount_type: "bonus_stamp", benefit_count: 1 }, "de"),
-    "Willkommensbonus: +1 Bonusstempel",
+    "+1 Bonusstempel",
   )
+  // Stored "comeback" deals are the quick return within X days today.
   assert.equal(
     benefitTaxonomyLabel({ type: "comeback", discount_type: "percent" }, "de"),
-    "Comeback-Deal",
+    "Schnell zurück",
+  )
+  assert.equal(
+    benefitTaxonomyLabel({ type: "comeback_inactive", discount_type: "percent" }, "de"),
+    "Wieder da",
   )
   assert.equal(
     formatBenefitTitle({ type: "comeback", discount_type: "bonus_stamp", benefit_count: 1 }, "de"),
-    "Comeback-Bonus: +1 Bonusstempel",
+    "+1 Bonusstempel",
   )
+})
+
+test("presents value kind and occasion as separate chips with app colours", () => {
+  const happyHour = benefitPresentation({ type: "discount", discount_type: "percent", campaign_type: "happy_hour" }, "de")
+  assert.deepEqual(happyHour.kind, { key: "discount", label: "Rabatt", icon: "percent", color: "#0B9F86", surface: "#BEEFE2" })
+  assert.deepEqual(happyHour.occasion, { key: "happy_hour", label: "Happy Hour", icon: "schedule", color: "#8B5CF6", surface: "#E3D3FF" })
+
+  const firstVisit = benefitPresentation({ type: "welcome", discount_type: "item", reward_item: "Ayran" }, "de")
+  assert.equal(firstVisit.kind?.label, "Gratis")
+  assert.equal(firstVisit.occasion?.label, "Erster Besuch")
+  assert.equal(firstVisit.occasion?.surface, "#D2D7FF")
+
+  assert.equal(benefitPresentation({ type: "limited_drop", discount_type: "2for1" }, "de").occasion?.color, "#E94B55")
+  assert.equal(benefitPresentation({ type: "birthday", discount_type: "percent" }, "en").occasion?.label, "Birthday")
+  assert.equal(benefitPresentation({ type: "streak_bonus", discount_type: "bonus_stamp" }, "de").occasion, null)
 })
 
 test("uses explicit taxonomy dimensions before readable legacy enum values", () => {
@@ -76,8 +97,8 @@ test("uses explicit taxonomy dimensions before readable legacy enum values", () 
     discount_value: 20,
   }
 
-  assert.equal(benefitTaxonomyLabel(input, "de"), "Comeback-Deal")
-  assert.equal(formatBenefitTitle(input, "de"), "Comeback-Deal: 20 % Rabatt")
+  assert.equal(benefitTaxonomyLabel(input, "de"), "Wieder da")
+  assert.equal(formatBenefitTitle(input, "de"), "20% Rabatt")
   assert.equal(benefitTaxonomyLabel({ type: "limited_drop" }, "de"), "Deal Drop")
 })
 
@@ -113,7 +134,7 @@ test("rejects the full retired visible-title list and falls back to a concrete t
       public_title,
     }, "de")
 
-    assert.equal(title, "15 % Rabatt")
+    assert.equal(title, "15% Rabatt")
   }
 })
 
@@ -146,7 +167,7 @@ test("rejects separator variants of retired titles without rejecting concrete ti
         discount_value: 15,
         public_title,
       }, "de"),
-      "15 % Rabatt",
+      "15% Rabatt",
     )
   }
 
@@ -176,7 +197,7 @@ test("rejects retired alias phrases inside longer public titles", () => {
         discount_value: 15,
         public_title,
       }, "de"),
-      "15 % Rabatt",
+      "15% Rabatt",
     )
   }
 
@@ -185,7 +206,7 @@ test("rejects retired alias phrases inside longer public titles", () => {
     ["2 für 1 Pizza", "2 für 1 Pizza"],
     ["2-for-1 Pasta", "2 für 1 Pasta"],
     ["Gratis Ayran", "Gratis Ayran"],
-    ["15 % Rabatt", "15 % Rabatt"],
+    ["15% Rabatt", "15% Rabatt"],
     ["5 € Rabatt", "5 € Rabatt"],
     ["+2 Bonusstempel", "+2 Bonusstempel"],
   ]) {
@@ -215,6 +236,9 @@ test("replaces generic campaign and lifecycle titles with the concrete reward", 
     "Gratisartikel",
     "Willkommensdeal",
     "Comeback-Bonus",
+    "Erster Besuch",
+    "Schnell zurück",
+    "Wieder da",
   ]) {
     const title = formatBenefitTitle({
       type: "discount",
@@ -223,11 +247,11 @@ test("replaces generic campaign and lifecycle titles with the concrete reward", 
       public_title,
     }, "de")
 
-    assert.equal(title, "15 % Rabatt")
+    assert.equal(title, "15% Rabatt")
   }
 })
 
-test("uses the canonical automatic fallback label before generic reward labels", () => {
+test("shows an automatic fallback as what you get, not the retired Dauerrabatt", () => {
   const input = {
     type: "welcome",
     reward_format: "discount",
@@ -236,9 +260,9 @@ test("uses the canonical automatic fallback label before generic reward labels",
     activation_mode: "automatic_fallback",
   }
 
-  assert.equal(benefitTaxonomyLabel(input, "de"), "Dauerrabatt")
-  assert.equal(benefitTaxonomyLabel(input, "en"), "Permanent discount")
-  assert.equal(formatBenefitTitle(input, "de"), "10 % Rabatt")
+  assert.equal(benefitTaxonomyLabel(input, "de"), "Rabatt")
+  assert.equal(benefitTaxonomyLabel(input, "en"), "Discount")
+  assert.equal(formatBenefitTitle(input, "de"), "10% Rabatt")
 })
 
 test("removes forbidden variants from every public title source and generated title", () => {
@@ -284,7 +308,7 @@ test("rejects decorated generic public titles without rejecting specific partner
         discount_value: 15,
         public_title,
       }, "de"),
-      "15 % Rabatt",
+      "15% Rabatt",
     )
   }
 
@@ -295,8 +319,9 @@ test("rejects decorated generic public titles without rejecting specific partner
 })
 
 test("returns a single lifecycle label when no concrete reward is configured", () => {
-  assert.equal(formatBenefitTitle({ type: "welcome" }, "de"), "Willkommensdeal")
-  assert.equal(formatBenefitTitle({ type: "comeback" }, "de"), "Comeback-Deal")
+  assert.equal(formatBenefitTitle({ type: "welcome" }, "de"), "Erster Besuch")
+  assert.equal(formatBenefitTitle({ type: "comeback" }, "de"), "Schnell zurück")
+  assert.equal(formatBenefitTitle({ type: "comeback_inactive" }, "de"), "Wieder da")
 })
 
 test("rejects separator and two-for-one generic decorations while keeping item titles", () => {
@@ -356,7 +381,7 @@ test("resolves trigger and activation dimensions independently of legacy type", 
       discount_type: "percent",
       activation_mode: "direct_selectable",
     }, "de"),
-    "Willkommensdeal",
+    "Erster Besuch",
   )
   assert.equal(
     benefitTaxonomyLabel({
@@ -365,7 +390,7 @@ test("resolves trigger and activation dimensions independently of legacy type", 
       discount_type: "bonus_stamp",
       activation_mode: "automatic_background",
     }, "de"),
-    "Willkommensbonus",
+    "Erster Besuch",
   )
   assert.equal(
     benefitTaxonomyLabel({
@@ -374,6 +399,6 @@ test("resolves trigger and activation dimensions independently of legacy type", 
       reward_format: "bonus_stamp",
       activation_mode: "automatic_background",
     }, "de"),
-    "Zeitbonus",
+    "Schnell zurück",
   )
 })

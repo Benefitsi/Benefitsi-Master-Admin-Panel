@@ -6394,8 +6394,8 @@ function applyMicrositeLanguage(
       label: language === "en" ? "Benefits & campaigns" : "Vorteile & Aktionen",
       headline:
         language === "en"
-          ? `Exclusive Benefitsi benefits at ${name}`
-          : `Exklusive Benefitsi Vorteile bei ${name}`,
+          ? `Your benefits at ${name}.`
+          : `Deine Vorteile bei ${name}.`,
       slogan: language === "en" ? "Enjoy more, save more." : "Mehr genießen, mehr sparen!",
       description:
         language === "en"

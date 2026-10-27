@@ -84,11 +84,11 @@ test("puts only the stored two-for-one deal first and keeps the app type label f
 test("uses canonical public labels for reward formats and lifecycle triggers", () => {
   assert.equal(
     micrositeDealTypeLabel({ type: "welcome", discount_type: "item" }),
-    "Willkommensdeal",
+    "Erster Besuch",
   )
   assert.equal(
     micrositeDealTypeLabel({ type: "welcome", discount_type: "bonus_stamp" }),
-    "Willkommensbonus",
+    "Erster Besuch",
   )
   assert.equal(
     micrositeDealTypeLabel({
@@ -96,7 +96,7 @@ test("uses canonical public labels for reward formats and lifecycle triggers", (
       discount_type: "item",
       metadata: { bonus_mode: "comeback_inactive" },
     }),
-    "Comeback-Deal",
+    "Wieder da",
   )
   assert.equal(
     micrositeDealTypeLabel({
@@ -104,14 +104,15 @@ test("uses canonical public labels for reward formats and lifecycle triggers", (
       discount_type: "bonus_stamp",
       metadata: { bonus_mode: "comeback_inactive" },
     }),
-    "Comeback-Bonus",
+    "Wieder da",
   )
   assert.equal(
     micrositeDealTypeLabel({ type: "permanent_discount" }),
-    "Dauerrabatt",
+    "Rabatt",
   )
-  assert.equal(micrositeDealTypeLabel({ type: "streak" }), "Streak")
-  assert.equal(micrositeDealTypeLabel({ type: "challenge" }), "Challenge")
+  // Streak and challenge are retired and never get their own label.
+  assert.equal(micrositeDealTypeLabel({ type: "streak" }), "Vorteil")
+  assert.equal(micrositeDealTypeLabel({ type: "challenge" }), "Vorteil")
 })
 
 test("formats the stored deal value and minimum spend for the microsite", () => {
@@ -280,7 +281,7 @@ test("microsite public titles reject legacy aliases and stay concrete", () => {
       min_spend: null,
       display_title: "Rabatt",
     }),
-    "15 % Rabatt",
+    "15% Rabatt",
   )
 })
 
@@ -339,7 +340,7 @@ test("microsite labels preserve trigger, reward format, and activation semantics
       reward_format: "discount",
       activation_mode: "direct_selectable",
     }),
-    "Willkommensdeal",
+    "Erster Besuch",
   )
   assert.equal(
     micrositeDealTypeLabel({
@@ -348,7 +349,7 @@ test("microsite labels preserve trigger, reward format, and activation semantics
       reward_format: "bonus_stamp",
       activation_mode: "automatic_background",
     }),
-    "Willkommensbonus",
+    "Erster Besuch",
   )
   assert.equal(
     micrositeDealTypeLabel({
@@ -357,7 +358,7 @@ test("microsite labels preserve trigger, reward format, and activation semantics
       reward_format: "bonus_stamp",
       activation_mode: "automatic_background",
     }),
-    "Zeitbonus",
+    "Schnell zurück",
   )
   assert.equal(
     micrositeDealTypeLabel({
@@ -367,7 +368,7 @@ test("microsite labels preserve trigger, reward format, and activation semantics
       discount_type: "percent",
       activation_mode: "direct_selectable",
     }),
-    "Comeback-Deal",
+    "Wieder da",
   )
 })
 
@@ -393,7 +394,7 @@ test("microsite titles reject every retired public alias before rendering", () =
         min_spend: null,
         display_title,
       }),
-      "15 % Rabatt",
+      "15% Rabatt",
     )
   }
 
@@ -407,7 +408,7 @@ test("microsite titles reject every retired public alias before rendering", () =
       customer_description: "",
       min_spend: null,
     }),
-    "Willkommensdeal: 20 % Rabatt",
+    "20% Rabatt",
   )
 })
 

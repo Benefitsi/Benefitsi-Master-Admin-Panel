@@ -312,7 +312,7 @@ test('active deal source selects existing columns and derives labels from nullab
     title: 'Kaffee am Nachmittag'
   }, {
     id: '00000000-0000-4000-8000-000000000098',
-    title: '15 % Rabatt'
+    title: '15% Rabatt'
   }, {
     id: '00000000-0000-4000-8000-000000000097',
     title: 'Vorteil'

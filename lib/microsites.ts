@@ -251,7 +251,8 @@ export function createDefaultMicrositeConfig(partner: PartnerSeed, template = de
     },
     deals: {
       label: en ? "Benefits & offers" : "Vorteile & Aktionen",
-      headline: en ? `Your Benefitsi benefits at ${partner.short_name || name}` : `Exklusive Benefitsi Vorteile bei ${partner.short_name || name}`,
+      // Partner page slogan, Brand Guide 2.1: "Deine Vorteile bei {Partner}."
+      headline: en ? `Your benefits at ${partner.short_name || name}.` : `Deine Vorteile bei ${partner.short_name || name}.`,
       slogan: en ? "More to look forward to on every visit." : categoryTheme ? "Bei jedem Besuch mehr entdecken." : "Mehr genießen, mehr sparen!",
       description: en ? "Explore current offers and available rewards for your next visit." : "Entdecke die besten Vorteile und belohne dich bei jedem Besuch.",
       illustrationUrl:

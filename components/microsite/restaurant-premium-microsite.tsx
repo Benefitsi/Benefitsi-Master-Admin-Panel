@@ -10,6 +10,13 @@ import type { CSSProperties } from "react"
 import {
   Award,
   BadgeCheck,
+  Cake,
+  Hand,
+  Hourglass,
+  RotateCcw,
+  Stamp,
+  Ticket,
+  Zap,
   BellRing,
   Check,
   Circle,
@@ -73,6 +80,7 @@ import {
   getMicrositeWelcomeDeals,
   micrositeDealDescription,
   micrositeDealDetails,
+  micrositeDealPresentation,
   micrositeDealTypeLabel,
   micrositeDealTitle,
   micrositeRewardTrackLabel,
@@ -136,6 +144,9 @@ const socialPlatforms: Array<{
 ]
 
 const BENEFITSI_ICON_SRC = "/Benefitsi_Icon_FullColor_RGB_512.png"
+// Approved partner chip files (Brand Guide 2.1, page 10). Never rebuilt in CSS.
+const BENEFITSI_PARTNER_CHIP_LIGHT_SRC = "/benefitsi-partner-chip-light.png"
+const BENEFITSI_PARTNER_CHIP_DARK_SRC = "/benefitsi-partner-chip-dark.png"
 const BENEFITSI_APP_QR_SRC =
   process.env.NEXT_PUBLIC_BENEFITSI_APP_QR_URL ||
   "/benefitsi-app-qr-placeholder.png"
@@ -215,6 +226,17 @@ function restaurantSectionClass(
 
 function siteCopy(config: MicrositeConfig, german: string, english: string) {
   return config.language === "en" ? english : german
+}
+
+// Earlier builder defaults. Saved custom headlines stay untouched.
+const LEGACY_DEALS_HEADLINE = /^(?:Exklusive Benefitsi Vorteile bei .+|Deine veröffentlichten Vorteile|Exclusive Benefitsi benefits at .+|Your Benefitsi benefits at .+)$/u
+
+/** Partner page slogan, Brand Guide 2.1: "Deine Vorteile bei {Partner}." */
+function partnerPageHeadline(config: MicrositeConfig, partner: PartnerWithDeals) {
+  const headline = config.deals.headline?.trim() || ""
+  if (headline && !LEGACY_DEALS_HEADLINE.test(headline)) return headline
+  const name = partner.short_name || partner.name
+  return siteCopy(config, `Deine Vorteile bei ${name}.`, `Your benefits at ${name}.`)
 }
 
 function hasMicrositeBenefitContent(
@@ -369,6 +391,16 @@ function MicrositeThemeCss() {
       .premium-hero-badge {
         left: 1.25rem;
         top: 2rem;
+      }
+
+      .premium-partner-chip {
+        right: 1.25rem;
+        top: 4.75rem;
+      }
+
+      .premium-hero-wave {
+        top: calc(490px - 3.5rem);
+        height: 3.5rem;
       }
 
       .premium-hero-content {
@@ -532,6 +564,17 @@ function MicrositeThemeCss() {
           top: 2rem;
         }
 
+        .premium-partner-chip {
+          right: 2rem;
+          top: 2rem;
+        }
+
+        .premium-hero-wave {
+          top: auto;
+          bottom: 0;
+          height: 4.5rem;
+        }
+
         .premium-hero-flow {
           position: absolute;
           inset: 0 0 auto;
@@ -566,6 +609,11 @@ function MicrositeThemeCss() {
 
         .premium-hero-badge {
           left: 3rem;
+          top: 1.75rem;
+        }
+
+        .premium-partner-chip {
+          right: 3rem;
           top: 1.75rem;
         }
 
@@ -1478,6 +1526,9 @@ function HeroSection({
           {integration.heroBadge !== undefined ? integration.heroBadge : <Badge config={config} />}
         </div>
 
+        <PartnerChip config={config} />
+        <HeroWave />
+
         <div className="premium-hero-flow z-10">
         <div className="premium-hero-content premium-hero-copy relative">
           <div className="premium-hero-title-panel">
@@ -1684,7 +1735,7 @@ function DealsSection({
       return {
         id: `welcome-${deal.id || index}`,
         stamp: Math.min(stampCount, micrositeWelcomeStampCount(deal)),
-        eyebrow: "Willkommensbonus",
+        eyebrow: config.language === "en" ? "First visit" : "Erster Besuch",
         titleId: "stamps.welcomeBonus.title",
         titleFallback: title,
         textId: "stamps.welcomeBonus.text",
@@ -1750,7 +1801,7 @@ function DealsSection({
               className="text-[clamp(2rem,4.8cqw,3.3rem)] font-black leading-[1.04] tracking-[-0.04em]"
               style={textStyleFor(config, "deals.headline")}
             >
-              {config.deals.headline}
+              {partnerPageHeadline(config, partner)}
             </h2>
             <p
               {...editable("deals.slogan", "text", "Vorteils-Slogan")}
@@ -1936,7 +1987,7 @@ function DealsSection({
                         id={card.id.startsWith("welcome-") ? "stamps.welcomeBonus.icon" : `stamps.reward.${card.stamp}.icon`}
                         name={card.iconName}
                         config={config}
-                        label={card.id.startsWith("welcome-") ? "Willkommensbonus Icon" : `${card.eyebrow} Icon`}
+                        label={card.id.startsWith("welcome-") ? "Erster Besuch Icon" : `${card.eyebrow} Icon`}
                         className={`premium-stamp-reward-icon grid size-12 shrink-0 place-items-center rounded-xl border shadow-sm ${
                           card.tone === "emerald"
                             ? "premium-stamp-welcome-icon border-emerald-200 bg-emerald-50 text-emerald-600"
@@ -2016,6 +2067,34 @@ function DealsSection({
   )
 }
 
+const DEAL_CHIP_ICONS: Record<string, LucideIcon> = {
+  confirmation_number: Ticket,
+  percent: Percent,
+  card_giftcard: Gift,
+  local_activity: Stamp,
+  bolt: Zap,
+  schedule: Clock3,
+  waving_hand: Hand,
+  hourglass_bottom: Hourglass,
+  replay: RotateCcw,
+  cake: Cake,
+}
+
+/** Value kind and occasion label with the app's icon and colour. */
+function DealChip({ chip }: { chip: { key: string; label: string; icon: string; color: string; surface: string } }) {
+  const Icon = DEAL_CHIP_ICONS[chip.icon] || Sparkles
+  return (
+    <span
+      data-deal-chip={chip.key}
+      className="inline-flex min-h-7 w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold leading-none text-[#0A0A0A]"
+      style={{ backgroundColor: chip.surface }}
+    >
+      <Icon className="size-3.5 shrink-0" style={{ color: chip.color }} strokeWidth={2.4} aria-hidden="true" />
+      {chip.label}
+    </span>
+  )
+}
+
 export function MicrositeDealBanner({
   deal,
   config,
@@ -2034,6 +2113,10 @@ export function MicrositeDealBanner({
   const description = micrositeDealDescription(deal, config.language)
   const details = micrositeDealDetails(deal, config.language)
   const dealLabel = micrositeDealTypeLabel(deal, config.language)
+  const presentation = micrositeDealPresentation(deal, config.language)
+  const dealChips = [presentation.kind, presentation.occasion].filter(
+    (chip): chip is NonNullable<typeof chip> => Boolean(chip),
+  )
   const articleClassName = isFeaturedDeal
     ? `premium-topdeal relative min-h-full overflow-hidden rounded-[1.6rem] bg-[#121212] text-white shadow-[0_30px_80px_rgba(15,23,42,.22)] ${active ? "is-active" : ""}`
     : `premium-reveal premium-deal-secondary relative min-h-full overflow-hidden rounded-[1.15rem] border border-[var(--site-border)] bg-[var(--site-surface)] text-[var(--site-text)] shadow-[0_16px_36px_rgba(15,23,42,.08)] ${active ? "is-active" : ""}`
@@ -2072,15 +2155,19 @@ export function MicrositeDealBanner({
             : "relative z-[3] flex min-h-[132px] flex-col justify-center p-4 pl-5 @min-[640px]:min-h-[148px] @min-[640px]:p-5 @min-[640px]:pl-6"
         }
       >
-        <p
-          className={
-            isFeaturedDeal
-              ? "inline-flex w-fit rounded-full border border-[var(--site-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--site-accent)]"
-              : "inline-flex w-fit rounded-full bg-[color-mix(in_srgb,var(--site-accent)_10%,transparent)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--site-accent)]"
-          }
-        >
-          {dealLabel}
-        </p>
+        {dealChips.length ? (
+          <ul className="flex flex-wrap gap-2" aria-label={siteCopy(config, "Art und Anlass", "Kind and occasion")}>
+            {dealChips.map((chip) => (
+              <li key={chip.key}>
+                <DealChip chip={chip} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="inline-flex w-fit rounded-full bg-[#F3F5F7] px-3 py-1 text-xs font-bold text-[#0A0A0A]">
+            {dealLabel}
+          </p>
+        )}
         <h3
           className={
             isFeaturedDeal
@@ -3722,6 +3809,43 @@ function BrandMark({
     >
       <img src={BENEFITSI_ICON_SRC} alt="Benefitsi" className="h-full w-full object-contain" />
     </span>
+  )
+}
+
+/** "Offizieller Benefitsi Partner", top right, always the approved file. */
+function PartnerChip({ config }: { config: MicrositeConfig }) {
+  const isDark = config.appearance?.mode === "dark"
+  return (
+    <img
+      src={isDark ? BENEFITSI_PARTNER_CHIP_DARK_SRC : BENEFITSI_PARTNER_CHIP_LIGHT_SRC}
+      alt={siteCopy(config, "Offizieller Benefitsi Partner", "Official Benefitsi partner")}
+      width={1160}
+      height={208}
+      className="premium-partner-chip absolute z-10 h-8 w-auto drop-shadow-[0_8px_18px_rgba(6,24,41,.14)] @min-[640px]:h-9"
+    />
+  )
+}
+
+/** Wave at the bottom of the hero, always in the Benefitsi gradient. */
+function HeroWave() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="premium-hero-wave pointer-events-none absolute inset-x-0 z-[4] w-full"
+      viewBox="0 0 1440 80"
+      preserveAspectRatio="none"
+    >
+      <defs>
+        <linearGradient id="benefitsi-hero-wave" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#17D4D7" />
+          <stop offset="1" stopColor="#118CFF" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M0 46C180 18 360 10 560 30s420 52 620 34c110-10 190-30 260-44V80H0Z"
+        fill="url(#benefitsi-hero-wave)"
+      />
+    </svg>
   )
 }
 
