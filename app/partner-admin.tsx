@@ -294,13 +294,14 @@ const redemptionHistoryDisplayLimit = 20
 const comebackCandidateDisplayLimit = 20
 
 const openingWeekdayOptions = [
+  // Display Sunday first; retain the stored ISO weekday values (Monday=1).
+  { value: "7", label: "Sunday" },
   { value: "1", label: "Monday" },
   { value: "2", label: "Tuesday" },
   { value: "3", label: "Wednesday" },
   { value: "4", label: "Thursday" },
   { value: "5", label: "Friday" },
   { value: "6", label: "Saturday" },
-  { value: "7", label: "Sunday" },
 ] as const
 
 const DURATION_BONUS_DEAL = "duration_bonus"
@@ -2952,9 +2953,7 @@ function PartnerForm({
           <div className="mb-3 space-y-0.5">
             <p className="text-sm font-semibold text-zinc-900">Social media</p>
             <p className="text-xs leading-5 text-zinc-500">
-              Optional. Add up to {MAX_PARTNER_SOCIALS} social profiles. Enter a
-              handle or full profile URL and the partner record will store the
-              canonical link automatically.
+              {`Optional. Add up to ${MAX_PARTNER_SOCIALS} social profiles. Enter a handle or full profile URL and the partner record will store the canonical link automatically.`}
             </p>
           </div>
           <SocialHandlesSection
@@ -11696,6 +11695,10 @@ function SelectField({
   warning?: string
   onChange?: (value: string) => void
 }) {
+  const commitValue = (nextValue: string) => {
+    if (value === undefined || nextValue !== value) onChange?.(nextValue)
+  }
+
   return (
     <label className="block min-w-0 space-y-1.5 text-sm">
       <FieldLabel label={label} required={required} />
@@ -11705,7 +11708,10 @@ function SelectField({
         aria-invalid={Boolean(warning) || undefined}
         value={value}
         defaultValue={value === undefined ? defaultValue ?? "" : undefined}
-        onChange={(event) => onChange?.(event.target.value)}
+        // Commit controlled selections before an ancestor input handler redraws
+        // the form. Some browsers emit input before the select's change event.
+        onInput={value === undefined ? undefined : (event) => commitValue(event.currentTarget.value)}
+        onChange={(event) => commitValue(event.currentTarget.value)}
         className="h-9 w-full rounded-lg border border-zinc-300 bg-white px-2.5 text-sm text-zinc-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
       >
         <option value="">Select...</option>
@@ -12325,6 +12331,11 @@ function CoverUploadField({
   })
 
   useEffect(() => {
+    // Notify after React commits the ordered hidden inputs, including drag/drop.
+    fileInputRef.current?.dispatchEvent(new CustomEvent("partner-form-value-change", { bubbles: true }))
+  }, [coverOrder, removedUrls, selectedCovers, isProcessing])
+
+  useEffect(() => {
     selectedPreviewsRef.current = selectedCovers.map((cover) => cover.preview)
   }, [selectedCovers])
 
@@ -12336,7 +12347,8 @@ function CoverUploadField({
 
   const syncFileInput = () => {
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+      // Cancelling or rejecting a new selection must retain earlier uploads.
+      replaceFileInputFiles(fileInputRef.current, selectedCovers.map((cover) => cover.file))
     }
   }
 
@@ -12425,12 +12437,10 @@ function CoverUploadField({
         <span className="text-xs font-medium text-zinc-500">Drag previews to rearrange</span>
       </div>
       <p className="text-xs text-zinc-500">
-        {sizeHint}. Images are resized automatically before upload. Max{" "}
-        {maxCoverPhotos} cover photos, 10 MB each.
+        {sizeHint}{`. Images are resized automatically before upload. Max ${maxCoverPhotos} cover photos, 10 MB each.`}
       </p>
       <p className="text-xs font-medium text-zinc-500">
-        {visibleCovers.length} of {maxCoverPhotos} cover photos saved
-        {remainingCoverSlots ? `; ${remainingCoverSlots} slot${remainingCoverSlots === 1 ? "" : "s"} available.` : "."}
+        {`${visibleCovers.length} of ${maxCoverPhotos} cover photos saved${remainingCoverSlots ? `; ${remainingCoverSlots} slot${remainingCoverSlots === 1 ? "" : "s"} available.` : "."}`}
       </p>
       <input type="hidden" name="cover_processing" value={isProcessing ? "true" : "false"} />
       {visibleCovers.map((coverUrl) => (

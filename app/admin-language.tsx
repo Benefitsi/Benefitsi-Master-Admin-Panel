@@ -10,6 +10,7 @@ import {
 } from "react"
 
 import { overviewTranslations, overviewTemplates } from "../lib/admin-i18n/overview"
+import { partnerTranslations, partnerTemplates } from "../lib/admin-i18n/partner"
 import { compileTranslationTemplates, translateTemplate } from "../lib/admin-i18n/templates"
 
 export type AdminLanguage = "en" | "de"
@@ -17,11 +18,11 @@ export type AdminLanguage = "en" | "de"
 const STORAGE_KEY = "benefitsi-admin-language"
 
 const reviewedEnglishToGerman = new Map<string, string>()
-for (const [en, de] of overviewTranslations) {
+for (const [en, de] of [...overviewTranslations, ...partnerTranslations]) {
   if (!reviewedEnglishToGerman.has(en)) reviewedEnglishToGerman.set(en, de)
 }
-const reviewedGermanToEnglish = new Map(overviewTranslations.map(([en, de]) => [de, en]))
-const reviewedTemplates = compileTranslationTemplates(overviewTemplates)
+const reviewedGermanToEnglish = new Map([...partnerTranslations, ...overviewTranslations].map(([en, de]) => [de, en]))
+const reviewedTemplates = compileTranslationTemplates([...overviewTemplates, ...partnerTemplates])
 
 const translations = [
   ["Partner management", "Partnerverwaltung"],
@@ -1018,7 +1019,7 @@ export function translateValue(value: string, language: AdminLanguage) {
   if (template !== undefined) return `${leading}${template}${trailing}`
   if (translateTemplate(core, language === "de" ? "en" : "de", reviewedTemplates) !== undefined) return value
   const dictionary = language === "de" ? englishToGerman : germanToEnglish
-  const exact = dictionary.get(core)
+  const exact = dictionary.get(core) ?? dictionary.get(normalizedCore)
 
   if (exact) {
     return `${leading}${canonicalizeBenefitSurfaceCopy(exact, language)}${trailing}`
