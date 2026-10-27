@@ -16,7 +16,7 @@ export default async function DiscoveryImagesPage({ params }: { params: Promise<
   if (!data) notFound()
   return <AdminShell title="Startseitenbilder" subtitle={`${data.city.name} · Entdecken-Themen`} adminName={adminSession.profile?.display_name || adminSession.user.email || "Admin"}>
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <Link href={`/city-pages/${data.city.slug}`} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-[#0b75d9]"><ArrowLeft className="size-4" aria-hidden />Zur Stadtverwaltung</Link>
+      <Link href={`/city-pages/${data.city.slug}`} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-[#075faa]"><ArrowLeft className="size-4" aria-hidden />Zur Stadtverwaltung</Link>
       <a href={`https://benefitsi.de/stadt/${data.city.slug}#entdecken`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-bold">Startseite ansehen<ExternalLink className="size-4" aria-hidden /></a>
     </div>
     <section className="rounded-2xl border border-[#0b75d9]/15 bg-[#edf6ff] p-5 sm:p-6">

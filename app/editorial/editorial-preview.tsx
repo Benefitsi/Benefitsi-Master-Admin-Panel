@@ -74,7 +74,7 @@ export function EditorialPreview({ post, embedded = false }: { post: EditorialPr
           ))}
           {links.length ? <nav aria-label="Weiterlesen" className="border-t border-[#dbe4ee] pt-8">
             <Heading className="text-xs font-black uppercase tracking-[.16em] text-[#086fcc]">Weiterlesen</Heading>
-            <div className="mt-5 grid gap-3 @xl/editorial:grid-cols-2">{links.map((link, index) => <a key={index} href={link.href} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-between gap-3 border border-[#dbe4ee] px-4 py-3 text-sm font-black hover:border-[#118cff]"><span>{link.label}</span><span aria-hidden="true" className="text-[#118cff]">→</span></a>)}</div>
+            <div className="mt-5 grid gap-3 @xl/editorial:grid-cols-2">{links.map((link, index) => <a key={index} href={link.href} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-between gap-3 border border-[#dbe4ee] px-4 py-3 text-sm font-black hover:border-[#086fcc]"><span>{link.label}</span><span aria-hidden="true" className="text-[#086fcc]">→</span></a>)}</div>
           </nav> : null}
         </div>
         {sources.length || notes.length ? <footer aria-label="Quellen und Bildnachweise" className="mt-10 space-y-3 border-t border-[#e3e8ee] pt-5 text-[11px] leading-5 text-[#617080] [overflow-wrap:anywhere] [&_a]:font-normal [&_a]:text-inherit [&_strong]:text-inherit">

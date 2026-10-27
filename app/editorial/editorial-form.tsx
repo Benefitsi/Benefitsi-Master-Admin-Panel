@@ -45,7 +45,7 @@ function slugify(value: string) {
 }
 
 const inputClass =
-  "min-h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition placeholder:text-[#8995a0] focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
+  "min-h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition placeholder:text-[#8995a0] focus:border-[#086fcc] focus:ring-3 focus:ring-[#118cff]/10"
 const secondaryButton =
   "inline-flex min-h-11 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-black text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff]"
 
@@ -93,8 +93,8 @@ export function EditorialForm({ action, initial, cities, partners }: EditorialFo
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h2 className="text-xl font-black tracking-[-0.025em]">{preview ? "Beitragsvorschau" : "Inhalt bearbeiten"}</h2><p className="mt-1 text-sm leading-6 text-[#617080]">{preview ? "Dein aktueller Bearbeitungsstand. Noch nicht gespeichert." : "Texte und Links ändern, danach in der Vorschau prüfen."}</p></div>
           <div className="flex gap-2" aria-label="Ansicht wechseln">
-            <button type="button" aria-pressed={!preview} onClick={() => setPreview(null)} className={`${secondaryButton} ${!preview ? "border-[#118cff] bg-[#f3f8ff]" : ""}`}>Bearbeiten</button>
-            <button type="button" aria-pressed={Boolean(preview)} onClick={showPreview} className={`${secondaryButton} ${preview ? "border-[#118cff] bg-[#f3f8ff]" : ""}`}>Vorschau</button>
+            <button type="button" aria-pressed={!preview} onClick={() => setPreview(null)} className={`${secondaryButton} ${!preview ? "border-[#086fcc] bg-[#f3f8ff]" : ""}`}>Bearbeiten</button>
+            <button type="button" aria-pressed={Boolean(preview)} onClick={showPreview} className={`${secondaryButton} ${preview ? "border-[#086fcc] bg-[#f3f8ff]" : ""}`}>Vorschau</button>
           </div>
         </div>
       </div>
@@ -196,7 +196,7 @@ export function EditorialForm({ action, initial, cities, partners }: EditorialFo
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={preview ? () => setPreview(null) : showPreview} className={secondaryButton}>{preview ? "Weiter bearbeiten" : "Vorschau"}</button>
             <PendingSubmitButton name={status === "active" || status === "archived" ? undefined : "intent"} value={status === "active" || status === "archived" ? undefined : "save_draft"} pendingLabel="Wird gespeichert…" className={secondaryButton}>{status === "active" || status === "archived" ? "Änderungen speichern" : "Als Entwurf speichern"}</PendingSubmitButton>
-            <PendingSubmitButton name="intent" value="publish_now" pendingLabel="Wird veröffentlicht…" className="min-h-11 rounded-xl bg-[#118cff] px-5 text-sm font-black text-white transition hover:bg-[#0878df]">Jetzt veröffentlichen</PendingSubmitButton>
+            <PendingSubmitButton name="intent" value="publish_now" pendingLabel="Wird veröffentlicht…" className="min-h-11 rounded-xl bg-[#086fcc] px-5 text-sm font-black text-white transition hover:bg-[#0878df]">Jetzt veröffentlichen</PendingSubmitButton>
           </div>
         </div>
       </div>
@@ -207,7 +207,7 @@ export function EditorialForm({ action, initial, cities, partners }: EditorialFo
 function Field({ label, helper, required, children }: { label: string; helper?: string; required?: boolean; children: React.ReactNode }) {
   return (
     <label className="grid gap-1.5 text-xs font-bold text-[#526170]">
-      <span className="flex items-center gap-1 text-[#061829]">{label}{required ? <span className="text-[#118cff]">*</span> : null}</span>
+      <span className="flex items-center gap-1 text-[#061829]">{label}{required ? <span className="text-[#086fcc]">*</span> : null}</span>
       {children}
       {helper ? <span className="text-[11px] font-medium leading-4 text-[#7a8791]">{helper}</span> : null}
     </label>

@@ -52,7 +52,7 @@ export function MediaInventory({ data, query = "", cityId = "", status = "" }: {
           <option value="">Alle Status</option>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
         </select>
       </label>
-      <button type="submit" className="self-end rounded-xl bg-[#118cff] px-4 py-3 text-sm font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#061829]">Filtern</button>
+      <button type="submit" className="self-end rounded-xl bg-[#086fcc] px-4 py-3 text-sm font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#061829]">Filtern</button>
     </form>
     {data.assets.state !== "unavailable" && visible.length === 0 ? <p className="rounded-2xl border border-[#061829]/10 bg-white p-6 text-sm text-[#526778]">Keine passenden Bilder im geladenen Bestand.</p> : null}
     <div className="grid items-start gap-4 xl:grid-cols-2">

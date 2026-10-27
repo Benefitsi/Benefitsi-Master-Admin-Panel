@@ -50,7 +50,7 @@ export default async function BookingDetailPage({
       title={`Buchung ${booking.publicReference}`}
       subtitle={`${booking.offerTitle} · ${booking.state}`}
     >
-      <Link href="/bookings" className="inline-flex min-h-11 items-center text-sm font-black text-[#0b75d9]">
+      <Link href="/bookings" className="inline-flex min-h-11 items-center text-sm font-black text-[#075faa]">
         ← Zurück zum Booking Control
       </Link>
       {feedback.error ? (
@@ -67,7 +67,7 @@ export default async function BookingDetailPage({
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(20rem,.75fr)]">
         <div className="space-y-5">
           <section className="rounded-3xl border border-[#061829]/10 bg-white p-5 sm:p-6">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">Buchungsdaten</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">Buchungsdaten</p>
             <dl className="mt-5 grid gap-5 sm:grid-cols-2">
               <Datum label="Angebot" value={offer?.title || booking.offerTitle} />
               <Datum label="Anbieter" value={provider?.displayName || booking.providerName} />
@@ -85,7 +85,7 @@ export default async function BookingDetailPage({
           </section>
 
           <section className="rounded-3xl border border-[#061829]/10 bg-white p-5 sm:p-6">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">Audit-Timeline</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">Audit-Timeline</p>
             {detail.audit.length > 0 ? (
               <ol className="mt-5 space-y-4 border-l border-[#061829]/15 pl-5">
                 {detail.audit.map((entry) => (

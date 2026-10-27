@@ -17,7 +17,7 @@ export function WebLink({value}: {value: unknown}) {
     const url = new URL(value)
     if (['https:', 'http:'].includes(url.protocol) && !url.username && !url.password) safeHref = url.href
   } catch { /* Display the text without a link. */ }
-  return safeHref ? <a className="break-all text-[#0b75d9] underline" href={safeHref} target="_blank" rel="noopener noreferrer">{value}</a> : <span>{value}</span>
+  return safeHref ? <a className="break-all text-[#075faa] underline" href={safeHref} target="_blank" rel="noopener noreferrer">{value}</a> : <span>{value}</span>
 }
 const findingLabels: Record<string, string> = {
   missing_title: 'Seitentitel fehlt', noindex: 'Noindex beobachtet', broken_link: 'Defekter Link',
@@ -39,7 +39,7 @@ function Gsc({data}: {data: Record<string, unknown>}) {
     return <div key={index} className="border-l-2 border-[#b8dcff] pl-3">
       <p className="font-medium">{text(period.startDate)}–{text(period.endDate)} · 28 Tage</p>
       <p>Klicks {number(totals.clicks)} · Impressionen {number(totals.impressions)} · CTR {typeof totals.ctr === 'number' ? `${(totals.ctr * 100).toLocaleString('de-DE', {maximumFractionDigits: 1})} %` : 'Noch keine Daten'} · Durchschnittsposition {number(totals.averagePosition)} (kein Keyword-Rang)</p>
-      {queries.length > 0 && <details className="mt-1"><summary className="cursor-pointer text-[#0b75d9]">Top-Suchanfragen · Stichprobe bis 100</summary><ul className="mt-1 list-disc pl-5">{queries.slice(0, 100).map((item, rowIndex) => {const query = record(item); return <li key={rowIndex}>{text(query.query)} · {number(query.clicks)} Klicks · Durchschnittsposition {number(query.averagePosition)}</li>})}</ul></details>}
+      {queries.length > 0 && <details className="mt-1"><summary className="cursor-pointer text-[#075faa]">Top-Suchanfragen · Stichprobe bis 100</summary><ul className="mt-1 list-disc pl-5">{queries.slice(0, 100).map((item, rowIndex) => {const query = record(item); return <li key={rowIndex}>{text(query.query)} · {number(query.clicks)} Klicks · Durchschnittsposition {number(query.averagePosition)}</li>})}</ul></details>}
     </div>
   })}<p className="text-xs text-zinc-500">Anonymisierte Suchanfragen können in der Stichprobe fehlen. Die beiden Zeiträume bleiben getrennt.</p></div>
 }
@@ -83,7 +83,7 @@ export function Observations({history, targetId}: {history: StoredObservation[];
     <div className="flex flex-wrap items-start justify-between gap-2">
       <div><p className="font-semibold text-[#061829]">{collectionLabels[run.kind as CollectionKind] ?? run.kind} · {collectionStateLabels[run.state] ?? collectionStateLabels[run.status] ?? 'Prüfung erforderlich'}</p>
         <p className="text-xs text-zinc-500">Beobachtet {date(run.observed_at)} · Angelegt {date(run.created_at)} · Quelle {text(run.source)} · Methode {text(run.method)} · Versuch {run.attempts}/3</p></div>
-      {(run.status === 'failed' || run.status === 'blocked') && run.attempts < 3 && <form action={retryCollectionRun}><input type="hidden" name="target_id" value={targetId}/><input type="hidden" name="run_id" value={run.id}/><button className="rounded-md border border-[#b8dcff] px-3 py-1 text-sm text-[#0b75d9] hover:bg-[#f3f8ff]">Erneut versuchen</button></form>}
+      {(run.status === 'failed' || run.status === 'blocked') && run.attempts < 3 && <form action={retryCollectionRun}><input type="hidden" name="target_id" value={targetId}/><input type="hidden" name="run_id" value={run.id}/><button className="rounded-md border border-[#b8dcff] px-3 py-1 text-sm text-[#075faa] hover:bg-[#f3f8ff]">Erneut versuchen</button></form>}
     </div>
     <div className="mt-2 text-sm leading-6 text-zinc-700">{run.data ? run.kind === 'crawl' ? <Website data={record(run.data)}/> : run.kind === 'gsc' ? <Gsc data={record(run.data)}/> : run.kind === 'gbp' ? <Gbp data={record(run.data)}/> : run.kind === 'psi' ? <Psi data={record(run.data)}/> : run.kind === 'rank' ? <Rank data={record(run.data)}/> : <p>Noch keine Daten</p> : <p>Noch keine Daten</p>}</div>
   </li>)}</ol>

@@ -99,9 +99,9 @@ export default async function CityPagesPage({
                   name="q"
                   defaultValue={params.q}
                   placeholder="z. B. Annweiler oder Südliche Weinstraße"
-                  className="h-11 min-w-0 flex-1 rounded-xl border border-[#061829]/15 px-3 text-sm outline-none transition focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
+                  className="h-11 min-w-0 flex-1 rounded-xl border border-[#061829]/15 px-3 text-sm outline-none transition focus:border-[#086fcc] focus:ring-3 focus:ring-[#118cff]/10"
                 />
-                <button className="h-11 rounded-xl bg-[#118cff] px-5 text-sm font-black text-white transition hover:bg-[#0878df]">
+                <button className="h-11 rounded-xl bg-[#086fcc] px-5 text-sm font-black text-white transition hover:bg-[#0878df]">
                   Suchen
                 </button>
               </div>
@@ -122,7 +122,7 @@ export default async function CityPagesPage({
       <section>
         <div className="mb-3 flex items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
               Stadtverwaltung
             </p>
             <h2 className="mt-1 text-xl font-black tracking-[-0.025em]">
@@ -130,7 +130,7 @@ export default async function CityPagesPage({
             </h2>
           </div>
           {query ? (
-            <Link href="/city-pages" className="text-sm font-bold text-[#118cff]">
+            <Link href="/city-pages" className="text-sm font-bold text-[#086fcc]">
               Suche zurücksetzen
             </Link>
           ) : null}
@@ -292,7 +292,7 @@ function CityGlyph({ className }: { className?: string }) {
 }
 
 const primaryButton =
-  "inline-flex min-h-10 items-center justify-center rounded-xl bg-[#118cff] px-4 text-sm font-black text-white transition hover:bg-[#0878df] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff]"
+  "inline-flex min-h-10 items-center justify-center rounded-xl bg-[#086fcc] px-4 text-sm font-black text-white transition hover:bg-[#0878df] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc]"
 
 const secondaryButton =
-  "inline-flex min-h-10 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-black text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff]"
+  "inline-flex min-h-10 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-black text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc]"

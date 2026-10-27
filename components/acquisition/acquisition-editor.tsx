@@ -8,10 +8,10 @@ import {
 import type {AcquisitionServices} from './services'
 import {retainAcquisitionDraftRecovery, type AcquisitionDraftRecovery} from './draft-recovery'
 
-export const acquisitionInput = 'min-h-11 w-full min-w-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-[#061829] focus:outline-2 focus:outline-[#118cff] disabled:bg-zinc-100'
-const buttonBase = 'min-h-11 rounded-xl border px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[#118cff] disabled:cursor-wait disabled:opacity-50'
+export const acquisitionInput = 'min-h-11 w-full min-w-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-[#061829] focus:outline-2 focus:outline-[#086fcc] disabled:bg-zinc-100'
+const buttonBase = 'min-h-11 rounded-xl border px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[#086fcc] disabled:cursor-wait disabled:opacity-50'
 export const acquisitionButton = `${buttonBase} border-zinc-300 bg-white text-[#061829] hover:bg-zinc-50`
-export const acquisitionPrimaryButton = `${buttonBase} border-[#118cff] bg-[#118cff] text-white hover:bg-[#0879df]`
+export const acquisitionPrimaryButton = `${buttonBase} border-[#086fcc] bg-[#086fcc] text-white hover:bg-[#0879df]`
 const snapshot = (doc: AcquisitionDocument) => JSON.stringify([doc.fields, doc.contacts])
 const discardMessage = 'Ungespeicherte Änderungen verwerfen?'
 

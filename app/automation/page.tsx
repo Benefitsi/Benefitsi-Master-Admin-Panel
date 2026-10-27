@@ -83,7 +83,7 @@ export default async function AutomationPage({
           </div>
         </div>
         <div className="rounded-3xl border border-[#061829]/10 bg-white p-5">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
             Tageslauf
           </p>
           <h2 className="mt-2 text-xl font-black">Alle Städte einplanen</h2>
@@ -93,7 +93,7 @@ export default async function AutomationPage({
           <form action={scheduleAllDueCityScans} className="mt-4">
             <PendingSubmitButton
               pendingLabel="Wird geplant …"
-              className="min-h-11 w-full rounded-xl bg-[#118cff] px-4 text-sm font-black text-white transition hover:bg-[#0878df]"
+              className="min-h-11 w-full rounded-xl bg-[#086fcc] px-4 text-sm font-black text-white transition hover:bg-[#0878df]"
             >
               Fällige Stadt-Scans einplanen
             </PendingSubmitButton>
@@ -127,7 +127,7 @@ export default async function AutomationPage({
       <section className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white">
         <div className="flex flex-col gap-4 border-b border-[#061829]/10 p-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
               City-Agent Operations
             </p>
             <h2 className="mt-1 text-xl font-black">Quellen, Läufe und Vorschläge</h2>
@@ -187,7 +187,7 @@ export default async function AutomationPage({
 
       <div className="grid gap-5 xl:grid-cols-[minmax(17rem,.55fr)_minmax(0,1.45fr)]">
         <aside className="rounded-3xl border border-[#061829]/10 bg-white p-5">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
             Einzelauftrag
           </p>
           <h2 className="mt-1 text-xl font-black">Stadt jetzt prüfen</h2>
@@ -216,7 +216,7 @@ export default async function AutomationPage({
         <section className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white">
           <div className="flex items-end justify-between gap-4 p-5">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
                 Globale Queue
               </p>
               <h2 className="mt-1 text-xl font-black">{jobs.length} Aufträge</h2>
@@ -266,7 +266,7 @@ function AgentRunList({ runs }: { runs: CityAgentRunSummary[] }) {
     <div className="rounded-2xl border border-[#061829]/10">
       <div className="flex items-center justify-between gap-3 border-b border-[#061829]/10 px-4 py-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.12em] text-[#0b75d9]">Runs</p>
+          <p className="text-xs font-black uppercase tracking-[0.12em] text-[#075faa]">Runs</p>
           <h3 className="mt-1 font-black">Letzte Stadtläufe</h3>
         </div>
         <span className="text-xs font-bold text-[#7b8794]">{runs.length} angezeigt</span>
@@ -309,7 +309,7 @@ function AgentSourceList({ sources }: { sources: CityAgentSourceSummary[] }) {
     <div className="rounded-2xl border border-[#061829]/10">
       <div className="flex items-center justify-between gap-3 border-b border-[#061829]/10 px-4 py-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.12em] text-[#0b75d9]">Quellenregister</p>
+          <p className="text-xs font-black uppercase tracking-[0.12em] text-[#075faa]">Quellenregister</p>
           <h3 className="mt-1 font-black">Aktuelle Quellenlage</h3>
         </div>
         <span className="text-xs font-bold text-[#7b8794]">{sources.filter((source) => source.lastStatus === "error").length} Fehler</span>
@@ -328,7 +328,7 @@ function AgentSourceList({ sources }: { sources: CityAgentSourceSummary[] }) {
                     <span className="text-[11px] font-bold text-[#7b8794]">{source.cadence}</span>
                   </div>
                   <p className="mt-1 truncate text-sm font-black">{source.slug}</p>
-                  <a href={source.url} target="_blank" rel="noreferrer" className="mt-1 block truncate text-xs font-semibold text-[#0b75d9] hover:underline">{source.url}</a>
+                  <a href={source.url} target="_blank" rel="noreferrer" className="mt-1 block truncate text-xs font-semibold text-[#075faa] hover:underline">{source.url}</a>
                 </div>
                 <div className="shrink-0 text-right text-[11px] font-semibold text-[#7b8794]">
                   <p>geprüft</p>
@@ -351,7 +351,7 @@ function AgentProposalList({ proposals }: { proposals: CityAgentProposalSummary[
     <div className="border-t border-[#061829]/10">
       <div className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.12em] text-[#0b75d9]">Belegbasierte Empfehlungen</p>
+          <p className="text-xs font-black uppercase tracking-[0.12em] text-[#075faa]">Belegbasierte Empfehlungen</p>
           <h3 className="mt-1 text-lg font-black">Review-Warteschlange</h3>
         </div>
         <span className="text-xs font-bold text-[#7b8794]">{pending.length} warten auf Entscheidung</span>
@@ -443,7 +443,7 @@ function JobRow({ job, auditCount }: { job: AutomationJob; auditCount: number })
 
       {job.recommendedAction ? (
         <div className="mt-4 rounded-2xl border border-[#118cff]/15 bg-[#f3f8ff] p-4">
-          <p className="text-xs font-black uppercase tracking-[0.12em] text-[#0b75d9]">
+          <p className="text-xs font-black uppercase tracking-[0.12em] text-[#075faa]">
             Agent-Empfehlung
           </p>
           <p className="mt-2 text-sm leading-6 text-[#19334a]">{job.recommendedAction}</p>
@@ -534,4 +534,4 @@ function formatDate(value: string | null) {
 }
 
 const inputClass =
-  "min-h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 py-2 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-2 focus:ring-[#118cff]/15"
+  "min-h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 py-2 text-sm text-[#061829] outline-none transition focus:border-[#086fcc] focus:ring-2 focus:ring-[#118cff]/15"

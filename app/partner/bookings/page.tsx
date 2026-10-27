@@ -34,10 +34,10 @@ export default async function PartnerBookingsPage({
 
         <div className="mt-5 flex items-center justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">Eigene Buchungen</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">Eigene Buchungen</p>
             <h1 className="mt-1 text-3xl font-black tracking-[-0.04em]">Buchungsübersicht</h1>
           </div>
-          <Link href="/partner" className="text-sm font-black text-[#0b75d9]">Zum Partner-Dashboard →</Link>
+          <Link href="/partner" className="text-sm font-black text-[#075faa]">Zum Partner-Dashboard →</Link>
         </div>
 
         {feedback.error ? <Message tone="error">Aktion blockiert: {feedback.error}</Message> : null}
@@ -49,7 +49,7 @@ export default async function PartnerBookingsPage({
         </section>
 
         <section className="mt-5 rounded-3xl border border-[#061829]/10 bg-white p-5">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">Stripe Connect</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">Stripe Connect</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {context.providers.map((provider) => (
               <div key={provider.id} className="rounded-2xl border border-[#061829]/10 bg-[#f8fafb] p-4">
@@ -64,7 +64,7 @@ export default async function PartnerBookingsPage({
 
         <section className="mt-5 overflow-hidden rounded-3xl border border-[#061829]/10 bg-white">
           <div className="p-5">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">Buchungen</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">Buchungen</p>
             <h2 className="mt-1 text-xl font-black">Nur zugeordnete Partnerbetriebe</h2>
           </div>
           {context.bookings.length === 0 ? (
@@ -83,7 +83,7 @@ export default async function PartnerBookingsPage({
                     <form action={requestProviderCancellation} className="w-full md:w-72">
                       <input type="hidden" name="bookingId" value={booking.id} />
                       <input name="reason" required minLength={3} maxLength={1000} placeholder="Stornogrund" className="min-h-10 w-full rounded-xl border border-[#061829]/15 px-3 text-sm" />
-                      <PendingSubmitButton pendingLabel="Wird angefragt …" className="mt-2 min-h-10 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-xs font-black hover:border-[#118cff]">
+                      <PendingSubmitButton pendingLabel="Wird angefragt …" className="mt-2 min-h-10 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-xs font-black hover:border-[#086fcc]">
                         Storno anfragen
                       </PendingSubmitButton>
                     </form>

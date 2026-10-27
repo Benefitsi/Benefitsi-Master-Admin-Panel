@@ -103,7 +103,7 @@ export default async function CityContentEditorPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href={`/city-pages/${editor.city.slug}`}
-          className="inline-flex min-h-11 items-center text-sm font-black text-[#0b75d9] transition hover:text-[#075eae]"
+          className="inline-flex min-h-11 items-center text-sm font-black text-[#075faa] transition hover:text-[#075eae]"
         >
           <BackIcon className="mr-1.5 size-4" />
           Zur Stadtverwaltung
@@ -157,7 +157,7 @@ export default async function CityContentEditorPage({
           />
 
           <div className="border-b border-[#061829]/10 p-5 sm:p-6">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
               {definition.plural}
             </p>
             <h2 className="mt-1 text-2xl font-black tracking-[-0.035em]">
@@ -216,7 +216,7 @@ export default async function CityContentEditorPage({
 
           {!isNew ? (
             <section className="rounded-3xl border border-[#061829]/10 bg-white p-5">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
                 Aktueller Datensatz
               </p>
               <dl className="mt-4 divide-y divide-[#061829]/10 border-y border-[#061829]/10 text-sm">
@@ -331,7 +331,7 @@ function EditorFieldControl({
           {...common}
           type="checkbox"
           defaultChecked={value === true}
-          className="size-4 accent-[#118cff]"
+          className="size-4 accent-[#086fcc]"
         />
         {field.label}
       </label>
@@ -350,7 +350,7 @@ function EditorFieldControl({
               name={field.name}
               value={option.value}
               defaultChecked={selected.has(Number(option.value))}
-              className="size-4 accent-[#118cff]"
+              className="size-4 accent-[#086fcc]"
             />
             {option.label}
           </label>
@@ -496,7 +496,7 @@ function OpeningHoursControl({
                   name={`${field.name}_${weekday}_closed`}
                   aria-label={`${label} geschlossen`}
                   defaultChecked={entry?.closed === true}
-                  className="size-4 accent-[#118cff]"
+                  className="size-4 accent-[#086fcc]"
                 />
                 geschlossen
               </label>
@@ -634,10 +634,10 @@ function BackIcon({ className }: { className?: string }) {
 }
 
 const inputClass =
-  "min-h-12 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
+  "min-h-12 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#086fcc] focus:ring-3 focus:ring-[#118cff]/10"
 
 const primaryButton =
-  "inline-flex min-h-11 items-center justify-center rounded-xl bg-[#118cff] px-4 text-sm font-black text-white transition hover:bg-[#0878df] active:scale-[.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff]"
+  "inline-flex min-h-11 items-center justify-center rounded-xl bg-[#086fcc] px-4 text-sm font-black text-white transition hover:bg-[#0878df] active:scale-[.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc]"
 
 const secondaryButton =
-  "inline-flex min-h-11 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-black text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff] active:scale-[.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff]"
+  "inline-flex min-h-11 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-black text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff] active:scale-[.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc]"

@@ -88,9 +88,9 @@ export function PartnerBusinessLinks({
           <a
             key={label}
             href={url}
-            className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[#118cff] focus-visible:outline-2 focus-visible:outline-[#118cff]"
+            className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[#086fcc] focus-visible:outline-2 focus-visible:outline-[#086fcc]"
           >
-            <Icon className="mb-4 text-[#118cff]" size={24} />
+            <Icon className="mb-4 text-[#086fcc]" size={24} />
             <strong className="block text-sm">{label}</strong>
             <span className="mt-1 block text-xs leading-5 text-slate-500">
               {detail}

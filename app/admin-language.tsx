@@ -385,24 +385,24 @@ const translations = [
   ["Bonus stamp", "Bonusstempel"],
   ["Bonus stamp count", "Anzahl der Bonusstempel"],
   ["Discount value", "Rabattwert"],
-  ["Welcome reward", "Willkommensbonus"],
-  ["Time-based bonus", "Zeitbonus"],
+  ["Welcome reward", "Erster Besuch"],
+  ["Time-based bonus", "Schnelle Rückkehr"],
   ["Happy Hour deal", "Happy-Hour-Vorteil"],
-  ["Permanent fallback discount", "Dauerrabatt"],
+  ["Permanent fallback discount", "Rabatt (immer gültig)"],
   ["Limited deal drop", "Limitierter Deal Drop"],
   ["Birthday reward", "Geburtstag"],
-  ["Free item deal", "Vorteil mit Gratisartikel"],
+  ["Free item deal", "Gratis"],
   ["Selectable discount", "Rabatt"],
   ["Automatic bonus stamp", "Automatischer Bonusstempel"],
   ["Streak reward", "Streak"],
   ["Challenge reward", "Challenge"],
-  ["Comeback Deal", "Comeback-Deal"],
+  ["Comeback Deal", "Reaktivierung"],
   ["No direct reward", "Kein direkter Vorteil"],
-  ["Fixed € discount", "Fester Euro-Rabatt"],
-  ["Percentage discount", "Prozentualer Rabatt"],
+  ["Fixed € discount", "Rabatt in €"],
+  ["Percentage discount", "Rabatt in %"],
   ["percentage off", "prozentualer Rabatt"],
   ["fixed € off", "fester Euro-Rabatt"],
-  ["Free item", "Gratisartikel"],
+  ["Free item", "Gratis"],
   ["User selects before visit", "Vom Nutzer vor dem Besuch auswählbar"],
   ["User must choose this before the QR scan. Only one direct deal can be redeemed per visit.", "Der Nutzer muss dies vor dem QR-Scan auswählen. Pro Besuch kann nur ein direkter Vorteil eingelöst werden."],
   ["Applies automatically during scan", "Wird beim Scan automatisch angewendet"],
@@ -413,21 +413,21 @@ const translations = [
   ["Premium users", "Premium-Nutzer"],
   ["Free + Premium", "Kostenlos + Premium"],
   ["2-for-1", "2 für 1"],
-  ["Welcome", "Willkommensdeal"],
-  ["Time bonus", "Zeitbonus"],
-  ["Comeback", "Comeback-Deal"],
+  ["Welcome", "Erster Besuch"],
+  ["Time bonus", "Schnelle Rückkehr"],
+  ["Comeback", "Reaktivierung"],
   ["Happy Hour", "Happy Hour"],
-  ["Permanent discount", "Dauerrabatt"],
+  ["Permanent discount", "Rabatt (immer gültig)"],
   ["Deal Drop", "Deal Drop"],
   ["Birthday", "Geburtstag"],
-  ["Free item", "Gratisartikel"],
+  ["Free item", "Gratis"],
   ["Discount", "Rabatt"],
   ["Bonus stamp", "Bonusstempel"],
   ["Streak bonus", "Streak-Bonus"],
   ["Challenge bonus", "Challenge-Bonus"],
   ["No direct benefit", "Kein direkter Vorteil"],
-  ["Fixed € discount", "Fester €-Rabatt"],
-  ["Percentage discount", "Prozentualer Rabatt"],
+  ["Fixed € discount", "Rabatt in €"],
+  ["Percentage discount", "Rabatt in %"],
   ["Select before visit", "Vor dem Besuch auswählen"],
   ["Automatic during scan", "Automatisch beim Scan"],
   ["Automatic fallback", "Automatisch als Fallback"],
@@ -770,7 +770,8 @@ const translations = [
   ["Choose Files again to add another JSON file. Earlier selections stay attached to Add menu.", "Wähle erneut Dateien aus, um eine weitere JSON-Datei hinzuzufügen. Bereits ausgewählte Dateien bleiben dem neuen Menü zugeordnet."],
   ["Clear files", "Dateiauswahl leeren"],
   ["Close menu import", "Menüimport schließen"],
-  ["Comeback candidates", "Comeback-Kandidaten"],
+  ["Comeback candidates", "Kandidaten für Reaktivierung"],
+  ["Reactivation candidates", "Kandidaten für Reaktivierung"],
   ["Configure inactive-user filters and preview matching loaded users. The saved deal stores the filter config, not explicit user IDs.", "Konfiguriere Filter für inaktive Nutzer und prüfe die passenden geladenen Nutzer. Der gespeicherte Vorteil enthält die Filterkonfiguration, keine einzelnen Nutzer-IDs."],
   ["Configure selectable, automatic, and fallback benefits for the Supabase redemption flow.", "Konfiguriere auswählbare, automatische und ersatzweise angewendete Vorteile für den Supabase-Einlösungsprozess."],
   ["Copy and Instructions", "Texte und Hinweise"],
@@ -1467,10 +1468,6 @@ function canonicalizeBenefitSurfaceCopy(value: string, language: AdminLanguage) 
     ? [
         ["Deal Drops", "__BENEFIT_DEAL_DROPS__"],
         ["Deal Drop", "__BENEFIT_DEAL_DROP__"],
-        ["Willkommensbonus", "__BENEFIT_WELCOME_BONUS__"],
-        ["Willkommensdeal", "__BENEFIT_WELCOME_DEAL__"],
-        ["Comeback-Bonus", "__BENEFIT_COMEBACK_BONUS__"],
-        ["Comeback-Deal", "__BENEFIT_COMEBACK_DEAL__"],
         ["Geburtstag", "__BENEFIT_BIRTHDAY_TRIGGER__"],
         ["Streak-Bonus", "__BENEFIT_STREAK_BONUS__"],
         ["Challenge-Bonus", "__BENEFIT_CHALLENGE_BONUS__"],
@@ -1488,6 +1485,15 @@ function canonicalizeBenefitSurfaceCopy(value: string, language: AdminLanguage) 
     // Keep the campaign name in its canonical two-word form even when
     // legacy German copy persisted it as a hyphenated compound.
     normalized = normalized.replaceAll("Deal-Drop", "Deal Drop")
+    // Brand Guide 2.1 (p. 06): legacy occasion names map to the current
+    // partner-facing terms before any other normalization.
+    normalized = normalized
+      .replace(/Comeback-Kandidaten/g, "Kandidaten für Reaktivierung")
+      .replace(/Willkommens(?:bonus|deals?|vorteile?|-Deals?)/g, "Erster Besuch")
+      .replace(/Comeback-(?:Bonus|Deals?|Vorteile?)/g, "Reaktivierung")
+      .replace(/Zeitbonus/g, "Schnelle Rückkehr")
+      .replace(/Dauerrabatt/g, "Rabatt (immer gültig)")
+      .replace(/(\d)\s%\sRabatt/g, "$1% Rabatt")
   }
   protectedTerms.forEach(([term, token]) => {
     normalized = normalized.replaceAll(term, token)
@@ -1495,12 +1501,6 @@ function canonicalizeBenefitSurfaceCopy(value: string, language: AdminLanguage) 
 
   if (language === "de") {
     normalized = normalized
-      .replaceAll("Willkommensdeals", "Willkommensdeal")
-      .replaceAll("Willkommensvorteile", "Willkommensdeal")
-      .replaceAll("Willkommensvorteil", "Willkommensdeal")
-      .replaceAll("Comeback-Deals", "Comeback-Deal")
-      .replaceAll("Comeback-Vorteile", "Comeback-Deal")
-      .replaceAll("Comeback-Vorteil", "Comeback-Deal")
       .replaceAll("Geburtstagsvorteile", "Geburtstag")
       .replaceAll("Geburtstagsvorteil", "Geburtstag")
       .replaceAll("Streak-Boni", "Streak-Bonus")
@@ -1542,10 +1542,6 @@ function canonicalizeBenefitSurfaceCopy(value: string, language: AdminLanguage) 
   return normalized
     .replaceAll("__BENEFIT_DEAL_DROPS__", language === "de" ? "Deal Drops" : "deal drops")
     .replaceAll("__BENEFIT_DEAL_DROP__", language === "de" ? "Deal Drop" : "deal drop")
-    .replaceAll("__BENEFIT_WELCOME_BONUS__", language === "de" ? "Willkommensbonus" : "welcome bonus")
-    .replaceAll("__BENEFIT_WELCOME_DEAL__", language === "de" ? "Willkommensdeal" : "welcome deal")
-    .replaceAll("__BENEFIT_COMEBACK_BONUS__", language === "de" ? "Comeback-Bonus" : "comeback bonus")
-    .replaceAll("__BENEFIT_COMEBACK_DEAL__", language === "de" ? "Comeback-Deal" : "comeback deal")
     .replaceAll("__BENEFIT_BIRTHDAY_TRIGGER__", language === "de" ? "Geburtstag" : "birthday")
     .replaceAll("__BENEFIT_STREAK_BONUS__", language === "de" ? "Streak-Bonus" : "streak bonus")
     .replaceAll("__BENEFIT_CHALLENGE_BONUS__", language === "de" ? "Challenge-Bonus" : "challenge bonus")
@@ -1709,7 +1705,7 @@ export function AdminLanguageControl({ className = "" }: { className?: string })
           onClick={() => setLanguage(option)}
           aria-pressed={language === option}
           title={tr(option === "en" ? "English" : "German")}
-          className={`grid h-8 min-w-9 place-items-center rounded-lg px-2 text-xs font-black tracking-[0.08em] transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#118cff] ${
+          className={`grid h-8 min-w-9 place-items-center rounded-lg px-2 text-xs font-black tracking-[0.08em] transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#086fcc] ${
             language === option
               ? "bg-[#061829] text-white shadow-sm"
               : "text-[#526170] hover:bg-zinc-100 hover:text-[#061829]"

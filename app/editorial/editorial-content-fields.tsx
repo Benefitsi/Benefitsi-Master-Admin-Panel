@@ -3,7 +3,7 @@
 import { useRef, useState } from "react"
 import type { EditorialPost } from "@/lib/editorial-types"
 
-const inputClass = "min-h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
+const inputClass = "min-h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none focus:border-[#086fcc] focus:ring-3 focus:ring-[#118cff]/10"
 const buttonClass = "inline-flex min-h-11 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-3 text-sm font-bold text-[#086fcc] hover:bg-[#f3f8ff]"
 
 export function EditorialContentFields({ initial }: { initial?: EditorialPost | null }) {

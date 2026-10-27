@@ -16,7 +16,7 @@ const scheduleLabels: Record<SourceSchedule, string> = {
   external: "Anderer Prüfablauf", excluded: "Nicht für M1-Freshness freigegeben", unknown: "Aktueller M1-Prüfstatus unbekannt",
 }
 const comparisonLabels: Record<string, string> = { baseline: "Erster Quellenabgleich", unchanged: "Quelle unverändert", changed: "Quelle geändert", unverified: "Abruf unverifiziert" }
-const linkStyle = "inline-flex min-h-10 items-center text-sm font-bold text-[#0b75d9] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
+const linkStyle = "inline-flex min-h-10 items-center text-sm font-bold text-[#075faa] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
 
 function date(value: string | null) {
   return value ? new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(value)) : "Kein gültiger Beleg"
@@ -27,7 +27,7 @@ export function DirectoryQualityPanel({ data }: { data: DirectoryQualityData }) 
   const { counts } = quality
   return (
     <details className="group rounded-3xl border border-[#061829]/10 bg-white">
-      <summary className="cursor-pointer rounded-3xl px-5 py-4 text-[#061829] focus-visible:outline-2 focus-visible:outline-[#118cff]">
+      <summary className="cursor-pointer rounded-3xl px-5 py-4 text-[#061829] focus-visible:outline-2 focus-visible:outline-[#086fcc]">
         <span className="font-black">Datenqualität & Quellenfrische</span>
         <span className="ml-2 text-sm text-[#617080]">{data.scopeLabel}</span>
         <span className="mt-1 block text-sm text-[#526170]">

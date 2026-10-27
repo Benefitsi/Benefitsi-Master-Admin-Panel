@@ -23,7 +23,7 @@ export default async function NewEditorialPage({ searchParams }: { searchParams:
 
   return (
     <AdminShell adminName={adminName} title="Neuer Magazinbeitrag" subtitle="SEO-Inhalte für Benefitsi, Städte und Partner strukturiert anlegen">
-      <Link href="/editorial" className="inline-flex items-center text-sm font-black text-[#0b75d9] hover:text-[#075eae]">← Zur Editorial-Übersicht</Link>
+      <Link href="/editorial" className="inline-flex items-center text-sm font-black text-[#075faa] hover:text-[#075eae]">← Zur Editorial-Übersicht</Link>
       {params.error ? <ErrorMessage code={params.error} /> : null}
       {data.warnings.map((warning) => <Warning key={warning}>{warning}</Warning>)}
       <EditorialForm action={createEditorialPost} cities={data.cities} partners={data.partners} />

@@ -275,7 +275,7 @@ test("Happy Hour weekdays show blue checks and red exclusions without changing o
     const tuesday = document.querySelector('[name="hh_days"][value="2"]')
     const monday = document.querySelector('[name="hh_days"][value="1"]')
     assert.equal(tuesday.nextElementSibling.querySelector('[aria-hidden="true"]')?.textContent, "✓")
-    assert.match(tuesday.nextElementSibling.className, /border-\[#118cff\] bg-\[#118cff\]/)
+    assert.match(tuesday.nextElementSibling.className, /border-\[#086fcc\] bg-\[#086fcc\]/)
     assert.equal(monday.nextElementSibling.querySelector('[aria-hidden="true"]')?.textContent, "×")
     assert.match(monday.nextElementSibling.className, /border-rose-700 bg-rose-700/)
     assert.ok(tuesday.getAttribute("aria-label"))

@@ -68,7 +68,7 @@ export default async function CityReviewDetailPage({
     >
       <Link
         href="/city-operations"
-        className="inline-flex min-h-11 items-center text-sm font-black text-[#0b75d9] hover:underline"
+        className="inline-flex min-h-11 items-center text-sm font-black text-[#075faa] hover:underline"
       >
         ← Zur globalen Arbeitsliste
       </Link>
@@ -107,7 +107,7 @@ export default async function CityReviewDetailPage({
           <section className="rounded-3xl border border-[#061829]/10 bg-white p-5 shadow-[0_18px_50px_rgba(6,24,41,.06)] sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
                   {published ? "Veröffentlichter Inhalt" : "Entwurf"}
                 </p>
                 <h2 className="mt-1 text-xl font-black tracking-[-0.025em]">
@@ -130,7 +130,7 @@ export default async function CityReviewDetailPage({
           </section>
 
           <section className="rounded-3xl border border-[#061829]/10 bg-white p-5 sm:p-6">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
               Agent-Analyse
             </p>
             <h2 className="mt-1 text-xl font-black tracking-[-0.025em]">
@@ -145,7 +145,7 @@ export default async function CityReviewDetailPage({
           </section>
 
           <section className="rounded-3xl border border-[#061829]/10 bg-white p-5 sm:p-6">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
               Originalquelle
             </p>
             <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -163,7 +163,7 @@ export default async function CityReviewDetailPage({
                   href={record.sourceUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#118cff]/25 bg-[#f3f8ff] px-4 text-sm font-black text-[#0b75d9] hover:border-[#118cff]"
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#118cff]/25 bg-[#f3f8ff] px-4 text-sm font-black text-[#075faa] hover:border-[#086fcc]"
                 >
                   Quelle öffnen ↗
                 </a>
@@ -262,7 +262,7 @@ export default async function CityReviewDetailPage({
           </section>
 
           <section className="rounded-3xl border border-[#061829]/10 bg-white p-5">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
               Audit
             </p>
             <h2 className="mt-1 text-lg font-black">Verlauf</h2>

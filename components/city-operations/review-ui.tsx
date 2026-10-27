@@ -42,7 +42,7 @@ export function ReviewQueueRow({ record }: { record: CityReviewRecord }) {
   return (
     <Link
       href={`/city-operations/${record.contentType}/${record.id}`}
-      className="grid gap-3 border-t border-[#061829]/10 px-4 py-4 transition hover:bg-[#f3f8ff] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#118cff] md:grid-cols-[minmax(0,1.5fr)_minmax(9rem,.6fr)_minmax(12rem,.8fr)_auto] md:items-center md:px-5"
+      className="grid gap-3 border-t border-[#061829]/10 px-4 py-4 transition hover:bg-[#f3f8ff] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#086fcc] md:grid-cols-[minmax(0,1.5fr)_minmax(9rem,.6fr)_minmax(12rem,.8fr)_auto] md:items-center md:px-5"
     >
       <div className="min-w-0">
         <p className="truncate font-black text-[#061829]">{record.title}</p>
@@ -57,7 +57,7 @@ export function ReviewQueueRow({ record }: { record: CityReviewRecord }) {
         </p>
       </div>
       <ReviewStatus record={record} />
-      <span className="text-sm font-black text-[#0b75d9]">Prüfen →</span>
+      <span className="text-sm font-black text-[#075faa]">Prüfen →</span>
     </Link>
   )
 }
@@ -111,7 +111,7 @@ export function IssueList({ issues }: { issues: CityReviewIssue[] }) {
               href={issue.sourceUrl}
               target="_blank"
               rel="noreferrer"
-              className="mt-2 inline-flex min-h-11 items-center text-sm font-black text-[#0b75d9] hover:underline"
+              className="mt-2 inline-flex min-h-11 items-center text-sm font-black text-[#075faa] hover:underline"
             >
               Geänderte Quelle öffnen ↗
             </a>

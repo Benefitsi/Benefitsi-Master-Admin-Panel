@@ -21,7 +21,7 @@ export default function CityPageError({
         <button
           type="button"
           onClick={reset}
-          className="mt-6 min-h-11 rounded-xl bg-[#118cff] px-5 text-sm font-black text-white transition hover:bg-[#0878df] active:scale-[.98]"
+          className="mt-6 min-h-11 rounded-xl bg-[#086fcc] px-5 text-sm font-black text-white transition hover:bg-[#0878df] active:scale-[.98]"
         >
           Erneut versuchen
         </button>

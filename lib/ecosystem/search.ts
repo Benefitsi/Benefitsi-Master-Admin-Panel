@@ -19,6 +19,7 @@ const areas = [
   ["Magazin", "Artikel und Redaktion", "/editorial"],
   ["Medien", "Bilder und Medienbibliothek", "/media"],
   ["Wissen", "Dokumentation und Wissensquellen", "/wissen"],
+  ["Marke & Begriffe", "Brand Guide 2.1: Deal-Arten, Anlässe, Slogans", "/marke"],
   ["Buchungen", "Reservierungen und Termine", "/bookings"],
   ["Essensbestellungen", "Online-Bestellungen und Abholung", "/commerce"],
   ["Agentenübersicht", "Agents, Modelle und Laufnachweise", "/agents"],

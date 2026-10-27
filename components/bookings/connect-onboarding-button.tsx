@@ -58,7 +58,7 @@ export function ConnectOnboardingButton({
         type="button"
         onClick={start}
         disabled={pending}
-        className="min-h-11 rounded-xl bg-[#118cff] px-4 text-sm font-black text-white transition hover:bg-[#0878df] disabled:cursor-wait disabled:opacity-60"
+        className="min-h-11 rounded-xl bg-[#086fcc] px-4 text-sm font-black text-white transition hover:bg-[#0878df] disabled:cursor-wait disabled:opacity-60"
       >
         {pending ? "Stripe wird vorbereitet …" : "Stripe-Test-Onboarding"}
       </button>

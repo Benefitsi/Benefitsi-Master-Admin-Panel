@@ -112,7 +112,7 @@ export default async function CityOperationsPage({
         <div className="border-b border-[#061829]/10 p-4 md:p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
                 Globale Arbeitsliste
               </p>
               <h2 className="mt-1 text-xl font-black tracking-[-0.025em]">
@@ -132,7 +132,7 @@ export default async function CityOperationsPage({
                 name="q"
                 defaultValue={params.q}
                 placeholder="Titel, Ort, Inhalt"
-                className="h-11 rounded-xl border border-[#061829]/15 px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
+                className="h-11 rounded-xl border border-[#061829]/15 px-3 text-sm text-[#061829] outline-none transition focus:border-[#086fcc] focus:ring-3 focus:ring-[#118cff]/10"
               />
             </label>
             <FilterSelect name="city" label="Ort" value={params.city}>
@@ -168,7 +168,7 @@ export default async function CityOperationsPage({
                 </option>
               ))}
             </FilterSelect>
-            <button className="mt-auto h-11 rounded-xl bg-[#118cff] px-5 text-sm font-black text-white transition hover:bg-[#0878df] active:scale-[.98]">
+            <button className="mt-auto h-11 rounded-xl bg-[#086fcc] px-5 text-sm font-black text-white transition hover:bg-[#0878df] active:scale-[.98]">
               Filtern
             </button>
           </form>
@@ -222,7 +222,7 @@ function FilterSelect({
       <select
         name={name}
         defaultValue={value}
-        className="h-11 rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
+        className="h-11 rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#086fcc] focus:ring-3 focus:ring-[#118cff]/10"
       >
         {children}
       </select>

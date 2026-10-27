@@ -28,7 +28,7 @@ export default async function EditorialDetailPage({ params, searchParams }: { pa
   return (
     <AdminShell adminName={adminName} title="Magazinbeitrag bearbeiten" subtitle={`${post.title} · ${post.status === "active" ? "öffentlich aktiv" : "noch nicht öffentlich"}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href="/editorial" className="inline-flex min-h-11 items-center text-sm font-black text-[#0b75d9] hover:text-[#075eae]">← Alle Beiträge</Link>
+        <Link href="/editorial" className="inline-flex min-h-11 items-center text-sm font-black text-[#075faa] hover:text-[#075eae]">← Alle Beiträge</Link>
         <Link href={`/editorial/${post.id}/preview`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-[#118cff]/30 bg-white px-4 text-sm font-bold text-[#086fcc] hover:bg-[#f3f8ff]">Gespeicherten Beitrag ansehen ↗</Link>
       </div>
       {query.error ? <ErrorMessage code={query.error} /> : null}

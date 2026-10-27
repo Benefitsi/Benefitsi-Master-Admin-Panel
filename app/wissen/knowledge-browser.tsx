@@ -53,7 +53,7 @@ export function KnowledgeBrowser({
         <div className="border-b border-[#061829]/10 p-4 sm:p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
                 Spiegel-Inhalte
               </p>
               <h2 className="mt-1 text-xl font-black tracking-[-0.025em]">
@@ -73,11 +73,11 @@ export function KnowledgeBrowser({
               name="q"
               defaultValue={query}
               placeholder="Titel oder Inhalt suchen …"
-              className="h-11 min-w-0 flex-1 rounded-xl border border-[#061829]/15 px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
+              className="h-11 min-w-0 flex-1 rounded-xl border border-[#061829]/15 px-3 text-sm text-[#061829] outline-none transition focus:border-[#086fcc] focus:ring-3 focus:ring-[#118cff]/10"
             />
             <button
               type="submit"
-              className="h-11 rounded-xl bg-[#118cff] px-5 text-sm font-black text-white transition hover:bg-[#0878df] active:scale-[.98]"
+              className="h-11 rounded-xl bg-[#086fcc] px-5 text-sm font-black text-white transition hover:bg-[#0878df] active:scale-[.98]"
             >
               Suchen
             </button>
@@ -112,7 +112,7 @@ export function KnowledgeBrowser({
                     <td className="px-5 py-4 text-right">
                       <Link
                         href={documentHref(query, page, item.id)}
-                        className="font-black text-[#0b75d9] hover:text-[#061829]"
+                        className="font-black text-[#075faa] hover:text-[#061829]"
                       >
                         Dokument öffnen
                       </Link>
@@ -137,7 +137,7 @@ export function KnowledgeBrowser({
             {page > 0 ? (
               <Link
                 href={pageHref(query, page - 1)}
-                className="rounded-lg border border-[#061829]/15 px-3 py-2 text-xs font-bold text-[#526170] hover:border-[#118cff] hover:text-[#0b75d9]"
+                className="rounded-lg border border-[#061829]/15 px-3 py-2 text-xs font-bold text-[#526170] hover:border-[#086fcc] hover:text-[#075faa]"
               >
                 Zurück
               </Link>
@@ -145,7 +145,7 @@ export function KnowledgeBrowser({
             {search.hasMore ? (
               <Link
                 href={pageHref(query, page + 1)}
-                className="rounded-lg border border-[#118cff]/30 bg-[#f3f8ff] px-3 py-2 text-xs font-bold text-[#0b75d9] hover:border-[#118cff]"
+                className="rounded-lg border border-[#118cff]/30 bg-[#f3f8ff] px-3 py-2 text-xs font-bold text-[#075faa] hover:border-[#086fcc]"
               >
                 Weiter
               </Link>
@@ -157,7 +157,7 @@ export function KnowledgeBrowser({
       <section className="rounded-3xl border border-[#061829]/10 bg-white p-5 shadow-[0_18px_50px_rgba(6,24,41,.05)] sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
               Schreibgeschützte Detailansicht
             </p>
             <h2 data-admin-i18n-ignore={detail ? "true" : undefined} className="mt-1 text-xl font-black tracking-[-0.025em]">
@@ -165,7 +165,7 @@ export function KnowledgeBrowser({
             </h2>
           </div>
           {detail ? (
-            <span className="rounded-full bg-[#f3f8ff] px-3 py-1.5 text-xs font-bold text-[#0b75d9]">
+            <span className="rounded-full bg-[#f3f8ff] px-3 py-1.5 text-xs font-bold text-[#075faa]">
               Nur lesen
             </span>
           ) : null}

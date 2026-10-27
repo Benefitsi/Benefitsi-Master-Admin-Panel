@@ -69,7 +69,7 @@ export default async function LoginPage() {
           <div className="w-full max-w-md rounded-2xl border border-[#061829]/10 bg-white p-6 shadow-[0_24px_70px_rgba(6,24,41,.08)] sm:p-8">
             <div className="mb-8">
               <BrandLogo className="mb-7 h-auto w-44 lg:hidden" priority />
-              <p className="text-sm font-bold text-[#118cff]">Admin Panel</p>
+              <p className="text-sm font-bold text-[#086fcc]">Admin Panel</p>
               <h2 className="mt-2 text-2xl font-black tracking-[-0.035em] text-[#061829]">
                 Anmeldung
               </h2>

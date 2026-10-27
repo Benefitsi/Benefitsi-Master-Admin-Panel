@@ -30,6 +30,7 @@ export const adminNavigation: readonly (AdminNavigationLink | AdminNavigationGro
     { label: "Magazin", href: "/editorial", icon: "editorial" },
     { label: "Medien", href: "/media", icon: "media" },
     { label: "Wissen", href: "/wissen", icon: "knowledge" },
+    { label: "Marke & Begriffe", href: "/marke", icon: "knowledge" },
   ] },
   { id: "orders", label: "Buchungen & Bestellungen", icon: "bookings", items: [
     { label: "Buchungen", href: "/bookings", icon: "bookings" },

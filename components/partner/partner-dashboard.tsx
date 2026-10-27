@@ -149,7 +149,7 @@ export function PartnerDashboard({
                   key={key}
                   href={`${path}${path.includes("?") ? "&" : "?"}partner=${encodeURIComponent(partnerId)}`}
                   aria-current={active === key ? "page" : undefined}
-                  className={`flex shrink-0 items-center gap-2 border-b-[3px] px-4 py-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-sky-600 ${active === key ? "border-[#118cff] text-[#0874d1]" : "border-transparent text-slate-600 hover:bg-white"}`}
+                  className={`flex shrink-0 items-center gap-2 border-b-[3px] px-4 py-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-sky-600 ${active === key ? "border-[#086fcc] text-[#0874d1]" : "border-transparent text-slate-600 hover:bg-white"}`}
                 >
                   <Icon size={20} />
                   {label}
@@ -185,7 +185,7 @@ export function PartnerOverview({
       </div>
       <div className="mb-6 flex flex-wrap gap-2">
         {canManageProfile(rights) && <>
-          <a className="rounded-xl bg-[#118cff] px-4 py-3 text-sm font-semibold text-white" href={`/partner?section=deals&tab=deals&action=create&partner=${partnerId}`}>Angebot erstellen</a>
+          <a className="rounded-xl bg-[#086fcc] px-4 py-3 text-sm font-semibold text-white" href={`/partner?section=deals&tab=deals&action=create&partner=${partnerId}`}>Angebot erstellen</a>
           <a className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold" href={`/partner?section=business&tab=hours&partner=${partnerId}`}>Zeiten bearbeiten</a>
         </>}
         <a className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold" href={`/partner/crm?partner=${partnerId}`}>Gäste zurückholen</a>

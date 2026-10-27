@@ -106,7 +106,7 @@ export function ComparisonReport({
       <section className={panel}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#0b75d9]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#075faa]">
               {config.channel === 'maps'
                 ? 'Google Maps'
                 : 'Google-Suche · Organisch'}
@@ -116,14 +116,14 @@ export function ComparisonReport({
               href={config.subjectUrl}
               target="_blank"
               rel="noreferrer"
-              className="mt-2 block break-all text-sm text-[#0b75d9] hover:underline"
+              className="mt-2 block break-all text-sm text-[#075faa] hover:underline"
             >
               {config.subjectUrl}
             </a>
           </div>
           <a
             href={`/seo/partnervergleich/export?target=${encodeURIComponent(targetId)}&asof=${asOf}`}
-            className="rounded-md border border-[#118cff] px-4 py-2 text-sm font-semibold text-[#0b75d9] hover:bg-[#f3f8ff]"
+            className="rounded-md border border-[#086fcc] px-4 py-2 text-sm font-semibold text-[#075faa] hover:bg-[#f3f8ff]"
           >
             Vergleich als CSV
           </a>
@@ -358,7 +358,7 @@ export function ComparisonReport({
           </div>
         )}
         <details className="mt-5 border-t border-zinc-200 pt-4">
-          <summary className="cursor-pointer text-sm font-semibold text-[#0b75d9]">
+          <summary className="cursor-pointer text-sm font-semibold text-[#075faa]">
             Belegten Messstand erfassen oder historischen Export übernehmen
           </summary>
           <form action={importComparisonAction} className="mt-4 space-y-4">
@@ -446,7 +446,7 @@ export function ComparisonReport({
                 name="confirmed"
                 type="checkbox"
                 required
-                className="mt-1 accent-[#118cff]"
+                className="mt-1 accent-[#086fcc]"
               />
               <span>
                 Ich habe den Originalbeleg, das Messziel und die
@@ -521,7 +521,7 @@ export function ComparisonReport({
 function Milestone({ title, value }: { title: string; value: string }) {
   return (
     <div className="rounded-md bg-[#f3f8ff] p-3">
-      <p className="text-xs text-[#0b75d9]">{title}</p>
+      <p className="text-xs text-[#075faa]">{title}</p>
       <p className="mt-1 text-sm font-semibold">{value}</p>
     </div>
   )

@@ -60,7 +60,7 @@ export function AuthRecoveryShell({
             <div className="w-full max-w-md rounded-2xl border border-[#061829]/10 bg-white p-6 shadow-[0_24px_70px_rgba(6,24,41,.08)] sm:p-8">
               <BrandLogo className="mb-7 h-auto w-44 lg:hidden" priority />
               <div className="mb-8">
-                <p className="text-sm font-bold text-[#118cff]">{eyebrow}</p>
+                <p className="text-sm font-bold text-[#086fcc]">{eyebrow}</p>
                 <h2 className="mt-2 text-2xl font-black tracking-[-0.035em] text-[#061829]">
                   {title}
                 </h2>
@@ -75,7 +75,7 @@ export function AuthRecoveryShell({
                 <div className="mt-6 border-t border-[#061829]/10 pt-5 text-center">
                   <Link
                     href={loginPathForPortal(portal)}
-                    className="text-sm font-semibold text-[#118cff] transition hover:text-[#0872d1]"
+                    className="text-sm font-semibold text-[#086fcc] transition hover:text-[#0872d1]"
                   >
                     Back to sign in
                   </Link>

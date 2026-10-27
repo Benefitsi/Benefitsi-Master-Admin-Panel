@@ -14,7 +14,7 @@ test("uses natural German terms for reward types", () => {
   assert.equal(translateValue("Bonus stamp", "de"), "Bonusstempel")
   assert.equal(
     translateValue("Permanent fallback discount", "de"),
-    "Dauerrabatt",
+    "Rabatt (immer gültig)",
   )
 })
 
@@ -33,18 +33,18 @@ test("uses the canonical German benefit taxonomy in the admin selector", async (
   } = await import("../lib/reward-config.ts")
   const itemOption = rewardTypeOptions.find((option) => option.value === "item")
 
-  assert.equal(itemOption?.label, "Gratisartikel")
+  assert.equal(itemOption?.label, "Gratis (ein Artikel)")
   assert.equal(
     dealTypeOptions.find((option) => option.value === "two_for_one")?.label,
     "2 für 1",
   )
   assert.equal(
     dealTypeOptions.find((option) => option.value === "comeback")?.label,
-    "Comeback-Deal",
+    "Reaktivierung",
   )
   assert.equal(
     dealTypeOptions.find((option) => option.value === "permanent_discount")?.label,
-    "Dauerrabatt",
+    "Rabatt ohne Anlass (immer gültig)",
   )
   assert.equal(
     dealTypeOptions.find((option) => option.value === "limited_drop")?.label,
@@ -52,7 +52,7 @@ test("uses the canonical German benefit taxonomy in the admin selector", async (
   )
   assert.equal(
     discountTypeOptions.find((option) => option.value === "item")?.label,
-    "Gratisartikel",
+    "Gratis (ein Artikel)",
   )
   assert.equal(
     benefitCategoryOptions.find((option) => option.value === "direct_selectable")?.label,
@@ -257,7 +257,7 @@ test("translates import, image editing, login, and empty-state copy", () => {
   assert.equal(translateValue("Indisch", "en"), "Indian")
   assert.equal(translateValue("Deal Drop inventory", "de"), "Deal Drop-Kontingent")
   assert.equal(translateValue("Challenge name", "de"), "Name der Challenge")
-  assert.equal(translateValue("Comeback Deal", "de"), "Comeback-Deal")
+  assert.equal(translateValue("Comeback Deal", "de"), "Reaktivierung")
   assert.equal(translateValue("Selectable deal", "de"), "Auswählbarer Vorteil")
   assert.equal(
     translateValue("Selected direct deal source", "de"),

@@ -55,7 +55,7 @@ function SetupRequired() {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f7f6f1] px-5 text-zinc-950">
       <section className="w-full max-w-xl rounded-md border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-medium text-[#0b75d9]">Benefitsi SEO &amp; Sichtbarkeit</p>
+        <p className="text-sm font-medium text-[#075faa]">Benefitsi SEO &amp; Sichtbarkeit</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-normal">Supabase-Konfiguration erforderlich</h1>
         <p className="mt-3 text-sm leading-6 text-zinc-600">
           Lege `.env.local` aus `.env.example` an und hinterlege den Supabase Publishable Key.

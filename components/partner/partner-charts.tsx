@@ -211,7 +211,7 @@ export function DistributionBar({
       </dl>
       <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
         <div
-          className="h-full rounded-full bg-[#118cff]"
+          className="h-full rounded-full bg-[#086fcc]"
           style={{
             width: `${Number.isFinite(max) && max > 0 ? Math.min(100, (value / max) * 100) : 0}%`,
           }}

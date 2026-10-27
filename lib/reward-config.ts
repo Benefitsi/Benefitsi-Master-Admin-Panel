@@ -1,30 +1,32 @@
+// Brand Guide 2.1 (p. 07): Vorteil-Art first, then Anlass. Stored values are
+// unchanged; only the admin and partner names follow the guide.
 export const dealTypeOptions = [
   { value: "two_for_one", label: "2 für 1" },
-  { value: "welcome", label: "Willkommensdeal" },
-  { value: "comeback", label: "Comeback-Deal" },
-  { value: "happy_hour", label: "Happy Hour" },
-  { value: "permanent_discount", label: "Dauerrabatt" },
-  { value: "limited_drop", label: "Deal Drop" },
-  { value: "birthday", label: "Geburtstag" },
-  { value: "free_item", label: "Gratisartikel" },
   { value: "discount", label: "Rabatt" },
+  { value: "free_item", label: "Gratis" },
   { value: "bonus_stamp", label: "Bonusstempel" },
+  { value: "welcome", label: "Erster Besuch" },
+  { value: "happy_hour", label: "Happy Hour" },
+  { value: "limited_drop", label: "Deal Drop" },
+  { value: "comeback", label: "Reaktivierung" },
+  { value: "birthday", label: "Geburtstag" },
+  { value: "permanent_discount", label: "Rabatt ohne Anlass (immer gültig)" },
   { value: "challenge", label: "Challenge" },
 ] as const
 
 export const discountTypeOptions = [
   { value: "none", label: "Kein direkter Vorteil" },
-  { value: "fixed", label: "Fester €-Rabatt" },
-  { value: "percent", label: "Prozentualer Rabatt" },
-  { value: "item", label: "Gratisartikel" },
+  { value: "fixed", label: "Rabatt in €" },
+  { value: "percent", label: "Rabatt in %" },
+  { value: "item", label: "Gratis (ein Artikel)" },
   { value: "bonus_stamp", label: "Bonusstempel" },
   { value: "2for1", label: "2 für 1" },
 ] as const
 
 export const dealDropDiscountTypeOptions = [
-  { value: "item", label: "Gratisartikel" },
-  { value: "fixed", label: "Fester €-Rabatt" },
-  { value: "percent", label: "Prozentualer Rabatt" },
+  { value: "item", label: "Gratis (ein Artikel)" },
+  { value: "fixed", label: "Rabatt in €" },
+  { value: "percent", label: "Rabatt in %" },
   { value: "2for1", label: "2 für 1" },
 ] as const
 
@@ -61,7 +63,7 @@ export const milestoneAudienceOptions = [
 ] as const
 
 export const rewardTypeOptions = [
-  { value: "item", label: "Gratisartikel" },
+  { value: "item", label: "Gratis (ein Artikel)" },
   { value: "fixed", label: "Fester Betrag" },
   { value: "percent", label: "Prozent" },
   { value: "2for1", label: "2 für 1" },

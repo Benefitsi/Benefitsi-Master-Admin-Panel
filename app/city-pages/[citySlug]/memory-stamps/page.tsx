@@ -20,8 +20,8 @@ export default async function MemoryStampsPage({ params, searchParams }: {
   if (!catalog) notFound()
   return <AdminShell title="Entdeckerstempel" subtitle={catalog.city.name} adminName={adminSession.profile?.display_name || adminSession.user.email || 'Admin'}>
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <Link href={`/city-pages/${citySlug}`} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-[#0b75d9]"><ArrowLeft size={16} aria-hidden />Zum Stadtportal</Link>
-      <a href={`https://benefitsi.de/stadt/${citySlug}#entdeckerstempel`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-[#0b75d9]">Öffentlich ansehen<ExternalLink size={16} aria-hidden /></a>
+      <Link href={`/city-pages/${citySlug}`} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-[#075faa]"><ArrowLeft size={16} aria-hidden />Zum Stadtportal</Link>
+      <a href={`https://benefitsi.de/stadt/${citySlug}#entdeckerstempel`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-[#075faa]">Öffentlich ansehen<ExternalLink size={16} aria-hidden /></a>
     </div>
     <p className="max-w-3xl text-sm leading-6 text-slate-600">Verwalte die ortsgebundenen Stempel für diese Stadt. Freigegebene Stempel erscheinen in der Benefitsi-App und auf der Stadtseite. Änderungen am Sammelort oder Standortnachweis benötigen eine neue Prüfung. Bereits gesammelte Erinnerungen bleiben erhalten.</p>
     <MemoryStampEditor catalog={catalog} selectedId={query.stamp} />

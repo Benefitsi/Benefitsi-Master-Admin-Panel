@@ -357,10 +357,10 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: ReactNode }) {
         aria-expanded={open}
         aria-controls="benefitsi-system-switcher"
         title="Benefitsi-Systeme"
-        className={`grid size-10 place-items-center rounded-xl border bg-white text-[#061829] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff] ${
+        className={`grid size-10 place-items-center rounded-xl border bg-white text-[#061829] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc] ${
           open
-            ? "border-[#118cff] bg-[#f3f8ff] shadow-[0_0_0_3px_rgba(17,140,255,.12)]"
-            : "border-zinc-200 hover:border-[#118cff] hover:bg-[#f3f8ff]"
+            ? "border-[#086fcc] bg-[#f3f8ff] shadow-[0_0_0_3px_rgba(17,140,255,.12)]"
+            : "border-zinc-200 hover:border-[#086fcc] hover:bg-[#f3f8ff]"
         }`}
       >
         <GridIcon className="size-5" />
@@ -419,7 +419,7 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: ReactNode }) {
 
             <SystemCard
               href="/microsites"
-              icon={<BrowserIcon className="size-10 text-[#118cff]" />}
+              icon={<BrowserIcon className="size-10 text-[#086fcc]" />}
               title="Microsites"
               description="Builder, Entwürfe & Live-Seiten"
               meta={
@@ -442,7 +442,7 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: ReactNode }) {
             <SystemCard
               href={websiteUrl}
               external
-              icon={<GlobeIcon className="size-10 text-[#118cff]" />}
+              icon={<GlobeIcon className="size-10 text-[#086fcc]" />}
               title="Benefitsi Webseite"
               description="Öffentliche Hauptseite"
             />
@@ -451,7 +451,7 @@ function SystemSwitcher({ micrositeCount }: { micrositeCount?: ReactNode }) {
           <Link
             href="/system"
             onClick={() => setOpen(false)}
-            className="mt-3 flex min-h-11 items-center justify-center rounded-xl text-sm font-semibold text-[#118cff] transition hover:bg-[#f3f8ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff]"
+            className="mt-3 flex min-h-11 items-center justify-center rounded-xl text-sm font-semibold text-[#086fcc] transition hover:bg-[#f3f8ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc]"
           >
             Systemübersicht verwalten
             <ArrowRightIcon className="ml-2 size-4" />
@@ -497,7 +497,7 @@ function SystemCard({
         <span
           className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
             highlighted
-              ? "bg-[#e6f2ff] text-[#0b75d9]"
+              ? "bg-[#e6f2ff] text-[#075faa]"
               : "bg-zinc-100 text-zinc-500"
           }`}
         >
@@ -506,9 +506,9 @@ function SystemCard({
       ) : null}
     </>
   )
-  const className = `flex min-h-[11.25rem] flex-col items-center justify-center rounded-xl border p-3 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff] ${
+  const className = `flex min-h-[11.25rem] flex-col items-center justify-center rounded-xl border p-3 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc] ${
     highlighted
-      ? "border-[#118cff] bg-[#f3f8ff] hover:bg-[#eaf4ff]"
+      ? "border-[#086fcc] bg-[#f3f8ff] hover:bg-[#eaf4ff]"
       : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50"
   } ${disabled ? "cursor-not-allowed opacity-70" : ""}`
 

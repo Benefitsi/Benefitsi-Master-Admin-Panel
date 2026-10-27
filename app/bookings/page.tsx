@@ -135,7 +135,7 @@ export default async function BookingsPage({
               <li key={`${alert.code}-${alert.bookingId || index}`} className="flex flex-col gap-1 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
                 <span>{alert.message}</span>
                 {alert.bookingId ? (
-                  <Link href={`/bookings/${alert.bookingId}`} className="font-black text-[#0b75d9]">
+                  <Link href={`/bookings/${alert.bookingId}`} className="font-black text-[#075faa]">
                     Öffnen →
                   </Link>
                 ) : null}
@@ -215,7 +215,7 @@ export default async function BookingsPage({
               <div className="flex items-end">
                 <PendingSubmitButton
                   pendingLabel="Wird vorbereitet …"
-                  className="min-h-11 w-full rounded-xl bg-[#118cff] px-4 text-sm font-black text-white transition hover:bg-[#0878df]"
+                  className="min-h-11 w-full rounded-xl bg-[#086fcc] px-4 text-sm font-black text-white transition hover:bg-[#0878df]"
                 >
                   Prüfentwurf erstellen
                 </PendingSubmitButton>
@@ -299,7 +299,7 @@ export default async function BookingsPage({
               <Eyebrow>Buchungen</Eyebrow>
               <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-xl font-black">Zahlungs- und Kapazitätsstatus</h2>
-                <a href="/api/bookings/export" className="inline-flex min-h-10 items-center rounded-xl border border-[#061829]/15 px-3 text-xs font-black text-[#061829] hover:border-[#118cff]">
+                <a href="/api/bookings/export" className="inline-flex min-h-10 items-center rounded-xl border border-[#061829]/15 px-3 text-xs font-black text-[#061829] hover:border-[#086fcc]">
                   CSV exportieren
                 </a>
               </div>
@@ -321,7 +321,7 @@ export default async function BookingsPage({
                     {data.bookings.map((booking) => (
                       <tr key={booking.id}>
                         <td className="px-5 py-4 font-black">
-                          <Link href={`/bookings/${booking.id}`} className="text-[#0b75d9] hover:underline">
+                          <Link href={`/bookings/${booking.id}`} className="text-[#075faa] hover:underline">
                             {booking.publicReference}
                           </Link>
                         </td>
@@ -342,7 +342,7 @@ export default async function BookingsPage({
 }
 
 const inputClass =
-  "min-h-11 rounded-xl border border-[#061829]/15 bg-white px-3 py-2.5 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
+  "min-h-11 rounded-xl border border-[#061829]/15 bg-white px-3 py-2.5 text-sm text-[#061829] outline-none transition focus:border-[#086fcc] focus:ring-3 focus:ring-[#118cff]/10"
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
@@ -354,7 +354,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function Eyebrow({ children }: { children: ReactNode }) {
-  return <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">{children}</p>
+  return <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">{children}</p>
 }
 
 function Field({
@@ -383,7 +383,7 @@ function SelectField({ label, name, children, required }: { label: string; name:
 function Step({ number, children }: { number: string; children: ReactNode }) {
   return (
     <li className="flex gap-3">
-      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#e6f2ff] text-xs font-black text-[#0b75d9]">{number}</span>
+      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#e6f2ff] text-xs font-black text-[#075faa]">{number}</span>
       <span>{children}</span>
     </li>
   )
@@ -400,7 +400,7 @@ function SmallSubmit({ label, pending, primary = false }: { label: string; pendi
       className={`min-h-10 rounded-xl px-3 text-xs font-black transition ${
         primary
           ? "bg-[#17d4d7] text-[#061829] hover:bg-[#39e3e5]"
-          : "border border-[#061829]/15 bg-white text-[#061829] hover:border-[#118cff]"
+          : "border border-[#061829]/15 bg-white text-[#061829] hover:border-[#086fcc]"
       }`}
     >
       {label}

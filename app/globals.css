@@ -9,11 +9,28 @@
   --benefitsi-navy: #061829;
   --benefitsi-cream: #f7f6f1;
   --benefitsi-neutral: #f3f5f7;
+  /* Brand Guide 2.1, p. 12 and 14: text and control colors with at least
+     4.5:1 on white. Benefitsi Blue and Cyan stay for surfaces and gradients. */
+  --benefitsi-action: #086fcc;
+  --benefitsi-action-pressed: #075faa;
+  --benefitsi-text: #0a0a0a;
+  --benefitsi-text-secondary: #5b6472;
+  --benefitsi-text-disabled: #8a93a0;
+  --benefitsi-text-premium: #8f5e00;
+  --benefitsi-border: #dde2e8;
+  --benefitsi-success: #1e8449;
+  --benefitsi-error: #c8322f;
+  --benefitsi-warning: #b35c00;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-action: var(--benefitsi-action);
+  --color-action-pressed: var(--benefitsi-action-pressed);
+  --color-brand-border: var(--benefitsi-border);
+  --color-text-secondary: var(--benefitsi-text-secondary);
+  --color-text-premium: var(--benefitsi-text-premium);
   --font-sans: var(--font-satoshi);
 }
 
@@ -30,6 +47,12 @@ textarea {
   font: inherit;
 }
 
+/* Brand Guide 2.1: focus is always visible as a 2 px Action Blue ring. */
+.admin-ui :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--benefitsi-action);
+  outline-offset: 2px;
+}
+
 /* Partner Management keeps Tailwind's semantic teal utility names internally,
    but scopes them to the Benefitsi blue brand palette at runtime. Status
    colors such as emerald, amber, and rose remain semantic and unchanged. */
@@ -39,9 +62,9 @@ textarea {
   --color-teal-200: #b8dcff;
   --color-teal-300: #8bcaff;
   --color-teal-400: #55aefc;
-  --color-teal-600: #118cff;
-  --color-teal-700: #118cff;
-  --color-teal-800: #0b75d9;
+  --color-teal-600: #086fcc;
+  --color-teal-700: #086fcc;
+  --color-teal-800: #075faa;
   --color-teal-900: #061829;
 }
 
@@ -92,7 +115,7 @@ textarea {
 .partner-settings-form .partner-settings-section-heading { min-height: 48px; padding-inline: 18px; }
 .partner-settings-form .partner-settings-section-heading > span:first-child { color: #10263b; font-weight: 700; }
 .partner-settings-form .partner-settings-section-content { background: #fff; border-top-color: #edf0f3; padding: 18px; }
-.partner-settings-form :where(input, textarea, select) { caret-color: #118cff; }
+.partner-settings-form :where(input, textarea, select) { caret-color: var(--benefitsi-action); }
 .partner-settings-form :where(input, textarea, select)::placeholder { color: #667085; }
 .partner-settings-form ::selection { background: #d9ecff; color: #061829; }
 .partner-settings-form :where(select, textarea, label > div:has(> input:not([type=checkbox]))) { border-color: #dfe5eb; border-radius: 10px; }

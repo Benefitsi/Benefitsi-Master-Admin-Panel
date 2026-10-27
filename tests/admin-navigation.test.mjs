@@ -11,6 +11,7 @@ const destinations = [
   ["Inhalte", "Magazin", "/editorial"],
   ["Inhalte", "Medien", "/media"],
   ["Inhalte", "Wissen", "/wissen"],
+  ["Inhalte", "Marke & Begriffe", "/marke"],
   ["Buchungen & Bestellungen", "Buchungen", "/bookings"],
   ["Buchungen & Bestellungen", "Essensbestellungen", "/commerce"],
   ["Agenten", "Agentenübersicht", "/agents"],

@@ -85,7 +85,7 @@ function formatScore(value: number | null | undefined) {
 
 function scoreTone(value: number | null | undefined) {
   if (value === null || value === undefined) return "text-zinc-400"
-  if (value >= 80) return "text-[#0b75d9]"
+  if (value >= 80) return "text-[#075faa]"
   if (value >= 60) return "text-amber-700"
   return "text-rose-700"
 }
@@ -101,14 +101,14 @@ function statusLabel(status: string) {
 }
 
 function statusTone(status: string) {
-  if (status === "completed") return "text-[#0b75d9] bg-[#f3f8ff] border-[#b8dcff]"
+  if (status === "completed") return "text-[#075faa] bg-[#f3f8ff] border-[#b8dcff]"
   if (status === "failed") return "text-rose-700 bg-rose-50 border-rose-200"
   if (status === "running") return "text-sky-700 bg-sky-50 border-sky-200"
   return "text-amber-700 bg-amber-50 border-amber-200"
 }
 
 function jobTone(status: ReturnType<typeof describeSeoJob>["tone"]) {
-  if (status === "completed") return "text-[#0b75d9] bg-[#f3f8ff] border-[#b8dcff]"
+  if (status === "completed") return "text-[#075faa] bg-[#f3f8ff] border-[#b8dcff]"
   if (status === "failed") return "text-rose-700 bg-rose-50 border-rose-200"
   if (status === "running") return "text-sky-700 bg-sky-50 border-sky-200"
   if (status === "review") return "text-violet-700 bg-violet-50 border-violet-200"
@@ -231,10 +231,10 @@ export function SeoDashboard({
   return (
     <div className="space-y-5">
       <section className="rounded-md border border-zinc-200 bg-white p-5 shadow-sm">
-        <p className="text-sm font-medium text-[#0b75d9]">SEO-Betrieb</p>
+        <p className="text-sm font-medium text-[#075faa]">SEO-Betrieb</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-normal text-zinc-950">Sichtbarkeit als laufender Betrieb.</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">Hermes misst technische Gesundheit, Rankings, lokale Präsenz und AI-Zitate. Jede Empfehlung bleibt nachvollziehbar und menschlich freigabepflichtig.</p>
-        <div className="mt-4 flex flex-wrap gap-3"><Link href="/seo/partnervergleich" className="inline-flex items-center gap-2 rounded-md bg-[#118cff] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0b75d9]">Partnervergleich · Vorher / Nachher <ArrowUpRight className="size-4" aria-hidden="true" /></Link><Link href={`/seo/automatisierung${selectedTarget ? `?target=${encodeURIComponent(selectedTarget.id)}` : ''}`} className="inline-flex items-center gap-2 rounded-md border border-[#b8dcff] px-4 py-2.5 text-sm font-semibold text-[#0b75d9] hover:bg-[#f3f8ff]">Automatisierung &amp; Wartung <ArrowUpRight className="size-4" aria-hidden="true" /></Link></div>
+        <div className="mt-4 flex flex-wrap gap-3"><Link href="/seo/partnervergleich" className="inline-flex items-center gap-2 rounded-md bg-[#086fcc] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#075faa]">Partnervergleich · Vorher / Nachher <ArrowUpRight className="size-4" aria-hidden="true" /></Link><Link href={`/seo/automatisierung${selectedTarget ? `?target=${encodeURIComponent(selectedTarget.id)}` : ''}`} className="inline-flex items-center gap-2 rounded-md border border-[#b8dcff] px-4 py-2.5 text-sm font-semibold text-[#075faa] hover:bg-[#f3f8ff]">Automatisierung &amp; Wartung <ArrowUpRight className="size-4" aria-hidden="true" /></Link></div>
       </section>
 
         {requestedJobStatus ? (
@@ -286,7 +286,7 @@ export function SeoDashboard({
               </div>
               <span className="font-mono text-xs text-zinc-500">{visibleTargets.length.toString().padStart(2, "0")}</span>
               </div>
-              <label className="mt-4 flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2.5 focus-within:border-[#118cff] focus-within:ring-2 focus-within:ring-[#d9ecff]">
+              <label className="mt-4 flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2.5 focus-within:border-[#086fcc] focus-within:ring-2 focus-within:ring-[#d9ecff]">
                 <MagnifyingGlass className="size-4 text-zinc-400" aria-hidden="true" />
                 <span className="sr-only">SEO-Ziele filtern</span>
                 <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Domain filtern" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-400" />
@@ -299,7 +299,7 @@ export function SeoDashboard({
                 const score = latestScores.get(target.id)
                 const active = target.id === selectedTarget?.id
                 return (
-                  <button key={target.id} type="button" onClick={() => setSelectedTargetId(target.id)} className={`flex w-full items-start justify-between gap-4 rounded-md border p-3 text-left transition active:translate-y-px ${active ? "border-[#118cff] bg-[#f3f8ff]" : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50"}`}>
+                  <button key={target.id} type="button" onClick={() => setSelectedTargetId(target.id)} className={`flex w-full items-start justify-between gap-4 rounded-md border p-3 text-left transition active:translate-y-px ${active ? "border-[#086fcc] bg-[#f3f8ff]" : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50"}`}>
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold text-zinc-900">{target.domain}</span>
                       <span className="mt-1 block truncate text-xs text-zinc-500">{localizeSeoTargetType(target.target_type)}</span>
@@ -316,23 +316,23 @@ export function SeoDashboard({
               <>
                 <div className="flex flex-col gap-5 rounded-md border border-zinc-200 bg-white p-5 shadow-sm sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0b75d9]">Ausgewähltes Ziel</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#075faa]">Ausgewähltes Ziel</p>
                     <h2 className="mt-1 truncate text-2xl font-semibold tracking-tight">{selectedTarget.domain}</h2>
-                    <a href={selectedTarget.canonical_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex max-w-full items-center gap-1 truncate text-sm text-zinc-500 hover:text-[#0b75d9]">
+                    <a href={selectedTarget.canonical_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex max-w-full items-center gap-1 truncate text-sm text-zinc-500 hover:text-[#075faa]">
                       <span className="truncate">{selectedTarget.canonical_url}</span><ArrowUpRight className="size-4 shrink-0" aria-hidden="true" />
                     </a>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
                     <form action={startAuditAction}>
                       <input type="hidden" name="target_id" value={selectedTarget.id} />
-                      <button type="submit" className="inline-flex h-10 items-center gap-2 bg-[#118cff] px-4 text-sm font-semibold text-white transition hover:bg-[#0b75d9] active:-translate-y-px">
+                      <button type="submit" className="inline-flex h-10 items-center gap-2 bg-[#086fcc] px-4 text-sm font-semibold text-white transition hover:bg-[#075faa] active:-translate-y-px">
                         <ArrowClockwise className="size-4" weight="bold" aria-hidden="true" />
                         Audit starten
                       </button>
                     </form>
                     <form action={startRankCheckAction}>
                       <input type="hidden" name="target_id" value={selectedTarget.id} />
-                      <button type="submit" className="inline-flex h-10 items-center gap-2 border border-[#0b75d9] bg-white px-4 text-sm font-semibold text-[#0b75d9] transition hover:bg-[#f3f8ff] active:-translate-y-px">
+                      <button type="submit" className="inline-flex h-10 items-center gap-2 border border-[#075faa] bg-white px-4 text-sm font-semibold text-[#075faa] transition hover:bg-[#f3f8ff] active:-translate-y-px">
                         <ChartLineUp className="size-4" weight="duotone" aria-hidden="true" />
                         Ranktracking
                       </button>
@@ -372,7 +372,7 @@ export function SeoDashboard({
                           <DataPoint label="Beendet" value={formatDate(selectedAudit.completed_at)} />
                           <DataPoint label="Methode" value={selectedAudit.methodology_version} />
                         </div>
-                        <p className="border-l-2 border-[#118cff] pl-3 leading-6 text-zinc-700">{localizeSeoAuditSummary(selectedAudit.summary) || "Der Agent hat noch keine Zusammenfassung abgelegt."}</p>
+                        <p className="border-l-2 border-[#086fcc] pl-3 leading-6 text-zinc-700">{localizeSeoAuditSummary(selectedAudit.summary) || "Der Agent hat noch keine Zusammenfassung abgelegt."}</p>
                       </div>
                     ) : (
                       <EmptyLine
@@ -417,7 +417,7 @@ export function SeoDashboard({
             ) : (
               <div className="grid min-h-[420px] place-items-center rounded-md border border-zinc-200 bg-white px-6 text-center shadow-sm">
                 <div className="max-w-md">
-                  <Faders className="mx-auto size-9 text-[#0b75d9]" weight="duotone" aria-hidden="true" />
+                  <Faders className="mx-auto size-9 text-[#075faa]" weight="duotone" aria-hidden="true" />
                   <h2 className="mt-4 text-xl font-semibold">SEO-Operations ist bereit</h2>
                   <p className="mt-2 text-sm leading-6 text-zinc-600">Sobald ein Ziel angelegt und die Migration ausgerollt ist, erscheinen hier Audits, Scores und Rankverläufe.</p>
                 </div>
@@ -430,7 +430,7 @@ export function SeoDashboard({
 }
 
 function Kpi({ label, value, note, icon }: { label: string; value: string; note: string; icon: React.ReactNode }) {
-  return <div className="rounded-md border border-zinc-200 bg-white p-4 shadow-sm"><div className="flex items-start gap-3"><span className="mt-0.5 text-[#0b75d9]">{icon}</span><div><p className="text-xs uppercase tracking-[0.14em] text-zinc-500">{label}</p><p className="mt-1 font-mono text-2xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-xs text-zinc-500">{note}</p></div></div></div>
+  return <div className="rounded-md border border-zinc-200 bg-white p-4 shadow-sm"><div className="flex items-start gap-3"><span className="mt-0.5 text-[#075faa]">{icon}</span><div><p className="text-xs uppercase tracking-[0.14em] text-zinc-500">{label}</p><p className="mt-1 font-mono text-2xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-xs text-zinc-500">{note}</p></div></div></div>
 }
 
 function ScoreTile({ label, detail, value }: { label: string; detail: string; value: number | null }) {
@@ -481,7 +481,7 @@ function MeasurementTable({ title, icon, rows, keywordSets = [], job }: { title:
         : "Keyword-Set vorhanden; der nächste Hermes-Ranklauf schreibt die erste Positionsmessung."
   return <section className="rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
     <div className="flex items-center justify-between gap-3 border-b border-zinc-200 pb-3">
-      <div className="flex items-center gap-2"><span className="text-[#0b75d9]">{icon}</span><h3 className="text-base font-semibold">{title}</h3></div>
+      <div className="flex items-center gap-2"><span className="text-[#075faa]">{icon}</span><h3 className="text-base font-semibold">{title}</h3></div>
       <div className="flex items-center gap-2"><span className="text-xs text-zinc-500">{keywordSets.length} Keyword-Sets</span>{job ? <JobBadge job={job} /> : null}</div>
     </div>
     {keywordSets.length > 0 ? <p className="mt-3 text-xs leading-5 text-zinc-500">{keywordSets.slice(0, 3).map((set) => `${set.name} · ${set.locale} · ${set.device}`).join("  /  ")}</p> : null}
@@ -489,7 +489,7 @@ function MeasurementTable({ title, icon, rows, keywordSets = [], job }: { title:
       <div className="mt-3 overflow-x-auto border-y border-zinc-200 bg-white">
         <table className="w-full min-w-[520px] text-left text-sm">
           <thead className="border-b border-zinc-200 text-xs uppercase tracking-[0.12em] text-zinc-500"><tr><th className="px-3 py-3 font-semibold">Keyword</th><th className="px-3 py-3 font-semibold">Ort</th><th className="px-3 py-3 font-semibold">Position</th><th className="px-3 py-3 font-semibold">Anbieter</th><th className="px-3 py-3 font-semibold">Zeit</th></tr></thead>
-          <tbody className="divide-y divide-zinc-100">{rows.map((row) => <tr key={row.id}><td className="px-3 py-3 font-medium text-zinc-800">{row.keyword}</td><td className="px-3 py-3 text-zinc-600">{row.location || "—"}</td><td className={`px-3 py-3 font-mono font-semibold ${row.rank_position && row.rank_position <= 10 ? "text-[#0b75d9]" : "text-zinc-700"}`}>{row.rank_position ?? "nicht gemessen"}</td><td className="px-3 py-3 text-zinc-600">{row.provider}</td><td className="px-3 py-3 text-xs text-zinc-500">{formatDate(row.observed_at)}</td></tr>)}</tbody>
+          <tbody className="divide-y divide-zinc-100">{rows.map((row) => <tr key={row.id}><td className="px-3 py-3 font-medium text-zinc-800">{row.keyword}</td><td className="px-3 py-3 text-zinc-600">{row.location || "—"}</td><td className={`px-3 py-3 font-mono font-semibold ${row.rank_position && row.rank_position <= 10 ? "text-[#075faa]" : "text-zinc-700"}`}>{row.rank_position ?? "nicht gemessen"}</td><td className="px-3 py-3 text-zinc-600">{row.provider}</td><td className="px-3 py-3 text-xs text-zinc-500">{formatDate(row.observed_at)}</td></tr>)}</tbody>
         </table>
       </div>
     )}
@@ -505,7 +505,7 @@ function VisibilityTable({ rows, localJob, aiJob }: { rows: SeoVisibilitySnapsho
       ? "Hermes verarbeitet lokale und AI-Sichtbarkeit. Die Ergebnisse erscheinen nach dem Jobabschluss automatisch."
       : "Noch keine Sichtbarkeits-Snapshots vorhanden. Starte einen vollständigen Audit, um lokale und AI-Sichtbarkeit getrennt zu messen."
   return <section className="rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
-    <div className="flex items-center justify-between gap-3 border-b border-zinc-200 pb-3"><div className="flex items-center gap-2"><span className="text-[#0b75d9]"><Sparkle className="size-5" weight="duotone" aria-hidden="true" /></span><h3 className="text-base font-semibold">AI- und lokale Sichtbarkeit</h3></div><div className="flex items-center gap-2">{localJob ? <JobBadge job={localJob} /> : null}{aiJob ? <JobBadge job={aiJob} /> : null}</div></div>
+    <div className="flex items-center justify-between gap-3 border-b border-zinc-200 pb-3"><div className="flex items-center gap-2"><span className="text-[#075faa]"><Sparkle className="size-5" weight="duotone" aria-hidden="true" /></span><h3 className="text-base font-semibold">AI- und lokale Sichtbarkeit</h3></div><div className="flex items-center gap-2">{localJob ? <JobBadge job={localJob} /> : null}{aiJob ? <JobBadge job={aiJob} /> : null}</div></div>
     {rows.length === 0 ? <EmptyLine icon={<GlobeHemisphereWest className="size-5" />} text={emptyText} /> : (
       <div className="mt-3 overflow-x-auto border-y border-zinc-200 bg-white">
         <table className="w-full min-w-[460px] text-left text-sm">
@@ -521,9 +521,9 @@ function ScoreImprovementRoadmap({ plans }: { plans: SeoActionPlan[] }) {
   return (
     <section className="mt-7 rounded-md border border-[#b8dcff] bg-[#f3f8ff] p-4 sm:p-5">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 text-[#0b75d9]"><ChartLineUp className="size-5" weight="duotone" aria-hidden="true" /></span>
+        <span className="mt-0.5 text-[#075faa]"><ChartLineUp className="size-5" weight="duotone" aria-hidden="true" /></span>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0b75d9]">Bewertung verbessern</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#075faa]">Bewertung verbessern</p>
           <h3 className="mt-1 text-base font-semibold text-zinc-950">Priorisierte Maßnahmen für den nächsten Score-Schritt</h3>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-700">Die Reihenfolge folgt den aktuell fehlenden Messgrundlagen. Ein höherer Score wird nicht versprochen; jede Maßnahme hat eine prüfbare Abschlussbedingung.</p>
         </div>
@@ -550,12 +550,12 @@ function ActionPlanSteps({ plan, compact = false }: { plan: SeoActionPlan; compa
     <ol className={`mt-4 space-y-3 ${compact ? "border-l border-zinc-200 pl-3" : ""}`}>
       {plan.steps.map((step, index) => (
         <li key={step.title} className="flex items-start gap-3">
-          <span className={`grid shrink-0 place-items-center rounded-full bg-[#d9ecff] font-mono font-semibold text-[#0b75d9] ${compact ? "size-5 text-[10px]" : "size-6 text-xs"}`}>{index + 1}</span>
+          <span className={`grid shrink-0 place-items-center rounded-full bg-[#d9ecff] font-mono font-semibold text-[#075faa] ${compact ? "size-5 text-[10px]" : "size-6 text-xs"}`}>{index + 1}</span>
           <div className="min-w-0 text-sm leading-5">
             <p className="font-semibold text-zinc-800">{step.title}</p>
             <p className="mt-1 text-zinc-600">{step.action}</p>
             <p className="mt-2 text-xs leading-5 text-zinc-500"><span className="font-semibold text-zinc-700">Fertig wenn:</span> {step.doneWhen}</p>
-            <p className="mt-1 text-xs leading-5 text-[#0b75d9]"><span className="font-semibold">Bewertungsbezug:</span> {step.scoreImpact}</p>
+            <p className="mt-1 text-xs leading-5 text-[#075faa]"><span className="font-semibold">Bewertungsbezug:</span> {step.scoreImpact}</p>
           </div>
         </li>
       ))}
@@ -579,7 +579,7 @@ function FindingRow({ finding }: { finding: SeoFinding }) {
           </div>
           <h4 className="mt-2 text-sm font-semibold text-zinc-900">{copy.title}</h4>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-600">{plan.summary}</p>
-          {copy.recommendation ? <p className="mt-2 max-w-3xl border-l-2 border-[#118cff] pl-3 text-sm leading-6 text-zinc-700"><span className="font-semibold">Hinweis des Audits:</span> {copy.recommendation}</p> : null}
+          {copy.recommendation ? <p className="mt-2 max-w-3xl border-l-2 border-[#086fcc] pl-3 text-sm leading-6 text-zinc-700"><span className="font-semibold">Hinweis des Audits:</span> {copy.recommendation}</p> : null}
         </div>
         <span className="shrink-0 font-mono text-xs text-zinc-500" title="Vertrauen des Findings">{Math.round(finding.confidence * 100)}% Vertrauen</span>
       </div>

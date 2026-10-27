@@ -10,7 +10,7 @@ const count = (value: number | null) => value === null ? "—" : new Intl.Number
 const date = (value: string) => new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(value))
 const timestamp = (value: string | null) => value === null ? "Nicht nachgewiesen" : new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(value))
 const panelClass = "rounded-2xl border border-[#061829]/10 bg-white p-4 sm:p-5"
-const linkClass = "inline-flex min-h-11 items-center rounded-xl border border-[#061829]/15 px-3 py-2 text-sm font-semibold text-[#0872c6] hover:bg-[#f3f8ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff]"
+const linkClass = "inline-flex min-h-11 items-center rounded-xl border border-[#061829]/15 px-3 py-2 text-sm font-semibold text-[#0872c6] hover:bg-[#f3f8ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc]"
 const coverageLabels = { observed_subset: "Einwilligungsgebundene Beobachtungen", no_observations: "Keine Beobachtungen im Zeitraum", partial_retention: "Teilweise Daten durch Aufbewahrungsgrenze", outside_retention: "Zeitraum außerhalb der Aufbewahrung" }
 const stageLabels: Record<string, string> = {
   city_page_views: "Stadt-Routenaufrufe", partner_form_views: "Partnerformular angesehen", partner_submissions_observed: "Partneranfrage beobachtet",
@@ -65,14 +65,14 @@ export function CityMeasurementDashboard({ result, filters, showFilters = false 
 }
 
 function CityFilters({ cities, filters }: { cities: MeasurementCity[]; filters: BusinessAnalyticsFilters }) {
-  const control = "min-h-11 w-full rounded-lg border border-[#061829]/20 bg-white px-3 text-sm text-[#061829] focus-visible:outline-2 focus-visible:outline-[#118cff]"
+  const control = "min-h-11 w-full rounded-lg border border-[#061829]/20 bg-white px-3 text-sm text-[#061829] focus-visible:outline-2 focus-visible:outline-[#086fcc]"
   return (
     <form action="/analytics#city-measurement" method="get" aria-label="Stadtmessung filtern" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr_auto] lg:items-end">
       <label className="grid gap-1 text-xs font-semibold">Stadt<select className={control} name="city" defaultValue={filters.cityId ?? ""} required><option value="">Stadt auswählen</option>{cities.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
       <label className="grid gap-1 text-xs font-semibold">Von<input className={control} type="date" name="from" defaultValue={filters.dateFrom} max={filters.dateTo} required /></label>
       <label className="grid gap-1 text-xs font-semibold">Bis<input className={control} type="date" name="to" defaultValue={filters.dateTo} required /></label>
       <label className="grid gap-1 text-xs font-semibold">Umgebung<select className={control} name="environment" defaultValue={filters.environment}>{Object.entries(environmentLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-      <button className="min-h-11 rounded-lg bg-[#0872c6] px-4 text-sm font-bold text-white hover:bg-[#065b9f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff]">Anzeigen</button>
+      <button className="min-h-11 rounded-lg bg-[#0872c6] px-4 text-sm font-bold text-white hover:bg-[#065b9f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc]">Anzeigen</button>
       <p className="text-xs leading-5 text-[#526170] sm:col-span-2 lg:col-span-5">Maximal 90 Kalendertage. Diese Auswahl verwendet Stadt, Zeitraum und Umgebung.</p>
     </form>
   )

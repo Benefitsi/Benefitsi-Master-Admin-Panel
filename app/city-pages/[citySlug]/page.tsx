@@ -85,7 +85,7 @@ export default async function CityPageDetail({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/city-pages"
-          className="inline-flex items-center text-sm font-black text-[#0b75d9] transition hover:text-[#075eae]"
+          className="inline-flex items-center text-sm font-black text-[#075faa] transition hover:text-[#075eae]"
         >
           <BackIcon className="mr-1.5 size-4" />
           Alle Städteseiten
@@ -172,7 +172,7 @@ export default async function CityPageDetail({
         >
           <input type="hidden" name="cityId" value={city.id} />
           <div className="border-b border-[#061829]/10 p-5 sm:p-6">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
               Stadtprofil
             </p>
             <h2 className="mt-1 text-2xl font-black tracking-[-0.035em]">
@@ -216,7 +216,7 @@ export default async function CityPageDetail({
                     detail.regions.map((region) => (
                       <span
                         key={region}
-                        className="rounded-full bg-[#e8f4ff] px-2.5 py-1 text-xs font-black text-[#0b75d9]"
+                        className="rounded-full bg-[#e8f4ff] px-2.5 py-1 text-xs font-black text-[#075faa]"
                       >
                         {region}
                       </span>
@@ -314,7 +314,7 @@ export default async function CityPageDetail({
           <section className="rounded-3xl border border-[#061829]/10 bg-white p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
                   Veröffentlichungsstatus
                 </p>
                 <h2 className="mt-1 text-xl font-black">
@@ -332,7 +332,7 @@ export default async function CityPageDetail({
           </section>
 
           <section className="rounded-3xl border border-[#061829]/10 bg-white p-5">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
               Arbeitsbereiche
             </p>
             <div className="mt-4 grid gap-2">
@@ -364,7 +364,7 @@ export default async function CityPageDetail({
       <section className="rounded-3xl border border-[#061829]/10 bg-white p-5 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
               Inhalt anlegen
             </p>
             <h2 className="mt-1 text-xl font-black tracking-[-0.025em]">
@@ -390,7 +390,7 @@ export default async function CityPageDetail({
                 <span className="text-sm font-black">{definition.singular}</span>
                 <span className="flex items-center justify-between text-xs font-bold text-[#617080]">
                   {count} vorhanden
-                  <PlusIcon className="size-4 text-[#0b75d9]" />
+                  <PlusIcon className="size-4 text-[#075faa]" />
                 </span>
               </Link>
             )
@@ -401,7 +401,7 @@ export default async function CityPageDetail({
       <section className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white">
         <div className="flex flex-col gap-3 border-b border-[#061829]/10 p-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">
               Inhaltskatalog
             </p>
             <h2 className="mt-1 text-xl font-black">{detail.records.length} Datensätze</h2>
@@ -418,7 +418,7 @@ export default async function CityPageDetail({
                 className="grid gap-4 p-5 md:grid-cols-[8rem_minmax(0,1fr)_auto] md:items-center"
               >
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.12em] text-[#0b75d9]">
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-[#075faa]">
                     {contentTypeLabel(record.contentType)}
                   </p>
                   <p className="mt-1 text-xs font-bold text-[#617080]">
@@ -588,13 +588,13 @@ function PlusIcon({ className }: { className?: string }) {
 }
 
 const inputClass =
-  "min-h-12 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
+  "min-h-12 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#086fcc] focus:ring-3 focus:ring-[#118cff]/10"
 
 const primaryButton =
-  "inline-flex min-h-11 items-center justify-center rounded-xl bg-[#118cff] px-4 text-sm font-black text-white transition hover:bg-[#0878df] active:scale-[.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff]"
+  "inline-flex min-h-11 items-center justify-center rounded-xl bg-[#086fcc] px-4 text-sm font-black text-white transition hover:bg-[#0878df] active:scale-[.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc]"
 
 const secondaryButton =
-  "inline-flex min-h-11 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-black text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff] active:scale-[.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff]"
+  "inline-flex min-h-11 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-black text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff] active:scale-[.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc]"
 
 const wideLink =
   "flex min-h-12 items-center justify-between rounded-xl border border-[#061829]/10 bg-[#f8faf9] px-3.5 text-sm font-black transition hover:border-[#118cff]/35 hover:bg-[#f3f8ff] active:scale-[.98]"

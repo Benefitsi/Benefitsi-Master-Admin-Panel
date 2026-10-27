@@ -19,7 +19,7 @@ export function EditorialResearch({ result }: { result: EditorialIntakeResult })
       <div>
         <h3 className="text-sm font-black">Quellen und Belege</h3>
         {data.sources.length ? <ul className="mt-2 space-y-3 text-sm">{data.sources.map((source, index) => <li key={`${source.url}-${index}`} className="border-l-2 border-[#118cff]/25 pl-3">
-          <a href={source.url} target="_blank" rel="noopener noreferrer" className="break-all font-bold text-[#0b75d9] underline underline-offset-2">{source.url}</a>
+          <a href={source.url} target="_blank" rel="noopener noreferrer" className="break-all font-bold text-[#075faa] underline underline-offset-2">{source.url}</a>
           <p className="mt-1 text-xs font-semibold text-[#617080]">{source.checkedAt ? `Laut Recherche geprüft am ${source.checkedAt}` : "Prüfdatum fehlt"}</p>
           <p className="mt-1 leading-6">{source.evidence || "Kein Belegtext dokumentiert."}</p>
         </li>)}</ul> : <p className="mt-2 text-sm text-[#617080]">Keine verwendbaren Quellenangaben vorhanden.</p>}
@@ -31,7 +31,7 @@ export function EditorialResearch({ result }: { result: EditorialIntakeResult })
           <h3 className="text-lg font-black">{data.proposal.title || "Vorschlag ohne Titel"}</h3>
           {data.proposal.excerpt ? <p>{data.proposal.excerpt}</p> : null}
           {data.proposal.sections.map((section, index) => <div key={index}><h4 className="font-black">{section.heading}</h4>{section.paragraphs.map((paragraph, index) => <p className="mt-2" key={index}>{paragraph}</p>)}</div>)}
-          {data.proposal.sources.length ? <ul className="space-y-1">{data.proposal.sources.map((source, index) => <li key={index}><a href={source.url} target="_blank" rel="noopener noreferrer" className="font-bold text-[#0b75d9] underline">{source.label}</a></li>)}</ul> : null}
+          {data.proposal.sources.length ? <ul className="space-y-1">{data.proposal.sources.map((source, index) => <li key={index}><a href={source.url} target="_blank" rel="noopener noreferrer" className="font-bold text-[#075faa] underline">{source.label}</a></li>)}</ul> : null}
         </div>
       </details> : null}
     </section>

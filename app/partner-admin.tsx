@@ -12,6 +12,7 @@ import { normalizePartnerTypeValue, partnerTypeSupportsMenu } from "@/lib/partne
 
 import { usePartnerCapabilities } from "./use-partner-capabilities"
 import { isRetiredStreakDeal } from "@/lib/streak-retirement"
+import { benefitKindForDeal, benefitKindTerms, findRetiredDealTerms, occasionForDeal, occasionTerms } from "@/lib/deal-terms"
 import { formDataSignature } from "@/lib/partner-form-signature"
 import { MenuItemVideoField } from "@/components/menu-item-video-field"
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client"
@@ -311,8 +312,8 @@ const CREATE_NEW_OWNER_VALUE = "__create_new_owner__"
 const dealUiTypeOptions = dealTypeOptions.flatMap((option) =>
   option.value === "comeback"
     ? [
-        { value: DURATION_BONUS_DEAL, label: "Zeitbonus" },
-        { value: COMEBACK_INACTIVE_DEAL, label: "Comeback-Deal" },
+        { value: DURATION_BONUS_DEAL, label: "Schnelle Rückkehr" },
+        { value: COMEBACK_INACTIVE_DEAL, label: "Reaktivierung" },
       ]
     : [option],
 )
@@ -4570,7 +4571,7 @@ function DealsPanel({
         <button
           type="button"
           onClick={() => setDealEditor({ mode: "create" })}
-          className="rounded-xl bg-[#118cff] px-4 py-3 text-sm font-semibold text-white"
+          className="rounded-xl bg-[#086fcc] px-4 py-3 text-sm font-semibold text-white"
         >
           Erstellen
         </button>
@@ -4583,7 +4584,7 @@ function DealsPanel({
               type="button"
               aria-pressed={statusFilter === state}
               onClick={() => setStatusFilter(state)}
-              className={`rounded-xl border px-4 py-2.5 text-sm ${statusFilter === state ? "border-[#118cff] bg-sky-50 text-[#0874d1]" : "border-slate-200 bg-white"}`}
+              className={`rounded-xl border px-4 py-2.5 text-sm ${statusFilter === state ? "border-[#086fcc] bg-sky-50 text-[#0874d1]" : "border-slate-200 bg-white"}`}
             >
               {state}
             </button>
@@ -5273,9 +5274,9 @@ type DealFormConfig = {
 
 const dealFieldHelp = {
   dealType:
-    "Legt Auslöser oder Kampagne fest, zum Beispiel Happy Hour, Willkommen, Comeback oder Challenge.",
+    "Legt fest, was Nutzer bekommen (2 für 1, Rabatt, Gratis, Bonusstempel) oder zu welchem Anlass der Deal gilt (Erster Besuch, Happy Hour, Deal Drop, Schnelle Rückkehr, Reaktivierung, Geburtstag).",
   discountType:
-    "Legt fest, was Nutzer erhalten: Prozent- oder €-Rabatt, Gratisartikel, Bonusstempel oder 2 für 1.",
+    "Legt fest, was Nutzer erhalten: Rabatt in % oder €, Gratis, Bonusstempel oder 2 für 1.",
   benefitCategory:
     "Legt die Aktivierung fest: vor dem Besuch auswählen, automatisch beim Scan oder als Fallback.",
   audience:
@@ -5353,10 +5354,10 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
     shortDescription:
       "Vorteil für den ersten Besuch. Je nach Belohnungsformat direkt auswählbar oder automatisch.",
     description:
-      "Vorteil für den ersten Besuch oder die erste qualifizierte Interaktion. Der Auslöser heißt Willkommen; das Belohnungsformat bestimmt die konkrete Ausgabe.",
+      "Vorteil für den ersten Besuch oder die erste qualifizierte Interaktion. Der Anlass heißt „Erster Besuch“; das Belohnungsformat bestimmt die konkrete Ausgabe.",
     recommendedSetup: [
       "Bonusstempel: automatisch beim Scan, keine Aktivierung",
-      "Gratisartikel, Rabatt oder 2 für 1: vor dem Besuch auswählen",
+      "Gratis, Rabatt oder 2 für 1: vor dem Besuch auswählen",
     ],
     requiredFields: [
       "Belohnungsformat",
@@ -5373,9 +5374,9 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   comeback: {
     shortDescription:
-      "Zeitbonus für die Rückkehr innerhalb eines definierten Zeitraums.",
+      "Schnelle Rückkehr: Bonus für die Rückkehr innerhalb eines festgelegten Zeitraums. Nutzer sehen „Schnell zurück“.",
     description:
-      "Belohnt Nutzer, die innerhalb eines festgelegten Zeitraums zurückkehren. Der Zeitbonus ist ein eigener automatischer Auslöser.",
+      "Belohnt Nutzer, die innerhalb eines festgelegten Zeitraums zurückkehren. Die Schnelle Rückkehr ist ein eigener automatischer Anlass; in der App heißt sie „Schnell zurück“.",
     recommendedSetup: [
       "Bonusstempel: automatisch beim Scan, keine Aktivierung",
       "Direkte Vorteile: vor dem Besuch auswählen",
@@ -5399,7 +5400,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
     shortDescription:
       "Reaktiviert Nutzer, die für einen definierten Zeitraum nicht zurückgekehrt sind.",
     description:
-      "Eine Reaktivierungskampagne für inaktive Nutzer. Der Auslöser heißt Comeback; das Belohnungsformat bestimmt die konkrete Ausgabe.",
+      "Eine Reaktivierungskampagne für inaktive Nutzer. Der Anlass heißt „Reaktivierung“, Nutzer sehen „Wieder da“; das Belohnungsformat bestimmt die konkrete Ausgabe.",
     recommendedSetup: [
       "Inaktivitätszeitraum und optionale Besuchsfilter festlegen",
       "Vorschau nutzen, um passende Nutzer zu prüfen",
@@ -5437,7 +5438,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
       "Kundenbeschreibung",
       "Mitarbeiterhinweise",
     ],
-    example: "10 % Rabatt zwischen 15:00 und 18:00 Uhr.",
+    example: "10% Rabatt von 15 bis 18 Uhr.",
     autoSet: [
       "type = happy_hour",
       "Automatische Anwendung beim QR-Scan",
@@ -5461,7 +5462,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
       "Geschätzte Ersparnis",
     ],
     example:
-      "Premium-Nutzer erhalten immer 5 % Rabatt, wenn sie keinen anderen Vorteil nutzen.",
+      "Premium-Nutzer erhalten immer 5% Rabatt, wenn sie keinen anderen Vorteil nutzen.",
     autoSet: [
       "type = permanent_discount",
       "benefit_category = automatic_fallback",
@@ -5501,7 +5502,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
       "Ein Auslöser zum Geburtstag. Der Auslöser heißt Geburtstag; das Belohnungsformat bestimmt die konkrete Ausgabe.",
     recommendedSetup: [
       "Bonusstempel: automatisch beim Scan, keine Aktivierung",
-      "Gratisartikel, Rabatt oder 2 für 1: vor dem Besuch auswählen",
+      "Gratis, Rabatt oder 2 für 1: vor dem Besuch auswählen",
     ],
     requiredFields: [
       "Belohnungsformat",
@@ -5518,11 +5519,11 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
   },
   free_item: {
     shortDescription:
-      "Nutzer wählen diesen Vorteil vor dem Besuch aus und erhalten einen bestimmten Gratisartikel.",
+      "Nutzer wählen diesen Vorteil vor dem Besuch aus und erhalten einen bestimmten Artikel gratis.",
     description:
       "Ein direkt auswählbarer Vorteil mit einem bestimmten Gratisartikel. Erfordert den Artikelnamen, keinen Rabattwert.",
     recommendedSetup: [
-      "Belohnungsformat: Gratisartikel",
+      "Belohnungsformat: Gratis (ein Artikel)",
       "Aktivierung: Vor dem Besuch auswählen",
       "Aktivierung erforderlich: Ja",
     ],
@@ -5558,7 +5559,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
       "Mitarbeiterhinweise",
       "Geschätzte Ersparnis",
     ],
-    example: "10 % Rabatt oder 5 € Rabatt.",
+    example: "10% Rabatt oder 5 € Rabatt.",
     autoSet: [
       "type = discount",
       "benefit_category = direct_selectable",
@@ -5621,7 +5622,7 @@ const dealExplanations: Record<string, DealTypeExplanation> = {
     recommendedSetup: [
       "Der Challenge-Name unterscheidet Challenges intern",
       "Bonusstempel werden automatisch angewendet",
-      "Gratisartikel, Rabatt und 2 für 1 werden vor dem Besuch ausgewählt",
+      "Gratis, Rabatt und 2 für 1 werden vor dem Besuch ausgewählt",
       "Der Auslöserwert kann als Challenge-Ziel dienen",
     ],
     requiredFields: [
@@ -5830,6 +5831,69 @@ function normalizeDiscountTypeForUi(type: string, discountType?: string | null) 
   return value === "twoforone" ? "2for1" : value
 }
 
+/** Flags copy that uses terms Brand Guide 2.1 retires (p. 05–06). */
+function RetiredTermsNotice({ texts }: { texts: (string | null | undefined)[] }) {
+  const found = new Map<string, string>()
+  for (const text of texts) {
+    for (const { term, replacement } of findRetiredDealTerms(text)) found.set(term, replacement)
+  }
+  if (found.size === 0) return null
+  return (
+    <div role="status" className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900" data-admin-i18n-ignore="true">
+      <p className="font-semibold">Nicht mehr verwendete Begriffe im Text</p>
+      <ul className="mt-1 list-disc pl-4">
+        {[...found].map(([term, replacement]) => (
+          <li key={term}>„{term}“: besser {replacement}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * Shows the labels users will see in the app (Brand Guide 2.1, p. 07): the
+ * occasion as a small label and the benefit kind, each in its guide color.
+ */
+function DealLabelPreview({
+  dealType,
+  backendDealType,
+  discountType,
+}: {
+  dealType: string
+  backendDealType: string
+  discountType: string
+}) {
+  const occasion = occasionForDeal({ type: dealType }) ?? occasionForDeal({ type: backendDealType })
+  const kind = benefitKindForDeal({ type: backendDealType, discount_type: discountType })
+  const occasionTerm = occasion ? occasionTerms[occasion] : null
+  const kindTerm = kind ? benefitKindTerms[kind] : null
+  if (!occasionTerm && !kindTerm) return null
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#dde2e8] bg-[#f3f5f7] px-3 py-2 text-xs" data-admin-i18n-ignore="true">
+      <span className="font-semibold text-[#5b6472]">In der App:</span>
+      {occasionTerm ? (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-bold" style={{ backgroundColor: occasionTerm.surface, color: "#0a0a0a" }}>
+          <span aria-hidden="true" className="size-2 rounded-full" style={{ backgroundColor: occasionTerm.color }} />
+          {occasionTerm.userLabel}
+        </span>
+      ) : null}
+      {kindTerm ? (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-bold" style={{ backgroundColor: kindTerm.surface, color: "#0a0a0a" }}>
+          <span aria-hidden="true" className="size-2 rounded-full" style={{ backgroundColor: kindTerm.color }} />
+          {kindTerm.label}
+        </span>
+      ) : null}
+      {occasionTerm && occasionTerm.userLabel !== occasionTerm.partnerLabel ? (
+        <span className="text-[#5b6472]">Im Partner-Dashboard: {occasionTerm.partnerLabel}</span>
+      ) : null}
+      {occasionTerm?.personal ? <span className="text-[#5b6472]">Erscheint unter „Für dich“.</span> : null}
+      {occasionTerm?.premiumOnly ? <span className="text-[#8f5e00]">Nur mit Premium nutzbar.</span> : null}
+      {kind === "bonus_stamp" ? <span className="text-[#5b6472]">Kommt automatisch, kein Filter in der App.</span> : null}
+    </div>
+  )
+}
+
 function DealTypeDescription({
   explanation,
   typeLabel,
@@ -6024,16 +6088,16 @@ function formatDraftRewardSummary(
   benefitCount: number | null,
 ) {
   if (discountType === "percent") {
-    return discountValue !== null ? `${discountValue} % Rabatt` : "Prozentualer Rabatt"
+    return discountValue !== null ? `${discountValue}% Rabatt` : "Rabatt in %"
   }
 
   if (discountType === "fixed") {
-    return discountValue !== null ? `${discountValue} € Rabatt` : "Fester €-Rabatt"
+    return discountValue !== null ? `${discountValue} € Rabatt` : "Rabatt in €"
   }
 
   if (discountType === "item") {
     const item = normalizeRewardItem(rewardItem)
-    return item ? `Gratis ${item}` : "Gratisartikel"
+    return item ? `Gratis ${item}` : "Gratis"
   }
 
   if (discountType === "bonus_stamp") {
@@ -6094,7 +6158,7 @@ function formatDealPublicSubtitle(discountType: string, rewardItem: string) {
 
   if (discountType === "item") {
     const item = normalizeRewardItem(rewardItem)
-    return item ? `Gratis ${item}` : "Gratisartikel"
+    return item ? `Gratis ${item}` : "Gratis"
   }
 
   if (discountType === "bonus_stamp") {
@@ -6664,7 +6728,7 @@ export function DealFields({
       >
         <FieldGrid compact>
           <SelectField
-            label="Auslöser oder Kampagne"
+            label="Deal-Art oder Anlass"
             name={`${prefix}deal_concept`}
             value={selectedDealType}
             options={withCurrentOption(
@@ -6709,6 +6773,11 @@ export function DealFields({
             }}
           />
         </FieldGrid>
+        <DealLabelPreview
+          dealType={selectedDealType}
+          backendDealType={selectedBackendDealType}
+          discountType={selectedDiscountType}
+        />
         <DealTypeDescription
           explanation={config.explanation}
           typeLabel={selectedDealTypeLabel}
@@ -7082,6 +7151,7 @@ export function DealFields({
       ) : null}
 
       <FormSection title="Kundentext und Mitarbeiterhinweise" compact>
+        <RetiredTermsNotice texts={[displayTitle, displaySubtitle, customerDescription, terms]} />
         <TextAreaField
           label="Kundenbeschreibung"
           name={`${prefix}customer_description`}
@@ -7150,7 +7220,7 @@ export function DealFields({
             Wähle ein vorhandenes Partnerbild oder lade ein Highlight-Bild hoch (1420×800 px).
           </p>
           <input type="hidden" name={`${prefix}selected_deal_drop_image_url`} value={selectedCardImage} />
-          {mediaOptions.length ? <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" aria-label="Vorhandene Partnerbilder">{mediaOptions.map(option => <button key={option.url} type="button" aria-label={`${option.label} als Kartenbild verwenden`} aria-pressed={selectedCardImage === option.url} onClick={() => { setSelectedCardImage(option.url); setPreviewCardImage(option.url) }} className={`overflow-hidden rounded-lg border-2 text-left ${selectedCardImage === option.url ? "border-[#118cff]" : "border-zinc-200"}`}><PartnerPreviewImage src={option.url} className="aspect-[71/40] w-full object-cover" /><span className="block truncate px-2 py-1 text-xs">{option.label}</span></button>)}</div> : null}
+          {mediaOptions.length ? <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" aria-label="Vorhandene Partnerbilder">{mediaOptions.map(option => <button key={option.url} type="button" aria-label={`${option.label} als Kartenbild verwenden`} aria-pressed={selectedCardImage === option.url} onClick={() => { setSelectedCardImage(option.url); setPreviewCardImage(option.url) }} className={`overflow-hidden rounded-lg border-2 text-left ${selectedCardImage === option.url ? "border-[#086fcc]" : "border-zinc-200"}`}><PartnerPreviewImage src={option.url} className="aspect-[71/40] w-full object-cover" /><span className="block truncate px-2 py-1 text-xs">{option.label}</span></button>)}</div> : null}
           <MediaUploadField
             key={`deal-drop-image-${deal?.id ?? "new"}-${selectedCardImage}`}
             label="Deal-Drop-Kartenbild (1420×800)"
@@ -7362,7 +7432,7 @@ export function DealDropPreviewCard({
               <div title={title} className="truncate text-[28px] leading-[30px] font-black tracking-normal">{title}</div>
               <div className="mt-[2px] truncate text-[17px] leading-[21px] font-bold">{partnerName || "Partnername"}</div>
               {savings ? <div className="mt-[5px] w-fit rounded-full border border-[#b9deff] bg-[#e7f3ff] px-[11px] py-[7px] text-[12.5px] leading-[1.1] font-extrabold text-[#0a6fcb]">{language === "de" ? "Spare" : "Save"} {savings}</div> : null}
-              <span className={`mt-[6px] inline-flex min-h-9 items-center justify-center gap-2 rounded-full py-2 leading-4 font-extrabold ${locked ? "min-w-[86px] border border-white/70 bg-white/30 px-[10px] text-[11.5px] backdrop-blur-lg" : "min-w-[118px] bg-gradient-to-r from-[#118cff] to-[#17d4d7] px-[13px] text-[12px]"} ${available || locked ? "" : "opacity-45"}`}>
+              <span className={`mt-[6px] inline-flex min-h-9 items-center justify-center gap-2 rounded-full py-2 leading-4 font-extrabold ${locked ? "min-w-[86px] border border-white/70 bg-white/30 px-[10px] text-[11.5px] backdrop-blur-lg" : "min-w-[118px] bg-gradient-to-r from-[#086fcc] to-[#17d4d7] px-[13px] text-[12px]"} ${available || locked ? "" : "opacity-45"}`}>
                 {locked ? <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2ZM10 6a2 2 0 0 1 4 0v2h-4V6Z" /></svg> : null}
                 {locked ? "Premium" : language === "de" ? "Aktivieren" : "Activate"}
               </span>
@@ -10953,7 +11023,7 @@ function ComebackCandidatesSection({
 
   return (
     <FormSection
-      title="Comeback candidates"
+      title="Reactivation candidates"
       compact
     >
       <div className="space-y-4">
@@ -11928,7 +11998,7 @@ function WeekdayChipField({
               <span
                 className={`flex h-10 cursor-pointer items-center justify-center gap-1 rounded-md border px-2 text-sm font-semibold transition peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-teal-700 ${
                   checked
-                    ? markExcluded ? "border-[#118cff] bg-[#118cff] text-white" : "border-teal-700 bg-teal-700 text-white"
+                    ? markExcluded ? "border-[#086fcc] bg-[#086fcc] text-white" : "border-teal-700 bg-teal-700 text-white"
                     : markExcluded
                       ? "border-rose-700 bg-rose-700 text-white hover:bg-rose-800"
                     : "border-zinc-300 bg-white text-zinc-700 hover:border-teal-400 hover:bg-teal-50"
@@ -14238,11 +14308,11 @@ function formatDealDropRewardTitle(
   const item = rewardItem.trim()
 
   if (discountType === "item") {
-    return item ? `Gratis ${item}` : "Gratisartikel"
+    return item ? `Gratis ${item}` : "Gratis"
   }
 
   if (discountType === "percent") {
-    return discountValue !== null ? `${discountValue} % Rabatt` : "Prozentualer Rabatt"
+    return discountValue !== null ? `${discountValue}% Rabatt` : "Rabatt in %"
   }
 
   if (discountType === "fixed") {
@@ -14260,7 +14330,7 @@ function formatDealDropRewardTitle(
 
 function formatDealDropRewardText(discountType: string) {
   if (discountType === "item") {
-    return "Gratisartikel"
+    return "Gratis"
   }
 
   return labelForValue(discountTypeOptions, discountType) || "Vorteilsvorschau"
@@ -14599,7 +14669,7 @@ function formatRewardValue(
   }
 
   if (discountType === "percent") {
-    return `${discountValue} % Rabatt`
+    return `${discountValue}% Rabatt`
   }
 
   if (discountType === "fixed") {

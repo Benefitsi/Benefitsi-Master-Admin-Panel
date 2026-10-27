@@ -23,7 +23,7 @@ export default async function EditorialPreviewPage({ params, searchParams }: { p
     <div className="border-b border-[#dbe4ee] bg-[#f3f8ff] px-5 py-4">
       <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-3">
         <div><Link href="/editorial" className="text-sm font-bold text-[#086fcc] hover:underline">← Alle Beiträge</Link><p className="mt-1 text-sm font-semibold text-[#061829]">Vorschau · Gespeicherter Stand</p><p className="mt-1 text-xs text-[#526170]">Nur im Admin sichtbar. Das Öffnen der Vorschau veröffentlicht nichts.</p></div>
-        <Link href={`/editorial/${post.id}`} className="inline-flex min-h-11 items-center rounded-xl bg-[#118cff] px-4 text-sm font-bold text-white hover:bg-[#0878df]">Beitrag bearbeiten</Link>
+        <Link href={`/editorial/${post.id}`} className="inline-flex min-h-11 items-center rounded-xl bg-[#086fcc] px-4 text-sm font-bold text-white hover:bg-[#0878df]">Beitrag bearbeiten</Link>
       </div>
     </div>
     {error ? <p role="alert" className="mx-auto my-5 max-w-[1180px] rounded-xl bg-amber-50 p-4 text-sm text-amber-950">{error === "changed" ? "Der Beitrag wurde inzwischen geändert. Bitte prüfe die aktualisierte Vorschau vor der Veröffentlichung." : error === "sources_required" ? "Zum Veröffentlichen fehlt eine Quelle mit gültiger Webadresse. Ergänze sie unter „Beitrag bearbeiten“." : "Der Beitrag konnte nicht veröffentlicht werden. Bitte prüfe die Pflichtfelder unter „Beitrag bearbeiten“ und versuche es erneut."}</p> : null}
@@ -34,7 +34,7 @@ export default async function EditorialPreviewPage({ params, searchParams }: { p
         {!isPublished ? <form action={publishEditorialPost}>
           <input type="hidden" name="postId" value={post.id} />
           <input type="hidden" name="expectedUpdatedAt" value={post.updated_at} />
-          <PendingSubmitButton name="intent" value="publish_now" pendingLabel="Wird veröffentlicht…" className="min-h-11 rounded-xl bg-[#118cff] px-5 text-sm font-bold text-white hover:bg-[#0878df]">Jetzt veröffentlichen</PendingSubmitButton>
+          <PendingSubmitButton name="intent" value="publish_now" pendingLabel="Wird veröffentlicht…" className="min-h-11 rounded-xl bg-[#086fcc] px-5 text-sm font-bold text-white hover:bg-[#0878df]">Jetzt veröffentlichen</PendingSubmitButton>
         </form> : null}
       </div>
     </div>

@@ -73,10 +73,10 @@ export default async function CityCommunityPage({
       subtitle="Web-Einreichungen und App-Treffen gemeinsam prüfen"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href={`/city-pages/${citySlug}`} className="text-sm font-black text-[#0b75d9]">
+        <Link href={`/city-pages/${citySlug}`} className="text-sm font-black text-[#075faa]">
           ← Zur Stadtverwaltung
         </Link>
-        <span className="rounded-full bg-[#e8f4ff] px-3 py-1.5 text-xs font-black text-[#0b75d9]">
+        <span className="rounded-full bg-[#e8f4ff] px-3 py-1.5 text-xs font-black text-[#075faa]">
           {openCount} offen
         </span>
       </div>
@@ -86,7 +86,7 @@ export default async function CityCommunityPage({
           {query.success === "reports_resolved" ? "Die offenen Meldungen wurden intern bearbeitet. Der Treffenstatus blieb unverändert." : "Moderation und Statusverlauf wurden atomar gespeichert."}
         </p>
       ) : null}
-      {query.success === "APPROVED" && query.published && /^[0-9a-f-]{36}$/i.test(query.published) ? <a href={publicMeetupUrl(citySlug, query.published)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-sm font-black text-[#0b75d9]">Freigegebenes Treffen auf der Website öffnen ↗</a> : null}
+      {query.success === "APPROVED" && query.published && /^[0-9a-f-]{36}$/i.test(query.published) ? <a href={publicMeetupUrl(citySlug, query.published)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-sm font-black text-[#075faa]">Freigegebenes Treffen auf der Website öffnen ↗</a> : null}
       {query.error ? (
         <p role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-900">
           {query.error === "private_note"
@@ -140,7 +140,7 @@ function SubmissionCard({
       <header className="grid gap-4 border-b border-[#061829]/10 p-5 md:grid-cols-[1fr_auto] md:p-6">
         <div>
           <div className="flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-[0.12em]">
-            <span className="text-[#0b75d9]">{kindLabels[submission.kind] ?? submission.kind}</span>
+            <span className="text-[#075faa]">{kindLabels[submission.kind] ?? submission.kind}</span>
             <span className="text-[#a0a9b2]">·</span>
             <span className="text-[#617080]">{submission.reference ?? "Alte Einreichung ohne Tracking"}</span>
           </div>
@@ -171,17 +171,17 @@ function SubmissionCard({
             {submission.sourceUrl ? (
               <div>
                 <dt className="text-xs font-bold text-[#7a8793]">Quelle</dt>
-                <dd className="mt-1"><a className="font-black text-[#0b75d9]" href={submission.sourceUrl} target="_blank" rel="noreferrer">Quelle prüfen ↗</a></dd>
+                <dd className="mt-1"><a className="font-black text-[#075faa]" href={submission.sourceUrl} target="_blank" rel="noreferrer">Quelle prüfen ↗</a></dd>
               </div>
             ) : null}
           </dl>
 
-          {submission.kind === "meetup" && submission.publishedRecordId ? <a href={publicMeetupUrl(citySlug, submission.publishedRecordId)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-xl bg-[#e8f4ff] px-4 text-sm font-black text-[#0b75d9]">Veröffentlichtes Treffen öffnen ↗</a> : null}
+          {submission.kind === "meetup" && submission.publishedRecordId ? <a href={publicMeetupUrl(citySlug, submission.publishedRecordId)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-xl bg-[#e8f4ff] px-4 text-sm font-black text-[#075faa]">Veröffentlichtes Treffen öffnen ↗</a> : null}
           <h3 className="mt-6 text-sm font-black uppercase tracking-[0.12em] text-[#617080]">Audit-Verlauf</h3>
           <ol className="mt-4 border-l border-[#cbd5da] pl-5">
             {submission.audit.map((entry) => (
               <li key={entry.id} className="relative pb-5 last:pb-0">
-                <span className="absolute -left-[1.52rem] top-1 size-2.5 rounded-full bg-[#118cff]" />
+                <span className="absolute -left-[1.52rem] top-1 size-2.5 rounded-full bg-[#086fcc]" />
                 <p className="text-sm font-black">{statusLabels[entry.toStatus] ?? entry.toStatus}</p>
                 <p className="mt-1 text-xs text-[#7a8793]">{formatDate(entry.createdAt)}{entry.actorProfile ? ` · ${entry.actorProfile}` : ""}</p>
                 {entry.privateNote ? <p className="mt-2 text-sm leading-6 text-[#455767]">Intern: {entry.privateNote}</p> : null}
@@ -223,7 +223,7 @@ function SubmissionCard({
             <textarea name="publicMessage" maxLength={1000} rows={4} disabled={!canModerate} defaultValue={submission.publicStatusMessage ?? ""} className={`${inputClass} min-h-28 py-3`} />
           </label>
           {canModerate ? (
-            <PendingSubmitButton pendingLabel="Wird gespeichert …" className="mt-4 min-h-11 w-full rounded-xl bg-[#118cff] px-4 text-sm font-black text-white">
+            <PendingSubmitButton pendingLabel="Wird gespeichert …" className="mt-4 min-h-11 w-full rounded-xl bg-[#086fcc] px-4 text-sm font-black text-white">
               Status speichern
             </PendingSubmitButton>
           ) : (
@@ -242,7 +242,7 @@ function NativeMeetupCard({ citySlug, meetup, linkedProposalPending = false }: {
   const blockers = meetupApprovalBlockers(meetup)
   const historical = isHistoricalMeetup(meetup)
   return <article className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white p-5 md:p-6">
-    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-wide text-[#0b75d9]">{meetup.linkedSubmission ? "Verknüpftes Community-Treffen" : "App-Treffen"} · {statusLabels[meetup.lifecycleStatus] ?? meetup.lifecycleStatus}</p><h3 className="mt-2 text-2xl font-black">{meetup.title}</h3></div><span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-900">{statusLabels[meetup.moderationStatus] ?? meetup.moderationStatus}</span></div>
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-wide text-[#075faa]">{meetup.linkedSubmission ? "Verknüpftes Community-Treffen" : "App-Treffen"} · {statusLabels[meetup.lifecycleStatus] ?? meetup.lifecycleStatus}</p><h3 className="mt-2 text-2xl font-black">{meetup.title}</h3></div><span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-900">{statusLabels[meetup.moderationStatus] ?? meetup.moderationStatus}</span></div>
     <div className="mt-5 grid gap-7 md:grid-cols-[minmax(0,1.2fr)_minmax(18rem,.8fr)]"><div><p className="whitespace-pre-wrap text-sm leading-7 text-[#455767]">{meetup.description}</p>
       <dl className="mt-5 grid gap-4 border-y border-[#061829]/10 py-5 text-sm sm:grid-cols-2">
         <Fact label="Öffentlicher Gastgebername" value={meetup.hostDisplayName ?? "Nicht verfügbar"} />
@@ -263,14 +263,14 @@ function NativeMeetupCard({ citySlug, meetup, linkedProposalPending = false }: {
       <p className="mt-2 text-sm leading-6 text-[#617080]">Diese Entscheidung bearbeitet nur offene Meldungen. Das abgesagte oder beendete Treffen wird nicht erneut freigegeben oder veröffentlicht.</p>
       <label className="mt-4 grid gap-2 text-xs font-bold text-[#526170]">Meldungen entscheiden<select name="resolution" defaultValue="ACTIONED" className={inputClass}><option value="ACTIONED">Maßnahme dokumentieren</option><option value="DISMISSED">Meldungen verwerfen</option></select></label>
       <label className="mt-4 grid gap-2 text-xs font-bold text-[#526170]">Interne Begründung *<textarea name="privateNote" required maxLength={1200} rows={4} className={`${inputClass} py-3`} /></label>
-      <PendingSubmitButton pendingLabel="Wird gespeichert …" className="mt-4 min-h-11 w-full rounded-xl bg-[#118cff] px-4 text-sm font-black text-white">Meldungen bearbeiten</PendingSubmitButton>
+      <PendingSubmitButton pendingLabel="Wird gespeichert …" className="mt-4 min-h-11 w-full rounded-xl bg-[#086fcc] px-4 text-sm font-black text-white">Meldungen bearbeiten</PendingSubmitButton>
     </form> : linkedProposalPending ? <aside className="h-fit rounded-2xl bg-[#f6f8f7] p-4 text-sm text-[#455767]"><h4 className="font-black">Verknüpften Vorschlag zuerst prüfen</h4><p className="mt-2">Die offene Web-Einreichung muss zuerst entschieden werden. Danach kann das Treffen erneut geprüft werden.</p></aside> : <form action={moderateNativeMeetup} className="h-fit rounded-2xl bg-[#f6f8f7] p-4">
       <input type="hidden" name="cityId" value={meetup.cityId} /><input type="hidden" name="citySlug" value={citySlug} /><input type="hidden" name="meetupId" value={meetup.id} />
       <h4 className="text-lg font-black">App-Treffen moderieren</h4>
       {blockers.length ? <ul className="mt-3 list-disc space-y-2 rounded-xl bg-amber-50 py-3 pl-7 pr-3 text-sm text-amber-950">{blockers.map(blocker => <li key={blocker}>{blocker}</li>)}</ul> : <p className="mt-2 text-sm leading-6 text-[#617080]">Freigabe veröffentlicht dieses Treffen im bestehenden Datensatz. Sichtbarkeit und Gastgeber bleiben erhalten.</p>}
       <label className="mt-4 grid gap-2 text-xs font-bold text-[#526170]">Entscheidung<select name="status" defaultValue={blockers.length ? "REJECTED" : "APPROVED"} className={inputClass}><option value="APPROVED" disabled={blockers.length > 0}>Freigeben</option><option value="REJECTED">Ablehnen</option></select></label>
       <label className="mt-4 grid gap-2 text-xs font-bold text-[#526170]">Interne Begründung *<textarea name="privateNote" required maxLength={2000} rows={4} className={`${inputClass} py-3`} /></label>
-      <PendingSubmitButton pendingLabel="Wird gespeichert …" className="mt-4 min-h-11 w-full rounded-xl bg-[#118cff] px-4 text-sm font-black text-white">Entscheidung speichern</PendingSubmitButton>
+      <PendingSubmitButton pendingLabel="Wird gespeichert …" className="mt-4 min-h-11 w-full rounded-xl bg-[#086fcc] px-4 text-sm font-black text-white">Entscheidung speichern</PendingSubmitButton>
     </form>}</div>
   </article>
 }
@@ -299,4 +299,4 @@ function formatDate(value: string) {
 }
 
 const inputClass =
-  "min-h-12 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
+  "min-h-12 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#086fcc] focus:ring-3 focus:ring-[#118cff]/10"

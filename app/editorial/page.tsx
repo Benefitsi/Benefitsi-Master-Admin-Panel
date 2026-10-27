@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 type SearchParams = { success?: string; error?: string }
 
-const primaryButton = "inline-flex min-h-11 items-center justify-center rounded-xl bg-[#118cff] px-4 text-sm font-black text-white transition hover:bg-[#0878df]"
+const primaryButton = "inline-flex min-h-11 items-center justify-center rounded-xl bg-[#086fcc] px-4 text-sm font-black text-white transition hover:bg-[#0878df]"
 const secondaryButton = "inline-flex min-h-11 items-center justify-center rounded-xl border border-[#061829]/15 bg-white px-4 text-sm font-black text-[#061829] transition hover:border-[#118cff]/40 hover:bg-[#f3f8ff]"
 
 export default async function EditorialPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -49,7 +49,7 @@ export default async function EditorialPage({ searchParams }: { searchParams: Pr
 
       <section className="flex flex-col gap-4 rounded-3xl border border-[#061829]/10 bg-white p-5 shadow-[0_18px_50px_rgba(6,24,41,.05)] sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">Content-System</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">Content-System</p>
           <h2 className="mt-1 text-2xl font-black tracking-[-0.035em]">Ein Beitrag, mehrere lokale Ausspielwege</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#617080]">Status, Zielgruppe und Zuordnung bleiben an einer Stelle nachvollziehbar. Nur aktive Beiträge mit Veröffentlichungsdatum werden auf der Website angezeigt.</p>
         </div>
@@ -59,7 +59,7 @@ export default async function EditorialPage({ searchParams }: { searchParams: Pr
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b75d9]">Redaktionsliste</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#075faa]">Redaktionsliste</p>
             <h2 className="mt-1 text-xl font-black tracking-[-0.025em]">Alle Beiträge</h2>
           </div>
           <span className="text-sm font-semibold text-[#617080]">{data.posts.length} Einträge</span>
@@ -94,7 +94,7 @@ function EditorialCard({ post, city, partner }: { post: EditorialPost; city?: { 
             <span className="rounded-full bg-[#eef8f8] px-2.5 py-1 text-[11px] font-black text-[#227174]">{target}</span>
             <span className="rounded-full bg-[#f3f6f7] px-2.5 py-1 text-[11px] font-black text-[#617080]">{post.audience === "partner" ? "Für Partner" : "Für Benefitsi"}</span>
           </div>
-          <h3 className="mt-3 text-xl font-black tracking-[-0.03em]"><Link href={`/editorial/${post.id}/preview`} className="rounded-sm hover:text-[#086fcc] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#118cff]">{post.title}</Link></h3>
+          <h3 className="mt-3 text-xl font-black tracking-[-0.03em]"><Link href={`/editorial/${post.id}/preview`} className="rounded-sm hover:text-[#086fcc] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#086fcc]">{post.title}</Link></h3>
           <p className="mt-1 text-sm leading-6 text-[#617080]">{post.excerpt}</p>
           <p className="mt-3 text-xs font-bold text-[#8995a0]">/{post.slug} · aktualisiert {formatDate(post.updated_at)}</p>
         </div>

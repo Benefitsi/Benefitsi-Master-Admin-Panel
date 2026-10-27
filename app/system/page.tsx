@@ -135,7 +135,7 @@ function OverviewCard({
 }) {
   const iconClass = {
     neutral: "bg-zinc-100 text-[#061829]",
-    blue: "bg-blue-50 text-[#118cff]",
+    blue: "bg-blue-50 text-[#086fcc]",
     cyan: "bg-cyan-50 text-[#17bfc5]",
   }[accent]
   const body = (
@@ -153,7 +153,7 @@ function OverviewCard({
     </>
   )
   const className =
-    "rounded-2xl border border-zinc-200 bg-white p-5 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff]"
+    "rounded-2xl border border-zinc-200 bg-white p-5 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc]"
 
   if (!href) {
     return <article className={`${className} opacity-75`}>{body}</article>

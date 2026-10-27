@@ -66,7 +66,7 @@ export default async function CityNewsletterPage({
       subtitle="Stadtbezogene Ausgaben mit Agent-Entwurf und Human-Gate"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href={`/city-pages/${citySlug}`} className="text-sm font-black text-[#0b75d9]">
+        <Link href={`/city-pages/${citySlug}`} className="text-sm font-black text-[#075faa]">
           ← Zur Stadtverwaltung
         </Link>
         <form action={requestNewsletterDraft}>
@@ -141,7 +141,7 @@ function EditionCard({
     <article className="overflow-hidden rounded-3xl border border-[#061829]/10 bg-white">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[#061829]/10 p-5 sm:p-6">
         <div>
-          <p className="text-xs font-black uppercase tracking-[.14em] text-[#0b75d9]">{edition.editionKey}</p>
+          <p className="text-xs font-black uppercase tracking-[.14em] text-[#075faa]">{edition.editionKey}</p>
           <h2 className="mt-2 text-2xl font-black">{edition.subject || "Noch ohne Betreff"}</h2>
         </div>
         <span className="rounded-full bg-[#edf2f4] px-3 py-1.5 text-xs font-black text-[#526170]">
@@ -213,7 +213,7 @@ function EditionCard({
                   <section key={section.title} className="py-4">
                     <h3 className="font-black">{section.title}</h3>
                     <p className="mt-2 text-sm leading-6 text-[#617080]">{section.body}</p>
-                    {section.label ? <p className="mt-2 text-xs font-black text-[#0b75d9]">{section.label} →</p> : null}
+                    {section.label ? <p className="mt-2 text-xs font-black text-[#075faa]">{section.label} →</p> : null}
                   </section>
                 ))}
               </div>
@@ -239,7 +239,7 @@ function EditionCard({
             <ol className="mt-3 border-l border-[#cbd5da] pl-5">
               {edition.audit.map((entry) => (
                 <li key={entry.id} className="relative pb-4 last:pb-0">
-                  <span className="absolute -left-[1.52rem] top-1 size-2.5 rounded-full bg-[#118cff]" />
+                  <span className="absolute -left-[1.52rem] top-1 size-2.5 rounded-full bg-[#086fcc]" />
                   <p className="text-sm font-black">{entry.action}</p>
                   <p className="mt-1 text-xs text-[#7a8793]">{formatDate(entry.createdAt)}{entry.actorProfile ? ` · ${entry.actorProfile}` : ""}</p>
                 </li>
@@ -266,7 +266,7 @@ function formatDate(value: string) {
 }
 
 const inputClass =
-  "min-h-12 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10 disabled:bg-[#f1f3f2] disabled:text-[#617080]"
+  "min-h-12 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#086fcc] focus:ring-3 focus:ring-[#118cff]/10 disabled:bg-[#f1f3f2] disabled:text-[#617080]"
 
 const primaryButton =
-  "inline-flex min-h-11 items-center justify-center rounded-xl bg-[#118cff] px-4 text-sm font-black text-white transition hover:bg-[#0878df] active:scale-[.98]"
+  "inline-flex min-h-11 items-center justify-center rounded-xl bg-[#086fcc] px-4 text-sm font-black text-white transition hover:bg-[#0878df] active:scale-[.98]"

@@ -17,7 +17,7 @@ export function Submit({
   return (
     <button
       disabled={pending || disabled}
-      className="rounded-md bg-[#118cff] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0b75d9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff] disabled:cursor-not-allowed disabled:opacity-50"
+      className="rounded-md bg-[#086fcc] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#075faa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc] disabled:cursor-not-allowed disabled:opacity-50"
     >
       {pending ? 'Wird gespeichert …' : children}
     </button>

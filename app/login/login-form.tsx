@@ -35,7 +35,7 @@ export function LoginForm({ isConfigured }: LoginFormProps) {
           defaultValue={DEFAULT_ADMIN_EMAIL}
           required
           disabled={disabled}
-          className="h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-2 focus:ring-[#118cff]/15 disabled:cursor-not-allowed disabled:bg-zinc-100"
+          className="h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#086fcc] focus:ring-2 focus:ring-[#118cff]/15 disabled:cursor-not-allowed disabled:bg-zinc-100"
           placeholder={DEFAULT_ADMIN_EMAIL}
         />
       </div>
@@ -50,7 +50,7 @@ export function LoginForm({ isConfigured }: LoginFormProps) {
           </label>
           <Link
             href="/forgot-password"
-            className="text-xs font-semibold text-[#118cff] transition hover:text-[#0872d1]"
+            className="text-xs font-semibold text-[#086fcc] transition hover:text-[#0872d1]"
           >
             Forgot password?
           </Link>
@@ -62,7 +62,7 @@ export function LoginForm({ isConfigured }: LoginFormProps) {
           autoComplete="current-password"
           required
           disabled={disabled}
-          className="h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#118cff] focus:ring-2 focus:ring-[#118cff]/15 disabled:cursor-not-allowed disabled:bg-zinc-100"
+          className="h-11 w-full rounded-xl border border-[#061829]/15 bg-white px-3 text-sm text-[#061829] outline-none transition focus:border-[#086fcc] focus:ring-2 focus:ring-[#118cff]/15 disabled:cursor-not-allowed disabled:bg-zinc-100"
           placeholder="Enter your password"
         />
       </div>
@@ -86,7 +86,7 @@ export function LoginForm({ isConfigured }: LoginFormProps) {
         type="submit"
         disabled={disabled}
         aria-busy={pending}
-        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#17d4d7_0%,#118cff_100%)] px-4 text-sm font-bold text-white shadow-[0_10px_24px_rgba(17,140,255,.2)] transition hover:-translate-y-px hover:shadow-[0_12px_28px_rgba(17,140,255,.26)] active:translate-y-0 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:shadow-none"
+        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#086fcc] hover:bg-[#075faa] px-4 text-sm font-bold text-white shadow-[0_10px_24px_rgba(17,140,255,.2)] transition hover:-translate-y-px hover:shadow-[0_12px_28px_rgba(17,140,255,.26)] active:translate-y-0 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:shadow-none"
       >
         {pending ? <LoadingSpinner /> : null}
         {pending ? "Signing in..." : "Sign in"}

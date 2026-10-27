@@ -392,7 +392,7 @@ function Buckets({
           {released(b.status) && safeNumber(b.count) !== null ? (
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
               <div
-                className="h-full rounded-full bg-[#118cff]"
+                className="h-full rounded-full bg-[#086fcc]"
                 style={{
                   width: `${safeNumber(b.share) !== null ? Number(b.share) * 100 : (Number(b.count) / max) * 100}%`,
                 }}
@@ -503,7 +503,7 @@ export function PartnerStatistics({
               c && (released(c.status) || c.status === 'no_comparison')
           return (
             <article key={key} className={`${panel} [overflow-wrap:anywhere]`}>
-              <Icon size={24} className="mb-4 text-[#118cff]" />
+              <Icon size={24} className="mb-4 text-[#086fcc]" />
               <h3 className="text-sm font-medium text-slate-600">
                 {metricLabels[key]}
               </h3>
@@ -536,7 +536,7 @@ export function PartnerStatistics({
         <nav aria-label="Statistikbereiche" className="flex flex-wrap gap-2">
           {statisticsTopics.map(([id, label]) => (
             <a
-              className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-[#0874d1] hover:border-[#118cff]"
+              className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-[#0874d1] hover:border-[#086fcc]"
               href={`#${id}`}
               key={id}
             >

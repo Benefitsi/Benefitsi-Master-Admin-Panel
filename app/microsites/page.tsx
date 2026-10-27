@@ -154,7 +154,7 @@ function MicrositeRow({ partner }: { partner: PartnerWithDeals }) {
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <Link
           href={`/microsite-builder/${encodeURIComponent(identifier)}`}
-          className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#17d4d7_0%,#118cff_100%)] px-4 text-sm font-bold text-white shadow-[0_8px_20px_rgba(17,140,255,.18)] transition hover:-translate-y-px hover:shadow-[0_10px_24px_rgba(17,140,255,.24)] active:translate-y-0 active:scale-[.98]"
+          className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[#086fcc] hover:bg-[#075faa] px-4 text-sm font-bold text-white shadow-[0_8px_20px_rgba(17,140,255,.18)] transition hover:-translate-y-px hover:shadow-[0_10px_24px_rgba(17,140,255,.24)] active:translate-y-0 active:scale-[.98]"
         >
           Bearbeiten
         </Link>

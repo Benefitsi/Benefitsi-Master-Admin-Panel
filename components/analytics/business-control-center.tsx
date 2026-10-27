@@ -103,7 +103,7 @@ export function BusinessControlCenter({
           <a
             key={key}
             href={`#${key}`}
-            className="shrink-0 rounded-xl px-3 py-2 text-sm font-bold text-[#526170] transition hover:bg-[#f3f8ff] hover:text-[#0b75d9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#118cff]"
+            className="shrink-0 rounded-xl px-3 py-2 text-sm font-bold text-[#526170] transition hover:bg-[#f3f8ff] hover:text-[#075faa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#086fcc]"
           >
             {SECTION_META[key].title}
           </a>
@@ -160,7 +160,7 @@ export function AnalyticsAccessState({
       <div className="h-1.5 bg-[linear-gradient(90deg,#118cff,#17d4d7)]" />
       <div className="grid gap-6 p-6 md:grid-cols-[minmax(0,1fr)_17rem] md:p-8">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b75d9]">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#075faa]">
             {content.kicker}
           </p>
           <h2 className="mt-3 text-2xl font-black tracking-[-0.035em] text-[#061829]">
@@ -171,7 +171,7 @@ export function AnalyticsAccessState({
           </p>
         </div>
         <div className="rounded-2xl border border-[#118cff]/15 bg-[#f3f8ff] p-4">
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#0b75d9]">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#075faa]">
             Nächster Schritt
           </p>
           <p className="mt-2 text-sm font-semibold leading-6 text-[#18354d]">
@@ -326,7 +326,7 @@ function FilterSelect({
 }
 
 const filterControlClass =
-  "h-10 w-full min-w-0 rounded-xl border border-[#061829]/15 bg-white px-3 text-sm font-semibold text-[#18354d] outline-none transition focus:border-[#118cff] focus:ring-3 focus:ring-[#118cff]/10"
+  "h-10 w-full min-w-0 rounded-xl border border-[#061829]/15 bg-white px-3 text-sm font-semibold text-[#18354d] outline-none transition focus:border-[#086fcc] focus:ring-3 focus:ring-[#118cff]/10"
 
 function StatusBanner({ payload }: { payload: BusinessAnalyticsPayloadV1 }) {
   const isStale = payload.freshness.status === "stale"
@@ -405,7 +405,7 @@ function DashboardSection({
       className="scroll-mt-5 rounded-3xl border border-[#061829]/10 bg-[#fbfbf8] p-4 shadow-[0_16px_48px_rgba(6,24,41,.04)] sm:p-5"
     >
       <header className="max-w-3xl">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b75d9]">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#075faa]">
           {meta.eyebrow}
         </p>
         <h2 className="mt-2 text-2xl font-black tracking-[-0.035em] text-[#061829]">
@@ -566,7 +566,7 @@ function TimeSeriesCard({ series }: { series: AnalyticsTimeSeries }) {
           </svg>
           {geometry.comparisonSegments.length > 0 ? (
             <div className="mb-2 flex flex-wrap gap-4 text-[11px] font-bold text-[#6b7784]" aria-hidden="true">
-              <span className="flex items-center gap-1.5"><span className="h-0.5 w-5 bg-[#118cff]" />Aktueller Zeitraum</span>
+              <span className="flex items-center gap-1.5"><span className="h-0.5 w-5 bg-[#086fcc]" />Aktueller Zeitraum</span>
               <span className="flex items-center gap-1.5"><span className="w-5 border-t-2 border-dashed border-slate-400" />Vergleichszeitraum</span>
             </div>
           ) : null}

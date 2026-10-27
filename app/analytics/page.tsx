@@ -74,7 +74,7 @@ function AnalyticsConfigurationRequired() {
       <section className="w-full max-w-xl overflow-hidden rounded-3xl border border-[#061829]/10 bg-white shadow-[0_20px_56px_rgba(6,24,41,.08)]">
         <div className="h-1.5 bg-[linear-gradient(90deg,#118cff,#17d4d7)]" />
         <div className="p-6 sm:p-8">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b75d9]">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#075faa]">
             Benefitsi Admin
           </p>
           <h1 className="mt-3 text-2xl font-black tracking-[-0.035em]">

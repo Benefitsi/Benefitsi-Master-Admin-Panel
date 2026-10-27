@@ -5,7 +5,7 @@ import { loadConfigurationHistory, loadInternalContact, loadPartnerBadges, saveI
 import type { ConfigurationResult, InternalContact, PartnerBadge } from "@/lib/partner-configuration"
 
 const inputClass = "mt-1 block min-h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
-const buttonClass = "min-h-10 rounded-lg bg-[#118cff] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+const buttonClass = "min-h-10 rounded-lg bg-[#086fcc] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
 
 function useProtectedData<T>(partnerId: string, load: (id: string) => Promise<ConfigurationResult<T>>) {
   const [result, setResult] = useState<ConfigurationResult<T> | null>(null)

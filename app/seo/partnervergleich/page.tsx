@@ -60,16 +60,16 @@ export default async function PartnerComparisonPage({
     >
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <Link href="/seo" className="text-[#0b75d9] hover:underline">
+          <Link href="/seo" className="text-[#075faa] hover:underline">
             ← SEO &amp; Sichtbarkeit
           </Link>
           <span className="text-zinc-400">/</span>
           <span className="font-medium">Partnervergleich</span>
           <span className="text-zinc-400">/</span>
-          <Link href={`/seo/automatisierung${target ? `?target=${encodeURIComponent(target.id)}` : ''}`} className="text-[#0b75d9] hover:underline">Automatisierung &amp; Wartung</Link>
+          <Link href={`/seo/automatisierung${target ? `?target=${encodeURIComponent(target.id)}` : ''}`} className="text-[#075faa] hover:underline">Automatisierung &amp; Wartung</Link>
         </div>
         <section className="rounded-md border border-zinc-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-[#0b75d9]">
+          <p className="text-sm font-medium text-[#075faa]">
             Entwicklung sichtbar machen
           </p>
           <h2 className="mt-2 text-2xl font-semibold">
@@ -118,7 +118,7 @@ export default async function PartnerComparisonPage({
                 ))}
               </select>
             </label>
-            <button className="rounded-md border border-[#118cff] px-4 py-2 text-sm font-medium text-[#0b75d9] hover:bg-[#f3f8ff]">
+            <button className="rounded-md border border-[#086fcc] px-4 py-2 text-sm font-medium text-[#075faa] hover:bg-[#f3f8ff]">
               Vergleich öffnen
             </button>
           </form>
