@@ -374,7 +374,7 @@ export const corporateTranslations: readonly (readonly [string, string])[] = [
   ["Suspended", "Gesperrt"],
   ["Assigned", "Zugeordnet"],
   ["Filter", "Filtern"],
-  ["Reload", "Neu laden"],
+  ["Reload", "Erneut laden"],
   ["Next page", "Nächste Seite"],
   ["Previous page", "Vorherige Seite"],
   ["Page selection", "Seitenauswahl"],

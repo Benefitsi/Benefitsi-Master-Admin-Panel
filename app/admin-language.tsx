@@ -11,6 +11,7 @@ import {
 
 import { corporateTranslations, corporateTemplates, translateCorporatePeriod } from "../lib/admin-i18n/corporate"
 import { overviewTranslations, overviewTemplates } from "../lib/admin-i18n/overview"
+import { partnerTranslations, partnerTemplates } from "../lib/admin-i18n/partner"
 import { compileTranslationTemplates, translateTemplate } from "../lib/admin-i18n/templates"
 
 export type AdminLanguage = "en" | "de"
@@ -18,11 +19,11 @@ export type AdminLanguage = "en" | "de"
 const STORAGE_KEY = "benefitsi-admin-language"
 
 const reviewedEnglishToGerman = new Map<string, string>()
-for (const [en, de] of [...overviewTranslations, ...corporateTranslations]) {
+for (const [en, de] of [...overviewTranslations, ...corporateTranslations, ...partnerTranslations]) {
   if (!reviewedEnglishToGerman.has(en)) reviewedEnglishToGerman.set(en, de)
 }
-const reviewedGermanToEnglish = new Map([...overviewTranslations, ...corporateTranslations].map(([en, de]) => [de, en]))
-const reviewedTemplates = compileTranslationTemplates([...overviewTemplates, ...corporateTemplates])
+const reviewedGermanToEnglish = new Map([...partnerTranslations, ...overviewTranslations, ...corporateTranslations].map(([en, de]) => [de, en]))
+const reviewedTemplates = compileTranslationTemplates([...overviewTemplates, ...corporateTemplates, ...partnerTemplates])
 
 const translations = [
   ["Partner management", "Partnerverwaltung"],
@@ -1021,7 +1022,7 @@ export function translateValue(value: string, language: AdminLanguage) {
   if (template !== undefined) return `${leading}${template}${trailing}`
   if (translateTemplate(core, language === "de" ? "en" : "de", reviewedTemplates) !== undefined) return value
   const dictionary = language === "de" ? englishToGerman : germanToEnglish
-  const exact = dictionary.get(core)
+  const exact = dictionary.get(core) ?? dictionary.get(normalizedCore)
 
   if (exact) {
     return `${leading}${canonicalizeBenefitSurfaceCopy(exact, language)}${trailing}`

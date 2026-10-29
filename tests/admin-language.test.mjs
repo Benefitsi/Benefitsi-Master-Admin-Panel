@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { partnerTranslations, partnerTemplates } from "../lib/admin-i18n/partner.ts"
 
 import {
   isTranslationVariant,
@@ -16,6 +17,28 @@ test("keeps the shared unknown-status fallback canonical across language switche
     status = translateValue(status, language)
     assert.equal(status, language === "en" ? "Status unknown" : "Status unbekannt")
   }
+})
+
+test("reviewed partner editor copy translates in both directions and stays stable in the target language", () => {
+  for (const [en, de] of partnerTranslations) {
+    assert.equal(translateValue(en, "de"), de, en)
+    assert.equal(translateValue(de, "en"), en, de)
+    assert.equal(translateValue(de, "de"), de, de)
+    assert.equal(translateValue(en, "en"), en, en)
+  }
+})
+
+test("partner media templates preserve counts, dimensions and filenames across repeated language changes", () => {
+  for (const [enTemplate, deTemplate] of partnerTemplates) {
+    const fill = value => value.replace(/\{(\d+)\}/g, (_, index) => ["Wissen $& photo.png", "1800", "2"][Number(index)])
+    const en = fill(enTemplate), de = fill(deTemplate)
+    assert.equal(translateValue(en, "de"), de, en)
+    assert.equal(translateValue(de, "en"), en, de)
+    assert.equal(translateValue(de, "de"), de, de)
+    assert.equal(translateValue(en, "en"), en, en)
+    assert.equal(isTranslationVariant(de, en), true, en)
+  }
+  assert.equal(translateValue("\nChoose\n categories\n", "de"), "\nKategorien auswählen\n")
 })
 
 test("uses natural German terms for reward types", () => {

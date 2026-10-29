@@ -2,6 +2,7 @@ import { isRetiredStreakDeal } from "./streak-retirement"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { MicrositeVersion, PartnerMicrosite } from "./microsites"
 import { readEntitlements } from "./partners/entitlements"
+import { readAllMenuItems } from "./paged-menu-items"
 
 export type Coordinates = {
   latitude: number | null
@@ -406,10 +407,7 @@ export async function getDashboardData(
       .from("menu_categories")
       .select("*")
       .order("sort_order", { ascending: true, nullsFirst: false }),
-    supabase
-      .from("menu_items")
-      .select("*")
-      .order("sort_order", { ascending: true, nullsFirst: false }),
+    readAllMenuItems<MenuItem>(supabase),
     options.includeActivity === false ? Promise.resolve({data: [], error: null}) : supabase.from("stamp_cards_progress_view").select("*").limit(300),
     options.includeActivity === false ? Promise.resolve({data: [], error: null}) : supabase
       .from("visits")
