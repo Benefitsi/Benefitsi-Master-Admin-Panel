@@ -1,0 +1,565 @@
+{
+  "owner_all": {
+    "status": "ok",
+    "periods": [
+      {
+        "ends_on": "2028-10-23",
+        "currency": "EUR",
+        "period_id": "645ee676-5111-409d-8d7c-72317be9d533",
+        "starts_on": "2027-10-23",
+        "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+        "source_kind": "renewal",
+        "payment_state": "unpaid",
+        "net_total_cents": 4980,
+        "invoice_documents": [
+          {
+            "format": "pdf_original",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "645ee676-5111-409d-8d7c-72317be9d533",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-c972b649-d671-40cd-99bb-69032f411039",
+            "attached_at": "2026-10-23T22:57:18.774252+00:00",
+            "document_id": "c972b649-d671-40cd-99bb-69032f411039",
+            "environment": "test",
+            "invoice_ref": "in_archive_645ee676-5111-409d-8d7c-72317be9d533",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/c972b649-d671-40cd-99bb-69032f411039.pdf",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-c972b649-d671-40cd-99bb-69032f411039"
+          }
+        ]
+      },
+      {
+        "ends_on": "2027-10-23",
+        "currency": "EUR",
+        "period_id": "62218dff-fb85-435e-a209-5321fb58025b",
+        "starts_on": "2026-10-23",
+        "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+        "source_kind": "renewal",
+        "payment_state": "unpaid",
+        "net_total_cents": 4980,
+        "invoice_documents": [
+          {
+            "format": "pdf_original",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "62218dff-fb85-435e-a209-5321fb58025b",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-ca852afb-54e0-4136-b998-5b97ef2cd02b",
+            "attached_at": "2026-10-23T22:57:18.737614+00:00",
+            "document_id": "ca852afb-54e0-4136-b998-5b97ef2cd02b",
+            "environment": "test",
+            "invoice_ref": "in_archive_62218dff-fb85-435e-a209-5321fb58025b",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/ca852afb-54e0-4136-b998-5b97ef2cd02b.pdf",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-ca852afb-54e0-4136-b998-5b97ef2cd02b"
+          }
+        ]
+      },
+      {
+        "ends_on": "2026-10-23",
+        "currency": "EUR",
+        "period_id": "8ce7bc13-098a-48bc-9618-cbd65eb4c5b8",
+        "starts_on": "2025-10-23",
+        "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+        "source_kind": "renewal",
+        "payment_state": "unpaid",
+        "net_total_cents": 4980,
+        "invoice_documents": [
+          {
+            "format": "pdf_original",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "8ce7bc13-098a-48bc-9618-cbd65eb4c5b8",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-22d25ca1-ca68-4431-a049-2f681df77dfa",
+            "attached_at": "2026-10-23T22:57:18.698169+00:00",
+            "document_id": "22d25ca1-ca68-4431-a049-2f681df77dfa",
+            "environment": "test",
+            "invoice_ref": "in_archive_8ce7bc13-098a-48bc-9618-cbd65eb4c5b8",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/22d25ca1-ca68-4431-a049-2f681df77dfa.pdf",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-22d25ca1-ca68-4431-a049-2f681df77dfa"
+          }
+        ]
+      },
+      {
+        "ends_on": "2025-10-23",
+        "currency": "EUR",
+        "period_id": "d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+        "starts_on": "2024-10-23",
+        "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+        "source_kind": "original",
+        "payment_state": "paid",
+        "net_total_cents": 4980,
+        "invoice_documents": [
+          {
+            "format": "pdf_original",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-0fee25b7-31e4-4102-981a-e5ab1f1a9e22",
+            "attached_at": "2026-10-23T22:57:18.629714+00:00",
+            "document_id": "0fee25b7-31e4-4102-981a-e5ab1f1a9e22",
+            "environment": "test",
+            "invoice_ref": "in_archive_d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/0fee25b7-31e4-4102-981a-e5ab1f1a9e22.pdf",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-0fee25b7-31e4-4102-981a-e5ab1f1a9e22"
+          },
+          {
+            "format": "xml_original",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-a6fd477e-8e50-4a9e-86e0-bdecc5ed7393",
+            "attached_at": "2026-10-23T22:57:18.660472+00:00",
+            "document_id": "a6fd477e-8e50-4a9e-86e0-bdecc5ed7393",
+            "environment": "test",
+            "invoice_ref": "in_archive_d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/a6fd477e-8e50-4a9e-86e0-bdecc5ed7393.xml",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-a6fd477e-8e50-4a9e-86e0-bdecc5ed7393"
+          }
+        ]
+      }
+    ],
+    "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+    "next_before_starts_on": null
+  },
+  "admin_all": {
+    "status": "ok",
+    "periods": [
+      {
+        "ends_on": "2028-10-23",
+        "currency": "EUR",
+        "period_id": "645ee676-5111-409d-8d7c-72317be9d533",
+        "starts_on": "2027-10-23",
+        "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+        "source_kind": "renewal",
+        "payment_state": "unpaid",
+        "net_total_cents": 4980,
+        "invoice_documents": [
+          {
+            "format": "pdf_original",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "645ee676-5111-409d-8d7c-72317be9d533",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-c972b649-d671-40cd-99bb-69032f411039",
+            "attached_at": "2026-10-23T22:57:18.774252+00:00",
+            "document_id": "c972b649-d671-40cd-99bb-69032f411039",
+            "environment": "test",
+            "invoice_ref": "in_archive_645ee676-5111-409d-8d7c-72317be9d533",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/c972b649-d671-40cd-99bb-69032f411039.pdf",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-c972b649-d671-40cd-99bb-69032f411039"
+          }
+        ]
+      },
+      {
+        "ends_on": "2027-10-23",
+        "currency": "EUR",
+        "period_id": "62218dff-fb85-435e-a209-5321fb58025b",
+        "starts_on": "2026-10-23",
+        "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+        "source_kind": "renewal",
+        "payment_state": "unpaid",
+        "net_total_cents": 4980,
+        "invoice_documents": [
+          {
+            "format": "pdf_original",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "62218dff-fb85-435e-a209-5321fb58025b",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-ca852afb-54e0-4136-b998-5b97ef2cd02b",
+            "attached_at": "2026-10-23T22:57:18.737614+00:00",
+            "document_id": "ca852afb-54e0-4136-b998-5b97ef2cd02b",
+            "environment": "test",
+            "invoice_ref": "in_archive_62218dff-fb85-435e-a209-5321fb58025b",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/ca852afb-54e0-4136-b998-5b97ef2cd02b.pdf",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-ca852afb-54e0-4136-b998-5b97ef2cd02b"
+          }
+        ]
+      },
+      {
+        "ends_on": "2026-10-23",
+        "currency": "EUR",
+        "period_id": "8ce7bc13-098a-48bc-9618-cbd65eb4c5b8",
+        "starts_on": "2025-10-23",
+        "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+        "source_kind": "renewal",
+        "payment_state": "unpaid",
+        "net_total_cents": 4980,
+        "invoice_documents": [
+          {
+            "format": "pdf_original",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "8ce7bc13-098a-48bc-9618-cbd65eb4c5b8",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-22d25ca1-ca68-4431-a049-2f681df77dfa",
+            "attached_at": "2026-10-23T22:57:18.698169+00:00",
+            "document_id": "22d25ca1-ca68-4431-a049-2f681df77dfa",
+            "environment": "test",
+            "invoice_ref": "in_archive_8ce7bc13-098a-48bc-9618-cbd65eb4c5b8",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/22d25ca1-ca68-4431-a049-2f681df77dfa.pdf",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-22d25ca1-ca68-4431-a049-2f681df77dfa"
+          }
+        ]
+      },
+      {
+        "ends_on": "2025-10-23",
+        "currency": "EUR",
+        "period_id": "d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+        "starts_on": "2024-10-23",
+        "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+        "source_kind": "original",
+        "payment_state": "paid",
+        "net_total_cents": 4980,
+        "invoice_documents": [
+          {
+            "format": "pdf_original",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-0fee25b7-31e4-4102-981a-e5ab1f1a9e22",
+            "attached_at": "2026-10-23T22:57:18.629714+00:00",
+            "document_id": "0fee25b7-31e4-4102-981a-e5ab1f1a9e22",
+            "environment": "test",
+            "invoice_ref": "in_archive_d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/0fee25b7-31e4-4102-981a-e5ab1f1a9e22.pdf",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-0fee25b7-31e4-4102-981a-e5ab1f1a9e22"
+          },
+          {
+            "format": "xml_original",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-a6fd477e-8e50-4a9e-86e0-bdecc5ed7393",
+            "attached_at": "2026-10-23T22:57:18.660472+00:00",
+            "document_id": "a6fd477e-8e50-4a9e-86e0-bdecc5ed7393",
+            "environment": "test",
+            "invoice_ref": "in_archive_d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/a6fd477e-8e50-4a9e-86e0-bdecc5ed7393.xml",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-a6fd477e-8e50-4a9e-86e0-bdecc5ed7393"
+          }
+        ]
+      }
+    ],
+    "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+    "next_before_starts_on": null
+  },
+  "limit_one_pages": [
+    {
+      "status": "ok",
+      "periods": [
+        {
+          "ends_on": "2028-10-23",
+          "currency": "EUR",
+          "period_id": "645ee676-5111-409d-8d7c-72317be9d533",
+          "starts_on": "2027-10-23",
+          "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+          "source_kind": "renewal",
+          "payment_state": "unpaid",
+          "net_total_cents": 4980,
+          "invoice_documents": [
+            {
+              "format": "pdf_original",
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "bucket_id": "corporate-period-documents",
+              "period_id": "645ee676-5111-409d-8d7c-72317be9d533",
+              "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+              "size_bytes": 1234,
+              "source_ref": "synthetic-archive-original-c972b649-d671-40cd-99bb-69032f411039",
+              "attached_at": "2026-10-23T22:57:18.774252+00:00",
+              "document_id": "c972b649-d671-40cd-99bb-69032f411039",
+              "environment": "test",
+              "invoice_ref": "in_archive_645ee676-5111-409d-8d7c-72317be9d533",
+              "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/c972b649-d671-40cd-99bb-69032f411039.pdf",
+              "provider_account_ref": "acct_synthetic",
+              "validation_evidence_ref": "synthetic-opaque-original-c972b649-d671-40cd-99bb-69032f411039"
+            }
+          ]
+        }
+      ],
+      "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+      "next_before_starts_on": "2027-10-23"
+    },
+    {
+      "status": "ok",
+      "periods": [
+        {
+          "ends_on": "2027-10-23",
+          "currency": "EUR",
+          "period_id": "62218dff-fb85-435e-a209-5321fb58025b",
+          "starts_on": "2026-10-23",
+          "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+          "source_kind": "renewal",
+          "payment_state": "unpaid",
+          "net_total_cents": 4980,
+          "invoice_documents": [
+            {
+              "format": "pdf_original",
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "bucket_id": "corporate-period-documents",
+              "period_id": "62218dff-fb85-435e-a209-5321fb58025b",
+              "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+              "size_bytes": 1234,
+              "source_ref": "synthetic-archive-original-ca852afb-54e0-4136-b998-5b97ef2cd02b",
+              "attached_at": "2026-10-23T22:57:18.737614+00:00",
+              "document_id": "ca852afb-54e0-4136-b998-5b97ef2cd02b",
+              "environment": "test",
+              "invoice_ref": "in_archive_62218dff-fb85-435e-a209-5321fb58025b",
+              "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/ca852afb-54e0-4136-b998-5b97ef2cd02b.pdf",
+              "provider_account_ref": "acct_synthetic",
+              "validation_evidence_ref": "synthetic-opaque-original-ca852afb-54e0-4136-b998-5b97ef2cd02b"
+            }
+          ]
+        }
+      ],
+      "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+      "next_before_starts_on": "2026-10-23"
+    },
+    {
+      "status": "ok",
+      "periods": [
+        {
+          "ends_on": "2026-10-23",
+          "currency": "EUR",
+          "period_id": "8ce7bc13-098a-48bc-9618-cbd65eb4c5b8",
+          "starts_on": "2025-10-23",
+          "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+          "source_kind": "renewal",
+          "payment_state": "unpaid",
+          "net_total_cents": 4980,
+          "invoice_documents": [
+            {
+              "format": "pdf_original",
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "bucket_id": "corporate-period-documents",
+              "period_id": "8ce7bc13-098a-48bc-9618-cbd65eb4c5b8",
+              "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+              "size_bytes": 1234,
+              "source_ref": "synthetic-archive-original-22d25ca1-ca68-4431-a049-2f681df77dfa",
+              "attached_at": "2026-10-23T22:57:18.698169+00:00",
+              "document_id": "22d25ca1-ca68-4431-a049-2f681df77dfa",
+              "environment": "test",
+              "invoice_ref": "in_archive_8ce7bc13-098a-48bc-9618-cbd65eb4c5b8",
+              "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/22d25ca1-ca68-4431-a049-2f681df77dfa.pdf",
+              "provider_account_ref": "acct_synthetic",
+              "validation_evidence_ref": "synthetic-opaque-original-22d25ca1-ca68-4431-a049-2f681df77dfa"
+            }
+          ]
+        }
+      ],
+      "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+      "next_before_starts_on": "2025-10-23"
+    },
+    {
+      "status": "ok",
+      "periods": [
+        {
+          "ends_on": "2025-10-23",
+          "currency": "EUR",
+          "period_id": "d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+          "starts_on": "2024-10-23",
+          "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+          "source_kind": "original",
+          "payment_state": "paid",
+          "net_total_cents": 4980,
+          "invoice_documents": [
+            {
+              "format": "pdf_original",
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "bucket_id": "corporate-period-documents",
+              "period_id": "d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+              "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+              "size_bytes": 1234,
+              "source_ref": "synthetic-archive-original-0fee25b7-31e4-4102-981a-e5ab1f1a9e22",
+              "attached_at": "2026-10-23T22:57:18.629714+00:00",
+              "document_id": "0fee25b7-31e4-4102-981a-e5ab1f1a9e22",
+              "environment": "test",
+              "invoice_ref": "in_archive_d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+              "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/0fee25b7-31e4-4102-981a-e5ab1f1a9e22.pdf",
+              "provider_account_ref": "acct_synthetic",
+              "validation_evidence_ref": "synthetic-opaque-original-0fee25b7-31e4-4102-981a-e5ab1f1a9e22"
+            },
+            {
+              "format": "xml_original",
+              "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "bucket_id": "corporate-period-documents",
+              "period_id": "d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+              "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+              "size_bytes": 1234,
+              "source_ref": "synthetic-archive-original-a6fd477e-8e50-4a9e-86e0-bdecc5ed7393",
+              "attached_at": "2026-10-23T22:57:18.660472+00:00",
+              "document_id": "a6fd477e-8e50-4a9e-86e0-bdecc5ed7393",
+              "environment": "test",
+              "invoice_ref": "in_archive_d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+              "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/a6fd477e-8e50-4a9e-86e0-bdecc5ed7393.xml",
+              "provider_account_ref": "acct_synthetic",
+              "validation_evidence_ref": "synthetic-opaque-original-a6fd477e-8e50-4a9e-86e0-bdecc5ed7393"
+            }
+          ]
+        }
+      ],
+      "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+      "next_before_starts_on": null
+    }
+  ],
+  "after_termination": {
+    "status": "ok",
+    "periods": [
+      {
+        "ends_on": "2028-10-23",
+        "currency": "EUR",
+        "period_id": "645ee676-5111-409d-8d7c-72317be9d533",
+        "starts_on": "2027-10-23",
+        "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+        "source_kind": "renewal",
+        "payment_state": "unpaid",
+        "net_total_cents": 4980,
+        "invoice_documents": [
+          {
+            "format": "pdf_original",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "645ee676-5111-409d-8d7c-72317be9d533",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-c972b649-d671-40cd-99bb-69032f411039",
+            "attached_at": "2026-10-23T22:57:18.774252+00:00",
+            "document_id": "c972b649-d671-40cd-99bb-69032f411039",
+            "environment": "test",
+            "invoice_ref": "in_archive_645ee676-5111-409d-8d7c-72317be9d533",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/c972b649-d671-40cd-99bb-69032f411039.pdf",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-c972b649-d671-40cd-99bb-69032f411039"
+          }
+        ]
+      },
+      {
+        "ends_on": "2027-10-23",
+        "currency": "EUR",
+        "period_id": "62218dff-fb85-435e-a209-5321fb58025b",
+        "starts_on": "2026-10-23",
+        "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+        "source_kind": "renewal",
+        "payment_state": "unpaid",
+        "net_total_cents": 4980,
+        "invoice_documents": [
+          {
+            "format": "pdf_original",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "62218dff-fb85-435e-a209-5321fb58025b",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-ca852afb-54e0-4136-b998-5b97ef2cd02b",
+            "attached_at": "2026-10-23T22:57:18.737614+00:00",
+            "document_id": "ca852afb-54e0-4136-b998-5b97ef2cd02b",
+            "environment": "test",
+            "invoice_ref": "in_archive_62218dff-fb85-435e-a209-5321fb58025b",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/ca852afb-54e0-4136-b998-5b97ef2cd02b.pdf",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-ca852afb-54e0-4136-b998-5b97ef2cd02b"
+          }
+        ]
+      },
+      {
+        "ends_on": "2026-10-23",
+        "currency": "EUR",
+        "period_id": "8ce7bc13-098a-48bc-9618-cbd65eb4c5b8",
+        "starts_on": "2025-10-23",
+        "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+        "source_kind": "renewal",
+        "payment_state": "unpaid",
+        "net_total_cents": 4980,
+        "invoice_documents": [
+          {
+            "format": "pdf_original",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "8ce7bc13-098a-48bc-9618-cbd65eb4c5b8",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-22d25ca1-ca68-4431-a049-2f681df77dfa",
+            "attached_at": "2026-10-23T22:57:18.698169+00:00",
+            "document_id": "22d25ca1-ca68-4431-a049-2f681df77dfa",
+            "environment": "test",
+            "invoice_ref": "in_archive_8ce7bc13-098a-48bc-9618-cbd65eb4c5b8",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/22d25ca1-ca68-4431-a049-2f681df77dfa.pdf",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-22d25ca1-ca68-4431-a049-2f681df77dfa"
+          }
+        ]
+      },
+      {
+        "ends_on": "2025-10-23",
+        "currency": "EUR",
+        "period_id": "d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+        "starts_on": "2024-10-23",
+        "contract_id": "1855cdcd-c612-4576-aba7-f1453809efab",
+        "source_kind": "original",
+        "payment_state": "paid",
+        "net_total_cents": 4980,
+        "invoice_documents": [
+          {
+            "format": "pdf_original",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-0fee25b7-31e4-4102-981a-e5ab1f1a9e22",
+            "attached_at": "2026-10-23T22:57:18.629714+00:00",
+            "document_id": "0fee25b7-31e4-4102-981a-e5ab1f1a9e22",
+            "environment": "test",
+            "invoice_ref": "in_archive_d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/0fee25b7-31e4-4102-981a-e5ab1f1a9e22.pdf",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-0fee25b7-31e4-4102-981a-e5ab1f1a9e22"
+          },
+          {
+            "format": "xml_original",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bucket_id": "corporate-period-documents",
+            "period_id": "d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+            "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+            "size_bytes": 1234,
+            "source_ref": "synthetic-archive-original-a6fd477e-8e50-4a9e-86e0-bdecc5ed7393",
+            "attached_at": "2026-10-23T22:57:18.660472+00:00",
+            "document_id": "a6fd477e-8e50-4a9e-86e0-bdecc5ed7393",
+            "environment": "test",
+            "invoice_ref": "in_archive_d58a5ce8-f492-4e30-ae28-937d6bb3b10f",
+            "storage_path": "e3b6c052-8683-45d8-bf1d-1edd29326add/a6fd477e-8e50-4a9e-86e0-bdecc5ed7393.xml",
+            "provider_account_ref": "acct_synthetic",
+            "validation_evidence_ref": "synthetic-opaque-original-a6fd477e-8e50-4a9e-86e0-bdecc5ed7393"
+          }
+        ]
+      }
+    ],
+    "company_id": "e3b6c052-8683-45d8-bf1d-1edd29326add",
+    "next_before_starts_on": null
+  }
+}

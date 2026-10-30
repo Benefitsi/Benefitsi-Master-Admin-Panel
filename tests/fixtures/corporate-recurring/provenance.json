@@ -1,0 +1,9 @@
+{
+  "source_commit": "5670d61d01fe5afd4a95928cf0e46a26ce6cf971",
+  "run_id": 40024645561,
+  "job_id": 120657642377,
+  "source_export": "corporate-recurring-contract.json",
+  "sha256": "ec207e684ce8cb71f694b29d2524c1846c9564af33ef8f1d0ad77ab0ad1ecfb7",
+  "provenance_sha256": "255e94db09c13f8f79df0d47aa2346dd69aac25498b065f73a7fba756740d004",
+  "scope": "Executed native PostgreSQL16.15 export; synthetic operator/contact/recipient data; not provider or hosted application evidence"
+}

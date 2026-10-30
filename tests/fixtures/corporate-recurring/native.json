@@ -1,0 +1,371 @@
+{
+  "before_payment": {
+    "seats": 25,
+    "ends_on": "2027-10-23",
+    "paid_at": null,
+    "currency": "EUR",
+    "period_id": "76fe0819-5d90-47b0-96a9-0e669339b039",
+    "starts_on": "2026-10-23",
+    "company_id": "b2b92521-202e-4605-8706-1c484e90ed23",
+    "updated_at": "2026-10-23T21:09:56.85794+00:00",
+    "contract_id": "a07da5e9-cd8d-4745-869a-797527c7098a",
+    "source_kind": "renewal",
+    "recipient_id": "a6bf4451-6e8d-46c9-b0b8-c98be9a2eb2f",
+    "access_status": "not_enabled",
+    "payment_state": "unpaid",
+    "capacity_seats": 25,
+    "employee_count": 1,
+    "recipient_hash": "70f73582817b621ad39a87877fa1af9fd50faafcf40f2bf802d681777b2ecb10",
+    "reserved_count": 0,
+    "available_seats": 24,
+    "net_total_cents": 49750,
+    "funding_confirmed": false,
+    "invoice_documents": [],
+    "unit_amount_cents": 1990,
+    "recipient_snapshot": {
+      "city": "Berlin",
+      "tax_id": null,
+      "country": "DE",
+      "confirmed": true,
+      "legal_name": "Example Company",
+      "postal_code": "10115",
+      "address_line1": "Synthetic Street 1",
+      "address_line2": null
+    },
+    "total_amount_cents": 49750
+  },
+  "paid": {
+    "terms": {
+      "de_text": "SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. ",
+      "en_text": "SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. ",
+      "profile_id": "23edcb34-62a4-4813-bf7b-727c20cf51aa",
+      "terms_hash": "b1ccc39149a4909a5b2b23fe5ae5160a4bb87f14f65d595fe47bdd1fa7580671",
+      "published_at": "2026-10-23T21:09:56.408574+00:00",
+      "terms_version": "synthetic-88967db9-9102-43b3-b267-eeb1ddad309e"
+    },
+    "status": "ok",
+    "version": "2026-10-23T21:09:56.857685+00:00",
+    "contract": {
+      "status": "recurring",
+      "version": "2026-10-23T21:09:56.857685+00:00",
+      "receipt_id": "3c22bc36-a13e-4ed2-bdc4-bea627a59737",
+      "terms_hash": "b1ccc39149a4909a5b2b23fe5ae5160a4bb87f14f65d595fe47bdd1fa7580671",
+      "accepted_at": "2026-10-23T21:09:56.454221+00:00",
+      "contract_id": "a07da5e9-cd8d-4745-869a-797527c7098a",
+      "renewal_rule": {
+        "quantity": "paid_capacity_at_boundary",
+        "timezone": "Europe/Berlin",
+        "tier_1_max": 24,
+        "cancellation": "last_included_day",
+        "tier_1_cents": 2490,
+        "tier_2_cents": 1990,
+        "interval_months": 12
+      },
+      "effective_end": null,
+      "terms_version": "synthetic-88967db9-9102-43b3-b267-eeb1ddad309e",
+      "review_required": false,
+      "cancellation_received_at": null
+    },
+    "readiness": {
+      "reason": null,
+      "environment": "test",
+      "checkout_enabled": true
+    },
+    "company_id": "b2b92521-202e-4605-8706-1c484e90ed23",
+    "offer_hash": "f755c9328803d661584a587f47049d40dbcdd8e743d53ec63c4c4ad9f260ef44",
+    "next_period": null,
+    "next_preview": {
+      "seats": 25,
+      "binding": false,
+      "ends_on": "2028-10-23",
+      "currency": "EUR",
+      "starts_on": "2027-10-23",
+      "billing_quote": {
+        "currency": "EUR",
+        "tax_mode": "explicit_exempt",
+        "tax_country": "DE",
+        "net_total_cents": 49750,
+        "tax_total_cents": 0,
+        "tax_basis_points": 0,
+        "gross_total_cents": 49750
+      },
+      "unit_amount_cents": 1990,
+      "total_amount_cents": 49750
+    },
+    "billing_quote": {
+      "currency": "EUR",
+      "tax_mode": "explicit_exempt",
+      "tax_country": "DE",
+      "net_total_cents": 49750,
+      "tax_total_cents": 0,
+      "tax_basis_points": 0,
+      "gross_total_cents": 49750
+    },
+    "payment_setup": {
+      "state": "ready",
+      "updated_at": "2026-10-23T21:09:56.838559+00:00",
+      "checkout_url": null,
+      "operation_id": "d4696506-cd29-43eb-877b-9325a087382b",
+      "setup_request_id": "e4eee775-4b52-4a38-a196-1a7266defad6",
+      "checkout_expires_at": "2026-10-23T22:09:56.754734+00:00"
+    },
+    "current_period": {
+      "seats": 25,
+      "ends_on": "2027-10-23",
+      "paid_at": "2026-10-23T20:09:57.098306+00:00",
+      "currency": "EUR",
+      "period_id": "76fe0819-5d90-47b0-96a9-0e669339b039",
+      "starts_on": "2026-10-23",
+      "company_id": "b2b92521-202e-4605-8706-1c484e90ed23",
+      "updated_at": "2026-10-23T21:09:57.107634+00:00",
+      "contract_id": "a07da5e9-cd8d-4745-869a-797527c7098a",
+      "source_kind": "renewal",
+      "recipient_id": "a6bf4451-6e8d-46c9-b0b8-c98be9a2eb2f",
+      "access_status": "active",
+      "payment_state": "paid",
+      "capacity_seats": 25,
+      "employee_count": 1,
+      "recipient_hash": "70f73582817b621ad39a87877fa1af9fd50faafcf40f2bf802d681777b2ecb10",
+      "reserved_count": 0,
+      "available_seats": 24,
+      "net_total_cents": 49750,
+      "funding_confirmed": true,
+      "invoice_documents": [
+        {
+          "format": "pdf_original",
+          "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "bucket_id": "corporate-period-documents",
+          "period_id": "76fe0819-5d90-47b0-96a9-0e669339b039",
+          "company_id": "b2b92521-202e-4605-8706-1c484e90ed23",
+          "size_bytes": 1234,
+          "source_ref": "synthetic-provider-original",
+          "attached_at": "2026-10-23T21:09:57.071211+00:00",
+          "document_id": "d5c7d75b-7d21-4520-a3e2-89d402ddb3c8",
+          "environment": "test",
+          "invoice_ref": "in_76fe0819-5d90-47b0-96a9-0e669339b039",
+          "storage_path": "b2b92521-202e-4605-8706-1c484e90ed23/d5c7d75b-7d21-4520-a3e2-89d402ddb3c8.pdf",
+          "provider_account_ref": "acct_synthetic",
+          "validation_evidence_ref": null
+        }
+      ],
+      "unit_amount_cents": 1990,
+      "recipient_snapshot": {
+        "city": "Berlin",
+        "tax_id": null,
+        "country": "DE",
+        "confirmed": true,
+        "legal_name": "Example Company",
+        "postal_code": "10115",
+        "address_line1": "Synthetic Street 1",
+        "address_line2": null
+      },
+      "total_amount_cents": 49750
+    },
+    "billing_recipient": {
+      "city": "Berlin",
+      "tax_id": null,
+      "country": "DE",
+      "confirmed": true,
+      "legal_name": "Example Company",
+      "postal_code": "10115",
+      "confirmed_at": "2026-10-23T21:09:56.435466+00:00",
+      "recipient_id": "a6bf4451-6e8d-46c9-b0b8-c98be9a2eb2f",
+      "address_line1": "Synthetic Street 1",
+      "address_line2": null,
+      "recipient_hash": "70f73582817b621ad39a87877fa1af9fd50faafcf40f2bf802d681777b2ecb10",
+      "recipient_version": 1
+    },
+    "receipt_documents": [
+      {
+        "kind": "acceptance_receipt",
+        "content": {
+          "offer": {
+            "renewal_rule": {
+              "quantity": "paid_capacity_at_boundary",
+              "timezone": "Europe/Berlin",
+              "tier_1_max": 24,
+              "cancellation": "last_included_day",
+              "tier_1_cents": 2490,
+              "tier_2_cents": 1990,
+              "interval_months": 12
+            },
+            "billing_quote": {
+              "currency": "EUR",
+              "tax_mode": "explicit_exempt",
+              "tax_country": "DE",
+              "net_total_cents": 59760,
+              "tax_total_cents": 0,
+              "tax_basis_points": 0,
+              "gross_total_cents": 59760
+            },
+            "capacity_seats": 24,
+            "annual_snapshot": {
+              "seats": 24,
+              "ends_on": "2027-10-23",
+              "currency": "EUR",
+              "tax_mode": "net_reference",
+              "starts_on": "2026-10-23",
+              "catalog_version": "2026-10-04.2",
+              "catalog_snapshot": {
+                "tiers": [
+                  {
+                    "max_seats": 24,
+                    "min_seats": 1,
+                    "unit_amount_cents": 2490
+                  },
+                  {
+                    "max_seats": 10000,
+                    "min_seats": 25,
+                    "unit_amount_cents": 1990
+                  }
+                ],
+                "status": "planning",
+                "version": "2026-10-04.2",
+                "currency": "EUR",
+                "tax_mode": "net_reference",
+                "max_seats": 10000,
+                "billing_interval": "year"
+              },
+              "source_request_id": "c744d4e7-b703-449f-9af4-a35f77a1af43",
+              "unit_amount_cents": 2490,
+              "total_amount_cents": 59760
+            },
+            "renewal_preview": {
+              "seats": 24,
+              "binding": false,
+              "ends_on": "2028-10-23",
+              "currency": "EUR",
+              "starts_on": "2027-10-23",
+              "billing_quote": {
+                "currency": "EUR",
+                "tax_mode": "explicit_exempt",
+                "tax_country": "DE",
+                "net_total_cents": 59760,
+                "tax_total_cents": 0,
+                "tax_basis_points": 0,
+                "gross_total_cents": 59760
+              },
+              "unit_amount_cents": 2490,
+              "total_amount_cents": 59760
+            },
+            "billing_recipient": {
+              "city": "Berlin",
+              "tax_id": null,
+              "country": "DE",
+              "confirmed": true,
+              "legal_name": "Example Company",
+              "postal_code": "10115",
+              "confirmed_at": "2026-10-23T21:09:56.435466+00:00",
+              "recipient_id": "a6bf4451-6e8d-46c9-b0b8-c98be9a2eb2f",
+              "address_line1": "Synthetic Street 1",
+              "address_line2": null,
+              "recipient_hash": "70f73582817b621ad39a87877fa1af9fd50faafcf40f2bf802d681777b2ecb10",
+              "recipient_version": 1
+            }
+          },
+          "terms": {
+            "de_text": "SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. SYNTHETIC DE TERMS ONLY. ",
+            "en_text": "SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. SYNTHETIC EN TERMS ONLY. ",
+            "profile_id": "23edcb34-62a4-4813-bf7b-727c20cf51aa",
+            "terms_hash": "b1ccc39149a4909a5b2b23fe5ae5160a4bb87f14f65d595fe47bdd1fa7580671",
+            "published_at": "2026-10-23T21:09:56.408574+00:00",
+            "terms_version": "synthetic-88967db9-9102-43b3-b267-eeb1ddad309e",
+            "approval_evidence_ref": "synthetic-approval"
+          },
+          "company_id": "b2b92521-202e-4605-8706-1c484e90ed23",
+          "offer_hash": "7f7f77759ae89c106d01961dd13e01e8d64d838b17c8f98b2645a3a2afbf925e",
+          "request_id": "a07da5e9-cd8d-4745-869a-797527c7098a",
+          "terms_hash": "b1ccc39149a4909a5b2b23fe5ae5160a4bb87f14f65d595fe47bdd1fa7580671",
+          "accepted_by": "a7c48364-1623-459e-a932-766830b0e311",
+          "b2b_confirmed": true,
+          "terms_version": "synthetic-88967db9-9102-43b3-b267-eeb1ddad309e",
+          "expected_version": "2026-10-23T21:09:56.435466+00:00",
+          "authority_confirmed": true
+        },
+        "created_at": "2026-10-23T21:09:56.454221+00:00",
+        "document_id": "3c22bc36-a13e-4ed2-bdc4-bea627a59737"
+      }
+    ],
+    "original_agreement": {
+      "city": "Annweiler",
+      "seats": 24,
+      "status": "enrolling",
+      "ends_on": "2026-10-23",
+      "branding": {
+        "logo_path": null,
+        "welcome_text": ""
+      },
+      "currency": "EUR",
+      "tax_mode": "net_reference",
+      "starts_on": "2025-10-23",
+      "company_id": "b2b92521-202e-4605-8706-1c484e90ed23",
+      "updated_at": "2026-10-23T21:09:56.605167+00:00",
+      "company_name": "Example Company",
+      "contact_name": "Example Contact",
+      "contact_email": "c744d4e7-b703-449f-9af4-a35f77a1af43@example.test",
+      "capacity_seats": 25,
+      "employee_count": 1,
+      "reserved_count": 0,
+      "annual_snapshot": {
+        "seats": 24,
+        "ends_on": "2027-10-23",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-23",
+        "catalog_version": "2026-10-04.2",
+        "catalog_snapshot": {
+          "tiers": [
+            {
+              "max_seats": 24,
+              "min_seats": 1,
+              "unit_amount_cents": 2490
+            },
+            {
+              "max_seats": 10000,
+              "min_seats": 25,
+              "unit_amount_cents": 1990
+            }
+          ],
+          "status": "planning",
+          "version": "2026-10-04.2",
+          "currency": "EUR",
+          "tax_mode": "net_reference",
+          "max_seats": 10000,
+          "billing_interval": "year"
+        },
+        "source_request_id": "c744d4e7-b703-449f-9af4-a35f77a1af43",
+        "unit_amount_cents": 2490,
+        "total_amount_cents": 59760
+      },
+      "available_seats": 24,
+      "catalog_version": "2026-10-04.2",
+      "premium_enabled": true,
+      "invoice_document": {
+        "bucket_id": "corporate-invoices",
+        "storage_path": "b2b92521-202e-4605-8706-1c484e90ed23/b8f2b0ee-dfb6-4eac-986f-92953d54677a.pdf",
+        "invoice_reference": "Invoice 42"
+      },
+      "invoice_reference": "Invoice 42",
+      "source_request_id": "c744d4e7-b703-449f-9af4-a35f77a1af43",
+      "unit_amount_cents": 2490,
+      "annual_accepted_at": "2026-10-23T21:09:56.362145+00:00",
+      "annual_accepted_by": "a7c48364-1623-459e-a932-766830b0e311",
+      "entitlement_status": "active",
+      "total_amount_cents": 59760,
+      "employee_admission_open": true,
+      "premium_payment_reference": "BANK-ORIGINAL"
+    }
+  },
+  "employee_premium": {
+    "active": true,
+    "user_id": "31a70efa-9a04-49cc-8f53-9724f9361a9f",
+    "branding": {
+      "logo_path": null,
+      "welcome_text": ""
+    },
+    "company_id": "b2b92521-202e-4605-8706-1c484e90ed23",
+    "valid_until": "2027-10-22T22:00:00+00:00",
+    "company_name": "Example Company",
+    "company_count": 1
+  }
+}

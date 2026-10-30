@@ -22,6 +22,7 @@ export const adminNavigation: readonly (AdminNavigationLink | AdminNavigationGro
     { label: "Partnerübersicht", href: "/partners", icon: "partner" },
     { label: "Akquise & Kontakte", href: "/partners/acquisition", icon: "partner" },
   ] },
+  { label: "Unternehmen", href: "/companies", icon: "partner" },
   { id: "cities", label: "Städte", icon: "cities", items: [
     { label: "Stadtportale", href: "/city-pages", icon: "cities" },
     { label: "Prüfung & Freigaben", href: "/city-operations", icon: "review" },

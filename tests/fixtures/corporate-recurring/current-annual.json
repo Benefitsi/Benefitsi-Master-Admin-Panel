@@ -1,0 +1,346 @@
+{
+  "before": {
+    "city": "Annweiler",
+    "seats": 2,
+    "status": "enrolling",
+    "ends_on": "2027-10-23",
+    "branding": {
+      "logo_path": null,
+      "welcome_text": ""
+    },
+    "currency": "EUR",
+    "tax_mode": "net_reference",
+    "starts_on": "2026-10-23",
+    "company_id": "84998e57-cec5-4c4e-ae4b-86a495bdbb6b",
+    "updated_at": "2026-10-23T22:58:12.773817+00:00",
+    "company_name": "Example Company",
+    "contact_name": "Example Contact",
+    "contact_email": "19cc0c58-f626-438f-958b-25522b69a358@example.test",
+    "capacity_seats": 2,
+    "current_period": null,
+    "employee_count": 0,
+    "reserved_count": 0,
+    "annual_snapshot": {
+      "seats": 2,
+      "ends_on": "2027-10-23",
+      "currency": "EUR",
+      "tax_mode": "net_reference",
+      "starts_on": "2026-10-23",
+      "catalog_version": "2026-10-04.2",
+      "catalog_snapshot": {
+        "tiers": [
+          {
+            "max_seats": 24,
+            "min_seats": 1,
+            "unit_amount_cents": 2490
+          },
+          {
+            "max_seats": 10000,
+            "min_seats": 25,
+            "unit_amount_cents": 1990
+          }
+        ],
+        "status": "planning",
+        "version": "2026-10-04.2",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "max_seats": 10000,
+        "billing_interval": "year"
+      },
+      "source_request_id": "19cc0c58-f626-438f-958b-25522b69a358",
+      "unit_amount_cents": 2490,
+      "total_amount_cents": 4980
+    },
+    "available_seats": 2,
+    "catalog_version": "2026-10-04.2",
+    "current_ends_on": "2027-10-23",
+    "premium_enabled": true,
+    "invoice_document": {
+      "bucket_id": "corporate-invoices",
+      "storage_path": "84998e57-cec5-4c4e-ae4b-86a495bdbb6b/8e10d29c-4c51-41d2-946a-e54458c832c9.pdf",
+      "invoice_reference": "Invoice 42"
+    },
+    "current_starts_on": "2026-10-23",
+    "invoice_reference": "Invoice 42",
+    "source_request_id": "19cc0c58-f626-438f-958b-25522b69a358",
+    "unit_amount_cents": 2490,
+    "annual_accepted_at": "2026-10-23T22:58:12.728719+00:00",
+    "annual_accepted_by": "e7a4bba7-c137-490c-9463-53b13da92a66",
+    "entitlement_status": "active",
+    "total_amount_cents": 4980,
+    "current_capacity_seats": 2,
+    "employee_admission_open": true,
+    "current_funding_confirmed": true,
+    "premium_payment_reference": "BANK-ORIGINAL"
+  },
+  "quoted": {
+    "status": "quoted",
+    "ends_on": "2027-10-23",
+    "currency": "EUR",
+    "period_id": null,
+    "starts_on": "2026-10-24",
+    "company_id": "84998e57-cec5-4c4e-ae4b-86a495bdbb6b",
+    "created_at": "2026-10-23T22:58:12.799863+00:00",
+    "updated_at": "2026-10-23T22:58:12.81242+00:00",
+    "accepted_at": null,
+    "accepted_by": null,
+    "activated_at": null,
+    "extension_id": "f9a2d225-3a54-4b1f-941c-fbc89c762a7f",
+    "requested_by": "e7a4bba7-c137-490c-9463-53b13da92a66",
+    "renewal_preview": {
+      "seats": 5,
+      "currency": "EUR",
+      "unit_amount_cents": 2490,
+      "total_amount_cents": 12450
+    },
+    "additional_seats": 3,
+    "invoice_document": null,
+    "net_amount_cents": 4200,
+    "accepted_snapshot": null,
+    "invoice_reference": "EXT-INVOICE-f9a2d225-3a54-4b1f-941c-fbc89c762a7f",
+    "payment_reference": ""
+  },
+  "accepted": {
+    "status": "accepted",
+    "ends_on": "2027-10-23",
+    "currency": "EUR",
+    "period_id": null,
+    "starts_on": "2026-10-24",
+    "company_id": "84998e57-cec5-4c4e-ae4b-86a495bdbb6b",
+    "created_at": "2026-10-23T22:58:12.799863+00:00",
+    "updated_at": "2026-10-23T22:58:12.849381+00:00",
+    "accepted_at": "2026-10-23T22:58:12.849381+00:00",
+    "accepted_by": "e7a4bba7-c137-490c-9463-53b13da92a66",
+    "activated_at": null,
+    "extension_id": "f9a2d225-3a54-4b1f-941c-fbc89c762a7f",
+    "requested_by": "e7a4bba7-c137-490c-9463-53b13da92a66",
+    "renewal_preview": {
+      "seats": 5,
+      "currency": "EUR",
+      "unit_amount_cents": 2490,
+      "total_amount_cents": 12450
+    },
+    "additional_seats": 3,
+    "invoice_document": null,
+    "net_amount_cents": 4200,
+    "accepted_snapshot": {
+      "ends_on": "2027-10-23",
+      "currency": "EUR",
+      "period_id": null,
+      "starts_on": "2026-10-24",
+      "company_id": "84998e57-cec5-4c4e-ae4b-86a495bdbb6b",
+      "extension_id": "f9a2d225-3a54-4b1f-941c-fbc89c762a7f",
+      "renewal_preview": {
+        "seats": 5,
+        "currency": "EUR",
+        "unit_amount_cents": 2490,
+        "total_amount_cents": 12450
+      },
+      "additional_seats": 3,
+      "net_amount_cents": 4200,
+      "invoice_reference": "EXT-INVOICE-f9a2d225-3a54-4b1f-941c-fbc89c762a7f"
+    },
+    "invoice_reference": "EXT-INVOICE-f9a2d225-3a54-4b1f-941c-fbc89c762a7f",
+    "payment_reference": ""
+  },
+  "activated": {
+    "status": "ok",
+    "agreement": {
+      "city": "Annweiler",
+      "seats": 2,
+      "status": "enrolling",
+      "ends_on": "2027-10-23",
+      "branding": {
+        "logo_path": null,
+        "welcome_text": ""
+      },
+      "currency": "EUR",
+      "tax_mode": "net_reference",
+      "starts_on": "2026-10-23",
+      "company_id": "84998e57-cec5-4c4e-ae4b-86a495bdbb6b",
+      "updated_at": "2026-10-23T22:58:12.923392+00:00",
+      "company_name": "Example Company",
+      "contact_name": "Example Contact",
+      "contact_email": "19cc0c58-f626-438f-958b-25522b69a358@example.test",
+      "capacity_seats": 5,
+      "current_period": null,
+      "employee_count": 0,
+      "reserved_count": 0,
+      "annual_snapshot": {
+        "seats": 2,
+        "ends_on": "2027-10-23",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "starts_on": "2026-10-23",
+        "catalog_version": "2026-10-04.2",
+        "catalog_snapshot": {
+          "tiers": [
+            {
+              "max_seats": 24,
+              "min_seats": 1,
+              "unit_amount_cents": 2490
+            },
+            {
+              "max_seats": 10000,
+              "min_seats": 25,
+              "unit_amount_cents": 1990
+            }
+          ],
+          "status": "planning",
+          "version": "2026-10-04.2",
+          "currency": "EUR",
+          "tax_mode": "net_reference",
+          "max_seats": 10000,
+          "billing_interval": "year"
+        },
+        "source_request_id": "19cc0c58-f626-438f-958b-25522b69a358",
+        "unit_amount_cents": 2490,
+        "total_amount_cents": 4980
+      },
+      "available_seats": 5,
+      "catalog_version": "2026-10-04.2",
+      "current_ends_on": "2027-10-23",
+      "premium_enabled": true,
+      "invoice_document": {
+        "bucket_id": "corporate-invoices",
+        "storage_path": "84998e57-cec5-4c4e-ae4b-86a495bdbb6b/8e10d29c-4c51-41d2-946a-e54458c832c9.pdf",
+        "invoice_reference": "Invoice 42"
+      },
+      "current_starts_on": "2026-10-23",
+      "invoice_reference": "Invoice 42",
+      "source_request_id": "19cc0c58-f626-438f-958b-25522b69a358",
+      "unit_amount_cents": 2490,
+      "annual_accepted_at": "2026-10-23T22:58:12.728719+00:00",
+      "annual_accepted_by": "e7a4bba7-c137-490c-9463-53b13da92a66",
+      "entitlement_status": "active",
+      "total_amount_cents": 4980,
+      "current_capacity_seats": 5,
+      "employee_admission_open": true,
+      "current_funding_confirmed": true,
+      "premium_payment_reference": "BANK-ORIGINAL"
+    },
+    "extensions": [
+      {
+        "status": "activated",
+        "ends_on": "2027-10-23",
+        "currency": "EUR",
+        "period_id": null,
+        "starts_on": "2026-10-24",
+        "company_id": "84998e57-cec5-4c4e-ae4b-86a495bdbb6b",
+        "created_at": "2026-10-23T22:58:12.799863+00:00",
+        "updated_at": "2026-10-23T22:58:12.923392+00:00",
+        "accepted_at": "2026-10-23T22:58:12.849381+00:00",
+        "accepted_by": "e7a4bba7-c137-490c-9463-53b13da92a66",
+        "activated_at": "2026-10-23T22:58:12.923392+00:00",
+        "extension_id": "f9a2d225-3a54-4b1f-941c-fbc89c762a7f",
+        "requested_by": "e7a4bba7-c137-490c-9463-53b13da92a66",
+        "renewal_preview": {
+          "seats": 5,
+          "currency": "EUR",
+          "unit_amount_cents": 2490,
+          "total_amount_cents": 12450
+        },
+        "additional_seats": 3,
+        "invoice_document": {
+          "bucket_id": "corporate-invoices",
+          "storage_path": "84998e57-cec5-4c4e-ae4b-86a495bdbb6b/219a789d-d536-49ad-a69a-1c9107310dab.pdf",
+          "invoice_reference": "EXT-INVOICE-f9a2d225-3a54-4b1f-941c-fbc89c762a7f"
+        },
+        "net_amount_cents": 4200,
+        "accepted_snapshot": {
+          "ends_on": "2027-10-23",
+          "currency": "EUR",
+          "period_id": null,
+          "starts_on": "2026-10-24",
+          "company_id": "84998e57-cec5-4c4e-ae4b-86a495bdbb6b",
+          "extension_id": "f9a2d225-3a54-4b1f-941c-fbc89c762a7f",
+          "renewal_preview": {
+            "seats": 5,
+            "currency": "EUR",
+            "unit_amount_cents": 2490,
+            "total_amount_cents": 12450
+          },
+          "additional_seats": 3,
+          "net_amount_cents": 4200,
+          "invoice_reference": "EXT-INVOICE-f9a2d225-3a54-4b1f-941c-fbc89c762a7f"
+        },
+        "invoice_reference": "EXT-INVOICE-f9a2d225-3a54-4b1f-941c-fbc89c762a7f",
+        "payment_reference": "BANK-EXT"
+      }
+    ]
+  },
+  "after": {
+    "city": "Annweiler",
+    "seats": 2,
+    "status": "enrolling",
+    "ends_on": "2027-10-23",
+    "branding": {
+      "logo_path": null,
+      "welcome_text": ""
+    },
+    "currency": "EUR",
+    "tax_mode": "net_reference",
+    "starts_on": "2026-10-23",
+    "company_id": "84998e57-cec5-4c4e-ae4b-86a495bdbb6b",
+    "updated_at": "2026-10-23T22:58:12.923392+00:00",
+    "company_name": "Example Company",
+    "contact_name": "Example Contact",
+    "contact_email": "19cc0c58-f626-438f-958b-25522b69a358@example.test",
+    "capacity_seats": 5,
+    "current_period": null,
+    "employee_count": 0,
+    "reserved_count": 0,
+    "annual_snapshot": {
+      "seats": 2,
+      "ends_on": "2027-10-23",
+      "currency": "EUR",
+      "tax_mode": "net_reference",
+      "starts_on": "2026-10-23",
+      "catalog_version": "2026-10-04.2",
+      "catalog_snapshot": {
+        "tiers": [
+          {
+            "max_seats": 24,
+            "min_seats": 1,
+            "unit_amount_cents": 2490
+          },
+          {
+            "max_seats": 10000,
+            "min_seats": 25,
+            "unit_amount_cents": 1990
+          }
+        ],
+        "status": "planning",
+        "version": "2026-10-04.2",
+        "currency": "EUR",
+        "tax_mode": "net_reference",
+        "max_seats": 10000,
+        "billing_interval": "year"
+      },
+      "source_request_id": "19cc0c58-f626-438f-958b-25522b69a358",
+      "unit_amount_cents": 2490,
+      "total_amount_cents": 4980
+    },
+    "available_seats": 5,
+    "catalog_version": "2026-10-04.2",
+    "current_ends_on": "2027-10-23",
+    "premium_enabled": true,
+    "invoice_document": {
+      "bucket_id": "corporate-invoices",
+      "storage_path": "84998e57-cec5-4c4e-ae4b-86a495bdbb6b/8e10d29c-4c51-41d2-946a-e54458c832c9.pdf",
+      "invoice_reference": "Invoice 42"
+    },
+    "current_starts_on": "2026-10-23",
+    "invoice_reference": "Invoice 42",
+    "source_request_id": "19cc0c58-f626-438f-958b-25522b69a358",
+    "unit_amount_cents": 2490,
+    "annual_accepted_at": "2026-10-23T22:58:12.728719+00:00",
+    "annual_accepted_by": "e7a4bba7-c137-490c-9463-53b13da92a66",
+    "entitlement_status": "active",
+    "total_amount_cents": 4980,
+    "current_capacity_seats": 5,
+    "employee_admission_open": true,
+    "current_funding_confirmed": true,
+    "premium_payment_reference": "BANK-ORIGINAL"
+  }
+}

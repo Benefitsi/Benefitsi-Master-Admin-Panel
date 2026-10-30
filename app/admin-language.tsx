@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react"
 
+import { corporateTranslations, corporateTemplates, translateCorporatePeriod } from "../lib/admin-i18n/corporate"
 import { overviewTranslations, overviewTemplates } from "../lib/admin-i18n/overview"
 import { partnerTranslations, partnerTemplates } from "../lib/admin-i18n/partner"
 import { compileTranslationTemplates, translateTemplate } from "../lib/admin-i18n/templates"
@@ -18,11 +19,11 @@ export type AdminLanguage = "en" | "de"
 const STORAGE_KEY = "benefitsi-admin-language"
 
 const reviewedEnglishToGerman = new Map<string, string>()
-for (const [en, de] of [...overviewTranslations, ...partnerTranslations]) {
+for (const [en, de] of [...overviewTranslations, ...corporateTranslations, ...partnerTranslations]) {
   if (!reviewedEnglishToGerman.has(en)) reviewedEnglishToGerman.set(en, de)
 }
-const reviewedGermanToEnglish = new Map([...partnerTranslations, ...overviewTranslations].map(([en, de]) => [de, en]))
-const reviewedTemplates = compileTranslationTemplates([...overviewTemplates, ...partnerTemplates])
+const reviewedGermanToEnglish = new Map([...partnerTranslations, ...overviewTranslations, ...corporateTranslations].map(([en, de]) => [de, en]))
+const reviewedTemplates = compileTranslationTemplates([...overviewTemplates, ...corporateTemplates, ...partnerTemplates])
 
 const translations = [
   ["Partner management", "Partnerverwaltung"],
@@ -1010,6 +1011,8 @@ export function translateValue(value: string, language: AdminLanguage) {
   const trailing = value.match(/\s*$/)?.[0] ?? ""
   const core = value.slice(leading.length, value.length - trailing.length)
   const normalizedCore = core.replace(/\s+/g, " ")
+  const corporatePeriod = translateCorporatePeriod(core, language)
+  if (corporatePeriod !== undefined) return `${leading}${corporatePeriod}${trailing}`
   const reviewedDictionary = language === "de" ? reviewedEnglishToGerman : reviewedGermanToEnglish
   const reviewed = reviewedDictionary.get(normalizedCore)
   if (reviewed) return `${leading}${reviewed}${trailing}`

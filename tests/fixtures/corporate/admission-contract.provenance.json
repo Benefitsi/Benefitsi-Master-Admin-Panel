@@ -1,0 +1,16 @@
+{
+  "fixture": "admission-contract.json",
+  "sha256": "1344d03d74a52e97c8996950fa21fcac38cf3e27d2a1a197e101420f6a3d90f1",
+  "source_repository": "Benefitsi/benefitsi-database",
+  "source_commit": "ac2b176a7129ea971f622f1a44c8c092f7e45a82",
+  "tested_merge_commit": "b5f61f6c3952a8fa7462672e1f03856d6d8740e3",
+  "run_id": "39983356208",
+  "job_id": "120516093772",
+  "native_tests_passed": 95,
+  "artifact_id": "12514666178",
+  "artifact_name": "corporate-company-contract",
+  "artifact_zip_sha256": "9e0d14b55555fe27aebd5e247ba49ca633bd4dd21cac2c0c1517db6ca106f6fa",
+  "source_export": "work/corporate-admission-contract.json",
+  "run_url": "https://github.com/Benefitsi/benefitsi-database/actions/runs/39983356208",
+  "data_scope": "Synthetic native SQL RPC output; no production records."
+}

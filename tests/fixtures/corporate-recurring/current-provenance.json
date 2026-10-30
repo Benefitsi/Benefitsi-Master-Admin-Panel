@@ -1,0 +1,31 @@
+{
+  "source_commit": "06d1fbab299ed319d88fb33240ab11cf47518192",
+  "run_id": 40036788118,
+  "job_id": 120698134495,
+  "artifact_id": 12537531845,
+  "native_tests_passed": 147,
+  "provenance_sha256": "0b2bf67f3b69fbc438509557bcba496d33f5580e1a829280b79f1176bf9a5c8e",
+  "exports": {
+    "current.json": {
+      "source_export": "corporate-recurring-contract.json",
+      "sha256": "836d22dd3db25167115728bc93825b8b5bd5a32f84c916286b74c1788a27dde0"
+    },
+    "invoice-periods.json": {
+      "source_export": "corporate-invoice-period-index-contract.json",
+      "sha256": "f14077691becead79e6c3e200f403b1bf41b266e93af98a7e996fbfc78e524b1"
+    },
+    "operations.json": {
+      "source_export": "corporate-admin-operations-contract.json",
+      "sha256": "cd9ef63322d1aee78062f335432964d49e527f7b22c1cf55ce59d9c30c60f32e"
+    },
+    "current-premium.json": {
+      "source_export": "corporate-premium-contract.json",
+      "sha256": "bf257c7fc7c6f5819fae837ff9a69c28eb37eeae163a9cc3e2047d0f9ac76e72"
+    },
+    "current-annual.json": {
+      "source_export": "corporate-annual-contract.json",
+      "sha256": "e8762c78644e511e498c7e1a22f1f1e20e63ec17ef12efbc551f8a9d648a4264"
+    }
+  },
+  "scope": "Actual executed native synthetic PostgreSQL exports. No hosted/provider/browser/device evidence. Historical native.json and provenance.json remain Task2 source5670d61; not relabeled."
+}

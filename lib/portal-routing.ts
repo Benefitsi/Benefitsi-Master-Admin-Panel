@@ -17,6 +17,10 @@ const publicPaths = new Set([
 // New endpoints are admin-only until explicitly reviewed here.
 const machinePaths = new Set([
   '/api/seo/collect',
+  // Exact Corporate endpoints: owner bearer + proxy secret, worker bearer, or Stripe signature.
+  '/api/corporate/billing/setup', '/api/corporate/billing/status',
+  '/api/corporate/billing/recovery', '/api/corporate/billing/worker',
+  '/api/corporate/billing/webhook',
   '/api/automation/tick', '/api/automation/worker',
   '/api/internal/knowledge/sync/start', '/api/internal/knowledge/sync/batch',
   '/api/internal/knowledge/sync/complete', '/api/internal/knowledge/sync/fail',

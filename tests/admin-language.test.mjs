@@ -7,6 +7,18 @@ import {
   translateValue,
 } from "../app/admin-language.tsx"
 
+test("keeps the shared unknown-status fallback canonical across language switches", () => {
+  assert.equal(translateValue("Status unbekannt", "en"), "Status unknown")
+  assert.equal(translateValue("Status unknown", "de"), "Status unbekannt")
+  assert.equal(isTranslationVariant("Status unknown", "Status unbekannt"), true)
+
+  let status = "Status unbekannt"
+  for (const language of ["en", "de", "en", "de"]) {
+    status = translateValue(status, language)
+    assert.equal(status, language === "en" ? "Status unknown" : "Status unbekannt")
+  }
+})
+
 test("reviewed partner editor copy translates in both directions and stays stable in the target language", () => {
   for (const [en, de] of partnerTranslations) {
     assert.equal(translateValue(en, "de"), de, en)
