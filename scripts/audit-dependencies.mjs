@@ -58,6 +58,7 @@ const lines = [
   `Dependency audit: ${result.ok ? "PASS" : "BLOCKED"}`,
   rawCounts,
   result.reason,
+  result.accepted?.length ? `Accepted development-only advisory packages (${result.accepted.length}): ${result.accepted.join(", ")}. See docs/security/minimatch-dev-advisory-20261031.md.` : "No accepted development-only advisory applies.",
   result.mitigated.length ? `Source-mitigated packages (${result.mitigated.length}): ${result.mitigated.join(", ")}. The raw findings remain in the uploaded artifact.` : "No advisory mitigation applied.",
   "Full unchanged npm audit output: npm-audit-raw.json (dependency-audit artifact).",
 ]
