@@ -112,3 +112,76 @@ test("unavailable or malformed scanner results fail closed", () => {
     assert.equal(evaluate(data).ok, false)
   }
 })
+
+const minimatchAdvisory = {
+  source: 1244012, name: "minimatch", dependency: "minimatch",
+  title: "minimatch has potential denial of service via globparts amplification",
+  url: "https://github.com/advisories/GHSA-g3hv-75wg-m249", severity: "moderate", cwe: ["CWE-405"],
+  cvss: { score: 0, vectorString: null }, range: "<11.0.1",
+}
+function withMinimatch(data, { withBraces = true } = {}) {
+  if (!withBraces) {
+    data.audit.vulnerabilities = {}
+    Object.assign(data.audit.metadata.vulnerabilities, { high: 0, total: 0 })
+  }
+  const entries = {
+    minimatch: { via: [structuredClone(minimatchAdvisory)], nodes: ["node_modules/minimatch", "node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch"] },
+    "@eslint/config-array": { via: ["minimatch"], nodes: ["node_modules/@eslint/config-array"] },
+    eslint: { via: ["@eslint/config-array", "minimatch"], nodes: ["node_modules/eslint"] },
+  }
+  for (const [name, entry] of Object.entries(entries)) {
+    data.audit.vulnerabilities[name] = { name, severity: "moderate", ...entry }
+    for (const node of entry.nodes) data.lock.packages[node] = { version: "1.0.0", dev: true }
+  }
+  data.audit.metadata.vulnerabilities.moderate += 3
+  data.audit.metadata.vulnerabilities.total += 3
+  return data
+}
+
+test("the accepted development-only minimatch advisory passes alone and next to the braces chain", () => {
+  const alone = evaluate(withMinimatch(fixture(), { withBraces: false }))
+  assert.equal(alone.ok, true, alone.reason)
+  assert.deepEqual(alone.accepted, ["@eslint/config-array", "eslint", "minimatch"])
+  assert.deepEqual(alone.mitigated, [])
+
+  const both = evaluate(withMinimatch(fixture()))
+  assert.equal(both.ok, true, both.reason)
+  assert.equal(both.mitigated.length, 5)
+  assert.equal(both.accepted.length, 3)
+})
+
+test("the accepted minimatch advisory fails closed on production use or changed metadata", () => {
+  for (const change of [
+    data => { data.lock.packages["node_modules/minimatch"].dev = false },
+    data => { delete data.lock.packages["node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch"].dev },
+    data => { data.lock.packages["node_modules/eslint"].dev = false },
+    data => { data.audit.vulnerabilities.minimatch.via[0].url = "https://github.com/advisories/GHSA-other" },
+    data => { data.audit.vulnerabilities.minimatch.via[0].range = "*" },
+    data => { data.audit.vulnerabilities.minimatch.via[0].severity = "high" },
+    data => {
+      data.audit.vulnerabilities.minimatch.severity = "high"
+      data.audit.metadata.vulnerabilities.moderate -= 1
+      data.audit.metadata.vulnerabilities.high += 1
+    },
+    data => { data.audit.vulnerabilities.minimatch.via.push({ ...minimatchAdvisory, url: "https://github.com/advisories/GHSA-new" }) },
+    data => { data.audit.vulnerabilities.eslint.via.push("not-in-audit") },
+    data => { data.audit.vulnerabilities.eslint.via = [{ ...minimatchAdvisory }] },
+    data => { data.audit.vulnerabilities.eslint.nodes = [] },
+  ]) {
+    for (const withBraces of [false, true]) {
+      const data = withMinimatch(fixture(), { withBraces }); change(data)
+      assert.equal(evaluate(data).ok, false)
+    }
+  }
+})
+
+test("a moderate minimatch finding on a lint package that shares a name with the braces chain is accepted", () => {
+  const data = withMinimatch(fixture(), { withBraces: false })
+  data.audit.vulnerabilities["eslint-config-next"] = { name: "eslint-config-next", severity: "moderate", via: ["eslint"], nodes: ["node_modules/eslint-config-next"] }
+  data.lock.packages["node_modules/eslint-config-next"].dev = true
+  data.audit.metadata.vulnerabilities.moderate += 1
+  data.audit.metadata.vulnerabilities.total += 1
+  const result = evaluate(data)
+  assert.equal(result.ok, true, result.reason)
+  assert.equal(result.accepted.includes("eslint-config-next"), true)
+})
