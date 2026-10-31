@@ -10,7 +10,7 @@ export function isRetiredStreakDeal(value: unknown): boolean {
 
 /** Reconcile the retired stock copy without changing event or chart series. */
 export function reconcileRetiredStreakCopy(value: string): string {
-  return value.replace(/Zeitbonus,?\s*Streaks?\s*&\s*Aktionen/gi, "Zeitbonus & Aktionen")
+  return value.replace(/Zeitbonus,?\s*Streaks?\s*&\s*Aktionen/gi, "Schnell zurück & Aktionen")
 }
 export function reconcileMicrositeElementText(value: Record<string, string>): Record<string, string> {
   return Object.fromEntries(Object.entries(value)
