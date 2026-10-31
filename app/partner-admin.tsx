@@ -4533,7 +4533,7 @@ function DealsPanel({
   }
   function orderControls(deal: Deal) {
     const index = displayDeals.findIndex(row => row.id === deal.id), pinned = isActiveDisplayDrop(deal, new Date(asOf))
-    const name = formatBenefitTitle(deal, "de")
+    const name = formatBenefitTitle(deal, "de", "partner")
     return <div className="mb-2 flex items-center justify-between gap-2 text-xs text-zinc-500"><span>{pinned ? "Aktiver Deal Drop · bleibt oben" : "↕ Zum Verschieben ziehen"}</span><div className="flex gap-1"><button type="button" aria-label={`${name} nach oben verschieben`} className="min-h-9 min-w-9 rounded-lg border border-zinc-200 bg-white disabled:opacity-30" disabled={orderPending || pinned || index <= 0 || isActiveDisplayDrop(displayDeals[index - 1], new Date(asOf))} onClick={() => persistDealOrder(deal.id || "", displayDeals[index - 1]?.id || "")}>↑</button><button type="button" aria-label={`${name} nach unten verschieben`} className="min-h-9 min-w-9 rounded-lg border border-zinc-200 bg-white disabled:opacity-30" disabled={orderPending || pinned || index >= displayDeals.length - 1} onClick={() => persistDealOrder(deal.id || "", displayDeals[index + 1]?.id || "")}>↓</button></div></div>
   }
   const dragProps = (deal: Deal) => ({
@@ -6125,7 +6125,7 @@ function formatDealPublicTitle({
     reward_item: rewardItem,
     benefit_count: benefitCount,
     benefit_category: benefitCategory,
-  }, "de")
+  }, "de", "partner")
 }
 
 function normalizeRewardItem(value: string | null | undefined) {
@@ -13858,7 +13858,7 @@ function dealCardTypeLabel(deal: Deal) {
     }
   }
 
-  return benefitTaxonomyLabel(deal, "de")
+  return benefitTaxonomyLabel(deal, "de", "partner")
 }
 
 function metadataObject(value: unknown): Record<string, unknown> {

@@ -16,7 +16,7 @@ import { dealTypeOptions } from "../lib/reward-config.ts"
  test("editor options exclude retired streak configurations", () => { assert.ok(!dealTypeOptions.some(o => o.value === "streak")) })
  test("saved microsite overrides are reconciled without altering event series copy", () => {
  const config = resolveMicrositeConfig({ elementText: { "deals.benefit.1.text": "Zeitbonus, Streaks & Aktionen", "content.ecosystem.streaks.title": "Streaks aufbauen", "content.events.text": "Eventserien entdecken" } }, { name: "Testbetrieb" })
- assert.equal(config.elementText["deals.benefit.1.text"], "Zeitbonus & Aktionen")
+ assert.equal(config.elementText["deals.benefit.1.text"], "Schnell zurück & Aktionen")
  assert.equal(config.elementText["content.ecosystem.streaks.title"], undefined)
  assert.equal(config.elementText["content.events.text"], "Eventserien entdecken")
 })

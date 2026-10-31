@@ -384,7 +384,7 @@ export async function readCrmDeals(client: SupabaseClient, partnerId: string): P
     };
     if ((d.valid_from === null || Date.parse(d.valid_from as string) <= now) && (d.valid_until === null || Date.parse(d.valid_until as string) > now)) deals.push({
       id: d.id,
-      title: formatBenefitTitle(d as BenefitTaxonomyInput)
+      title: formatBenefitTitle(d as BenefitTaxonomyInput, 'de', 'partner')
     });
   }
   return {

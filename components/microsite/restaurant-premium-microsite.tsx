@@ -1684,7 +1684,7 @@ function DealsSection({
       return {
         id: `welcome-${deal.id || index}`,
         stamp: Math.min(stampCount, micrositeWelcomeStampCount(deal)),
-        eyebrow: "Willkommensbonus",
+        eyebrow: micrositeDealTypeLabel(deal, config.language),
         titleId: "stamps.welcomeBonus.title",
         titleFallback: title,
         textId: "stamps.welcomeBonus.text",
@@ -1936,7 +1936,7 @@ function DealsSection({
                         id={card.id.startsWith("welcome-") ? "stamps.welcomeBonus.icon" : `stamps.reward.${card.stamp}.icon`}
                         name={card.iconName}
                         config={config}
-                        label={card.id.startsWith("welcome-") ? "Willkommensbonus Icon" : `${card.eyebrow} Icon`}
+                        label={`${card.eyebrow} Icon`}
                         className={`premium-stamp-reward-icon grid size-12 shrink-0 place-items-center rounded-xl border shadow-sm ${
                           card.tone === "emerald"
                             ? "premium-stamp-welcome-icon border-emerald-200 bg-emerald-50 text-emerald-600"

@@ -24,6 +24,29 @@ type RewardFormat = "two_for_one" | "discount" | "free_item" | "bonus_stamp" | n
 type Trigger = "welcome" | "time_bonus" | "comeback" | "birthday" | "streak" | "challenge" | null
 type CampaignType = "happy_hour" | "deal_drop" | null
 
+/**
+ * "public" is what customers read on city pages, microsites and in the app
+ * (Brand Guide 2.7: Erster Besuch, Komm zurück, Schnell zurück, Gratis, Rabatt).
+ * "partner" keeps the partner-portal wording.
+ */
+export type BenefitTaxonomyAudience = "public" | "partner"
+
+const publicLegacyLabelRewrites: Array<[RegExp, string]> = [
+  [/\bwillkommens[\s-]?(?:bonus|boni|deals?|vorteile?)\b/giu, "Erster Besuch"],
+  [/\bcomeback[\s-]?(?:bonus|boni|deals?|vorteile?)\b/giu, "Komm zurück"],
+  [/\bzeitbonus\b/giu, "Schnell zurück"],
+  [/\bdauerrabatt\b/giu, "Rabatt"],
+  [/\bgratisartikel\b/giu, "Gratis"],
+]
+
+/** Rewrites retired benefit labels in customer-facing text to the Guide 2.7 labels. */
+export function publicBenefitLabelText(value: string) {
+  return publicLegacyLabelRewrites.reduce(
+    (result, [pattern, label]) => result.replace(pattern, label),
+    value,
+  )
+}
+
 const forbiddenPublicText = /\b(?:top[ -]?(?:deal|vorteil)|hauptdeal|daily[ -]?deal|(?:gratis|free)[ -]?rewards?|reward)\b/iu
 const retiredPublicTitleKeys = new Set([
   "daily deal",
@@ -47,6 +70,8 @@ const retiredPublicTitleKeys = new Set([
 ])
 const nonConcretePublicTitles = new Set([
   "2 für 1", "2-for-1", "rabatt", "discount", "gratisartikel", "free item",
+  "gratis", "free", "erster besuch", "first visit", "komm zurück", "come back",
+  "schnell zurück", "quick return",
   "bonusstempel", "bonus stamps", "willkommen", "willkommensdeal",
   "willkommensbonus", "welcome", "welcome deal", "welcome bonus", "zeitbonus",
   "time bonus", "comeback", "comeback-deal", "comeback-bonus", "comeback deal",
@@ -54,7 +79,7 @@ const nonConcretePublicTitles = new Set([
   "challenge", "challenge-bonus", "happy hour", "deal drop", "dauerrabatt",
   "permanent discount", "vorteil", "benefit",
 ])
-const nonConcreteTitleDecoration = /^(?:happy[\s-]+hour|deal[\s-]+drop|2\s*[-\s]*(?:für|for)\s*[-\s]*1|rabatt|discount|gratisartikel|free item|bonusstempel|bonus stamps|willkommen|willkommensdeal|willkommensbonus|welcome|welcome deal|welcome bonus|zeitbonus|time bonus|comeback|comeback-deal|comeback-bonus|comeback deal|comeback bonus|geburtstag|birthday|streak|streak-bonus|challenge|challenge-bonus|dauerrabatt|permanent discount|vorteil|benefit)(?:[\s-]+(?:angebot|aktion|deal|bonus|vorteil|benefit|rabatt|discount|gratisartikel|free item))*$/iu
+const nonConcreteTitleDecoration = /^(?:happy[\s-]+hour|deal[\s-]+drop|2\s*[-\s]*(?:für|for)\s*[-\s]*1|rabatt|discount|gratisartikel|free item|erster besuch|first visit|komm zurück|come back|schnell zurück|quick return|bonusstempel|bonus stamps|willkommen|willkommensdeal|willkommensbonus|welcome|welcome deal|welcome bonus|zeitbonus|time bonus|comeback|comeback-deal|comeback-bonus|comeback deal|comeback bonus|geburtstag|birthday|streak|streak-bonus|challenge|challenge-bonus|dauerrabatt|permanent discount|vorteil|benefit)(?:[\s-]+(?:angebot|aktion|deal|bonus|vorteil|benefit|rabatt|discount|gratisartikel|free item))*$/iu
 
 function normalizePublicText(value: string) {
   return value
@@ -181,48 +206,64 @@ function isAutomaticBonus(input: BenefitTaxonomyInput, format: RewardFormat) {
 function localizedLabel(
   input: BenefitTaxonomyInput,
   language: BenefitTaxonomyLanguage,
+  audience: BenefitTaxonomyAudience = "public",
 ) {
   const format = rewardFormat(input)
   const lifecycleTrigger = trigger(input)
   const campaign = campaignType(input)
   const automaticBonus = isAutomaticBonus(input, format)
+  const en = language === "en"
+  const partner = audience === "partner"
 
   if (normalizedString(input.activation_mode) === "automatic_fallback") {
-    return language === "en" ? "Permanent discount" : "Dauerrabatt"
+    if (partner) return en ? "Permanent discount" : "Dauerrabatt"
+    return en ? "Discount" : "Rabatt"
   }
 
   if (lifecycleTrigger === "welcome") {
+    if (!partner) return en ? "First visit" : "Erster Besuch"
     return automaticBonus
-      ? language === "en" ? "Welcome bonus" : "Willkommensbonus"
-      : language === "en" ? "Welcome deal" : "Willkommensdeal"
+      ? en ? "Welcome bonus" : "Willkommensbonus"
+      : en ? "Welcome deal" : "Willkommensdeal"
   }
   if (lifecycleTrigger === "comeback") {
+    if (!partner) return en ? "Come back" : "Komm zurück"
     return automaticBonus
-      ? language === "en" ? "Comeback bonus" : "Comeback-Bonus"
-      : language === "en" ? "Comeback deal" : "Comeback-Deal"
+      ? en ? "Comeback bonus" : "Comeback-Bonus"
+      : en ? "Comeback deal" : "Comeback-Deal"
   }
-  if (lifecycleTrigger === "time_bonus") return language === "en" ? "Time bonus" : "Zeitbonus"
-  if (lifecycleTrigger === "birthday") return language === "en" ? "Birthday" : "Geburtstag"
+  if (lifecycleTrigger === "time_bonus") {
+    if (!partner) return en ? "Quick return" : "Schnell zurück"
+    return en ? "Time bonus" : "Zeitbonus"
+  }
+  if (lifecycleTrigger === "birthday") return en ? "Birthday" : "Geburtstag"
   if (lifecycleTrigger === "streak") return automaticBonus && language === "de" ? "Streak-Bonus" : "Streak"
   if (lifecycleTrigger === "challenge") return automaticBonus && language === "de" ? "Challenge-Bonus" : "Challenge"
   if (campaign === "happy_hour") return "Happy Hour"
   if (campaign === "deal_drop") return "Deal Drop"
 
   const type = normalizedString(input.type)
-  if (type === "permanent_discount") return language === "en" ? "Permanent discount" : "Dauerrabatt"
-  if (format === "two_for_one") return language === "en" ? "2-for-1" : "2 für 1"
-  if (format === "discount") return language === "en" ? "Discount" : "Rabatt"
-  if (format === "free_item") return language === "en" ? "Free item" : "Gratisartikel"
-  if (format === "bonus_stamp") return language === "en" ? "Bonus stamps" : "Bonusstempel"
-  return language === "en" ? "Benefit" : "Vorteil"
+  if (type === "permanent_discount") {
+    if (partner) return en ? "Permanent discount" : "Dauerrabatt"
+    return en ? "Discount" : "Rabatt"
+  }
+  if (format === "two_for_one") return en ? "2-for-1" : "2 für 1"
+  if (format === "discount") return en ? "Discount" : "Rabatt"
+  if (format === "free_item") {
+    if (partner) return en ? "Free item" : "Gratisartikel"
+    return en ? "Free" : "Gratis"
+  }
+  if (format === "bonus_stamp") return en ? "Bonus stamps" : "Bonusstempel"
+  return en ? "Benefit" : "Vorteil"
 }
 
 /** Returns the public taxonomy label while accepting legacy storage enums. */
 export function benefitTaxonomyLabel(
   input: BenefitTaxonomyInput,
   language: BenefitTaxonomyLanguage = "de",
+  audience: BenefitTaxonomyAudience = "public",
 ) {
-  return localizedLabel(input, language)
+  return localizedLabel(input, language, audience)
 }
 
 function publicTitle(input: BenefitTaxonomyInput) {
@@ -276,7 +317,7 @@ function isGenericFormatTitle(input: BenefitTaxonomyInput, value: string) {
       (itemKey !== "" && titleKey === itemKey)
   }
   if (format === "free_item") {
-    return ["gratisartikel", "free item"].includes(titleKey) ||
+    return ["gratisartikel", "free item", "gratis", "free"].includes(titleKey) ||
       (itemKey !== "" && titleKey === itemKey)
   }
   if (format === "discount") {
@@ -296,11 +337,15 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 }).format(value)
 }
 
-function concreteTitle(input: BenefitTaxonomyInput, language: BenefitTaxonomyLanguage) {
+function concreteTitle(
+  input: BenefitTaxonomyInput,
+  language: BenefitTaxonomyLanguage,
+  audience: BenefitTaxonomyAudience = "public",
+) {
   const format = rewardFormat(input)
   const item = rewardItem(input)
   if (format === "two_for_one") return item ? `${language === "en" ? "2-for-1" : "2 für 1"} ${item}` : language === "en" ? "2-for-1" : "2 für 1"
-  if (format === "free_item") return item ? `${language === "en" ? "Free" : "Gratis"} ${item}` : language === "en" ? "Free item" : "Gratisartikel"
+  if (format === "free_item") return item ? `${language === "en" ? "Free" : "Gratis"} ${item}` : localizedLabel(input, language, audience)
   if (format === "bonus_stamp") {
     const count = Math.max(1, numberValue(input.benefit_count) ?? 1)
     return `+${formatNumber(count)} ${language === "en" ? "bonus stamps" : "Bonusstempel"}`
@@ -311,7 +356,7 @@ function concreteTitle(input: BenefitTaxonomyInput, language: BenefitTaxonomyLan
     if (amount !== null && discountType === "fixed") return `${formatNumber(amount)} € ${language === "en" ? "discount" : "Rabatt"}`
     if (amount !== null && discountType === "percent") return `${formatNumber(amount)} % ${language === "en" ? "discount" : "Rabatt"}`
   }
-  return localizedLabel(input, language)
+  return localizedLabel(input, language, audience)
 }
 
 /**
@@ -322,13 +367,16 @@ function concreteTitle(input: BenefitTaxonomyInput, language: BenefitTaxonomyLan
 export function formatBenefitTitle(
   input: BenefitTaxonomyInput,
   language: BenefitTaxonomyLanguage = "de",
+  audience: BenefitTaxonomyAudience = "public",
 ) {
   const explicitTitle = publicTitle(input)
-  if (explicitTitle) return explicitTitle
+  if (explicitTitle) {
+    return audience === "public" ? publicBenefitLabelText(explicitTitle) : explicitTitle
+  }
 
-  const title = concreteTitle(input, language)
+  const title = concreteTitle(input, language, audience)
   const lifecycleTrigger = trigger(input)
-  const label = localizedLabel(input, language)
+  const label = localizedLabel(input, language, audience)
   const result =
     lifecycleTrigger === "welcome" || lifecycleTrigger === "comeback"
       ? normalizedString(input.activation_mode) === "automatic_fallback"
@@ -342,7 +390,7 @@ export function formatBenefitTitle(
     return result
   }
 
-  return concreteTitle({ ...input, reward_item: null }, language)
+  return concreteTitle({ ...input, reward_item: null }, language, audience)
 }
 
 /** Returns whether a string contains a retired public taxonomy term. */

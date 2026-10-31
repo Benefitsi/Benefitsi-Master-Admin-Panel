@@ -19,7 +19,7 @@ const benefit=(row:BriefRow)=>{
   const input={type:text(row.type),campaign_type:text(row.campaign_type),reward_format:text(row.reward_format),discount_type:kind,discount_value:number(row.discount_value),reward_item:text(row.reward_item),benefit_count:count}
   if((kind==='bonus_stamp'||input.reward_format==='bonus_stamp'||input.type==='bonus_stamp')&&count===null)return 'Bonusstempel · Anzahl noch offen'
   if(!input.reward_format&&!kind&&!input.type)return text(row.title||row.public_title||row.display_title)||'Vorteil noch offen'
-  return formatBenefitTitle(input)
+  return formatBenefitTitle(input,'de','partner')
 }
 const days=['','Mo','Di','Mi','Do','Fr','Sa','So']
 const weekday=(value:unknown)=>days[Number(value)]||({monday:'Mo',tuesday:'Di',wednesday:'Mi',thursday:'Do',friday:'Fr',saturday:'Sa',sunday:'So'} as Record<string,string>)[text(value)]||text(value)
@@ -54,7 +54,7 @@ export function buildPartnerBrief(source:PartnerBriefSource):PartnerBrief {
   const frequency=frequencyForValue(text(p.level_frequency))
   add(['C09'],`Level-Aufstieg · ${visitFrequencyLabels[frequency]}${hasConfiguredFrequency(text(p.level_frequency))?'':' (Standard, noch nicht individuell hinterlegt)'}`,levelRanges(frequency).map(level=>`${level.germanName}: ab ${level.minimumVisits} Besuche`).join('\n'))
   for(const [i,d] of deals.entries()){
-    const label=benefitTaxonomyLabel({type:text(d.type),campaign_type:text(d.campaign_type),reward_format:text(d.reward_format),discount_type:text(d.discount_type)})
+    const label=benefitTaxonomyLabel({type:text(d.type),campaign_type:text(d.campaign_type),reward_format:text(d.reward_format),discount_type:text(d.discount_type)},'de','partner')
     const title=benefit(d),prefix=label&&title.toLowerCase().startsWith(label.toLowerCase())?'':label
     add(['D01'],`Angebot ${i+1}${d.active===false?' · Pausiert':''}`,join([prefix,title,join([text(d.happy_hour_start).slice(0,5),text(d.happy_hour_end).slice(0,5)],'–')]),'deals')
     const limits=join([d.premium_only===true?'Nur Premium':d.audience,d.max_redemptions_per_user!=null?`${text(d.max_redemptions_per_user)} Einlösungen pro Gast`:'',d.max_redemptions_global!=null?`${text(d.max_redemptions_global)} insgesamt`:'',d.cooldown_hours!=null?`${text(d.cooldown_hours)} Stunden Abstand`:'',d.stock_remaining!=null?`${text(d.stock_remaining)} verfügbar`:''])
